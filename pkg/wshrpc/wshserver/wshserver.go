@@ -1306,3 +1306,117 @@ func (ws *WshServer) OmpWritePaletteCommand(ctx context.Context, data wshrpc.Com
 	result.Success = true
 	return result, nil
 }
+
+func (ws *WshServer) OmpAnalyzeCommand(ctx context.Context, data wshrpc.CommandOmpAnalyzeData) (wshrpc.CommandOmpAnalyzeRtnData, error) {
+	result := wshrpc.CommandOmpAnalyzeRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot read config: %v", err)
+		return result, nil
+	}
+
+	config, err := wshutil.ParseOmpConfig(content)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot parse config: %v", err)
+		return result, nil
+	}
+
+	transparentSegments := wshutil.DetectTransparentSegments(config)
+
+	// Convert to RPC type
+	for _, seg := range transparentSegments {
+		result.TransparentSegments = append(result.TransparentSegments, wshrpc.TransparentSegmentInfo{
+			BlockIndex:   seg.BlockIndex,
+			SegmentIndex: seg.SegmentIndex,
+			SegmentType:  seg.SegmentType,
+			Foreground:   seg.Foreground,
+		})
+	}
+
+	result.HasTransparency = len(transparentSegments) > 0
+	return result, nil
+}
+
+func (ws *WshServer) OmpApplyHighContrastCommand(ctx context.Context, data wshrpc.CommandOmpApplyHighContrastData) (wshrpc.CommandOmpApplyHighContrastRtnData, error) {
+	result := wshrpc.CommandOmpApplyHighContrastRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	// Create backup if requested
+	if data.CreateBackup {
+		backupPath, err := wshutil.CreateOmpBackup(configPath)
+		if err != nil {
+			result.Error = fmt.Sprintf("backup failed: %v", err)
+			return result, nil
+		}
+		result.BackupPath = backupPath
+	}
+
+	// Read and parse current config
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot read config: %v", err)
+		return result, nil
+	}
+
+	config, err := wshutil.ParseOmpConfig(content)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot parse config: %v", err)
+		return result, nil
+	}
+
+	// Apply high contrast mode
+	modifiedConfig := wshutil.ApplyHighContrastMode(config)
+
+	// Serialize the modified config
+	newContent, err := wshutil.SerializeOmpConfig(modifiedConfig)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot serialize config: %v", err)
+		return result, nil
+	}
+
+	// Write the modified config
+	fileInfo, _ := os.Stat(configPath)
+	mode := os.FileMode(0644)
+	if fileInfo != nil {
+		mode = fileInfo.Mode()
+	}
+
+	if err := os.WriteFile(configPath, newContent, mode); err != nil {
+		result.Error = fmt.Sprintf("write failed: %v", err)
+		return result, nil
+	}
+
+	result.Success = true
+	result.ModifiedPath = configPath
+	return result, nil
+}
+
+func (ws *WshServer) OmpRestoreBackupCommand(ctx context.Context, data wshrpc.CommandOmpRestoreBackupData) (wshrpc.CommandOmpRestoreBackupRtnData, error) {
+	result := wshrpc.CommandOmpRestoreBackupRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	if err := wshutil.RestoreOmpBackup(configPath); err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	result.Success = true
+	return result, nil
+}
