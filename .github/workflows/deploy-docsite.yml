@@ -55,7 +55,7 @@ jobs:
             - name: Upload Build Artifact
               # Only upload the build artifact when pushed to the main branch
               if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-              uses: actions/upload-pages-artifact@v3
+              uses: actions/upload-pages-artifact@v4
               with:
                   path: docs/build
     deploy:
