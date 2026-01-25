@@ -242,7 +242,7 @@ const SETTING_CATEGORIES: SettingCategory[] = [
         ],
     },
     {
-        id: "shell",
+        id: "scripts",
         label: "Shell Scripts",
         icon: "scroll",
         fields: [

@@ -70,15 +70,6 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
 
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
-        if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "waveai",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
-            });
-        }
     };
 
     return (
@@ -165,15 +156,6 @@ const MagnifyBlocksPage = ({
 
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
-        if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "magnify",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
-            });
-        }
     };
 
     return (
@@ -224,15 +206,6 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
 
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
-        if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "wsh",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
-            });
-        }
     };
 
     const commands = [
@@ -319,12 +292,6 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:lastversion": CurrentOnboardingVersion },
         });
-        RpcApi.RecordTEventCommand(TabRpcClient, {
-            event: "onboarding:start",
-            props: {
-                "onboarding:version": CurrentOnboardingVersion,
-            },
-        });
     }, []);
 
     const handleNext = () => {
@@ -344,10 +311,6 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     };
 
     const handleSkip = () => {
-        RpcApi.RecordTEventCommand(TabRpcClient, {
-            event: "onboarding:skip",
-            props: {},
-        });
         onComplete();
     };
 

@@ -1,38 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
 
 const BYOKAnnouncement = () => {
     const model = WaveAIModel.getInstance();
 
     const handleOpenConfig = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "action:other",
-                props: {
-                    "action:type": "waveai:configuremodes:panel",
-                },
-            },
-            { noresponse: true }
-        );
         await model.openWaveAIConfig();
     };
 
     const handleViewDocs = () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "action:other",
-                props: {
-                    "action:type": "waveai:viewdocs:panel",
-                },
-            },
-            { noresponse: true }
-        );
+        // No-op, just for link tracking
     };
 
     return (

@@ -143,18 +143,6 @@ async function sendDisplaysTDataEvent() {
     props["display:width"] = displays[0].width;
     props["display:dpr"] = displays[0].dpr;
     props["display:all"] = displays;
-    try {
-        await RpcApi.RecordTEventCommand(
-            ElectronWshClient,
-            {
-                event: "app:display",
-                props,
-            },
-            { noresponse: true }
-        );
-    } catch (e) {
-        console.log("error sending display tdata event", e);
-    }
 }
 
 function logActiveState() {
@@ -195,14 +183,6 @@ function logActiveState() {
 
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
-            await RpcApi.RecordTEventCommand(
-                ElectronWshClient,
-                {
-                    event: "app:activity",
-                    props,
-                },
-                { noresponse: true }
-            );
         } catch (e) {
             console.log("error logging active state", e);
         } finally {

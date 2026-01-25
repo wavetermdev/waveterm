@@ -216,12 +216,6 @@ func detectWslDistros() []DetectedShell {
 		return shells
 	}
 
-	systemRoot := os.Getenv("SystemRoot")
-	if systemRoot == "" {
-		systemRoot = `C:\Windows`
-	}
-	wslExePath := filepath.Join(systemRoot, "System32", "wsl.exe")
-
 	for _, distro := range distros {
 		distroName := distro.Name()
 
@@ -244,11 +238,10 @@ func detectWslDistros() []DetectedShell {
 			Icon:      ShellIcon_Linux,
 		}
 
-		// Check if this is the default distro
+		// Check if this is the default distro (just update the name, keep wsl:// path format)
 		defaultDistro, ok, _ := wsl.DefaultDistro(ctx)
 		if ok && defaultDistro.Name() == distroName {
-			// Mark the actual wsl.exe path for the default
-			shell.ShellPath = wslExePath
+			shell.IsDefault = true
 			shell.Name = fmt.Sprintf("WSL: %s (default)", distroName)
 		}
 
