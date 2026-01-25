@@ -176,6 +176,9 @@ type WshRpcInterface interface {
 	// OMP (Oh-My-Posh) integration
 	OmpGetConfigInfoCommand(ctx context.Context) (CommandOmpGetConfigInfoRtnData, error)
 	OmpWritePaletteCommand(ctx context.Context, data CommandOmpWritePaletteData) (CommandOmpWritePaletteRtnData, error)
+	OmpAnalyzeCommand(ctx context.Context, data CommandOmpAnalyzeData) (CommandOmpAnalyzeRtnData, error)
+	OmpApplyHighContrastCommand(ctx context.Context, data CommandOmpApplyHighContrastData) (CommandOmpApplyHighContrastRtnData, error)
+	OmpRestoreBackupCommand(ctx context.Context, data CommandOmpRestoreBackupData) (CommandOmpRestoreBackupRtnData, error)
 }
 
 // for frontend
@@ -825,4 +828,44 @@ type CommandOmpWritePaletteRtnData struct {
 	Success    bool   `json:"success"`
 	BackupPath string `json:"backuppath,omitempty"`
 	Error      string `json:"error,omitempty"`
+}
+
+// CommandOmpAnalyzeData contains analysis request (empty - uses $POSH_THEME)
+type CommandOmpAnalyzeData struct{}
+
+// TransparentSegmentInfo contains info about a segment with transparent background
+type TransparentSegmentInfo struct {
+	BlockIndex   int    `json:"blockindex"`
+	SegmentIndex int    `json:"segmentindex"`
+	SegmentType  string `json:"segmenttype"`
+	Foreground   string `json:"foreground"`
+}
+
+// CommandOmpAnalyzeRtnData contains analysis result
+type CommandOmpAnalyzeRtnData struct {
+	TransparentSegments []TransparentSegmentInfo `json:"transparentsegments"`
+	HasTransparency     bool                     `json:"hastransparency"`
+	Error               string                   `json:"error,omitempty"`
+}
+
+// CommandOmpApplyHighContrastData contains high contrast mode request
+type CommandOmpApplyHighContrastData struct {
+	CreateBackup bool `json:"createbackup"`
+}
+
+// CommandOmpApplyHighContrastRtnData contains high contrast mode result
+type CommandOmpApplyHighContrastRtnData struct {
+	Success      bool   `json:"success"`
+	BackupPath   string `json:"backuppath,omitempty"`
+	ModifiedPath string `json:"modifiedpath,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
+// CommandOmpRestoreBackupData contains restore backup request (empty)
+type CommandOmpRestoreBackupData struct{}
+
+// CommandOmpRestoreBackupRtnData contains restore backup result
+type CommandOmpRestoreBackupRtnData struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
