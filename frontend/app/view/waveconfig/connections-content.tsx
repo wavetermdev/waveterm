@@ -4,9 +4,13 @@
 /**
  * Connections Visual Content
  *
- * A visual component for managing SSH/WSL connection configurations.
- * Features a two-panel layout with a sidebar for connection list and
- * a main panel for editing connection settings grouped by category.
+ * A visual component for managing local shell profiles and remote SSH/WSL connections.
+ * Features a two-panel layout with:
+ * - Sidebar split into "Local Shell Profiles" and "Remote Connections" sections
+ * - Main panel for editing connection settings grouped by category
+ *
+ * Local shell profiles (PowerShell, Git Bash, cmd, WSL) are marked with conn:local=true
+ * and are displayed with a green "Local" badge. Remote SSH connections show an "SSH" badge.
  */
 
 import { atoms, getApi } from "@/app/store/global";
@@ -25,12 +29,13 @@ import "./connections-content.scss";
 // Types
 // ============================================
 
-type ConnectionType = "ssh" | "wsl";
+type ConnectionType = "ssh" | "wsl" | "local";
 
 interface ConnectionInfo {
     name: string;
     type: ConnectionType;
     config: ConnKeywords;
+    isLocal: boolean;
 }
 
 interface SettingFieldDef {
@@ -55,9 +60,24 @@ interface SettingCategory {
 
 const SETTING_CATEGORIES: SettingCategory[] = [
     {
+        id: "shell",
+        label: "Shell",
+        icon: "terminal",
+        fields: [
+            {
+                key: "conn:shellpath",
+                label: "Shell path",
+                type: "string",
+                placeholder: "Default shell",
+                description: "Path to shell executable",
+            },
+        ],
+    },
+    {
         id: "connection",
-        label: "Connection",
+        label: "Remote Connection",
         icon: "plug",
+        showFor: ["ssh", "wsl"],
         fields: [
             {
                 key: "conn:wshenabled",
@@ -76,14 +96,7 @@ const SETTING_CATEGORIES: SettingCategory[] = [
                 label: "wsh path",
                 type: "string",
                 placeholder: "~/.waveterm/bin/wsh",
-                description: "Path to wsh executable on the connection",
-            },
-            {
-                key: "conn:shellpath",
-                label: "Shell path",
-                type: "string",
-                placeholder: "Default shell",
-                description: "Path to shell executable on the connection",
+                description: "Path to wsh executable on the remote connection",
             },
             {
                 key: "conn:ignoresshconfig",
@@ -309,8 +322,67 @@ const SETTING_CATEGORIES: SettingCategory[] = [
 // Helper Functions
 // ============================================
 
-function getConnectionType(name: string): ConnectionType {
-    return name.startsWith("wsl://") ? "wsl" : "ssh";
+/**
+ * Determines if a connection is a local shell profile based on its name and config.
+ * Local shells are: cmd, powershell, pwsh, git-bash, WSL distros, and any with conn:local set.
+ */
+function isLocalShellProfile(name: string, config: ConnKeywords): boolean {
+    // Explicitly marked as local
+    if ((config as any)["conn:local"] === true) {
+        return true;
+    }
+
+    const nameLower = name.toLowerCase();
+
+    // WSL connections are always local
+    if (name.startsWith("wsl://")) {
+        return true;
+    }
+
+    // Common local shell names
+    const localShellPatterns = [
+        "cmd",
+        "powershell",
+        "pwsh",
+        "windows-powershell",
+        "git-bash",
+        "bash",
+        "zsh",
+        "fish",
+    ];
+
+    // Check if the name matches a local shell pattern exactly or with version suffix
+    for (const pattern of localShellPatterns) {
+        if (nameLower === pattern || nameLower.startsWith(`${pattern}-`)) {
+            return true;
+        }
+    }
+
+    // Check if it has a shell path configured and no SSH-specific settings
+    // This suggests it's a local shell, not a remote connection
+    const hasShellPath = !!config["conn:shellpath"];
+    const hasNoSSHSettings =
+        !config["ssh:user"] &&
+        !config["ssh:hostname"] &&
+        !config["ssh:port"] &&
+        !config["ssh:identityfile"];
+
+    // If it has a shell path and looks like a shell name (no @ or : for host)
+    if (hasShellPath && hasNoSSHSettings && !name.includes("@") && !name.includes(":")) {
+        return true;
+    }
+
+    return false;
+}
+
+function getConnectionType(name: string, config: ConnKeywords): ConnectionType {
+    if (name.startsWith("wsl://")) {
+        return "wsl";
+    }
+    if (isLocalShellProfile(name, config)) {
+        return "local";
+    }
+    return "ssh";
 }
 
 /**
@@ -353,11 +425,16 @@ function validateConnectionName(name: string): { valid: boolean; error?: string 
 function parseConnections(connections: { [key: string]: ConnKeywords }): ConnectionInfo[] {
     if (!connections) return [];
 
-    return Object.entries(connections).map(([name, config]) => ({
-        name,
-        type: getConnectionType(name),
-        config: config || {},
-    }));
+    return Object.entries(connections).map(([name, config]) => {
+        const cfg = config || {};
+        const isLocal = isLocalShellProfile(name, cfg);
+        return {
+            name,
+            type: getConnectionType(name, cfg),
+            config: cfg,
+            isLocal,
+        };
+    });
 }
 
 function parseEnvString(envStr: string): { [key: string]: string } {
@@ -421,9 +498,9 @@ const EmptyState = memo(({ onAddConnection, onAutoDetect, isDetecting }: EmptySt
             <i className="fa-sharp fa-solid fa-plug" />
             <h3>No Connections</h3>
             <p>
-                Wave can automatically detect available shells
+                Configure local shell profiles (PowerShell, WSL, Git Bash)
                 <br />
-                on your system including PowerShell, WSL, and more.
+                and remote SSH connections in one place.
             </p>
             <button
                 className="connections-add-btn connections-detect-btn-primary"
@@ -438,7 +515,7 @@ const EmptyState = memo(({ onAddConnection, onAutoDetect, isDetecting }: EmptySt
                 ) : (
                     <>
                         <i className="fa-sharp fa-solid fa-wand-magic-sparkles" />
-                        <span>Auto-Detect Shells</span>
+                        <span>Auto-Detect Local Shells</span>
                     </>
                 )}
             </button>
@@ -447,7 +524,7 @@ const EmptyState = memo(({ onAddConnection, onAutoDetect, isDetecting }: EmptySt
             </div>
             <button className="connections-btn secondary" onClick={onAddConnection}>
                 <i className="fa-sharp fa-solid fa-plus" />
-                <span>Add Connection</span>
+                <span>Add SSH Connection</span>
             </button>
         </div>
     );
@@ -493,6 +570,11 @@ function getConnectionIcon(connection: ConnectionInfo): ShellIconInfo {
         return { icon: "terminal", isBrand: false };
     }
 
+    // Local shell profiles (generic)
+    if (connection.isLocal || connection.type === "local") {
+        return { icon: "terminal", isBrand: false };
+    }
+
     // SSH connections (user@host format)
     if (name.includes("@") || connection.type === "ssh") {
         return { icon: "server", isBrand: false };
@@ -514,14 +596,22 @@ const ConnectionListItem = memo(({ connection, isSelected, onSelect }: Connectio
         ? `fa-brands fa-${iconInfo.icon}`
         : `fa-sharp fa-solid fa-${iconInfo.icon}`;
     const isHidden = connection.config["display:hidden"];
+    const displayName = (connection.config as any)["display:name"] || connection.name;
 
     return (
         <div
-            className={cn("connections-list-item", { selected: isSelected, hidden: isHidden })}
+            className={cn("connections-list-item", {
+                selected: isSelected,
+                hidden: isHidden,
+                local: connection.isLocal,
+            })}
             onClick={onSelect}
         >
             <i className={iconClass} />
-            <span className="connections-list-item-name">{connection.name}</span>
+            <span className="connections-list-item-name">{displayName}</span>
+            {connection.isLocal && (
+                <span className="connections-list-item-badge local">Local</span>
+            )}
             {isHidden && <i className="fa-sharp fa-solid fa-eye-slash connections-list-item-hidden" />}
             <i className="fa-sharp fa-solid fa-chevron-right connections-list-item-arrow" />
         </div>
@@ -660,6 +750,7 @@ const DetectedShellItem = memo(({ shell, isSelected, isAlreadyConfigured, onTogg
                 <div className="connections-detect-item-name">
                     {shell.name}
                     {shell.version && <span className="connections-detect-item-version">{shell.version}</span>}
+                    <span className="connections-detect-item-badge local">Local</span>
                     {shell.isdefault && <span className="connections-detect-item-badge default">Default</span>}
                     {isAlreadyConfigured && (
                         <span className="connections-detect-item-badge configured" aria-label="Already configured">
@@ -872,7 +963,7 @@ const DetectedShellsPanel = memo(
                             <i className="fa-sharp fa-solid fa-arrow-left" />
                             <span>Back</span>
                         </button>
-                        <h3>Detected Shells</h3>
+                        <h3>Local Shell Profiles</h3>
                         <button className="connections-detect-close" onClick={onClose} aria-label="Close">
                             <i className="fa-sharp fa-solid fa-times" />
                         </button>
@@ -896,7 +987,7 @@ const DetectedShellsPanel = memo(
                         <i className="fa-sharp fa-solid fa-arrow-left" />
                         <span>Back</span>
                     </button>
-                    <h3>Detected Shells ({shells.length})</h3>
+                    <h3>Local Shell Profiles ({shells.length})</h3>
                     <button className="connections-detect-close" onClick={onClose} aria-label="Close">
                         <i className="fa-sharp fa-solid fa-times" />
                     </button>
@@ -1163,7 +1254,16 @@ const ConnectionEditor = memo(({ connection, onBack, onDelete, onSave }: Connect
                             : `fa-sharp fa-solid fa-${editorIconInfo.icon}`;
                         return <i className={editorIconClass} />;
                     })()}
-                    <span>{connection.name}</span>
+                    <span>{(connection.config as any)["display:name"] || connection.name}</span>
+                    {connection.isLocal && (
+                        <span className="connections-editor-badge local">Local Shell</span>
+                    )}
+                    {!connection.isLocal && connection.type === "ssh" && (
+                        <span className="connections-editor-badge remote">SSH</span>
+                    )}
+                    {connection.type === "wsl" && (
+                        <span className="connections-editor-badge wsl">WSL</span>
+                    )}
                 </div>
                 <div className="connections-editor-actions">
                     <button
@@ -1268,6 +1368,20 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
             return a.name.localeCompare(b.name);
         });
     }, [connections]);
+
+    // Split connections into local shell profiles and remote connections
+    const { localConnections, remoteConnections } = useMemo(() => {
+        const local: ConnectionInfo[] = [];
+        const remote: ConnectionInfo[] = [];
+        for (const conn of sortedConnections) {
+            if (conn.isLocal) {
+                local.push(conn);
+            } else {
+                remote.push(conn);
+            }
+        }
+        return { localConnections: local, remoteConnections: remote };
+    }, [sortedConnections]);
 
     const existingNames = useMemo(() => connections.map((c) => c.name), [connections]);
 
@@ -1388,10 +1502,13 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
                 }
 
                 // Create connection config with shell path and display name
-                const connConfig: ConnKeywords = {};
+                // Mark as local shell profile so backend knows not to SSH
+                const connConfig: ConnKeywords & { "conn:local"?: boolean; "display:name"?: string } = {};
                 if (shell.shellpath) {
                     connConfig["conn:shellpath"] = shell.shellpath;
                 }
+                // Mark as local shell profile (crucial for backend to handle correctly)
+                connConfig["conn:local"] = true;
                 // Store the display name for UI purposes
                 connConfig["display:name"] = shell.name;
 
@@ -1579,14 +1696,59 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
                     </div>
                 </div>
                 <div className="connections-list">
-                    {sortedConnections.map((conn) => (
-                        <ConnectionListItem
-                            key={conn.name}
-                            connection={conn}
-                            isSelected={selectedConnection === conn.name}
-                            onSelect={() => setSelectedConnection(conn.name)}
-                        />
-                    ))}
+                    {/* Local Shell Profiles Section */}
+                    {localConnections.length > 0 && (
+                        <div className="connections-section">
+                            <div className="connections-section-header">
+                                <i className="fa-sharp fa-solid fa-terminal" />
+                                <span>Local Shell Profiles</span>
+                                <span className="connections-section-count">{localConnections.length}</span>
+                            </div>
+                            <div className="connections-section-list">
+                                {localConnections.map((conn) => (
+                                    <ConnectionListItem
+                                        key={conn.name}
+                                        connection={conn}
+                                        isSelected={selectedConnection === conn.name}
+                                        onSelect={() => setSelectedConnection(conn.name)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Remote Connections Section */}
+                    {remoteConnections.length > 0 && (
+                        <div className="connections-section">
+                            <div className="connections-section-header">
+                                <i className="fa-sharp fa-solid fa-server" />
+                                <span>Remote Connections</span>
+                                <span className="connections-section-count">{remoteConnections.length}</span>
+                            </div>
+                            <div className="connections-section-list">
+                                {remoteConnections.map((conn) => (
+                                    <ConnectionListItem
+                                        key={conn.name}
+                                        connection={conn}
+                                        isSelected={selectedConnection === conn.name}
+                                        onSelect={() => setSelectedConnection(conn.name)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Fallback if no connections exist after split (shouldn't happen) */}
+                    {localConnections.length === 0 && remoteConnections.length === 0 && (
+                        sortedConnections.map((conn) => (
+                            <ConnectionListItem
+                                key={conn.name}
+                                connection={conn}
+                                isSelected={selectedConnection === conn.name}
+                                onSelect={() => setSelectedConnection(conn.name)}
+                            />
+                        ))
+                    )}
                 </div>
                 <div className="connections-cli-info">
                     <div className="connections-cli-info-header">

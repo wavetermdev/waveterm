@@ -18,6 +18,9 @@
         "conn:ignoresshconfig": {
           "type": "boolean"
         },
+        "conn:local": {
+          "type": "boolean"
+        },
         "display:hidden": {
           "type": "boolean"
         },

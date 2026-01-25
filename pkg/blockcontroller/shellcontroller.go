@@ -649,6 +649,17 @@ func getLocalShellPath(blockMeta waveobj.MetaMapType) (string, error) {
 	}
 
 	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
+
+	// Check if this is a local shell profile defined in connections.json
+	if conncontroller.IsLocalShellProfile(connName) {
+		fullConfig := wconfig.GetWatcher().GetFullConfig()
+		connSettings, ok := fullConfig.Connections[connName]
+		if ok && connSettings.ConnShellPath != "" {
+			return connSettings.ConnShellPath, nil
+		}
+		// If no shell path is specified in the connection, fall through to defaults
+	}
+
 	if strings.HasPrefix(connName, "local:") {
 		variant := strings.TrimPrefix(connName, "local:")
 		if variant == LocalConnVariant_GitBash {

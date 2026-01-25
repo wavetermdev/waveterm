@@ -303,6 +303,7 @@ type ConnKeywords struct {
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 	ConnShellPath           string `json:"conn:shellpath,omitempty"`
 	ConnIgnoreSshConfig     *bool  `json:"conn:ignoresshconfig,omitempty"`
+	ConnLocal               *bool  `json:"conn:local,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`

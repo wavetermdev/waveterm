@@ -98,7 +98,6 @@ const (
 	ConfigKey_WindowDimensions               = "window:dimensions"
 	ConfigKey_WindowZoom                     = "window:zoom"
 
-	// Telemetry keys (kept for compatibility, but telemetry is removed from this fork)
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
 
