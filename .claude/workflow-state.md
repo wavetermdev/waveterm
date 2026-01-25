@@ -1,99 +1,121 @@
 ---
 workflow: phased-dev
 workflow_status: in_progress
-current_phase: 2-code-review
+current_phase: 2-planning
 started: 2026-01-25
-last_updated: 2026-01-25T10:05:00
-tool_uses_count: 45
+last_updated: 2026-01-25T11:15:00
+tool_uses_count: 25
 ---
 
-# Phased Development Workflow - GUI Settings System V2
+# Phased Development Workflow - Connections Auto-Detection & AI Modes Pre-fill
 
 ## Overview
 
-Extending the dynamic GUI Settings system to cover additional configuration types:
-1. Connections - Remote connection management
-2. Sidebar Widgets - Widget configuration
-3. Wave AI Modes - AI assistant modes
-4. Tab Backgrounds - Tab background images/colors
-5. Tab Variables - Tab variable presets
-6. Secrets - Already complete
-7. AI Presets - AI configuration presets (DEPRECATED)
+Two features to implement:
 
-## Current Phase: Complete
+### Feature 1: Connections Auto-Detection
+- Auto-detect shells/terminals like Windows Terminal does
+- Cross-platform support: Windows, macOS, Linux
+- Triggered by button/icon, auto-triggered when connections list is empty
+- Auto-populates connections.json with detected shells
+
+### Feature 2: AI Modes Pre-fill
+- Pre-fill AI providers from docs (https://docs.waveterm.dev/waveai-modes)
+- Non-opensource providers show warning/incomplete icon for missing API keys
+- Hover or click reveals the incomplete status details
+
+## Current Phase: Planning
 
 ### Completed Stages
-- [x] Initial setup - Branch created, directories created
-- [x] Discovery (Phase 1) - Understanding existing implementation
-- [x] Planning (Phase 1) - Specs created via planning agents
-- [x] Parallel Execution (Phase 2) - All visual components implemented
-- [x] Code Review (Phase 2) - All critical bugs fixed
-- [x] QA Testing (Phase 2) - Static analysis verification complete
+- [x] Discovery (Phase 1) - Research completed, tasks identified
+  - Windows Terminal detection mechanisms researched
+  - AI providers analyzed from documentation and source code
+  - 3 tasks created in todos/
 
-### QA Testing Results
-- TypeScript: ✅ Compiles without errors (`npx tsc --noEmit`)
-- ESLint: ✅ No errors on waveconfig components
-- SCSS: ✅ All 6 SCSS files compile correctly
-- Tests: ✅ Test suite passes (`npm test`)
-- Imports: ✅ All visual components properly imported and registered
-- Exports: ✅ All visual components properly exported as memo components
+### In Progress
+- [ ] Integration (Phase 3) - Commit changes
 
-Note: Full Electron MCP testing requires manual startup of the app with
-`--remote-debugging-port=9222`. The Vite dev server is running and serving
-the frontend correctly at localhost:5173.
+### Completed
+- [x] QA Testing (Phase 3) - Static analysis complete
+  - TypeScript compilation: PASS
+  - Go compilation: PASS
+  - QA report: `.claude/reviews/qa-report-connections-ai-modes.md`
+- [x] Code Review (Phase 3) - Security + functional review
+  - Shell detection backend: PASS
+  - AI modes prefill: PASS
+  - Connections UI: CONDITIONAL PASS → Fixed H-1 (connection name validation)
 
-## Commits Made
-- `ad11ce97` - AI Presets deprecation view
-- `9ae1e772` - Connections, Tab Variables, Tab Backgrounds, Widgets visual components
-- `98608a04` - Wave AI Modes visual editor component
-- `113dda6c` - Critical bug fixes (connections delete, widgets state reset, tabvars stale closure)
-- `5457d1d7` - Additional code review fixes (switchcompat, error states, delete confirmation)
+### Completed
+- [x] Execution (Phase 3) - Implement with parallel agents
+  - [x] TODO-001: Backend shell detection - COMPLETE
+  - [x] TODO-003: AI modes prefill - COMPLETE
+  - [x] `task generate` - TypeScript bindings regenerated
+  - [x] TODO-002: Connections auto-detection UI - COMPLETE
+
+### Completed Stages
+- [x] Architecture Review (Phase 2) - COHERENT
+  - Dependency order verified: TODO-001 before TODO-002, TODO-003 independent
+  - Type consistency verified across all specs
+  - Pattern consistency verified (loading, error, accessibility)
+  - Parallel execution plan: TODO-001 + TODO-003 in parallel, then TODO-002
+- [x] Design Review (Phase 2) - All 3 specs PASSED
+  - Backend spec: Minor fixes applied (ID generation, shell types, RPC signature)
+  - UI spec: Minor fixes applied (accessibility, loading message, icons)
+  - AI modes spec: Minor fixes applied (Anthropic model, Google secret name, isLocalEndpoint)
+- [x] Planning (Phase 2) - Detailed specs created
+  - `spec-connections-autodetect-backend.md` - RPC command, platform detection
+  - `spec-connections-autodetect-ui.md` - UI components, state management
+  - `spec-ai-modes-prefill.md` - Provider templates, status indicators
+
+### Pending Stages
+- [ ] Architecture Review (Phase 2) - Phase coherence check
+- [ ] Execution (Phase 3) - Implement with parallel agents
+- [ ] Code Review (Phase 3) - Security + functional review
+- [ ] QA Testing (Phase 3) - Electron MCP testing
+- [ ] Integration (Phase 3) - Merge and cleanup
 
 ## Discovery Summary
 
-### What Exists:
-- **General (settings.json)** - ✅ COMPLETE visual component
-- **Secrets** - ✅ COMPLETE visual component
+### Research Documents Created
+1. `.claude/specs/research-windows-terminal-detection.md`
+   - Windows Terminal dynamic profile generator architecture
+   - WSL registry detection at `HKCU\Software\Microsoft\Windows\CurrentVersion\Lxss`
+   - PowerShell Core multi-source detection
+   - SSH config file parsing
+   - Git Bash registry detection
+   - Cross-platform considerations
 
-### What Needs Implementation:
-1. **Connections** - No visual component, only JSON editor
-2. **Sidebar Widgets** - No visual component, only JSON editor
-3. **Wave AI Modes** - Has placeholder visual component, needs full implementation
-4. **Tab Backgrounds** - No visual component, only JSON editor
-5. **Tab Variables** - No visual component, only JSON editor
-6. **AI Presets** - DEPRECATED, needs minimal deprecation UI
+2. `.claude/specs/research-ai-providers.md`
+   - All supported providers: Wave, OpenAI, Anthropic, Google, OpenRouter, Azure, Perplexity, Ollama, LM Studio
+   - Provider classification: Commercial (API key required) vs Local (no key needed)
+   - Configuration schema for each provider
+   - Pre-fill strategy with status indicators
 
-## Implementation Plan
+### Tasks Identified
+1. **TODO-001**: Connections Auto-Detection Backend Service
+   - New RPC command: `DetectAvailableShellsCommand`
+   - Platform-specific detection logic
+   - Files: `pkg/util/shellutil/shelldetect*.go`, RPC types
 
-### Phase 2a: Simpler Implementations (Sequential)
-1. Tab Variables - Simplest (4 allowed keys)
-2. Tab Backgrounds - Moderate (color/gradient picker)
-3. AI Presets - Deprecated read-only view
+2. **TODO-002**: Connections Auto-Detection UI
+   - Auto-detect button in toolbar
+   - Enhanced empty state
+   - Detection results dialog with checkboxes
+   - Duplicate detection
 
-### Phase 2b: Complex Implementations (Sequential)
-4. Sidebar Widgets - Moderate complexity with drag-drop
-5. Wave AI Modes - Provider-aware form
-6. Connections - Most complex (many SSH options)
+3. **TODO-003**: AI Modes Pre-fill with Providers
+   - Pre-filled provider templates
+   - Status indicators (✅/⚠️/🔧)
+   - Tooltip/popover for status details
+   - Quick link to Secrets page
 
 ## Key Decisions
-- Implementing sequentially on main branch for this feature branch
-- Each component commits when working
-- Opus model with ultrathink for all planning and review stages
-- Mandatory code review after each implementation
-
-## Key Files Reference
-- Main model: `frontend/app/view/waveconfig/waveconfig-model.ts`
-- Settings visual: `frontend/app/view/waveconfig/settings-visual.tsx`
-- Secrets (reference): `frontend/app/view/waveconfig/secretscontent.tsx`
-- Settings controls: `frontend/app/element/settings/*.tsx`
-
-## Branch
-feature/gui-settings-system-v2
+- Use registry-based WSL detection (faster than `wsl.exe`)
+- Cross-platform detection via `/etc/shells` on Unix
+- Pre-fill common providers with incomplete status
+- Status badge shows API key requirement
 
 ## Next Steps
-1. Implement Tab Variables visual component
-2. Implement Tab Backgrounds visual component
-3. Implement AI Presets deprecation view
-4. Implement Sidebar Widgets visual component
-5. Implement Wave AI Modes visual component
-6. Implement Connections visual component
+1. Launch planning agents to create detailed specs for each task
+2. Use Opus model with ultrathink for deep analysis
+3. Gate progression until specs are approved
