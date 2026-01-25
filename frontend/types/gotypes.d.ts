@@ -357,6 +357,30 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandOmpAnalyzeData
+    type CommandOmpAnalyzeData = {
+    };
+
+    // wshrpc.CommandOmpAnalyzeRtnData
+    type CommandOmpAnalyzeRtnData = {
+        transparentsegments: TransparentSegmentInfo[];
+        hastransparency: boolean;
+        error?: string;
+    };
+
+    // wshrpc.CommandOmpApplyHighContrastData
+    type CommandOmpApplyHighContrastData = {
+        createbackup: boolean;
+    };
+
+    // wshrpc.CommandOmpApplyHighContrastRtnData
+    type CommandOmpApplyHighContrastRtnData = {
+        success: boolean;
+        backuppath?: string;
+        modifiedpath?: string;
+        error?: string;
+    };
+
     // wshrpc.CommandOmpGetConfigInfoRtnData
     type CommandOmpGetConfigInfoRtnData = {
         configpath: string;
@@ -368,9 +392,14 @@ declare global {
         error?: string;
     };
 
-    // wshrpc.CommandOmpReinitData
-    type CommandOmpReinitData = {
-        blockid: string;
+    // wshrpc.CommandOmpRestoreBackupData
+    type CommandOmpRestoreBackupData = {
+    };
+
+    // wshrpc.CommandOmpRestoreBackupRtnData
+    type CommandOmpRestoreBackupRtnData = {
+        success: boolean;
+        error?: string;
     };
 
     // wshrpc.CommandOmpWritePaletteData
@@ -1274,6 +1303,14 @@ declare global {
     type TimeSeriesData = {
         ts: number;
         values: {[key: string]: number};
+    };
+
+    // wshrpc.TransparentSegmentInfo
+    type TransparentSegmentInfo = {
+        blockindex: number;
+        segmentindex: number;
+        segmenttype: string;
+        foreground: string;
     };
 
     // uctypes.UIChat

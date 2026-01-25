@@ -49,6 +49,11 @@ export type { OmpThemeControlProps } from "./omptheme-control";
 export { OmpPaletteExport } from "./omp-palette-export";
 export type { OmpPaletteExportProps } from "./omp-palette-export";
 
+export { PreviewBackgroundToggle } from "./preview-background-toggle";
+export type { PreviewBackgroundToggleProps, PreviewBackground } from "./preview-background-toggle";
+
+export { OmpHighContrast } from "./omp-high-contrast";
+
 // Factory for dynamic control rendering
 export { ControlFactory, renderSettingControl } from "./control-factory";
 export type { ControlFactoryProps } from "./control-factory";

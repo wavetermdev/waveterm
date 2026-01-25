@@ -9,8 +9,10 @@
  */
 
 import { CollapsibleSection } from "@/app/element/collapsible-section";
+import { OmpHighContrast } from "@/app/element/settings/omp-high-contrast";
 import { OmpPaletteExport } from "@/app/element/settings/omp-palette-export";
 import { OmpThemeControl } from "@/app/element/settings/omptheme-control";
+import { PreviewBackgroundToggle, type PreviewBackground } from "@/app/element/settings/preview-background-toggle";
 import { TermThemeControl } from "@/app/element/settings/termtheme-control";
 import { getSettingsKeyAtom } from "@/app/store/global";
 import { settingsService } from "@/app/store/settings-service";
@@ -95,6 +97,8 @@ async function reinitOmpInAllTerminals(): Promise<void> {
  */
 export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["ui-theme", "terminal-theme"]));
+    const [termPreviewBg, setTermPreviewBg] = useState<PreviewBackground>("dark");
+    const [ompPreviewBg, setOmpPreviewBg] = useState<PreviewBackground>("dark");
 
     // Get current settings
     const appTheme = (useAtomValue(getSettingsKeyAtom("app:theme")) as string) ?? "dark";
@@ -149,7 +153,12 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                 isExpanded={expandedSections.has("terminal-theme")}
                 onToggle={() => toggleSection("terminal-theme")}
             >
-                <TermThemeControl value={termTheme} onChange={handleTermThemeChange} />
+                <PreviewBackgroundToggle value={termPreviewBg} onChange={setTermPreviewBg} />
+                <TermThemeControl
+                    value={termTheme}
+                    onChange={handleTermThemeChange}
+                    previewBackground={termPreviewBg}
+                />
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -159,7 +168,14 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                 onToggle={() => toggleSection("omp")}
             >
                 <div className="omp-section">
-                    <OmpThemeControl value={ompTheme} onChange={handleOmpThemeChange} />
+                    <PreviewBackgroundToggle value={ompPreviewBg} onChange={setOmpPreviewBg} />
+                    <OmpThemeControl
+                        value={ompTheme}
+                        onChange={handleOmpThemeChange}
+                        previewBackground={ompPreviewBg}
+                    />
+                    <div className="section-divider" />
+                    <OmpHighContrast />
                     <div className="section-divider" />
                     <OmpPaletteExport />
                 </div>

@@ -14,9 +14,12 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { cn } from "@/util/util";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
+import type { PreviewBackground } from "./preview-background-toggle";
+
 export interface TermThemeControlProps {
     value: string;
     onChange: (value: string) => void;
+    previewBackground?: PreviewBackground;
 }
 
 interface ThemeInfo {
@@ -101,7 +104,12 @@ ColorSwatch.displayName = "ColorSwatch";
 /**
  * Theme preview component - shows the 8 ANSI colors + background
  */
-const ThemePreview = memo(({ theme }: { theme: ThemeInfo }) => {
+interface ThemePreviewProps {
+    theme: ThemeInfo;
+    previewBackground?: PreviewBackground;
+}
+
+const ThemePreview = memo(({ theme, previewBackground }: ThemePreviewProps) => {
     const colors = theme.colors;
 
     // Show normal colors on top row, bright colors on bottom row
@@ -127,8 +135,54 @@ const ThemePreview = memo(({ theme }: { theme: ThemeInfo }) => {
         colors.brightWhite || colors.white,
     ];
 
+    // Determine background based on preview mode
+    const bgColor =
+        previewBackground === "light"
+            ? "#fafafa"
+            : previewBackground === "dark"
+              ? "#1a1a1a"
+              : colors.background;
+
+    // Split view shows both dark and light backgrounds
+    if (previewBackground === "split") {
+        return (
+            <div className="termtheme-preview split-view">
+                <div className="preview-half dark">
+                    <div className="termtheme-color-row">
+                        {normalColors.map((color, i) => (
+                            <ColorSwatch key={`normal-dark-${i}`} color={color} />
+                        ))}
+                    </div>
+                    <div className="termtheme-color-row">
+                        {brightColors.map((color, i) => (
+                            <ColorSwatch key={`bright-dark-${i}`} color={color} />
+                        ))}
+                    </div>
+                </div>
+                <div className="preview-half light">
+                    <div className="termtheme-color-row">
+                        {normalColors.map((color, i) => (
+                            <ColorSwatch key={`normal-light-${i}`} color={color} />
+                        ))}
+                    </div>
+                    <div className="termtheme-color-row">
+                        {brightColors.map((color, i) => (
+                            <ColorSwatch key={`bright-light-${i}`} color={color} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="termtheme-preview" style={{ backgroundColor: colors.background }}>
+        <div
+            className={cn("termtheme-preview", {
+                "dark-bg": previewBackground === "dark",
+                "light-bg": previewBackground === "light",
+            })}
+            style={{ backgroundColor: bgColor }}
+        >
             <div className="termtheme-color-row">
                 {normalColors.map((color, i) => (
                     <ColorSwatch key={`normal-${i}`} color={color} />
@@ -152,9 +206,10 @@ interface ThemeCardProps {
     theme: ThemeInfo;
     isSelected: boolean;
     onSelect: () => void;
+    previewBackground?: PreviewBackground;
 }
 
-const ThemeCard = memo(({ theme, isSelected, onSelect }: ThemeCardProps) => {
+const ThemeCard = memo(({ theme, isSelected, onSelect, previewBackground }: ThemeCardProps) => {
     return (
         <button
             type="button"
@@ -162,7 +217,7 @@ const ThemeCard = memo(({ theme, isSelected, onSelect }: ThemeCardProps) => {
             onClick={onSelect}
             aria-pressed={isSelected}
         >
-            <ThemePreview theme={theme} />
+            <ThemePreview theme={theme} previewBackground={previewBackground} />
             <span className="termtheme-name">{theme.name}</span>
             {isSelected && (
                 <span className="termtheme-check">
@@ -178,7 +233,7 @@ ThemeCard.displayName = "ThemeCard";
 /**
  * Main terminal theme control component
  */
-export const TermThemeControl = memo(({ value, onChange }: TermThemeControlProps) => {
+export const TermThemeControl = memo(({ value, onChange, previewBackground }: TermThemeControlProps) => {
     const [themes, setThemes] = useState<ThemeInfo[]>([]);
 
     // Load themes
@@ -237,6 +292,7 @@ export const TermThemeControl = memo(({ value, onChange }: TermThemeControlProps
                                 theme={theme}
                                 isSelected={value === theme.key}
                                 onSelect={() => handleSelect(theme.key)}
+                                previewBackground={previewBackground}
                             />
                         ))}
                     </div>
@@ -252,6 +308,7 @@ export const TermThemeControl = memo(({ value, onChange }: TermThemeControlProps
                                 theme={theme}
                                 isSelected={value === theme.key}
                                 onSelect={() => handleSelect(theme.key)}
+                                previewBackground={previewBackground}
                             />
                         ))}
                     </div>

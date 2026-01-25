@@ -46,6 +46,12 @@ func linearize(c float64) float64 {
 }
 
 // IsLightColor returns true if the color is light (luminance > 0.5)
+// The 0.5 threshold is chosen as the midpoint of the relative luminance scale (0.0 to 1.0).
+// This provides a balanced split between light and dark colors for optimal contrast:
+// - Colors with luminance > 0.5 are considered "light" and need dark backgrounds
+// - Colors with luminance <= 0.5 are considered "dark" and need light backgrounds
+// This aligns with WCAG accessibility guidelines which use relative luminance for
+// calculating contrast ratios between foreground and background colors.
 func IsLightColor(hexColor string) bool {
 	return CalculateLuminance(hexColor) > 0.5
 }

@@ -1,0 +1,180 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ===========================================
+// Preview Background Toggle
+// ===========================================
+
+.preview-bg-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    margin-bottom: 12px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .toggle-label {
+        font-size: 13px;
+        color: var(--secondary-text-color);
+        white-space: nowrap;
+    }
+
+    .toggle-buttons {
+        display: flex;
+        gap: 4px;
+        background: var(--form-element-bg-color);
+        padding: 4px;
+        border-radius: 6px;
+        border: 1px solid var(--form-element-border-color);
+    }
+
+    .toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-size: 12px;
+        font-family: inherit;
+
+        &:hover:not(:disabled) {
+            background: var(--hover-bg-color);
+            color: var(--main-text-color);
+        }
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb, 88, 166, 255), 0.4);
+        }
+
+        &.active {
+            background: var(--accent-color);
+            color: white;
+
+            &:hover:not(:disabled) {
+                background: var(--accent-color);
+                opacity: 0.9;
+            }
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        i {
+            font-size: 12px;
+        }
+    }
+}
+
+// ===========================================
+// Theme Preview Split View Enhancements
+// ===========================================
+
+// For TermThemeControl split view
+.termtheme-preview {
+    &.split-view {
+        display: flex;
+        overflow: hidden;
+        border-radius: 4px;
+        position: relative;
+
+        .preview-half {
+            flex: 1;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+
+            &.dark {
+                background: #1a1a1a;
+            }
+
+            &.light {
+                background: #fafafa;
+            }
+        }
+
+        // Divider line for split view
+        &::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(128, 128, 128, 0.3);
+        }
+    }
+
+    // Dark and light single backgrounds
+    &.dark-bg {
+        background: #1a1a1a !important;
+    }
+
+    &.light-bg {
+        background: #fafafa !important;
+
+        // Add subtle border for visibility
+        border: 1px solid #e0e0e0;
+    }
+}
+
+// For OmpThemeControl split view
+.omptheme-preview {
+    &.split-view {
+        display: flex;
+        overflow: hidden;
+        border-radius: 4px;
+        position: relative;
+
+        .preview-half {
+            flex: 1;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+
+            &.dark {
+                background: #1a1a1a;
+            }
+
+            &.light {
+                background: #fafafa;
+            }
+        }
+
+        // Divider line for split view
+        &::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 1px;
+            background: rgba(128, 128, 128, 0.3);
+        }
+    }
+
+    // Dark and light single backgrounds
+    &.dark-bg {
+        background: #1a1a1a !important;
+    }
+
+    &.light-bg {
+        background: #fafafa !important;
+
+        // Add subtle border for visibility
+        border: 1px solid #e0e0e0;
+    }
+}
