@@ -650,6 +650,30 @@ declare global {
         count: number;
     };
 
+    // wshrpc.DetectShellsRequest
+    type DetectShellsRequest = {
+        connectionname?: string;
+        rescan?: boolean;
+    };
+
+    // wshrpc.DetectShellsResponse
+    type DetectShellsResponse = {
+        shells: DetectedShell[];
+        error?: string;
+    };
+
+    // wshrpc.DetectedShell
+    type DetectedShell = {
+        id: string;
+        name: string;
+        shellpath: string;
+        shelltype: string;
+        version?: string;
+        source: string;
+        icon?: string;
+        isdefault?: boolean;
+    };
+
     // wshrpc.FetchSuggestionsData
     type FetchSuggestionsData = {
         suggestiontype: string;

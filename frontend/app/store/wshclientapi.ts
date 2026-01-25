@@ -142,6 +142,11 @@ class RpcApiType {
         return client.wshRpcCall("deletesubblock", data, opts);
     }
 
+    // command "detectavailableshells" [call]
+    DetectAvailableShellsCommand(client: WshClient, data: DetectShellsRequest, opts?: RpcOpts): Promise<DetectShellsResponse> {
+        return client.wshRpcCall("detectavailableshells", data, opts);
+    }
+
     // command "dismisswshfail" [call]
     DismissWshFailCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("dismisswshfail", data, opts);

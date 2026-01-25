@@ -98,6 +98,7 @@ type WshRpcInterface interface {
 	DismissWshFailCommand(ctx context.Context, connName string) error
 	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
 	FindGitBashCommand(ctx context.Context, rescan bool) (string, error)
+	DetectAvailableShellsCommand(ctx context.Context, data DetectShellsRequest) (DetectShellsResponse, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -775,4 +776,27 @@ type CommandJobControllerStartJobData struct {
 type CommandJobControllerAttachJobData struct {
 	JobId   string `json:"jobid"`
 	BlockId string `json:"blockid"`
+}
+
+// Shell detection types
+
+type DetectShellsRequest struct {
+	ConnectionName string `json:"connectionname,omitempty"` // Empty = local
+	Rescan         bool   `json:"rescan,omitempty"`         // Force cache refresh
+}
+
+type DetectedShell struct {
+	ID        string `json:"id"`                  // "pwsh-a1b2c3d4" (hash of path)
+	Name      string `json:"name"`                // "PowerShell 7"
+	ShellPath string `json:"shellpath"`           // "C:\...\pwsh.exe"
+	ShellType string `json:"shelltype"`           // "pwsh", "bash", "zsh", "fish", "cmd"
+	Version   string `json:"version,omitempty"`   // "7.4"
+	Source    string `json:"source"`              // "file", "wsl", etc.
+	Icon      string `json:"icon,omitempty"`      // "powershell", "terminal", "linux"
+	IsDefault bool   `json:"isdefault,omitempty"` // true if system default
+}
+
+type DetectShellsResponse struct {
+	Shells []DetectedShell `json:"shells"`
+	Error  string          `json:"error,omitempty"` // Non-fatal errors
 }

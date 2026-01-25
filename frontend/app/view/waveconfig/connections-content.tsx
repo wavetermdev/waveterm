@@ -17,7 +17,7 @@ import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model
 import { isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "./connections-content.scss";
 
@@ -313,6 +313,43 @@ function getConnectionType(name: string): ConnectionType {
     return name.startsWith("wsl://") ? "wsl" : "ssh";
 }
 
+/**
+ * Validates a connection name for security and format requirements.
+ * @param name The connection name to validate
+ * @returns Object with valid boolean and optional error message
+ */
+function validateConnectionName(name: string): { valid: boolean; error?: string } {
+    // Check for empty or whitespace-only names
+    if (!name || !name.trim()) {
+        return { valid: false, error: "Connection name cannot be empty" };
+    }
+
+    const trimmedName = name.trim();
+
+    // Check maximum length (256 characters)
+    if (trimmedName.length > 256) {
+        return { valid: false, error: "Connection name must be 256 characters or less" };
+    }
+
+    // Check for path traversal sequences
+    if (trimmedName.includes("..") || trimmedName.includes("./")) {
+        return { valid: false, error: "Connection name cannot contain path traversal sequences (.. or ./)" };
+    }
+
+    // Allowed characters: alphanumeric, @, :, ., -, _, / (for WSL paths)
+    // This regex matches any character that is NOT in the allowed set
+    const invalidCharRegex = /[^a-zA-Z0-9@:.\-_/]/;
+    const match = trimmedName.match(invalidCharRegex);
+    if (match) {
+        return {
+            valid: false,
+            error: `Connection name contains invalid character: "${match[0]}". Allowed: letters, numbers, @, :, ., -, _, /`,
+        };
+    }
+
+    return { valid: true };
+}
+
 function parseConnections(connections: { [key: string]: ConnKeywords }): ConnectionInfo[] {
     if (!connections) return [];
 
@@ -372,13 +409,43 @@ const LoadingSpinner = memo(({ message }: { message: string }) => {
 });
 LoadingSpinner.displayName = "LoadingSpinner";
 
-const EmptyState = memo(({ onAddConnection }: { onAddConnection: () => void }) => {
+interface EmptyStateProps {
+    onAddConnection: () => void;
+    onAutoDetect: () => void;
+    isDetecting: boolean;
+}
+
+const EmptyState = memo(({ onAddConnection, onAutoDetect, isDetecting }: EmptyStateProps) => {
     return (
         <div className="connections-empty">
             <i className="fa-sharp fa-solid fa-plug" />
             <h3>No Connections</h3>
-            <p>Add a connection to get started</p>
-            <button className="connections-add-btn" onClick={onAddConnection}>
+            <p>
+                Wave can automatically detect available shells
+                <br />
+                on your system including PowerShell, WSL, and more.
+            </p>
+            <button
+                className="connections-add-btn connections-detect-btn-primary"
+                onClick={onAutoDetect}
+                disabled={isDetecting}
+            >
+                {isDetecting ? (
+                    <>
+                        <i className="fa-sharp fa-solid fa-spinner fa-spin" />
+                        <span>Detecting...</span>
+                    </>
+                ) : (
+                    <>
+                        <i className="fa-sharp fa-solid fa-wand-magic-sparkles" />
+                        <span>Auto-Detect Shells</span>
+                    </>
+                )}
+            </button>
+            <div className="connections-empty-divider">
+                <span>Or manually add a connection</span>
+            </div>
+            <button className="connections-btn secondary" onClick={onAddConnection}>
                 <i className="fa-sharp fa-solid fa-plus" />
                 <span>Add Connection</span>
             </button>
@@ -422,16 +489,34 @@ const AddConnectionForm = memo(({ onCancel, onSubmit, existingNames }: AddConnec
     const [error, setError] = useState<string | null>(null);
     const showWSL = isWindows();
 
+    // Validate name on every change to enable/disable submit button
+    const validation = useMemo(() => validateConnectionName(name), [name]);
+
+    // Check if name already exists (separate from format validation)
+    const isDuplicate = useMemo(() => {
+        const trimmedName = name.trim();
+        return trimmedName && existingNames.includes(trimmedName);
+    }, [name, existingNames]);
+
+    // Determine if submit should be disabled
+    const isSubmitDisabled = !validation.valid || isDuplicate;
+
     const handleSubmit = useCallback(() => {
         const trimmedName = name.trim();
-        if (!trimmedName) {
-            setError("Connection name is required");
+
+        // Validate connection name format
+        const validationResult = validateConnectionName(trimmedName);
+        if (!validationResult.valid) {
+            setError(validationResult.error);
             return;
         }
+
+        // Check for duplicates
         if (existingNames.includes(trimmedName)) {
             setError("A connection with this name already exists");
             return;
         }
+
         onSubmit(trimmedName);
     }, [name, existingNames, onSubmit]);
 
@@ -473,7 +558,7 @@ const AddConnectionForm = memo(({ onCancel, onSubmit, existingNames }: AddConnec
                 <button className="connections-btn secondary" onClick={onCancel}>
                     Cancel
                 </button>
-                <button className="connections-btn primary" onClick={handleSubmit}>
+                <button className="connections-btn primary" onClick={handleSubmit} disabled={isSubmitDisabled}>
                     Add Connection
                 </button>
             </div>
@@ -481,6 +566,260 @@ const AddConnectionForm = memo(({ onCancel, onSubmit, existingNames }: AddConnec
     );
 });
 AddConnectionForm.displayName = "AddConnectionForm";
+
+// ============================================
+// Shell Detection Components
+// ============================================
+
+interface DetectedShellItemProps {
+    shell: DetectedShell;
+    isSelected: boolean;
+    isAlreadyConfigured: boolean;
+    onToggle: () => void;
+}
+
+const DetectedShellItem = memo(({ shell, isSelected, isAlreadyConfigured, onToggle }: DetectedShellItemProps) => {
+    const icon = shell.icon || getShellIcon(shell.shelltype);
+
+    return (
+        <div
+            className={cn("connections-detect-item", {
+                selected: isSelected,
+                disabled: isAlreadyConfigured,
+            })}
+            onClick={!isAlreadyConfigured ? onToggle : undefined}
+        >
+            <label className="connections-detect-item-checkbox">
+                <input
+                    type="checkbox"
+                    checked={isSelected}
+                    disabled={isAlreadyConfigured}
+                    onChange={onToggle}
+                    aria-label={`Select ${shell.name}`}
+                />
+                <span className="connections-detect-item-checkmark" />
+            </label>
+            <div className="connections-detect-item-icon">
+                <i className={`fa-sharp fa-solid fa-${icon}`} />
+            </div>
+            <div className="connections-detect-item-info">
+                <div className="connections-detect-item-name">
+                    {shell.name}
+                    {shell.version && <span className="connections-detect-item-version">{shell.version}</span>}
+                    {shell.isdefault && <span className="connections-detect-item-badge default">Default</span>}
+                    {isAlreadyConfigured && (
+                        <span className="connections-detect-item-badge configured" aria-label="Already configured">
+                            Already added
+                        </span>
+                    )}
+                </div>
+                <div className="connections-detect-item-path">{shell.shellpath || "System default"}</div>
+            </div>
+        </div>
+    );
+});
+DetectedShellItem.displayName = "DetectedShellItem";
+
+function getShellIcon(shelltype: string): string {
+    switch (shelltype?.toLowerCase()) {
+        case "pwsh":
+        case "powershell":
+            return "terminal";
+        case "bash":
+        case "zsh":
+        case "fish":
+        case "sh":
+            return "dollar-sign";
+        case "cmd":
+            return "window";
+        case "wsl":
+            return "linux";
+        default:
+            return "terminal";
+    }
+}
+
+interface DetectedShellsPanelProps {
+    shells: DetectedShell[];
+    selectedShells: Set<string>;
+    configuredShellPaths: Set<string>;
+    isLoading: boolean;
+    error: string | null;
+    onToggleShell: (shellId: string) => void;
+    onSelectAll: () => void;
+    onSelectNone: () => void;
+    onAddSelected: () => void;
+    onClose: () => void;
+    onRetry: () => void;
+}
+
+const DetectedShellsPanel = memo(
+    ({
+        shells,
+        selectedShells,
+        configuredShellPaths,
+        isLoading,
+        error,
+        onToggleShell,
+        onSelectAll,
+        onSelectNone,
+        onAddSelected,
+        onClose,
+        onRetry,
+    }: DetectedShellsPanelProps) => {
+        const panelRef = useRef<HTMLDivElement>(null);
+
+        // Handle Escape key
+        useEffect(() => {
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === "Escape") {
+                    onClose();
+                }
+            };
+            document.addEventListener("keydown", handleKeyDown);
+            return () => document.removeEventListener("keydown", handleKeyDown);
+        }, [onClose]);
+
+        // Count available (not already configured) shells
+        const availableShells = useMemo(() => {
+            return shells.filter((s) => !configuredShellPaths.has(s.shellpath));
+        }, [shells, configuredShellPaths]);
+
+        const selectedCount = selectedShells.size;
+        const totalAvailable = availableShells.length;
+
+        // Render loading state
+        if (isLoading) {
+            return (
+                <div className="connections-detect-panel" role="dialog" aria-label="Detecting shells" ref={panelRef}>
+                    <div className="connections-detect-panel-header">
+                        <button className="connections-back-btn" onClick={onClose}>
+                            <i className="fa-sharp fa-solid fa-arrow-left" />
+                            <span>Back</span>
+                        </button>
+                        <h3>Detecting Shells</h3>
+                        <button className="connections-detect-close" onClick={onClose} aria-label="Close">
+                            <i className="fa-sharp fa-solid fa-times" />
+                        </button>
+                    </div>
+                    <div className="connections-detect-loading">
+                        <i className="fa-sharp fa-solid fa-spinner fa-spin" />
+                        <span>Detecting available shells...</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render error state
+        if (error) {
+            return (
+                <div className="connections-detect-panel" role="dialog" aria-label="Detection error" ref={panelRef}>
+                    <div className="connections-detect-panel-header">
+                        <button className="connections-back-btn" onClick={onClose}>
+                            <i className="fa-sharp fa-solid fa-arrow-left" />
+                            <span>Back</span>
+                        </button>
+                        <h3>Detection Error</h3>
+                        <button className="connections-detect-close" onClick={onClose} aria-label="Close">
+                            <i className="fa-sharp fa-solid fa-times" />
+                        </button>
+                    </div>
+                    <div className="connections-detect-error">
+                        <i className="fa-sharp fa-solid fa-triangle-exclamation" />
+                        <span>{error}</span>
+                        <button className="connections-btn primary" onClick={onRetry}>
+                            <i className="fa-sharp fa-solid fa-rotate" />
+                            <span>Retry</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render empty state
+        if (shells.length === 0) {
+            return (
+                <div className="connections-detect-panel" role="dialog" aria-label="No shells detected" ref={panelRef}>
+                    <div className="connections-detect-panel-header">
+                        <button className="connections-back-btn" onClick={onClose}>
+                            <i className="fa-sharp fa-solid fa-arrow-left" />
+                            <span>Back</span>
+                        </button>
+                        <h3>Detected Shells</h3>
+                        <button className="connections-detect-close" onClick={onClose} aria-label="Close">
+                            <i className="fa-sharp fa-solid fa-times" />
+                        </button>
+                    </div>
+                    <div className="connections-detect-empty">
+                        <i className="fa-sharp fa-solid fa-terminal" />
+                        <span>No shells detected on this system</span>
+                        <button className="connections-btn secondary" onClick={onRetry}>
+                            <i className="fa-sharp fa-solid fa-rotate" />
+                            <span>Scan Again</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="connections-detect-panel" role="dialog" aria-label="Detected shells" ref={panelRef}>
+                <div className="connections-detect-panel-header">
+                    <button className="connections-back-btn" onClick={onClose}>
+                        <i className="fa-sharp fa-solid fa-arrow-left" />
+                        <span>Back</span>
+                    </button>
+                    <h3>Detected Shells ({shells.length})</h3>
+                    <button className="connections-detect-close" onClick={onClose} aria-label="Close">
+                        <i className="fa-sharp fa-solid fa-times" />
+                    </button>
+                </div>
+
+                <div className="connections-detect-list" aria-live="polite">
+                    {shells.map((shell) => (
+                        <DetectedShellItem
+                            key={shell.id}
+                            shell={shell}
+                            isSelected={selectedShells.has(shell.id)}
+                            isAlreadyConfigured={configuredShellPaths.has(shell.shellpath)}
+                            onToggle={() => onToggleShell(shell.id)}
+                        />
+                    ))}
+                </div>
+
+                <div className="connections-detect-footer">
+                    <div className="connections-detect-footer-left">
+                        <button
+                            className="connections-btn secondary"
+                            onClick={onSelectAll}
+                            disabled={selectedCount === totalAvailable}
+                        >
+                            Select All
+                        </button>
+                        <button
+                            className="connections-btn secondary"
+                            onClick={onSelectNone}
+                            disabled={selectedCount === 0}
+                        >
+                            Select None
+                        </button>
+                    </div>
+                    <div className="connections-detect-footer-right">
+                        <button
+                            className="connections-btn primary"
+                            onClick={onAddSelected}
+                            disabled={selectedCount === 0}
+                        >
+                            <i className="fa-sharp fa-solid fa-plus" />
+                            <span>Add Selected ({selectedCount})</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+);
+DetectedShellsPanel.displayName = "DetectedShellsPanel";
 
 interface SettingFieldProps {
     field: SettingFieldDef;
@@ -777,6 +1116,13 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Shell detection state
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [showDetectionPanel, setShowDetectionPanel] = useState(false);
+    const [detectedShells, setDetectedShells] = useState<DetectedShell[]>([]);
+    const [selectedShells, setSelectedShells] = useState<Set<string>>(new Set());
+    const [detectionError, setDetectionError] = useState<string | null>(null);
+
     // Parse connections from fullConfig
     const connections = useMemo(() => {
         return parseConnections(fullConfig?.connections || {});
@@ -794,6 +1140,17 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
 
     const existingNames = useMemo(() => connections.map((c) => c.name), [connections]);
 
+    // Get configured shell paths for duplicate detection
+    const configuredShellPaths = useMemo(() => {
+        const paths = new Set<string>();
+        for (const conn of connections) {
+            if (conn.config["conn:shellpath"]) {
+                paths.add(conn.config["conn:shellpath"]);
+            }
+        }
+        return paths;
+    }, [connections]);
+
     const selectedConnectionInfo = useMemo(() => {
         return connections.find((c) => c.name === selectedConnection) || null;
     }, [connections, selectedConnection]);
@@ -804,6 +1161,137 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
             setSelectedConnection(null);
         }
     }, [selectedConnection, existingNames]);
+
+    // Auto-detect handlers
+    const handleAutoDetect = useCallback(async (rescan: boolean = false) => {
+        setIsDetecting(true);
+        setDetectionError(null);
+        setShowDetectionPanel(true);
+
+        try {
+            const result = await RpcApi.DetectAvailableShellsCommand(TabRpcClient, {
+                connectionname: "", // Empty for local detection
+                rescan: rescan,
+            });
+
+            if (result.error) {
+                setDetectionError(result.error);
+                setDetectedShells([]);
+            } else {
+                setDetectedShells(result.shells || []);
+                // Auto-select shells that are not already configured
+                const autoSelected = new Set<string>();
+                for (const shell of result.shells || []) {
+                    if (!configuredShellPaths.has(shell.shellpath)) {
+                        autoSelected.add(shell.id);
+                    }
+                }
+                setSelectedShells(autoSelected);
+            }
+        } catch (err) {
+            setDetectionError(`Detection failed: ${err.message || String(err)}`);
+            setDetectedShells([]);
+        } finally {
+            setIsDetecting(false);
+        }
+    }, [configuredShellPaths]);
+
+    const handleToggleShell = useCallback((shellId: string) => {
+        setSelectedShells((prev) => {
+            const next = new Set(prev);
+            if (next.has(shellId)) {
+                next.delete(shellId);
+            } else {
+                next.add(shellId);
+            }
+            return next;
+        });
+    }, []);
+
+    const handleSelectAllShells = useCallback(() => {
+        const allAvailable = new Set<string>();
+        for (const shell of detectedShells) {
+            if (!configuredShellPaths.has(shell.shellpath)) {
+                allAvailable.add(shell.id);
+            }
+        }
+        setSelectedShells(allAvailable);
+    }, [detectedShells, configuredShellPaths]);
+
+    const handleSelectNoneShells = useCallback(() => {
+        setSelectedShells(new Set());
+    }, []);
+
+    const handleCloseDetectionPanel = useCallback(() => {
+        setShowDetectionPanel(false);
+        setDetectedShells([]);
+        setSelectedShells(new Set());
+        setDetectionError(null);
+    }, []);
+
+    const handleAddSelectedShells = useCallback(async () => {
+        if (selectedShells.size === 0) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        let addedCount = 0;
+        let skippedCount = 0;
+
+        try {
+            for (const shellId of selectedShells) {
+                const shell = detectedShells.find((s) => s.id === shellId);
+                if (!shell) continue;
+
+                // Determine connection name
+                let connName: string;
+                if (shell.shelltype === "wsl") {
+                    // For WSL, use wsl://distroName format
+                    connName = `wsl://${shell.name}`;
+                } else {
+                    // For regular shells, use the display name
+                    connName = shell.name;
+                }
+
+                // Validate connection name before adding
+                const validation = validateConnectionName(connName);
+                if (!validation.valid) {
+                    console.warn(
+                        `[connections] Skipping shell "${shell.name}": ${validation.error}`
+                    );
+                    skippedCount++;
+                    continue;
+                }
+
+                // Create connection config with shell path
+                const connConfig: ConnKeywords = {};
+                if (shell.shellpath) {
+                    connConfig["conn:shellpath"] = shell.shellpath;
+                }
+
+                const data: ConnConfigRequest = {
+                    host: connName,
+                    metamaptype: connConfig as MetaType,
+                };
+                await RpcApi.SetConnectionsConfigCommand(TabRpcClient, data);
+                addedCount++;
+            }
+
+            // Close the panel after successful add
+            handleCloseDetectionPanel();
+
+            // Show warning if some shells were skipped
+            if (skippedCount > 0) {
+                console.warn(
+                    `[connections] Added ${addedCount} shell(s), skipped ${skippedCount} due to invalid names`
+                );
+            }
+        } catch (err) {
+            setError(`Failed to add shells: ${err.message || String(err)}`);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedShells, detectedShells, handleCloseDetectionPanel]);
 
     const handleAddConnection = useCallback(async (name: string) => {
         setIsLoading(true);
@@ -890,6 +1378,25 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
 
     // Render content based on state
     const renderContent = () => {
+        // Show detection panel if active
+        if (showDetectionPanel) {
+            return (
+                <DetectedShellsPanel
+                    shells={detectedShells}
+                    selectedShells={selectedShells}
+                    configuredShellPaths={configuredShellPaths}
+                    isLoading={isDetecting}
+                    error={detectionError}
+                    onToggleShell={handleToggleShell}
+                    onSelectAll={handleSelectAllShells}
+                    onSelectNone={handleSelectNoneShells}
+                    onAddSelected={handleAddSelectedShells}
+                    onClose={handleCloseDetectionPanel}
+                    onRetry={() => handleAutoDetect(true)}
+                />
+            );
+        }
+
         if (isAddingNew) {
             return (
                 <AddConnectionForm
@@ -912,17 +1419,38 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
         }
 
         if (connections.length === 0) {
-            return <EmptyState onAddConnection={() => setIsAddingNew(true)} />;
+            return (
+                <EmptyState
+                    onAddConnection={() => setIsAddingNew(true)}
+                    onAutoDetect={() => handleAutoDetect(false)}
+                    isDetecting={isDetecting}
+                />
+            );
         }
 
         return (
             <div className="connections-list-container">
                 <div className="connections-list-header">
                     <h3>Connections</h3>
-                    <button className="connections-add-btn small" onClick={() => setIsAddingNew(true)}>
-                        <i className="fa-sharp fa-solid fa-plus" />
-                        <span>Add</span>
-                    </button>
+                    <div className="connections-list-header-actions">
+                        <button
+                            className="connections-detect-btn"
+                            onClick={() => handleAutoDetect(false)}
+                            disabled={isDetecting}
+                            title="Auto-detect shells"
+                            aria-label="Auto-detect shells"
+                        >
+                            {isDetecting ? (
+                                <i className="fa-sharp fa-solid fa-spinner fa-spin" />
+                            ) : (
+                                <i className="fa-sharp fa-solid fa-wand-magic-sparkles" />
+                            )}
+                        </button>
+                        <button className="connections-add-btn small" onClick={() => setIsAddingNew(true)}>
+                            <i className="fa-sharp fa-solid fa-plus" />
+                            <span>Add</span>
+                        </button>
+                    </div>
                 </div>
                 <div className="connections-list">
                     {sortedConnections.map((conn) => (

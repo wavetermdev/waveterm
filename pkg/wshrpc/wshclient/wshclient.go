@@ -178,6 +178,12 @@ func DeleteSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData
 	return err
 }
 
+// command "detectavailableshells", wshserver.DetectAvailableShellsCommand
+func DetectAvailableShellsCommand(w *wshutil.WshRpc, data wshrpc.DetectShellsRequest, opts *wshrpc.RpcOpts) (wshrpc.DetectShellsResponse, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.DetectShellsResponse](w, "detectavailableshells", data, opts)
+	return resp, err
+}
+
 // command "dismisswshfail", wshserver.DismissWshFailCommand
 func DismissWshFailCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "dismisswshfail", data, opts)
