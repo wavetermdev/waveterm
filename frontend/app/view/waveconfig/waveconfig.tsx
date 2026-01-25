@@ -4,6 +4,7 @@
 import { Tooltip } from "@/app/element/tooltip";
 import { globalStore } from "@/app/store/jotaiStore";
 import { tryReinjectKey } from "@/app/store/keymodel";
+import { settingsService } from "@/app/store/settings-service";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -132,11 +133,39 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         [model]
     );
 
+    // Handler for Save button - context-aware for visual vs JSON mode
+    const handleSave = useCallback(async () => {
+        // When in visual mode for settings.json, use settingsService.forceSave()
+        // to flush pending changes instead of model.saveFile() which uses stale fileContentAtom
+        const isVisualMode = selectedFile?.visualComponent && activeTab === "visual";
+        if (isVisualMode && selectedFile?.path === "settings.json") {
+            await settingsService.forceSave();
+            // Clear the edited flag since visual mode changes are now saved
+            globalStore.set(model.hasEditedAtom, false);
+        } else {
+            // For JSON mode or other files, use the normal save
+            model.saveFile();
+        }
+    }, [selectedFile, activeTab, model]);
+
+    // Handler for switching to JSON tab - flush pending settings changes and reload file
+    const handleSwitchToJson = useCallback(async () => {
+        // If we're viewing settings.json in visual mode, flush pending changes first
+        if (selectedFile?.path === "settings.json") {
+            await settingsService.forceSave();
+        }
+        // Reload the file to get fresh content
+        if (selectedFile) {
+            await model.loadFile(selectedFile);
+        }
+        setActiveTab("json");
+    }, [selectedFile, model, setActiveTab]);
+
     useEffect(() => {
         const handleKeyDown = keydownWrapper((e: WaveKeyboardEvent) => {
             if (checkKeyPressed(e, "Cmd:s")) {
                 if (hasChanges && !isSaving) {
-                    model.saveFile();
+                    handleSave();
                 }
                 return true;
             }
@@ -145,7 +174,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [hasChanges, isSaving, model]);
+    }, [hasChanges, isSaving, handleSave]);
 
     useEffect(() => {
         if (!editorContainerRef.current) {
@@ -211,7 +240,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                         )}
                                         <Tooltip content={saveTooltip} placement="bottom" divClassName="shrink-0">
                                             <button
-                                                onClick={() => model.saveFile()}
+                                                onClick={handleSave}
                                                 disabled={!hasChanges || isSaving}
                                                 className={`px-3 py-1 rounded transition-colors text-sm ${
                                                     !hasChanges || isSaving
@@ -240,7 +269,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                     Visual
                                 </button>
                                 <button
-                                    onClick={() => setActiveTab("json")}
+                                    onClick={handleSwitchToJson}
                                     className={cn(
                                         "px-4 pt-1 pb-1.5 cursor-pointer transition-colors text-secondary",
                                         activeTab === "json"

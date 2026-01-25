@@ -12,6 +12,9 @@ $setting-border-radius: 4px;
 $setting-input-padding: 6px 10px;
 $setting-gap: 8px;
 
+// Input background - darker than surrounding to stand out (VS Code style)
+$setting-input-bg: rgb(0 0 0 / 0.2);
+
 // ============================================
 // Setting Row (Wrapper Component)
 // ============================================
@@ -172,10 +175,20 @@ $setting-gap: 8px;
 .setting-number {
     display: flex;
     align-items: center;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
     overflow: hidden;
+    transition: border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &:focus-within {
+        border-color: var(--form-element-primary-color);
+    }
 
     &.disabled {
         opacity: 0.5;
@@ -323,14 +336,20 @@ $setting-gap: 8px;
     padding: $setting-input-padding;
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay on form-element-bg for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     color: var(--form-element-text-color);
     font-size: 12px;
     outline: none;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
 
     &:focus {
         border-color: var(--form-element-primary-color);
+        background: linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)), var(--form-element-bg-color);
     }
 
     &.invalid {
@@ -365,17 +384,23 @@ textarea.setting-text-input {
     padding: 0 28px 0 10px;
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     color: var(--form-element-text-color);
     font-size: 12px;
     outline: none;
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, background 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
 
     &:focus {
         border-color: var(--form-element-primary-color);
+        background: linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)), var(--form-element-bg-color);
     }
 
     option {
@@ -442,12 +467,17 @@ textarea.setting-text-input {
     padding: $setting-input-padding;
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     color: var(--form-element-text-color);
     font-size: 12px;
     font-family: monospace;
     outline: none;
     transition: border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
 
     &:focus {
         border-color: var(--form-element-primary-color);
@@ -481,11 +511,16 @@ textarea.setting-text-input {
     padding: $setting-input-padding;
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     color: var(--form-element-text-color);
     font-size: 12px;
     outline: none;
     transition: border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
 
     &:focus {
         border-color: var(--form-element-primary-color);
@@ -527,12 +562,17 @@ textarea.setting-text-input {
     padding: $setting-input-padding;
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     color: var(--form-element-text-color);
     font-size: 12px;
     font-family: monospace;
     outline: none;
     transition: border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
 
     &:focus {
         border-color: var(--form-element-primary-color);
@@ -602,11 +642,16 @@ textarea.setting-text-input {
     padding: $setting-input-padding;
     border: 1px solid var(--form-element-border-color);
     border-radius: $setting-border-radius;
-    background: var(--form-element-bg-color);
+    // Layered background: dark overlay for better contrast
+    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
     color: var(--form-element-text-color);
     font-size: 12px;
     outline: none;
     transition: border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
 
     &:focus {
         border-color: var(--form-element-primary-color);

@@ -265,14 +265,31 @@ $sidebar-width: 200px;
         flex: 1;
         overflow-y: auto;
         min-height: 0; // Important for nested flexbox scrolling
+        // No top padding - headers need to stick flush to the top
+        // Bottom padding is calculated dynamically in JS to allow last section header to stick
 
         .settings-category-section {
+            // Opaque background for entire section (VS Code style)
+            background: var(--panel-bg-color);
+            margin: 8px 12px 16px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.06);
+            // Note: overflow:hidden would break sticky, so we use border-radius on children instead
+
+            &:first-child {
+                margin-top: 8px;
+            }
+
             .settings-category-header {
                 position: sticky;
+                // Stick exactly to the top with no gap
                 top: 0;
                 z-index: 5;
-                padding: 10px 16px;
-                background: var(--highlight-bg-color);
+                padding: 12px 16px;
+                // Opaque background: theme color layered over solid base to eliminate any transparency
+                background-color: var(--main-bg-color);
+                background: linear-gradient(var(--highlight-bg-color), var(--highlight-bg-color)), var(--main-bg-color);
                 font-weight: 600;
                 font-size: 14px;
                 color: var(--main-text-color);
@@ -280,6 +297,9 @@ $sidebar-width: 200px;
                 display: flex;
                 align-items: center;
                 gap: 8px;
+                // Round top corners to match section (when not stuck)
+                border-radius: 8px 8px 0 0;
+                transition: border-radius 0.1s ease, box-shadow 0.15s ease;
 
                 i,
                 .category-icon {
@@ -290,14 +310,49 @@ $sidebar-width: 200px;
                 }
             }
 
+            // When header is stuck: square corners, pronounced shadow, full width appearance
+            .settings-category-header.is-stuck {
+                border-radius: 0;
+                // More pronounced shadow when stuck
+                box-shadow: 0 2px 8px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.2);
+                // Extend visually to edges when stuck
+                margin-left: -1px;
+                margin-right: -1px;
+                padding-left: 17px;
+                padding-right: 17px;
+            }
+
             .settings-subcategory-header {
-                padding: 8px 16px 4px;
+                padding: 10px 16px 6px;
                 font-weight: 500;
                 font-size: 12px;
                 color: var(--secondary-text-color);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                background: var(--main-bg-color);
+                background: var(--panel-bg-color);
+                border-top: 1px solid var(--border-color);
+                margin-top: 4px;
+
+                &:first-child {
+                    border-top: none;
+                    margin-top: 0;
+                }
+            }
+
+            // Setting rows within sections
+            .setting-row {
+                background: var(--panel-bg-color);
+                border-bottom: 1px solid var(--border-color);
+                transition: background-color 0.15s ease;
+
+                &:hover {
+                    background: var(--hover-bg-color);
+                }
+
+                &:last-child {
+                    border-bottom: none;
+                    border-radius: 0 0 8px 8px;
+                }
             }
         }
 

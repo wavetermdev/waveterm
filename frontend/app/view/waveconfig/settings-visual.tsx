@@ -52,10 +52,15 @@ const CategorySidebar = memo(() => {
     const handleCategoryClick = useCallback(
         (category: string) => {
             setSelectedCategory(category);
-            // Scroll to category section
+            // Scroll to category section within the settings-list container
             const element = document.getElementById(`settings-category-${category}`);
-            if (element) {
-                element.scrollIntoView({ behavior: "smooth", block: "start" });
+            const container = document.querySelector(".settings-list");
+            if (element && container) {
+                // Calculate the offset and scroll within the container
+                const containerRect = container.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+                const scrollOffset = elementRect.top - containerRect.top + container.scrollTop;
+                container.scrollTo({ top: scrollOffset, behavior: "smooth" });
             }
         },
         [setSelectedCategory]
@@ -311,9 +316,144 @@ SettingRow.displayName = "SettingRow";
  */
 const SettingsList = memo(() => {
     const searchQuery = useAtomValue(settingsSearchQueryAtom);
+    const [, setSelectedCategory] = useAtom(selectedCategoryAtom);
     const platform = getApi().getPlatform() as "darwin" | "win32" | "linux";
     const settingsByCategory = useMemo(() => getSettingsByCategoryForPlatform(platform), [platform]);
     const orderedCategories = useMemo(() => getOrderedCategories(), []);
+    const listRef = useRef<HTMLDivElement>(null);
+
+    // Scroll-spy: Update sidebar selection when scrolling through categories
+    useEffect(() => {
+        if (searchQuery.trim()) {
+            // Don't run scroll-spy during search
+            return;
+        }
+
+        const container = listRef.current;
+        if (!container) return;
+
+        // Use IntersectionObserver to detect which category sections are visible
+        const observer = new IntersectionObserver(
+            (entries) => {
+                // Find the topmost visible category
+                let topCategory: string | null = null;
+                let topPosition = Infinity;
+
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        const rect = entry.boundingClientRect;
+                        // Get the category from the element's ID
+                        const id = entry.target.id;
+                        const match = id.match(/^settings-category-(.+)$/);
+                        if (match && rect.top < topPosition) {
+                            topPosition = rect.top;
+                            topCategory = match[1];
+                        }
+                    }
+                }
+
+                if (topCategory) {
+                    setSelectedCategory(topCategory);
+                }
+            },
+            {
+                root: container,
+                // Trigger when element is near top of container
+                rootMargin: "-10% 0px -80% 0px",
+                threshold: 0,
+            }
+        );
+
+        // Observe all category section elements
+        const sections = container.querySelectorAll("[id^='settings-category-']");
+        sections.forEach((section) => observer.observe(section));
+
+        return () => observer.disconnect();
+    }, [searchQuery, setSelectedCategory]);
+
+    // Sticky header detection: Add 'is-stuck' class when headers are stuck at top
+    useEffect(() => {
+        if (searchQuery.trim()) {
+            return;
+        }
+
+        const container = listRef.current;
+        if (!container) return;
+
+        const updateStickyHeaders = () => {
+            const containerRect = container.getBoundingClientRect();
+            const headers = container.querySelectorAll(".settings-category-header");
+
+            headers.forEach((header) => {
+                const headerRect = header.getBoundingClientRect();
+                const section = header.closest(".settings-category-section");
+                if (!section) return;
+
+                const sectionRect = section.getBoundingClientRect();
+
+                // Header is stuck if:
+                // 1. The section top is above or at the container top
+                // 2. The section bottom is still below the header height
+                const isStuck =
+                    sectionRect.top <= containerRect.top + 1 &&
+                    sectionRect.bottom > containerRect.top + headerRect.height;
+
+                if (isStuck) {
+                    header.classList.add("is-stuck");
+                } else {
+                    header.classList.remove("is-stuck");
+                }
+            });
+        };
+
+        // Initial check
+        updateStickyHeaders();
+
+        // Update on scroll
+        container.addEventListener("scroll", updateStickyHeaders, { passive: true });
+
+        return () => {
+            container.removeEventListener("scroll", updateStickyHeaders);
+        };
+    }, [searchQuery]);
+
+    // Dynamic bottom padding: Calculate so last section header can stick to top
+    useEffect(() => {
+        if (searchQuery.trim()) {
+            return;
+        }
+
+        const container = listRef.current;
+        if (!container) return;
+
+        const updateBottomPadding = () => {
+            const sections = container.querySelectorAll(".settings-category-section");
+            if (sections.length === 0) return;
+
+            const lastSection = sections[sections.length - 1] as HTMLElement;
+            const containerHeight = container.clientHeight;
+            const lastSectionHeight = lastSection.offsetHeight;
+
+            // Padding needed = container height - last section height
+            // This allows scrolling until the last section header sticks at the top
+            const paddingNeeded = Math.max(0, containerHeight - lastSectionHeight);
+            container.style.paddingBottom = `${paddingNeeded}px`;
+        };
+
+        // Initial calculation
+        updateBottomPadding();
+
+        // Recalculate on resize
+        const resizeObserver = new ResizeObserver(updateBottomPadding);
+        resizeObserver.observe(container);
+
+        return () => {
+            resizeObserver.disconnect();
+            if (container) {
+                container.style.paddingBottom = "";
+            }
+        };
+    }, [searchQuery]);
 
     // Handle search results
     const searchResults = useMemo(() => {
@@ -335,7 +475,7 @@ const SettingsList = memo(() => {
         }
 
         return (
-            <div className="settings-list">
+            <div ref={listRef} className="settings-list">
                 <div className="settings-search-results-header">
                     {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{searchQuery}"
                 </div>
@@ -348,7 +488,7 @@ const SettingsList = memo(() => {
 
     // Render categorized settings
     return (
-        <div className="settings-list">
+        <div ref={listRef} className="settings-list">
             {orderedCategories.map((category) => {
                 const settings = settingsByCategory.get(category);
                 if (!settings || settings.length === 0) return null;
