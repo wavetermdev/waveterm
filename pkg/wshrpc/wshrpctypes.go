@@ -176,6 +176,7 @@ type WshRpcInterface interface {
 	// OMP (Oh-My-Posh) integration
 	OmpGetConfigInfoCommand(ctx context.Context) (CommandOmpGetConfigInfoRtnData, error)
 	OmpWritePaletteCommand(ctx context.Context, data CommandOmpWritePaletteData) (CommandOmpWritePaletteRtnData, error)
+	OmpReinitCommand(ctx context.Context, data CommandOmpReinitData) error
 }
 
 // for frontend
@@ -825,4 +826,9 @@ type CommandOmpWritePaletteRtnData struct {
 	Success    bool   `json:"success"`
 	BackupPath string `json:"backuppath,omitempty"`
 	Error      string `json:"error,omitempty"`
+}
+
+// CommandOmpReinitData contains OMP reinit request
+type CommandOmpReinitData struct {
+	BlockId string `json:"blockid"`
 }
