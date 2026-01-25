@@ -34,7 +34,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
@@ -992,20 +991,7 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
-func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
-	return nil
-}
-
-func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
-	return nil
-}
-
-func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
-	return nil
-}
+// Telemetry removed - no-op for backwards compatibility
 
 func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
 	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
@@ -1040,12 +1026,12 @@ func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.C
 }
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
+	// Telemetry removed - this is now a no-op
 	return nil
 }
 
 func (ws *WshServer) ActivityCommand(ctx context.Context, activity wshrpc.ActivityUpdate) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
+	// Telemetry removed - this is now a no-op
 	return nil
 }
 

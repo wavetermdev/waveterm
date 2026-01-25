@@ -102,7 +102,11 @@ export class WaveAIModel {
             return get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
         });
 
+        // Telemetry removed - Wave AI modes always available
         this.defaultModeAtom = jotai.atom((get) => {
+            if (this.inBuilder) {
+                return "waveai@balanced";
+            }
             const aiModeConfigs = get(this.aiModeConfigs);
             const hasPremium = get(this.hasPremiumAtom);
             const waveFallback = hasPremium ? "waveai@balanced" : "waveai@quick";
@@ -363,6 +367,7 @@ export class WaveAIModel {
         });
     }
 
+    // Telemetry removed - all modes valid if they exist in config
     isValidMode(mode: string): boolean {
         const aiModeConfigs = globalStore.get(this.aiModeConfigs);
         if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
@@ -537,17 +542,9 @@ export class WaveAIModel {
         }
     }
 
+    // Telemetry removed - feedback is now a no-op
     handleAIFeedback(feedback: "good" | "bad") {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "waveai:feedback",
-                props: {
-                    "waveai:feedback": feedback,
-                },
-            },
-            { noresponse: true }
-        );
+        // No-op - telemetry has been removed
     }
 
     requestWaveAIFocus() {

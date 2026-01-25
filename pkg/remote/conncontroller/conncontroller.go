@@ -24,8 +24,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -589,15 +587,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 			conn.Status = Status_Error
 			conn.Error = err.Error()
 			conn.close_nolock()
-			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
-				Conn: map[string]int{"ssh:connecterror": 1},
-			}, "ssh-connconnect")
-			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-				Event: "conn:connecterror",
-				Props: telemetrydata.TEventProps{
-					ConnType: "ssh",
-				},
-			})
+			// Telemetry removed - no connection error telemetry
 		} else {
 			conn.Infof(ctx, "successfully connected (wsh:%v)\n\n", conn.WshEnabled.Load())
 			conn.Status = Status_Connected
@@ -605,15 +595,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 			if conn.ActiveConnNum == 0 {
 				conn.ActiveConnNum = int(activeConnCounter.Add(1))
 			}
-			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
-				Conn: map[string]int{"ssh:connect": 1},
-			}, "ssh-connconnect")
-			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-				Event: "conn:connect",
-				Props: telemetrydata.TEventProps{
-					ConnType: "ssh",
-				},
-			})
+			// Telemetry removed - no connection success telemetry
 		}
 	})
 	conn.FireConnChangeEvent()
@@ -806,13 +788,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		} else {
 			conn.Infof(ctx, "wsh not enabled: %s\n", wshResult.NoWshReason)
 		}
-		telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-			Event: "conn:nowsh",
-			Props: telemetrydata.TEventProps{
-				ConnType:         "ssh",
-				ConnWshErrorCode: wshResult.NoWshCode,
-			},
-		})
+		// Telemetry removed - no nowsh telemetry
 	}
 	conn.persistWshInstalled(ctx, wshResult)
 	return nil

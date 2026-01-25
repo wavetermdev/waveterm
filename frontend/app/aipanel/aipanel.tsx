@@ -235,6 +235,8 @@ const AIPanelComponentInner = memo(() => {
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = maybeUseTabModel();
+    // Telemetry removed - Wave AI always accessible
+    const allowAccess = true;
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
@@ -514,7 +516,7 @@ const AIPanelComponentInner = memo(() => {
                         <div className="absolute top-2 left-2 z-10">
                             <AIModeDropdown />
                         </div>
-                        <AIWelcomeMessage />
+{model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                     </div>
                 ) : (
                     <AIPanelMessages
