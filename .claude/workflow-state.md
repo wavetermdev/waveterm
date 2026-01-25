@@ -1,7 +1,7 @@
 ---
 workflow: phased-dev
-workflow_status: in_progress
-current_phase: 2-planning
+workflow_status: complete
+current_phase: 3-integration
 started: 2026-01-25
 last_updated: 2026-01-25T11:15:00
 tool_uses_count: 25
@@ -32,8 +32,11 @@ Two features to implement:
   - AI providers analyzed from documentation and source code
   - 3 tasks created in todos/
 
-### In Progress
-- [ ] Integration (Phase 3) - Commit changes
+### Completed
+- [x] Integration (Phase 3) - Changes committed
+  - `1e92844a` feat(connections): add auto-detection of available shells
+  - `e0de65a4` feat(ai-modes): add pre-filled provider templates with status indicators
+  - `9312d298` docs: add specs and reviews for connections/AI modes features
 
 ### Completed
 - [x] QA Testing (Phase 3) - Static analysis complete
