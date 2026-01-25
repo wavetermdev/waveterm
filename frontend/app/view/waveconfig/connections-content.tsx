@@ -579,7 +579,10 @@ interface DetectedShellItemProps {
 }
 
 const DetectedShellItem = memo(({ shell, isSelected, isAlreadyConfigured, onToggle }: DetectedShellItemProps) => {
-    const icon = shell.icon || getShellIcon(shell.shelltype);
+    const iconInfo = getShellIcon(shell.shelltype, shell.name);
+    const iconClass = iconInfo.isBrand
+        ? `fa-brands fa-${iconInfo.icon}`
+        : `fa-sharp fa-solid fa-${iconInfo.icon}`;
 
     return (
         <div
@@ -600,7 +603,7 @@ const DetectedShellItem = memo(({ shell, isSelected, isAlreadyConfigured, onTogg
                 <span className="connections-detect-item-checkmark" />
             </label>
             <div className="connections-detect-item-icon">
-                <i className={`fa-sharp fa-solid fa-${icon}`} />
+                <i className={iconClass} />
             </div>
             <div className="connections-detect-item-info">
                 <div className="connections-detect-item-name">
@@ -620,22 +623,95 @@ const DetectedShellItem = memo(({ shell, isSelected, isAlreadyConfigured, onTogg
 });
 DetectedShellItem.displayName = "DetectedShellItem";
 
-function getShellIcon(shelltype: string): string {
+interface ShellIconInfo {
+    icon: string;
+    isBrand: boolean;
+}
+
+function getShellIcon(shelltype: string, shellname?: string): ShellIconInfo {
+    // Check for specific WSL distro names first
+    if (shellname) {
+        const nameLower = shellname.toLowerCase();
+        if (nameLower.includes("ubuntu")) return { icon: "ubuntu", isBrand: true };
+        if (nameLower.includes("debian")) return { icon: "debian", isBrand: true };
+        if (nameLower.includes("fedora")) return { icon: "fedora", isBrand: true };
+        if (nameLower.includes("opensuse") || nameLower.includes("suse"))
+            return { icon: "suse", isBrand: true };
+        if (nameLower.includes("centos")) return { icon: "centos", isBrand: true };
+        if (nameLower.includes("redhat") || nameLower.includes("rhel"))
+            return { icon: "redhat", isBrand: true };
+        // Git Bash detection
+        if (nameLower.includes("git")) return { icon: "git-alt", isBrand: true };
+    }
+
     switch (shelltype?.toLowerCase()) {
         case "pwsh":
         case "powershell":
-            return "terminal";
+            return { icon: "terminal", isBrand: false };
         case "bash":
         case "zsh":
         case "fish":
         case "sh":
-            return "dollar-sign";
+            return { icon: "terminal", isBrand: false };
         case "cmd":
-            return "window";
+            return { icon: "windows", isBrand: true };
         case "wsl":
-            return "linux";
+            return { icon: "linux", isBrand: true };
         default:
-            return "terminal";
+            return { icon: "terminal", isBrand: false };
+    }
+}
+
+/**
+ * Generates a valid connection name from shell info.
+ * Converts display names to valid identifiers (no spaces, lowercase).
+ */
+function generateConnectionName(shell: DetectedShell): string {
+    // For WSL, extract the distro name and use wsl:// prefix
+    if (shell.shelltype === "wsl" || shell.source === "wsl") {
+        // Extract distro name from "WSL: Ubuntu (default)" -> "Ubuntu"
+        let distroName = shell.name;
+        if (distroName.startsWith("WSL:")) {
+            distroName = distroName.substring(4).trim();
+        }
+        // Remove "(default)" suffix if present
+        distroName = distroName.replace(/\s*\(default\)\s*$/i, "").trim();
+        return `wsl://${distroName}`;
+    }
+
+    // For other shells, create a slug from the shell type and version
+    // e.g., "PowerShell 7.5" -> "pwsh-7.5", "Git Bash" -> "git-bash"
+    const shellType = shell.shelltype?.toLowerCase() || "shell";
+
+    // Special cases for common shells
+    switch (shellType) {
+        case "pwsh":
+            // Differentiate Windows PowerShell (5.1) from PowerShell Core (7+)
+            if (shell.name?.toLowerCase().includes("windows")) {
+                return "windows-powershell";
+            }
+            if (shell.version) {
+                return `pwsh-${shell.version.replace(/\s+/g, "-")}`;
+            }
+            return "pwsh";
+        case "cmd":
+            return "cmd";
+        case "bash":
+            // Check if it's Git Bash
+            if (shell.name?.toLowerCase().includes("git")) {
+                return "git-bash";
+            }
+            return "bash";
+        case "zsh":
+            return "zsh";
+        case "fish":
+            return "fish";
+        default:
+            // Fallback: slugify the name
+            return shell.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-|-$/g, "");
     }
 }
 
@@ -1243,15 +1319,8 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
                 const shell = detectedShells.find((s) => s.id === shellId);
                 if (!shell) continue;
 
-                // Determine connection name
-                let connName: string;
-                if (shell.shelltype === "wsl") {
-                    // For WSL, use wsl://distroName format
-                    connName = `wsl://${shell.name}`;
-                } else {
-                    // For regular shells, use the display name
-                    connName = shell.name;
-                }
+                // Generate a valid connection name from shell info
+                const connName = generateConnectionName(shell);
 
                 // Validate connection name before adding
                 const validation = validateConnectionName(connName);
@@ -1263,11 +1332,13 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
                     continue;
                 }
 
-                // Create connection config with shell path
+                // Create connection config with shell path and display name
                 const connConfig: ConnKeywords = {};
                 if (shell.shellpath) {
                     connConfig["conn:shellpath"] = shell.shellpath;
                 }
+                // Store the display name for UI purposes
+                connConfig["display:name"] = shell.name;
 
                 const data: ConnConfigRequest = {
                     host: connName,
