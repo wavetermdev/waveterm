@@ -805,11 +805,9 @@ function setActiveTab(tabId: string) {
     getApi().setActiveTab(tabId);
 }
 
+// Telemetry removed - this function is now a no-op
 function recordTEvent(event: string, props?: TEventProps) {
-    if (props == null) {
-        props = {};
-    }
-    RpcApi.RecordTEventCommand(TabRpcClient, { event, props }, { noresponse: true });
+    // No-op - telemetry has been removed from this fork
 }
 
 export {

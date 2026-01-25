@@ -24,7 +24,6 @@ import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { WaveUIMessage } from "./aitypes";
 import { BYOKAnnouncement } from "./byokannouncement";
-import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -232,12 +231,11 @@ AIErrorMessage.displayName = "AIErrorMessage";
 
 const ConfigChangeModeFixer = memo(() => {
     const model = WaveAIModel.getInstance();
-    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
 
     useEffect(() => {
         model.fixModeAfterConfigChange();
-    }, [telemetryEnabled, aiModeConfigs, model]);
+    }, [aiModeConfigs, model]);
 
     return null;
 });
@@ -253,15 +251,10 @@ const AIPanelComponentInner = memo(() => {
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
-    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = maybeUseTabModel();
-    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
-
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
-    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
-    const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
+    // Telemetry removed - Wave AI always accessible
+    const allowAccess = true;
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
@@ -562,32 +555,26 @@ const AIPanelComponentInner = memo(() => {
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
-                {!allowAccess ? (
-                    <TelemetryRequiredMessage />
+                {messages.length === 0 && initialLoadDone ? (
+                    <div
+                        className="flex-1 overflow-y-auto p-2 relative"
+                        onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
+                    >
+                        <div className="absolute top-2 left-2 z-10">
+                            <AIModeDropdown />
+                        </div>
+                        {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
+                    </div>
                 ) : (
-                    <>
-                        {messages.length === 0 && initialLoadDone ? (
-                            <div
-                                className="flex-1 overflow-y-auto p-2 relative"
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
-                            >
-                                <div className="absolute top-2 left-2 z-10">
-                                    <AIModeDropdown />
-                                </div>
-                                {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
-                            </div>
-                        ) : (
-                            <AIPanelMessages
-                                messages={messages}
-                                status={status}
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
-                            />
-                        )}
-                        <AIErrorMessage />
-                        <AIDroppedFiles model={model} />
-                        <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
-                    </>
+                    <AIPanelMessages
+                        messages={messages}
+                        status={status}
+                        onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
+                    />
                 )}
+                <AIErrorMessage />
+                <AIDroppedFiles model={model} />
+                <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
             </div>
         </div>
     );

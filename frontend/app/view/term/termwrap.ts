@@ -5,7 +5,7 @@ import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
+import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
@@ -219,28 +219,7 @@ function addTestMarkerDecoration(terminal: Terminal, marker: TermTypes.IMarker, 
     });
 }
 
-function checkCommandForTelemetry(decodedCmd: string) {
-    if (!decodedCmd) {
-        return;
-    }
-
-    if (decodedCmd.startsWith("ssh ")) {
-        recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
-        return;
-    }
-
-    const editorsRegex = /^(vim|vi|nano|nvim)\b/;
-    if (editorsRegex.test(decodedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-edit" });
-        return;
-    }
-
-    const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
-    if (tailFollowRegex.test(decodedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-tailf" });
-        return;
-    }
-}
+// Telemetry removed - checkCommandForTelemetry function removed
 
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
@@ -307,7 +286,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                         const decodedCmd = base64ToString(cmd.data.cmd64);
                         rtInfo["shell:lastcmd"] = decodedCmd;
                         globalStore.set(termWrap.lastCommandAtom, decodedCmd);
-                        checkCommandForTelemetry(decodedCmd);
+                        // Telemetry removed - no command tracking
                     } catch (e) {
                         console.error("Error decoding cmd64:", e);
                         rtInfo["shell:lastcmd"] = null;
