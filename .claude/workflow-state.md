@@ -1,92 +1,99 @@
 ---
 workflow: phased-dev
 workflow_status: in_progress
-current_phase: 2-execution
+current_phase: 2-code-review
 started: 2026-01-25
-last_updated: 2026-01-25T02:30:00
-tool_uses_count: 0
+last_updated: 2026-01-25T10:05:00
+tool_uses_count: 45
 ---
 
-# Phased Development Workflow State
+# Phased Development Workflow - GUI Settings System V2
 
-## Project: GUI Settings System Bug Fixes
+## Overview
 
-### Goal
-Fix all bugs in the GUI settings system to make it fully functional:
-- Settings must save without errors
-- All settings must be visible and organized by category
-- Category navigation must work
-- Theme dropdown must populate with available themes
-- Mouse scrolling must work
-- No console errors
+Extending the dynamic GUI Settings system to cover additional configuration types:
+1. Connections - Remote connection management
+2. Sidebar Widgets - Widget configuration
+3. Wave AI Modes - AI assistant modes
+4. Tab Backgrounds - Tab background images/colors
+5. Tab Variables - Tab variable presets
+6. Secrets - Already complete
+7. AI Presets - AI configuration presets (DEPRECATED)
 
-### Current Phase: Execution (Complete)
+## Current Phase: Complete
 
-### Known Issues (from user report) - ALL FIXED
-1. ~~**CRITICAL**: Settings fail to save with error "cannot convert window:maxtabcachesize: cannot convert number to int"~~
-   - **Fix**: Added `reflect.Int` handling in `convertJsonNumber()` function in `pkg/wconfig/settingsconfig.go`
-2. ~~**CRITICAL**: Theme dropdown doesn't populate with themes~~
-   - **Fix**: Added dynamic options loading with `useDynamicOptions` hook and `dynamicOptionsMap` in `settings-visual.tsx`
-3. ~~**HIGH**: Category navigation doesn't work (clicking categories does nothing)~~
-   - **Fix**: Fixed CSS class name mismatches in `settings-visual.scss` (`.settings-category-sidebar` etc.)
-4. ~~**HIGH**: Mouse scrolling doesn't work in settings list~~
-   - **Fix**: Added proper `overflow-y: auto` and `min-height: 0` to `.settings-list` in SCSS
-5. ~~**MEDIUM**: Not all settings are visible/accessible~~
-   - **Fix**: Fixed CSS layout structure to properly display all settings
-6. **MEDIUM**: Console warnings and errors present - *To be verified during QA*
+### Completed Stages
+- [x] Initial setup - Branch created, directories created
+- [x] Discovery (Phase 1) - Understanding existing implementation
+- [x] Planning (Phase 1) - Specs created via planning agents
+- [x] Parallel Execution (Phase 2) - All visual components implemented
+- [x] Code Review (Phase 2) - All critical bugs fixed
+- [x] QA Testing (Phase 2) - Static analysis verification complete
 
-### Stages
-- [x] Discovery (Phase 1) - Identify all bugs
-- [x] Planning (Phase 1) - Create fix specs
-- [x] Design Review (Phase 1) - Validate fix approaches
-- [x] Execution (Phase 2) - Implement fixes
-- [ ] Code Review (Phase 2) - Security + functional review
-- [ ] QA Testing (Phase 2) - Verify fixes work
-- [ ] Integration & Merge (Phase 2) - Final merge
+### QA Testing Results
+- TypeScript: ✅ Compiles without errors (`npx tsc --noEmit`)
+- ESLint: ✅ No errors on waveconfig components
+- SCSS: ✅ All 6 SCSS files compile correctly
+- Tests: ✅ Test suite passes (`npm test`)
+- Imports: ✅ All visual components properly imported and registered
+- Exports: ✅ All visual components properly exported as memo components
+
+Note: Full Electron MCP testing requires manual startup of the app with
+`--remote-debugging-port=9222`. The Vite dev server is running and serving
+the frontend correctly at localhost:5173.
+
+## Commits Made
+- `ad11ce97` - AI Presets deprecation view
+- `9ae1e772` - Connections, Tab Variables, Tab Backgrounds, Widgets visual components
+- `98608a04` - Wave AI Modes visual editor component
+- `113dda6c` - Critical bug fixes (connections delete, widgets state reset, tabvars stale closure)
+- `5457d1d7` - Additional code review fixes (switchcompat, error states, delete confirmation)
+
+## Discovery Summary
+
+### What Exists:
+- **General (settings.json)** - ✅ COMPLETE visual component
+- **Secrets** - ✅ COMPLETE visual component
+
+### What Needs Implementation:
+1. **Connections** - No visual component, only JSON editor
+2. **Sidebar Widgets** - No visual component, only JSON editor
+3. **Wave AI Modes** - Has placeholder visual component, needs full implementation
+4. **Tab Backgrounds** - No visual component, only JSON editor
+5. **Tab Variables** - No visual component, only JSON editor
+6. **AI Presets** - DEPRECATED, needs minimal deprecation UI
+
+## Implementation Plan
+
+### Phase 2a: Simpler Implementations (Sequential)
+1. Tab Variables - Simplest (4 allowed keys)
+2. Tab Backgrounds - Moderate (color/gradient picker)
+3. AI Presets - Deprecated read-only view
+
+### Phase 2b: Complex Implementations (Sequential)
+4. Sidebar Widgets - Moderate complexity with drag-drop
+5. Wave AI Modes - Provider-aware form
+6. Connections - Most complex (many SSH options)
+
+## Key Decisions
+- Implementing sequentially on main branch for this feature branch
+- Each component commits when working
+- Opus model with ultrathink for all planning and review stages
+- Mandatory code review after each implementation
+
+## Key Files Reference
+- Main model: `frontend/app/view/waveconfig/waveconfig-model.ts`
+- Settings visual: `frontend/app/view/waveconfig/settings-visual.tsx`
+- Secrets (reference): `frontend/app/view/waveconfig/secretscontent.tsx`
+- Settings controls: `frontend/app/element/settings/*.tsx`
 
 ## Branch
-feature/gui-settings-system
+feature/gui-settings-system-v2
 
-## Previous Commits
-1. `f664606e` - feat(settings): add settings metadata schema and registry
-2. `21c7d74c` - feat(settings): add search and filter system for settings GUI
-3. `c61fc19a` - feat(settings): add GUI control components for settings system
-4. `b5636d9e` - feat(settings): add comprehensive SCSS styling for visual settings panel
-5. `dd52ffda` - feat(settings): add settings persistence layer with debounced saves
-6. `9d44383e` - feat(settings): integrate GUI settings view with WaveConfig
-7. `e66d3682` - fix(settings): address critical bugs found in code review
-8. `cdcc232f` - fix(settings): fix SCSS syntax error in textarea selector
-
-## Fixes Applied This Session
-
-### 1. Type Conversion Bug (settingsconfig.go)
-Added handling for plain `int` type in the `convertJsonNumber` function:
-```go
-if reflect.Int == ctype.Kind() {
-    if ival, err := num.Int64(); err == nil {
-        return int(ival), nil
-    }
-    return nil, fmt.Errorf("invalid number for int: %s", num)
-}
-```
-
-### 2. CSS Class Name Mismatches (settings-visual.scss)
-Fixed class names to match TSX component:
-- `.settings-sidebar` → `.settings-category-sidebar`
-- Added `.settings-visual-header` and `.settings-visual-body`
-- Moved `.settings-category-item` out of sidebar nesting
-- Added `.settings-category-section`, `.settings-category-header`, `.settings-subcategory-header`
-- Added `.settings-search-results-header`
-- Fixed layout structure with proper flexbox for scrolling
-
-### 3. Dynamic Theme Options (settings-visual.tsx)
-Added dynamic options loading for select controls:
-- Created `dynamicOptionsMap` mapping setting keys to providers
-- Created `useDynamicOptions` hook for fetching options at runtime
-- Modified `renderControl` to accept and use dynamic options
-- Updated `SettingRow` to use the hook and pass options to controls
-
-## Files Modified
-- `pkg/wconfig/settingsconfig.go` - Type conversion fix
-- `frontend/app/view/waveconfig/settings-visual.scss` - CSS class fixes
-- `frontend/app/view/waveconfig/settings-visual.tsx` - Dynamic options loading
+## Next Steps
+1. Implement Tab Variables visual component
+2. Implement Tab Backgrounds visual component
+3. Implement AI Presets deprecation view
+4. Implement Sidebar Widgets visual component
+5. Implement Wave AI Modes visual component
+6. Implement Connections visual component
