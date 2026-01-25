@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -73,7 +71,7 @@ func makeAIError(err error) wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 }
 
 func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
-	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NumAIReqs: 1}, "RunAICommand")
+	// Telemetry removed - no AI request telemetry
 
 	endpoint := request.Opts.BaseURL
 	if endpoint == "" {
@@ -104,14 +102,9 @@ func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan 
 		log.Printf("no backend found for %s\n", request.Opts.APIType)
 		return nil
 	}
-	aiLocal := backendType != "wave" && isLocalURL(request.Opts.BaseURL)
-	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-		Event: "action:runaicmd",
-		Props: telemetrydata.TEventProps{
-			AiBackendType: backendType,
-			AiLocal:       aiLocal,
-		},
-	})
+	// Preserve backendType and isLocalURL for potential future use
+	_ = backendType
+	_ = isLocalURL(request.Opts.BaseURL)
 
 	log.Printf("sending ai chat message to %s endpoint %q using model %s\n", request.Opts.APIType, endpoint, request.Opts.Model)
 	return backend.StreamCompletion(ctx, request)

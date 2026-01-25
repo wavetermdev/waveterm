@@ -17,9 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
@@ -46,9 +43,6 @@ const WCloudWebShareUpdateTimeout = 15 * time.Second
 // we allow one extra update past this estimated size
 const MaxUpdatePayloadSize = 1 * (1024 * 1024)
 
-const TelemetryUrl = "/telemetry"
-const TEventsUrl = "/tevents"
-const NoTelemetryUrl = "/no-telemetry"
 const WebShareUpdateUrl = "/auth/web-share-update"
 const PingUrl = "/ping"
 
@@ -166,134 +160,6 @@ func doRequest(req *http.Request, outputObj interface{}, verbose bool) (*http.Re
 	return resp, nil
 }
 
-type TEventsInputType struct {
-	ClientId string                  `json:"clientid"`
-	Events   []*telemetrydata.TEvent `json:"events"`
-}
-
-const TEventsBatchSize = 200
-const TEventsMaxBatches = 10
-
-// returns (done, num-sent, error)
-func sendTEventsBatch(clientId string) (bool, int, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
-	defer cancelFn()
-	events, err := telemetry.GetNonUploadedTEvents(ctx, TEventsBatchSize)
-	if err != nil {
-		return true, 0, fmt.Errorf("cannot get events: %v", err)
-	}
-	if len(events) == 0 {
-		return true, 0, nil
-	}
-	input := TEventsInputType{
-		ClientId: clientId,
-		Events:   events,
-	}
-	req, err := makeAnonPostReq(ctx, TEventsUrl, input)
-	if err != nil {
-		return true, 0, err
-	}
-	startTime := time.Now()
-	_, err = doRequest(req, nil, true)
-	latency := time.Since(startTime)
-	log.Printf("[wcloud] sent %d tevents (latency: %v)\n", len(events), latency)
-	if err != nil {
-		return true, 0, err
-	}
-	err = telemetry.MarkTEventsAsUploaded(ctx, events)
-	if err != nil {
-		return true, 0, fmt.Errorf("error marking activity as uploaded: %v", err)
-	}
-	return len(events) < TEventsBatchSize, len(events), nil
-}
-
-func sendTEvents(clientId string) (int, error) {
-	numIters := 0
-	totalEvents := 0
-	for {
-		numIters++
-		done, numEvents, err := sendTEventsBatch(clientId)
-		if err != nil {
-			log.Printf("error sending telemetry events: %v\n", err)
-			break
-		}
-		totalEvents += numEvents
-		if done {
-			break
-		}
-		if numIters > TEventsMaxBatches {
-			log.Printf("sendTEvents, hit %d iterations, stopping\n", numIters)
-			break
-		}
-	}
-	return totalEvents, nil
-}
-
-func SendAllTelemetry(clientId string) error {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	if err := telemetry.CleanOldTEvents(ctx); err != nil {
-		log.Printf("error cleaning old telemetry events: %v\n", err)
-	}
-	if !telemetry.IsTelemetryEnabled() {
-		log.Printf("telemetry disabled, not sending\n")
-		return nil
-	}
-	_, err := sendTEvents(clientId)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func sendTelemetry(clientId string) error {
-	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
-	defer cancelFn()
-	activity, err := telemetry.GetNonUploadedActivity(ctx)
-	if err != nil {
-		return fmt.Errorf("cannot get activity: %v", err)
-	}
-	if len(activity) == 0 {
-		return nil
-	}
-	log.Printf("[wcloud] sending telemetry data\n")
-	dayStr := daystr.GetCurDayStr()
-	input := TelemetryInputType{
-		ClientId:          clientId,
-		UserId:            clientId,
-		AppType:           "w2",
-		AutoUpdateEnabled: telemetry.IsAutoUpdateEnabled(),
-		AutoUpdateChannel: telemetry.AutoUpdateChannel(),
-		CurDay:            dayStr,
-		Activity:          activity,
-	}
-	req, err := makeAnonPostReq(ctx, TelemetryUrl, input)
-	if err != nil {
-		return err
-	}
-	_, err = doRequest(req, nil, true)
-	if err != nil {
-		return err
-	}
-	err = telemetry.MarkActivityAsUploaded(ctx, activity)
-	if err != nil {
-		return fmt.Errorf("error marking activity as uploaded: %v", err)
-	}
-	return nil
-}
-
-func SendNoTelemetryUpdate(ctx context.Context, clientId string, noTelemetryVal bool) error {
-	req, err := makeAnonPostReq(ctx, NoTelemetryUrl, NoTelemetryInputType{ClientId: clientId, Value: noTelemetryVal})
-	if err != nil {
-		return err
-	}
-	_, err = doRequest(req, nil, true)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func makePingPostReq(ctx context.Context, apiUrl string, data interface{}) (*http.Request, error) {
 	endpoint := GetPingEndpoint()
 	if endpoint == "" {
@@ -319,25 +185,26 @@ func makePingPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 }
 
 type PingInputType struct {
-	ClientId       string `json:"clientid"`
-	Arch           string `json:"arch"`
-	Version        string `json:"version"`
-	LocalDate      string `json:"localdate"`
-	UsageTelemetry bool   `json:"usagetelemetry"`
+	ClientId  string `json:"clientid"`
+	Arch      string `json:"arch"`
+	Version   string `json:"version"`
+	LocalDate string `json:"localdate"`
 }
 
-func SendDiagnosticPing(ctx context.Context, clientId string, usageTelemetry bool) error {
+// SendDiagnosticPing sends a minimal diagnostic ping to help count active installs.
+// This does not send any telemetry data - only version, arch, date, and client ID.
+// Set WAVETERM_NOPING environment variable to disable.
+func SendDiagnosticPing(ctx context.Context, clientId string) error {
 	endpoint := GetPingEndpoint()
 	if endpoint == "" {
 		return nil
 	}
 	localDate := time.Now().Format("2006-01-02")
 	input := PingInputType{
-		ClientId:       clientId,
-		Arch:           wavebase.ClientArch(),
-		Version:        "v" + wavebase.WaveVersion,
-		LocalDate:      localDate,
-		UsageTelemetry: usageTelemetry,
+		ClientId:  clientId,
+		Arch:      wavebase.ClientArch(),
+		Version:   "v" + wavebase.WaveVersion,
+		LocalDate: localDate,
 	}
 	req, err := makePingPostReq(ctx, PingUrl, input)
 	if err != nil {

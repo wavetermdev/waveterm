@@ -14,8 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -58,10 +56,6 @@ func createSubBlockObj(ctx context.Context, parentBlockId string, blockDef *wave
 }
 
 func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (rtnBlock *waveobj.Block, rtnErr error) {
-	return CreateBlockWithTelemetry(ctx, tabId, blockDef, rtOpts, true)
-}
-
-func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts, recordTelemetry bool) (rtnBlock *waveobj.Block, rtnErr error) {
 	var blockCreated bool
 	var newBlockOID string
 	defer func() {
@@ -99,33 +93,8 @@ func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveo
 			}
 		}
 	}
-	if recordTelemetry {
-		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
-		blockController := blockDef.Meta.GetString(waveobj.MetaKey_Controller, "")
-		go recordBlockCreationTelemetry(blockView, blockController)
-	}
+	// Telemetry removed - no block creation telemetry
 	return blockData, nil
-}
-
-func recordBlockCreationTelemetry(blockView string, blockController string) {
-	defer func() {
-		panichandler.PanicHandler("CreateBlock:telemetry", recover())
-	}()
-	if blockView == "" {
-		return
-	}
-	tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
-		Renderers: map[string]int{blockView: 1},
-	})
-	telemetry.RecordTEvent(tctx, &telemetrydata.TEvent{
-		Event: "action:createblock",
-		Props: telemetrydata.TEventProps{
-			BlockView:       blockView,
-			BlockController: blockController,
-		},
-	})
 }
 
 func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
