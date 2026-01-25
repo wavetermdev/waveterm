@@ -43,6 +43,11 @@ export type { StringListControlProps } from "./stringlist-control";
 export { TermThemeControl } from "./termtheme-control";
 export type { TermThemeControlProps } from "./termtheme-control";
 
+export { PreviewBackgroundToggle } from "./preview-background-toggle";
+export type { PreviewBackgroundToggleProps, PreviewBackground } from "./preview-background-toggle";
+
+export { OmpHighContrast } from "./omp-high-contrast";
+
 // Factory for dynamic control rendering
 export { ControlFactory, renderSettingControl } from "./control-factory";
 export type { ControlFactoryProps } from "./control-factory";
