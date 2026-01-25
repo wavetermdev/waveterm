@@ -357,6 +357,30 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandOmpGetConfigInfoRtnData
+    type CommandOmpGetConfigInfoRtnData = {
+        configpath: string;
+        format: string;
+        exists: boolean;
+        readable: boolean;
+        writable: boolean;
+        currentpalette?: {[key: string]: string};
+        error?: string;
+    };
+
+    // wshrpc.CommandOmpWritePaletteData
+    type CommandOmpWritePaletteData = {
+        palette: {[key: string]: string};
+        createbackup: boolean;
+    };
+
+    // wshrpc.CommandOmpWritePaletteRtnData
+    type CommandOmpWritePaletteRtnData = {
+        success: boolean;
+        backuppath?: string;
+        error?: string;
+    };
+
     // wshrpc.CommandRemoteDisconnectFromJobManagerData
     type CommandRemoteDisconnectFromJobManagerData = {
         jobid: string;

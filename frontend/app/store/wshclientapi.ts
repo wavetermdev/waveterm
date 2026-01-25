@@ -457,6 +457,16 @@ class RpcApiType {
         return client.wshRpcCall("notify", data, opts);
     }
 
+    // command "ompgetconfiginfo" [call]
+    OmpGetConfigInfoCommand(client: WshClient, opts?: RpcOpts): Promise<CommandOmpGetConfigInfoRtnData> {
+        return client.wshRpcCall("ompgetconfiginfo", null, opts);
+    }
+
+    // command "ompwritepalette" [call]
+    OmpWritePaletteCommand(client: WshClient, data: CommandOmpWritePaletteData, opts?: RpcOpts): Promise<CommandOmpWritePaletteRtnData> {
+        return client.wshRpcCall("ompwritepalette", data, opts);
+    }
+
     // command "path" [call]
     PathCommand(client: WshClient, data: PathCommandData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("path", data, opts);

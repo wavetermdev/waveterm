@@ -552,6 +552,18 @@ func NotifyCommand(w *wshutil.WshRpc, data wshrpc.WaveNotificationOptions, opts 
 	return err
 }
 
+// command "ompgetconfiginfo", wshserver.OmpGetConfigInfoCommand
+func OmpGetConfigInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpGetConfigInfoRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpGetConfigInfoRtnData](w, "ompgetconfiginfo", nil, opts)
+	return resp, err
+}
+
+// command "ompwritepalette", wshserver.OmpWritePaletteCommand
+func OmpWritePaletteCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpWritePaletteData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpWritePaletteRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpWritePaletteRtnData](w, "ompwritepalette", data, opts)
+	return resp, err
+}
+
 // command "path", wshserver.PathCommand
 func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "path", data, opts)
