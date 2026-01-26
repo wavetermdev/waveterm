@@ -9,7 +9,7 @@
   <br/>
 </p>
 
-# Wave Terminal (Sawka Fork)
+# Wave Terminal (Experimental Fork)
 
 > **This is a personal fork of [Wave Terminal](https://github.com/wavetermdev/waveterm)** with experimental features and customizations. For the official version, visit the [upstream repository](https://github.com/wavetermdev/waveterm).
 
