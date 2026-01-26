@@ -41,7 +41,7 @@
     --header-icon-width: 16px;
     --header-height: 30px;
 
-    --tab-green: rgb(88, 193, 66);
+    --tab-accent: rgb(88, 193, 66);
 
     /* z-index values */
     --zindex-header-hover: 100;
@@ -147,7 +147,7 @@
 
     // button colors
     --button-text-color: #000000;
-    --button-green-bg: var(--term-green);
+    --button-green-bg: var(--accent-color);
     --button-green-border-color: #29f200;
     --button-grey-bg: rgba(255, 255, 255, 0.04);
     --button-grey-hover-bg: rgba(255, 255, 255, 0.09);
@@ -188,7 +188,7 @@
     --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
     --scrollbar-thumb-active-color: rgba(0, 0, 0, 0.5);
 
-    --tab-green: rgb(46, 160, 67);
+    --tab-accent: rgb(46, 160, 67);
 
     // modal colors
     --modal-bg-color: #ffffff;
@@ -255,178 +255,97 @@
     --button-yellow-hover-bg: #9a6700;
 }
 
-// Light Gray theme - softer than pure white
-[data-theme="light-gray"] {
-    --main-text-color: #1a1a1a;
-    --secondary-text-color: rgb(70, 75, 69);
-    --grey-text-color: #777;
-    --main-bg-color: rgb(235, 235, 238);
-    --border-color: rgba(0, 0, 0, 0.1);
-    --accent-color: rgb(46, 160, 67);
-    --panel-bg-color: rgba(225, 225, 228, 0.95);
-    --highlight-bg-color: rgba(0, 0, 0, 0.06);
-    --error-color: rgb(207, 34, 46);
-    --warning-color: rgb(191, 135, 0);
-    --success-color: rgb(46, 160, 67);
-    --hover-bg-color: rgba(0, 0, 0, 0.04);
-    --block-bg-color: rgba(245, 245, 248, 0.9);
-    --block-bg-solid-color: rgb(245, 245, 248);
-
-    --keybinding-color: #1a1a1a;
-    --keybinding-bg-color: #d8d8db;
-    --keybinding-border-color: #c0c0c3;
-
-    --scrollbar-background-color: transparent;
-    --scrollbar-thumb-color: rgba(0, 0, 0, 0.18);
-    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.35);
-    --scrollbar-thumb-active-color: rgba(0, 0, 0, 0.45);
-
-    --tab-green: rgb(46, 160, 67);
-
-    --modal-bg-color: #f0f0f3;
-    --modal-header-bottom-border-color: rgba(0, 0, 0, 0.08);
-    --modal-border-color: rgba(0, 0, 0, 0.12);
-    --modal-shadow-color: rgba(0, 0, 0, 0.2);
-
-    --toggle-bg-color: var(--border-color);
-    --toggle-thumb-color: var(--main-text-color);
-    --toggle-checked-bg-color: var(--accent-color);
-
-    --link-color: #2ea043;
-
-    --form-element-border-color: rgba(0, 0, 0, 0.12);
-    --form-element-bg-color: #f5f5f8;
-    --form-element-text-color: var(--main-text-color);
-    --form-element-primary-text-color: var(--main-text-color);
-    --form-element-primary-color: var(--accent-color);
-    --form-element-secondary-color: rgba(0, 0, 0, 0.08);
-    --form-element-error-color: var(--error-color);
-
-    --conn-status-overlay-bg-color: rgba(230, 186, 30, 0.15);
-
-    --term-black: #24292f;
-    --term-red: #cf222e;
-    --term-green: #1a7f37;
-    --term-yellow: #9a6700;
-    --term-blue: #0969da;
-    --term-magenta: #8250df;
-    --term-cyan: #1b7c83;
-    --term-white: #6e7781;
-    --term-bright-black: #57606a;
-    --term-bright-red: #a40e26;
-    --term-bright-green: #2da44e;
-    --term-bright-yellow: #bf8700;
-    --term-bright-blue: #218bff;
-    --term-bright-magenta: #a475f9;
-    --term-bright-cyan: #3192aa;
-    --term-bright-white: #8c959f;
-
-    --term-gray: #6e7781;
-    --term-cmdtext: #1f2328;
-    --term-foreground: #1f2328;
-    --term-background: #e8e8eb;
-    --term-selection-background: rgba(0, 0, 0, 0.12);
-    --term-cursor-accent: #e8e8eb;
-
-    --button-text-color: #ffffff;
-    --button-green-bg: var(--accent-color);
-    --button-green-border-color: #2da44e;
-    --button-grey-bg: rgba(0, 0, 0, 0.04);
-    --button-grey-hover-bg: rgba(0, 0, 0, 0.08);
-    --button-grey-border-color: rgba(0, 0, 0, 0.12);
-    --button-grey-outlined-color: rgba(0, 0, 0, 0.65);
-    --button-red-bg: #cf222e;
-    --button-red-hover-bg: #a40e26;
-    --button-red-border-color: #cf222e;
-    --button-red-outlined-color: #cf222e;
-    --button-yellow-bg: #bf8700;
-    --button-yellow-hover-bg: #9a6700;
+// Accent: Green (default)
+[data-accent="green"] {
+    --accent-color: rgb(88, 193, 66);
+    --tab-accent: rgb(88, 193, 66);
+    --link-color: #58c142;
 }
 
-// Light Warm theme - cream/sepia tones, easy on the eyes
-[data-theme="light-warm"] {
-    --main-text-color: #2d2a24;
-    --secondary-text-color: rgb(85, 80, 70);
-    --grey-text-color: #8a8579;
-    --main-bg-color: rgb(248, 245, 238);
-    --border-color: rgba(90, 70, 40, 0.12);
+// Accent: Warm (brown/amber tones)
+[data-accent="warm"] {
+    --accent-color: rgb(200, 145, 60);
+    --secondary-text-color: rgb(200, 195, 185);
+    --border-color: rgba(200, 170, 120, 0.18);
+    --link-color: #c89140;
+    --tab-accent: rgb(200, 145, 60);
+    --button-green-bg: var(--accent-color);
+    --button-green-border-color: rgb(180, 130, 50);
+}
+
+// Accent: Blue (cool blue tones)
+[data-accent="blue"] {
+    --accent-color: rgb(70, 140, 220);
+    --secondary-text-color: rgb(185, 195, 210);
+    --border-color: rgba(120, 160, 220, 0.18);
+    --link-color: #468cdc;
+    --tab-accent: rgb(70, 140, 220);
+    --button-green-bg: var(--accent-color);
+    --button-green-border-color: rgb(60, 120, 200);
+}
+
+// Accent: Purple (creative purple tones)
+[data-accent="purple"] {
+    --accent-color: rgb(160, 100, 220);
+    --secondary-text-color: rgb(200, 190, 210);
+    --border-color: rgba(160, 130, 220, 0.18);
+    --link-color: #a064dc;
+    --tab-accent: rgb(160, 100, 220);
+    --button-green-bg: var(--accent-color);
+    --button-green-border-color: rgb(140, 85, 200);
+}
+
+// Accent: Teal (calm teal tones)
+[data-accent="teal"] {
+    --accent-color: rgb(50, 190, 180);
+    --secondary-text-color: rgb(185, 210, 208);
+    --border-color: rgba(80, 190, 180, 0.18);
+    --link-color: #32beb4;
+    --tab-accent: rgb(50, 190, 180);
+    --button-green-bg: var(--accent-color);
+    --button-green-border-color: rgb(40, 170, 160);
+}
+
+// Light mode accent overrides (darker accent colors for contrast on light backgrounds)
+
+[data-theme="light"][data-accent="green"] {
+    --accent-color: rgb(46, 160, 67);
+    --link-color: #2ea043;
+    --tab-accent: rgb(46, 160, 67);
+}
+
+[data-theme="light"][data-accent="warm"] {
     --accent-color: rgb(140, 100, 40);
-    --panel-bg-color: rgba(242, 238, 228, 0.95);
-    --highlight-bg-color: rgba(90, 70, 40, 0.08);
-    --error-color: rgb(180, 50, 40);
-    --warning-color: rgb(180, 120, 0);
-    --success-color: rgb(70, 140, 50);
-    --hover-bg-color: rgba(90, 70, 40, 0.05);
-    --block-bg-color: rgba(252, 250, 245, 0.92);
-    --block-bg-solid-color: rgb(252, 250, 245);
-
-    --keybinding-color: #2d2a24;
-    --keybinding-bg-color: #e8e4d8;
-    --keybinding-border-color: #d5d0c2;
-
-    --scrollbar-background-color: transparent;
-    --scrollbar-thumb-color: rgba(90, 70, 40, 0.2);
-    --scrollbar-thumb-hover-color: rgba(90, 70, 40, 0.35);
-    --scrollbar-thumb-active-color: rgba(90, 70, 40, 0.45);
-
-    --tab-green: rgb(70, 140, 50);
-
-    --modal-bg-color: #f5f2e8;
-    --modal-header-bottom-border-color: rgba(90, 70, 40, 0.1);
-    --modal-border-color: rgba(90, 70, 40, 0.15);
-    --modal-shadow-color: rgba(50, 40, 20, 0.2);
-
-    --toggle-bg-color: var(--border-color);
-    --toggle-thumb-color: var(--main-text-color);
-    --toggle-checked-bg-color: var(--accent-color);
-
+    --secondary-text-color: rgb(85, 80, 70);
+    --border-color: rgba(90, 70, 40, 0.12);
     --link-color: #8a6428;
+    --tab-accent: rgb(140, 100, 40);
+    --button-green-border-color: rgb(120, 85, 30);
+}
 
-    --form-element-border-color: rgba(90, 70, 40, 0.15);
-    --form-element-bg-color: #faf8f2;
-    --form-element-text-color: var(--main-text-color);
-    --form-element-primary-text-color: var(--main-text-color);
-    --form-element-primary-color: var(--accent-color);
-    --form-element-secondary-color: rgba(90, 70, 40, 0.1);
-    --form-element-error-color: var(--error-color);
+[data-theme="light"][data-accent="blue"] {
+    --accent-color: rgb(30, 100, 180);
+    --secondary-text-color: rgb(70, 85, 110);
+    --border-color: rgba(30, 80, 160, 0.12);
+    --link-color: #1e64b4;
+    --tab-accent: rgb(30, 100, 180);
+    --button-green-border-color: rgb(25, 85, 160);
+}
 
-    --conn-status-overlay-bg-color: rgba(200, 160, 60, 0.18);
+[data-theme="light"][data-accent="purple"] {
+    --accent-color: rgb(120, 70, 180);
+    --secondary-text-color: rgb(90, 75, 110);
+    --border-color: rgba(100, 60, 160, 0.12);
+    --link-color: #7846b4;
+    --tab-accent: rgb(120, 70, 180);
+    --button-green-border-color: rgb(100, 60, 160);
+}
 
-    --term-black: #2d2a24;
-    --term-red: #b4322a;
-    --term-green: #467832;
-    --term-yellow: #8a6428;
-    --term-blue: #2a6496;
-    --term-magenta: #7a4a96;
-    --term-cyan: #2a7878;
-    --term-white: #6e6a64;
-    --term-bright-black: #5a564e;
-    --term-bright-red: #c84a42;
-    --term-bright-green: #5a9646;
-    --term-bright-yellow: #a07830;
-    --term-bright-blue: #3a7ab4;
-    --term-bright-magenta: #9664b4;
-    --term-bright-cyan: #3a9696;
-    --term-bright-white: #8a867e;
-
-    --term-gray: #7a7670;
-    --term-cmdtext: #2d2a24;
-    --term-foreground: #2d2a24;
-    --term-background: #f5f2e8;
-    --term-selection-background: rgba(90, 70, 40, 0.15);
-    --term-cursor-accent: #f5f2e8;
-
-    --button-text-color: #ffffff;
-    --button-green-bg: rgb(70, 140, 50);
-    --button-green-border-color: #5a9646;
-    --button-grey-bg: rgba(90, 70, 40, 0.06);
-    --button-grey-hover-bg: rgba(90, 70, 40, 0.1);
-    --button-grey-border-color: rgba(90, 70, 40, 0.15);
-    --button-grey-outlined-color: rgba(45, 42, 36, 0.7);
-    --button-red-bg: #b4322a;
-    --button-red-hover-bg: #962820;
-    --button-red-border-color: #b4322a;
-    --button-red-outlined-color: #b4322a;
-    --button-yellow-bg: #a07830;
-    --button-yellow-hover-bg: #8a6428;
+[data-theme="light"][data-accent="teal"] {
+    --accent-color: rgb(20, 150, 140);
+    --secondary-text-color: rgb(50, 95, 90);
+    --border-color: rgba(20, 130, 120, 0.12);
+    --link-color: #14968c;
+    --tab-accent: rgb(20, 150, 140);
+    --button-green-border-color: rgb(15, 130, 120);
 }
