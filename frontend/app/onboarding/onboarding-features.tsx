@@ -6,6 +6,7 @@ import { Button } from "@/app/element/button";
 import { EmojiButton } from "@/app/element/emojibutton";
 import { MagnifyIcon } from "@/app/element/magnify";
 import { ClientModel } from "@/app/store/client-model";
+import { recordTEvent } from "@/app/store/global";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -71,12 +72,9 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
         if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "waveai",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
+            recordTEvent("onboarding:fire", {
+                "onboarding:feature": "waveai",
+                "onboarding:version": CurrentOnboardingVersion,
             });
         }
     };
@@ -166,12 +164,9 @@ const MagnifyBlocksPage = ({
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
         if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "magnify",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
+            recordTEvent("onboarding:fire", {
+                "onboarding:feature": "magnify",
+                "onboarding:version": CurrentOnboardingVersion,
             });
         }
     };
@@ -225,12 +220,9 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
         if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "wsh",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
+            recordTEvent("onboarding:fire", {
+                "onboarding:feature": "wsh",
+                "onboarding:version": CurrentOnboardingVersion,
             });
         }
     };
@@ -319,11 +311,8 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:lastversion": CurrentOnboardingVersion },
         });
-        RpcApi.RecordTEventCommand(TabRpcClient, {
-            event: "onboarding:start",
-            props: {
-                "onboarding:version": CurrentOnboardingVersion,
-            },
+        recordTEvent("onboarding:start", {
+            "onboarding:version": CurrentOnboardingVersion,
         });
     }, []);
 
@@ -344,10 +333,7 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     };
 
     const handleSkip = () => {
-        RpcApi.RecordTEventCommand(TabRpcClient, {
-            event: "onboarding:skip",
-            props: {},
-        });
+        recordTEvent("onboarding:skip", {});
         onComplete();
     };
 

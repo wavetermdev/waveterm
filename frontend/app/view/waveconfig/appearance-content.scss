@@ -4,11 +4,10 @@
 .appearance-content {
     display: flex;
     flex-direction: column;
-    height: 100%;
     width: 100%;
     background: var(--main-bg-color);
-    overflow-y: auto;
     padding: 20px;
+    gap: 16px;
 }
 
 .appearance-header {

@@ -576,16 +576,16 @@ func OmpReadConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.Comma
 	return resp, err
 }
 
-// command "omprestorebackup", wshserver.OmpRestoreBackupCommand
-func OmpRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpRestoreBackupData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpRestoreBackupRtnData, error) {
-	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpRestoreBackupRtnData](w, "omprestorebackup", data, opts)
-	return resp, err
-}
-
 // command "ompreinit", wshserver.OmpReinitCommand
 func OmpReinitCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpReinitData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "ompreinit", data, opts)
 	return err
+}
+
+// command "omprestorebackup", wshserver.OmpRestoreBackupCommand
+func OmpRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpRestoreBackupData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpRestoreBackupRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpRestoreBackupRtnData](w, "omprestorebackup", data, opts)
+	return resp, err
 }
 
 // command "ompwriteconfig", wshserver.OmpWriteConfigCommand

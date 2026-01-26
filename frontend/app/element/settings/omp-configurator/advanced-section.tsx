@@ -277,5 +277,3 @@ export const AdvancedSection = memo(
 );
 
 AdvancedSection.displayName = "AdvancedSection";
-
-export { AdvancedSection };

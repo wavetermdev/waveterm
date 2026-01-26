@@ -7,7 +7,7 @@ import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { ClientModel } from "@/app/store/client-model";
-import { globalStore } from "@/app/store/global";
+import { globalStore, recordTEvent } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -53,14 +53,7 @@ const UpgradeOnboardingMinor = () => {
     }, []);
 
     const handleStarClick = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "star" },
-            },
-            { noresponse: true }
-        );
+        recordTEvent("onboarding:githubstar", { "onboarding:githubstar": "star" });
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
@@ -71,14 +64,7 @@ const UpgradeOnboardingMinor = () => {
     };
 
     const handleAlreadyStarred = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "already" },
-            },
-            { noresponse: true }
-        );
+        recordTEvent("onboarding:githubstar", { "onboarding:githubstar": "already" });
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
@@ -88,14 +74,7 @@ const UpgradeOnboardingMinor = () => {
     };
 
     const handleMaybeLater = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "later" },
-            },
-            { noresponse: true }
-        );
+        recordTEvent("onboarding:githubstar", { "onboarding:githubstar": "later" });
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),

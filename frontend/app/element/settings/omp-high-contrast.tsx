@@ -31,11 +31,7 @@ export const OmpHighContrast = memo(({ className }: OmpHighContrastProps) => {
     const [showDetails, setShowDetails] = useState(false);
     const [lastApplyResult, setLastApplyResult] = useState<{ success: boolean; backupPath?: string } | null>(null);
 
-    // Analyze on mount
-    useEffect(() => {
-        analyzeConfig();
-    }, [analyzeConfig]);
-
+    // Define analyzeConfig BEFORE the useEffect that uses it (TDZ fix)
     const analyzeConfig = useCallback(async () => {
         setAnalysisState("loading");
         setErrorMessage("");
@@ -56,6 +52,11 @@ export const OmpHighContrast = memo(({ className }: OmpHighContrastProps) => {
             setErrorMessage(err instanceof Error ? err.message : "Failed to analyze OMP config");
         }
     }, []);
+
+    // Analyze on mount (placed AFTER analyzeConfig definition to avoid TDZ)
+    useEffect(() => {
+        analyzeConfig();
+    }, [analyzeConfig]);
 
     const handleApplyHighContrast = useCallback(async () => {
         if (applyState === "applying") return;
@@ -120,7 +121,8 @@ export const OmpHighContrast = memo(({ className }: OmpHighContrastProps) => {
         }
     }, [applyState, analyzeConfig]);
 
-    const toggleDetails = useCallback(() => {
+    const toggleDetails = useCallback((e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent native <details> toggle (avoids double-toggle)
         setShowDetails((prev) => !prev);
     }, []);
 

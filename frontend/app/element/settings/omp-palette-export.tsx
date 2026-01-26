@@ -9,10 +9,11 @@
  */
 
 import { atoms, getSettingsPrefixAtom } from "@/app/store/global";
-import { globalStore } from "@/app/store/jotaiStore";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useMemo, useState } from "react";
+
+import "./omp-palette-export.scss";
 
 interface OmpPaletteExportProps {
     themeName?: string;

@@ -73,11 +73,6 @@ export const OmpConfigurator = memo(({ previewBackground, onConfigChange }: OmpC
         selectedSegmentIndex: 0,
     });
 
-    // Load config on mount
-    useEffect(() => {
-        loadConfig();
-    }, []);
-
     const loadConfig = useCallback(async () => {
         setState((s) => ({ ...s, loading: true, error: null }));
         try {
@@ -110,6 +105,11 @@ export const OmpConfigurator = memo(({ previewBackground, onConfigChange }: OmpC
             }));
         }
     }, []);
+
+    // Load config on mount
+    useEffect(() => {
+        loadConfig();
+    }, [loadConfig]);
 
     const handleSave = useCallback(async () => {
         if (!state.editedConfig || !state.hasChanges) return;
@@ -341,5 +341,3 @@ export const OmpConfigurator = memo(({ previewBackground, onConfigChange }: OmpC
 });
 
 OmpConfigurator.displayName = "OmpConfigurator";
-
-export { OmpConfigurator };

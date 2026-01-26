@@ -199,5 +199,3 @@ export const OmpConfigPreview = memo(({ config, previewBackground }: OmpConfigPr
 });
 
 OmpConfigPreview.displayName = "OmpConfigPreview";
-
-export { OmpConfigPreview };

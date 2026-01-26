@@ -210,17 +210,7 @@ const SegmentPropertiesPanel = memo(
         segment: OmpSegmentData | null;
         onUpdate: (updates: Partial<OmpSegmentData>) => void;
     }) => {
-        if (!segment) {
-            return (
-                <div className="omp-segment-properties empty">
-                    <div className="properties-placeholder">
-                        <i className="fa fa-solid fa-hand-pointer" />
-                        <span>Select a segment to edit its properties</span>
-                    </div>
-                </div>
-            );
-        }
-
+        // All hooks must be called before any early returns (React Rules of Hooks)
         const handleForegroundChange = useCallback(
             (e: React.ChangeEvent<HTMLInputElement>) => {
                 onUpdate({ foreground: e.target.value });
@@ -248,6 +238,17 @@ const SegmentPropertiesPanel = memo(
             },
             [onUpdate]
         );
+
+        if (!segment) {
+            return (
+                <div className="omp-segment-properties empty">
+                    <div className="properties-placeholder">
+                        <i className="fa fa-solid fa-hand-pointer" />
+                        <span>Select a segment to edit its properties</span>
+                    </div>
+                </div>
+            );
+        }
 
         return (
             <div className="omp-segment-properties">
@@ -405,5 +406,3 @@ export const OmpBlockEditor = memo(
 );
 
 OmpBlockEditor.displayName = "OmpBlockEditor";
-
-export { OmpBlockEditor };

@@ -403,6 +403,11 @@ declare global {
         error?: string;
     };
 
+    // wshrpc.CommandOmpReinitData
+    type CommandOmpReinitData = {
+        blockid: string;
+    };
+
     // wshrpc.CommandOmpRestoreBackupData
     type CommandOmpRestoreBackupData = {
     };
@@ -424,11 +429,6 @@ declare global {
         success: boolean;
         backuppath?: string;
         error?: string;
-    };
-
-    // wshrpc.CommandOmpReinitData
-    type CommandOmpReinitData = {
-        blockid: string;
     };
 
     // wshrpc.CommandOmpWritePaletteData

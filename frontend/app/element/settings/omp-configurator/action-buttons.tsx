@@ -132,5 +132,3 @@ export const ActionButtons = memo(({ hasChanges, saving, onSave, onCancel }: Act
 });
 
 ActionButtons.displayName = "ActionButtons";
-
-export { ActionButtons };
