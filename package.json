@@ -59,7 +59,7 @@
         "prettier": "^3.8.0",
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",
-        "sass": "1.91.0",
+        "sass": "1.97.3",
         "sharp": "^0.34.5",
         "tailwindcss": "^4.1.18",
         "tailwindcss-animate": "^1.0.7",
