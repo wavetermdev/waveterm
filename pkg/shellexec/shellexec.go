@@ -531,6 +531,7 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	}
 
 	env := make(map[string]string)
+	env["TERM"] = shellutil.DefaultTermType
 	if shellType == shellutil.ShellType_zsh {
 		zshDir := filepath.Join(remoteInfo.HomeDir, ".waveterm", shellutil.ZshIntegrationDir)
 		conn.Infof(logCtx, "setting ZDOTDIR to %s\n", zshDir)

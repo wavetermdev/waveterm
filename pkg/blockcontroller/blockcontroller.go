@@ -13,10 +13,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -402,4 +404,46 @@ func CheckConnStatus(blockId string) error {
 		return fmt.Errorf("not connected: %s", connStatus.Status)
 	}
 	return nil
+}
+
+func makeSwapToken(ctx context.Context, logCtx context.Context, blockId string, blockMeta waveobj.MetaMapType, remoteName string, shellType string) *shellutil.TokenSwapEntry {
+	token := &shellutil.TokenSwapEntry{
+		Token: uuid.New().String(),
+		Env:   make(map[string]string),
+		Exp:   time.Now().Add(5 * time.Minute),
+	}
+	token.Env["TERM_PROGRAM"] = "waveterm"
+	token.Env["WAVETERM_BLOCKID"] = blockId
+	token.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
+	token.Env["WAVETERM"] = "1"
+	tabId, err := wstore.DBFindTabForBlockId(ctx, blockId)
+	if err != nil {
+		log.Printf("error finding tab for block: %v\n", err)
+	} else {
+		token.Env["WAVETERM_TABID"] = tabId
+	}
+	if tabId != "" {
+		wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+		if err != nil {
+			log.Printf("error finding workspace for tab: %v\n", err)
+		} else {
+			token.Env["WAVETERM_WORKSPACEID"] = wsId
+		}
+	}
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		log.Printf("error getting client data: %v\n", err)
+	} else {
+		token.Env["WAVETERM_CLIENTID"] = clientData.OID
+	}
+	token.Env["WAVETERM_CONN"] = remoteName
+	envMap, err := resolveEnvMap(blockId, blockMeta, remoteName)
+	if err != nil {
+		log.Printf("error resolving env map: %v\n", err)
+	}
+	for k, v := range envMap {
+		token.Env[k] = v
+	}
+	token.ScriptText = getCustomInitScript(logCtx, blockMeta, remoteName, shellType)
+	return token
 }

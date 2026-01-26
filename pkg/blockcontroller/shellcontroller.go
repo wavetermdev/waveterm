@@ -17,7 +17,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -409,7 +408,7 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	swapToken := bc.makeSwapToken(ctx, logCtx, blockMeta, remoteName, connUnion.ShellType)
+	swapToken := makeSwapToken(ctx, logCtx, bc.BlockId, blockMeta, remoteName, connUnion.ShellType)
 	cmdOpts.SwapToken = swapToken
 	blocklogger.Debugf(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if connUnion.ConnType == ConnType_Wsl {
@@ -716,48 +715,6 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName
 	}
 	cmdOpts.ForceJwt = blockMeta.GetBool(waveobj.MetaKey_CmdJwt, false)
 	return cmdStr, &cmdOpts, nil
-}
-
-func (bc *ShellController) makeSwapToken(ctx context.Context, logCtx context.Context, blockMeta waveobj.MetaMapType, remoteName string, shellType string) *shellutil.TokenSwapEntry {
-	token := &shellutil.TokenSwapEntry{
-		Token: uuid.New().String(),
-		Env:   make(map[string]string),
-		Exp:   time.Now().Add(5 * time.Minute),
-	}
-	token.Env["TERM_PROGRAM"] = "waveterm"
-	token.Env["WAVETERM_BLOCKID"] = bc.BlockId
-	token.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
-	token.Env["WAVETERM"] = "1"
-	tabId, err := wstore.DBFindTabForBlockId(ctx, bc.BlockId)
-	if err != nil {
-		log.Printf("error finding tab for block: %v\n", err)
-	} else {
-		token.Env["WAVETERM_TABID"] = tabId
-	}
-	if tabId != "" {
-		wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
-		if err != nil {
-			log.Printf("error finding workspace for tab: %v\n", err)
-		} else {
-			token.Env["WAVETERM_WORKSPACEID"] = wsId
-		}
-	}
-	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		log.Printf("error getting client data: %v\n", err)
-	} else {
-		token.Env["WAVETERM_CLIENTID"] = clientData.OID
-	}
-	token.Env["WAVETERM_CONN"] = remoteName
-	envMap, err := resolveEnvMap(bc.BlockId, blockMeta, remoteName)
-	if err != nil {
-		log.Printf("error resolving env map: %v\n", err)
-	}
-	for k, v := range envMap {
-		token.Env[k] = v
-	}
-	token.ScriptText = getCustomInitScript(logCtx, blockMeta, remoteName, shellType)
-	return token
 }
 
 func (bc *ShellController) getBlockData_noErr() *waveobj.Block {

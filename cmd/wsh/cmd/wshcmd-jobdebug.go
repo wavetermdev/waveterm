@@ -176,7 +176,7 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("%-36s %-20s %-9s %-10s %-6s %-30s %-8s %-10s\n", "OID", "Connection", "Connected", "Manager", "Reason", "Cmd", "ExitCode", "Stream")
+	fmt.Printf("%-36s %-20s %-9s %-10s %-6s %-30s %-8s %-10s %-8s\n", "OID", "Connection", "Connected", "Manager", "Reason", "Cmd", "ExitCode", "Stream", "Attached")
 	for _, job := range rtnData {
 		connectedStatus := "no"
 		if connectedMap[job.OID] {
@@ -212,8 +212,17 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 			doneReason = "term"
 		}
 
-		fmt.Printf("%-36s %-20s %-9s %-10s %-6s %-30s %-8s %-10s\n",
-			job.OID, job.Connection, connectedStatus, job.JobManagerStatus, doneReason, job.Cmd, exitCode, streamStatus)
+		attachedBlock := "-"
+		if job.AttachedBlockId != "" {
+			if len(job.AttachedBlockId) >= 8 {
+				attachedBlock = job.AttachedBlockId[:8]
+			} else {
+				attachedBlock = job.AttachedBlockId
+			}
+		}
+
+		fmt.Printf("%-36s %-20s %-9s %-10s %-6s %-30s %-8s %-10s %-8s\n",
+			job.OID, job.Connection, connectedStatus, job.JobManagerStatus, doneReason, job.Cmd, exitCode, streamStatus, attachedBlock)
 	}
 	return nil
 }

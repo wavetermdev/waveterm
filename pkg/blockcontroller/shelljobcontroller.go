@@ -10,9 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"sync"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
@@ -24,6 +22,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -112,6 +112,7 @@ func (sjc *ShellJobController) sendUpdate_withlock() {
 // - If block has existing jobId with non-running job manager:
 //   - force=true: detaches old job and starts new one
 //   - force=false: returns without starting (leaves block unstarted)
+//
 // After establishing jobId, ensures job connection is active (reconnects if needed)
 func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, sjc.BlockId)
@@ -216,24 +217,6 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 	cmdStr := blockMeta.GetString(waveobj.MetaKey_Cmd, "")
 	cwd := blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
 
-	swapToken := &shellutil.TokenSwapEntry{
-		Token: uuid.New().String(),
-		Env:   make(map[string]string),
-		Exp:   time.Now().Add(5 * time.Minute),
-	}
-	swapToken.Env["TERM_PROGRAM"] = "waveterm"
-	swapToken.Env["WAVETERM_BLOCKID"] = sjc.BlockId
-	swapToken.Env["WAVETERM"] = "1"
-	swapToken.Env["WAVETERM_CONN"] = connName
-
-	cmdOpts := shellexec.CommandOptsType{
-		Interactive: true,
-		Login:       true,
-		Cwd:         cwd,
-		SwapToken:   swapToken,
-		ForceJwt:    false,
-	}
-
 	opts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return "", fmt.Errorf("invalid ssh remote name (%s): %w", connName, err)
@@ -241,6 +224,37 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 	conn := conncontroller.GetConn(opts)
 	if conn == nil {
 		return "", fmt.Errorf("connection %q not found", connName)
+	}
+
+	connRoute := wshutil.MakeConnectionRouteId(connName)
+	remoteInfo, err := wshclient.RemoteGetInfoCommand(wshclient.GetBareRpcClient(), &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
+	if err != nil {
+		return "", fmt.Errorf("unable to obtain remote info from connserver: %w", err)
+	}
+	shellType := shellutil.GetShellTypeFromShellPath(remoteInfo.Shell)
+
+	swapToken := makeSwapToken(ctx, ctx, sjc.BlockId, blockMeta, connName, shellType)
+
+	sockName := conn.GetDomainSocketName()
+	rpcContext := wshrpc.RpcContext{
+		RouteId:  wshutil.MakeRandomProcRouteId(),
+		SockName: sockName,
+		BlockId:  sjc.BlockId,
+		Conn:     conn.Opts.String(),
+	}
+	jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
+	if err != nil {
+		return "", fmt.Errorf("error making jwt token: %w", err)
+	}
+	swapToken.RpcContext = &rpcContext
+	swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+
+	cmdOpts := shellexec.CommandOptsType{
+		Interactive: true,
+		Login:       true,
+		Cwd:         cwd,
+		SwapToken:   swapToken,
+		ForceJwt:    false,
 	}
 
 	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn)

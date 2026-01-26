@@ -103,6 +103,15 @@ func SliceToMap(env []string) map[string]string {
 	return envMap
 }
 
+func CopyAndAddToEnvMap(envMap map[string]string, key string, val string) map[string]string {
+	newMap := make(map[string]string, len(envMap)+1)
+	for k, v := range envMap {
+		newMap[k] = v
+	}
+	newMap[key] = val
+	return newMap
+}
+
 func PruneInitialEnv(envMap map[string]string) map[string]string {
 	pruned := make(map[string]string)
 	for key, value := range envMap {
