@@ -402,6 +402,12 @@ export function initIpcHandlers() {
         event.sender.reloadIgnoringCache();
     });
 
+    electron.ipcMain.on("set-native-theme-source", (event, theme: "light" | "dark" | "system") => {
+        if (theme === "light" || theme === "dark" || theme === "system") {
+            electron.nativeTheme.themeSource = theme;
+        }
+    });
+
     electron.ipcMain.handle(
         "show-open-dialog",
         async (

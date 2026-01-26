@@ -1,0 +1,214 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// Shell Profile Helper - SCSS
+// ============================================
+
+.shell-profile-helper {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+    padding: 16px 0;
+}
+
+.shell-profile-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shell-profile-section-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--main-text-color);
+}
+
+.shell-profile-description {
+    margin: 0;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    line-height: 1.5;
+}
+
+.shell-profile-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--main-text-color);
+}
+
+.shell-profile-selector-container {
+    position: relative;
+    display: inline-flex;
+    max-width: 300px;
+}
+
+.shell-profile-selector {
+    width: 100%;
+    height: 36px;
+    padding: 0 36px 0 12px;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: 6px;
+    background: linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+        background: linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3)), var(--form-element-bg-color);
+    }
+
+    option {
+        background: var(--form-element-bg-color);
+        color: var(--form-element-text-color);
+    }
+}
+
+.shell-profile-selector-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--secondary-text-color);
+    pointer-events: none;
+}
+
+.shell-profile-snippet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.shell-profile-file-location {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    font-family: var(--fixed-font);
+}
+
+.shell-profile-snippet-container {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: 6px;
+    background: var(--block-bg-color);
+    overflow: hidden;
+}
+
+.shell-profile-snippet {
+    margin: 0;
+    padding: 16px;
+    font-family: var(--fixed-font);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--main-text-color);
+    overflow-x: auto;
+    white-space: pre;
+
+    &::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb-color);
+        border-radius: 4px;
+
+        &:hover {
+            background: var(--scrollbar-thumb-hover-color);
+        }
+    }
+}
+
+.shell-profile-copy-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: 6px;
+    background: var(--form-element-bg-color);
+    color: var(--main-text-color);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    align-self: flex-start;
+
+    &:hover {
+        background: var(--hover-bg-color);
+        border-color: var(--form-element-primary-color);
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+
+    i {
+        font-size: 12px;
+        transition: color 0.15s ease;
+    }
+
+    // Success state animation
+    &:has(.fa-check) {
+        background: var(--success-color);
+        border-color: var(--success-color);
+        color: white;
+
+        i {
+            animation: checkmark-pop 0.3s ease;
+        }
+    }
+}
+
+@keyframes checkmark-pop {
+    0% {
+        transform: scale(0);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.shell-profile-instructions-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--main-text-color);
+}
+
+.shell-profile-instructions-list {
+    margin: 0;
+    padding-left: 24px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    line-height: 1.6;
+
+    li {
+        margin: 6px 0;
+
+        &::marker {
+            color: var(--form-element-primary-color);
+            font-weight: 600;
+        }
+    }
+}

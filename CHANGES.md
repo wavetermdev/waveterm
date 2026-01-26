@@ -1,104 +1,145 @@
-# Changes Summary: Race Condition Fixes with Optimistic Locking
+# Phase 2: OMP Theme Selector + Palette Export Components
 
-## Overview
+**Date:** 2025-01-25
+**Branch:** feature/omp-theme-selector
+**Worktree:** G:/Code/worktree-omp-theme-selector
 
-This implementation addresses race conditions in tab metadata updates (spec-004) by implementing optimistic locking with version checking. The changes prevent TOCTOU (Time-Of-Check-Time-Of-Use) vulnerabilities in concurrent metadata operations.
+## Summary
+
+This phase completes the integration of two new components for Oh-My-Posh integration in the Unified Appearance Panel:
+
+1. **OmpThemeControl** - Visual theme selector with 124 official OMP themes
+2. **OmpPaletteExport** - Export terminal colors as OMP-compatible palette JSON
 
 ## Files Modified
 
-### Backend (Go)
+### 1. `frontend/app/element/settings/index.ts`
+**Changes:** Added missing exports for the OMP components
 
-#### `pkg/wstore/wstore_dbops.go`
-- Added `ErrVersionMismatch` error variable for concurrent modification detection
-- Added `ErrObjectLocked` error variable for lock state rejection
+```typescript
+export { OmpThemeControl } from "./omptheme-control";
+export type { OmpThemeControlProps } from "./omptheme-control";
 
-#### `pkg/wstore/wstore.go`
-- Added `UpdateObjectMetaWithVersion()` function:
-  - Performs optimistic locking update with version checking
-  - If `expectedVersion > 0` and doesn't match current version, returns `ErrVersionMismatch`
-  - If `expectedVersion == 0`, behaves like `UpdateObjectMeta` (no version check)
+export { OmpPaletteExport } from "./omp-palette-export";
+export type { OmpPaletteExportProps } from "./omp-palette-export";
+```
 
-- Added `UpdateObjectMetaIfNotLocked()` function:
-  - Atomically checks lock and updates metadata
-  - Lock is checked INSIDE the transaction, eliminating TOCTOU vulnerability
-  - Returns `ErrObjectLocked` (wrapped in `ErrVersionMismatch`) if locked
-  - Returns `ErrVersionMismatch` if version doesn't match
+## Pre-existing Implementation (From Phase 0/1)
 
-#### `pkg/service/objectservice/objectservice.go`
-- Added `UpdateObjectMetaWithVersion()` RPC service method
-- Added `UpdateObjectMetaIfNotLocked()` RPC service method
-- Both methods include proper metadata annotations for TypeScript binding generation
+The following files were already implemented and are now properly exported:
 
-### Frontend (TypeScript)
+### Settings Controls
+- `frontend/app/element/settings/omptheme-control.tsx` - OMP theme selector component
+- `frontend/app/element/settings/omptheme-control.scss` - Styles for theme selector
+- `frontend/app/element/settings/omp-palette-export.tsx` - Palette export component
+- `frontend/app/element/settings/omp-palette-export.scss` - Styles for palette export
 
-#### `frontend/app/view/term/termwrap.ts`
-- Added debounce map (`osc7DebounceMap`) for OSC 7 updates per tab
-- Added `OSC7_DEBOUNCE_MS = 300` constant for debounce delay
-- Added `clearOsc7Debounce()` helper function
-- Added `cleanupOsc7DebounceForTab()` exported function for memory leak prevention
-- Updated `handleOsc7Command()` to:
-  - Add null safety check for `tabData?.oid`
-  - Use debouncing to reduce race condition window
-  - Use atomic lock-aware update (`UpdateObjectMetaIfNotLocked`) instead of regular update
-  - Gracefully handle version mismatch and locked state errors
+### Integration Files
+- `frontend/app/store/settings-options-provider.ts` - Contains OmpThemesProvider class
+- `frontend/app/view/waveconfig/settings-visual.tsx` - Has cases for omptheme and omppalette
+- `frontend/app/view/waveconfig/appearance-content.tsx` - Integrates components
+- `frontend/types/settings-metadata.d.ts` - Has type definitions
 
-#### `frontend/app/tab/tab.tsx`
-- Added `getApi` to imports from `@/app/store/global` (fix for pre-existing missing import)
+## Component Details
 
-### Generated Files
+### OmpThemeControl
 
-#### `frontend/app/store/services.ts`
-- Auto-generated new TypeScript methods:
-  - `UpdateObjectMetaWithVersion(oref, meta, expectedVersion)`
-  - `UpdateObjectMetaIfNotLocked(oref, meta, lockKey, expectedVersion)`
+A visual grid selector for Oh-My-Posh themes featuring:
 
-## Key Features Implemented
+- **124 Official Themes** - Comprehensive list of OMP themes
+- **Search/Filter** - Filter themes by name with clear button
+- **Theme Count Display** - Shows number of matching themes
+- **Color Preview Cards** - Each card displays 8 color swatches
+- **Selection Indicator** - Checkmark badge on selected theme
+- **Keyboard Navigation** - Full keyboard accessibility (Tab, Enter, Space)
+- **Loading/Error States** - Proper feedback during async operations
+- **Instructions Panel** - Guidance on configuring OMP after selection
 
-### 1. Optimistic Locking
-- Uses existing `version` field in WaveObj types
-- Version checked inside transaction to prevent TOCTOU
-- Atomic increment of version on successful update (already implemented in `DBUpdate`)
+### OmpPaletteExport
 
-### 2. Error Types
-- **ErrVersionMismatch**: Indicates concurrent modification detected
-- **ErrObjectLocked**: Indicates update rejected due to lock state
-- Both errors are wrapped appropriately for consistent error handling
+A utility component for exporting terminal colors to OMP format:
 
-### 3. OSC 7 Debouncing
-- 300ms debounce window for rapid directory changes
-- Per-tab debounce timers in a Map
-- Cleanup function to prevent memory leaks on tab close
+- **16 ANSI Color Preview** - Visual grid showing standard and bright colors
+- **Current Theme Display** - Shows which terminal theme is active
+- **Copy to Clipboard** - One-click copy with success/error feedback
+- **JSON Preview** - Collapsible section showing the exact JSON output
+- **Usage Instructions** - Step-by-step guide for using the palette in OMP
+- **Error Handling** - Graceful fallback when no theme is selected
 
-### 4. Atomic Lock Checking
-- Lock state checked INSIDE database transaction
-- Eliminates race condition between lock check and update
-- If lock is toggled during update, the update is safely rejected
+## Integration Points
 
-## Acceptance Criteria Status
+### Settings Visual (`settings-visual.tsx`)
+```typescript
+case "omppalette":
+    return <OmpPaletteExport />;
 
-- [x] `UpdateObjectMetaWithVersion` added to `wstore.go`
-- [x] RPC endpoints added to `objectservice.go`
-- [x] OSC 7 debounce map with cleanup function
-- [x] Null safety guards in `termwrap.ts`
-- [x] `ErrVersionMismatch` error type created
-- [x] `ErrObjectLocked` error type created
-- [x] TypeScript compilation passes (our files)
-- [x] Go compilation passes
-- [x] Changes committed
+case "omptheme":
+    return <OmpThemeControl value={...} onChange={...} />;
+```
 
-## Testing Notes
+### Appearance Panel (`appearance-content.tsx`)
+The components are integrated into the "Oh-My-Posh Integration" collapsible section.
 
-To test the implementation:
+### Settings Options Provider (`settings-options-provider.ts`)
+The `OmpThemesProvider` class provides:
+- Static list of 124 official OMP themes
+- Color palettes for 20+ popular themes (dracula, catppuccin variants, gruvbox, nord, etc.)
+- Theme name formatting (converts snake_case to Title Case)
 
-1. **Version Mismatch Test**: Open two terminals in the same tab, rapidly change directories in both - the race condition should be handled gracefully
+## Acceptance Criteria Verification
 
-2. **Lock Bypass Test**: Toggle the lock while an OSC 7 update is in flight - the update should be rejected if lock is set
+- [x] OmpThemeControl displays 124 theme cards in a grid
+- [x] Theme cards show preview colors and theme name
+- [x] Clicking a card selects that theme (checkmark indicator)
+- [x] Search/filter functionality for finding themes
+- [x] OmpPaletteExport shows 16 color swatches from current terminal theme
+- [x] Copy button copies OMP-compatible JSON to clipboard
+- [x] Success/error feedback after copy operation
+- [x] Components integrate into Appearance Panel
 
-3. **Debounce Test**: Rapidly `cd` between directories - only the final directory should be set as basedir
+## Technical Notes
 
-4. **Memory Leak Test**: Open and close multiple tabs - the debounce map should be cleaned up
+### Theme Color Mapping
+The provider includes predefined color palettes for popular themes:
+- Dracula, Catppuccin (all variants), Gruvbox, Nord
+- Night Owl, Tokyo Night, Material, Cobalt2
+- Agnoster, Powerline, Pure, Spaceship
+- Sonicboom (dark/light), Rudolfs (dark/light)
 
-## Notes
+Unknown themes fall back to a default Powerline-style color palette.
 
-- The spec mentions retry logic for manual updates (handleSetBaseDir, handleToggleLock) - this was NOT implemented as the spec noted it as optional for Phase 4 and the core race condition fixes are functional without it
-- Pre-existing TypeScript errors in unrelated files (streamdown.tsx, notificationpopover.tsx) remain unfixed as they are not related to this implementation
+### OMP Palette Format
+The exported JSON follows Oh-My-Posh's palette specification:
+```json
+{
+  "palette": {
+    "black": "#000000",
+    "red": "#cc0000",
+    "green": "#00cc00",
+    "yellow": "#cccc00",
+    "blue": "#0000cc",
+    "magenta": "#cc00cc",
+    "cyan": "#00cccc",
+    "white": "#cccccc",
+    "darkGray": "#666666",
+    "lightRed": "#ff0000",
+    "lightGreen": "#00ff00",
+    "lightYellow": "#ffff00",
+    "lightBlue": "#0000ff",
+    "lightMagenta": "#ff00ff",
+    "lightCyan": "#00ffff",
+    "lightWhite": "#ffffff"
+  }
+}
+```
+
+## Commits
+
+1. `b969f2b4` - feat(settings): export OmpThemeControl and OmpPaletteExport components
+
+## Next Steps
+
+- Phase 3: Backend integration for OMP theme application
+- Phase 4: Shell profile helpers for OMP configuration
+- Future: Dynamic theme loading from GitHub API
+- Future: Local OMP installation detection

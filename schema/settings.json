@@ -23,6 +23,9 @@
         "app:ctrlvpaste": {
           "type": "boolean"
         },
+        "app:theme": {
+          "type": "string"
+        },
         "ai:*": {
           "type": "boolean"
         },
@@ -118,6 +121,9 @@
         },
         "term:ligatures": {
           "type": "boolean"
+        },
+        "term:omptheme": {
+          "type": "string"
         },
         "editor:minimapenabled": {
           "type": "boolean"

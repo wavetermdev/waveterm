@@ -1224,3 +1224,366 @@ func (ws *WshServer) JobControllerAttachJobCommand(ctx context.Context, data wsh
 func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId string) error {
 	return jobcontroller.DetachJobFromBlock(ctx, jobId, true)
 }
+
+// OMP (Oh-My-Posh) integration handlers
+
+func (ws *WshServer) OmpGetConfigInfoCommand(ctx context.Context) (wshrpc.CommandOmpGetConfigInfoRtnData, error) {
+	result := wshrpc.CommandOmpGetConfigInfoRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	result.ConfigPath = configPath
+	result.Format = string(wshutil.DetectConfigFormat(configPath))
+	result.Exists = true
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Readable = false
+		result.Error = fmt.Sprintf("cannot read: %v", err)
+		return result, nil
+	}
+	result.Readable = true
+
+	fileInfo, _ := os.Stat(configPath)
+	if fileInfo != nil && fileInfo.Mode().Perm()&0200 != 0 {
+		result.Writable = true
+	}
+
+	result.CurrentPalette, _ = wshutil.ExtractPaletteFromConfig(content, result.Format)
+
+	return result, nil
+}
+
+func (ws *WshServer) OmpWritePaletteCommand(ctx context.Context, data wshrpc.CommandOmpWritePaletteData) (wshrpc.CommandOmpWritePaletteRtnData, error) {
+	result := wshrpc.CommandOmpWritePaletteRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	if data.CreateBackup {
+		backupPath := configPath + ".backup"
+		content, err := os.ReadFile(configPath)
+		if err == nil {
+			// Preserve original file permissions for backup
+			origInfo, statErr := os.Stat(configPath)
+			backupMode := os.FileMode(0600) // Default to more restrictive
+			if statErr == nil {
+				backupMode = origInfo.Mode()
+			}
+			if err := os.WriteFile(backupPath, content, backupMode); err != nil {
+				result.Error = fmt.Sprintf("backup failed: %v", err)
+				return result, nil
+			}
+			result.BackupPath = backupPath
+		}
+	}
+
+	newContent, err := wshutil.MergePaletteIntoConfig(configPath, data.Palette)
+	if err != nil {
+		result.Error = fmt.Sprintf("merge failed: %v", err)
+		return result, nil
+	}
+
+	fileInfo, _ := os.Stat(configPath)
+	mode := os.FileMode(0644)
+	if fileInfo != nil {
+		mode = fileInfo.Mode()
+	}
+
+	err = os.WriteFile(configPath, newContent, mode)
+	if err != nil {
+		result.Error = fmt.Sprintf("write failed: %v", err)
+		return result, nil
+	}
+
+	result.Success = true
+	return result, nil
+}
+
+func (ws *WshServer) OmpAnalyzeCommand(ctx context.Context, data wshrpc.CommandOmpAnalyzeData) (wshrpc.CommandOmpAnalyzeRtnData, error) {
+	result := wshrpc.CommandOmpAnalyzeRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot read config: %v", err)
+		return result, nil
+	}
+
+	config, err := wshutil.ParseOmpConfig(content)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot parse config: %v", err)
+		return result, nil
+	}
+
+	transparentSegments := wshutil.DetectTransparentSegments(config)
+
+	// Convert to RPC type
+	for _, seg := range transparentSegments {
+		result.TransparentSegments = append(result.TransparentSegments, wshrpc.TransparentSegmentInfo{
+			BlockIndex:   seg.BlockIndex,
+			SegmentIndex: seg.SegmentIndex,
+			SegmentType:  seg.SegmentType,
+			Foreground:   seg.Foreground,
+		})
+	}
+
+	result.HasTransparency = len(transparentSegments) > 0
+	return result, nil
+}
+
+func (ws *WshServer) OmpApplyHighContrastCommand(ctx context.Context, data wshrpc.CommandOmpApplyHighContrastData) (wshrpc.CommandOmpApplyHighContrastRtnData, error) {
+	result := wshrpc.CommandOmpApplyHighContrastRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	// Create backup if requested
+	if data.CreateBackup {
+		backupPath, err := wshutil.CreateOmpBackup(configPath)
+		if err != nil {
+			result.Error = fmt.Sprintf("backup failed: %v", err)
+			return result, nil
+		}
+		result.BackupPath = backupPath
+	}
+
+	// Read and parse current config
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot read config: %v", err)
+		return result, nil
+	}
+
+	config, err := wshutil.ParseOmpConfig(content)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot parse config: %v", err)
+		return result, nil
+	}
+
+	// Apply high contrast mode
+	modifiedConfig := wshutil.ApplyHighContrastMode(config)
+
+	// Serialize the modified config
+	newContent, err := wshutil.SerializeOmpConfig(modifiedConfig)
+	if err != nil {
+		result.Error = fmt.Sprintf("cannot serialize config: %v", err)
+		return result, nil
+	}
+
+	// Write the modified config
+	fileInfo, _ := os.Stat(configPath)
+	mode := os.FileMode(0644)
+	if fileInfo != nil {
+		mode = fileInfo.Mode()
+	}
+
+	if err := os.WriteFile(configPath, newContent, mode); err != nil {
+		result.Error = fmt.Sprintf("write failed: %v", err)
+		return result, nil
+	}
+
+	result.Success = true
+	result.ModifiedPath = configPath
+	return result, nil
+}
+
+func (ws *WshServer) OmpRestoreBackupCommand(ctx context.Context, data wshrpc.CommandOmpRestoreBackupData) (wshrpc.CommandOmpRestoreBackupRtnData, error) {
+	result := wshrpc.CommandOmpRestoreBackupRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	if err := wshutil.RestoreOmpBackup(configPath); err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	result.Success = true
+	return result, nil
+}
+
+// OmpReadConfigCommand reads the full OMP configuration for the configurator
+func (ws *WshServer) OmpReadConfigCommand(ctx context.Context) (wshrpc.CommandOmpReadConfigRtnData, error) {
+	result := wshrpc.CommandOmpReadConfigRtnData{}
+
+	// Determine config source
+	poshTheme := os.Getenv("POSH_THEME")
+	if poshTheme != "" {
+		result.Source = "POSH_THEME"
+	} else {
+		result.Source = "default"
+	}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+	result.ConfigPath = configPath
+
+	// Detect format
+	format := wshutil.DetectConfigFormat(configPath)
+	result.Format = string(format)
+
+	// Check if backup exists
+	backupPath := wshutil.GetBackupPath(configPath)
+	if _, err := os.Stat(backupPath); err == nil {
+		result.BackupExists = true
+	}
+
+	// Read the file
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Error = fmt.Sprintf("Failed to read config: %v", err)
+		return result, nil
+	}
+
+	// For JSON, parse and return structured config
+	if format == wshutil.OmpFormatJSON {
+		var config wshrpc.OmpConfigData
+		if err := json.Unmarshal(content, &config); err != nil {
+			result.Error = fmt.Sprintf("Failed to parse config: %v", err)
+			result.RawContent = string(content)
+			return result, nil
+		}
+		result.Config = &config
+	} else {
+		// For YAML/TOML, return raw content (not yet supported for editing)
+		result.RawContent = string(content)
+	}
+
+	return result, nil
+}
+
+// OmpWriteConfigCommand writes the full OMP configuration
+func (ws *WshServer) OmpWriteConfigCommand(ctx context.Context, data wshrpc.CommandOmpWriteConfigData) (wshrpc.CommandOmpWriteConfigRtnData, error) {
+	result := wshrpc.CommandOmpWriteConfigRtnData{}
+
+	if data.Config == nil {
+		result.Error = "Config is required"
+		return result, nil
+	}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	// Validate the path
+	if err := wshutil.ValidateOmpConfigPath(configPath); err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	// Create backup if requested
+	if data.CreateBackup {
+		backupPath, err := wshutil.CreateOmpBackup(configPath)
+		if err != nil {
+			result.Error = fmt.Sprintf("Failed to create backup: %v", err)
+			return result, nil
+		}
+		result.BackupPath = backupPath
+	}
+
+	// Serialize the config to JSON with nice formatting
+	content, err := json.MarshalIndent(data.Config, "", "  ")
+	if err != nil {
+		result.Error = fmt.Sprintf("Failed to serialize config: %v", err)
+		return result, nil
+	}
+
+	// Get original file permissions
+	origInfo, err := os.Stat(configPath)
+	mode := os.FileMode(0644)
+	if err == nil {
+		mode = origInfo.Mode()
+	}
+
+	// Write the file
+	if err := os.WriteFile(configPath, content, mode); err != nil {
+		result.Error = fmt.Sprintf("Failed to write config: %v", err)
+		return result, nil
+	}
+
+	result.Success = true
+	return result, nil
+}
+
+// OmpReinitCommand sends the OMP reinit command to a terminal block
+func (ws *WshServer) OmpReinitCommand(ctx context.Context, data wshrpc.CommandOmpReinitData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
+
+	// Get block data to validate it exists and is a terminal
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+
+	// Validate block is a terminal view
+	viewType := blockData.Meta.GetString(waveobj.MetaKey_View, "")
+	if viewType != "term" {
+		return fmt.Errorf("block %s is not a terminal (view=%s)", data.BlockId, viewType)
+	}
+
+	// Get shell path from block or connection to determine shell type
+	shellPath := blockData.Meta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
+	if shellPath == "" {
+		// Try to get from settings
+		settings := wconfig.GetWatcher().GetFullConfig().Settings
+		shellPath = settings.TermLocalShellPath
+	}
+	if shellPath == "" {
+		// Use default detection
+		shellPath = shellutil.DetectLocalShellPath()
+	}
+
+	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
+
+	// Generate the OMP reinit command based on shell type
+	var reinitCmd string
+	switch shellType {
+	case shellutil.ShellType_pwsh:
+		reinitCmd = "oh-my-posh init pwsh --config $env:POSH_THEME | Invoke-Expression"
+	case shellutil.ShellType_bash:
+		reinitCmd = `eval "$(oh-my-posh init bash --config $POSH_THEME)"`
+	case shellutil.ShellType_zsh:
+		reinitCmd = `eval "$(oh-my-posh init zsh --config $POSH_THEME)"`
+	default:
+		return fmt.Errorf("unsupported shell type for OMP reinit: %s", shellType)
+	}
+
+	// Send the reinit command to the terminal as input
+	inputData := []byte(reinitCmd + "\n")
+	inputUnion := &blockcontroller.BlockInputUnion{
+		InputData: inputData,
+	}
+
+	err = blockcontroller.SendInput(data.BlockId, inputUnion)
+	if err != nil {
+		return fmt.Errorf("error sending OMP reinit command to terminal: %w", err)
+	}
+
+	return nil
+}

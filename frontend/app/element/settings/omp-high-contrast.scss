@@ -1,0 +1,297 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ===========================================
+// OMP High Contrast Component
+// ===========================================
+
+.omp-high-contrast {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    background: var(--form-element-bg-color);
+    border-radius: 8px;
+    border: 1px solid var(--form-element-border-color);
+}
+
+// Loading state
+.omp-hc-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+
+    i {
+        color: var(--accent-color);
+    }
+}
+
+// Error state
+.omp-hc-error {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 0;
+    color: var(--error-color, #ff6b6b);
+    font-size: 13px;
+
+    i {
+        font-size: 16px;
+    }
+
+    .retry-button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: transparent;
+        border: 1px solid var(--form-element-border-color);
+        border-radius: 4px;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: auto;
+
+        &:hover {
+            background: var(--hover-bg-color);
+            color: var(--main-text-color);
+        }
+    }
+}
+
+// OK state (no transparency)
+.omp-hc-ok {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    color: var(--success-color, #4caf50);
+    font-size: 13px;
+
+    i {
+        font-size: 16px;
+    }
+
+    span {
+        color: var(--secondary-text-color);
+    }
+}
+
+// Warning banner
+.omp-hc-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 6px;
+
+    i {
+        color: #ffc107;
+        font-size: 18px;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    .warning-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .warning-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--main-text-color);
+    }
+
+    .warning-description {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+    }
+}
+
+// Actions row
+.omp-hc-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.apply-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    &.applying {
+        background: var(--secondary-text-color);
+    }
+
+    &.success {
+        background: var(--success-color, #4caf50);
+    }
+
+    i {
+        font-size: 14px;
+    }
+}
+
+.restore-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: 6px;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+        border-color: var(--form-element-primary-color);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+}
+
+// Description text
+.omp-hc-description {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    line-height: 1.5;
+    margin: 0;
+}
+
+// Apply error message
+.omp-hc-apply-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    border-radius: 4px;
+    color: var(--error-color, #ff6b6b);
+    font-size: 12px;
+}
+
+// Segment details
+.omp-hc-details {
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    margin-top: 4px;
+
+    summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--secondary-text-color);
+        user-select: none;
+        list-style: none;
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+
+        &:hover {
+            color: var(--main-text-color);
+        }
+
+        i {
+            font-size: 10px;
+            width: 12px;
+            text-align: center;
+            transition: transform 0.15s ease;
+        }
+    }
+
+    &[open] summary i {
+        transform: rotate(90deg);
+    }
+}
+
+.segment-list {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.segment-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--highlight-bg-color);
+    border-radius: 4px;
+    font-size: 12px;
+
+    .segment-location {
+        color: var(--secondary-text-color);
+        min-width: 140px;
+    }
+
+    .segment-type {
+        font-weight: 500;
+        color: var(--main-text-color);
+        padding: 2px 8px;
+        background: var(--form-element-bg-color);
+        border-radius: 3px;
+    }
+
+    .segment-fg {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+
+        .fg-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(128, 128, 128, 0.3);
+        }
+
+        code {
+            font-family: var(--termfontfamily, monospace);
+            font-size: 11px;
+            color: var(--secondary-text-color);
+        }
+    }
+}

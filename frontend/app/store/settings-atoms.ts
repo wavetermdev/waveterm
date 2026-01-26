@@ -7,17 +7,17 @@
  * Jotai atoms for settings state management.
  */
 
-import { atom } from "jotai";
+import { atom, type PrimitiveAtom } from "jotai";
 
 /**
  * Settings that have been saved to disk.
  */
-export const savedSettingsAtom = atom<Record<string, unknown>>({});
+export const savedSettingsAtom: PrimitiveAtom<Record<string, unknown>> = atom<Record<string, unknown>>({});
 
 /**
  * Pending settings changes that haven't been saved yet.
  */
-export const pendingSettingsAtom = atom<Record<string, unknown>>({});
+export const pendingSettingsAtom: PrimitiveAtom<Record<string, unknown>> = atom<Record<string, unknown>>({});
 
 /**
  * Combined view of settings (pending overrides saved).
@@ -39,7 +39,7 @@ export const hasUnsavedChangesAtom = atom((get) => {
 /**
  * Current save error, if any.
  */
-export const saveErrorAtom = atom<string | null>(null);
+export const saveErrorAtom = atom<string | null>(null) as unknown as PrimitiveAtom<string | null>;
 
 /**
  * Search query for filtering settings.
@@ -49,12 +49,12 @@ export const settingsSearchQueryAtom = atom<string>("");
 /**
  * Currently selected category in the settings view.
  */
-export const selectedCategoryAtom = atom<string | null>(null);
+export const selectedCategoryAtom = atom<string | null>(null) as unknown as PrimitiveAtom<string | null>;
 
 /**
  * Currently selected subcategory in the settings view.
  */
-export const selectedSubcategoryAtom = atom<string | null>(null);
+export const selectedSubcategoryAtom = atom<string | null>(null) as unknown as PrimitiveAtom<string | null>;
 
 /**
  * Combined selection state for category navigation.
@@ -73,7 +73,7 @@ export const selectedSectionAtom = atom(
 /**
  * Whether a save is currently in progress.
  */
-export const isSavingAtom = atom<boolean>(false);
+export const isSavingAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
 
 /**
  * Create atoms for individual settings.

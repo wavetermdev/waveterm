@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const DefaultTermTheme = "default-dark";
+export const DefaultLightTermTheme = "light-default";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import base64 from "base64-js";
@@ -15,14 +16,27 @@ function applyTransparencyToColor(hexColor: string, transparency: number): strin
 }
 
 // returns (theme, bgcolor, transparency (0 - 1.0))
+// appTheme can be "dark", "light", or "system" - used to auto-select terminal theme
 export function computeTheme(
     fullConfig: FullConfigType,
     themeName: string,
-    termTransparency: number
+    termTransparency: number,
+    appTheme?: string
 ): [TermThemeType, string] {
-    let theme: TermThemeType = fullConfig?.termthemes?.[themeName];
+    // Determine effective theme name based on app theme
+    let effectiveThemeName = themeName;
+
+    // If no explicit terminal theme or using default dark, and app is in light mode,
+    // switch to light terminal theme
+    if (appTheme === "light" && (!themeName || themeName === DefaultTermTheme)) {
+        effectiveThemeName = DefaultLightTermTheme;
+    }
+
+    let theme: TermThemeType = fullConfig?.termthemes?.[effectiveThemeName];
     if (theme == null) {
-        theme = fullConfig?.termthemes?.[DefaultTermTheme] || ({} as any);
+        // Fallback based on app theme
+        const fallbackTheme = appTheme === "light" ? DefaultLightTermTheme : DefaultTermTheme;
+        theme = fullConfig?.termthemes?.[fallbackTheme] || fullConfig?.termthemes?.[DefaultTermTheme] || ({} as any);
     }
     const themeCopy = { ...theme };
     if (termTransparency != null && termTransparency > 0) {

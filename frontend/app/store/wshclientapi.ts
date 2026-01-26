@@ -457,6 +457,46 @@ class RpcApiType {
         return client.wshRpcCall("notify", data, opts);
     }
 
+    // command "ompanalyze" [call]
+    OmpAnalyzeCommand(client: WshClient, data: CommandOmpAnalyzeData, opts?: RpcOpts): Promise<CommandOmpAnalyzeRtnData> {
+        return client.wshRpcCall("ompanalyze", data, opts);
+    }
+
+    // command "ompapplyhighcontrast" [call]
+    OmpApplyHighContrastCommand(client: WshClient, data: CommandOmpApplyHighContrastData, opts?: RpcOpts): Promise<CommandOmpApplyHighContrastRtnData> {
+        return client.wshRpcCall("ompapplyhighcontrast", data, opts);
+    }
+
+    // command "ompgetconfiginfo" [call]
+    OmpGetConfigInfoCommand(client: WshClient, opts?: RpcOpts): Promise<CommandOmpGetConfigInfoRtnData> {
+        return client.wshRpcCall("ompgetconfiginfo", null, opts);
+    }
+
+    // command "ompreadconfig" [call]
+    OmpReadConfigCommand(client: WshClient, opts?: RpcOpts): Promise<CommandOmpReadConfigRtnData> {
+        return client.wshRpcCall("ompreadconfig", null, opts);
+    }
+
+    // command "ompreinit" [call]
+    OmpReinitCommand(client: WshClient, data: CommandOmpReinitData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("ompreinit", data, opts);
+    }
+
+    // command "omprestorebackup" [call]
+    OmpRestoreBackupCommand(client: WshClient, data: CommandOmpRestoreBackupData, opts?: RpcOpts): Promise<CommandOmpRestoreBackupRtnData> {
+        return client.wshRpcCall("omprestorebackup", data, opts);
+    }
+
+    // command "ompwriteconfig" [call]
+    OmpWriteConfigCommand(client: WshClient, data: CommandOmpWriteConfigData, opts?: RpcOpts): Promise<CommandOmpWriteConfigRtnData> {
+        return client.wshRpcCall("ompwriteconfig", data, opts);
+    }
+
+    // command "ompwritepalette" [call]
+    OmpWritePaletteCommand(client: WshClient, data: CommandOmpWritePaletteData, opts?: RpcOpts): Promise<CommandOmpWritePaletteRtnData> {
+        return client.wshRpcCall("ompwritepalette", data, opts);
+    }
+
     // command "path" [call]
     PathCommand(client: WshClient, data: PathCommandData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("path", data, opts);

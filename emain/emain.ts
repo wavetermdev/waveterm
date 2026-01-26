@@ -55,7 +55,7 @@ const electronApp = electron.app;
 const waveDataDir = getWaveDataDir();
 const waveConfigDir = getWaveConfigDir();
 
-electron.nativeTheme.themeSource = "dark";
+// Native theme is set dynamically in appMain() based on app:theme setting
 
 console.log = log;
 console.log(
@@ -137,7 +137,7 @@ async function sendDisplaysTDataEvent() {
     if (displays.length === 0) {
         return;
     }
-    const props: TEventProps = {};
+    const props: Record<string, any> = {};
     props["display:count"] = displays.length;
     props["display:height"] = displays[0].height;
     props["display:width"] = displays[0].width;
@@ -150,8 +150,6 @@ function logActiveState() {
         const astate = getActivityState();
         const activity: ActivityUpdate = { openminutes: 1 };
         const ww = focusedWaveWindow;
-        const activeTabView = ww?.activeTabView;
-        const isWaveAIOpen = activeTabView?.isWaveAIOpen ?? false;
 
         if (astate.wasInFg) {
             activity.fgminutes = 1;
@@ -164,21 +162,6 @@ function logActiveState() {
         const termCmdCount = getAndClearTermCommandsRun();
         if (termCmdCount > 0) {
             activity.termcommandsrun = termCmdCount;
-        }
-
-        const props: TEventProps = {
-            "activity:activeminutes": activity.activeminutes,
-            "activity:fgminutes": activity.fgminutes,
-            "activity:openminutes": activity.openminutes,
-        };
-        if (termCmdCount > 0) {
-            props["activity:termcommandsrun"] = termCmdCount;
-        }
-        if (astate.wasActive && isWaveAIOpen) {
-            props["activity:waveaiactiveminutes"] = 1;
-        }
-        if (astate.wasInFg && isWaveAIOpen) {
-            props["activity:waveaifgminutes"] = 1;
         }
 
         try {
@@ -327,6 +310,15 @@ async function appMain() {
         console.log("error initializing wshrpc", e);
     }
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+
+    // Set native theme based on app:theme setting
+    const appTheme = fullConfig?.settings?.["app:theme"] ?? "dark";
+    if (appTheme === "system" || appTheme === "light" || appTheme === "dark") {
+        electron.nativeTheme.themeSource = appTheme;
+    } else {
+        electron.nativeTheme.themeSource = "dark";
+    }
+
     checkIfRunningUnderARM64Translation(fullConfig);
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();

@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getResolvedTheme } from "@/app/hook/usetheme";
 import * as monaco from "monaco-editor";
 import "monaco-editor/esm/vs/language/css/monaco.contribution";
 import "monaco-editor/esm/vs/language/html/monaco.contribution";
@@ -68,7 +69,26 @@ export function loadMonaco() {
         validate: true,
         schemas: [],
     });
-    monaco.editor.setTheme("wave-theme-dark");
+    // Set initial theme based on resolved theme
+    const resolvedTheme = getResolvedTheme();
+    const monacoTheme = resolvedTheme === "light" ? "wave-theme-light" : "wave-theme-dark";
+    monaco.editor.setTheme(monacoTheme);
+
+    // Watch for theme changes via data-theme attribute on document root
+    const themeObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === "attributes" && mutation.attributeName === "data-theme") {
+                const newTheme = document.documentElement.getAttribute("data-theme");
+                const newMonacoTheme = newTheme === "light" ? "wave-theme-light" : "wave-theme-dark";
+                monaco.editor.setTheme(newMonacoTheme);
+            }
+        }
+    });
+    themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+    });
+
     // Disable default validation errors for typescript and javascript
     monaco.typescript.typescriptDefaults.setDiagnosticsOptions({
         noSemanticValidation: true,

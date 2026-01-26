@@ -1,0 +1,155 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// Prompt Compatibility Help - SCSS
+// ============================================
+
+.prompt-compatibility-help {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+    padding: 8px 0;
+}
+
+.prompt-compat-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    &.prompt-compat-helper-section {
+        padding: 20px;
+        border: 1px solid var(--form-element-border-color);
+        border-radius: 8px;
+        background: var(--form-element-bg-color);
+    }
+}
+
+.prompt-compat-section-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--main-text-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    i {
+        font-size: 14px;
+        color: var(--form-element-primary-color);
+    }
+}
+
+.prompt-compat-explanation {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--secondary-text-color);
+        line-height: 1.6;
+
+        strong {
+            color: var(--main-text-color);
+            font-weight: 600;
+        }
+    }
+}
+
+.prompt-compat-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+}
+
+.prompt-compat-link-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: 8px;
+    background: var(--form-element-bg-color);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+
+    &:hover {
+        background: var(--hover-bg-color);
+        border-color: var(--form-element-primary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+        .prompt-compat-link-title {
+            color: var(--form-element-primary-color);
+        }
+
+        .fa-external-link-alt {
+            color: var(--form-element-primary-color);
+        }
+    }
+
+    &:active {
+        transform: translateY(-1px);
+    }
+}
+
+.prompt-compat-link-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.prompt-compat-link-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--main-text-color);
+    transition: color 0.15s ease;
+}
+
+.prompt-compat-link-description {
+    margin: 0;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    line-height: 1.5;
+}
+
+.fa-external-link-alt {
+    font-size: 11px;
+    color: var(--secondary-text-color);
+    transition: color 0.15s ease;
+}
+
+.prompt-compat-tips {
+    margin: 0;
+    padding-left: 24px;
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    line-height: 1.6;
+
+    li {
+        margin: 12px 0;
+
+        &::marker {
+            color: var(--form-element-primary-color);
+        }
+
+        strong {
+            color: var(--main-text-color);
+            font-weight: 600;
+        }
+
+        code {
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: var(--block-bg-color);
+            font-family: var(--fixed-font);
+            font-size: 11px;
+            color: var(--form-element-primary-color);
+        }
+    }
+}

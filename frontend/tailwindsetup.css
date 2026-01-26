@@ -74,6 +74,57 @@
     --z-window-drag: 100;
 }
 
+/* Light mode color overrides */
+[data-theme="light"] {
+    --color-background: rgb(250, 250, 250);
+    --color-foreground: #1a1a1a;
+    --color-white: #1a1a1a;
+    --color-primary: #1a1a1a;
+    --color-muted-foreground: rgb(100, 100, 100);
+    --color-secondary: rgb(100, 100, 100);
+    --color-muted: rgb(130, 130, 130);
+    --color-accent-50: rgb(240, 253, 244);
+    --color-accent-100: rgb(220, 252, 231);
+    --color-accent-200: rgb(187, 247, 208);
+    --color-accent-300: rgb(134, 239, 172);
+    --color-accent-400: rgb(46, 160, 67); /* main accent color for light mode */
+    --color-accent-500: rgb(34, 137, 54);
+    --color-accent-600: rgb(28, 114, 45);
+    --color-accent-700: rgb(22, 91, 36);
+    --color-accent-800: rgb(18, 73, 29);
+    --color-accent-900: rgb(15, 61, 24);
+    --color-error: rgb(207, 34, 46);
+    --color-warning: rgb(191, 135, 0);
+    --color-success: rgb(46, 160, 67);
+    --color-panel: rgba(245, 245, 245, 0.9);
+    --color-hover: rgba(0, 0, 0, 0.05);
+    --color-border: rgba(0, 0, 0, 0.12);
+    --color-modalbg: #ffffff;
+    --color-accentbg: rgba(46, 160, 67, 0.15);
+    --color-hoverbg: rgba(0, 0, 0, 0.08);
+    --color-highlightbg: rgba(0, 0, 0, 0.1);
+    --color-accent: rgb(46, 160, 67);
+    --color-accenthover: rgb(56, 180, 77);
+
+    /* ANSI Colors (Light Palette) */
+    --ansi-black: #24292f;
+    --ansi-red: #cf222e;
+    --ansi-green: #116329;
+    --ansi-yellow: #4d2d00;
+    --ansi-blue: #0969da;
+    --ansi-magenta: #8250df;
+    --ansi-cyan: #1b7c83;
+    --ansi-white: #6e7781;
+    --ansi-brightblack: #57606a;
+    --ansi-brightred: #a40e26;
+    --ansi-brightgreen: #1a7f37;
+    --ansi-brightyellow: #633c01;
+    --ansi-brightblue: #218bff;
+    --ansi-brightmagenta: #a475f9;
+    --ansi-brightcyan: #3192aa;
+    --ansi-brightwhite: #8c959f;
+}
+
 :root {
     --zoomfactor: 1;
     --zoomfactor-inv: 1;
@@ -93,6 +144,15 @@ svg [aria-label="tip"] g path {
 
 .monaco-editor .slider:hover {
     background: rgba(255, 255, 255, 0.6);
+}
+
+/* Light theme Monaco scrollbar styling */
+[data-theme="light"] .monaco-editor .slider {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .monaco-editor .slider:hover {
+    background: rgba(0, 0, 0, 0.4);
 }
 
 .ellipsis {

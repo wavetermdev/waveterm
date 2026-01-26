@@ -5,6 +5,7 @@ package wconfig
 
 import (
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
@@ -50,6 +51,16 @@ func GetWatcher() *Watcher {
 
 		subdirs := GetConfigSubdirs()
 		for _, dir := range subdirs {
+			// Only watch directories that exist; these are optional config directories
+			if _, statErr := os.Stat(dir); statErr != nil {
+				if os.IsNotExist(statErr) {
+					// Directory doesn't exist yet - skip silently (it's optional)
+					continue
+				}
+				// Other stat errors - log at debug level and skip
+				log.Printf("could not stat config subdir %s: %v", dir, statErr)
+				continue
+			}
 			err = instance.watcher.Add(dir)
 			if err != nil {
 				log.Printf(failedStr, dir, err)

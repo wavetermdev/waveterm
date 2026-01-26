@@ -552,6 +552,54 @@ func NotifyCommand(w *wshutil.WshRpc, data wshrpc.WaveNotificationOptions, opts 
 	return err
 }
 
+// command "ompanalyze", wshserver.OmpAnalyzeCommand
+func OmpAnalyzeCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpAnalyzeData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpAnalyzeRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpAnalyzeRtnData](w, "ompanalyze", data, opts)
+	return resp, err
+}
+
+// command "ompapplyhighcontrast", wshserver.OmpApplyHighContrastCommand
+func OmpApplyHighContrastCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpApplyHighContrastData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpApplyHighContrastRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpApplyHighContrastRtnData](w, "ompapplyhighcontrast", data, opts)
+	return resp, err
+}
+
+// command "ompgetconfiginfo", wshserver.OmpGetConfigInfoCommand
+func OmpGetConfigInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpGetConfigInfoRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpGetConfigInfoRtnData](w, "ompgetconfiginfo", nil, opts)
+	return resp, err
+}
+
+// command "ompreadconfig", wshserver.OmpReadConfigCommand
+func OmpReadConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpReadConfigRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpReadConfigRtnData](w, "ompreadconfig", nil, opts)
+	return resp, err
+}
+
+// command "ompreinit", wshserver.OmpReinitCommand
+func OmpReinitCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpReinitData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "ompreinit", data, opts)
+	return err
+}
+
+// command "omprestorebackup", wshserver.OmpRestoreBackupCommand
+func OmpRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpRestoreBackupData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpRestoreBackupRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpRestoreBackupRtnData](w, "omprestorebackup", data, opts)
+	return resp, err
+}
+
+// command "ompwriteconfig", wshserver.OmpWriteConfigCommand
+func OmpWriteConfigCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpWriteConfigData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpWriteConfigRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpWriteConfigRtnData](w, "ompwriteconfig", data, opts)
+	return resp, err
+}
+
+// command "ompwritepalette", wshserver.OmpWritePaletteCommand
+func OmpWritePaletteCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpWritePaletteData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpWritePaletteRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpWritePaletteRtnData](w, "ompwritepalette", data, opts)
+	return resp, err
+}
+
 // command "path", wshserver.PathCommand
 func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "path", data, opts)

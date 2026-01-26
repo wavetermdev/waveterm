@@ -12,6 +12,7 @@ const (
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
+	ConfigKey_AppTheme                       = "app:theme"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -46,6 +47,7 @@ const (
 	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
 	ConfigKey_TermLigatures                  = "term:ligatures"
+	ConfigKey_TermOmpTheme                   = "term:omptheme"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

@@ -8,7 +8,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { AiPresetsContent } from "@/app/view/waveconfig/aipresets-content";
-import { BgPresetsContent } from "@/app/view/waveconfig/bgpresets-content";
+import { AppearanceContent } from "@/app/view/waveconfig/appearance-content";
 import { ConnectionsContent } from "@/app/view/waveconfig/connections-content";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { SettingsVisualContent } from "@/app/view/waveconfig/settings-visual-content";
@@ -39,16 +39,6 @@ export type ConfigFile = {
 };
 
 export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
-
-function validateBgJson(parsed: any): ValidationResult {
-    const keys = Object.keys(parsed);
-    for (const key of keys) {
-        if (!key.startsWith("bg@")) {
-            return { error: `Invalid key "${key}": all top-level keys must start with "bg@"` };
-        }
-    }
-    return { success: true };
-}
 
 // Key allowlist for tabvar@ presets
 const TABVAR_ALLOWED_KEYS = new Set([
@@ -170,6 +160,12 @@ const configFiles: ConfigFile[] = [
         visualComponent: SettingsVisualContent,
     },
     {
+        name: "Appearance",
+        path: "virtual:appearance",
+        hasJsonView: false,
+        visualComponent: AppearanceContent,
+    },
+    {
         name: "Connections",
         path: "connections.json",
         language: "json",
@@ -195,15 +191,6 @@ const configFiles: ConfigFile[] = [
         validator: validateWaveAiJson,
         hasJsonView: true,
         visualComponent: WaveAIVisualContent,
-    },
-    {
-        name: "Tab Backgrounds",
-        path: "presets/bg.json",
-        language: "json",
-        docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
-        validator: validateBgJson,
-        hasJsonView: true,
-        visualComponent: BgPresetsContent,
     },
     {
         name: "Tab Variables",

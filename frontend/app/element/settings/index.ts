@@ -40,6 +40,20 @@ export type { PathControlProps } from "./path-control";
 export { StringListControl } from "./stringlist-control";
 export type { StringListControlProps } from "./stringlist-control";
 
+export { TermThemeControl } from "./termtheme-control";
+export type { TermThemeControlProps } from "./termtheme-control";
+
+export { OmpThemeControl } from "./omptheme-control";
+export type { OmpThemeControlProps } from "./omptheme-control";
+
+export { OmpPaletteExport } from "./omp-palette-export";
+export type { OmpPaletteExportProps } from "./omp-palette-export";
+
+export { PreviewBackgroundToggle } from "./preview-background-toggle";
+export type { PreviewBackgroundToggleProps, PreviewBackground } from "./preview-background-toggle";
+
+export { OmpHighContrast } from "./omp-high-contrast";
+
 // Factory for dynamic control rendering
 export { ControlFactory, renderSettingControl } from "./control-factory";
 export type { ControlFactoryProps } from "./control-factory";

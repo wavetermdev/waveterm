@@ -172,6 +172,20 @@ type WshRpcInterface interface {
 	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
 	JobControllerAttachJobCommand(ctx context.Context, data CommandJobControllerAttachJobData) error
 	JobControllerDetachJobCommand(ctx context.Context, jobId string) error
+
+	// OMP (Oh-My-Posh) integration
+	OmpGetConfigInfoCommand(ctx context.Context) (CommandOmpGetConfigInfoRtnData, error)
+	OmpWritePaletteCommand(ctx context.Context, data CommandOmpWritePaletteData) (CommandOmpWritePaletteRtnData, error)
+	OmpAnalyzeCommand(ctx context.Context, data CommandOmpAnalyzeData) (CommandOmpAnalyzeRtnData, error)
+	OmpApplyHighContrastCommand(ctx context.Context, data CommandOmpApplyHighContrastData) (CommandOmpApplyHighContrastRtnData, error)
+	OmpRestoreBackupCommand(ctx context.Context, data CommandOmpRestoreBackupData) (CommandOmpRestoreBackupRtnData, error)
+
+	// OMP Configurator - Full config read/write
+	OmpReadConfigCommand(ctx context.Context) (CommandOmpReadConfigRtnData, error)
+	OmpWriteConfigCommand(ctx context.Context, data CommandOmpWriteConfigData) (CommandOmpWriteConfigRtnData, error)
+
+	// OMP reinit command for live reload
+	OmpReinitCommand(ctx context.Context, data CommandOmpReinitData) error
 }
 
 // for frontend
@@ -795,4 +809,198 @@ type DetectedShell struct {
 type DetectShellsResponse struct {
 	Shells []DetectedShell `json:"shells"`
 	Error  string          `json:"error,omitempty"` // Non-fatal errors
+}
+
+// OMP (Oh-My-Posh) configuration types
+
+// CommandOmpGetConfigInfoRtnData contains OMP config info
+type CommandOmpGetConfigInfoRtnData struct {
+	ConfigPath     string            `json:"configpath"`
+	Format         string            `json:"format"`
+	Exists         bool              `json:"exists"`
+	Readable       bool              `json:"readable"`
+	Writable       bool              `json:"writable"`
+	CurrentPalette map[string]string `json:"currentpalette,omitempty"`
+	Error          string            `json:"error,omitempty"`
+}
+
+// CommandOmpWritePaletteData contains palette write request
+type CommandOmpWritePaletteData struct {
+	Palette      map[string]string `json:"palette"`
+	CreateBackup bool              `json:"createbackup"`
+}
+
+// CommandOmpWritePaletteRtnData contains write result
+type CommandOmpWritePaletteRtnData struct {
+	Success    bool   `json:"success"`
+	BackupPath string `json:"backuppath,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+// CommandOmpAnalyzeData contains analysis request (empty - uses $POSH_THEME)
+type CommandOmpAnalyzeData struct{}
+
+// TransparentSegmentInfo contains info about a segment with transparent background
+type TransparentSegmentInfo struct {
+	BlockIndex   int    `json:"blockindex"`
+	SegmentIndex int    `json:"segmentindex"`
+	SegmentType  string `json:"segmenttype"`
+	Foreground   string `json:"foreground"`
+}
+
+// CommandOmpAnalyzeRtnData contains analysis result
+type CommandOmpAnalyzeRtnData struct {
+	TransparentSegments []TransparentSegmentInfo `json:"transparentsegments"`
+	HasTransparency     bool                     `json:"hastransparency"`
+	Error               string                   `json:"error,omitempty"`
+}
+
+// CommandOmpApplyHighContrastData contains high contrast mode request
+type CommandOmpApplyHighContrastData struct {
+	CreateBackup bool `json:"createbackup"`
+}
+
+// CommandOmpApplyHighContrastRtnData contains high contrast mode result
+type CommandOmpApplyHighContrastRtnData struct {
+	Success      bool   `json:"success"`
+	BackupPath   string `json:"backuppath,omitempty"`
+	ModifiedPath string `json:"modifiedpath,omitempty"`
+	Error        string `json:"error,omitempty"`
+}
+
+// CommandOmpRestoreBackupData contains restore backup request (empty)
+type CommandOmpRestoreBackupData struct{}
+
+// CommandOmpRestoreBackupRtnData contains restore backup result
+type CommandOmpRestoreBackupRtnData struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+}
+
+// ============================================
+// OMP Configurator RPC Types (Full Config Read/Write)
+// ============================================
+
+// OmpConfigData represents the full OMP configuration for the configurator
+type OmpConfigData struct {
+	Schema                 string                   `json:"$schema,omitempty"`
+	Version                int                      `json:"version,omitempty"`
+	FinalSpace             bool                     `json:"final_space,omitempty"`
+	ConsoleTitleTemplate   string                   `json:"console_title_template,omitempty"`
+	Palette                map[string]string        `json:"palette,omitempty"`
+	Blocks                 []OmpBlockData           `json:"blocks"`
+	TransientPrompt        *OmpTransientData        `json:"transient_prompt,omitempty"`
+	SecondaryPrompt        *OmpSecondaryPromptData  `json:"secondary_prompt,omitempty"`
+	DebugPrompt            *OmpDebugPromptData      `json:"debug_prompt,omitempty"`
+	Tooltips               []OmpTooltipData         `json:"tooltips,omitempty"`
+	CycleCacheEnabled      bool                     `json:"cycle_cache_enabled,omitempty"`
+	DisableCursorPositioning bool                   `json:"disable_cursor_positioning,omitempty"`
+	PatchPwshBleed         bool                     `json:"patch_pwsh_bleed,omitempty"`
+	UpgradeNotice          bool                     `json:"upgrade_notice,omitempty"`
+}
+
+// OmpBlockData represents a block in the OMP config
+type OmpBlockData struct {
+	Type      string           `json:"type"`
+	Alignment string           `json:"alignment"`
+	Segments  []OmpSegmentData `json:"segments"`
+	Newline   bool             `json:"newline,omitempty"`
+	Filler    string           `json:"filler,omitempty"`
+	Overflow  string           `json:"overflow,omitempty"`
+}
+
+// OmpSegmentData represents a segment in the OMP config
+type OmpSegmentData struct {
+	Type                    string                 `json:"type"`
+	Style                   string                 `json:"style"`
+	Foreground              string                 `json:"foreground,omitempty"`
+	Background              string                 `json:"background,omitempty"`
+	Template                string                 `json:"template,omitempty"`
+	Templates               []string               `json:"templates,omitempty"`
+	Properties              map[string]interface{} `json:"properties,omitempty"`
+	LeadingDiamond          string                 `json:"leading_diamond,omitempty"`
+	TrailingDiamond         string                 `json:"trailing_diamond,omitempty"`
+	LeadingPowerlineSymbol  string                 `json:"leading_powerline_symbol,omitempty"`
+	TrailingPowerlineSymbol string                 `json:"trailing_powerline_symbol,omitempty"`
+	InvertPowerline         bool                   `json:"invert_powerline,omitempty"`
+	PowerlineSymbol         string                 `json:"powerline_symbol,omitempty"`
+	Interactive             bool                   `json:"interactive,omitempty"`
+	ForegroundTemplates     []string               `json:"foreground_templates,omitempty"`
+	BackgroundTemplates     []string               `json:"background_templates,omitempty"`
+	Alias                   string                 `json:"alias,omitempty"`
+	MaxWidth                int                    `json:"max_width,omitempty"`
+	MinWidth                int                    `json:"min_width,omitempty"`
+	Cache                   *OmpCacheData          `json:"cache,omitempty"`
+}
+
+// OmpTransientData represents transient prompt settings
+type OmpTransientData struct {
+	Foreground string `json:"foreground,omitempty"`
+	Background string `json:"background,omitempty"`
+	Template   string `json:"template,omitempty"`
+	Filler     string `json:"filler,omitempty"`
+	Newline    bool   `json:"newline,omitempty"`
+}
+
+// OmpSecondaryPromptData represents secondary prompt settings
+type OmpSecondaryPromptData struct {
+	Foreground string `json:"foreground,omitempty"`
+	Background string `json:"background,omitempty"`
+	Template   string `json:"template,omitempty"`
+}
+
+// OmpDebugPromptData represents debug prompt settings
+type OmpDebugPromptData struct {
+	Foreground string `json:"foreground,omitempty"`
+	Background string `json:"background,omitempty"`
+	Template   string `json:"template,omitempty"`
+}
+
+// OmpTooltipData represents a tooltip configuration
+type OmpTooltipData struct {
+	Type       string                 `json:"type"`
+	Tips       []string               `json:"tips"`
+	Style      string                 `json:"style,omitempty"`
+	Foreground string                 `json:"foreground,omitempty"`
+	Background string                 `json:"background,omitempty"`
+	Template   string                 `json:"template,omitempty"`
+	Properties map[string]interface{} `json:"properties,omitempty"`
+}
+
+// OmpCacheData represents cache settings for a segment
+type OmpCacheData struct {
+	Duration string `json:"duration,omitempty"`
+	Strategy string `json:"strategy,omitempty"`
+}
+
+// CommandOmpReadConfigData is empty - uses $POSH_THEME
+type CommandOmpReadConfigData struct{}
+
+// CommandOmpReadConfigRtnData contains the full OMP config
+type CommandOmpReadConfigRtnData struct {
+	ConfigPath   string         `json:"configpath"`
+	Config       *OmpConfigData `json:"config,omitempty"`
+	RawContent   string         `json:"rawcontent,omitempty"`
+	Format       string         `json:"format"`
+	Source       string         `json:"source"`  // "POSH_THEME" or "default"
+	BackupExists bool           `json:"backupexists"`
+	Error        string         `json:"error,omitempty"`
+}
+
+// CommandOmpWriteConfigData contains config to write
+type CommandOmpWriteConfigData struct {
+	Config       *OmpConfigData `json:"config"`
+	CreateBackup bool           `json:"createbackup"`
+}
+
+// CommandOmpWriteConfigRtnData contains write result
+type CommandOmpWriteConfigRtnData struct {
+	Success    bool   `json:"success"`
+	BackupPath string `json:"backuppath,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+// CommandOmpReinitData contains OMP reinit request
+type CommandOmpReinitData struct {
+	BlockId string `json:"blockid"`
 }

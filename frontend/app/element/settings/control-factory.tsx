@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { memo } from "react";
+import React, { memo } from "react";
 
 import { ColorControl } from "./color-control";
 import { FontControl } from "./font-control";
@@ -175,7 +175,7 @@ function renderSettingControl(
         selectOptions?: SelectOption[];
         onBrowsePath?: () => void;
     }
-): JSX.Element {
+): React.ReactElement {
     const { disabled, min, max, step, pattern, selectOptions, onBrowsePath } = options ?? {};
 
     switch (controlType) {
