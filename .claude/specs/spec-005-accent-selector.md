@@ -188,7 +188,7 @@ export type { AccentSelectorProps };
 
     &.selected {
         border-color: var(--accent-color);
-        box-shadow: 0 0 8px 0 rgba(var(--accent-color-rgb, 88, 193, 66), 0.3);
+        box-shadow: 0 0 0 1px var(--accent-color);
     }
 
     &:focus-visible {
@@ -251,7 +251,7 @@ export type { AccentSelectorProps };
 | Card background | `var(--form-element-bg-color)` | Matches `termtheme-card` pattern |
 | Swatch size | 40x40px circle | Prominent color preview |
 | Swatch border | `2px solid rgba(255,255,255,0.1)` | Subtle definition in dark mode |
-| Selected glow | `box-shadow: 0 0 8px 0 rgba(accent, 0.3)` | Subtle glow effect to indicate selection |
+| Selected outline | `box-shadow: 0 0 0 1px var(--accent-color)` | Solid 1px outline using accent color to indicate selection |
 | Check icon | Absolute positioned, top-right | Matches `termtheme-check` pattern (`settings-controls.scss:795-810`) |
 | Hover swatch scale | `scale(1.1)` | Subtle interaction feedback |
 | Transition | 0.15s ease | Project standard |
@@ -260,7 +260,7 @@ export type { AccentSelectorProps };
 
 The selected card uses:
 1. `border-color: var(--accent-color)` -- border highlights with the current accent
-2. `box-shadow` -- subtle glow using the accent color at 30% opacity
+2. `box-shadow` -- solid 1px outline using the accent color
 3. Check icon overlay -- circular accent-colored badge with white checkmark (top-right corner)
 
 This matches the established `termtheme-card.selected` pattern from `settings-controls.scss:756-759`.
@@ -323,7 +323,7 @@ The `AppearanceContent` component at `frontend/app/view/waveconfig/appearance-co
 - [ ] Component renders 5 accent cards: Green, Warm, Blue, Purple, Teal
 - [ ] Each card shows a circular color swatch with the preview color
 - [ ] Each card shows a text label below the swatch
-- [ ] Selected card has accent-colored border and subtle glow
+- [ ] Selected card has accent-colored border and solid outline shadow
 - [ ] Selected card shows a check icon overlay (top-right corner)
 - [ ] `onChange` is called with the correct accent value when a card is clicked
 - [ ] Cards are laid out in a responsive grid (`auto-fill, minmax(100px, 1fr)`)
@@ -335,3 +335,11 @@ The `AppearanceContent` component at `frontend/app/view/waveconfig/appearance-co
 - [ ] Component is accessible (role="radiogroup", role="radio", aria-checked, aria-label)
 - [ ] Component is exported from `frontend/app/element/settings/index.ts`
 - [ ] TypeScript compiles without errors
+
+## Design Review
+
+**Reviewer:** Phase 2 Design Review Agent
+**Verdict:** APPROVED (after fixes applied)
+**Date:** 2026-01-26
+
+Removed --accent-color-rgb dependency. Using solid box-shadow with var(--accent-color) instead.

@@ -223,11 +223,11 @@ After hiding settings, some categories may show fewer items in the sidebar count
 This will automatically reflect the correct count because `settingsByCategory` is derived from `getSettingsByCategoryForPlatform()`, which now excludes hidden settings. No code change needed.
 
 However, verify that no category becomes empty after hiding settings. Check:
-- **Terminal** category: Has 14 settings, hiding 8 (fontsize, fontfamily, theme, transparency, ligatures, omptheme, ompexport, promptcompat). Remaining 6: scrollback, copyonselect, disablewebgl, localshellpath, localshellopts, allowbracketedpaste, shiftenternewline, macoptionismeta, gitbashpath. That is 9 remaining -- safe.
+- **Terminal** category: Has 17 settings, hiding 8 (fontsize, fontfamily, theme, transparency, ligatures, omptheme, ompexport, promptcompat). Remaining 9: scrollback, copyonselect, disablewebgl, localshellpath, localshellopts, allowbracketedpaste, shiftenternewline, macoptionismeta, gitbashpath. That is 9 remaining -- safe.
 - **Editor** category: Has 5 settings, hiding 2 (fontsize, minimap). Remaining 3: stickyscroll, wordwrap, inlinediff -- safe.
-- **Window** category: Has 15 settings, hiding 5 (transparent, blur, opacity, bgcolor, zoom). Remaining 10 -- safe.
-- **AI** category: Has 14 settings, hiding 2 (fontsize, fixedfontsize). Remaining 12 -- safe.
-- **App** category: Has 6 settings, hiding 1 (theme). Remaining 5 -- safe.
+- **Window** category: Has 19 settings, hiding 5 (transparent, blur, opacity, bgcolor, zoom). Remaining 14 -- safe.
+- **AI** category: Has 13 settings, hiding 2 (fontsize, fixedfontsize). Remaining 11 -- safe.
+- **App** category: Has 7 settings (8 after Task 1 adds app:accent), hiding 1 (theme). Remaining 5 (6 after Task 1) -- safe.
 
 No category becomes empty. Good.
 
@@ -341,3 +341,11 @@ Adding `hideFromSettings: true` to metadata objects is purely additive. Existing
 | `frontend/app/view/waveconfig/settings-visual.tsx` | Filtering handled at data layer in registry |
 | `frontend/app/store/settings-atoms.ts` | No changes needed |
 | `frontend/app/store/settings-service.ts` | No changes needed |
+
+## Design Review
+
+**Reviewer:** Phase 3 Design Review Agent
+**Verdict:** APPROVED (after fixes applied)
+**Date:** 2026-01-26
+
+Category count documentation corrected. Implementation logic is correct.

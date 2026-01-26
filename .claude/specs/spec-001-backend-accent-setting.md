@@ -319,3 +319,19 @@ task check:ts
 - The `hideFromSettings` flag is a new concept being introduced. Later tasks in the UI Theme System Redesign will use this flag to filter settings from the generic panel. The filtering logic itself is part of a later task -- this spec only adds the field and sets the flag values.
 - The `app:accent` default of `"green"` preserves backward compatibility -- existing users who have no `app:accent` set will see the same green accent they are used to.
 - No migration is needed since `omitempty` means missing values default to empty string, and the frontend falls back to `defaultValue: "green"` from the registry.
+
+## Dependencies
+
+This spec has no dependencies. However, Spec 003 (Theme Hook Update) depends on this spec being implemented first.
+
+## Related Files Requiring Future Updates
+
+The files `appearance-content.tsx` and `appearance-content.scss` reference `light-gray`/`light-warm` and must be updated by Spec 007 (Appearance Panel Redesign).
+
+## Design Review
+
+**Reviewer:** Phase 1 Design Review Agent
+**Verdict:** APPROVED (after fixes applied)
+**Date:** 2026-01-26
+
+All issues resolved. Registry entries in this spec are authoritative - Spec 003 should reference this spec for registry definitions.

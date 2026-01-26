@@ -3,7 +3,7 @@
 **Date:** 2026-01-26
 **Status:** Ready for Implementation
 **File:** `frontend/app/hook/usetheme.ts`
-**Dependencies:** None (foundational task -- Tasks 4-6 depend on this)
+**Dependencies:** **Spec 001** must be implemented first (provides the Go `app:accent` field and registry entries).
 
 ---
 
@@ -33,6 +33,7 @@ These map to two CSS data attributes on `document.documentElement`:
 | `frontend/app/view/term/termtheme.ts:22` | `resolvedAppThemeAtom` |
 | `frontend/app/view/term/term.tsx:148` | `resolvedAppThemeAtom` |
 | `frontend/app/monaco/monaco-env.ts:73` | `getResolvedTheme()` |
+| `frontend/app/monaco/monaco-env.ts` | Reads data-theme from DOM via MutationObserver. Only cares about dark/light, works correctly with simplified values. Not affected by data-accent. |
 
 ---
 
@@ -178,9 +179,13 @@ export function useTheme(): void {
     const accentSetting = (useAtomValue(accentSettingAtom) ?? "green") as AccentSetting;
 
     // One-time migration from old theme variants
+    const migratedRef = useRef(false);
     useEffect(() => {
-        migrateThemeSetting(themeSetting);
-    }, []); // Only run on mount
+        if (!migratedRef.current && (themeSetting === "light-gray" || themeSetting === "light-warm")) {
+            migrateThemeSetting(themeSetting);
+            migratedRef.current = true;
+        }
+    }, [themeSetting]);
 
     // Normalize theme setting (in case migration hasn't flushed yet)
     const normalizedTheme: ThemeSetting =
@@ -301,76 +306,14 @@ After modification, `frontend/app/hook/usetheme.ts` will export:
 import { getApi, getSettingsKeyAtom, globalStore } from "@/store/global";
 import { settingsService } from "@/app/store/settings-service";
 import { atom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 ```
 
 ---
 
 ## Settings Registry Update
 
-The `app:theme` entry in `frontend/app/store/settings-registry.ts:823-839` must be updated to remove `light-gray`/`light-warm` options. Additionally, a new `app:accent` entry must be added.
-
-**Update `app:theme` (line 823):**
-```typescript
-{
-    key: "app:theme",
-    label: "UI Theme",
-    description: "The UI color mode for the application.",
-    category: "App",
-    subcategory: "Appearance",
-    controlType: "select",
-    defaultValue: "dark",
-    type: "string",
-    validation: {
-        options: [
-            { value: "dark", label: "Dark" },
-            { value: "light", label: "Light" },
-            { value: "system", label: "System" },
-        ],
-    },
-    tags: ["theme", "appearance", "dark", "light", "mode"],
-},
-```
-
-**Add `app:accent` (after `app:theme`):**
-```typescript
-{
-    key: "app:accent",
-    label: "Accent Color",
-    description: "The accent color theme used for highlights, buttons, and interactive elements.",
-    category: "App",
-    subcategory: "Appearance",
-    controlType: "select",
-    defaultValue: "green",
-    type: "string",
-    validation: {
-        options: [
-            { value: "green", label: "Green" },
-            { value: "warm", label: "Warm" },
-            { value: "blue", label: "Blue" },
-            { value: "purple", label: "Purple" },
-            { value: "teal", label: "Teal" },
-        ],
-    },
-    tags: ["accent", "color", "appearance", "theme"],
-},
-```
-
----
-
-## Backend Types Update
-
-The Go types in `pkg/wconfig/settingsconfig.go` and `frontend/types/gotypes.d.ts` must add the `app:accent` field to `SettingsType`. Run `task generate` after modifying Go types.
-
-**In `pkg/wconfig/settingsconfig.go` (SettingsType struct):**
-```go
-AppAccent string `json:"app:accent,omitempty"`
-```
-
-**In `pkg/wconfig/metaconsts.go`:**
-```go
-ConfigKey_AppAccent = "app:accent"
-```
+Registry entries for `app:theme` and `app:accent` are defined authoritatively in Spec 001. This spec does not modify the settings registry.
 
 ---
 
@@ -391,3 +334,11 @@ ConfigKey_AppAccent = "app:accent"
 - [ ] Settings registry has updated `app:theme` options and new `app:accent` entry
 - [ ] TypeScript compiles without errors
 - [ ] No behavioral regression for existing consumers of `resolvedAppThemeAtom`
+
+## Design Review
+
+**Reviewer:** Phase 1 Design Review Agent
+**Verdict:** APPROVED (after fixes applied)
+**Date:** 2026-01-26
+
+Dependency on Spec 001 declared. Duplicate registry sections removed. Migration useEffect fixed with useRef guard.
