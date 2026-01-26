@@ -41,6 +41,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 12,
         type: "number",
         validation: { min: 8, max: 24, step: 1 },
+        hideFromSettings: true,
         tags: ["font", "size", "text", "typography"],
     },
     {
@@ -52,6 +53,7 @@ const allSettings: SettingMetadata[] = [
         controlType: "font",
         defaultValue: "",
         type: "string",
+        hideFromSettings: true,
         tags: ["font", "typeface", "monospace"],
     },
     {
@@ -65,6 +67,7 @@ const allSettings: SettingMetadata[] = [
         type: "string",
         tags: ["color", "theme", "appearance", "scheme", "palette"],
         fullWidth: true,
+        hideFromSettings: true,
     },
     {
         key: "term:scrollback",
@@ -99,6 +102,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 0,
         type: "number",
         validation: { min: 0, max: 1, step: 0.1 },
+        hideFromSettings: true,
         tags: ["opacity", "transparent", "background"],
         links: { "window transparency": "window:transparent" },
     },
@@ -111,6 +115,7 @@ const allSettings: SettingMetadata[] = [
         controlType: "toggle",
         defaultValue: false,
         type: "boolean",
+        hideFromSettings: true,
         tags: ["font", "ligatures", "typography"],
         links: { "Font Family": "term:fontfamily" },
     },
@@ -206,6 +211,7 @@ const allSettings: SettingMetadata[] = [
         type: "string",
         tags: ["omp", "oh-my-posh", "theme", "prompt", "powerline", "appearance"],
         fullWidth: true,
+        hideFromSettings: true,
     },
     {
         key: "term:ompexport",
@@ -218,6 +224,7 @@ const allSettings: SettingMetadata[] = [
         type: "string",
         tags: ["omp", "oh-my-posh", "palette", "export", "prompt", "powerline"],
         fullWidth: true,
+        hideFromSettings: true,
         links: { "Color Scheme": "term:theme" },
     },
     {
@@ -231,6 +238,7 @@ const allSettings: SettingMetadata[] = [
         type: "string",
         tags: ["prompt", "compatibility", "help", "omp", "starship", "powerlevel10k", "shell"],
         fullWidth: true,
+        hideFromSettings: true,
     },
 
     // ===================
@@ -246,6 +254,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 12,
         type: "number",
         validation: { min: 8, max: 24, step: 1 },
+        hideFromSettings: true,
         tags: ["font", "size", "text"],
     },
     {
@@ -257,6 +266,7 @@ const allSettings: SettingMetadata[] = [
         controlType: "toggle",
         defaultValue: false,
         type: "boolean",
+        hideFromSettings: true,
         tags: ["minimap", "overview", "navigation"],
     },
     {
@@ -306,6 +316,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: false,
         type: "boolean",
         requiresRestart: true,
+        hideFromSettings: true,
         tags: ["transparency", "opacity", "background"],
         links: { "terminal transparency": "term:transparency" },
     },
@@ -318,6 +329,7 @@ const allSettings: SettingMetadata[] = [
         controlType: "toggle",
         defaultValue: false,
         type: "boolean",
+        hideFromSettings: true,
         tags: ["blur", "transparency", "effect"],
         links: { "transparent window": "window:transparent" },
     },
@@ -331,6 +343,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 1,
         type: "number",
         validation: { min: 0.1, max: 1, step: 0.05 },
+        hideFromSettings: true,
         tags: ["opacity", "transparency"],
         links: { "transparency is enabled": "window:transparent" },
     },
@@ -343,6 +356,7 @@ const allSettings: SettingMetadata[] = [
         controlType: "color",
         defaultValue: "",
         type: "string",
+        hideFromSettings: true,
         tags: ["color", "background"],
     },
     {
@@ -448,6 +462,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 1,
         type: "number",
         validation: { min: 0.5, max: 2, step: 0.1 },
+        hideFromSettings: true,
         tags: ["zoom", "scale", "size"],
     },
     {
@@ -638,6 +653,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 14,
         type: "number",
         validation: { min: 10, max: 24, step: 1 },
+        hideFromSettings: true,
         tags: ["font", "size"],
     },
     {
@@ -650,6 +666,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: 12,
         type: "number",
         validation: { min: 8, max: 20, step: 1 },
+        hideFromSettings: true,
         tags: ["font", "code", "size"],
     },
     {
@@ -1152,7 +1169,9 @@ function searchSettings(query: string): SettingMetadata[] {
  */
 function getSettingsForPlatform(platform: "darwin" | "win32" | "linux"): SettingMetadata[] {
     return Array.from(settingsRegistry.values()).filter(
-        (setting) => !setting.platform || setting.platform === "all" || setting.platform === platform
+        (setting) =>
+            !setting.hideFromSettings &&
+            (!setting.platform || setting.platform === "all" || setting.platform === platform)
     );
 }
 
