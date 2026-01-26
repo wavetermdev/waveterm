@@ -1,7 +1,7 @@
 ---
 workflow: phased-dev
 workflow_status: in_progress
-current_phase: 1-discovery
+current_phase: 5-execution
 started: 2026-01-26
 last_updated: 2026-01-26T00:00:00
 branch: feat/UI-Theme-System-Redesign
@@ -38,9 +38,9 @@ Two CSS data attributes: `data-theme` and `data-accent`
 ## Workflow Stages
 
 - [x] Discovery - Tasks identified from plan
-- [ ] Planning - Create specs for each task
-- [ ] Design Review - Validate specs
-- [ ] Architecture Review - Phase coherence check
+- [x] Planning - Create specs for each task
+- [x] Design Review - Validate specs
+- [x] Architecture Review - Phase coherence check (REQUEST_CHANGES -> fixed)
 - [ ] Execution - Implement tasks
 - [ ] Code Review - Security + functional review
 - [ ] QA Testing - Electron MCP verification

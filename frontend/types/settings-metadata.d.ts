@@ -96,6 +96,9 @@ declare global {
         links?: Record<string, string>;
         /** If true, control spans full width below the label/description */
         fullWidth?: boolean;
+        /** If true, this setting is hidden from the generic settings panel
+         *  (it will be rendered by a custom panel instead) */
+        hideFromSettings?: boolean;
     }
 
     /**
