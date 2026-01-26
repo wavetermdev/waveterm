@@ -4,12 +4,17 @@
 package wshutil
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // OmpConfigFormat represents the format of an OMP config file
@@ -65,6 +70,9 @@ func ValidateOmpConfigPath(path string) error {
 
 	localAppData := os.Getenv("LOCALAPPDATA")
 	appData := os.Getenv("APPDATA")
+	oneDrive := os.Getenv("OneDrive")
+	oneDriveConsumer := os.Getenv("OneDriveConsumer")
+	oneDriveCommercial := os.Getenv("OneDriveCommercial")
 
 	// Path must be under one of these directories
 	validPrefixes := []string{homeDir}
@@ -73,6 +81,15 @@ func ValidateOmpConfigPath(path string) error {
 	}
 	if appData != "" {
 		validPrefixes = append(validPrefixes, appData)
+	}
+	if oneDrive != "" {
+		validPrefixes = append(validPrefixes, oneDrive)
+	}
+	if oneDriveConsumer != "" {
+		validPrefixes = append(validPrefixes, oneDriveConsumer)
+	}
+	if oneDriveCommercial != "" {
+		validPrefixes = append(validPrefixes, oneDriveCommercial)
 	}
 
 	isUnderValidDir := false
@@ -93,13 +110,12 @@ func ValidateOmpConfigPath(path string) error {
 	return nil
 }
 
-// GetOmpConfigPath finds the OMP config path from $POSH_THEME or default locations
+// GetOmpConfigPath finds the OMP config path from $POSH_THEME, shell profiles, or default locations
 func GetOmpConfigPath() (string, error) {
 	// Priority 1: $POSH_THEME environment variable
 	poshTheme := os.Getenv("POSH_THEME")
 	if poshTheme != "" {
 		if _, err := os.Stat(poshTheme); err == nil {
-			// Validate the path before returning
 			if err := ValidateOmpConfigPath(poshTheme); err != nil {
 				return "", fmt.Errorf("invalid POSH_THEME path: %w", err)
 			}
@@ -107,13 +123,28 @@ func GetOmpConfigPath() (string, error) {
 		}
 	}
 
-	// Priority 2: Platform-specific defaults
+	// Priority 2: Ask the user's shell for $POSH_THEME (loads their profile)
+	if configPath := getOmpConfigFromShell(); configPath != "" {
+		if err := ValidateOmpConfigPath(configPath); err == nil {
+			return configPath, nil
+		}
+	}
+
+	// Priority 3: Parse shell profiles for oh-my-posh --config patterns
+	if configPath := findOmpConfigFromShellProfiles(); configPath != "" {
+		if err := ValidateOmpConfigPath(configPath); err == nil {
+			return configPath, nil
+		}
+	}
+
+	// Priority 4: Platform-specific defaults
 	var defaultPaths []string
 
 	if runtime.GOOS == "windows" {
 		userProfile := os.Getenv("USERPROFILE")
 		localAppData := os.Getenv("LOCALAPPDATA")
 		appData := os.Getenv("APPDATA")
+		poshThemesPath := os.Getenv("POSH_THEMES_PATH")
 
 		defaultPaths = []string{
 			filepath.Join(userProfile, ".config", "oh-my-posh", "config.json"),
@@ -121,6 +152,11 @@ func GetOmpConfigPath() (string, error) {
 			filepath.Join(userProfile, ".config", "oh-my-posh", "config.toml"),
 			filepath.Join(appData, "oh-my-posh", "config.json"),
 			filepath.Join(localAppData, "Programs", "oh-my-posh", "themes", "custom.omp.json"),
+		}
+
+		// Also check POSH_THEMES_PATH if set (OMP installer sets this)
+		if poshThemesPath != "" {
+			defaultPaths = append(defaultPaths, filepath.Join(poshThemesPath, "custom.omp.json"))
 		}
 	} else {
 		homeDir := os.Getenv("HOME")
@@ -139,6 +175,235 @@ func GetOmpConfigPath() (string, error) {
 	}
 
 	return "", fmt.Errorf("OMP config not found")
+}
+
+// getOmpConfigFromShell asks the user's shell to load its profile and return $POSH_THEME.
+// On Windows, this runs PowerShell with the user's profile to get the actual value
+// of $env:POSH_THEME after all profile scripts have executed.
+// This handles any profile setup (OneDrive paths, variable expansion, conditional logic).
+func getOmpConfigFromShell() string {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if runtime.GOOS == "windows" {
+		// Load the user's PowerShell profile and check multiple sources for the OMP config path:
+		// 1. $env:POSH_THEME - set by modern OMP init (oh-my-posh init pwsh)
+		// 2. $themePath - common variable name in OMP profile scripts
+		// 3. $OhMyPoshTheme joined with theme directory - another common pattern
+		psCommand := `. $PROFILE *>$null; ` +
+			`if ($env:POSH_THEME) { $env:POSH_THEME } ` +
+			`elseif ($themePath -and (Test-Path $themePath)) { $themePath } ` +
+			`elseif ($OhMyPoshTheme) { ` +
+			`  $p = if ($env:POSH_THEMES_PATH) { Join-Path $env:POSH_THEMES_PATH $OhMyPoshTheme } ` +
+			`  else { Join-Path "$env:LOCALAPPDATA" "Programs\oh-my-posh\themes\$OhMyPoshTheme" }; ` +
+			`  if (Test-Path $p) { $p } ` +
+			`}`
+
+		// Try pwsh first (PowerShell 7+), then fall back to powershell.exe (5.x)
+		for _, shell := range []string{"pwsh.exe", "powershell.exe"} {
+			cmd := exec.CommandContext(ctx, shell, "-NoLogo", "-NonInteractive", "-Command", psCommand)
+			output, err := cmd.Output()
+			if err != nil {
+				continue
+			}
+			// PowerShell may output extra lines (e.g., "Active code page: 65001")
+			// and ANSI escape codes. Extract the last non-empty line as the path.
+			configPath := extractLastLine(stripAnsiCodes(string(output)))
+			if configPath != "" {
+				if _, err := os.Stat(configPath); err == nil {
+					return configPath
+				}
+			}
+		}
+	} else {
+		// On Unix, try sourcing common shell profiles
+		for _, shellCmd := range []struct {
+			shell string
+			args  []string
+		}{
+			{"bash", []string{"-l", "-c", "echo $POSH_THEME"}},
+			{"zsh", []string{"-l", "-c", "echo $POSH_THEME"}},
+		} {
+			cmd := exec.CommandContext(ctx, shellCmd.shell, shellCmd.args...)
+			output, err := cmd.Output()
+			if err != nil {
+				continue
+			}
+			configPath := strings.TrimSpace(string(output))
+			if configPath != "" {
+				if _, err := os.Stat(configPath); err == nil {
+					return configPath
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+// stripAnsiCodes removes ANSI escape sequences from a string.
+// PowerShell may produce these in its output even with -NoLogo.
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+
+func stripAnsiCodes(s string) string {
+	return ansiRegex.ReplaceAllString(s, "")
+}
+
+// extractLastLine returns the last non-empty line from multi-line output.
+// This handles PowerShell outputting extra lines like "Active code page: 65001"
+// before the actual result.
+func extractLastLine(s string) string {
+	lines := strings.Split(strings.TrimSpace(s), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line != "" {
+			return line
+		}
+	}
+	return ""
+}
+
+// findOmpConfigFromShellProfiles parses shell profile files to extract
+// the OMP config path from init commands like:
+//
+//	oh-my-posh init pwsh --config 'C:\path\to\theme.omp.json'
+//	oh-my-posh init bash --config ~/.config/oh-my-posh/theme.json
+func findOmpConfigFromShellProfiles() string {
+	var profilePaths []string
+
+	if runtime.GOOS == "windows" {
+		// Ask PowerShell where its profile actually is (handles OneDrive, custom paths, etc.)
+		profilePaths = getWindowsShellProfilePaths()
+	} else {
+		homeDir := os.Getenv("HOME")
+		profilePaths = []string{
+			filepath.Join(homeDir, ".bashrc"),
+			filepath.Join(homeDir, ".zshrc"),
+			filepath.Join(homeDir, ".profile"),
+			filepath.Join(homeDir, ".bash_profile"),
+		}
+	}
+
+	for _, profilePath := range profilePaths {
+		if configPath := parseOmpConfigFromProfile(profilePath); configPath != "" {
+			return configPath
+		}
+	}
+
+	return ""
+}
+
+// getWindowsShellProfilePaths asks PowerShell for its actual $PROFILE path
+// rather than guessing. This correctly handles OneDrive, custom Documents
+// locations, and any other non-standard configuration.
+func getWindowsShellProfilePaths() []string {
+	var paths []string
+
+	// Try pwsh (PowerShell 7+) first, then powershell.exe (Windows PowerShell 5.x)
+	for _, shell := range []string{"pwsh.exe", "powershell.exe"} {
+		cmd := exec.Command(shell, "-NoProfile", "-NoLogo", "-NonInteractive", "-Command", "Write-Output $PROFILE")
+		output, err := cmd.Output()
+		if err == nil {
+			profilePath := strings.TrimSpace(string(output))
+			if profilePath != "" {
+				paths = append(paths, profilePath)
+
+				// Also check the directory for other profile variants
+				profileDir := filepath.Dir(profilePath)
+				parentDir := filepath.Dir(profileDir)
+
+				// If this is WindowsPowerShell, also check PowerShell (and vice versa)
+				dirName := filepath.Base(profileDir)
+				if dirName == "WindowsPowerShell" {
+					paths = append(paths, filepath.Join(parentDir, "PowerShell", "Microsoft.PowerShell_profile.ps1"))
+				} else if dirName == "PowerShell" {
+					paths = append(paths, filepath.Join(parentDir, "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1"))
+				}
+			}
+		}
+	}
+
+	// Fallback: also check standard locations in case PowerShell isn't available
+	userProfile := os.Getenv("USERPROFILE")
+	documentsDir := filepath.Join(userProfile, "Documents")
+	paths = append(paths,
+		filepath.Join(documentsDir, "PowerShell", "Microsoft.PowerShell_profile.ps1"),
+		filepath.Join(documentsDir, "WindowsPowerShell", "Microsoft.PowerShell_profile.ps1"),
+	)
+
+	return paths
+}
+
+// ompConfigRegex matches oh-my-posh commands with --config flag.
+// Handles both subcommand and flag-based invocations:
+//
+//	oh-my-posh init pwsh --config 'path'
+//	oh-my-posh --init --shell pwsh --config $path
+var ompConfigRegex = regexp.MustCompile(`oh-my-posh\s+.*--config\s+['"]?([^'")\s]+)['"]?`)
+
+// parseOmpConfigFromProfile reads a shell profile and extracts the OMP config path
+func parseOmpConfigFromProfile(profilePath string) string {
+	f, err := os.Open(profilePath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip comments
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "//") {
+			continue
+		}
+
+		matches := ompConfigRegex.FindStringSubmatch(line)
+		if len(matches) >= 2 {
+			configPath := matches[1]
+			configPath = expandEnvVars(configPath)
+
+			if _, err := os.Stat(configPath); err == nil {
+				return configPath
+			}
+		}
+	}
+
+	return ""
+}
+
+// expandEnvVars expands environment variables in a path.
+// Handles $env:VAR (PowerShell), $VAR, and %VAR% (Windows) syntax.
+func expandEnvVars(path string) string {
+	// Handle PowerShell $env:VAR syntax
+	psEnvRegex := regexp.MustCompile(`\$env:(\w+)`)
+	path = psEnvRegex.ReplaceAllStringFunc(path, func(match string) string {
+		varName := strings.TrimPrefix(match, "$env:")
+		return os.Getenv(varName)
+	})
+
+	// Handle Unix $VAR and ${VAR} syntax
+	path = os.ExpandEnv(path)
+
+	// Handle Windows %VAR% syntax
+	if runtime.GOOS == "windows" {
+		winEnvRegex := regexp.MustCompile(`%(\w+)%`)
+		path = winEnvRegex.ReplaceAllStringFunc(path, func(match string) string {
+			varName := strings.Trim(match, "%")
+			return os.Getenv(varName)
+		})
+	}
+
+	// Handle ~ as home directory
+	if strings.HasPrefix(path, "~") {
+		homeDir := os.Getenv("HOME")
+		if homeDir == "" {
+			homeDir = os.Getenv("USERPROFILE")
+		}
+		path = filepath.Join(homeDir, path[1:])
+	}
+
+	return path
 }
 
 // DetectConfigFormat detects the format from file extension

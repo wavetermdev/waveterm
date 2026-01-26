@@ -138,8 +138,13 @@ export const OmpHighContrast = memo(({ className }: OmpHighContrastProps) => {
         );
     }
 
-    // Error state
+    // Error state - distinguish between "not found" (quiet) and real errors
     if (analysisState === "error") {
+        const isNotFound = errorMessage.toLowerCase().includes("config not found");
+        if (isNotFound) {
+            // OMP not configured - hide this section quietly
+            return null;
+        }
         return (
             <div className={cn("omp-high-contrast", className)}>
                 <div className="omp-hc-error">

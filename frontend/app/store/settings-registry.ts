@@ -820,6 +820,24 @@ const allSettings: SettingMetadata[] = [
         tags: ["paste", "clipboard", "keyboard"],
     },
     {
+        key: "app:theme",
+        label: "UI Theme",
+        description: "The UI color theme for the application (dark, light, or system).",
+        category: "App",
+        subcategory: "Appearance",
+        controlType: "select",
+        defaultValue: "dark",
+        type: "string",
+        validation: {
+            options: [
+                { value: "dark", label: "Dark" },
+                { value: "light", label: "Light" },
+                { value: "system", label: "System" },
+            ],
+        },
+        tags: ["theme", "appearance", "dark", "light", "mode"],
+    },
+    {
         key: "app:dismissarchitecturewarning",
         label: "Dismiss Architecture Warning",
         description: "Dismiss the warning about running on non-native architecture.",

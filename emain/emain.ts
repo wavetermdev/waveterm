@@ -137,7 +137,7 @@ async function sendDisplaysTDataEvent() {
     if (displays.length === 0) {
         return;
     }
-    const props: TEventProps = {};
+    const props: Record<string, any> = {};
     props["display:count"] = displays.length;
     props["display:height"] = displays[0].height;
     props["display:width"] = displays[0].width;

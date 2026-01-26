@@ -104,9 +104,6 @@ export class WaveAIModel {
 
         // Telemetry removed - Wave AI modes always available
         this.defaultModeAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return "waveai@balanced";
-            }
             const aiModeConfigs = get(this.aiModeConfigs);
             const hasPremium = get(this.hasPremiumAtom);
             const waveFallback = hasPremium ? "waveai@balanced" : "waveai@quick";

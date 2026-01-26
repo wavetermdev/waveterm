@@ -94,6 +94,7 @@ type SettingsType struct {
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermLigatures           bool     `json:"term:ligatures,omitempty"`
+	TermOmpTheme            string   `json:"term:omptheme,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`

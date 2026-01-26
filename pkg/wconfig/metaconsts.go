@@ -47,6 +47,7 @@ const (
 	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
 	ConfigKey_TermLigatures                  = "term:ligatures"
+	ConfigKey_TermOmpTheme                   = "term:omptheme"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

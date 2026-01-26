@@ -122,6 +122,9 @@
         "term:ligatures": {
           "type": "boolean"
         },
+        "term:omptheme": {
+          "type": "string"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },

@@ -516,7 +516,7 @@ const AIPanelComponentInner = memo(() => {
                         <div className="absolute top-2 left-2 z-10">
                             <AIModeDropdown />
                         </div>
-{model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
+                        <AIWelcomeMessage />
                     </div>
                 ) : (
                     <AIPanelMessages

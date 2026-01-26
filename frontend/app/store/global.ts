@@ -804,7 +804,7 @@ function setActiveTab(tabId: string) {
 }
 
 // Telemetry removed - this function is now a no-op
-function recordTEvent(event: string, props?: TEventProps) {
+function recordTEvent(event: string, props?: Record<string, any>) {
     // No-op - telemetry has been removed from this fork
 }
 

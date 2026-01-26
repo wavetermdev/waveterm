@@ -1274,6 +1274,7 @@ declare global {
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
         "term:ligatures"?: boolean;
+        "term:omptheme"?: string;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;

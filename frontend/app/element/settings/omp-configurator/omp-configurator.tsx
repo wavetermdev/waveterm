@@ -78,6 +78,20 @@ export const OmpConfigurator = memo(({ previewBackground, onConfigChange }: OmpC
         try {
             const result = await RpcApi.OmpReadConfigCommand(TabRpcClient);
             if (result.error) {
+                // "OMP config not found" means OMP isn't installed/configured yet.
+                // Fall through to the "no config" UI instead of showing an error.
+                const isNotFound = result.error.toLowerCase().includes("config not found");
+                if (isNotFound) {
+                    setState((s) => ({
+                        ...s,
+                        loading: false,
+                        error: null,
+                        originalConfig: null,
+                        editedConfig: null,
+                        configPath: result.configpath,
+                    }));
+                    return;
+                }
                 setState((s) => ({
                     ...s,
                     loading: false,
