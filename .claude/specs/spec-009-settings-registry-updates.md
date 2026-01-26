@@ -123,20 +123,7 @@ For each of the 19 settings listed above, add `hideFromSettings: true` to the me
 
 **Theme settings:**
 
-At the `app:theme` entry (line ~823), add:
-```typescript
-{
-    key: "app:theme",
-    // ... existing fields ...
-    tags: ["theme", "appearance", "dark", "light", "mode"],
-    hideFromSettings: true,  // <-- ADD THIS
-},
-```
-
-At the `app:accent` entry (added by Task 1), ensure it has:
-```typescript
-hideFromSettings: true,
-```
+For `app:theme` and `app:accent`: verify that `hideFromSettings: true` is already present (added by Spec 001). If not, add it. These entries are idempotent with Spec 001 -- Spec 001 is the authoritative source for these two entries.
 
 **Window display settings** (5 entries):
 

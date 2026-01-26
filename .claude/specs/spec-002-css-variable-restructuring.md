@@ -15,7 +15,6 @@ This task also renames `--tab-green` to `--tab-accent` for semantic correctness.
 **Parent feature**: UI Theme System Redesign (see `.claude/workflow-state.md`)
 **Task number**: Task 2 of Phase 1
 **Dependencies**: **Spec 001** (backend `app:accent` field) and **Spec 003** (theme hook migration) must be implemented BEFORE this spec. The appearance panel (`appearance-content.tsx/scss`) references `light-gray` and `light-warm` which this spec removes - Spec 007 must update the appearance panel simultaneously.
-**Depends on this**: Task 3 (usetheme.ts), Task 5 (Accent Selector component)
 
 ## Current State Analysis
 
@@ -484,10 +483,36 @@ No `.scss`, `.css`, `.tsx`, or `.ts` files reference `var(--tab-green)`, so no c
 - [ ] File compiles without SCSS errors
 - [ ] No references to `var(--tab-green)` exist anywhere in the codebase (already true, just verify)
 - [ ] TypeScript type check passes (`task check:ts`)
+- [ ] Tailwind utility classes (`bg-accent-400`, `text-accent-500`, etc.) correctly reflect overridden values when `data-accent` is changed at runtime
 
 ## CSS Maintenance Invariant
 
 When adding a property to any `[data-accent='X']` block, you MUST also add the corresponding light-mode value to `[data-theme='light'][data-accent='X']` if the property needs different values in light mode. Otherwise the dark-mode accent value will leak into light mode due to CSS source order.
+
+## Known Behavioral Changes (Migration from light-warm/light-gray)
+
+When users migrate from `light-warm` to `light` + `accent:warm`, the following visual changes occur:
+
+**Intentionally NOT preserved:**
+- Warm-tinted backgrounds (`--main-bg-color`, `--panel-bg-color`, `--block-bg-color`) revert to standard light theme backgrounds
+- Warm-tinted scrollbar colors revert to standard light theme scrollbar colors
+- Warm-tinted modal colors revert to standard light theme modal colors
+- Warm-tinted form element borders revert to standard light theme form element borders
+- Warm-tinted keybinding badge colors revert to standard light theme keybinding colors
+- Warm-tinted terminal ANSI colors are NOT preserved (terminal colors are controlled by `term:theme`, not by `app:accent`)
+
+**Preserved via accent blocks:**
+- Accent color (`--accent-color`) becomes warm brown
+- Border color (`--border-color`) becomes warm-tinted
+- Secondary text color (`--secondary-text-color`) becomes warm-tinted
+- Link color (`--link-color`) becomes warm brown
+- Button green colors become warm brown
+- Tab accent color becomes warm brown
+- Tailwind accent palette (50-900) becomes warm brown
+
+**Rationale:** This is an intentional simplification. The accent system controls accent/branding colors, not structural backgrounds. Trying to reproduce the full `light-warm` experience would require dozens of additional structural overrides in compound blocks, creating maintenance complexity that outweighs the benefit. Users who want a fundamentally different structural palette should use `term:theme` for terminal colors and browser extensions for structural backgrounds.
+
+When users migrate from `light-gray` to `light` (no accent change), the gray-toned backgrounds revert to standard light theme backgrounds. This is also intentional -- `light-gray` was minimally different from `light` and is not worth maintaining as a separate dimension.
 
 ## Design Review
 

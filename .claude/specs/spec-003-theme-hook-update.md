@@ -255,7 +255,8 @@ export function getResolvedTheme(): ResolvedTheme {
         return darkModeQuery.matches ? "dark" : "light";
     }
 
-    return isLightTheme(themeSetting) || themeSetting === "light-gray" || themeSetting === "light-warm"
+    // Explicit legacy value handling (isLightTheme only checks "light" after simplification)
+    return themeSetting === "light" || themeSetting === "light-gray" || themeSetting === "light-warm"
         ? "light"
         : "dark";
 }
