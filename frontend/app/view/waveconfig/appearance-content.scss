@@ -27,91 +27,18 @@
     }
 }
 
-.ui-theme-selector {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+.appearance-section {
+    display: flex;
+    flex-direction: column;
     gap: 12px;
+    padding: 0 4px;
 
-    .theme-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 16px 12px;
-        border: 2px solid var(--border-color);
-        border-radius: 8px;
-        background: var(--form-element-bg-color);
-        cursor: pointer;
-        transition: all 0.15s ease;
-        position: relative;
-
-        &:hover {
-            border-color: var(--form-element-primary-color);
-        }
-
-        &.selected {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb, 88, 166, 255), 0.2);
-        }
-
-        .theme-preview {
-            width: 60px;
-            height: 40px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 10px;
-            font-size: 20px;
-
-            &.dark {
-                background: #1a1a1a;
-                color: #f5f5f5;
-            }
-
-            &.light {
-                background: #fafafa;
-                color: #1a1a1a;
-                border: 1px solid #e0e0e0;
-            }
-
-            &.light-gray {
-                background: #ebebee;
-                color: #1a1a1a;
-                border: 1px solid #d0d0d3;
-            }
-
-            &.light-warm {
-                background: #f8f5ee;
-                color: #2d2a24;
-                border: 1px solid #e8e5de;
-            }
-
-            &.system {
-                background: linear-gradient(90deg, #1a1a1a 50%, #fafafa 50%);
-                color: #888888;
-            }
-        }
-
-        .theme-label {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--main-text-color);
-        }
-
-        .theme-check {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            width: 18px;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--accent-color);
-            border-radius: 50%;
-            color: white;
-            font-size: 10px;
-        }
+    .appearance-section-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--secondary-text-color);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 }
 
