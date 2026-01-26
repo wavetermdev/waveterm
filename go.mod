@@ -40,7 +40,7 @@ require (
 	golang.org/x/sys v0.40.0
 	golang.org/x/term v0.38.0
 	google.golang.org/api v0.259.0
-	gopkg.in/ini.v1 v1.67.0
+	gopkg.in/ini.v1 v1.67.1
 )
 
 require (
