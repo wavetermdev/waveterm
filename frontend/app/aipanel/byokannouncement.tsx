@@ -1,19 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { recordTEvent } from "@/app/store/global";
 import { WaveAIModel } from "./waveai-model";
 
 const BYOKAnnouncement = () => {
     const model = WaveAIModel.getInstance();
 
     const handleOpenConfig = async () => {
-        recordTEvent("action:other", { "action:type": "waveai:configuremodes:panel" });
         await model.openWaveAIConfig();
     };
 
     const handleViewDocs = () => {
-        recordTEvent("action:other", { "action:type": "waveai:viewdocs:panel" });
+        // No-op, just for link tracking
     };
 
     return (

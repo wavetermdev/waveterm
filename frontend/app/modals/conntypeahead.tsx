@@ -66,6 +66,41 @@ function createRemoteSuggestionItems(
     });
 }
 
+/**
+ * Get shell-specific icon based on connection name and config
+ * Returns { icon: string, isBrand: boolean }
+ */
+function getShellIconForConnection(
+    connName: string,
+    connSettings?: ConnKeywords
+): { icon: string; isBrand: boolean } {
+    const nameLower = connName.toLowerCase();
+    const shellPath = connSettings?.["conn:shellpath"]?.toLowerCase() || "";
+
+    // WSL distro-specific icons
+    if (nameLower.includes("ubuntu")) return { icon: "ubuntu", isBrand: true };
+    if (nameLower.includes("debian")) return { icon: "debian", isBrand: true };
+    if (nameLower.includes("fedora")) return { icon: "fedora", isBrand: true };
+    if (nameLower.includes("opensuse") || nameLower.includes("suse")) return { icon: "suse", isBrand: true };
+    if (nameLower.includes("centos")) return { icon: "centos", isBrand: true };
+    if (nameLower.includes("redhat") || nameLower.includes("rhel")) return { icon: "redhat", isBrand: true };
+    if (nameLower.startsWith("wsl://") || nameLower.includes("wsl")) return { icon: "linux", isBrand: true };
+
+    // Git Bash
+    if (nameLower.includes("git") || shellPath.includes("git")) return { icon: "git-alt", isBrand: true };
+
+    // Command Prompt
+    if (nameLower === "cmd" || shellPath.includes("cmd.exe")) return { icon: "windows", isBrand: true };
+
+    // PowerShell (both Windows PowerShell and PowerShell Core)
+    if (nameLower.includes("powershell") || nameLower.includes("pwsh") || shellPath.includes("powershell") || shellPath.includes("pwsh")) {
+        return { icon: "terminal", isBrand: false };
+    }
+
+    // Default to terminal icon
+    return { icon: "terminal", isBrand: false };
+}
+
 function createWslSuggestionItems(
     filteredList: Array<string>,
     connection: string,
@@ -74,9 +109,11 @@ function createWslSuggestionItems(
     return filteredList.map((connName) => {
         const connStatus = connStatusMap.get(`wsl://${connName}`);
         const connColorNum = computeConnColorNum(connStatus);
+        const iconInfo = getShellIconForConnection(connName);
+        const icon = iconInfo.isBrand ? `brands@${iconInfo.icon}` : iconInfo.icon;
         const item: SuggestionConnectionItem = {
             status: "connected",
-            icon: "arrow-right-arrow-left",
+            icon: icon,
             iconColor:
                 connStatus?.status == "connected" ? `var(--conn-icon-color-${connColorNum})` : "var(--grey-text-color)",
             value: "wsl://" + connName,
@@ -104,6 +141,37 @@ function createFilteredLocalSuggestionItem(
         return [localSuggestion];
     }
     return [];
+}
+
+/**
+ * Create suggestion items for local shell profiles from connections config
+ */
+function createLocalShellProfileItems(
+    localShellProfiles: Array<string>,
+    connection: string,
+    connStatusMap: Map<string, ConnStatus>,
+    fullConfig: FullConfigType
+): Array<SuggestionConnectionItem> {
+    return localShellProfiles.map((connName) => {
+        const connStatus = connStatusMap.get(connName);
+        const connColorNum = computeConnColorNum(connStatus);
+        const connSettings = fullConfig.connections?.[connName];
+        // Use display name if available, otherwise use connection name
+        const displayName = connSettings?.["display:name"] || connName;
+        // Get shell-specific icon based on name and config
+        const iconInfo = getShellIconForConnection(connName, connSettings);
+        const icon = iconInfo.isBrand ? `brands@${iconInfo.icon}` : iconInfo.icon;
+        const item: SuggestionConnectionItem = {
+            status: "connected",
+            icon: icon,
+            iconColor:
+                connStatus?.status == "connected" ? `var(--conn-icon-color-${connColorNum})` : "var(--grey-text-color)",
+            value: connName,
+            label: displayName,
+            current: connName == connection,
+        };
+        return item;
+    });
 }
 
 function createS3SuggestionItems(
@@ -159,7 +227,8 @@ function getReconnectItem(
 
 function getLocalSuggestions(
     localName: string,
-    connList: Array<string>,
+    wslList: Array<string>,
+    localShellProfiles: Array<string>,
     connection: string,
     connSelected: string,
     connStatusMap: Map<string, ConnStatus>,
@@ -167,9 +236,18 @@ function getLocalSuggestions(
     filterOutNowsh: boolean,
     hasGitBash: boolean
 ): SuggestionConnectionScope | null {
-    const wslFiltered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
+    const wslFiltered = filterConnections(wslList, connSelected, fullConfig, filterOutNowsh);
     const wslSuggestionItems = createWslSuggestionItems(wslFiltered, connection, connStatusMap);
     const localSuggestionItem = createFilteredLocalSuggestionItem(localName, connection, connSelected);
+
+    // Local shell profiles from connections config
+    const localShellProfilesFiltered = filterConnections(localShellProfiles, connSelected, fullConfig, filterOutNowsh);
+    const localShellProfileItems = createLocalShellProfileItems(
+        localShellProfilesFiltered,
+        connection,
+        connStatusMap,
+        fullConfig
+    );
 
     const gitBashItems: Array<SuggestionConnectionItem> = [];
     if (hasGitBash && "Git Bash".toLowerCase().includes(connSelected.toLowerCase())) {
@@ -183,7 +261,12 @@ function getLocalSuggestions(
         });
     }
 
-    const combinedSuggestionItems = [...localSuggestionItem, ...gitBashItems, ...wslSuggestionItems];
+    const combinedSuggestionItems = [
+        ...localSuggestionItem,
+        ...gitBashItems,
+        ...localShellProfileItems,
+        ...wslSuggestionItems,
+    ];
     const sortedSuggestionItems = sortConnSuggestionItems(combinedSuggestionItems, fullConfig);
     if (sortedSuggestionItems.length == 0) {
         return null;
@@ -239,9 +322,11 @@ function getS3Suggestions(
 
 function getDisconnectItem(
     connection: string,
-    connStatusMap: Map<string, ConnStatus>
+    connStatusMap: Map<string, ConnStatus>,
+    fullConfig: FullConfigType
 ): SuggestionConnectionItem | null {
-    if (util.isLocalConnName(connection)) {
+    // Don't show disconnect for local connections (including local shell profiles)
+    if (util.isLocalConnection(connection, fullConfig.connections)) {
         return null;
     }
     const connStatus = connStatusMap.get(connection);
@@ -425,9 +510,22 @@ const ChangeConnectionBlockModal = React.memo(
 
         const reconnectSuggestionItem = getReconnectItem(connStatus, connSelected, blockId);
         const localName = getUserName() + "@" + getHostName();
+
+        // Split connList into local shell profiles and remote connections
+        const localShellProfiles: Array<string> = [];
+        const remoteConnections: Array<string> = [];
+        for (const conn of connList) {
+            if (util.isLocalShellProfile(conn, fullConfig.connections)) {
+                localShellProfiles.push(conn);
+            } else {
+                remoteConnections.push(conn);
+            }
+        }
+
         const localSuggestions = getLocalSuggestions(
             localName,
             wslList,
+            localShellProfiles,
             connection,
             connSelected,
             connStatusMap,
@@ -436,7 +534,7 @@ const ChangeConnectionBlockModal = React.memo(
             hasGitBash
         );
         const remoteSuggestions = getRemoteSuggestions(
-            connList,
+            remoteConnections,
             connection,
             connSelected,
             connStatusMap,
@@ -455,7 +553,7 @@ const ChangeConnectionBlockModal = React.memo(
             );
         }
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
-        const disconnectItem = getDisconnectItem(connection, connStatusMap);
+        const disconnectItem = getDisconnectItem(connection, connStatusMap, fullConfig);
         const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
             connSelected,
             localName,

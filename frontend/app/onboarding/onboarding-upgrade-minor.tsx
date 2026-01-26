@@ -7,7 +7,7 @@ import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { ClientModel } from "@/app/store/client-model";
-import { globalStore, recordTEvent } from "@/app/store/global";
+import { globalStore } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -53,7 +53,6 @@ const UpgradeOnboardingMinor = () => {
     }, []);
 
     const handleStarClick = async () => {
-        recordTEvent("onboarding:githubstar", { "onboarding:githubstar": "star" });
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
@@ -64,7 +63,6 @@ const UpgradeOnboardingMinor = () => {
     };
 
     const handleAlreadyStarred = async () => {
-        recordTEvent("onboarding:githubstar", { "onboarding:githubstar": "already" });
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
@@ -74,7 +72,6 @@ const UpgradeOnboardingMinor = () => {
     };
 
     const handleMaybeLater = async () => {
-        recordTEvent("onboarding:githubstar", { "onboarding:githubstar": "later" });
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),

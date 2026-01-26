@@ -19,6 +19,49 @@ function isLocalConnName(connName: string): boolean {
     return connName === "local" || connName.startsWith("local:");
 }
 
+/**
+ * Checks if a connection is a local shell profile defined in connections config.
+ * A connection is considered a local shell profile if:
+ * - It has "conn:local": true explicitly set, OR
+ * - It has "conn:shellpath" set but NO SSH-related fields (ssh:hostname)
+ */
+function isLocalShellProfile(connName: string, connectionsConfig: Record<string, ConnKeywords> | undefined): boolean {
+    if (isBlank(connName) || !connectionsConfig) {
+        return false;
+    }
+
+    const connSettings = connectionsConfig[connName];
+    if (!connSettings) {
+        return false;
+    }
+
+    // If explicitly marked as local, return true
+    if (connSettings["conn:local"] === true) {
+        return true;
+    }
+
+    // If it has a shell path but no SSH hostname, it's a local shell profile
+    if (connSettings["conn:shellpath"] && !connSettings["ssh:hostname"]) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Extended version of isLocalConnName that also checks the connections config
+ * for local shell profiles.
+ */
+function isLocalConnection(connName: string, connectionsConfig?: Record<string, ConnKeywords>): boolean {
+    // First check the built-in local patterns
+    if (isLocalConnName(connName)) {
+        return true;
+    }
+
+    // Then check if it's a local shell profile from config
+    return isLocalShellProfile(connName, connectionsConfig);
+}
+
 function base64ToString(b64: string): string {
     if (b64 == null) {
         return null;
@@ -517,6 +560,8 @@ export {
     getPromiseValue,
     isBlank,
     isLocalConnName,
+    isLocalConnection,
+    isLocalShellProfile,
     jotaiLoadableValue,
     jsonDeepEqual,
     lazy,

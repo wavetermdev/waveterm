@@ -122,6 +122,54 @@
     overflow-y: auto;
 }
 
+// ============================================
+// Connection Sections (Local vs Remote)
+// ============================================
+
+.connections-section {
+    margin-bottom: 4px;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.connections-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--panel-bg-color);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--secondary-text-color);
+
+    i {
+        font-size: 11px;
+        color: var(--grey-text-color);
+    }
+
+    span:first-of-type {
+        flex: 1;
+    }
+}
+
+.connections-section-count {
+    background: var(--main-bg-color);
+    color: var(--grey-text-color);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.connections-section-list {
+    // Items within a section
+}
+
 .connections-list-item {
     display: flex;
     align-items: center;
@@ -143,6 +191,13 @@
         opacity: 0.6;
     }
 
+    &.local {
+        // Slightly different styling for local shells
+        > i:first-child {
+            color: var(--success-color, #4caf50);
+        }
+    }
+
     > i:first-child {
         font-size: 14px;
         color: var(--accent-color);
@@ -157,6 +212,27 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .connections-list-item-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 6px;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        border-radius: 4px;
+        flex-shrink: 0;
+
+        &.local {
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--success-color, #4caf50);
+        }
+
+        &.remote {
+            background: rgba(33, 150, 243, 0.15);
+            color: var(--accent-color);
+        }
     }
 
     .connections-list-item-hidden {
@@ -394,13 +470,39 @@
             color: var(--accent-color);
         }
 
-        span {
+        > span:first-of-type {
             font-size: 14px;
             font-weight: 600;
             color: var(--main-text-color);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+    }
+
+    .connections-editor-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+        border-radius: 4px;
+        flex-shrink: 0;
+
+        &.local {
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--success-color, #4caf50);
+        }
+
+        &.remote {
+            background: rgba(33, 150, 243, 0.15);
+            color: var(--accent-color);
+        }
+
+        &.wsl {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800;
         }
     }
 
@@ -970,6 +1072,11 @@
     font-weight: 500;
     text-transform: uppercase;
     border-radius: 4px;
+
+    &.local {
+        background: rgba(76, 175, 80, 0.15);
+        color: var(--success-color, #4caf50);
+    }
 
     &.default {
         background: var(--accent-color-faint);

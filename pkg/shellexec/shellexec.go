@@ -188,9 +188,16 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		shellPath = cmdOpts.ShellPath
 	}
 	configShellPath := conn.GetConfigShellPath()
+	// For WSL connections, only use config shell path if it's a valid Linux path
+	// (starts with / or ~). Windows paths (like C:\...) should be ignored as they
+	// would fail when executed inside WSL.
 	if shellPath == "" && configShellPath != "" {
-		conn.Infof(ctx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
-		shellPath = configShellPath
+		if strings.HasPrefix(configShellPath, "/") || strings.HasPrefix(configShellPath, "~") {
+			conn.Infof(ctx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
+			shellPath = configShellPath
+		} else {
+			conn.Infof(ctx, "ignoring config shell path %q - not a valid Linux path for WSL\n", configShellPath)
+		}
 	}
 	if shellPath == "" && remoteInfo.Shell != "" {
 		conn.Infof(ctx, "using shell path detected on remote machine: %s\n", remoteInfo.Shell)

@@ -446,6 +446,13 @@ const ConnStatusOverlay = React.memo(
             [showError, showWshError, connStatus.error, connStatus.wsherror]
         );
 
+        // Don't show overlay for local connections (including local shell profiles)
+        // They don't have reconnection semantics like SSH connections
+        const isLocalConn = util.isLocalConnection(connName, fullConfig.connections);
+        if (isLocalConn) {
+            return null;
+        }
+
         if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }

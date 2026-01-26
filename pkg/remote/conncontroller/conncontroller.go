@@ -86,8 +86,50 @@ var ConnServerCmdTemplate = strings.TrimSpace(
 		"exec %s connserver --conn %s %s %s",
 	}, "\n"))
 
+// IsLocalConnName returns true if the connection name represents a local connection.
+// This includes:
+// - Empty string (default local)
+// - "local" literal
+// - Names starting with "local:" (e.g., "local:gitbash")
+// - Connection profiles in connections.json with "conn:local": true
+// - Connection profiles with "conn:shellpath" but no SSH host configuration
 func IsLocalConnName(connName string) bool {
-	return strings.HasPrefix(connName, "local:") || connName == "local" || connName == ""
+	// Check for built-in local connection patterns
+	if strings.HasPrefix(connName, "local:") || connName == "local" || connName == "" {
+		return true
+	}
+
+	// Check if this connection is defined as a local shell profile in connections.json
+	return IsLocalShellProfile(connName)
+}
+
+// IsLocalShellProfile checks if a connection name refers to a local shell profile
+// defined in connections.json. A connection is considered local if:
+// - It has "conn:local": true explicitly set, OR
+// - It has "conn:shellpath" set but NO SSH-related fields (ssh:hostname, etc.)
+func IsLocalShellProfile(connName string) bool {
+	if connName == "" {
+		return false
+	}
+
+	config := wconfig.GetWatcher().GetFullConfig()
+	connSettings, ok := config.Connections[connName]
+	if !ok {
+		return false
+	}
+
+	// If explicitly marked as local, return true
+	if connSettings.ConnLocal != nil && *connSettings.ConnLocal {
+		return true
+	}
+
+	// If it has a shell path but no SSH hostname, it's a local shell profile
+	// This allows users to define local shell profiles without needing to set conn:local
+	if connSettings.ConnShellPath != "" && connSettings.SshHostName == nil {
+		return true
+	}
+
+	return false
 }
 
 func GetAllConnStatus() []wshrpc.ConnStatus {

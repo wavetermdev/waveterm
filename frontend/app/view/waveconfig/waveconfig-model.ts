@@ -3,7 +3,7 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { getApi, getBlockMetaKeyAtom, recordTEvent, WOS } from "@/app/store/global";
+import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -587,7 +587,6 @@ export class WaveConfigViewModel implements ViewModel {
 
         try {
             await RpcApi.SetSecretsCommand(TabRpcClient, { [selectedSecret]: secretValue });
-            recordTEvent("action:other", { "action:type": "waveconfig:savesecret" });
             this.closeSecretView();
         } catch (error) {
             globalStore.set(this.errorMessageAtom, `Failed to save secret: ${error.message}`);
@@ -659,7 +658,6 @@ export class WaveConfigViewModel implements ViewModel {
 
         try {
             await RpcApi.SetSecretsCommand(TabRpcClient, { [name]: value });
-            recordTEvent("action:other", { "action:type": "waveconfig:savesecret" });
             globalStore.set(this.isAddingNewAtom, false);
             globalStore.set(this.newSecretNameAtom, "");
             globalStore.set(this.newSecretValueAtom, "");

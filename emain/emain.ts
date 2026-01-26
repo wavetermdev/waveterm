@@ -132,9 +132,17 @@ function getActivityDisplays(): ActivityDisplayType[] {
     return rtn;
 }
 
-// Telemetry removed - sendDisplaysTDataEvent is now a no-op
 async function sendDisplaysTDataEvent() {
-    // No-op - telemetry has been removed from this fork
+    const displays = getActivityDisplays();
+    if (displays.length === 0) {
+        return;
+    }
+    const props: TEventProps = {};
+    props["display:count"] = displays.length;
+    props["display:height"] = displays[0].height;
+    props["display:width"] = displays[0].width;
+    props["display:dpr"] = displays[0].dpr;
+    props["display:all"] = displays;
 }
 
 function logActiveState() {
@@ -158,7 +166,6 @@ function logActiveState() {
 
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
-            // Telemetry removed - RecordTEventCommand calls have been removed from this fork
         } catch (e) {
             console.log("error logging active state", e);
         } finally {
