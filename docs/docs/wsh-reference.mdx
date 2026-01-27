@@ -554,7 +554,7 @@ Supported URI schemes:
 wsh file cat [file-uri]
 ```
 
-Display the contents of a file. For example:
+Display the contents of a file (maximum file size 10MB). For example:
 
 ```sh
 wsh file cat wavefile://block/config.txt
@@ -580,10 +580,10 @@ cat config.json | wsh file write //ec2-user@remote01/~/config.json
 wsh file append [file-uri]
 ```
 
-Append data from stdin to a file, respecting a 10MB total file size limit. This is useful for log files or accumulating data. For example:
+Append data from stdin to a file. Input is buffered locally (up to 10MB total file size limit) before being written. For example:
 
 ```sh
-tail -f app.log | wsh file append wavefile://block/logs.txt
+cat additional-content.txt | wsh file append wavefile://block/notes.txt
 echo "new line" | wsh file append wavefile://client/notes.txt
 ```
 
@@ -623,7 +623,7 @@ wsh file info wavefile://client/settings.json
 wsh file cp [flags] [source-uri] [destination-uri]
 ```
 
-Copy files between different storage systems. For example:
+Copy files between different storage systems (maximum file size 10MB). For example:
 
 ```sh
 # Copy a wave file into your local filesystem
@@ -634,14 +634,10 @@ wsh file cp ./local-config.txt wavefile://block/config.txt
 
 # Copy a remote file into the wave filesystem
 wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
-
-# Recursively copy a directory between two remote computers
-wsh file cp wsh://user@ec2-1/home/user/.config wsh://user@ec2-2/home/user/.config -r
 ```
 
 Flags:
 
-- `-r, --recursive` - copies all files in a directory recursively
 - `-f, --force` - overwrites any conflicts when copying
 - `-m, --merge` - does not clear existing directory entries when copying a directory, instead merging its contents with the destination's
 
@@ -651,7 +647,7 @@ Flags:
 wsh file mv [flags] [source-uri] [destination-uri]
 ```
 
-Move files between different storage systems. The source file will be deleted once the operation completes successfully. For example:
+Move files between different storage systems (maximum file size 10MB). The source file will be deleted once the operation completes successfully. For example:
 
 ```sh
 # Move a wave file into your local filesystem
@@ -662,14 +658,10 @@ wsh file mv ./local-config.txt wavefile://block/config.txt
 
 # Move a remote file into the wave filesystem
 wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
-
-# Recursively move a directory between two remote computers
-wsh file mv wsh://user@ec2-1/home/user/.config wsh://user@ec2-2/home/user/.config -r
 ```
 
 Flags:
 
-- `-r, --recursive` - moves all files in a directory recursively
 - `-f, --force` - overwrites any conflicts when moving
 
 ### ls
@@ -690,7 +682,6 @@ wsh file ls wavefile://client/configs/
 Flags:
 
 - `-l, --long` - use long listing format showing size, timestamps, and metadata
-- `-r, --recursive` - list subdirectories recursively
 - `-1, --one` - list one file per line
 - `-f, --files` - list only files (no directories)
 

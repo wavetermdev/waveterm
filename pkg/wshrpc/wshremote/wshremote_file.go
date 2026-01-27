@@ -30,6 +30,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
+
+var DisableRecursiveFileOpts = true
+
 type ByteRangeType struct {
 	All   bool
 	Start int64
@@ -153,6 +157,9 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if finfo.IsDir {
 		return impl.remoteStreamFileDir(ctx, path, byteRange, dataCallback)
 	} else {
+		if finfo.Size > RemoteFileTransferSizeLimit {
+			return fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", path, finfo.Size, RemoteFileTransferSizeLimit)
+		}
 		return impl.remoteStreamFileRegular(ctx, path, byteRange, dataCallback)
 	}
 }
@@ -187,6 +194,9 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 }
 
 func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	if DisableRecursiveFileOpts {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("recursive file transfers (tar copy) are not supported"))
+	}
 	path := data.Path
 	opts := data.Opts
 	if opts == nil {
@@ -381,7 +391,14 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			return false, fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
 		}
 
+		if !srcFileStat.IsDir() && srcFileStat.Size() > RemoteFileTransferSizeLimit {
+			return false, fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", srcPathCleaned, srcFileStat.Size(), RemoteFileTransferSizeLimit)
+		}
+
 		if srcFileStat.IsDir() {
+			if DisableRecursiveFileOpts {
+				return false, fmt.Errorf("recursive file transfers are not supported")
+			}
 			srcIsDir = true
 			var srcPathPrefix string
 			if destIsDir {
@@ -427,6 +444,9 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			}
 		}
 	} else {
+		if DisableRecursiveFileOpts {
+			return false, fmt.Errorf("recursive file transfers are not supported")
+		}
 		timeout := fstype.DefaultTimeout
 		if opts.Timeout > 0 {
 			timeout = time.Duration(opts.Timeout) * time.Millisecond
@@ -485,6 +505,10 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			data.Opts.Limit = wshrpc.MaxDirSize
 		}
 		if data.Opts.All {
+			if DisableRecursiveFileOpts {
+				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf("recursive directory listings are not supported"))
+				return
+			}
 			fs.WalkDir(os.DirFS(path), ".", func(path string, d fs.DirEntry, err error) error {
 				defer func() {
 					seen++
@@ -662,6 +686,10 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	overwrite := opts != nil && opts.Overwrite
 	recursive := opts != nil && opts.Recursive
 
+	if recursive && DisableRecursiveFileOpts {
+		return fmt.Errorf("recursive file operations are not supported")
+	}
+
 	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
 	if err != nil {
 		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
@@ -692,8 +720,10 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 		if err != nil {
 			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
 		}
-		if finfo.IsDir() && !recursive {
-			return fmt.Errorf(fstype.RecursiveRequiredError)
+		if finfo.IsDir() {
+			if !recursive {
+				return fmt.Errorf(fstype.RecursiveRequiredError)
+			}
 		}
 		err = os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
@@ -719,6 +749,7 @@ func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) err
 	}
 	return nil
 }
+
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
 	var truncate, append bool
 	var atOffset int64
@@ -755,6 +786,9 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	}
 	fileSize := int64(0)
 	if finfo != nil {
+		if finfo.IsDir() {
+			return fmt.Errorf("cannot use write file to overwrite a directory %q", path)
+		}
 		fileSize = finfo.Size()
 	}
 	if atOffset > fileSize {
@@ -791,20 +825,21 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.Comm
 	}
 	cleanedPath := filepath.Clean(expandedPath)
 
+	if data.Recursive {
+		err = os.RemoveAll(cleanedPath)
+		if err != nil {
+			return fmt.Errorf("cannot delete %q: %w", data.Path, err)
+		}
+		return nil
+	}
+
 	err = os.Remove(cleanedPath)
 	if err != nil {
-		finfo, _ := os.Stat(cleanedPath)
-		if finfo != nil && finfo.IsDir() {
-			if !data.Recursive {
-				return fmt.Errorf(fstype.RecursiveRequiredError)
-			}
-			err = os.RemoveAll(cleanedPath)
-			if err != nil {
-				return fmt.Errorf("cannot delete directory %q: %w", data.Path, err)
-			}
-		} else {
-			return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
+		finfo, statErr := os.Stat(cleanedPath)
+		if statErr == nil && finfo.IsDir() {
+			return fmt.Errorf(fstype.RecursiveRequiredError)
 		}
+		return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
 	}
 	return nil
 }
