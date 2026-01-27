@@ -193,11 +193,16 @@ $sidebar-width: 200px;
         border: 1px solid var(--form-element-border-color);
         border-radius: 6px;
         padding: 0 12px;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+        &:hover {
+            border-color: var(--form-element-primary-color, var(--accent-color));
+        }
 
         &:focus-within {
             border-color: var(--accent-color);
             box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
+            background: linear-gradient(rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.15)), var(--form-element-bg-color);
         }
 
         .search-icon {
