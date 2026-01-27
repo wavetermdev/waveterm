@@ -84,11 +84,6 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
 
     return (
         <div className="appearance-content">
-            <div className="appearance-header">
-                <h2>Appearance</h2>
-                <p className="appearance-subtitle">Customize the look and feel of Wave Terminal</p>
-            </div>
-
             {/* Mode and Accent are always visible (not collapsible) */}
             <div className="appearance-section">
                 <div className="appearance-section-label">Mode</div>
