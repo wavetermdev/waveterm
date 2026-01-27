@@ -1,86 +1,140 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+// Pantone-style palette swatch cards
+// Large rounded rectangle cards: color fill on top, label + hex on bottom
+
+$setting-modified-color: #e2c08d;
+
 .palette-preview {
     padding: 12px 0;
 }
 
 .palette-swatches {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 10px;
 }
 
 .palette-swatch-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
     position: relative;
 }
 
-.palette-swatch {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid var(--border-color);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+.palette-swatch-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-left: 3px solid transparent;
     cursor: default;
-    position: relative;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 
     &:hover {
-        transform: scale(1.15);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
 
     &--interactive {
         cursor: pointer;
+
+        &:hover {
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 0 0 2px var(--accent-color), 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
     }
 
     &--modified {
-        box-shadow: 0 0 0 2px var(--accent-color);
+        border-left-color: $setting-modified-color;
 
         &:hover {
-            box-shadow: 0 0 0 2px var(--accent-color), 0 2px 8px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+    }
+
+    &--editing {
+        border: 1px solid var(--accent-color);
+        box-shadow: 0 0 0 1px var(--accent-color), 0 2px 6px rgba(0, 0, 0, 0.15);
+
+        &.palette-swatch-card--modified {
+            border-left: 3px solid $setting-modified-color;
         }
     }
 }
 
-.swatch-reset {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--error-color);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    cursor: pointer;
-    padding: 0;
-    font-size: 8px;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-    z-index: 1;
-
-    .palette-swatch:hover & {
-        opacity: 1;
-    }
+// Top portion — solid color fill
+.palette-swatch-color {
+    height: 56px;
+    position: relative;
 }
 
-.swatch-color-input {
-    display: none;
+// Bottom portion — label + hex value + reset button
+.palette-swatch-info {
+    padding: 6px 8px;
+    background: var(--card-bg-color);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-top: 1px solid var(--border-color);
+}
+
+.palette-swatch-info-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
 }
 
 .palette-swatch-label {
     font-size: 10px;
+    font-weight: 600;
     color: var(--secondary-text-color);
-    text-align: center;
-    max-width: 64px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.palette-swatch-hex {
+    font-size: 9px;
+    color: var(--secondary-text-color);
+    font-family: var(--fixed-font);
+    opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color 0.15s ease, opacity 0.15s ease;
+
+    &--dirty {
+        color: var(--accent-color);
+        opacity: 1;
+    }
+}
+
+// Reset button — always visible when modified, matches General tab pattern
+.swatch-reset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: 4px;
+    opacity: 0.7;
+    flex-shrink: 0;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        opacity: 1;
+        background: var(--hover-bg-color);
+    }
+
+    i {
+        font-size: 11px;
+    }
 }
