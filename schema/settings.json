@@ -27,7 +27,9 @@
           "type": "string"
         },
         "app:accent": {
-          "type": "string"
+          "type": "string",
+          "enum": ["green", "warm", "blue", "purple", "teal"],
+          "description": "Accent color theme (green, warm, blue, purple, teal)"
         },
         "ai:*": {
           "type": "boolean"

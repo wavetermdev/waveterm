@@ -86,7 +86,7 @@
     --modal-border-radius: 6px;
     --toggle-bg-color: var(--border-color);
     --modal-shadow-color: rgba(0, 0, 0, 0.8);
-    --modal-box-shadow: box-shadow: 0px 8px 24px 0px var(--modal-shadow-color);
+    --modal-box-shadow: 0px 8px 24px 0px var(--modal-shadow-color);
 
     --toggle-thumb-color: var(--main-text-color);
     --toggle-checked-bg-color: var(--accent-color);
@@ -254,6 +254,16 @@
     --button-yellow-bg: #bf8700;
     --button-yellow-hover-bg: #9a6700;
 }
+
+// Accent color overrides.
+// CSS specificity cascade:
+//   :root (0,0,0) → [data-theme] (0,1,0) → [data-accent] (0,1,0, wins by source order)
+//   → [data-theme][data-accent] (0,2,0, compound overrides for light+accent adjustments)
+//
+// IMPORTANT: Every non-green accent that sets --secondary-text-color or --border-color
+// here (dark-mode values) MUST have a corresponding compound [data-theme="light"][data-accent="X"]
+// block below that overrides those same variables for light mode, or light mode will
+// inherit the dark-mode accent values due to source-order specificity.
 
 // Accent: Green (default)
 [data-accent="green"] {

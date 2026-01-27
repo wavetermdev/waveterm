@@ -20,28 +20,39 @@ type NativeThemeSource = "dark" | "light" | "system";
  * - "light-gray" -> app:theme = "light" (accent unchanged)
  * - "light-warm" -> app:theme = "light", app:accent = "warm"
  * Other values pass through unchanged.
+ * Uses setSettings (plural) for atomic batch update to avoid transient states.
  */
 function migrateThemeSetting(currentTheme: string): void {
     if (currentTheme === "light-gray") {
-        settingsService.setSetting("app:theme", "light");
+        settingsService.setSettings({ "app:theme": "light" });
     } else if (currentTheme === "light-warm") {
-        settingsService.setSetting("app:theme", "light");
-        settingsService.setSetting("app:accent", "warm");
+        settingsService.setSettings({ "app:theme": "light", "app:accent": "warm" });
     }
 }
+
+// Reactive atom tracking system dark mode preference.
+// Uses an effect-based approach: the atom holds a writable value that is kept
+// in sync with window.matchMedia via a module-level listener.
+const systemDarkModeAtom = atom<boolean>(window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+// Set up a module-level listener to keep systemDarkModeAtom in sync with OS preference.
+// This runs once when the module loads. The listener updates the atom whenever
+// the OS dark/light preference changes, making resolvedAppThemeAtom reactive.
+const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+darkModeQuery.addEventListener("change", (e) => {
+    globalStore.set(systemDarkModeAtom, e.matches);
+});
 
 // Step 9: resolvedAppThemeAtom (keep legacy value handling for migration window)
 /**
  * Atom that resolves the effective app theme category (dark/light).
  * This is used for terminal theme auto-switching.
- *
- * Note: This doesn't auto-update when system preference changes at runtime.
- * For that, use the useTheme hook which sets up listeners.
+ * Reactively tracks both the app:theme setting and OS dark mode preference.
  */
 export const resolvedAppThemeAtom = atom<ResolvedTheme>((get) => {
     const setting = (get(getSettingsKeyAtom("app:theme")) || "dark") as string;
     if (setting === "system") {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        return get(systemDarkModeAtom) ? "dark" : "light";
     }
     // Handle legacy values during migration window
     if (setting === "light" || setting === "light-gray" || setting === "light-warm") {
