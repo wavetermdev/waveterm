@@ -81,6 +81,7 @@ function readPaletteColors(): PaletteColor[] {
 const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePalettePreviewProps) => {
     const [colors, setColors] = useState<PaletteColor[]>(() => readPaletteColors());
     const colorInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+    const handlerRefs = useRef<Map<string, { input: (e: Event) => void; change: (e: Event) => void }>>(new Map());
 
     const refreshColors = useCallback(() => {
         // Use requestAnimationFrame to ensure styles have been applied
@@ -161,14 +162,19 @@ const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePal
     const setColorInputRef = useCallback(
         (variable: string, el: HTMLInputElement | null) => {
             const prev = colorInputRefs.current.get(variable);
-            if (prev) {
-                prev.removeEventListener("input", (e) => handleColorInput(variable, e));
-                prev.removeEventListener("change", (e) => handleColorChange(variable, e));
+            const prevHandlers = handlerRefs.current.get(variable);
+            if (prev && prevHandlers) {
+                prev.removeEventListener("input", prevHandlers.input);
+                prev.removeEventListener("change", prevHandlers.change);
+                handlerRefs.current.delete(variable);
             }
             if (el) {
+                const inputHandler = (e: Event) => handleColorInput(variable, e);
+                const changeHandler = (e: Event) => handleColorChange(variable, e);
                 colorInputRefs.current.set(variable, el);
-                el.addEventListener("input", (e) => handleColorInput(variable, e));
-                el.addEventListener("change", (e) => handleColorChange(variable, e));
+                handlerRefs.current.set(variable, { input: inputHandler, change: changeHandler });
+                el.addEventListener("input", inputHandler);
+                el.addEventListener("change", changeHandler);
             } else {
                 colorInputRefs.current.delete(variable);
             }

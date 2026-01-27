@@ -105,9 +105,15 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
 
     const handleSaveCustomAccent = useCallback(
         (name: string, overrides: Record<string, string>) => {
-            const id = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+            let id = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
             if (!id) return;
             const current = customAccents ? { ...customAccents } : {};
+            // Avoid silently overwriting: append suffix if id already exists
+            if (id in current) {
+                let suffix = 2;
+                while (`${id}-${suffix}` in current) suffix++;
+                id = `${id}-${suffix}`;
+            }
             current[id] = { label: name, overrides };
             settingsService.setSetting("app:customaccents", current);
             settingsService.setSetting("app:accent", `custom:${id}`);

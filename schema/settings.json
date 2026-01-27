@@ -28,8 +28,7 @@
         },
         "app:accent": {
           "type": "string",
-          "enum": ["green", "warm", "blue", "purple", "teal"],
-          "description": "Accent color theme (green, warm, blue, purple, teal)"
+          "description": "Accent color theme (green, warm, blue, purple, teal, or custom:<id>)"
         },
         "app:themeoverrides": {
           "type": "object",
