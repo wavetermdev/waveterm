@@ -14,15 +14,7 @@ type ResolvedTheme = "dark" | "light";
 // Electron native theme source
 type NativeThemeSource = "dark" | "light" | "system";
 
-// Step 2: Simplified isLightTheme
-/**
- * Returns true if the theme setting is a light variant
- */
-function isLightTheme(theme: string): boolean {
-    return theme === "light";
-}
-
-// Step 3: Migration logic
+// Step 2: Migration logic
 /**
  * One-time migration from old theme variants to new mode+accent system.
  * - "light-gray" -> app:theme = "light" (accent unchanged)

@@ -1117,13 +1117,15 @@ function getOrderedCategories(): string[] {
  */
 function searchSettings(query: string): SettingMetadata[] {
     if (!query || query.trim() === "") {
-        return Array.from(settingsRegistry.values());
+        return Array.from(settingsRegistry.values()).filter((s) => !s.hideFromSettings);
     }
 
     const normalizedQuery = query.toLowerCase().trim();
     const results: SettingMetadata[] = [];
 
     for (const setting of settingsRegistry.values()) {
+        if (setting.hideFromSettings) continue;
+
         // Check key
         if (setting.key.toLowerCase().includes(normalizedQuery)) {
             results.push(setting);
