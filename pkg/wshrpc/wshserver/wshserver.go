@@ -850,13 +850,9 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 }
 
 func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client: %w", err)
-	}
 	return &wshrpc.WaveInfoData{
 		Version:   wavebase.WaveVersion,
-		ClientId:  client.OID,
+		ClientId:  wstore.GetClientId(),
 		BuildTime: wavebase.BuildTime,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
@@ -1183,11 +1179,7 @@ func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata
 }
 
 func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return fmt.Errorf("getting client data for telemetry: %v", err)
-	}
-	return wcloud.SendAllTelemetry(client.OID)
+	return wcloud.SendAllTelemetry(wstore.GetClientId())
 }
 
 func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
@@ -1200,12 +1192,6 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 		return fmt.Errorf("error setting telemetry enabled: %w", err)
 	}
 
-	// Get client for telemetry operations
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return fmt.Errorf("getting client data for telemetry: %v", err)
-	}
-
 	// Record the telemetry event
 	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
 	err = telemetry.RecordTEvent(ctx, event)
@@ -1214,7 +1200,7 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	}
 
 	// Immediately send telemetry to cloud
-	err = wcloud.SendAllTelemetry(client.OID)
+	err = wcloud.SendAllTelemetry(wstore.GetClientId())
 	if err != nil {
 		log.Printf("error sending telemetry after enabling: %v", err)
 	}

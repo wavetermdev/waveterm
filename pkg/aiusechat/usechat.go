@@ -676,17 +676,10 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get client ID from database
-	client, err := wstore.DBGetSingleton[*waveobj.Client](r.Context())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get client: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 	// Call the core WaveAIPostMessage function
 	chatOpts := uctypes.WaveChatOpts{
 		ChatId:               req.ChatID,
-		ClientId:             client.OID,
+		ClientId:             wstore.GetClientId(),
 		Config:               *aiOpts,
 		WidgetAccess:         req.WidgetAccess,
 		AllowNativeWebSearch: true,

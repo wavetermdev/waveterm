@@ -430,12 +430,7 @@ func makeSwapToken(ctx context.Context, logCtx context.Context, blockId string, 
 			token.Env["WAVETERM_WORKSPACEID"] = wsId
 		}
 	}
-	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		log.Printf("error getting client data: %v\n", err)
-	} else {
-		token.Env["WAVETERM_CLIENTID"] = clientData.OID
-	}
+	token.Env["WAVETERM_CLIENTID"] = wstore.GetClientId()
 	token.Env["WAVETERM_CONN"] = remoteName
 	envMap, err := resolveEnvMap(blockId, blockMeta, remoteName)
 	if err != nil {

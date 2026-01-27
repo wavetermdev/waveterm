@@ -245,14 +245,9 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to create WaveFS file: %w", err)
 	}
 
-	clientId, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil || clientId == nil {
-		return "", fmt.Errorf("failed to get client: %w", err)
-	}
-
+	clientId := wstore.GetClientId()
 	publicKey := wavejwt.GetPublicKey()
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey)
-
 	jobEnv := envutil.CopyAndAddToEnvMap(params.Env, "WAVETERM_JOBID", jobId)
 	startJobData := wshrpc.CommandRemoteStartJobData{
 		Cmd:                params.Cmd,
@@ -263,7 +258,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		JobAuthToken:       jobAuthToken,
 		JobId:              jobId,
 		MainServerJwtToken: jobAccessToken,
-		ClientId:           clientId.OID,
+		ClientId:           clientId,
 		PublicKeyBase64:    publicKeyBase64,
 	}
 

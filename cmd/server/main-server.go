@@ -163,15 +163,9 @@ func sendDiagnosticPing() bool {
 	if err != nil || !isOnline {
 		return false
 	}
-	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return false
-	}
-	if clientData == nil {
-		return false
-	}
+	clientId := wstore.GetClientId()
 	usageTelemetry := telemetry.IsTelemetryEnabled()
-	wcloud.SendDiagnosticPing(ctx, clientData.OID, usageTelemetry)
+	wcloud.SendDiagnosticPing(ctx, clientId, usageTelemetry)
 	return true
 }
 
@@ -227,12 +221,8 @@ func sendTelemetryWrapper() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		log.Printf("[error] getting client data for telemetry: %v\n", err)
-		return
-	}
-	err = wcloud.SendAllTelemetry(client.OID)
+	clientId := wstore.GetClientId()
+	err := wcloud.SendAllTelemetry(clientId)
 	if err != nil {
 		log.Printf("[error] sending telemetry: %v\n", err)
 	}
