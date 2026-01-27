@@ -404,8 +404,8 @@ $sidebar-width: 200px;
                 color: var(--grey-text-color);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                // Neutral grey background (not theme-tinted)
-                background: #2a2a2a;
+                // Use theme variable for light mode compatibility
+                background: var(--panel-bg-color);
                 border-bottom: 1px solid var(--border-color);
                 margin: 0;
                 transition: box-shadow 0.15s ease;
