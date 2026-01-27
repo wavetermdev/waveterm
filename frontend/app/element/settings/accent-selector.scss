@@ -1,0 +1,78 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.accent-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+}
+
+.accent-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--form-element-bg-color);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &.selected {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 1px var(--accent-color);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-color);
+        outline-offset: 2px;
+    }
+}
+
+.accent-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.15s ease;
+
+    .accent-card:hover & {
+        transform: scale(1.1);
+    }
+
+    // Light theme adjustments
+    [data-theme="light"] & {
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+}
+
+.accent-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--main-text-color);
+    text-align: center;
+}
+
+.accent-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-color);
+    border-radius: 50%;
+    color: white;
+
+    i {
+        font-size: 10px;
+    }
+}

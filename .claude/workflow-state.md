@@ -1,54 +1,63 @@
 ---
 workflow: phased-dev
-workflow_status: complete
-completed_at: 2026-01-25
-started: 2026-01-25
-last_updated: 2026-01-25
+workflow_status: in_progress
+current_phase: 5-execution
+started: 2026-01-26
+last_updated: 2026-01-26T00:00:00
+branch: feat/UI-Theme-System-Redesign
+base_branch: feat/experimental-upstream-fixes
 ---
 
-# Phased Development Workflow - OMP Theme Configurator Integration - COMPLETE
+# UI Theme System Redesign - Phased Development
 
-## Project: OMP Theme Configurator
+## Plan Summary
 
-### Objective
-Integrate the OMP Theme Configurator (based on https://github.com/jamesmontemagno/ohmyposh-configurator) into Wave Terminal's Appearance Panel.
+Separate the theme system into two dimensions:
+- **Mode**: Dark / Light / System (structural colors)
+- **Accent/Style**: Green / Warm / Blue / Purple / Teal (accent colors, secondary tints)
 
-### Final Status: ALL PHASES COMPLETE - Merged to feat/experimental-upstream-fixes (7eaa71d3)
+Two CSS data attributes: `data-theme` and `data-accent`
 
-## Completed Phases
+## Phases
 
-### Phase 0: Discovery & Research - COMPLETE
-- [x] Clone and analyze ohmyposh-configurator source
-- [x] Identify key components and architecture
-- [x] Document integration points with Wave Terminal
-- [x] Map out UI changes needed for Wave branding
-- [x] Created discovery report: `.claude/specs/discovery-omp-configurator.md`
+### Phase 1: Backend + CSS Foundation
+- Task 1: Go backend - new `app:accent` setting
+- Task 2: CSS variable restructuring (theme.scss + tailwindsetup.css)
+- Task 3: Theme hook update (usetheme.ts)
 
-### Phase 1: Planning - COMPLETE
-- [x] Create specs (spec-001 through spec-005)
-- [x] Design review with ultrathink
-- [x] Architecture review
+### Phase 2: UI Components
+- Task 4: Mode Selector component (Dark/Light/System)
+- Task 5: Accent Selector component (card grid)
+- Task 6: Theme Palette Preview component
 
-### Phase 2: Implementation - COMPLETE
-- [x] Backend RPC Commands (OmpReadConfigCommand, OmpWriteConfigCommand, OmpReinitCommand)
-- [x] Frontend Components (OmpConfigurator, OmpConfigPreview, OmpBlockEditor, ActionButtons, AdvancedSection)
-- [x] Integration & Styling (appearance-content.tsx, Wave branding SCSS)
-- [x] TypeScript bindings regenerated
+### Phase 3: Appearance Panel Integration
+- Task 7: Appearance panel redesign
+- Task 8: Move display settings from General to Appearance
+- Task 9: Settings registry updates (hideFromSettings flags)
 
-### Phase 3: Review & QA - COMPLETE
-- [x] Code review (Opus ultrathink) - Initial: BLOCKED (5 issues), Re-review: APPROVED
-- [x] QA testing - Build verification PASSED
-- [x] All 5 code review issues fixed (OmpReinitCommand, event listener cleanup, JSON validation, callback mismatch, duplicate function)
+## Workflow Stages
 
-### Additional Bug Fixes (completed in parallel)
-- [x] TDZ error in omp-high-contrast.tsx (useCallback before useEffect)
-- [x] RecordTEventCommand replaced with no-op recordTEvent
-- [x] Appearance panel scrolling fixed (overflow: auto)
-- [x] Sass @import → @use migration
-- [x] Config directory watcher silent skip for non-existent dirs
-- [x] Preset validation for ai@ and provider@ types
+- [x] Discovery - Tasks identified from plan
+- [x] Planning - Create specs for each task
+- [x] Design Review - Validate specs
+- [x] Architecture Review - Phase coherence check (REQUEST_CHANGES -> fixed)
+- [ ] Execution - Implement tasks
+- [ ] Code Review - Security + functional review
+- [ ] QA Testing - Electron MCP verification
+- [ ] Integration & Merge
 
-## Reference
-- Source repo: https://github.com/jamesmontemagno/ohmyposh-configurator
-- Target location: Wave Terminal Appearance Panel
-- Final merge commit: 7eaa71d3
+## Key Files
+
+| File | Change |
+|------|--------|
+| pkg/wconfig/settingsconfig.go | Add AppAccent field |
+| pkg/wconfig/metaconsts.go | Add ConfigKey_AppAccent |
+| schema/settings.json | Add app:accent |
+| frontend/types/gotypes.d.ts | Add app:accent type |
+| frontend/app/store/settings-registry.ts | Update entries, hideFromSettings |
+| frontend/app/theme.scss | Major restructure - accent blocks |
+| frontend/tailwindsetup.css | Accent palette overrides |
+| frontend/app/hook/usetheme.ts | Dual attribute, migration |
+| frontend/app/view/waveconfig/appearance-content.tsx | Full redesign |
+| frontend/app/view/waveconfig/appearance-content.scss | New styles |
+| frontend/app/view/waveconfig/settings-visual.tsx | Filter hideFromSettings |

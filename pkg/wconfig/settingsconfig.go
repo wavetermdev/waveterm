@@ -60,6 +60,7 @@ type SettingsType struct {
 	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
 	AppCtrlVPaste                 *bool  `json:"app:ctrlvpaste,omitempty"`
 	AppTheme                      string `json:"app:theme,omitempty"`
+	AppAccent                     string `json:"app:accent,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`

@@ -125,6 +125,149 @@
     --ansi-brightwhite: #8c959f;
 }
 
+/* Accent: Warm */
+[data-accent="warm"] {
+    --color-accent-50: rgb(255, 248, 235);
+    --color-accent-100: rgb(255, 238, 200);
+    --color-accent-200: rgb(250, 215, 150);
+    --color-accent-300: rgb(235, 185, 100);
+    --color-accent-400: rgb(200, 145, 60);
+    --color-accent-500: rgb(170, 120, 45);
+    --color-accent-600: rgb(140, 100, 35);
+    --color-accent-700: rgb(115, 80, 25);
+    --color-accent-800: rgb(90, 65, 20);
+    --color-accent-900: rgb(70, 50, 15);
+    --color-accent: rgb(200, 145, 60);
+    --color-accenthover: rgb(225, 170, 80);
+    --color-accentbg: rgba(200, 145, 60, 0.5);
+}
+
+/* Accent: Blue */
+[data-accent="blue"] {
+    --color-accent-50: rgb(235, 245, 255);
+    --color-accent-100: rgb(210, 233, 255);
+    --color-accent-200: rgb(170, 210, 250);
+    --color-accent-300: rgb(120, 180, 240);
+    --color-accent-400: rgb(70, 140, 220);
+    --color-accent-500: rgb(50, 115, 195);
+    --color-accent-600: rgb(35, 95, 170);
+    --color-accent-700: rgb(25, 75, 140);
+    --color-accent-800: rgb(18, 60, 115);
+    --color-accent-900: rgb(12, 45, 90);
+    --color-accent: rgb(70, 140, 220);
+    --color-accenthover: rgb(100, 165, 240);
+    --color-accentbg: rgba(70, 140, 220, 0.5);
+}
+
+/* Accent: Purple */
+[data-accent="purple"] {
+    --color-accent-50: rgb(248, 240, 255);
+    --color-accent-100: rgb(238, 220, 255);
+    --color-accent-200: rgb(218, 190, 250);
+    --color-accent-300: rgb(190, 150, 240);
+    --color-accent-400: rgb(160, 100, 220);
+    --color-accent-500: rgb(135, 80, 195);
+    --color-accent-600: rgb(110, 65, 170);
+    --color-accent-700: rgb(90, 50, 140);
+    --color-accent-800: rgb(70, 38, 115);
+    --color-accent-900: rgb(55, 28, 90);
+    --color-accent: rgb(160, 100, 220);
+    --color-accenthover: rgb(185, 130, 240);
+    --color-accentbg: rgba(160, 100, 220, 0.5);
+}
+
+/* Accent: Teal */
+[data-accent="teal"] {
+    --color-accent-50: rgb(232, 255, 253);
+    --color-accent-100: rgb(200, 250, 245);
+    --color-accent-200: rgb(150, 240, 230);
+    --color-accent-300: rgb(100, 220, 210);
+    --color-accent-400: rgb(50, 190, 180);
+    --color-accent-500: rgb(35, 160, 150);
+    --color-accent-600: rgb(25, 135, 125);
+    --color-accent-700: rgb(18, 110, 100);
+    --color-accent-800: rgb(12, 85, 78);
+    --color-accent-900: rgb(8, 65, 60);
+    --color-accent: rgb(50, 190, 180);
+    --color-accenthover: rgb(80, 215, 205);
+    --color-accentbg: rgba(50, 190, 180, 0.5);
+}
+
+/* Light mode accent palette adjustments (darker for contrast) */
+
+[data-theme="light"][data-accent="green"] {
+    --color-accent-400: rgb(46, 160, 67);
+    --color-accent-500: rgb(34, 137, 54);
+    --color-accent-600: rgb(28, 114, 45);
+    --color-accent: rgb(46, 160, 67);
+    --color-accenthover: rgb(56, 180, 77);
+    --color-accentbg: rgba(46, 160, 67, 0.15);
+}
+
+[data-theme="light"][data-accent="warm"] {
+    --color-accent-50: rgb(255, 250, 240);
+    --color-accent-100: rgb(255, 240, 215);
+    --color-accent-200: rgb(245, 220, 175);
+    --color-accent-300: rgb(220, 180, 110);
+    --color-accent-400: rgb(140, 100, 40);
+    --color-accent-500: rgb(120, 85, 30);
+    --color-accent-600: rgb(100, 70, 22);
+    --color-accent-700: rgb(80, 55, 15);
+    --color-accent-800: rgb(60, 42, 10);
+    --color-accent-900: rgb(45, 32, 8);
+    --color-accent: rgb(140, 100, 40);
+    --color-accenthover: rgb(165, 120, 55);
+    --color-accentbg: rgba(140, 100, 40, 0.15);
+}
+
+[data-theme="light"][data-accent="blue"] {
+    --color-accent-50: rgb(240, 248, 255);
+    --color-accent-100: rgb(220, 238, 255);
+    --color-accent-200: rgb(185, 218, 250);
+    --color-accent-300: rgb(130, 180, 235);
+    --color-accent-400: rgb(30, 100, 180);
+    --color-accent-500: rgb(22, 82, 155);
+    --color-accent-600: rgb(15, 68, 130);
+    --color-accent-700: rgb(10, 52, 105);
+    --color-accent-800: rgb(8, 40, 85);
+    --color-accent-900: rgb(5, 30, 65);
+    --color-accent: rgb(30, 100, 180);
+    --color-accenthover: rgb(45, 120, 200);
+    --color-accentbg: rgba(30, 100, 180, 0.15);
+}
+
+[data-theme="light"][data-accent="purple"] {
+    --color-accent-50: rgb(250, 245, 255);
+    --color-accent-100: rgb(242, 232, 255);
+    --color-accent-200: rgb(225, 205, 250);
+    --color-accent-300: rgb(195, 160, 235);
+    --color-accent-400: rgb(120, 70, 180);
+    --color-accent-500: rgb(100, 55, 155);
+    --color-accent-600: rgb(82, 42, 130);
+    --color-accent-700: rgb(65, 32, 108);
+    --color-accent-800: rgb(50, 24, 85);
+    --color-accent-900: rgb(38, 18, 65);
+    --color-accent: rgb(120, 70, 180);
+    --color-accenthover: rgb(145, 95, 205);
+    --color-accentbg: rgba(120, 70, 180, 0.15);
+}
+
+[data-theme="light"][data-accent="teal"] {
+    --color-accent-50: rgb(238, 255, 252);
+    --color-accent-100: rgb(210, 250, 245);
+    --color-accent-200: rgb(165, 235, 225);
+    --color-accent-300: rgb(100, 200, 190);
+    --color-accent-400: rgb(20, 150, 140);
+    --color-accent-500: rgb(15, 125, 115);
+    --color-accent-600: rgb(10, 105, 95);
+    --color-accent-700: rgb(8, 82, 75);
+    --color-accent-800: rgb(5, 65, 58);
+    --color-accent-900: rgb(3, 48, 43);
+    --color-accent: rgb(20, 150, 140);
+    --color-accenthover: rgb(35, 170, 160);
+    --color-accentbg: rgba(20, 150, 140, 0.15);
+}
+
 :root {
     --zoomfactor: 1;
     --zoomfactor-inv: 1;

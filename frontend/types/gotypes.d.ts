@@ -1243,6 +1243,7 @@ declare global {
         "app:showoverlayblocknums"?: boolean;
         "app:ctrlvpaste"?: boolean;
         "app:theme"?: string;
+        "app:accent"?: string;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

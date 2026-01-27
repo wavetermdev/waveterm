@@ -4,11 +4,14 @@
 /**
  * Appearance Content
  *
- * Unified appearance settings panel that consolidates UI theme,
- * terminal color scheme, Oh-My-Posh integration, and tab backgrounds.
+ * Unified appearance settings panel with Mode (Dark/Light/System),
+ * Accent Theme selection, color palette preview, display settings,
+ * terminal color scheme, and Oh-My-Posh integration.
  */
 
 import { CollapsibleSection } from "@/app/element/collapsible-section";
+import { AccentSelector } from "@/app/element/settings/accent-selector";
+import { ModeSelector } from "@/app/element/settings/mode-selector";
 import { OmpConfigurator } from "@/app/element/settings/omp-configurator";
 import { reinitOmpInAllTerminals } from "@/app/element/settings/omp-configurator/omp-utils";
 import { OmpHighContrast } from "@/app/element/settings/omp-high-contrast";
@@ -16,9 +19,10 @@ import { OmpPaletteExport } from "@/app/element/settings/omp-palette-export";
 import { OmpThemeControl } from "@/app/element/settings/omptheme-control";
 import { PreviewBackgroundToggle, type PreviewBackground } from "@/app/element/settings/preview-background-toggle";
 import { TermThemeControl } from "@/app/element/settings/termtheme-control";
+import { ThemePalettePreview } from "@/app/element/settings/theme-palette-preview";
 import { getSettingsKeyAtom } from "@/app/store/global";
 import { settingsService } from "@/app/store/settings-service";
-import { BgPresetsContent } from "@/app/view/waveconfig/bgpresets-content";
+import { DisplaySettings } from "@/app/view/waveconfig/display-settings";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useState } from "react";
@@ -29,54 +33,17 @@ interface AppearanceContentProps {
     model: WaveConfigViewModel;
 }
 
-const THEME_OPTIONS = [
-    { value: "dark", label: "Dark", icon: "moon" },
-    { value: "light", label: "Light", icon: "sun" },
-    { value: "light-gray", label: "Light Gray", icon: "sun" },
-    { value: "light-warm", label: "Light Warm", icon: "sun" },
-    { value: "system", label: "System", icon: "desktop" },
-];
-
-/**
- * UI Theme Selector - Visual cards for app themes
- */
-const UIThemeSelector = memo(({ value, onChange }: { value: string; onChange: (v: string) => void }) => {
-    return (
-        <div className="ui-theme-selector">
-            {THEME_OPTIONS.map((theme) => (
-                <button
-                    key={theme.value}
-                    className={`theme-card ${value === theme.value ? "selected" : ""}`}
-                    onClick={() => onChange(theme.value)}
-                    aria-pressed={value === theme.value}
-                >
-                    <div className={`theme-preview ${theme.value}`}>
-                        <i className={`fa fa-solid fa-${theme.icon}`} />
-                    </div>
-                    <span className="theme-label">{theme.label}</span>
-                    {value === theme.value && (
-                        <span className="theme-check">
-                            <i className="fa fa-solid fa-check" />
-                        </span>
-                    )}
-                </button>
-            ))}
-        </div>
-    );
-});
-
-UIThemeSelector.displayName = "UIThemeSelector";
-
 /**
  * Main Appearance Content component
  */
 export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["ui-theme", "terminal-theme"]));
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["terminal-theme"]));
     const [termPreviewBg, setTermPreviewBg] = useState<PreviewBackground>("dark");
     const [ompPreviewBg, setOmpPreviewBg] = useState<PreviewBackground>("dark");
 
     // Get current settings
     const appTheme = (useAtomValue(getSettingsKeyAtom("app:theme")) as string) ?? "dark";
+    const appAccent = (useAtomValue(getSettingsKeyAtom("app:accent")) as string) ?? "green";
     const termTheme = (useAtomValue(getSettingsKeyAtom("term:theme")) as string) ?? "default-dark";
     const ompTheme = (useAtomValue(getSettingsKeyAtom("term:omptheme")) as string) ?? "";
 
@@ -94,6 +61,10 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
 
     const handleThemeChange = useCallback((value: string) => {
         settingsService.setSetting("app:theme", value);
+    }, []);
+
+    const handleAccentChange = useCallback((value: string) => {
+        settingsService.setSetting("app:accent", value);
     }, []);
 
     const handleTermThemeChange = useCallback((value: string) => {
@@ -118,13 +89,30 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                 <p className="appearance-subtitle">Customize the look and feel of Wave Terminal</p>
             </div>
 
+            {/* Mode and Accent are always visible (not collapsible) */}
+            <div className="appearance-section">
+                <div className="appearance-section-label">Mode</div>
+                <ModeSelector value={appTheme} onChange={handleThemeChange} />
+            </div>
+
+            <div className="appearance-section">
+                <div className="appearance-section-label">Accent Theme</div>
+                <AccentSelector value={appAccent} onChange={handleAccentChange} />
+            </div>
+
+            <div className="appearance-section">
+                <div className="appearance-section-label">Color Palette Preview</div>
+                <ThemePalettePreview />
+            </div>
+
+            {/* Collapsible sections */}
             <CollapsibleSection
-                title="UI Theme"
-                icon="palette"
-                isExpanded={expandedSections.has("ui-theme")}
-                onToggle={() => toggleSection("ui-theme")}
+                title="Display Settings"
+                icon="sliders"
+                isExpanded={expandedSections.has("display")}
+                onToggle={() => toggleSection("display")}
             >
-                <UIThemeSelector value={appTheme} onChange={handleThemeChange} />
+                <DisplaySettings />
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -164,15 +152,6 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                         onConfigChange={handleOmpConfigChange}
                     />
                 </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection
-                title="Tab Backgrounds"
-                icon="image"
-                isExpanded={expandedSections.has("backgrounds")}
-                onToggle={() => toggleSection("backgrounds")}
-            >
-                <BgPresetsContent model={model} />
             </CollapsibleSection>
         </div>
     );

@@ -26,6 +26,9 @@
         "app:theme": {
           "type": "string"
         },
+        "app:accent": {
+          "type": "string"
+        },
         "ai:*": {
           "type": "boolean"
         },
