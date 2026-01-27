@@ -97,6 +97,11 @@ class RpcApiType {
         return client.wshRpcCall("connreinstallwsh", data, opts);
     }
 
+    // command "connserverinit" [call]
+    ConnServerInitCommand(client: WshClient, data: CommandConnServerInitData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("connserverinit", data, opts);
+    }
+
     // command "connstatus" [call]
     ConnStatusCommand(client: WshClient, opts?: RpcOpts): Promise<ConnStatus[]> {
         return client.wshRpcCall("connstatus", null, opts);

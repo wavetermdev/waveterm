@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -223,15 +224,12 @@ func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {
 }
 
 func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveobj.MetaMapType, connName string) (string, error) {
-
 	termSize := waveobj.TermSize{
 		Rows: shellutil.DefaultTermRows,
 		Cols: shellutil.DefaultTermCols,
 	}
-
 	cmdStr := blockMeta.GetString(waveobj.MetaKey_Cmd, "")
 	cwd := blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
-
 	opts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return "", fmt.Errorf("invalid ssh remote name (%s): %w", connName, err)
@@ -240,22 +238,19 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 	if conn == nil {
 		return "", fmt.Errorf("connection %q not found", connName)
 	}
-
 	connRoute := wshutil.MakeConnectionRouteId(connName)
 	remoteInfo, err := wshclient.RemoteGetInfoCommand(wshclient.GetBareRpcClient(), &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
 	if err != nil {
 		return "", fmt.Errorf("unable to obtain remote info from connserver: %w", err)
 	}
 	shellType := shellutil.GetShellTypeFromShellPath(remoteInfo.Shell)
-
 	swapToken := makeSwapToken(ctx, ctx, sjc.BlockId, blockMeta, connName, shellType)
-
-	sockName := conn.GetDomainSocketName()
+	sockName := wavebase.GetPersistentRemoteSockName(wstore.GetClientId())
 	rpcContext := wshrpc.RpcContext{
-		RouteId:  wshutil.MakeRandomProcRouteId(),
-		SockName: sockName,
-		BlockId:  sjc.BlockId,
-		Conn:     conn.Opts.String(),
+		ProcRoute: true,
+		SockName:  sockName,
+		BlockId:   sjc.BlockId,
+		Conn:      connName,
 	}
 	jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 	if err != nil {
@@ -263,7 +258,6 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 	}
 	swapToken.RpcContext = &rpcContext
 	swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
-
 	cmdOpts := shellexec.CommandOptsType{
 		Interactive: true,
 		Login:       true,
@@ -271,12 +265,10 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 		SwapToken:   swapToken,
 		ForceJwt:    false,
 	}
-
 	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn)
 	if err != nil {
 		return "", fmt.Errorf("failed to start remote shell job: %w", err)
 	}
-
 	return jobId, nil
 }
 

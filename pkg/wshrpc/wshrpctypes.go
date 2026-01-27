@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
@@ -99,6 +100,7 @@ type WshRpcInterface interface {
 	DismissWshFailCommand(ctx context.Context, connName string) error
 	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
 	FindGitBashCommand(ctx context.Context, rescan bool) (string, error)
+	ConnServerInitCommand(ctx context.Context, data CommandConnServerInitData) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -203,14 +205,24 @@ type RpcOpts struct {
 }
 
 type RpcContext struct {
-	SockName string `json:"sockname,omitempty"` // the domain socket name
-	RouteId  string `json:"routeid"`            // the routeid from the jwt
-	BlockId  string `json:"blockid,omitempty"`  // blockid for this rpc
-	Conn     string `json:"conn,omitempty"`     // the conn name
-	IsRouter bool   `json:"isrouter,omitempty"` // if this is for a sub-router
+	SockName  string `json:"sockname,omitempty"`  // the domain socket name
+	RouteId   string `json:"routeid"`             // the routeid from the jwt
+	ProcRoute bool   `json:"procroute,omitempty"` // use a random procid for route
+	BlockId   string `json:"blockid,omitempty"`   // blockid for this rpc
+	Conn      string `json:"conn,omitempty"`      // the conn name
+	IsRouter  bool   `json:"isrouter,omitempty"`  // if this is for a sub-router
+}
+
+func (rc RpcContext) GenerateRouteId() string {
+	if rc.RouteId != "" {
+		return rc.RouteId
+	}
+	return "proc:" + uuid.New().String()
 }
 
 type CommandAuthenticateRtnData struct {
+	RouteId string `json:"routeid"`
+
 	// these fields are only set when doing a token swap
 	Env            map[string]string `json:"env,omitempty"`
 	InitScriptText string            `json:"initscripttext,omitempty"`
@@ -600,6 +612,10 @@ type ActivityUpdate struct {
 type ConnExtData struct {
 	ConnName   string `json:"connname"`
 	LogBlockId string `json:"logblockid,omitempty"`
+}
+
+type CommandConnServerInitData struct {
+	ClientId string `json:"clientid"`
 }
 
 type FetchSuggestionsData struct {

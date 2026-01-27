@@ -125,6 +125,12 @@ func ConnReinstallWshCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *w
 	return err
 }
 
+// command "connserverinit", wshserver.ConnServerInitCommand
+func ConnServerInitCommand(w *wshutil.WshRpc, data wshrpc.CommandConnServerInitData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "connserverinit", data, opts)
+	return err
+}
+
 // command "connstatus", wshserver.ConnStatusCommand
 func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "connstatus", nil, opts)

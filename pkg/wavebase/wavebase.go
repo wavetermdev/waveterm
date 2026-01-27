@@ -181,6 +181,10 @@ func GetDomainSocketName() string {
 	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
 }
 
+func GetPersistentRemoteSockName(clientId string) string {
+	return filepath.Join("~", ".waveterm", "client", clientId, "waveterm.sock")
+}
+
 func EnsureWaveDataDir() error {
 	return CacheEnsureDir(GetWaveDataDir(), "wavehome", 0700, "wave home directory")
 }

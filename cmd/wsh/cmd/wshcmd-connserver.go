@@ -122,7 +122,7 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 	}
 }
 
-func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.WshRpc, error) {
+func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName string) (*wshutil.WshRpc, error) {
 	routeId := wshutil.MakeConnectionRouteId(connServerConnName)
 	rpcCtx := wshrpc.RpcContext{
 		RouteId: routeId,
@@ -133,7 +133,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.Wsh
 	bareClient := wshutil.MakeWshRpc(wshrpc.RpcContext{}, &wshclient.WshServer{}, bareRouteId)
 	router.RegisterTrustedLeaf(bareClient, bareRouteId)
 
-	connServerClient := wshutil.MakeWshRpc(rpcCtx, wshremote.MakeRemoteRpcServerImpl(os.Stdout, router, bareClient, false, connServerInitialEnv), routeId)
+	connServerClient := wshutil.MakeWshRpc(rpcCtx, wshremote.MakeRemoteRpcServerImpl(os.Stdout, router, bareClient, false, connServerInitialEnv, sockName), routeId)
 	router.RegisterTrustedLeaf(connServerClient, routeId)
 	return connServerClient, nil
 }
@@ -172,8 +172,10 @@ func serverRunRouter() error {
 	}()
 	router.RegisterUpstream(termProxy)
 
+	sockName := getRemoteDomainSocketName()
+
 	// setup the connserver rpc client first
-	client, err := setupConnServerRpcClientWithRouter(router)
+	client, err := setupConnServerRpcClientWithRouter(router, sockName)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
@@ -296,7 +298,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 	log.Printf("got JWT public key")
 
 	// now setup the connserver rpc client
-	client, err := setupConnServerRpcClientWithRouter(router)
+	client, err := setupConnServerRpcClientWithRouter(router, sockName)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
@@ -328,7 +330,11 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 }
 
 func serverRunNormal(jwtToken string) error {
-	err := setupRpcClient(wshremote.MakeRemoteRpcServerImpl(os.Stdout, nil, nil, false, connServerInitialEnv), jwtToken)
+	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
+	if err != nil {
+		return fmt.Errorf("error extracting socket name from JWT: %v", err)
+	}
+	err = setupRpcClient(wshremote.MakeRemoteRpcServerImpl(os.Stdout, nil, nil, false, connServerInitialEnv, sockName), jwtToken)
 	if err != nil {
 		return err
 	}

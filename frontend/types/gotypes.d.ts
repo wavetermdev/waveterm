@@ -197,6 +197,7 @@ declare global {
 
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
+        routeid: string;
         env?: {[key: string]: string};
         initscripttext?: string;
         rpccontext?: RpcContext;
@@ -231,6 +232,11 @@ declare global {
         gopath: string;
         goversion: string;
         errorstring?: string;
+    };
+
+    // wshrpc.CommandConnServerInitData
+    type CommandConnServerInitData = {
+        clientid: string;
     };
 
     // wshrpc.CommandControllerAppendOutputData
@@ -1178,6 +1184,7 @@ declare global {
     type RpcContext = {
         sockname?: string;
         routeid: string;
+        procroute?: boolean;
         blockid?: string;
         conn?: string;
         isrouter?: boolean;

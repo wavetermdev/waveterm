@@ -35,7 +35,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
@@ -487,11 +489,17 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 	conn.Infof(ctx, "connserver started, waiting for route to be registered\n")
 	regCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	err = wshutil.DefaultRouter.WaitForRegister(regCtx, wshutil.MakeConnectionRouteId(rpcCtx.Conn))
+	connRoute := wshutil.MakeConnectionRouteId(rpcCtx.Conn)
+	err = wshutil.DefaultRouter.WaitForRegister(regCtx, connRoute)
 	if err != nil {
 		return false, clientVersion, "", fmt.Errorf("timeout waiting for connserver to register")
 	}
 	time.Sleep(300 * time.Millisecond) // TODO remove this sleep (but we need to wait until connserver is "ready")
+	wshclient.ConnServerInitCommand(
+		wshclient.GetBareRpcClient(),
+		wshrpc.CommandConnServerInitData{ClientId: wstore.GetClientId()},
+		&wshrpc.RpcOpts{Route: connRoute},
+	)
 	conn.Infof(ctx, "connserver is registered and ready\n")
 	return false, clientVersion, "", nil
 }

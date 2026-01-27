@@ -181,11 +181,11 @@ func (client *Client) Connect() error {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	client.RpcClient = rpcClient
-	_, err = wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	authRtnData, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 	if err != nil {
 		return fmt.Errorf("error authenticating rpc connection: %v", err)
 	}
-	client.RouteId = rpcCtx.RouteId
+	client.RouteId = authRtnData.RouteId
 	return nil
 }
 

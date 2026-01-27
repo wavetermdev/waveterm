@@ -89,12 +89,17 @@ func InitJobController() {
 	rpcClient := wshclient.GetBareRpcClient()
 	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
 	rpcClient.EventListener.On(wps.Event_RouteDown, handleRouteDownEvent)
+	rpcClient.EventListener.On(wps.Event_ConnChange, handleConnChangeEvent)
 	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
 		Event:     wps.Event_RouteUp,
 		AllScopes: true,
 	}, nil)
 	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
 		Event:     wps.Event_RouteDown,
+		AllScopes: true,
+	}, nil)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_ConnChange,
 		AllScopes: true,
 	}, nil)
 }
@@ -113,6 +118,34 @@ func handleRouteEvent(event *wps.WaveEvent, newStatus string) {
 			jobId := strings.TrimPrefix(scope, "job:")
 			SetJobConnStatus(jobId, newStatus)
 			log.Printf("[job:%s] connection status changed to %s", jobId, newStatus)
+		}
+	}
+}
+
+func handleConnChangeEvent(event *wps.WaveEvent) {
+	var connStatus wshrpc.ConnStatus
+	err := utilfn.ReUnmarshal(&connStatus, event.Data)
+	if err != nil {
+		log.Printf("[connchange] error unmarshaling ConnStatus: %v", err)
+		return
+	}
+
+	if !connStatus.Connected {
+		return
+	}
+
+	for _, scope := range event.Scopes {
+		if strings.HasPrefix(scope, "connection:") {
+			connName := strings.TrimPrefix(scope, "connection:")
+			log.Printf("[conn:%s] connection became connected, terminating jobs with TerminateOnReconnect", connName)
+			go func() {
+				defer func() {
+					panichandler.PanicHandler("jobcontroller:handleConnChangeEvent", recover())
+				}()
+				ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancelFn()
+				TerminateJobsOnConn(ctx, connName)
+			}()
 		}
 	}
 }
@@ -433,6 +466,13 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 }
 
 func TerminateJobManager(ctx context.Context, jobId string) error {
+	err := wstore.DBUpdateFn[*waveobj.Job](ctx, jobId, func(job *waveobj.Job) {
+		job.TerminateOnReconnect = true
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set TerminateOnReconnect: %w", err)
+	}
+
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
@@ -579,6 +619,35 @@ func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts
 
 	log.Printf("[job:%s] route established, restarting streaming", jobId)
 	return RestartStreaming(ctx, jobId, true, rtOpts)
+}
+
+func TerminateJobsOnConn(ctx context.Context, connName string) {
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		log.Printf("[conn:%s] failed to get jobs for termination: %v", connName, err)
+		return
+	}
+
+	var jobsToTerminate []*waveobj.Job
+	for _, job := range allJobs {
+		if job.Connection == connName && job.TerminateOnReconnect {
+			jobsToTerminate = append(jobsToTerminate, job)
+		}
+	}
+
+	log.Printf("[conn:%s] found %d jobs to terminate", connName, len(jobsToTerminate))
+
+	successCount := 0
+	for _, job := range jobsToTerminate {
+		err = remoteTerminateJobManager(ctx, job)
+		if err != nil {
+			log.Printf("[job:%s] error terminating: %v", job.OID, err)
+		} else {
+			successCount++
+		}
+	}
+
+	log.Printf("[conn:%s] finished terminating jobs: %d/%d successful", connName, successCount, len(jobsToTerminate))
 }
 
 func ReconnectJobsForConn(ctx context.Context, connName string) error {

@@ -182,6 +182,9 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		if connectedMap[job.OID] {
 			connectedStatus = "yes"
 		}
+		if job.TerminateOnReconnect {
+			connectedStatus += "*"
+		}
 
 		streamStatus := "-"
 		if job.StreamDone {

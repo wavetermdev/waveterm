@@ -421,10 +421,10 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		} else {
 			sockName := wslConn.GetDomainSocketName()
 			rpcContext := wshrpc.RpcContext{
-				RouteId:  wshutil.MakeRandomProcRouteId(),
-				SockName: sockName,
-				BlockId:  bc.BlockId,
-				Conn:     wslConn.GetName(),
+				ProcRoute: true,
+				SockName:  sockName,
+				BlockId:   bc.BlockId,
+				Conn:      wslConn.GetName(),
 			}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
@@ -454,10 +454,10 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		} else {
 			sockName := conn.GetDomainSocketName()
 			rpcContext := wshrpc.RpcContext{
-				RouteId:  wshutil.MakeRandomProcRouteId(),
-				SockName: sockName,
-				BlockId:  bc.BlockId,
-				Conn:     conn.Opts.String(),
+				ProcRoute: true,
+				SockName:  sockName,
+				BlockId:   bc.BlockId,
+				Conn:      conn.Opts.String(),
 			}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
@@ -481,9 +481,9 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		if connUnion.WshEnabled {
 			sockName := wavebase.GetDomainSocketName()
 			rpcContext := wshrpc.RpcContext{
-				RouteId:  wshutil.MakeRandomProcRouteId(),
-				SockName: sockName,
-				BlockId:  bc.BlockId,
+				ProcRoute: true,
+				SockName:  sockName,
+				BlockId:   bc.BlockId,
 			}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
