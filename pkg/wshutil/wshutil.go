@@ -187,6 +187,13 @@ func tryTcpSocket(sockName string) (net.Conn, error) {
 
 func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugName string) (*WshRpc, error) {
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
+	resolvedPath, err := filepath.EvalSymlinks(sockName)
+	if err == nil {
+		sockName = resolvedPath
+	}
+	if !filepath.IsAbs(sockName) {
+		return nil, fmt.Errorf("socket path must be absolute: %s", sockName)
+	}
 	conn, tcpErr := tryTcpSocket(sockName)
 	var unixErr error
 	if tcpErr != nil {
