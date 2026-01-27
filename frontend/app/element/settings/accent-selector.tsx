@@ -8,6 +8,10 @@ import "./accent-selector.scss";
 export type AccentSelectorProps = {
     value: string;
     onChange: (value: string) => void;
+    customAccents?: Record<string, { label: string; overrides: Record<string, string> }>;
+    themeOverrides?: Record<string, string>;
+    onSaveCustomAccent?: (name: string, overrides: Record<string, string>) => void;
+    onDeleteCustomAccent?: (id: string) => void;
 };
 
 interface AccentOption {
@@ -30,54 +34,150 @@ function getSwatchColor(option: AccentOption): string {
     return theme === "light" ? option.lightColor : option.darkColor;
 }
 
-const AccentSelector = memo(({ value, onChange }: AccentSelectorProps) => {
-    const handleSelect = useCallback(
-        (accent: string) => {
-            onChange(accent);
-        },
-        [onChange]
-    );
+/**
+ * Returns a representative color for a custom accent's swatch.
+ * Uses the --accent-color override if present, otherwise a default gray.
+ */
+function getCustomSwatchColor(overrides: Record<string, string>): string {
+    return overrides["--accent-color"] || "rgb(128, 128, 128)";
+}
 
-    // Re-render swatches when data-theme changes so colors match the current mode
-    const [, setThemeTick] = useState(0);
-    const observerRef = useRef<MutationObserver | null>(null);
-    useEffect(() => {
-        observerRef.current = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.attributeName === "data-theme") {
-                    setThemeTick((t) => t + 1);
-                    break;
+const AccentSelector = memo(
+    ({
+        value,
+        onChange,
+        customAccents,
+        themeOverrides,
+        onSaveCustomAccent,
+        onDeleteCustomAccent,
+    }: AccentSelectorProps) => {
+        const handleSelect = useCallback(
+            (accent: string) => {
+                onChange(accent);
+            },
+            [onChange]
+        );
+
+        // Re-render swatches when data-theme changes so colors match the current mode
+        const [, setThemeTick] = useState(0);
+        const observerRef = useRef<MutationObserver | null>(null);
+        useEffect(() => {
+            observerRef.current = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation.attributeName === "data-theme") {
+                        setThemeTick((t) => t + 1);
+                        break;
+                    }
                 }
-            }
-        });
-        observerRef.current.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-        return () => observerRef.current?.disconnect();
-    }, []);
+            });
+            observerRef.current.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ["data-theme"],
+            });
+            return () => observerRef.current?.disconnect();
+        }, []);
 
-    return (
-        <div className="accent-selector" role="radiogroup" aria-label="Accent color">
-            {ACCENT_OPTIONS.map((option) => (
-                <button
-                    key={option.value}
-                    type="button"
-                    className={cn("accent-card", { selected: value === option.value })}
-                    onClick={() => handleSelect(option.value)}
-                    role="radio"
-                    aria-checked={value === option.value}
-                    aria-label={`${option.label} accent color`}
-                >
-                    <div className="accent-swatch" style={{ backgroundColor: getSwatchColor(option) }} />
-                    <span className="accent-label">{option.label}</span>
-                    {value === option.value && (
-                        <span className="accent-check">
-                            <i className="fa fa-solid fa-check" />
-                        </span>
-                    )}
-                </button>
-            ))}
-        </div>
-    );
-});
+        const handleAdd = useCallback(() => {
+            if (!onSaveCustomAccent || !themeOverrides) return;
+            const hasOverrides = Object.keys(themeOverrides).length > 0;
+            if (!hasOverrides) {
+                alert("Customize some palette colors first using the Color Palette swatches above, then save as a custom accent.");
+                return;
+            }
+            const name = prompt("Name your custom accent theme:");
+            if (name && name.trim()) {
+                onSaveCustomAccent(name.trim(), { ...themeOverrides });
+            }
+        }, [onSaveCustomAccent, themeOverrides]);
+
+        const handleDelete = useCallback(
+            (id: string, event: React.MouseEvent) => {
+                event.stopPropagation();
+                onDeleteCustomAccent?.(id);
+            },
+            [onDeleteCustomAccent]
+        );
+
+        return (
+            <div className="accent-selector" role="radiogroup" aria-label="Accent color">
+                {ACCENT_OPTIONS.map((option) => (
+                    <button
+                        key={option.value}
+                        type="button"
+                        className={cn("accent-card", { selected: value === option.value })}
+                        onClick={() => handleSelect(option.value)}
+                        role="radio"
+                        aria-checked={value === option.value}
+                        aria-label={`${option.label} accent color`}
+                    >
+                        <div className="accent-swatch" style={{ backgroundColor: getSwatchColor(option) }} />
+                        <span className="accent-label">{option.label}</span>
+                        {value === option.value && (
+                            <span className="accent-check">
+                                <i className="fa fa-solid fa-check" />
+                            </span>
+                        )}
+                    </button>
+                ))}
+
+                {/* Custom accent cards */}
+                {customAccents &&
+                    Object.entries(customAccents).map(([id, custom]) => {
+                        const customValue = `custom:${id}`;
+                        return (
+                            <button
+                                key={customValue}
+                                type="button"
+                                className={cn("accent-card accent-card--custom", {
+                                    selected: value === customValue,
+                                })}
+                                onClick={() => handleSelect(customValue)}
+                                role="radio"
+                                aria-checked={value === customValue}
+                                aria-label={`${custom.label} custom accent color`}
+                            >
+                                <div
+                                    className="accent-swatch"
+                                    style={{ backgroundColor: getCustomSwatchColor(custom.overrides) }}
+                                />
+                                <span className="accent-label">{custom.label}</span>
+                                {value === customValue && (
+                                    <span className="accent-check">
+                                        <i className="fa fa-solid fa-check" />
+                                    </span>
+                                )}
+                                {onDeleteCustomAccent && (
+                                    <button
+                                        className="accent-delete"
+                                        onClick={(e) => handleDelete(id, e)}
+                                        title={`Delete ${custom.label}`}
+                                        aria-label={`Delete ${custom.label} custom accent`}
+                                    >
+                                        <i className="fa fa-solid fa-trash" />
+                                    </button>
+                                )}
+                            </button>
+                        );
+                    })}
+
+                {/* Add custom accent card */}
+                {onSaveCustomAccent && (
+                    <button
+                        className="accent-card accent-card--add"
+                        onClick={handleAdd}
+                        type="button"
+                        aria-label="Add custom accent theme"
+                    >
+                        <div className="accent-swatch accent-swatch--add">
+                            <i className="fa fa-solid fa-plus" />
+                        </div>
+                        <span className="accent-label">Add</span>
+                    </button>
+                )}
+            </div>
+        );
+    }
+);
 
 AccentSelector.displayName = "AccentSelector";
 

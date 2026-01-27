@@ -66,8 +66,11 @@ export const resolvedAppThemeAtom = atom<ResolvedTheme>((get) => {
  * Atom that resolves the current accent setting.
  * Defaults to "green" if not set.
  */
-export const resolvedAccentAtom = atom<AccentSetting>((get) => {
+export const resolvedAccentAtom = atom<string>((get) => {
     const setting = get(getSettingsKeyAtom("app:accent"));
+    if (typeof setting === "string" && setting.startsWith("custom:")) {
+        return setting;
+    }
     const validAccents: AccentSetting[] = ["green", "warm", "blue", "purple", "teal"];
     if (setting && validAccents.includes(setting as AccentSetting)) {
         return setting as AccentSetting;
@@ -127,6 +130,9 @@ export function useTheme(): void {
     const themeOverrides = useAtomValue(getSettingsKeyAtom("app:themeoverrides")) as
         | Record<string, string>
         | undefined;
+    const customAccents = useAtomValue(getSettingsKeyAtom("app:customaccents")) as
+        | Record<string, { label: string; overrides: Record<string, string> }>
+        | undefined;
 
     // One-time migration from old theme variants
     const migratedRef = useRef(false);
@@ -143,13 +149,19 @@ export function useTheme(): void {
             ? "light"
             : ((themeSetting as ThemeSetting) ?? "dark");
 
+    // Determine the effective accent for CSS (custom accents use "green" as base)
+    const accentStr = String(accentSetting ?? "green");
+    const isCustomAccent = accentStr.startsWith("custom:");
+    const effectiveAccent = isCustomAccent ? "green" : accentStr;
+    const customAccentId = isCustomAccent ? accentStr.substring(7) : null;
+
     useEffect(() => {
         const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
         const updateTheme = () => {
             const systemPrefersDark = darkModeQuery.matches;
             const cssTheme = resolveCssTheme(normalizedTheme, systemPrefersDark);
-            applyThemeAndAccent(cssTheme, accentSetting);
+            applyThemeAndAccent(cssTheme, effectiveAccent);
         };
 
         updateTheme();
@@ -167,7 +179,34 @@ export function useTheme(): void {
         return () => {
             darkModeQuery.removeEventListener("change", handleSystemPreferenceChange);
         };
-    }, [normalizedTheme, accentSetting]);
+    }, [normalizedTheme, effectiveAccent]);
+
+    // Apply custom accent overrides when a custom accent is selected
+    useEffect(() => {
+        const root = document.documentElement;
+        if (customAccentId && customAccents) {
+            const custom = customAccents[customAccentId];
+            if (custom && custom.overrides && typeof custom.overrides === "object") {
+                for (const [varName, value] of Object.entries(custom.overrides)) {
+                    if (varName.startsWith("--") && typeof value === "string") {
+                        root.style.setProperty(varName, value);
+                    }
+                }
+            }
+        }
+        return () => {
+            if (customAccentId && customAccents) {
+                const custom = customAccents[customAccentId];
+                if (custom && custom.overrides && typeof custom.overrides === "object") {
+                    for (const varName of Object.keys(custom.overrides)) {
+                        if (varName.startsWith("--")) {
+                            root.style.removeProperty(varName);
+                        }
+                    }
+                }
+            }
+        };
+    }, [customAccentId, customAccents]);
 
     // Apply stored theme overrides from settings
     useEffect(() => {
@@ -218,9 +257,12 @@ export function getResolvedTheme(): ResolvedTheme {
  * Gets the current resolved accent directly from the store.
  * Useful for non-React contexts or one-time reads.
  */
-export function getResolvedAccent(): AccentSetting {
+export function getResolvedAccent(): string {
     const accentSettingAtom = getSettingsKeyAtom("app:accent");
     const setting = globalStore.get(accentSettingAtom);
+    if (typeof setting === "string" && setting.startsWith("custom:")) {
+        return setting;
+    }
     const validAccents: AccentSetting[] = ["green", "warm", "blue", "purple", "teal"];
     if (setting && validAccents.includes(setting as AccentSetting)) {
         return setting as AccentSetting;

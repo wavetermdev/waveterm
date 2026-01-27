@@ -55,6 +55,15 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
         }
         return {};
     }, [themeOverridesRaw]);
+    const customAccentsRaw = useAtomValue(getSettingsKeyAtom("app:customaccents")) as
+        | Record<string, { label: string; overrides: Record<string, string> }>
+        | undefined;
+    const customAccents = useMemo(() => {
+        if (customAccentsRaw && typeof customAccentsRaw === "object") {
+            return customAccentsRaw;
+        }
+        return undefined;
+    }, [customAccentsRaw]);
 
     const toggleSection = useCallback((section: string) => {
         setExpandedSections((prev) => {
@@ -94,6 +103,35 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
         [themeOverrides]
     );
 
+    const handleSaveCustomAccent = useCallback(
+        (name: string, overrides: Record<string, string>) => {
+            const id = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+            if (!id) return;
+            const current = customAccents ? { ...customAccents } : {};
+            current[id] = { label: name, overrides };
+            settingsService.setSetting("app:customaccents", current);
+            settingsService.setSetting("app:accent", `custom:${id}`);
+            // Clear theme overrides since they're now saved in the custom accent
+            settingsService.setSetting("app:themeoverrides", null);
+        },
+        [customAccents]
+    );
+
+    const handleDeleteCustomAccent = useCallback(
+        (id: string) => {
+            if (!customAccents) return;
+            const current = { ...customAccents };
+            delete current[id];
+            const isEmpty = Object.keys(current).length === 0;
+            settingsService.setSetting("app:customaccents", isEmpty ? null : current);
+            // If the deleted accent was selected, switch back to green
+            if (appAccent === `custom:${id}`) {
+                settingsService.setSetting("app:accent", "green");
+            }
+        },
+        [customAccents, appAccent]
+    );
+
     const handleTermThemeChange = useCallback((value: string) => {
         settingsService.setSetting("term:theme", value);
     }, []);
@@ -119,7 +157,14 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
 
             <div className="appearance-section">
                 <div className="appearance-section-label">Accent Theme</div>
-                <AccentSelector value={appAccent} onChange={handleAccentChange} />
+                <AccentSelector
+                    value={appAccent}
+                    onChange={handleAccentChange}
+                    customAccents={customAccents}
+                    themeOverrides={themeOverrides}
+                    onSaveCustomAccent={handleSaveCustomAccent}
+                    onDeleteCustomAccent={handleDeleteCustomAccent}
+                />
             </div>
 
             <div className="appearance-section">

@@ -32,6 +32,23 @@
         outline: 2px solid var(--accent-color);
         outline-offset: 2px;
     }
+
+    &--add {
+        border-style: dashed;
+        opacity: 0.7;
+        transition: opacity 0.15s ease, border-color 0.15s ease;
+
+        &:hover {
+            opacity: 1;
+            border-color: var(--accent-color);
+        }
+    }
+
+    &--custom {
+        &:hover .accent-delete {
+            opacity: 1;
+        }
+    }
 }
 
 .accent-swatch {
@@ -49,6 +66,19 @@
     // Light theme adjustments
     [data-theme="light"] & {
         border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    &--add {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--form-element-bg-color);
+        border: 2px dashed var(--border-color);
+        color: var(--secondary-text-color);
+
+        i {
+            font-size: 16px;
+        }
     }
 }
 
@@ -74,5 +104,29 @@
 
     i {
         font-size: 10px;
+    }
+}
+
+.accent-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--error-color);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 1;
+
+    i {
+        font-size: 9px;
     }
 }
