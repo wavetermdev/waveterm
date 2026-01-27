@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { applyThemeOverrideLive } from "@/app/hook/usetheme";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
+import { ColorPickerPopup } from "./color-picker-popup";
 import "./theme-palette-preview.scss";
 
 interface PaletteColor {
@@ -17,17 +18,23 @@ interface ThemePalettePreviewProps {
 }
 
 const PALETTE_VARIABLES = [
+    // Core
     { label: "Background", variable: "--main-bg-color" },
     { label: "Text", variable: "--main-text-color" },
     { label: "Secondary", variable: "--secondary-text-color" },
+    { label: "Grey Text", variable: "--grey-text-color" },
     { label: "Accent", variable: "--accent-color" },
     { label: "Border", variable: "--border-color" },
     { label: "Link", variable: "--link-color" },
+    // Status
     { label: "Error", variable: "--error-color" },
     { label: "Warning", variable: "--warning-color" },
     { label: "Success", variable: "--success-color" },
+    // Surfaces
     { label: "Panel BG", variable: "--panel-bg-color" },
     { label: "Hover BG", variable: "--hover-bg-color" },
+    { label: "Card BG", variable: "--card-bg-color" },
+    { label: "Highlight", variable: "--highlight-bg-color" },
     { label: "Block BG", variable: "--block-bg-color" },
     { label: "Modal BG", variable: "--modal-bg-color" },
     { label: "Tab Accent", variable: "--tab-accent" },
@@ -41,33 +48,6 @@ function getComputedCSSVar(varName: string): string {
 }
 
 /**
- * Converts a CSS color string to a hex color string for <input type="color">.
- * Falls back to #000000 if conversion fails.
- */
-function colorToHex(color: string): string {
-    if (!color) return "#000000";
-    // If already a hex color
-    if (color.startsWith("#")) {
-        // Ensure it's 7 chars (#RRGGBB)
-        if (color.length === 4) {
-            return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
-        }
-        return color.substring(0, 7);
-    }
-    // Use a canvas to convert
-    try {
-        const ctx = document.createElement("canvas").getContext("2d");
-        if (ctx) {
-            ctx.fillStyle = color;
-            return ctx.fillStyle; // Returns hex
-        }
-    } catch {
-        // ignore
-    }
-    return "#000000";
-}
-
-/**
  * Reads all palette colors from the current computed styles.
  */
 function readPaletteColors(): PaletteColor[] {
@@ -78,29 +58,102 @@ function readPaletteColors(): PaletteColor[] {
     }));
 }
 
+/**
+ * Converts a computed CSS color value to a hex string for display.
+ */
+function computedToHex(value: string): string {
+    const rgbaMatch = value.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)/);
+    if (rgbaMatch) {
+        const r = Math.round(parseFloat(rgbaMatch[1]));
+        const g = Math.round(parseFloat(rgbaMatch[2]));
+        const b = Math.round(parseFloat(rgbaMatch[3]));
+        const a = rgbaMatch[4] != null ? parseFloat(rgbaMatch[4]) : 1;
+        const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+        if (a < 1) return `${hex} ${Math.round(a * 100)}%`;
+        return hex;
+    }
+    if (value.startsWith("#")) return value;
+    try {
+        const ctx = document.createElement("canvas").getContext("2d");
+        if (ctx) {
+            ctx.fillStyle = value;
+            return ctx.fillStyle;
+        }
+    } catch {
+        // ignore
+    }
+    return value;
+}
+
+/**
+ * Normalizes any CSS color string to a lowercase 6-char hex for comparison.
+ */
+function normalizeColorToHex6(color: string): string {
+    const trimmed = color.trim().toLowerCase();
+    if (/^#[0-9a-f]{6}$/.test(trimmed)) return trimmed;
+    const hex3 = trimmed.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/);
+    if (hex3) return `#${hex3[1]}${hex3[1]}${hex3[2]}${hex3[2]}${hex3[3]}${hex3[3]}`;
+    if (/^#[0-9a-f]{8}$/.test(trimmed)) return trimmed.slice(0, 7);
+    const rgbMatch = trimmed.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+    if (rgbMatch) {
+        const r = Math.round(parseFloat(rgbMatch[1]));
+        const g = Math.round(parseFloat(rgbMatch[2]));
+        const b = Math.round(parseFloat(rgbMatch[3]));
+        return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+    }
+    try {
+        const ctx = document.createElement("canvas").getContext("2d");
+        if (ctx) {
+            ctx.fillStyle = color;
+            return ctx.fillStyle.toLowerCase();
+        }
+    } catch {
+        // ignore
+    }
+    return trimmed;
+}
+
+interface OpenPicker {
+    variable: string;
+    rect: DOMRect;
+    initialColor: string;
+    defaultColor: string;
+    preOpenOverride: string | null;
+}
+
+/**
+ * Reads the theme default for a CSS variable by temporarily removing any inline override.
+ */
+function getThemeDefault(variable: string): string {
+    const root = document.documentElement;
+    const inlineValue = root.style.getPropertyValue(variable);
+    if (inlineValue) {
+        root.style.removeProperty(variable);
+        const defaultValue = getComputedCSSVar(variable);
+        root.style.setProperty(variable, inlineValue);
+        return defaultValue;
+    }
+    return getComputedCSSVar(variable);
+}
+
 const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePalettePreviewProps) => {
     const [colors, setColors] = useState<PaletteColor[]>(() => readPaletteColors());
-    const colorInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
-    const handlerRefs = useRef<Map<string, { input: (e: Event) => void; change: (e: Event) => void }>>(new Map());
+    const [openPicker, setOpenPicker] = useState<OpenPicker | null>(null);
 
     const refreshColors = useCallback(() => {
-        // Use requestAnimationFrame to ensure styles have been applied
         requestAnimationFrame(() => {
             setColors(readPaletteColors());
         });
     }, []);
 
     useEffect(() => {
-        // Initial read
         refreshColors();
 
-        // Watch for attribute changes on documentElement (data-theme, data-accent)
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (
                     mutation.type === "attributes" &&
-                    (mutation.attributeName === "data-theme" ||
-                        mutation.attributeName === "data-accent")
+                    (mutation.attributeName === "data-theme" || mutation.attributeName === "data-accent")
                 ) {
                     refreshColors();
                     break;
@@ -119,34 +172,55 @@ const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePal
     }, [refreshColors]);
 
     const handleSwatchClick = useCallback(
-        (variable: string, currentColor: string) => {
+        (variable: string, computedValue: string, event: React.MouseEvent) => {
             if (!onOverrideChange) return;
-            const input = colorInputRefs.current.get(variable);
-            if (input) {
-                input.value = colorToHex(currentColor);
-                input.click();
-            }
+
+            const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+            const overrideValue = themeOverrides?.[variable];
+            const initialColor = overrideValue ?? computedValue;
+            const defaultColor = overrideValue ? getThemeDefault(variable) : computedValue;
+            const preOpenOverride = overrideValue ?? null;
+            setOpenPicker({ variable, rect, initialColor, defaultColor, preOpenOverride });
         },
-        [onOverrideChange]
+        [onOverrideChange, themeOverrides]
     );
 
-    const handleColorInput = useCallback(
-        (variable: string, event: Event) => {
-            const target = event.target as HTMLInputElement;
-            applyThemeOverrideLive(variable, target.value);
-            // Refresh to show updated color
+    // Save immediately on every color change
+    const handlePickerChange = useCallback(
+        (color: string) => {
+            if (!openPicker) return;
+            const colorNorm = normalizeColorToHex6(color);
+            const defaultNorm = normalizeColorToHex6(openPicker.defaultColor);
+            if (colorNorm !== defaultNorm) {
+                onOverrideChange?.(openPicker.variable, color);
+            } else {
+                // Reverted to theme default — remove override
+                onOverrideChange?.(openPicker.variable, null);
+            }
+            applyThemeOverrideLive(openPicker.variable, colorNorm !== defaultNorm ? color : null);
+            refreshColors();
+        },
+        [openPicker, onOverrideChange, refreshColors]
+    );
+
+    // Backdrop click or X button — just close (changes already saved)
+    const handlePickerCommit = useCallback(
+        (_color: string) => {
+            setOpenPicker(null);
             refreshColors();
         },
         [refreshColors]
     );
 
-    const handleColorChange = useCallback(
-        (variable: string, event: Event) => {
-            const target = event.target as HTMLInputElement;
-            onOverrideChange?.(variable, target.value);
-        },
-        [onOverrideChange]
-    );
+    // Escape — undo all changes, restore pre-open state
+    const handlePickerCancel = useCallback(() => {
+        if (!openPicker) return;
+        // Restore to what it was before the picker opened
+        applyThemeOverrideLive(openPicker.variable, openPicker.preOpenOverride);
+        onOverrideChange?.(openPicker.variable, openPicker.preOpenOverride);
+        setOpenPicker(null);
+        refreshColors();
+    }, [openPicker, onOverrideChange, refreshColors]);
 
     const handleReset = useCallback(
         (variable: string, event: React.MouseEvent) => {
@@ -154,32 +228,11 @@ const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePal
             applyThemeOverrideLive(variable, null);
             onOverrideChange?.(variable, null);
             refreshColors();
-        },
-        [onOverrideChange, refreshColors]
-    );
-
-    // Set up native event listeners for color inputs
-    const setColorInputRef = useCallback(
-        (variable: string, el: HTMLInputElement | null) => {
-            const prev = colorInputRefs.current.get(variable);
-            const prevHandlers = handlerRefs.current.get(variable);
-            if (prev && prevHandlers) {
-                prev.removeEventListener("input", prevHandlers.input);
-                prev.removeEventListener("change", prevHandlers.change);
-                handlerRefs.current.delete(variable);
-            }
-            if (el) {
-                const inputHandler = (e: Event) => handleColorInput(variable, e);
-                const changeHandler = (e: Event) => handleColorChange(variable, e);
-                colorInputRefs.current.set(variable, el);
-                handlerRefs.current.set(variable, { input: inputHandler, change: changeHandler });
-                el.addEventListener("input", inputHandler);
-                el.addEventListener("change", changeHandler);
-            } else {
-                colorInputRefs.current.delete(variable);
+            if (openPicker?.variable === variable) {
+                setOpenPicker(null);
             }
         },
-        [handleColorInput, handleColorChange]
+        [onOverrideChange, refreshColors, openPicker]
     );
 
     const isInteractive = !!onOverrideChange;
@@ -189,43 +242,77 @@ const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePal
             <div className="palette-swatches">
                 {colors.map((color) => {
                     const hasOverride = themeOverrides && color.variable in themeOverrides;
+                    const isEditing = openPicker?.variable === color.variable;
+                    const hexValue = computedToHex(color.computedValue);
+
+                    let cardClass = "palette-swatch-card";
+                    if (isInteractive) cardClass += " palette-swatch-card--interactive";
+                    if (hasOverride) cardClass += " palette-swatch-card--modified";
+                    if (isEditing) cardClass += " palette-swatch-card--editing";
+
                     return (
                         <div key={color.variable} className="palette-swatch-item">
                             <div
-                                className={`palette-swatch${isInteractive ? " palette-swatch--interactive" : ""}${hasOverride ? " palette-swatch--modified" : ""}`}
-                                style={{ backgroundColor: color.computedValue }}
-                                title={`${color.variable}: ${color.computedValue}${hasOverride ? " (modified)" : ""}`}
+                                className={cardClass}
+                                title={`${color.variable}: ${color.computedValue}${hasOverride ? " (modified)" : ""}${isEditing ? " (editing)" : ""}`}
+                                role={isInteractive ? "button" : undefined}
+                                tabIndex={isInteractive ? 0 : -1}
                                 onClick={
                                     isInteractive
-                                        ? () => handleSwatchClick(color.variable, color.computedValue)
+                                        ? (e) => handleSwatchClick(color.variable, color.computedValue, e)
+                                        : undefined
+                                }
+                                onKeyDown={
+                                    isInteractive
+                                        ? (e: React.KeyboardEvent<HTMLDivElement>) => {
+                                              if (e.key === "Enter" || e.key === " ") {
+                                                  e.preventDefault();
+                                                  handleSwatchClick(
+                                                      color.variable,
+                                                      color.computedValue,
+                                                      e as unknown as React.MouseEvent
+                                                  );
+                                              }
+                                          }
                                         : undefined
                                 }
                             >
-                                {hasOverride && isInteractive && (
-                                    <button
-                                        className="swatch-reset"
-                                        onClick={(e) => handleReset(color.variable, e)}
-                                        title="Reset to default"
-                                        aria-label={`Reset ${color.label} to default`}
-                                    >
-                                        <i className="fa fa-solid fa-xmark" />
-                                    </button>
-                                )}
-                            </div>
-                            <span className="palette-swatch-label">{color.label}</span>
-                            {isInteractive && (
-                                <input
-                                    ref={(el) => setColorInputRef(color.variable, el)}
-                                    type="color"
-                                    className="swatch-color-input"
-                                    tabIndex={-1}
-                                    aria-hidden="true"
+                                <div
+                                    className="palette-swatch-color"
+                                    style={{ backgroundColor: color.computedValue }}
                                 />
-                            )}
+                                <div className="palette-swatch-info">
+                                    <div className="palette-swatch-info-text">
+                                        <span className="palette-swatch-label">{color.label}</span>
+                                        <span className="palette-swatch-hex">{hexValue}</span>
+                                    </div>
+                                    {hasOverride && isInteractive && (
+                                        <button
+                                            className="swatch-reset"
+                                            onClick={(e) => handleReset(color.variable, e)}
+                                            title="Reset to default"
+                                            aria-label={`Reset ${color.label} to default`}
+                                        >
+                                            <i className="fa fa-solid fa-rotate-left" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     );
                 })}
             </div>
+            {openPicker && (
+                <ColorPickerPopup
+                    key={openPicker.variable}
+                    initialColor={openPicker.initialColor}
+                    defaultColor={openPicker.defaultColor}
+                    anchorRect={openPicker.rect}
+                    onChange={handlePickerChange}
+                    onCommit={handlePickerCommit}
+                    onCancel={handlePickerCancel}
+                />
+            )}
         </div>
     );
 });

@@ -275,6 +275,9 @@ export function getResolvedAccent(): string {
  * Pass null as value to remove the override.
  */
 export function applyThemeOverrideLive(varName: string, value: string | null): void {
+    if (\!varName.startsWith("--")) {
+        return;
+    }
     if (value === null) {
         document.documentElement.style.removeProperty(varName);
     } else {

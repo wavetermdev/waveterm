@@ -14,7 +14,7 @@
     padding: 16px 12px;
     border: 2px solid var(--border-color);
     border-radius: 8px;
-    background: var(--form-element-bg-color);
+    background: var(--card-bg-color);
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     position: relative;
@@ -47,6 +47,7 @@
     &--custom {
         &:hover .accent-delete {
             opacity: 1;
+            pointer-events: auto;
         }
     }
 }
@@ -72,7 +73,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--form-element-bg-color);
+        background: var(--card-bg-color);
         border: 2px dashed var(--border-color);
         color: var(--secondary-text-color);
 
@@ -85,8 +86,12 @@
 .accent-label {
     font-size: 12px;
     font-weight: 500;
-    color: var(--main-text-color);
+    color: var(--secondary-text-color);
     text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .accent-check {
@@ -123,6 +128,7 @@
     cursor: pointer;
     padding: 0;
     opacity: 0;
+    pointer-events: none;
     transition: opacity 0.15s ease;
     z-index: 1;
 

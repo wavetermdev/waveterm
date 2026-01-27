@@ -10,8 +10,9 @@
  * - Split: Show each theme card split 50/50 (left dark, right light)
  */
 
-import { cn } from "@/util/util";
-import { memo, useCallback } from "react";
+import { memo } from "react";
+import { SegmentedToggle } from "./segmented-toggle";
+import type { SegmentedToggleOption } from "./segmented-toggle";
 
 import "./preview-background-toggle.scss";
 
@@ -23,67 +24,21 @@ export interface PreviewBackgroundToggleProps {
     disabled?: boolean;
 }
 
-interface ToggleOption {
-    value: PreviewBackground;
-    label: string;
-    icon: string;
-    ariaLabel: string;
-}
-
-const TOGGLE_OPTIONS: ToggleOption[] = [
-    { value: "dark", label: "Dark", icon: "fa-moon", ariaLabel: "Preview on dark background" },
-    { value: "light", label: "Light", icon: "fa-sun", ariaLabel: "Preview on light background" },
-    { value: "split", label: "Split", icon: "fa-circle-half-stroke", ariaLabel: "Preview on split dark/light background" },
+const PREVIEW_OPTIONS: SegmentedToggleOption[] = [
+    { value: "dark", label: "Dark", icon: "moon", ariaLabel: "Preview on dark background" },
+    { value: "light", label: "Light", icon: "sun", ariaLabel: "Preview on light background" },
+    { value: "split", label: "Split", icon: "circle-half-stroke", ariaLabel: "Preview on split dark/light background" },
 ];
 
-export const PreviewBackgroundToggle = memo(({ value, onChange, disabled }: PreviewBackgroundToggleProps) => {
-    const handleKeyDown = useCallback(
-        (e: React.KeyboardEvent<HTMLDivElement>) => {
-            if (disabled) return;
-
-            const currentIndex = TOGGLE_OPTIONS.findIndex((opt) => opt.value === value);
-
-            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-                e.preventDefault();
-                const nextIndex = (currentIndex + 1) % TOGGLE_OPTIONS.length;
-                onChange(TOGGLE_OPTIONS[nextIndex].value);
-            } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-                e.preventDefault();
-                const prevIndex = (currentIndex - 1 + TOGGLE_OPTIONS.length) % TOGGLE_OPTIONS.length;
-                onChange(TOGGLE_OPTIONS[prevIndex].value);
-            }
-        },
-        [value, onChange, disabled]
-    );
-
-    return (
-        <div className={cn("preview-bg-toggle", { disabled })}>
-            <span className="toggle-label">Preview Background:</span>
-            <div
-                className="toggle-buttons"
-                role="radiogroup"
-                aria-label="Preview background mode"
-                onKeyDown={handleKeyDown}
-            >
-                {TOGGLE_OPTIONS.map((option) => (
-                    <button
-                        key={option.value}
-                        type="button"
-                        className={cn("toggle-btn", { active: value === option.value })}
-                        onClick={() => !disabled && onChange(option.value)}
-                        role="radio"
-                        aria-checked={value === option.value}
-                        aria-label={option.ariaLabel}
-                        tabIndex={value === option.value ? 0 : -1}
-                        disabled={disabled}
-                    >
-                        <i className={`fa fa-solid ${option.icon}`} />
-                        <span>{option.label}</span>
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-});
+export const PreviewBackgroundToggle = memo(({ value, onChange, disabled }: PreviewBackgroundToggleProps) => (
+    <SegmentedToggle
+        options={PREVIEW_OPTIONS}
+        value={value}
+        onChange={onChange as (value: string) => void}
+        label="Preview Background:"
+        disabled={disabled}
+        ariaLabel="Preview background mode"
+    />
+));
 
 PreviewBackgroundToggle.displayName = "PreviewBackgroundToggle";

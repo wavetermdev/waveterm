@@ -125,16 +125,22 @@ const AccentSelector = memo(
                     Object.entries(customAccents).map(([id, custom]) => {
                         const customValue = `custom:${id}`;
                         return (
-                            <button
+                            <div
                                 key={customValue}
-                                type="button"
                                 className={cn("accent-card accent-card--custom", {
                                     selected: value === customValue,
                                 })}
                                 onClick={() => handleSelect(customValue)}
                                 role="radio"
+                                tabIndex={0}
                                 aria-checked={value === customValue}
                                 aria-label={`${custom.label} custom accent color`}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        handleSelect(customValue);
+                                    }
+                                }}
                             >
                                 <div
                                     className="accent-swatch"
@@ -156,7 +162,7 @@ const AccentSelector = memo(
                                         <i className="fa fa-solid fa-trash" />
                                     </button>
                                 )}
-                            </button>
+                            </div>
                         );
                     })}
 

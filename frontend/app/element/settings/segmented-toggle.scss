@@ -1,0 +1,78 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.segmented-toggle {
+    display: flex;
+    border-radius: 6px;
+    border: 1px solid var(--form-element-border-color);
+    background: var(--card-bg-color);
+    overflow: hidden;
+    padding: 4px;
+    gap: 4px;
+}
+
+.segmented-toggle-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+
+    &:hover:not(.selected):not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+    }
+
+    &.selected {
+        background: var(--accent-color);
+        color: white;
+
+        &:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-color);
+        outline-offset: -2px;
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    i {
+        font-size: 12px;
+    }
+}
+
+.segmented-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    margin-bottom: 12px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.segmented-toggle-label {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+}

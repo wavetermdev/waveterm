@@ -57,6 +57,9 @@ export { OmpHighContrast } from "./omp-high-contrast";
 export { ModeSelector } from "./mode-selector";
 export type { ModeSelectorProps } from "./mode-selector";
 
+export { SegmentedToggle } from "./segmented-toggle";
+export type { SegmentedToggleProps, SegmentedToggleOption } from "./segmented-toggle";
+
 export { ThemePalettePreview } from "./theme-palette-preview";
 
 export { AccentSelector } from "./accent-selector";

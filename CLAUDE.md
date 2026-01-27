@@ -270,7 +270,7 @@ In dev mode, Electron exposes Chrome DevTools Protocol on port 9222 automaticall
 - Electron MCP tools (`get_electron_window_info`, `take_screenshot`, `send_command_to_electron`) connect via CDP
 
 **Usage with Electron MCP:**
-```
+```bash
 # Verify the app is running with debugging
 mcp__electron__get_electron_window_info
 

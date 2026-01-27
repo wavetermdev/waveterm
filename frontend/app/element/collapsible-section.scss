@@ -14,27 +14,35 @@
         align-items: center;
         gap: 12px;
         width: 100%;
-        padding: 14px 16px;
-        background: transparent;
+        padding: 10px 16px;
+        // Match General tab's .settings-category-header background
+        background: linear-gradient(var(--highlight-bg-color), var(--highlight-bg-color)), var(--main-bg-color);
         border: none;
         cursor: pointer;
         user-select: none;
         transition: background-color 0.15s ease;
         text-align: left;
+        font-weight: 600;
         color: var(--main-text-color);
+        // Drop shadow to give heading depth above subheadings/content
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+        position: relative;
+        z-index: 1;
 
         &:hover {
-            background: var(--hover-bg-color);
+            // Brighten slightly on hover — stay opaque and distinct from subheading
+            filter: brightness(1.1);
         }
 
         &:focus {
             outline: none;
-            background: var(--hover-bg-color);
+            // Keep resting background on focus — changing to --hover-bg-color
+            // makes the heading identical to the subheading after click-to-expand
         }
     }
 
     .section-icon {
-        width: 20px;
+        width: 18px;
         text-align: center;
         color: var(--secondary-text-color);
         font-size: 14px;
@@ -43,7 +51,7 @@
     .section-title {
         flex: 1;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
     }
 
     .section-badge {
@@ -72,6 +80,7 @@
 
     .section-inner {
         overflow: hidden;
+        min-height: 0;
         padding: 0 16px;
         border-top: 1px solid transparent;
         transition: padding 0.3s ease, border-color 0.3s ease;
