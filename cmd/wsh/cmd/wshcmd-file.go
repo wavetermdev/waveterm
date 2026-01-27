@@ -88,7 +88,6 @@ func init() {
 
 	fileCmd.PersistentFlags().Int64VarP(&fileTimeout, "timeout", "t", 15000, "timeout in milliseconds for long operations")
 
-	fileListCmd.Flags().BoolP("recursive", "r", false, "list subdirectories recursively")
 	fileListCmd.Flags().BoolP("long", "l", false, "use long listing format")
 	fileListCmd.Flags().BoolP("one", "1", false, "list one file per line")
 	fileListCmd.Flags().BoolP("files", "f", false, "list files only")
@@ -103,7 +102,6 @@ func init() {
 	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
 	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileCpCmd)
-	fileMvCmd.Flags().BoolP("recursive", "r", false, "move directories recursively")
 	fileMvCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileMvCmd)
 }
@@ -195,6 +193,12 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	_, err = checkFileSize(path, MaxFileSize)
+	if err != nil {
+		return err
+	}
+
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -270,31 +274,20 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	capability, err := wshclient.FileShareCapabilityCommand(RpcClient, fileData.Info.Path, &wshrpc.RpcOpts{Timeout: fileTimeout})
-	if err != nil {
-		return fmt.Errorf("getting fileshare capability: %w", err)
+	buf := make([]byte, MaxFileSize)
+	n, err := WrappedStdin.Read(buf)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("reading input: %w", err)
 	}
-	if capability.CanAppend {
-		err = streamWriteToFile(fileData, WrappedStdin)
-		if err != nil {
-			return fmt.Errorf("writing file: %w", err)
+	if int64(n) == MaxFileSize {
+		if _, err := WrappedStdin.Read(make([]byte, 1)); err != io.EOF {
+			return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
 		}
-	} else {
-		buf := make([]byte, MaxFileSize)
-		n, err := WrappedStdin.Read(buf)
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("reading input: %w", err)
-		}
-		if int64(n) == MaxFileSize {
-			if _, err := WrappedStdin.Read(make([]byte, 1)); err != io.EOF {
-				return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
-			}
-		}
-		fileData.Data64 = base64.StdEncoding.EncodeToString(buf[:n])
-		err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
-		if err != nil {
-			return fmt.Errorf("writing file: %w", err)
-		}
+	}
+	fileData.Data64 = base64.StdEncoding.EncodeToString(buf[:n])
+	err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+	if err != nil {
+		return fmt.Errorf("writing file: %w", err)
 	}
 
 	return nil
@@ -358,6 +351,28 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func checkFileSize(path string, maxSize int64) (*wshrpc.FileInfo, error) {
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path}}
+
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+	err = convertNotFoundErr(err)
+	if err != nil {
+		return nil, fmt.Errorf("getting file info: %w", err)
+	}
+	if info.NotFound {
+		return nil, fmt.Errorf("%s: no such file", path)
+	}
+	if info.IsDir {
+		return nil, fmt.Errorf("%s: is a directory", path)
+	}
+	if info.Size > maxSize {
+		return nil, fmt.Errorf("file size (%d bytes) exceeds maximum of %d bytes", info.Size, maxSize)
+	}
+	return info, nil
+}
+
 func getTargetPath(src, dst string) (string, error) {
 	var srcBase string
 	if strings.HasPrefix(src, WaveFilePrefix) {
@@ -403,6 +418,12 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse src path: %w", err)
 	}
+
+	_, err = checkFileSize(srcPath, MaxFileSize)
+	if err != nil {
+		return err
+	}
+
 	destPath, err := fixRelativePaths(dst)
 	if err != nil {
 		return fmt.Errorf("unable to parse dest path: %w", err)
@@ -418,10 +439,6 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 
 func fileMvRun(cmd *cobra.Command, args []string) error {
 	src, dst := args[0], args[1]
-	recursive, err := cmd.Flags().GetBool("recursive")
-	if err != nil {
-		return err
-	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -431,13 +448,19 @@ func fileMvRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse src path: %w", err)
 	}
+
+	_, err = checkFileSize(srcPath, MaxFileSize)
+	if err != nil {
+		return err
+	}
+
 	destPath, err := fixRelativePaths(dst)
 	if err != nil {
 		return fmt.Errorf("unable to parse dest path: %w", err)
 	}
-	log.Printf("Moving %s to %s; recursive: %v, force: %v", srcPath, destPath, recursive, force)
+	log.Printf("Moving %s to %s; force: %v", srcPath, destPath, force)
 	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
-	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Overwrite: force, Timeout: TimeoutYear, Recursive: recursive}}, rpcOpts)
+	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("moving file: %w", err)
 	}
@@ -528,7 +551,6 @@ func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemote
 }
 
 func fileListRun(cmd *cobra.Command, args []string) error {
-	recursive, _ := cmd.Flags().GetBool("recursive")
 	longForm, _ := cmd.Flags().GetBool("long")
 	onePerLine, _ := cmd.Flags().GetBool("one")
 
@@ -548,7 +570,7 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	filesChan := wshclient.FileListStreamCommand(RpcClient, wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{All: recursive}}, &wshrpc.RpcOpts{Timeout: 2000})
+	filesChan := wshclient.FileListStreamCommand(RpcClient, wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{All: false}}, &wshrpc.RpcOpts{Timeout: 2000})
 	// Drain the channel when done
 	defer utilfn.DrainChannelSafe(filesChan, "fileListRun")
 	if longForm {
