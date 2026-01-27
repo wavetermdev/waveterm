@@ -31,6 +31,14 @@
           "enum": ["green", "warm", "blue", "purple", "teal"],
           "description": "Accent color theme (green, warm, blue, purple, teal)"
         },
+        "app:themeoverrides": {
+          "type": "object",
+          "description": "CSS variable overrides applied on top of current theme+accent"
+        },
+        "app:customaccents": {
+          "type": "object",
+          "description": "Named custom accent themes with saved override maps"
+        },
         "ai:*": {
           "type": "boolean"
         },

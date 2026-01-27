@@ -14,6 +14,8 @@ const (
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
 	ConfigKey_AppTheme                       = "app:theme"
 	ConfigKey_AppAccent                      = "app:accent"
+	ConfigKey_AppThemeOverrides              = "app:themeoverrides"
+	ConfigKey_AppCustomAccents               = "app:customaccents"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
