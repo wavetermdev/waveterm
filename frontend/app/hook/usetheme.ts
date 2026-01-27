@@ -1,40 +1,70 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { settingsService } from "@/app/store/settings-service";
 import { getApi, getSettingsKeyAtom, globalStore } from "@/store/global";
 import { atom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-// All available theme options
-type ThemeSetting = "dark" | "light" | "light-gray" | "light-warm" | "system";
+// Step 1: Simplified type definitions
+export type ThemeSetting = "dark" | "light" | "system";
+export type AccentSetting = "green" | "warm" | "blue" | "purple" | "teal";
 // Simplified theme category for terminal theme auto-switching
 type ResolvedTheme = "dark" | "light";
 // Electron native theme source
 type NativeThemeSource = "dark" | "light" | "system";
 
+// Step 2: Migration logic
 /**
- * Returns true if the theme setting is a light variant
+ * One-time migration from old theme variants to new mode+accent system.
+ * - "light-gray" -> app:theme = "light" (accent unchanged)
+ * - "light-warm" -> app:theme = "light", app:accent = "warm"
+ * Other values pass through unchanged.
  */
-function isLightTheme(theme: string): boolean {
-    return theme === "light" || theme === "light-gray" || theme === "light-warm";
+function migrateThemeSetting(currentTheme: string): void {
+    if (currentTheme === "light-gray") {
+        settingsService.setSetting("app:theme", "light");
+    } else if (currentTheme === "light-warm") {
+        settingsService.setSetting("app:theme", "light");
+        settingsService.setSetting("app:accent", "warm");
+    }
 }
 
+// Step 9: resolvedAppThemeAtom (keep legacy value handling for migration window)
 /**
  * Atom that resolves the effective app theme category (dark/light).
- * Light variants (light, light-gray, light-warm) all resolve to "light".
  * This is used for terminal theme auto-switching.
  *
  * Note: This doesn't auto-update when system preference changes at runtime.
  * For that, use the useTheme hook which sets up listeners.
  */
 export const resolvedAppThemeAtom = atom<ResolvedTheme>((get) => {
-    const setting = (get(getSettingsKeyAtom("app:theme")) || "dark") as ThemeSetting;
+    const setting = (get(getSettingsKeyAtom("app:theme")) || "dark") as string;
     if (setting === "system") {
         return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
-    return isLightTheme(setting) ? "light" : "dark";
+    // Handle legacy values during migration window
+    if (setting === "light" || setting === "light-gray" || setting === "light-warm") {
+        return "light";
+    }
+    return "dark";
 });
 
+// Step 4: resolvedAccentAtom
+/**
+ * Atom that resolves the current accent setting.
+ * Defaults to "green" if not set.
+ */
+export const resolvedAccentAtom = atom<AccentSetting>((get) => {
+    const setting = get(getSettingsKeyAtom("app:accent"));
+    const validAccents: AccentSetting[] = ["green", "warm", "blue", "purple", "teal"];
+    if (setting && validAccents.includes(setting as AccentSetting)) {
+        return setting as AccentSetting;
+    }
+    return "green";
+});
+
+// Step 5: Simplified resolveCssTheme
 /**
  * Returns the CSS theme to apply based on setting and system preference.
  * For "system" setting, uses prefers-color-scheme media query.
@@ -43,9 +73,10 @@ function resolveCssTheme(themeSetting: ThemeSetting, systemPrefersDark: boolean)
     if (themeSetting === "system") {
         return systemPrefersDark ? "dark" : "light";
     }
-    return themeSetting;
+    return themeSetting; // "dark" or "light" only now
 }
 
+// Step 6: Simplified getNativeThemeSource
 /**
  * Returns the native theme source for Electron (for embedded webviews).
  */
@@ -53,75 +84,110 @@ function getNativeThemeSource(themeSetting: ThemeSetting): NativeThemeSource {
     if (themeSetting === "system") {
         return "system";
     }
-    return isLightTheme(themeSetting) ? "light" : "dark";
+    return themeSetting === "light" ? "light" : "dark";
 }
 
+// Step 7: applyThemeAndAccent (replaces applyTheme)
 /**
- * Applies the theme to the document root element.
- * Sets data-theme attribute to the theme name.
+ * Applies theme mode and accent to the document root element.
+ * Sets data-theme and data-accent attributes.
  */
-function applyTheme(theme: string): void {
+function applyThemeAndAccent(theme: string, accent: string): void {
     document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-accent", accent);
 }
 
+// Step 8: Updated useTheme hook
 /**
- * Hook that manages the application theme.
- * Reads the app:theme setting and applies the correct data-theme attribute.
+ * Hook that manages the application theme and accent.
+ * Reads the app:theme and app:accent settings and applies the correct
+ * data-theme and data-accent attributes.
  * Handles "system" mode by detecting system preference via prefers-color-scheme.
  * Re-applies theme when setting changes or system preference changes.
+ * Triggers one-time migration from old theme variants on mount.
  *
  * This hook should be called from the main App component.
  */
 export function useTheme(): void {
     const themeSettingAtom = getSettingsKeyAtom("app:theme");
-    const themeSetting = (useAtomValue(themeSettingAtom) ?? "dark") as ThemeSetting;
+    const accentSettingAtom = getSettingsKeyAtom("app:accent");
+    const themeSetting = (useAtomValue(themeSettingAtom) ?? "dark") as string;
+    const accentSetting = (useAtomValue(accentSettingAtom) ?? "green") as AccentSetting;
+
+    // One-time migration from old theme variants
+    const migratedRef = useRef(false);
+    useEffect(() => {
+        if (!migratedRef.current && (themeSetting === "light-gray" || themeSetting === "light-warm")) {
+            migrateThemeSetting(themeSetting);
+            migratedRef.current = true;
+        }
+    }, [themeSetting]);
+
+    // Normalize theme setting (in case migration hasn't flushed yet)
+    const normalizedTheme: ThemeSetting =
+        themeSetting === "light-gray" || themeSetting === "light-warm"
+            ? "light"
+            : ((themeSetting as ThemeSetting) ?? "dark");
 
     useEffect(() => {
-        // Get the system preference media query
         const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-        // Function to apply theme based on current settings and system preference
         const updateTheme = () => {
             const systemPrefersDark = darkModeQuery.matches;
-            const cssTheme = resolveCssTheme(themeSetting, systemPrefersDark);
-            applyTheme(cssTheme);
+            const cssTheme = resolveCssTheme(normalizedTheme, systemPrefersDark);
+            applyThemeAndAccent(cssTheme, accentSetting);
         };
 
-        // Apply theme immediately
         updateTheme();
 
-        // Update Electron's native theme so embedded webviews respect it
-        const nativeTheme = getNativeThemeSource(themeSetting);
+        const nativeTheme = getNativeThemeSource(normalizedTheme);
         getApi()?.setNativeThemeSource(nativeTheme);
 
-        // Listen for system preference changes (only matters when theme is "system")
         const handleSystemPreferenceChange = () => {
-            if (themeSetting === "system") {
+            if (normalizedTheme === "system") {
                 updateTheme();
             }
         };
 
         darkModeQuery.addEventListener("change", handleSystemPreferenceChange);
-
         return () => {
             darkModeQuery.removeEventListener("change", handleSystemPreferenceChange);
         };
-    }, [themeSetting]);
+    }, [normalizedTheme, accentSetting]);
 }
 
+// Step 10: Updated getResolvedTheme
 /**
  * Gets the current resolved theme category (dark/light) directly from the store.
- * Light variants all resolve to "light".
+ * Uses explicit string comparisons for legacy value handling.
  * Useful for non-React contexts or one-time reads.
  */
 export function getResolvedTheme(): ResolvedTheme {
     const themeSettingAtom = getSettingsKeyAtom("app:theme");
-    const themeSetting = (globalStore.get(themeSettingAtom) ?? "dark") as ThemeSetting;
+    const themeSetting = (globalStore.get(themeSettingAtom) ?? "dark") as string;
 
     if (themeSetting === "system") {
         const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
         return darkModeQuery.matches ? "dark" : "light";
     }
 
-    return isLightTheme(themeSetting) ? "light" : "dark";
+    // Explicit legacy value handling (isLightTheme only checks "light" after simplification)
+    return themeSetting === "light" || themeSetting === "light-gray" || themeSetting === "light-warm"
+        ? "light"
+        : "dark";
+}
+
+// Step 11: getResolvedAccent helper
+/**
+ * Gets the current resolved accent directly from the store.
+ * Useful for non-React contexts or one-time reads.
+ */
+export function getResolvedAccent(): AccentSetting {
+    const accentSettingAtom = getSettingsKeyAtom("app:accent");
+    const setting = globalStore.get(accentSettingAtom);
+    const validAccents: AccentSetting[] = ["green", "warm", "blue", "purple", "teal"];
+    if (setting && validAccents.includes(setting as AccentSetting)) {
+        return setting as AccentSetting;
+    }
+    return "green";
 }

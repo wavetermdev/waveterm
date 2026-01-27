@@ -85,6 +85,8 @@ export function searchSettings(query: string, options?: SearchOptions): SearchRe
     }
 
     for (const [, metadata] of settingsRegistry.entries()) {
+        if (metadata.hideFromSettings) continue;
+
         // Apply category filter
         if (options?.category && metadata.category !== options.category) {
             continue;

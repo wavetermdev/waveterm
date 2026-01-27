@@ -54,6 +54,14 @@ export type { PreviewBackgroundToggleProps, PreviewBackground } from "./preview-
 
 export { OmpHighContrast } from "./omp-high-contrast";
 
+export { ModeSelector } from "./mode-selector";
+export type { ModeSelectorProps } from "./mode-selector";
+
+export { ThemePalettePreview } from "./theme-palette-preview";
+
+export { AccentSelector } from "./accent-selector";
+export type { AccentSelectorProps } from "./accent-selector";
+
 // Factory for dynamic control rendering
 export { ControlFactory, renderSettingControl } from "./control-factory";
 export type { ControlFactoryProps } from "./control-factory";
