@@ -659,6 +659,7 @@ func RestartStreaming(ctx context.Context, jobId string, knownConnected bool) er
 	prepareData := wshrpc.CommandJobPrepareConnectData{
 		StreamMeta: *streamMeta,
 		Seq:        currentSeq,
+		TermSize:   job.CmdTermSize,
 	}
 
 	rpcOpts := &wshrpc.RpcOpts{
@@ -857,6 +858,16 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 
 func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	jobId := data.JobId
+
+	if data.TermSize != nil {
+		err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			job.CmdTermSize = *data.TermSize
+		})
+		if err != nil {
+			log.Printf("[job:%s] warning: failed to update termsize in DB: %v", jobId, err)
+		}
+	}
+
 	_, err := CheckJobConnected(ctx, jobId)
 	if err != nil {
 		return err
@@ -872,15 +883,6 @@ func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	err = wshclient.JobInputCommand(bareRpc, data, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("failed to send input to job: %w", err)
-	}
-
-	if data.TermSize != nil {
-		err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.CmdTermSize = *data.TermSize
-		})
-		if err != nil {
-			log.Printf("[job:%s] warning: failed to update termsize in DB: %v", jobId, err)
-		}
 	}
 
 	return nil

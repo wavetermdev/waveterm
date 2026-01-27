@@ -30,6 +30,7 @@ type JobCmd struct {
 	cmd           *exec.Cmd
 	cmdPty        pty.Pty
 	ptsName       string
+	termSize      waveobj.TermSize
 	cleanedUp     bool
 	ptyClosed     bool
 	processExited bool
@@ -65,6 +66,7 @@ func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
 	jm.cmd = ecmd
 	jm.cmdPty = cmdPty
 	jm.ptsName = jm.cmdPty.Name()
+	jm.termSize = cmdDef.TermSize
 	go jm.waitForProcess()
 	return jm, nil
 }
@@ -149,6 +151,30 @@ func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobCmdExitedData) {
 	return true, exitData
 }
 
+func (jm *JobCmd) setTermSize_withlock(termSize waveobj.TermSize) error {
+	if jm.cmdPty == nil {
+		return fmt.Errorf("no active pty")
+	}
+	if jm.termSize.Rows == termSize.Rows && jm.termSize.Cols == termSize.Cols {
+		return nil
+	}
+	err := pty.Setsize(jm.cmdPty, &pty.Winsize{
+		Rows: uint16(termSize.Rows),
+		Cols: uint16(termSize.Cols),
+	})
+	if err != nil {
+		return fmt.Errorf("error setting terminal size: %w", err)
+	}
+	jm.termSize = termSize
+	return nil
+}
+
+func (jm *JobCmd) SetTermSize(termSize waveobj.TermSize) error {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	return jm.setTermSize_withlock(termSize)
+}
+
 // TODO set up a single input handler loop + queue so we dont need to hold the lock but still get synchronized in-order execution
 func (jm *JobCmd) HandleInput(data wshrpc.CommandJobInputData) error {
 	jm.lock.Lock()
@@ -181,12 +207,9 @@ func (jm *JobCmd) HandleInput(data wshrpc.CommandJobInputData) error {
 	}
 
 	if data.TermSize != nil {
-		err := pty.Setsize(jm.cmdPty, &pty.Winsize{
-			Rows: uint16(data.TermSize.Rows),
-			Cols: uint16(data.TermSize.Cols),
-		})
+		err := jm.setTermSize_withlock(*data.TermSize)
 		if err != nil {
-			return fmt.Errorf("error setting terminal size: %w", err)
+			return err
 		}
 	}
 

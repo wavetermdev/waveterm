@@ -767,8 +767,9 @@ type CommandStartJobRtnData struct {
 }
 
 type CommandJobPrepareConnectData struct {
-	StreamMeta StreamMeta `json:"streammeta"`
-	Seq        int64      `json:"seq"`
+	StreamMeta StreamMeta       `json:"streammeta"`
+	Seq        int64            `json:"seq"`
+	TermSize   waveobj.TermSize `json:"termsize"`
 }
 
 type CommandJobStartStreamData struct {

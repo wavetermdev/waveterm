@@ -303,6 +303,11 @@ func (jm *JobManager) PrepareConnect(msc *MainServerConn, data wshrpc.CommandJob
 		return nil, fmt.Errorf("job not started")
 	}
 
+	err := jm.Cmd.SetTermSize(data.TermSize)
+	if err != nil {
+		log.Printf("PrepareConnect: failed to set term size: %v\n", err)
+	}
+
 	rtnData := &wshrpc.CommandJobConnectRtnData{}
 	streamDone, streamError := jm.StreamManager.GetStreamDoneInfo()
 

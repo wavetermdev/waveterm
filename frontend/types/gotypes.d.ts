@@ -398,6 +398,7 @@ declare global {
     type CommandJobPrepareConnectData = {
         streammeta: StreamMeta;
         seq: number;
+        termsize: TermSize;
     };
 
     // wshrpc.CommandJobStartStreamData
