@@ -25,7 +25,7 @@ import { settingsService } from "@/app/store/settings-service";
 import { DisplaySettings } from "@/app/view/waveconfig/display-settings";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import "./appearance-content.scss";
 
@@ -46,6 +46,15 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
     const appAccent = (useAtomValue(getSettingsKeyAtom("app:accent")) as string) ?? "green";
     const termTheme = (useAtomValue(getSettingsKeyAtom("term:theme")) as string) ?? "default-dark";
     const ompTheme = (useAtomValue(getSettingsKeyAtom("term:omptheme")) as string) ?? "";
+    const themeOverridesRaw = useAtomValue(getSettingsKeyAtom("app:themeoverrides")) as
+        | Record<string, string>
+        | undefined;
+    const themeOverrides = useMemo(() => {
+        if (themeOverridesRaw && typeof themeOverridesRaw === "object") {
+            return themeOverridesRaw;
+        }
+        return {};
+    }, [themeOverridesRaw]);
 
     const toggleSection = useCallback((section: string) => {
         setExpandedSections((prev) => {
@@ -66,6 +75,24 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
     const handleAccentChange = useCallback((value: string) => {
         settingsService.setSetting("app:accent", value);
     }, []);
+
+    const handleOverrideChange = useCallback(
+        (variable: string, value: string | null) => {
+            const current = { ...themeOverrides };
+            if (value === null) {
+                delete current[variable];
+            } else {
+                current[variable] = value;
+            }
+            // If empty, save as empty object (or remove the key)
+            if (Object.keys(current).length === 0) {
+                settingsService.setSetting("app:themeoverrides", null);
+            } else {
+                settingsService.setSetting("app:themeoverrides", current);
+            }
+        },
+        [themeOverrides]
+    );
 
     const handleTermThemeChange = useCallback((value: string) => {
         settingsService.setSetting("term:theme", value);
@@ -97,7 +124,7 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
 
             <div className="appearance-section">
                 <div className="appearance-section-label">Color Palette Preview</div>
-                <ThemePalettePreview />
+                <ThemePalettePreview themeOverrides={themeOverrides} onOverrideChange={handleOverrideChange} />
             </div>
 
             {/* Collapsible sections */}

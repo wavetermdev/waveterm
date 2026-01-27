@@ -124,6 +124,9 @@ export function useTheme(): void {
     const accentSettingAtom = getSettingsKeyAtom("app:accent");
     const themeSetting = (useAtomValue(themeSettingAtom) ?? "dark") as string;
     const accentSetting = (useAtomValue(accentSettingAtom) ?? "green") as AccentSetting;
+    const themeOverrides = useAtomValue(getSettingsKeyAtom("app:themeoverrides")) as
+        | Record<string, string>
+        | undefined;
 
     // One-time migration from old theme variants
     const migratedRef = useRef(false);
@@ -165,6 +168,28 @@ export function useTheme(): void {
             darkModeQuery.removeEventListener("change", handleSystemPreferenceChange);
         };
     }, [normalizedTheme, accentSetting]);
+
+    // Apply stored theme overrides from settings
+    useEffect(() => {
+        const root = document.documentElement;
+        if (themeOverrides && typeof themeOverrides === "object") {
+            for (const [varName, value] of Object.entries(themeOverrides)) {
+                if (varName.startsWith("--") && typeof value === "string") {
+                    root.style.setProperty(varName, value);
+                }
+            }
+        }
+        return () => {
+            // Clean up: remove overrides when they change
+            if (themeOverrides && typeof themeOverrides === "object") {
+                for (const varName of Object.keys(themeOverrides)) {
+                    if (varName.startsWith("--")) {
+                        root.style.removeProperty(varName);
+                    }
+                }
+            }
+        };
+    }, [themeOverrides]);
 }
 
 // Step 10: Updated getResolvedTheme
@@ -201,4 +226,16 @@ export function getResolvedAccent(): AccentSetting {
         return setting as AccentSetting;
     }
     return "green";
+}
+
+/**
+ * Apply a single CSS variable override to the document root for live preview.
+ * Pass null as value to remove the override.
+ */
+export function applyThemeOverrideLive(varName: string, value: string | null): void {
+    if (value === null) {
+        document.documentElement.style.removeProperty(varName);
+    } else {
+        document.documentElement.style.setProperty(varName, value);
+    }
 }
