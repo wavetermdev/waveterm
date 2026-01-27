@@ -509,7 +509,7 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	return nil
 }
 
-func ReconnectJob(ctx context.Context, jobId string) error {
+func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
@@ -583,7 +583,7 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 	}
 
 	log.Printf("[job:%s] route established, restarting streaming", jobId)
-	return RestartStreaming(ctx, jobId, true)
+	return RestartStreaming(ctx, jobId, true, rtOpts)
 }
 
 func ReconnectJobsForConn(ctx context.Context, connName string) error {
@@ -610,7 +610,7 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	log.Printf("[conn:%s] found %d jobs to reconnect", connName, len(jobsToReconnect))
 
 	for _, job := range jobsToReconnect {
-		err = ReconnectJob(ctx, job.OID)
+		err = ReconnectJob(ctx, job.OID, nil)
 		if err != nil {
 			log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
 		}
@@ -619,10 +619,21 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	return nil
 }
 
-func RestartStreaming(ctx context.Context, jobId string, knownConnected bool) error {
+func RestartStreaming(ctx context.Context, jobId string, knownConnected bool, rtOpts *waveobj.RuntimeOpts) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	termSize := job.CmdTermSize
+	if rtOpts != nil && rtOpts.TermSize.Rows > 0 && rtOpts.TermSize.Cols > 0 {
+		termSize = rtOpts.TermSize
+		err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			job.CmdTermSize = termSize
+		})
+		if err != nil {
+			log.Printf("[job:%s] warning: failed to update termsize in DB: %v", jobId, err)
+		}
 	}
 
 	if !knownConnected {
@@ -659,7 +670,7 @@ func RestartStreaming(ctx context.Context, jobId string, knownConnected bool) er
 	prepareData := wshrpc.CommandJobPrepareConnectData{
 		StreamMeta: *streamMeta,
 		Seq:        currentSeq,
-		TermSize:   job.CmdTermSize,
+		TermSize:   termSize,
 	}
 
 	rpcOpts := &wshrpc.RpcOpts{

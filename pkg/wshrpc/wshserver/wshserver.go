@@ -1464,7 +1464,7 @@ func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobI
 }
 
 func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId string) error {
-	return jobcontroller.ReconnectJob(ctx, jobId)
+	return jobcontroller.ReconnectJob(ctx, jobId, nil)
 }
 
 func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {

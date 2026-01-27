@@ -178,7 +178,7 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 	_, err = jobcontroller.CheckJobConnected(ctx, jobId)
 	if err != nil {
 		log.Printf("job %s is not connected, attempting reconnect: %v\n", jobId, err)
-		err = jobcontroller.ReconnectJob(ctx, jobId)
+		err = jobcontroller.ReconnectJob(ctx, jobId, rtOpts)
 		if err != nil {
 			return fmt.Errorf("failed to reconnect to job: %w", err)
 		}
