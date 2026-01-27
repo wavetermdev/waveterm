@@ -60,17 +60,24 @@
     }
 
     .section-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.3s ease;
 
         &.expanded {
-            max-height: 2000px;
+            grid-template-rows: 1fr;
         }
     }
 
     .section-inner {
+        overflow: hidden;
+        padding: 0 16px;
+        border-top: 1px solid transparent;
+        transition: padding 0.3s ease, border-color 0.3s ease;
+    }
+
+    &.expanded .section-inner {
         padding: 16px;
-        border-top: 1px solid var(--border-color);
+        border-top-color: var(--border-color);
     }
 }

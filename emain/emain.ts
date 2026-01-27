@@ -52,6 +52,10 @@ import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
 
+if (isDev) {
+    electronApp.commandLine.appendSwitch("remote-debugging-port", "9222");
+}
+
 const waveDataDir = getWaveDataDir();
 const waveConfigDir = getWaveConfigDir();
 
