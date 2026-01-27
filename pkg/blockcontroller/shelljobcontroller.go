@@ -11,6 +11,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
@@ -36,6 +37,9 @@ type ShellJobController struct {
 	BlockDef       *waveobj.BlockDef
 	VersionTs      utilds.VersionTs
 
+	InputSessionId string // random uuid
+	inputSeqNum    int    // monotonic sequence number for inputs, starts at 1
+
 	JobId           string
 	LastKnownStatus string
 }
@@ -47,6 +51,7 @@ func MakeShellJobController(tabId string, blockId string, controllerType string)
 		TabId:           tabId,
 		BlockId:         blockId,
 		LastKnownStatus: Status_Init,
+		InputSessionId:  uuid.New().String(),
 	}
 }
 
@@ -60,6 +65,13 @@ func (sjc *ShellJobController) getJobId() string {
 	sjc.Lock.Lock()
 	defer sjc.Lock.Unlock()
 	return sjc.JobId
+}
+
+func (sjc *ShellJobController) getNextInputSeq() (string, int) {
+	sjc.Lock.Lock()
+	defer sjc.Lock.Unlock()
+	sjc.inputSeqNum++
+	return sjc.InputSessionId, sjc.inputSeqNum
 }
 
 func (sjc *ShellJobController) getJobStatus_withlock() string {
@@ -196,10 +208,13 @@ func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {
 	if jobId == "" {
 		return fmt.Errorf("no job attached to controller")
 	}
+	inputSessionId, seqNum := sjc.getNextInputSeq()
 	data := wshrpc.CommandJobInputData{
-		JobId:    jobId,
-		TermSize: inputUnion.TermSize,
-		SigName:  inputUnion.SigName,
+		JobId:          jobId,
+		InputSessionId: inputSessionId,
+		SeqNum:         seqNum,
+		TermSize:       inputUnion.TermSize,
+		SigName:        inputUnion.SigName,
 	}
 	if len(inputUnion.InputData) > 0 {
 		data.InputData64 = base64.StdEncoding.EncodeToString(inputUnion.InputData)

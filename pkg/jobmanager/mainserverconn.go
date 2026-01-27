@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"sync"
 	"sync/atomic"
 
-	"github.com/shirou/gopsutil/v4/process"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -93,14 +91,7 @@ func (msc *MainServerConn) AuthenticateToJobManagerCommand(ctx context.Context, 
 		return err
 	}
 
-	WshCmdJobManager.lock.Lock()
-	defer WshCmdJobManager.lock.Unlock()
-
-	if WshCmdJobManager.attachedClient != nil {
-		log.Printf("AuthenticateToJobManager: kicking out existing client\n")
-		WshCmdJobManager.attachedClient.Close()
-	}
-	WshCmdJobManager.attachedClient = msc
+	WshCmdJobManager.SetAttachedClient(msc)
 	return nil
 }
 
@@ -110,183 +101,35 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		log.Printf("StartJobCommand: not authenticated")
 		return nil, fmt.Errorf("not authenticated")
 	}
-	if WshCmdJobManager.IsJobStarted() {
-		log.Printf("StartJobCommand: job already started")
-		return nil, fmt.Errorf("job already started")
-	}
-
-	WshCmdJobManager.lock.Lock()
-	defer WshCmdJobManager.lock.Unlock()
-
-	if WshCmdJobManager.Cmd != nil {
-		log.Printf("StartJobCommand: job already started (double check)")
-		return nil, fmt.Errorf("job already started")
-	}
-
-	cmdDef := CmdDef{
-		Cmd:      data.Cmd,
-		Args:     data.Args,
-		Env:      data.Env,
-		TermSize: data.TermSize,
-	}
-	log.Printf("StartJobCommand: creating job cmd for jobid=%s", WshCmdJobManager.JobId)
-	jobCmd, err := MakeJobCmd(WshCmdJobManager.JobId, cmdDef)
-	if err != nil {
-		log.Printf("StartJobCommand: failed to make job cmd: %v", err)
-		return nil, fmt.Errorf("failed to start job: %w", err)
-	}
-	WshCmdJobManager.Cmd = jobCmd
-	log.Printf("StartJobCommand: job cmd created successfully")
-
-	if data.StreamMeta != nil {
-		serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(msc, *data.StreamMeta, 0)
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect stream: %w", err)
-		}
-		err = msc.WshRpc.StreamBroker.AttachStreamWriter(data.StreamMeta, WshCmdJobManager.StreamManager)
-		if err != nil {
-			return nil, fmt.Errorf("failed to attach stream writer: %w", err)
-		}
-		log.Printf("StartJob: connected stream streamid=%s serverSeq=%d\n", data.StreamMeta.Id, serverSeq)
-	}
-
-	_, cmdPty := jobCmd.GetCmd()
-	if cmdPty != nil {
-		log.Printf("StartJobCommand: attaching pty reader to stream manager")
-		err = WshCmdJobManager.StreamManager.AttachReader(cmdPty)
-		if err != nil {
-			log.Printf("StartJobCommand: failed to attach reader: %v", err)
-			return nil, fmt.Errorf("failed to attach reader to stream manager: %w", err)
-		}
-		log.Printf("StartJobCommand: pty reader attached successfully")
-	} else {
-		log.Printf("StartJobCommand: no pty to attach")
-	}
-
-	cmd, _ := jobCmd.GetCmd()
-	if cmd == nil || cmd.Process == nil {
-		log.Printf("StartJobCommand: cmd or process is nil")
-		return nil, fmt.Errorf("cmd or process is nil")
-	}
-	cmdPid := cmd.Process.Pid
-	cmdProc, err := process.NewProcess(int32(cmdPid))
-	if err != nil {
-		log.Printf("StartJobCommand: failed to get cmd process: %v", err)
-		return nil, fmt.Errorf("failed to get cmd process: %w", err)
-	}
-	cmdStartTs, err := cmdProc.CreateTime()
-	if err != nil {
-		log.Printf("StartJobCommand: failed to get cmd start time: %v", err)
-		return nil, fmt.Errorf("failed to get cmd start time: %w", err)
-	}
-
-	jobManagerPid := os.Getpid()
-	jobManagerProc, err := process.NewProcess(int32(jobManagerPid))
-	if err != nil {
-		log.Printf("StartJobCommand: failed to get job manager process: %v", err)
-		return nil, fmt.Errorf("failed to get job manager process: %w", err)
-	}
-	jobManagerStartTs, err := jobManagerProc.CreateTime()
-	if err != nil {
-		log.Printf("StartJobCommand: failed to get job manager start time: %v", err)
-		return nil, fmt.Errorf("failed to get job manager start time: %w", err)
-	}
-
-	log.Printf("StartJobCommand: job started successfully cmdPid=%d cmdStartTs=%d jobManagerPid=%d jobManagerStartTs=%d", cmdPid, cmdStartTs, jobManagerPid, jobManagerStartTs)
-	return &wshrpc.CommandStartJobRtnData{
-		CmdPid:            cmdPid,
-		CmdStartTs:        cmdStartTs,
-		JobManagerPid:     jobManagerPid,
-		JobManagerStartTs: jobManagerStartTs,
-	}, nil
+	return WshCmdJobManager.StartJob(msc, data)
 }
 
 func (msc *MainServerConn) JobPrepareConnectCommand(ctx context.Context, data wshrpc.CommandJobPrepareConnectData) (*wshrpc.CommandJobConnectRtnData, error) {
-	WshCmdJobManager.lock.Lock()
-	defer WshCmdJobManager.lock.Unlock()
-
 	if !msc.PeerAuthenticated.Load() {
 		return nil, fmt.Errorf("peer not authenticated")
 	}
 	if !msc.SelfAuthenticated.Load() {
 		return nil, fmt.Errorf("not authenticated to server")
 	}
-	if WshCmdJobManager.Cmd == nil {
-		return nil, fmt.Errorf("job not started")
-	}
-
-	rtnData := &wshrpc.CommandJobConnectRtnData{}
-	streamDone, streamError := WshCmdJobManager.StreamManager.GetStreamDoneInfo()
-	
-	if streamDone {
-		log.Printf("JobPrepareConnect: stream already done, skipping connection streamError=%q\n", streamError)
-		rtnData.Seq = data.Seq
-		rtnData.StreamDone = true
-		rtnData.StreamError = streamError
-	} else {
-		corkedStreamMeta := data.StreamMeta
-		corkedStreamMeta.RWnd = 0
-		serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(msc, corkedStreamMeta, data.Seq)
-		if err != nil {
-			return nil, err
-		}
-		WshCmdJobManager.pendingStreamMeta = &data.StreamMeta
-		rtnData.Seq = serverSeq
-		rtnData.StreamDone = false
-	}
-
-	hasExited, exitData := WshCmdJobManager.Cmd.GetExitInfo()
-	if hasExited && exitData != nil {
-		rtnData.HasExited = true
-		rtnData.ExitCode = exitData.ExitCode
-		rtnData.ExitSignal = exitData.ExitSignal
-		rtnData.ExitErr = exitData.ExitErr
-	}
-
-	log.Printf("JobPrepareConnect: streamid=%s clientSeq=%d serverSeq=%d streamDone=%v streamError=%q hasExited=%v\n", data.StreamMeta.Id, data.Seq, rtnData.Seq, rtnData.StreamDone, rtnData.StreamError, hasExited)
-	return rtnData, nil
+	return WshCmdJobManager.PrepareConnect(msc, data)
 }
 
 func (msc *MainServerConn) JobStartStreamCommand(ctx context.Context, data wshrpc.CommandJobStartStreamData) error {
-	WshCmdJobManager.lock.Lock()
-	defer WshCmdJobManager.lock.Unlock()
-
 	if !msc.PeerAuthenticated.Load() {
 		return fmt.Errorf("not authenticated")
 	}
-	if WshCmdJobManager.Cmd == nil {
-		return fmt.Errorf("job not started")
-	}
-	if WshCmdJobManager.pendingStreamMeta == nil {
-		return fmt.Errorf("no pending stream (call JobPrepareConnect first)")
-	}
-
-	err := msc.WshRpc.StreamBroker.AttachStreamWriter(WshCmdJobManager.pendingStreamMeta, WshCmdJobManager.StreamManager)
-	if err != nil {
-		return fmt.Errorf("failed to attach stream writer: %w", err)
-	}
-
-	err = WshCmdJobManager.StreamManager.SetRwndSize(int(WshCmdJobManager.pendingStreamMeta.RWnd))
-	if err != nil {
-		return fmt.Errorf("failed to set rwnd size: %w", err)
-	}
-
-	log.Printf("JobStartStream: streamid=%s rwnd=%d streaming started\n", WshCmdJobManager.pendingStreamMeta.Id, WshCmdJobManager.pendingStreamMeta.RWnd)
-	WshCmdJobManager.pendingStreamMeta = nil
-	return nil
+	return WshCmdJobManager.StartStream(msc)
 }
 
 func (msc *MainServerConn) JobInputCommand(ctx context.Context, data wshrpc.CommandJobInputData) error {
-	WshCmdJobManager.lock.Lock()
-	defer WshCmdJobManager.lock.Unlock()
-
 	if !msc.PeerAuthenticated.Load() {
 		return fmt.Errorf("not authenticated")
 	}
-	if WshCmdJobManager.Cmd == nil {
+	if !WshCmdJobManager.IsJobStarted() {
 		return fmt.Errorf("job not started")
 	}
 
-	return WshCmdJobManager.Cmd.HandleInput(data)
+	WshCmdJobManager.InputQueue.QueueItem(data.InputSessionId, data.SeqNum, data)
+	return nil
 }
 

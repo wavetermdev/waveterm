@@ -284,10 +284,12 @@ type CommandBlockInputData struct {
 }
 
 type CommandJobInputData struct {
-	JobId       string            `json:"jobid"`
-	InputData64 string            `json:"inputdata64,omitempty"`
-	SigName     string            `json:"signame,omitempty"`
-	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
+	JobId          string            `json:"jobid"`
+	InputSessionId string            `json:"inputsessionid,omitempty"`
+	SeqNum         int               `json:"seqnum,omitempty"`
+	InputData64    string            `json:"inputdata64,omitempty"`
+	SigName        string            `json:"signame,omitempty"`
+	TermSize       *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandWaitForRouteData struct {

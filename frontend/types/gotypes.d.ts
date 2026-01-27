@@ -387,6 +387,8 @@ declare global {
     // wshrpc.CommandJobInputData
     type CommandJobInputData = {
         jobid: string;
+        inputsessionid?: string;
+        seqnum?: number;
         inputdata64?: string;
         signame?: string;
         termsize?: TermSize;
