@@ -317,6 +317,22 @@ func (conn *SSHConn) GetEnvironmentMaps(ctx context.Context) (map[string]string,
 	return noPtyEnv, ptyEnv, nil
 }
 
+func runSessionWithContext(ctx context.Context, session *ssh.Session, cmd string) error {
+	errCh := make(chan error, 1)
+	
+	go func() {
+		errCh <- session.Run(cmd)
+	}()
+	
+	select {
+	case <-ctx.Done():
+		session.Close()
+		return ctx.Err()
+	case err := <-errCh:
+		return err
+	}
+}
+
 func (conn *SSHConn) getEnvironmentNoPty(ctx context.Context, client *ssh.Client) (map[string]string, error) {
 	session, err := client.NewSession()
 	if err != nil {
@@ -328,7 +344,7 @@ func (conn *SSHConn) getEnvironmentNoPty(ctx context.Context, client *ssh.Client
 	session.Stdout = outputBuf
 	session.Stderr = outputBuf
 
-	err = session.Run("env -0")
+	err = runSessionWithContext(ctx, session, "env -0")
 	if err != nil {
 		return nil, fmt.Errorf("error running env command: %w", err)
 	}
@@ -353,7 +369,7 @@ func (conn *SSHConn) getEnvironmentWithPty(ctx context.Context, client *ssh.Clie
 	session.Stdout = outputBuf
 	session.Stderr = outputBuf
 
-	err = session.Run("env -0")
+	err = runSessionWithContext(ctx, session, "env -0")
 	if err != nil {
 		return nil, fmt.Errorf("error running env command: %w", err)
 	}
