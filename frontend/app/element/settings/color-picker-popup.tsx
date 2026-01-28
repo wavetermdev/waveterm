@@ -125,14 +125,21 @@ function parseColor(color: string): RGBA {
             };
         }
     }
-    const rgbaMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/.exec(color);
-    if (rgbaMatch) {
-        return {
-            r: Math.round(Number.parseFloat(rgbaMatch[1])),
-            g: Math.round(Number.parseFloat(rgbaMatch[2])),
-            b: Math.round(Number.parseFloat(rgbaMatch[3])),
-            a: rgbaMatch[4] != null ? Number.parseFloat(rgbaMatch[4]) : 1,
-        };
+    if (color.startsWith("rgb")) {
+        const open = color.indexOf("(");
+        const close = color.lastIndexOf(")");
+        if (open !== -1 && close > open) {
+            const parts = color.slice(open + 1, close).split(",");
+            if (parts.length >= 3 && parts.length <= 4) {
+                const r = Number(parts[0].trim());
+                const g = Number(parts[1].trim());
+                const b = Number(parts[2].trim());
+                const a = parts.length === 4 ? Number(parts[3].trim()) : 1;
+                if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b) && !Number.isNaN(a)) {
+                    return { r: Math.round(r), g: Math.round(g), b: Math.round(b), a };
+                }
+            }
+        }
     }
     try {
         const ctx = document.createElement("canvas").getContext("2d");

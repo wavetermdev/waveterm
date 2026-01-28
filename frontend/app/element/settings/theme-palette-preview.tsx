@@ -62,15 +62,23 @@ function readPaletteColors(): PaletteColor[] {
  * Converts a computed CSS color value to a hex string for display.
  */
 function computedToHex(value: string): string {
-    const rgbaMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/.exec(value);
-    if (rgbaMatch) {
-        const r = Math.round(Number.parseFloat(rgbaMatch[1]));
-        const g = Math.round(Number.parseFloat(rgbaMatch[2]));
-        const b = Math.round(Number.parseFloat(rgbaMatch[3]));
-        const a = rgbaMatch[4] != null ? Number.parseFloat(rgbaMatch[4]) : 1;
-        const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-        if (a < 1) return `${hex} ${Math.round(a * 100)}%`;
-        return hex;
+    if (value.startsWith("rgb")) {
+        const open = value.indexOf("(");
+        const close = value.lastIndexOf(")");
+        if (open !== -1 && close > open) {
+            const parts = value.slice(open + 1, close).split(",");
+            if (parts.length >= 3 && parts.length <= 4) {
+                const r = Math.round(Number(parts[0].trim()));
+                const g = Math.round(Number(parts[1].trim()));
+                const b = Math.round(Number(parts[2].trim()));
+                if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
+                    const a = parts.length === 4 ? Number(parts[3].trim()) : 1;
+                    const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+                    if (a < 1) return `${hex} ${Math.round(a * 100)}%`;
+                    return hex;
+                }
+            }
+        }
     }
     if (value.startsWith("#")) return value;
     try {
@@ -94,12 +102,21 @@ function normalizeColorToHex6(color: string): string {
     const hex3 = trimmed.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/);
     if (hex3) return `#${hex3[1]}${hex3[1]}${hex3[2]}${hex3[2]}${hex3[3]}${hex3[3]}`;
     if (/^#[0-9a-f]{8}$/.test(trimmed)) return trimmed.slice(0, 7);
-    const rgbMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/.exec(trimmed);
-    if (rgbMatch) {
-        const r = Math.round(Number.parseFloat(rgbMatch[1]));
-        const g = Math.round(Number.parseFloat(rgbMatch[2]));
-        const b = Math.round(Number.parseFloat(rgbMatch[3]));
-        return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+    if (trimmed.startsWith("rgb")) {
+        const open = trimmed.indexOf("(");
+        const close = trimmed.lastIndexOf(")");
+        const end = close !== -1 ? close : trimmed.length;
+        if (open !== -1) {
+            const parts = trimmed.slice(open + 1, end).split(",");
+            if (parts.length >= 3) {
+                const r = Math.round(Number(parts[0].trim()));
+                const g = Math.round(Number(parts[1].trim()));
+                const b = Math.round(Number(parts[2].trim()));
+                if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
+                    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+                }
+            }
+        }
     }
     try {
         const ctx = document.createElement("canvas").getContext("2d");
