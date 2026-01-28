@@ -64,10 +64,10 @@ function readPaletteColors(): PaletteColor[] {
 function computedToHex(value: string): string {
     const rgbaMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/.exec(value);
     if (rgbaMatch) {
-        const r = Math.round(parseFloat(rgbaMatch[1]));
-        const g = Math.round(parseFloat(rgbaMatch[2]));
-        const b = Math.round(parseFloat(rgbaMatch[3]));
-        const a = rgbaMatch[4] != null ? parseFloat(rgbaMatch[4]) : 1;
+        const r = Math.round(Number.parseFloat(rgbaMatch[1]));
+        const g = Math.round(Number.parseFloat(rgbaMatch[2]));
+        const b = Math.round(Number.parseFloat(rgbaMatch[3]));
+        const a = rgbaMatch[4] != null ? Number.parseFloat(rgbaMatch[4]) : 1;
         const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
         if (a < 1) return `${hex} ${Math.round(a * 100)}%`;
         return hex;
@@ -96,9 +96,9 @@ function normalizeColorToHex6(color: string): string {
     if (/^#[0-9a-f]{8}$/.test(trimmed)) return trimmed.slice(0, 7);
     const rgbMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/.exec(trimmed);
     if (rgbMatch) {
-        const r = Math.round(parseFloat(rgbMatch[1]));
-        const g = Math.round(parseFloat(rgbMatch[2]));
-        const b = Math.round(parseFloat(rgbMatch[3]));
+        const r = Math.round(Number.parseFloat(rgbMatch[1]));
+        const g = Math.round(Number.parseFloat(rgbMatch[2]));
+        const b = Math.round(Number.parseFloat(rgbMatch[3]));
         return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
     }
     try {

@@ -128,10 +128,10 @@ function parseColor(color: string): RGBA {
     const rgbaMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/.exec(color);
     if (rgbaMatch) {
         return {
-            r: Math.round(parseFloat(rgbaMatch[1])),
-            g: Math.round(parseFloat(rgbaMatch[2])),
-            b: Math.round(parseFloat(rgbaMatch[3])),
-            a: rgbaMatch[4] != null ? parseFloat(rgbaMatch[4]) : 1,
+            r: Math.round(Number.parseFloat(rgbaMatch[1])),
+            g: Math.round(Number.parseFloat(rgbaMatch[2])),
+            b: Math.round(Number.parseFloat(rgbaMatch[3])),
+            a: rgbaMatch[4] != null ? Number.parseFloat(rgbaMatch[4]) : 1,
         };
     }
     try {
@@ -460,7 +460,7 @@ const ColorPickerPopup = memo(({ initialColor, defaultColor, anchorRect, onChang
 
     return createPortal(
         <>
-            <div className="cp-backdrop" onClick={handleCommit} />
+            <div className="cp-backdrop" aria-hidden="true" onClick={handleCommit} />
             <div className="cp-popup" style={popupStyle}>
                 {/* Title bar */}
                 <div className="cp-titlebar">
@@ -558,7 +558,7 @@ const ColorPickerPopup = memo(({ initialColor, defaultColor, anchorRect, onChang
                                         onChange={(e) =>
                                             setHsv((prev) => ({
                                                 ...prev,
-                                                h: clamp(parseInt(e.target.value) || 0, 0, 360),
+                                                h: clamp(Number.parseInt(e.target.value) || 0, 0, 360),
                                             }))
                                         }
                                     />
@@ -586,7 +586,7 @@ const ColorPickerPopup = memo(({ initialColor, defaultColor, anchorRect, onChang
                                                 max={255}
                                                 value={val}
                                                 onChange={(e) =>
-                                                    handleRgbChange(ch, clamp(parseInt(e.target.value) || 0, 0, 255))
+                                                    handleRgbChange(ch, clamp(Number.parseInt(e.target.value) || 0, 0, 255))
                                                 }
                                             />
                                         </div>
@@ -627,7 +627,8 @@ const ColorPickerPopup = memo(({ initialColor, defaultColor, anchorRect, onChang
 
                 {/* Recent colors: large current square + circle swatches + add button */}
                 <div className="cp-recent">
-                    <div
+                    <button
+                        type="button"
                         className="cp-recent-current"
                         style={{ backgroundColor: currentColorString }}
                         title="Current color — click to revert to original"
