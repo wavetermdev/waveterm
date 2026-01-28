@@ -11,7 +11,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -54,12 +53,11 @@ Supported URI schemes:
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
-	Short: "manage files across different storage systems",
-	Long: `Manage files across different storage systems.
+	Short: "manage files across local and remote systems",
+	Long: `Manage files across local and remote systems.
     
-Wave Terminal is capable of managing files from remote SSH hosts, S3-compatible
-systems, and the internal Wave filesystem. Files are addressed via URIs, which
-vary depending on the storage system.` + UriHelpText}
+Wave Terminal is capable of managing files from remote SSH hosts and your local
+computer. Files are addressed via URIs.` + UriHelpText}
 
 var fileTimeout int64
 
@@ -254,17 +252,15 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	buf := make([]byte, MaxFileSize)
-	n, err := WrappedStdin.Read(buf)
-	if err != nil && err != io.EOF {
+	limitReader := io.LimitReader(WrappedStdin, MaxFileSize+1)
+	data, err := io.ReadAll(limitReader)
+	if err != nil {
 		return fmt.Errorf("reading input: %w", err)
 	}
-	if int64(n) == MaxFileSize {
-		if _, err := WrappedStdin.Read(make([]byte, 1)); err != io.EOF {
-			return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
-		}
+	if len(data) > MaxFileSize {
+		return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
 	}
-	fileData.Data64 = base64.StdEncoding.EncodeToString(buf[:n])
+	fileData.Data64 = base64.StdEncoding.EncodeToString(data)
 	err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	if err != nil {
 		return fmt.Errorf("writing file: %w", err)
@@ -351,22 +347,6 @@ func checkFileSize(path string, maxSize int64) (*wshrpc.FileInfo, error) {
 		return nil, fmt.Errorf("file size (%d bytes) exceeds maximum of %d bytes", info.Size, maxSize)
 	}
 	return info, nil
-}
-
-func getTargetPath(src, dst string) (string, error) {
-	srcBase := filepath.Base(src)
-
-	dstInfo, err := os.Stat(dst)
-	if err == nil && dstInfo.IsDir() {
-		// If it's an existing directory, use the source filename
-		return filepath.Join(dst, srcBase), nil
-	}
-	if err != nil && !os.IsNotExist(err) {
-		// Return error if it's something other than not exists
-		return "", fmt.Errorf("checking destination path: %w", err)
-	}
-
-	return dst, nil
 }
 
 func fileCpRun(cmd *cobra.Command, args []string) error {
@@ -477,19 +457,23 @@ func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRem
 }
 
 func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) error {
-	// Sample first 100 files to determine name width
-	maxNameLen := 0
-	var samples []*wshrpc.FileInfo
+	var allFiles []*wshrpc.FileInfo
 
 	for respUnion := range filesChan {
 		if respUnion.Error != nil {
 			return respUnion.Error
 		}
 		resp := respUnion.Response
-		samples = append(samples, resp.FileInfo...)
+		allFiles = append(allFiles, resp.FileInfo...)
 	}
 
-	// Use sampled width, but cap it at 60 chars to prevent excessive width
+	maxNameLen := 0
+	for _, fi := range allFiles {
+		if len(fi.Name) > maxNameLen {
+			maxNameLen = len(fi.Name)
+		}
+	}
+
 	nameWidth := maxNameLen + 2
 	if nameWidth > 60 {
 		nameWidth = 60
@@ -497,8 +481,7 @@ func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemote
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
 
-	// Print samples
-	for _, f := range samples {
+	for _, f := range allFiles {
 		name := f.Name
 		t := time.Unix(f.ModTime/1000, 0)
 		timestamp := utilfn.FormatLsTime(t)
@@ -506,23 +489,6 @@ func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemote
 			fmt.Fprintf(writer, "%-*s\t%8s\t%s\n", nameWidth, name, "-", timestamp)
 		} else {
 			fmt.Fprintf(writer, "%-*s\t%8d\t%s\n", nameWidth, name, f.Size, timestamp)
-		}
-	}
-
-	// Continue with remaining files
-	for respUnion := range filesChan {
-		if respUnion.Error != nil {
-			return respUnion.Error
-		}
-		for _, f := range respUnion.Response.FileInfo {
-			name := f.Name
-			t := time.Unix(f.ModTime/1000, 0)
-			timestamp := utilfn.FormatLsTime(t)
-			if f.Size == 0 && strings.HasSuffix(name, "/") {
-				fmt.Fprintf(writer, "%-*s\t%8s\t%s\n", nameWidth, name, "-", timestamp)
-			} else {
-				fmt.Fprintf(writer, "%-*s\t%8d\t%s\n", nameWidth, name, f.Size, timestamp)
-			}
 		}
 	}
 	writer.Flush()
