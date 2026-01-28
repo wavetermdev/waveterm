@@ -523,11 +523,14 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		return false, clientVersion, "", fmt.Errorf("timeout waiting for connserver to register")
 	}
 	time.Sleep(300 * time.Millisecond) // TODO remove this sleep (but we need to wait until connserver is "ready")
-	wshclient.ConnServerInitCommand(
+	err = wshclient.ConnServerInitCommand(
 		wshclient.GetBareRpcClient(),
 		wshrpc.CommandConnServerInitData{ClientId: wstore.GetClientId()},
 		&wshrpc.RpcOpts{Route: connRoute},
 	)
+	if err != nil {
+		return false, clientVersion, "", fmt.Errorf("connserver init failed: %w", err)
+	}
 	conn.Infof(ctx, "connserver is registered and ready\n")
 	return false, clientVersion, "", nil
 }
