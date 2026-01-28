@@ -185,6 +185,9 @@ func (client *Client) Connect() error {
 	if err != nil {
 		return fmt.Errorf("error authenticating rpc connection: %v", err)
 	}
+	if authRtnData.RouteId == "" {
+		return fmt.Errorf("authentication returned empty routeid")
+	}
 	client.RouteId = authRtnData.RouteId
 	return nil
 }
