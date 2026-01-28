@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	ConnectionTypeWsh  = "wsh"
-	ConnectionTypeWave = "wavefile"
+	ConnectionTypeWsh = "wsh"
 
 	ConnHostCurrent = "current"
 	ConnHostWaveSrv = "wavesrv"

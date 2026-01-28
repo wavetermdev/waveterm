@@ -222,11 +222,6 @@ class RpcApiType {
         return client.wshRpcCall("fileappend", data, opts);
     }
 
-    // command "fileappendijson" [call]
-    FileAppendIJsonCommand(client: WshClient, data: CommandAppendIJsonData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("fileappendijson", data, opts);
-    }
-
     // command "filecopy" [call]
     FileCopyCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filecopy", data, opts);
@@ -285,11 +280,6 @@ class RpcApiType {
     // command "filerestorebackup" [call]
     FileRestoreBackupCommand(client: WshClient, data: CommandFileRestoreBackupData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filerestorebackup", data, opts);
-    }
-
-    // command "filesharecapability" [call]
-    FileShareCapabilityCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<FileShareCapability> {
-        return client.wshRpcCall("filesharecapability", data, opts);
     }
 
     // command "filewrite" [call]

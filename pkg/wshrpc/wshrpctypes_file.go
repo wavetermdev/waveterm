@@ -16,7 +16,6 @@ type WshRpcFileInterface interface {
 	FileCreateCommand(ctx context.Context, data FileData) error
 	FileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	FileAppendCommand(ctx context.Context, data FileData) error
-	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
 	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
@@ -26,7 +25,6 @@ type WshRpcFileInterface interface {
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
-	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 }
 
 type WshRpcRemoteFileInterface interface {
@@ -137,9 +135,4 @@ type CommandRemoteListEntriesData struct {
 
 type CommandRemoteListEntriesRtnData struct {
 	FileInfo []*FileInfo `json:"fileinfo,omitempty"`
-}
-
-type FileShareCapability struct {
-	CanAppend bool `json:"canappend"`
-	CanMkdir  bool `json:"canmkdir"`
 }

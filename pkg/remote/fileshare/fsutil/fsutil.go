@@ -4,16 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
-	"log"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fspath"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -38,65 +34,6 @@ func GetParentPathString(hostAndPath string) string {
 		return ""
 	}
 	return hostAndPath[:lastSlash+1]
-}
-
-func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (srcPath, destPath string, srcInfo *wshrpc.FileInfo, err error) {
-	merge := opts != nil && opts.Merge
-	overwrite := opts != nil && opts.Overwrite
-	recursive := opts != nil && opts.Recursive
-	if overwrite && merge {
-		return "", "", nil, fmt.Errorf("cannot specify both overwrite and merge")
-	}
-
-	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
-	srcPath = srcConn.Path
-	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
-	destPath, err = CleanPathPrefix(destConn.Path)
-	if err != nil {
-		return "", "", nil, fmt.Errorf("error cleaning destination path: %w", err)
-	}
-
-	srcInfo, err = srcClient.Stat(ctx, srcConn)
-	if err != nil {
-		return "", "", nil, fmt.Errorf("error getting source file info: %w", err)
-	} else if srcInfo.NotFound {
-		return "", "", nil, fmt.Errorf("source file not found: %w", err)
-	}
-	destInfo, err := destClient.Stat(ctx, destConn)
-	destExists := err == nil && !destInfo.NotFound
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return "", "", nil, fmt.Errorf("error getting destination file info: %w", err)
-	}
-	originalDestPath := destPath
-	if !srcHasSlash {
-		if (destExists && destInfo.IsDir) || (!destExists && !destHasSlash && srcInfo.IsDir) {
-			destPath = fspath.Join(destPath, fspath.Base(srcConn.Path))
-		}
-	}
-	destConn.Path = destPath
-	if originalDestPath != destPath {
-		destInfo, err = destClient.Stat(ctx, destConn)
-		destExists = err == nil && !destInfo.NotFound
-		if err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return "", "", nil, fmt.Errorf("error getting destination file info: %w", err)
-		}
-	}
-	if destExists {
-		if overwrite {
-			log.Printf("Deleting existing file: %s\n", destConn.GetFullURI())
-			err = destClient.Delete(ctx, destConn, destInfo.IsDir && recursive)
-			if err != nil {
-				return "", "", nil, fmt.Errorf("error deleting conflicting destination file: %w", err)
-			}
-		} else if destInfo.IsDir && srcInfo.IsDir {
-			if !merge {
-				return "", "", nil, fmt.Errorf(fstype.MergeRequiredError, destConn.GetFullURI())
-			}
-		} else {
-			return "", "", nil, fmt.Errorf(fstype.OverwriteRequiredError, destConn.GetFullURI())
-		}
-	}
-	return srcPath, destPath, srcInfo, nil
 }
 
 // CleanPathPrefix corrects paths for prefix filesystems (i.e. ones that don't have directories)

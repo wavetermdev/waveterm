@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -219,7 +218,7 @@ func prepareDestForCopy(destPath string, srcBaseName string, destHasSlash bool, 
 
 	if finalInfo != nil {
 		if !overwrite {
-			return "", fmt.Errorf(fstype.OverwriteRequiredError, finalPath)
+			return "", fmt.Errorf(wshfs.OverwriteRequiredError, finalPath)
 		}
 		if err := os.Remove(finalPath); err != nil {
 			return "", fmt.Errorf("cannot remove file %q: %w", finalPath, err)
@@ -297,7 +296,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	}
 
 	// FROM external TO here - only supports single file copying
-	timeout := fstype.DefaultTimeout
+	timeout := wshfs.DefaultTimeout
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
@@ -666,7 +665,7 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.Comm
 	if err != nil {
 		finfo, statErr := os.Stat(cleanedPath)
 		if statErr == nil && finfo.IsDir() {
-			return fmt.Errorf(fstype.RecursiveRequiredError)
+			return fmt.Errorf(wshfs.RecursiveRequiredError)
 		}
 		return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
 	}

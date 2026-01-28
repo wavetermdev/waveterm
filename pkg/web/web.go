@@ -25,7 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -346,7 +346,7 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 			Path: path,
 		},
 	}
-	rtnCh := fileshare.ReadStream(r.Context(), data)
+	rtnCh := wshfs.ReadStream(r.Context(), data)
 	err := handleRemoteStreamFileFromCh(w, r, path, rtnCh, nil, no404 != "")
 	if err != nil {
 		log.Printf("error streaming file %q %q: %v\n", conn, path, err)

@@ -274,12 +274,6 @@ func FileAppendCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.Rpc
 	return err
 }
 
-// command "fileappendijson", wshserver.FileAppendIJsonCommand
-func FileAppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "fileappendijson", data, opts)
-	return err
-}
-
 // command "filecopy", wshserver.FileCopyCommand
 func FileCopyCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCopyData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filecopy", data, opts)
@@ -348,12 +342,6 @@ func FileReadStreamCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc
 func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreBackupData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filerestorebackup", data, opts)
 	return err
-}
-
-// command "filesharecapability", wshserver.FileShareCapabilityCommand
-func FileShareCapabilityCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.FileShareCapability, error) {
-	resp, err := sendRpcRequestCallHelper[wshrpc.FileShareCapability](w, "filesharecapability", data, opts)
-	return resp, err
 }
 
 // command "filewrite", wshserver.FileWriteCommand

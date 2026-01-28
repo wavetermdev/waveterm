@@ -137,7 +137,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
-        files: FileInfo[];
+        files: WaveFileInfo[];
     };
 
     // wshrpc.BlocksListEntry
@@ -180,13 +180,6 @@ declare global {
     type CloseTabRtnType = {
         closewindow?: boolean;
         newactivetabid?: string;
-    };
-
-    // wshrpc.CommandAppendIJsonData
-    type CommandAppendIJsonData = {
-        zoneid: string;
-        filename: string;
-        data: {[key: string]: any};
     };
 
     // wshrpc.CommandAuthenticateJobManagerData
@@ -896,12 +889,6 @@ declare global {
         ijsonbudget?: number;
         truncate?: boolean;
         append?: boolean;
-    };
-
-    // wshrpc.FileShareCapability
-    type FileShareCapability = {
-        canappend: boolean;
-        canmkdir: boolean;
     };
 
     // wconfig.FullConfigType

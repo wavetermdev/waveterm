@@ -446,11 +446,11 @@ type CommandWebSelectorData struct {
 }
 
 type BlockInfoData struct {
-	BlockId     string         `json:"blockid"`
-	TabId       string         `json:"tabid"`
-	WorkspaceId string         `json:"workspaceid"`
-	Block       *waveobj.Block `json:"block"`
-	Files       []*FileInfo    `json:"files"`
+	BlockId     string          `json:"blockid"`
+	TabId       string          `json:"tabid"`
+	WorkspaceId string          `json:"workspaceid"`
+	Block       *waveobj.Block  `json:"block"`
+	Files       []*WaveFileInfo `json:"files"`
 }
 
 type WaveNotificationOptions struct {
