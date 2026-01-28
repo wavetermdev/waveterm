@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -188,17 +189,21 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 	return nil
 }
 
-func (sjc *ShellJobController) Stop(graceful bool, newStatus string, destroy bool) error {
+func (sjc *ShellJobController) Stop(graceful bool, newStatus string, destroy bool) {
 	if !destroy {
-		return nil
+		return
 	}
 	jobId := sjc.getJobId()
 	if jobId == "" {
-		return nil
+		return
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	jobcontroller.DetachJobFromBlock(ctx, jobId, false)
-	return jobcontroller.TerminateJobManager(ctx, jobId)
+	err := jobcontroller.TerminateJobManager(ctx, jobId)
+	if err != nil {
+		log.Printf("error terminating job manager: %v\n", err)
+	}
 }
 
 func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {

@@ -93,7 +93,7 @@ func (sc *ShellController) Start(ctx context.Context, blockMeta waveobj.MetaMapT
 	return nil
 }
 
-func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) error {
+func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) {
 	sc.Lock.Lock()
 	defer sc.Lock.Unlock()
 
@@ -102,7 +102,7 @@ func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) e
 			sc.ProcStatus = newStatus
 			sc.sendUpdate_nolock()
 		}
-		return nil
+		return
 	}
 
 	sc.ShellProc.Close()
@@ -116,7 +116,6 @@ func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) e
 	// Update status
 	sc.ProcStatus = newStatus
 	sc.sendUpdate_nolock()
-	return nil
 }
 
 func (sc *ShellController) getRuntimeStatus_nolock() BlockControllerRuntimeStatus {

@@ -466,7 +466,7 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 }
 
 func TerminateJobManager(ctx context.Context, jobId string) error {
-	err := wstore.DBUpdateFn[*waveobj.Job](ctx, jobId, func(job *waveobj.Job) {
+	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 		job.TerminateOnReconnect = true
 	})
 	if err != nil {

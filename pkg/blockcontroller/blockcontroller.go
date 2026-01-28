@@ -65,7 +65,7 @@ type BlockControllerRuntimeStatus struct {
 // Controller interface that all block controllers must implement
 type Controller interface {
 	Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error
-	Stop(graceful bool, newStatus string, destroy bool) error
+	Stop(graceful bool, newStatus string, destroy bool)
 	GetRuntimeStatus() *BlockControllerRuntimeStatus // does not return nil
 	SendInput(input *BlockInputUnion) error
 }
