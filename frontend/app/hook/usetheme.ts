@@ -184,24 +184,22 @@ export function useTheme(): void {
     // Apply custom accent overrides when a custom accent is selected
     useEffect(() => {
         const root = document.documentElement;
-        if (customAccentId && customAccents) {
-            const custom = customAccents[customAccentId];
-            if (custom && custom.overrides && typeof custom.overrides === "object") {
-                for (const [varName, value] of Object.entries(custom.overrides)) {
-                    if (varName.startsWith("--") && typeof value === "string") {
-                        root.style.setProperty(varName, value);
-                    }
+        const appliedOverrides =
+            customAccentId && customAccents && customAccents[customAccentId]?.overrides
+                ? { ...customAccents[customAccentId].overrides }
+                : null;
+        if (appliedOverrides && typeof appliedOverrides === "object") {
+            for (const [varName, value] of Object.entries(appliedOverrides)) {
+                if (varName.startsWith("--") && typeof value === "string") {
+                    root.style.setProperty(varName, value);
                 }
             }
         }
         return () => {
-            if (customAccentId && customAccents) {
-                const custom = customAccents[customAccentId];
-                if (custom && custom.overrides && typeof custom.overrides === "object") {
-                    for (const varName of Object.keys(custom.overrides)) {
-                        if (varName.startsWith("--")) {
-                            root.style.removeProperty(varName);
-                        }
+            if (appliedOverrides && typeof appliedOverrides === "object") {
+                for (const varName of Object.keys(appliedOverrides)) {
+                    if (varName.startsWith("--")) {
+                        root.style.removeProperty(varName);
                     }
                 }
             }
@@ -211,17 +209,17 @@ export function useTheme(): void {
     // Apply stored theme overrides from settings
     useEffect(() => {
         const root = document.documentElement;
-        if (themeOverrides && typeof themeOverrides === "object") {
-            for (const [varName, value] of Object.entries(themeOverrides)) {
+        const appliedOverrides = themeOverrides && typeof themeOverrides === "object" ? { ...themeOverrides } : null;
+        if (appliedOverrides) {
+            for (const [varName, value] of Object.entries(appliedOverrides)) {
                 if (varName.startsWith("--") && typeof value === "string") {
                     root.style.setProperty(varName, value);
                 }
             }
         }
         return () => {
-            // Clean up: remove overrides when they change
-            if (themeOverrides && typeof themeOverrides === "object") {
-                for (const varName of Object.keys(themeOverrides)) {
+            if (appliedOverrides) {
+                for (const varName of Object.keys(appliedOverrides)) {
                     if (varName.startsWith("--")) {
                         root.style.removeProperty(varName);
                     }
@@ -275,7 +273,7 @@ export function getResolvedAccent(): string {
  * Pass null as value to remove the override.
  */
 export function applyThemeOverrideLive(varName: string, value: string | null): void {
-    if (\!varName.startsWith("--")) {
+    if (!varName.startsWith("--")) {
         return;
     }
     if (value === null) {
