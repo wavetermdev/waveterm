@@ -137,7 +137,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
-        files: FileInfo[];
+        files: WaveFileInfo[];
     };
 
     // wshrpc.BlocksListEntry
@@ -180,13 +180,6 @@ declare global {
     type CloseTabRtnType = {
         closewindow?: boolean;
         newactivetabid?: string;
-    };
-
-    // wshrpc.CommandAppendIJsonData
-    type CommandAppendIJsonData = {
-        zoneid: string;
-        filename: string;
-        data: {[key: string]: any};
     };
 
     // wshrpc.CommandAuthenticateJobManagerData
@@ -517,12 +510,6 @@ declare global {
         byterange?: string;
     };
 
-    // wshrpc.CommandRemoteStreamTarData
-    type CommandRemoteStreamTarData = {
-        path: string;
-        opts?: FileCopyOpts;
-    };
-
     // wshrpc.CommandRemoteTerminateJobManagerData
     type CommandRemoteTerminateJobManagerData = {
         jobid: string;
@@ -675,6 +662,13 @@ declare global {
     type CommandWaveAIToolApproveData = {
         toolcallid: string;
         approval?: string;
+    };
+
+    // wshrpc.CommandWaveFileReadStreamData
+    type CommandWaveFileReadStreamData = {
+        zoneid: string;
+        name: string;
+        streammeta: StreamMeta;
     };
 
     // wshrpc.CommandWebSelectorData
@@ -906,12 +900,6 @@ declare global {
         append?: boolean;
     };
 
-    // wshrpc.FileShareCapability
-    type FileShareCapability = {
-        canappend: boolean;
-        canmkdir: boolean;
-    };
-
     // wconfig.FullConfigType
     type FullConfigType = {
         settings: SettingsType;
@@ -1132,12 +1120,6 @@ declare global {
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
-    };
-
-    // iochantypes.Packet
-    type Packet = {
-        Data: string;
-        Checksum: string;
     };
 
     // wshrpc.PathCommandData
@@ -1889,6 +1871,17 @@ declare global {
 
     // filestore.WaveFile
     type WaveFile = {
+        zoneid: string;
+        name: string;
+        opts: FileOpts;
+        createdts: number;
+        size: number;
+        modts: number;
+        meta: {[key: string]: any};
+    };
+
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
         zoneid: string;
         name: string;
         opts: FileOpts;

@@ -25,7 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -331,25 +331,22 @@ func handleStreamLocalFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {
-	conn := r.URL.Query().Get("connection")
-	if conn == "" {
-		conn = wshrpc.LocalConnName
-	}
 	path := r.URL.Query().Get("path")
 	if path == "" {
 		http.Error(w, "path is required", http.StatusBadRequest)
 		return
 	}
 	no404 := r.URL.Query().Get("no404")
+	// path should already be formatted as a wsh:// URI (e.g. wsh://local/path or wsh://connection/path)
 	data := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path,
 		},
 	}
-	rtnCh := fileshare.ReadStream(r.Context(), data)
+	rtnCh := wshfs.ReadStream(r.Context(), data)
 	err := handleRemoteStreamFileFromCh(w, r, path, rtnCh, nil, no404 != "")
 	if err != nil {
-		log.Printf("error streaming file %q %q: %v\n", conn, path, err)
+		log.Printf("error streaming file %q: %v\n", path, err)
 		http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -32,19 +33,15 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
-	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
@@ -325,7 +322,7 @@ func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wsh
 
 func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileData) error {
 	data.Data64 = ""
-	err := fileshare.PutFile(ctx, data)
+	err := wshfs.PutFile(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
@@ -333,76 +330,47 @@ func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileData
 }
 
 func (ws *WshServer) FileMkdirCommand(ctx context.Context, data wshrpc.FileData) error {
-	return fileshare.Mkdir(ctx, data.Info.Path)
+	return wshfs.Mkdir(ctx, data.Info.Path)
 }
 
 func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
-	return fileshare.Delete(ctx, data)
+	return wshfs.Delete(ctx, data)
 }
 
 func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileInfo, error) {
-	return fileshare.Stat(ctx, data.Info.Path)
+	return wshfs.Stat(ctx, data.Info.Path)
 }
 
 func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListData) ([]*wshrpc.FileInfo, error) {
-	return fileshare.ListEntries(ctx, data.Path, data.Opts)
+	return wshfs.ListEntries(ctx, data.Path, data.Opts)
 }
 
 func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
-	return fileshare.ListEntriesStream(ctx, data.Path, data.Opts)
+	return wshfs.ListEntriesStream(ctx, data.Path, data.Opts)
 }
 
 func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData) error {
-	return fileshare.PutFile(ctx, data)
+	return wshfs.PutFile(ctx, data)
 }
 
 func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
-	return fileshare.Read(ctx, data)
+	return wshfs.Read(ctx, data)
 }
 
 func (ws *WshServer) FileReadStreamCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	return fileshare.ReadStream(ctx, data)
+	return wshfs.ReadStream(ctx, data)
 }
 
 func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	return fileshare.Copy(ctx, data)
+	return wshfs.Copy(ctx, data)
 }
 
 func (ws *WshServer) FileMoveCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	return fileshare.Move(ctx, data)
-}
-
-func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	return fileshare.ReadTarStream(ctx, data)
+	return wshfs.Move(ctx, data)
 }
 
 func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.FileData) error {
-	return fileshare.Append(ctx, data)
-}
-
-func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
-	tryCreate := true
-	if data.FileName == wavebase.BlockFile_VDom && tryCreate {
-		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOpts{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
-		if err != nil && err != fs.ErrExist {
-			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
-		}
-	}
-	err := filestore.WFS.AppendIJson(ctx, data.ZoneId, data.FileName, data.Data)
-	if err != nil {
-		return fmt.Errorf("error appending to blockfile(ijson): %w", err)
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Append,
-			Data64:   base64.StdEncoding.EncodeToString([]byte("{}")),
-		},
-	})
-	return nil
+	return wshfs.Append(ctx, data)
 }
 
 func (ws *WshServer) FileJoinCommand(ctx context.Context, paths []string) (*wshrpc.FileInfo, error) {
@@ -410,13 +378,9 @@ func (ws *WshServer) FileJoinCommand(ctx context.Context, paths []string) (*wshr
 		if len(paths) == 0 {
 			return nil, fmt.Errorf("no paths provided")
 		}
-		return fileshare.Stat(ctx, paths[0])
+		return wshfs.Stat(ctx, paths[0])
 	}
-	return fileshare.Join(ctx, paths[0], paths[1:]...)
-}
-
-func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
-	return fileshare.GetCapability(ctx, path)
+	return wshfs.Join(ctx, paths[0], paths[1:]...)
 }
 
 func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.CommandFileRestoreBackupData) error {
@@ -606,15 +570,6 @@ func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Conte
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtData) error {
-	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
-	if strings.HasPrefix(data.ConnName, "aws:") {
-		profiles := awsconn.ParseProfiles()
-		for profile := range profiles {
-			if strings.HasPrefix(data.ConnName, profile) {
-				return nil
-			}
-		}
-	}
 	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	if strings.HasPrefix(data.ConnName, "wsl://") {
@@ -625,10 +580,6 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtD
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
-	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
-	if strings.HasPrefix(connName, "aws:") {
-		return nil
-	}
 	if conncontroller.IsLocalConnName(connName) {
 		return nil
 	}
@@ -652,10 +603,6 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
-	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
-	if strings.HasPrefix(connRequest.Host, "aws:") {
-		return nil
-	}
 	if conncontroller.IsLocalConnName(connRequest.Host) {
 		return nil
 	}
@@ -682,10 +629,6 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
-	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
-	if strings.HasPrefix(data.ConnName, "aws:") {
-		return nil
-	}
 	if conncontroller.IsLocalConnName(data.ConnName) {
 		return nil
 	}
@@ -758,11 +701,6 @@ func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
 }
 
-func (ws *WshServer) ConnListAWSCommand(ctx context.Context) ([]string, error) {
-	profilesMap := awsconn.ParseProfiles()
-	return iterfn.MapKeysToSorted(profilesMap), nil
-}
-
 func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {
 	distros, err := wsl.RegisteredDistros(ctx)
 	if err != nil {
@@ -822,6 +760,18 @@ func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (strin
 	return shellutil.FindGitBash(&fullConfig, rescan), nil
 }
 
+func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
+	return &wshrpc.WaveFileInfo{
+		ZoneId:    wf.ZoneId,
+		Name:      wf.Name,
+		Opts:      wf.Opts,
+		CreatedTs: wf.CreatedTs,
+		Size:      wf.Size,
+		ModTs:     wf.ModTs,
+		Meta:      wf.Meta,
+	}
+}
+
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
@@ -839,7 +789,10 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	fileInfoList := wavefileutil.WaveFileListToFileInfoList(fileList)
+	var fileInfoList []*wshrpc.WaveFileInfo
+	for _, wf := range fileList {
+		fileInfoList = append(fileInfoList, waveFileToWaveFileInfo(wf))
+	}
 	return &wshrpc.BlockInfoData{
 		BlockId:     blockId,
 		TabId:       tabId,
@@ -1012,6 +965,59 @@ func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.Comman
 		return fmt.Errorf("failed to decode data64: %w", err)
 	}
 	return waveappstore.WriteAppFile(data.AppId, data.FileName, contents)
+}
+
+func (ws *WshServer) WaveFileReadStreamCommand(ctx context.Context, data wshrpc.CommandWaveFileReadStreamData) (*wshrpc.WaveFileInfo, error) {
+	const maxStreamFileSize = 5 * 1024 * 1024
+
+	waveFile, err := filestore.WFS.Stat(ctx, data.ZoneId, data.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error statting wavefile: %w", err)
+	}
+
+	dataLength := waveFile.DataLength()
+	if dataLength > maxStreamFileSize {
+		return nil, fmt.Errorf("file size %d exceeds maximum streaming size of %d bytes", dataLength, maxStreamFileSize)
+	}
+
+	wshRpc := wshutil.GetWshRpcFromContext(ctx)
+	if wshRpc == nil || wshRpc.StreamBroker == nil {
+		return nil, fmt.Errorf("no stream broker available")
+	}
+
+	writer, err := wshRpc.StreamBroker.CreateStreamWriter(&data.StreamMeta)
+	if err != nil {
+		return nil, fmt.Errorf("error creating stream writer: %w", err)
+	}
+
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.Name)
+	if err != nil {
+		writer.Close()
+		return nil, fmt.Errorf("error reading wavefile: %w", err)
+	}
+
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("WaveFileReadStreamCommand", recover())
+		}()
+		defer writer.Close()
+
+		_, err := writer.Write(fileData)
+		if err != nil {
+			log.Printf("error writing to stream for wavefile %s:%s: %v\n", data.ZoneId, data.Name, err)
+		}
+	}()
+
+	rtnInfo := &wshrpc.WaveFileInfo{
+		ZoneId:    waveFile.ZoneId,
+		Name:      waveFile.Name,
+		Opts:      waveFile.Opts,
+		CreatedTs: waveFile.CreatedTs,
+		Size:      waveFile.Size,
+		ModTs:     waveFile.ModTs,
+		Meta:      waveFile.Meta,
+	}
+	return rtnInfo, nil
 }
 
 func (ws *WshServer) WriteAppGoFileCommand(ctx context.Context, data wshrpc.CommandWriteAppGoFileData) (*wshrpc.CommandWriteAppGoFileRtnData, error) {
@@ -1290,6 +1296,31 @@ func (ws *WshServer) GetVarCommand(ctx context.Context, data wshrpc.CommandVarDa
 	envMap := envutil.EnvToMap(string(fileData))
 	value, ok := envMap[data.Key]
 	return &wshrpc.CommandVarResponseData{Key: data.Key, Exists: ok, Val: value}, nil
+}
+
+func (ws *WshServer) GetAllVarsCommand(ctx context.Context, data wshrpc.CommandVarData) ([]wshrpc.CommandVarResponseData, error) {
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err == fs.ErrNotExist {
+		return []wshrpc.CommandVarResponseData{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error reading blockfile: %w", err)
+	}
+	envMap := envutil.EnvToMap(string(fileData))
+	keys := make([]string, 0, len(envMap))
+	for k := range envMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	result := make([]wshrpc.CommandVarResponseData, 0, len(keys))
+	for _, k := range keys {
+		result = append(result, wshrpc.CommandVarResponseData{
+			Key:    k,
+			Val:    envMap[k],
+			Exists: true,
+		})
+	}
+	return result, nil
 }
 
 func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarData) error {

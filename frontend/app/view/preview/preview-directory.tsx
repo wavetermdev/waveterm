@@ -199,7 +199,7 @@ function DirectoryTable({
                         const lastInstance = path.lastIndexOf(fileName);
                         newPath = path.substring(0, lastInstance) + newName;
                         console.log(`replacing ${fileName} with ${newName}: ${path}`);
-                        handleRename(model, path, newPath, isDir, false, setErrorMsg);
+                        handleRename(model, path, newPath, isDir, setErrorMsg);
                     }
                     setEntryManagerProps(undefined);
                 },
@@ -777,7 +777,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     const timeoutYear = 31536000000; // one year
                     const opts: FileCopyOpts = {
                         timeout: timeoutYear,
-                        recursive: true,
                     };
                     const desturi = await model.formatRemoteUri(dirPath, globalStore.get);
                     const data: CommandFileCopyData = {

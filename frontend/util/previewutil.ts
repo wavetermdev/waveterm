@@ -56,22 +56,19 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
                 }),
         });
     }
-    // TODO: improve behavior as we add more connection types
-    if (!conn?.startsWith("aws:")) {
-        menu.push({
-            label: "Open Terminal Here",
-            click: () => {
-                const termBlockDef: BlockDef = {
-                    meta: {
-                        controller: "shell",
-                        view: "term",
-                        "cmd:cwd": finfo.isdir ? finfo.path : finfo.dir,
-                        connection: conn,
-                    },
-                };
-                fireAndForget(() => createBlock(termBlockDef));
-            },
-        });
-    }
+    menu.push({
+        label: "Open Terminal Here",
+        click: () => {
+            const termBlockDef: BlockDef = {
+                meta: {
+                    controller: "shell",
+                    view: "term",
+                    "cmd:cwd": finfo.isdir ? finfo.path : finfo.dir,
+                    connection: conn,
+                },
+            };
+            fireAndForget(() => createBlock(termBlockDef));
+        },
+    });
     return menu;
 }

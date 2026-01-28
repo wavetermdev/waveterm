@@ -4,13 +4,15 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var jobDebugCmd = &cobra.Command{
@@ -337,21 +339,36 @@ func jobDebugReconnectConnRun(cmd *cobra.Command, args []string) error {
 }
 
 func jobDebugGetOutputRun(cmd *cobra.Command, args []string) error {
-	fileData, err := wshclient.FileReadCommand(RpcClient, wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: fmt.Sprintf("wavefile://%s/term", jobIdFlag),
-		},
-	}, &wshrpc.RpcOpts{Timeout: 10000})
-	if err != nil {
-		return fmt.Errorf("reading job output: %w", err)
+	broker := RpcClient.StreamBroker
+	if broker == nil {
+		return fmt.Errorf("stream broker not available")
 	}
 
-	if fileData.Data64 != "" {
-		decoded, err := base64.StdEncoding.DecodeString(fileData.Data64)
-		if err != nil {
-			return fmt.Errorf("decoding output data: %w", err)
-		}
-		fmt.Printf("%s", string(decoded))
+	readerRouteId, err := wshclient.ControlGetRouteIdCommand(RpcClient, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	if err != nil {
+		return fmt.Errorf("getting route id: %w", err)
+	}
+	if readerRouteId == "" {
+		return fmt.Errorf("no route to receive data")
+	}
+	writerRouteId := "" // main server route
+	reader, streamMeta := broker.CreateStreamReader(readerRouteId, writerRouteId, 64*1024)
+	defer reader.Close()
+
+	data := wshrpc.CommandWaveFileReadStreamData{
+		ZoneId:     jobIdFlag,
+		Name:       "term",
+		StreamMeta: *streamMeta,
+	}
+
+	_, err = wshclient.WaveFileReadStreamCommand(RpcClient, data, nil)
+	if err != nil {
+		return fmt.Errorf("starting stream read: %w", err)
+	}
+
+	_, err = io.Copy(os.Stdout, reader)
+	if err != nil {
+		return fmt.Errorf("reading stream: %w", err)
 	}
 	return nil
 }

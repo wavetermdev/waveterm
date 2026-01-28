@@ -70,7 +70,7 @@ const fetchSuggestions = async (
 ): Promise<FetchSuggestionsResponse> => {
     const conn = await globalStore.get(model.connection);
     let route = makeConnRoute(conn);
-    if (isBlank(conn) || conn.startsWith("aws:")) {
+    if (isBlank(conn)) {
         route = null;
     }
     if (reqContext?.dispose) {

@@ -14,7 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -94,90 +93,6 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 func streamReadFromFile(ctx context.Context, fileData wshrpc.FileData, writer io.Writer) error {
 	ch := wshclient.FileReadStreamCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	return fsutil.ReadFileStreamToWriter(ctx, ch, writer)
-}
-
-type fileListResult struct {
-	info *wshrpc.FileInfo
-	err  error
-}
-
-func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) (<-chan fileListResult, error) {
-	resultChan := make(chan fileListResult)
-
-	// If path doesn't end in /, do a single file lookup
-	if path != "" && !strings.HasSuffix(path, "/") {
-		go func() {
-			defer close(resultChan)
-
-			fileData := wshrpc.FileData{
-				Info: &wshrpc.FileInfo{
-					Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, path)},
-			}
-
-			info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-			err = convertNotFoundErr(err)
-			if err == fs.ErrNotExist {
-				resultChan <- fileListResult{err: fmt.Errorf("%s: No such file or directory", path)}
-				return
-			}
-			if err != nil {
-				resultChan <- fileListResult{err: err}
-				return
-			}
-			resultChan <- fileListResult{info: info}
-		}()
-		return resultChan, nil
-	}
-
-	// Directory listing case
-	go func() {
-		defer close(resultChan)
-
-		prefix := path
-		prefixLen := len(prefix)
-		offset := 0
-		foundAny := false
-
-		for {
-			listData := wshrpc.FileListData{
-				Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, prefix),
-				Opts: &wshrpc.FileListOpts{
-					All:    recursive,
-					Offset: offset,
-					Limit:  100}}
-
-			files, err := wshclient.FileListCommand(RpcClient, listData, &wshrpc.RpcOpts{Timeout: 2000})
-			if err != nil {
-				resultChan <- fileListResult{err: err}
-				return
-			}
-
-			if len(files) == 0 {
-				if !foundAny && prefix != "" {
-					resultChan <- fileListResult{err: fmt.Errorf("%s: No such file or directory", path)}
-				}
-				return
-			}
-
-			for _, f := range files {
-				if filesOnly && f.IsDir {
-					continue
-				}
-				foundAny = true
-				if prefixLen > 0 {
-					f.Name = f.Name[prefixLen:]
-				}
-				resultChan <- fileListResult{info: f}
-			}
-
-			if len(files) < 100 {
-				return
-			}
-			offset += len(files)
-		}
-	}()
-
-	return resultChan, nil
 }
 
 func fixRelativePaths(path string) (string, error) {

@@ -38,7 +38,7 @@ ls -la | wsh ai - "what are the largest files here?"
 
 ### Persistent State
 
-`wsh` can maintain state across terminal sessions through its variable and file storage system:
+`wsh` can maintain state across terminal sessions through its variable system:
 
 ```bash
 # Store a variable that persists across sessions
@@ -51,12 +51,31 @@ wsh setvar -b workspace DEPLOY_ENV=staging
 
 # Use stored variables in commands
 curl -H "Authorization: $(wsh getvar API_KEY)" https://api.example.com
+```
 
-# Store a file that can be accessed from any block
-echo "data" | wsh file write wavefile://global/config.txt
+### Accessing Local Files from Remote
 
-# Append logs from multiple terminals
-echo "Terminal 1 log" | wsh file append wavefile://workspace/logs.txt
+When working on remote machines, you can access files on your local computer using the `wsh://local/~/` path prefix with `wsh file` commands. The shorthand `/~/` can also be used as an alias for `wsh://local/~/`:
+
+```bash
+# Read a local file from a remote machine
+wsh file cat wsh://local/~/config/app.json
+
+# Run a local script on the remote machine using shell process substitution
+bash <(wsh file cat wsh://local/~/scripts/deploy.sh)
+python <(wsh file cat wsh://local/~/scripts/deploy.py)
+
+# Append remote output to a local log file
+echo "Remote machine log entry" | wsh file append wsh://local/~/app.log
+
+# Copy a local file to the remote machine
+wsh file cp wsh://local/~/data.csv ./remote-data.csv
+
+# Copy remote file back to local machine
+wsh file cp ./results.txt wsh://local/~/results.txt
+
+# You can also use the shorthand /~/ instead of wsh://local/~/
+wsh file cat /~/config/app.json
 ```
 
 ### Block Management
