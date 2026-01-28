@@ -11,7 +11,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"text/tabwriter"
@@ -26,9 +25,7 @@ import (
 )
 
 const (
-	MaxFileSize    = 10 * 1024 * 1024 // 10MB
-	WaveFileScheme = "wavefile"
-	WaveFilePrefix = "wavefile://"
+	MaxFileSize = 10 * 1024 * 1024 // 10MB
 
 	TimeoutYear = int64(365) * 24 * 60 * 60 * 1000
 
@@ -53,23 +50,7 @@ Supported URI schemes:
       [path]              a relative or absolute path on the current remote
       //[remote]/[path]   a path on a remote
       /~/[path]           a path relative to the home directory on your local
-                          computer
-  s3:
-    Used to access files on S3-compatible systems.
-
-    Requires S3 credentials to be set up, either in the AWS CLI configuration
-    files, or in "profiles.json" in the Wave configuration directory.
-
-    If no profile is provided, the default from your AWS CLI configuration will
-    be used. Profiles from the AWS CLI must be prefixed with "aws:".
-
-    Format: s3://[bucket]/[path]
-            aws:[profile]:s3://[bucket]/[path]
-            [profile]:s3://[bucket]/[path]
-  wavefile:
-    Used to retrieve blockfiles from the internal Wave filesystem.
-
-    Format: wavefile://[zoneid]/[path]`
+                          computer`
 )
 
 var fileCmd = &cobra.Command{
@@ -111,7 +92,7 @@ var fileListCmd = &cobra.Command{
 	Aliases: []string{"list"},
 	Short:   "list files",
 	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
-	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
+	Example: "  wsh file ls wsh://user@ec2/home/user/",
 	RunE:    activityWrap("file", fileListRun),
 	PreRunE: preRunSetupRpcClient,
 }
@@ -120,7 +101,7 @@ var fileCatCmd = &cobra.Command{
 	Use:     "cat [uri]",
 	Short:   "display contents of a file",
 	Long:    "Display the contents of a file." + UriHelpText,
-	Example: "  wsh file cat wsh://user@ec2/home/user/config.txt\n  wsh file cat wavefile://client/settings.json",
+	Example: "  wsh file cat wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileCatRun),
 	PreRunE: preRunSetupRpcClient,
@@ -130,7 +111,7 @@ var fileInfoCmd = &cobra.Command{
 	Use:     "info [uri]",
 	Short:   "show wave file information",
 	Long:    "Show information about a file." + UriHelpText,
-	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
+	Example: "  wsh file info wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileInfoRun),
 	PreRunE: preRunSetupRpcClient,
@@ -140,7 +121,7 @@ var fileRmCmd = &cobra.Command{
 	Use:     "rm [uri]",
 	Short:   "remove a file",
 	Long:    "Remove a file." + UriHelpText,
-	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt\n  wsh file rm wavefile://client/settings.json",
+	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileRmRun),
 	PreRunE: preRunSetupRpcClient,
@@ -150,7 +131,7 @@ var fileWriteCmd = &cobra.Command{
 	Use:     "write [uri]",
 	Short:   "write stdin into a file (up to 10MB)",
 	Long:    "Write stdin into a file, buffering input (10MB total file size limit)." + UriHelpText,
-	Example: "  echo 'hello' | wsh file write wavefile://block/greeting.txt",
+	Example: "  echo 'hello' | wsh file write ./greeting.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileWriteRun),
 	PreRunE: preRunSetupRpcClient,
@@ -160,7 +141,7 @@ var fileAppendCmd = &cobra.Command{
 	Use:     "append [uri]",
 	Short:   "append stdin to a file",
 	Long:    "Append stdin to a file, buffering input (10MB total file size limit)." + UriHelpText,
-	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
+	Example: "  tail -f log.txt | wsh file append ./app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileAppendRun),
 	PreRunE: preRunSetupRpcClient,
@@ -171,7 +152,7 @@ var fileCpCmd = &cobra.Command{
 	Aliases: []string{"copy"},
 	Short:   "copy files between storage systems, recursively if needed",
 	Long:    "Copy files between different storage systems." + UriHelpText,
-	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n  wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
+	Example: "  wsh file cp wsh://user@ec2/home/user/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileCpRun),
 	PreRunE: preRunSetupRpcClient,
@@ -182,7 +163,7 @@ var fileMvCmd = &cobra.Command{
 	Aliases: []string{"move"},
 	Short:   "move files between storage systems",
 	Long:    "Move files between different storage systems. The source file will be deleted once the operation completes successfully." + UriHelpText,
-	Example: "  wsh file mv wavefile://block/config.txt ./local-config.txt\n  wsh file mv ./local-config.txt wavefile://block/config.txt\n  wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
+	Example: "  wsh file mv wsh://user@ec2/home/user/config.txt ./local-config.txt\n  wsh file mv ./local-config.txt wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(2),
 	RunE:    activityWrap("file", fileMvRun),
 	PreRunE: preRunSetupRpcClient,
@@ -374,22 +355,8 @@ func checkFileSize(path string, maxSize int64) (*wshrpc.FileInfo, error) {
 }
 
 func getTargetPath(src, dst string) (string, error) {
-	var srcBase string
-	if strings.HasPrefix(src, WaveFilePrefix) {
-		srcBase = path.Base(src)
-	} else {
-		srcBase = filepath.Base(src)
-	}
+	srcBase := filepath.Base(src)
 
-	if strings.HasPrefix(dst, WaveFilePrefix) {
-		// For wavefile URLs
-		if strings.HasSuffix(dst, "/") {
-			return dst + srcBase, nil
-		}
-		return dst, nil
-	}
-
-	// For local paths
 	dstInfo, err := os.Stat(dst)
 	if err == nil && dstInfo.IsDir() {
 		// If it's an existing directory, use the source filename

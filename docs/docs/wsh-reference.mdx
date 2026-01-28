@@ -497,12 +497,11 @@ This allows setting various options in the `config/settings.json` file. It will 
 
 ## file
 
-The `file` command provides a set of subcommands for managing files across different storage systems, such as `wavefile`, `wsh` remote servers, and S3.
+The `file` command provides a set of subcommands for managing files across different storage systems, such as `wsh` remote servers.
 
 :::note
 
-Wave Terminal is capable of managing files from remote SSH hosts, S3-compatible
-systems, and the internal Wave filesystem. Files are addressed via URIs, which
+Wave Terminal is capable of managing files from remote SSH hosts. Files are addressed via URIs, which
 vary depending on the storage system. If no scheme is specified, the file will be treated as a local connection.
 
 URI format: `[profile]:[uri-scheme]://[connection]/[path]`
@@ -522,30 +521,6 @@ Supported URI schemes:
   `//[remote]/[path]` a path on a remote
   `/~/[path]` a path relative to the home directory on your local computer
 
-- `s3` - Used to access files on S3-compatible systems.
-  Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
-
-  If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
-
-  Format:
-
-  - `s3://[bucket]/[path]`
-  - `aws:[profile]:s3://[bucket]/[path]`
-  - `[profile]:s3://[bucket]/[path]`
-
-- `wavefile` - Used to retrieve blockfiles from the internal Wave filesystem.
-
-  Format: `wavefile://[zoneid]/[path]`
-
-  Wave file locations can be:
-
-  - `wavefile://block/...` - stored in the current block ("this" is also an alias for "block")
-  - `wavefile://tab/...` - stored in the current tab
-  - `wavefile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
-  - `wavefile://client/...` - stored globally for the client ("global" is also an alias for "client")
-  - `wavefile://temp/...` - stored globally, but removed on startup/shutdown
-  - `wavefile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
-
 :::
 
 ### cat
@@ -557,8 +532,8 @@ wsh file cat [file-uri]
 Display the contents of a file (maximum file size 10MB). For example:
 
 ```sh
-wsh file cat wavefile://block/config.txt
-wsh file cat wavefile://client/settings.json
+wsh file cat wsh://user@ec2/home/user/config.txt
+wsh file cat ./local-config.txt
 ```
 
 ### write
@@ -570,7 +545,7 @@ wsh file write [file-uri]
 Write data from stdin to a file. The maximum file size is 10MB. For example:
 
 ```sh
-echo "hello" | wsh file write wavefile://block/greeting.txt
+echo "hello" | wsh file write ./greeting.txt
 cat config.json | wsh file write //ec2-user@remote01/~/config.json
 ```
 
@@ -583,8 +558,8 @@ wsh file append [file-uri]
 Append data from stdin to a file. Input is buffered locally (up to 10MB total file size limit) before being written. For example:
 
 ```sh
-cat additional-content.txt | wsh file append wavefile://block/notes.txt
-echo "new line" | wsh file append wavefile://client/notes.txt
+cat additional-content.txt | wsh file append ./notes.txt
+echo "new line" | wsh file append //user@remote/~/notes.txt
 ```
 
 ### rm
@@ -597,7 +572,7 @@ Remove a file. For example:
 
 ```sh
 wsh file rm wsh://user@ec2/home/user/config.txt
-wsh file rm wavefile://client/settings.json
+wsh file rm ./local-config.txt
 ```
 
 Flags:
@@ -614,7 +589,7 @@ Display information about a file including size, creation time, modification tim
 
 ```sh
 wsh file info wsh://user@ec2/home/user/config.txt
-wsh file info wavefile://client/settings.json
+wsh file info ./local-config.txt
 ```
 
 ### cp
@@ -626,14 +601,14 @@ wsh file cp [flags] [source-uri] [destination-uri]
 Copy files between different storage systems (maximum file size 10MB). For example:
 
 ```sh
-# Copy a wave file into your local filesystem
-wsh file cp wavefile://block/config.txt ./local-config.txt
+# Copy a remote file to your local filesystem
+wsh file cp wsh://user@ec2/home/user/config.txt ./local-config.txt
 
-# Copy a local file into the wave filesystem
-wsh file cp ./local-config.txt wavefile://block/config.txt
+# Copy a local file to a remote system
+wsh file cp ./local-config.txt wsh://user@ec2/home/user/config.txt
 
-# Copy a remote file into the wave filesystem
-wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
+# Copy between remote systems
+wsh file cp wsh://user@ec2/home/user/config.txt wsh://user@server2/home/user/backup.txt
 ```
 
 Flags:
@@ -650,14 +625,14 @@ wsh file mv [flags] [source-uri] [destination-uri]
 Move files between different storage systems (maximum file size 10MB). The source file will be deleted once the operation completes successfully. For example:
 
 ```sh
-# Move a wave file into your local filesystem
-wsh file mv wavefile://block/config.txt ./local-config.txt
+# Move a remote file to your local filesystem
+wsh file mv wsh://user@ec2/home/user/config.txt ./local-config.txt
 
-# Move a local file into the wave filesystem
-wsh file mv ./local-config.txt wavefile://block/config.txt
+# Move a local file to a remote system
+wsh file mv ./local-config.txt wsh://user@ec2/home/user/config.txt
 
-# Move a remote file into the wave filesystem
-wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
+# Move between remote systems
+wsh file mv wsh://user@ec2/home/user/config.txt wsh://user@server2/home/user/backup.txt
 ```
 
 Flags:
@@ -676,7 +651,7 @@ Examples:
 
 ```sh
 wsh file ls wsh://user@ec2/home/user/
-wsh file ls wavefile://client/configs/
+wsh file ls ./local-dir/
 ```
 
 Flags:
@@ -689,7 +664,7 @@ When output is piped to another command, automatically switches to one-file-per-
 
 ```sh
 # Easy to process with grep, awk, etc.
-wsh file ls wavefile://client/ | grep ".json$"
+wsh file ls ./ | grep ".json$"
 ```
 
 ---

@@ -102,6 +102,11 @@ class RpcApiType {
         return client.wshRpcCall("connupdatewsh", data, opts);
     }
 
+    // command "controlgetrouteid" [call]
+    ControlGetRouteIdCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("controlgetrouteid", null, opts);
+    }
+
     // command "controllerappendoutput" [call]
     ControllerAppendOutputCommand(client: WshClient, data: CommandControllerAppendOutputData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("controllerappendoutput", data, opts);
@@ -300,6 +305,11 @@ class RpcApiType {
     // command "focuswindow" [call]
     FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("focuswindow", data, opts);
+    }
+
+    // command "getallvars" [call]
+    GetAllVarsCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<CommandVarResponseData[]> {
+        return client.wshRpcCall("getallvars", data, opts);
     }
 
     // command "getbuilderoutput" [call]
@@ -755,6 +765,11 @@ class RpcApiType {
     // command "waveaitoolapprove" [call]
     WaveAIToolApproveCommand(client: WshClient, data: CommandWaveAIToolApproveData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("waveaitoolapprove", data, opts);
+    }
+
+    // command "wavefilereadstream" [call]
+    WaveFileReadStreamCommand(client: WshClient, data: CommandWaveFileReadStreamData, opts?: RpcOpts): Promise<WaveFileInfo> {
+        return client.wshRpcCall("wavefilereadstream", data, opts);
     }
 
     // command "waveinfo" [call]

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -1000,6 +1001,59 @@ func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.Comman
 	return waveappstore.WriteAppFile(data.AppId, data.FileName, contents)
 }
 
+func (ws *WshServer) WaveFileReadStreamCommand(ctx context.Context, data wshrpc.CommandWaveFileReadStreamData) (*wshrpc.WaveFileInfo, error) {
+	const maxStreamFileSize = 5 * 1024 * 1024
+
+	waveFile, err := filestore.WFS.Stat(ctx, data.ZoneId, data.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error statting wavefile: %w", err)
+	}
+
+	dataLength := waveFile.DataLength()
+	if dataLength > maxStreamFileSize {
+		return nil, fmt.Errorf("file size %d exceeds maximum streaming size of %d bytes", dataLength, maxStreamFileSize)
+	}
+
+	wshRpc := wshutil.GetWshRpcFromContext(ctx)
+	if wshRpc == nil || wshRpc.StreamBroker == nil {
+		return nil, fmt.Errorf("no stream broker available")
+	}
+
+	writer, err := wshRpc.StreamBroker.CreateStreamWriter(&data.StreamMeta)
+	if err != nil {
+		return nil, fmt.Errorf("error creating stream writer: %w", err)
+	}
+
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.Name)
+	if err != nil {
+		writer.Close()
+		return nil, fmt.Errorf("error reading wavefile: %w", err)
+	}
+
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("WaveFileReadStreamCommand", recover())
+		}()
+		defer writer.Close()
+
+		_, err := writer.Write(fileData)
+		if err != nil {
+			log.Printf("error writing to stream for wavefile %s:%s: %v\n", data.ZoneId, data.Name, err)
+		}
+	}()
+
+	rtnInfo := &wshrpc.WaveFileInfo{
+		ZoneId:    waveFile.ZoneId,
+		Name:      waveFile.Name,
+		Opts:      waveFile.Opts,
+		CreatedTs: waveFile.CreatedTs,
+		Size:      waveFile.Size,
+		ModTs:     waveFile.ModTs,
+		Meta:      waveFile.Meta,
+	}
+	return rtnInfo, nil
+}
+
 func (ws *WshServer) WriteAppGoFileCommand(ctx context.Context, data wshrpc.CommandWriteAppGoFileData) (*wshrpc.CommandWriteAppGoFileRtnData, error) {
 	if data.AppId == "" {
 		return nil, fmt.Errorf("must provide an appId to WriteAppGoFileCommand")
@@ -1286,6 +1340,31 @@ func (ws *WshServer) GetVarCommand(ctx context.Context, data wshrpc.CommandVarDa
 	envMap := envutil.EnvToMap(string(fileData))
 	value, ok := envMap[data.Key]
 	return &wshrpc.CommandVarResponseData{Key: data.Key, Exists: ok, Val: value}, nil
+}
+
+func (ws *WshServer) GetAllVarsCommand(ctx context.Context, data wshrpc.CommandVarData) ([]wshrpc.CommandVarResponseData, error) {
+	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err == fs.ErrNotExist {
+		return []wshrpc.CommandVarResponseData{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error reading blockfile: %w", err)
+	}
+	envMap := envutil.EnvToMap(string(fileData))
+	keys := make([]string, 0, len(envMap))
+	for k := range envMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	result := make([]wshrpc.CommandVarResponseData, 0, len(keys))
+	for _, k := range keys {
+		result = append(result, wshrpc.CommandVarResponseData{
+			Key:    k,
+			Val:    envMap[k],
+			Exists: true,
+		})
+	}
+	return result, nil
 }
 
 func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarData) error {

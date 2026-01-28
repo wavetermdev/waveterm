@@ -35,8 +35,9 @@ type WshRpcInterface interface {
 	AuthenticateJobManagerCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error
 	AuthenticateJobManagerVerifyCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error // (special) validates job auth token without binding, root router only
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
-	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
-	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
+	RouteAnnounceCommand(ctx context.Context) error               // (special) announces a new route to the main router
+	RouteUnannounceCommand(ctx context.Context) error             // (special) unannounces a route to the main router
+	ControlGetRouteIdCommand(ctx context.Context) (string, error) // (special) gets the route for the link that we're on
 	SetPeerInfoCommand(ctx context.Context, peerInfo string) error
 	GetJwtPublicKeyCommand(ctx context.Context) (string, error) // (special) gets the public JWT signing key
 
@@ -78,6 +79,7 @@ type WshRpcInterface interface {
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
 	RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
+	GetAllVarsCommand(ctx context.Context, data CommandVarData) ([]CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
 	SendTelemetryCommand(ctx context.Context) error
@@ -155,6 +157,7 @@ type WshRpcInterface interface {
 
 	// file
 	WshRpcFileInterface
+	WaveFileReadStreamCommand(ctx context.Context, data CommandWaveFileReadStreamData) (*WaveFileInfo, error)
 
 	// builder
 	WshRpcBuilderInterface
@@ -799,4 +802,21 @@ type CommandJobControllerStartJobData struct {
 type CommandJobControllerAttachJobData struct {
 	JobId   string `json:"jobid"`
 	BlockId string `json:"blockid"`
+}
+
+type CommandWaveFileReadStreamData struct {
+	ZoneId     string     `json:"zoneid"`
+	Name       string     `json:"name"`
+	StreamMeta StreamMeta `json:"streammeta"`
+}
+
+// see blockstore.go (WaveFile)
+type WaveFileInfo struct {
+	ZoneId    string   `json:"zoneid"`
+	Name      string   `json:"name"`
+	Opts      FileOpts `json:"opts"`
+	CreatedTs int64    `json:"createdts"`
+	Size      int64    `json:"size"`
+	ModTs     int64    `json:"modts"`
+	Meta      FileMeta `json:"meta"`
 }

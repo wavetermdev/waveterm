@@ -54,6 +54,22 @@ func (impl *WshRouterControlImpl) RouteUnannounceCommand(ctx context.Context) er
 	return impl.Router.unbindRoute(linkId, source)
 }
 
+func (impl *WshRouterControlImpl) ControlGetRouteIdCommand(ctx context.Context) (string, error) {
+	handler := GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return "", nil
+	}
+	linkId := handler.GetIngressLinkId()
+	if linkId == baseds.NoLinkId {
+		return "", nil
+	}
+	lm := impl.Router.getLinkMeta(linkId)
+	if lm == nil {
+		return "", nil
+	}
+	return lm.sourceRouteId, nil
+}
+
 func (impl *WshRouterControlImpl) SetPeerInfoCommand(ctx context.Context, peerInfo string) error {
 	source := GetRpcSourceFromContext(ctx)
 	linkId := impl.Router.GetLinkIdForRoute(source)

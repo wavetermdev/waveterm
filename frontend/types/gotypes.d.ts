@@ -662,6 +662,13 @@ declare global {
         approval?: string;
     };
 
+    // wshrpc.CommandWaveFileReadStreamData
+    type CommandWaveFileReadStreamData = {
+        zoneid: string;
+        name: string;
+        streammeta: StreamMeta;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         workspaceid: string;
@@ -1865,6 +1872,17 @@ declare global {
 
     // filestore.WaveFile
     type WaveFile = {
+        zoneid: string;
+        name: string;
+        opts: FileOpts;
+        createdts: number;
+        size: number;
+        modts: number;
+        meta: {[key: string]: any};
+    };
+
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
         zoneid: string;
         name: string;
         opts: FileOpts;
