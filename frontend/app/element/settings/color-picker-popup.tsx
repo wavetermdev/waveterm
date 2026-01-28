@@ -97,35 +97,35 @@ function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: n
 
 function parseColor(color: string): RGBA {
     if (!color) return { r: 0, g: 0, b: 0, a: 1 };
-    const hexMatch = color.match(/^#([0-9a-f]{3,8})$/i);
+    const hexMatch = /^#([0-9a-f]{3,8})$/i.exec(color);
     if (hexMatch) {
         const hex = hexMatch[1];
         if (hex.length === 3) {
             return {
-                r: parseInt(hex[0] + hex[0], 16),
-                g: parseInt(hex[1] + hex[1], 16),
-                b: parseInt(hex[2] + hex[2], 16),
+                r: Number.parseInt(hex[0] + hex[0], 16),
+                g: Number.parseInt(hex[1] + hex[1], 16),
+                b: Number.parseInt(hex[2] + hex[2], 16),
                 a: 1,
             };
         }
         if (hex.length === 6) {
             return {
-                r: parseInt(hex.slice(0, 2), 16),
-                g: parseInt(hex.slice(2, 4), 16),
-                b: parseInt(hex.slice(4, 6), 16),
+                r: Number.parseInt(hex.slice(0, 2), 16),
+                g: Number.parseInt(hex.slice(2, 4), 16),
+                b: Number.parseInt(hex.slice(4, 6), 16),
                 a: 1,
             };
         }
         if (hex.length === 8) {
             return {
-                r: parseInt(hex.slice(0, 2), 16),
-                g: parseInt(hex.slice(2, 4), 16),
-                b: parseInt(hex.slice(4, 6), 16),
-                a: parseInt(hex.slice(6, 8), 16) / 255,
+                r: Number.parseInt(hex.slice(0, 2), 16),
+                g: Number.parseInt(hex.slice(2, 4), 16),
+                b: Number.parseInt(hex.slice(4, 6), 16),
+                a: Number.parseInt(hex.slice(6, 8), 16) / 255,
             };
         }
     }
-    const rgbaMatch = color.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)/);
+    const rgbaMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/.exec(color);
     if (rgbaMatch) {
         return {
             r: Math.round(parseFloat(rgbaMatch[1])),

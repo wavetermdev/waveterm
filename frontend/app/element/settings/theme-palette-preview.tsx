@@ -62,7 +62,7 @@ function readPaletteColors(): PaletteColor[] {
  * Converts a computed CSS color value to a hex string for display.
  */
 function computedToHex(value: string): string {
-    const rgbaMatch = value.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)/);
+    const rgbaMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*(?:,\s*(\d+(?:\.\d+)?))?\s*\)/.exec(value);
     if (rgbaMatch) {
         const r = Math.round(parseFloat(rgbaMatch[1]));
         const g = Math.round(parseFloat(rgbaMatch[2]));
@@ -94,7 +94,7 @@ function normalizeColorToHex6(color: string): string {
     const hex3 = trimmed.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/);
     if (hex3) return `#${hex3[1]}${hex3[1]}${hex3[2]}${hex3[2]}${hex3[3]}${hex3[3]}`;
     if (/^#[0-9a-f]{8}$/.test(trimmed)) return trimmed.slice(0, 7);
-    const rgbMatch = trimmed.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+    const rgbMatch = /rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/.exec(trimmed);
     if (rgbMatch) {
         const r = Math.round(parseFloat(rgbMatch[1]));
         const g = Math.round(parseFloat(rgbMatch[2]));
