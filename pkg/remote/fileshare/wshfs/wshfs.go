@@ -193,7 +193,6 @@ func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}
-	opts.Recursive = true
 	log.Printf("Copy: srcuri: %v, desturi: %v, opts: %v", data.SrcUri, data.DestUri, opts)
 	srcConn, err := parseConnection(ctx, data.SrcUri)
 	if err != nil {

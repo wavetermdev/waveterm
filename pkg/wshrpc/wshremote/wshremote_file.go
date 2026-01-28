@@ -304,7 +304,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	defer timeoutCancel()
 	copyStart := time.Now()
 
-	srcFileInfo, err := wshclient.RemoteFileInfoCommand(wshfs.RpcClient, srcConn.Path, &wshrpc.RpcOpts{Timeout: opts.Timeout})
+	srcFileInfo, err := wshclient.RemoteFileInfoCommand(wshfs.RpcClient, srcConn.Path, &wshrpc.RpcOpts{Timeout: opts.Timeout, Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
 	if err != nil {
 		return false, fmt.Errorf("cannot get info for source file %q: %w", data.SrcUri, err)
 	}
@@ -326,7 +326,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	}
 	defer destFile.Close()
 
-	streamChan := wshclient.RemoteStreamFileCommand(wshfs.RpcClient, wshrpc.CommandRemoteStreamFileData{Path: srcConn.Path}, &wshrpc.RpcOpts{Timeout: opts.Timeout})
+	streamChan := wshclient.RemoteStreamFileCommand(wshfs.RpcClient, wshrpc.CommandRemoteStreamFileData{Path: srcConn.Path}, &wshrpc.RpcOpts{Timeout: opts.Timeout, Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
 	if err = fsutil.ReadFileStreamToWriter(readCtx, streamChan, destFile); err != nil {
 		return false, fmt.Errorf("error copying file %q to %q: %w", data.SrcUri, data.DestUri, err)
 	}
