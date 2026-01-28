@@ -271,7 +271,7 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 		Login:       true,
 		Cwd:         cwd,
 		SwapToken:   swapToken,
-		ForceJwt:    false,
+		ForceJwt:    blockMeta.GetBool(waveobj.MetaKey_CmdJwt, false),
 	}
 	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn)
 	if err != nil {
