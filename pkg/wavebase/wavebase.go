@@ -181,8 +181,10 @@ func GetDomainSocketName() string {
 	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
 }
 
+// returns a Unix-style path for the remote socket (using fmt.Sprintf instead of filepath.Join
+// because this path is for a remote Unix system, not the local OS which might be Windows)
 func GetPersistentRemoteSockName(clientId string) string {
-	return filepath.Join("~", ".waveterm", "client", clientId, "waveterm.sock")
+	return fmt.Sprintf("~/.waveterm/client/%s/waveterm.sock", clientId)
 }
 
 func EnsureWaveDataDir() error {

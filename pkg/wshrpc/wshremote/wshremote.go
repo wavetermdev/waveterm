@@ -111,13 +111,11 @@ func (impl *ServerImpl) ConnServerInitCommand(ctx context.Context, data wshrpc.C
 	symlinkDir := filepath.Dir(symlinkPath)
 
 	if err := os.MkdirAll(symlinkDir, 0700); err != nil {
-		impl.Log("warning: could not create client directory %s: %v\n", symlinkDir, err)
-		return nil
+		return fmt.Errorf("could not create client directory %s: %w", symlinkDir, err)
 	}
 	os.Remove(symlinkPath)
 	if err := os.Symlink(impl.SockName, symlinkPath); err != nil {
-		impl.Log("warning: could not create symlink %s -> %s: %v\n", symlinkPath, impl.SockName, err)
-		return nil
+		return fmt.Errorf("could not create symlink %s -> %s: %w", symlinkPath, impl.SockName, err)
 	}
 	impl.Log("created symlink %s -> %s\n", symlinkPath, impl.SockName)
 	return nil
