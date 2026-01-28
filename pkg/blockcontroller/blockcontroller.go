@@ -146,7 +146,8 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	isPersistent := blockData.Meta.GetBool(waveobj.MetaKey_CmdPersistent, false)
 	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
 	isRemote := !conncontroller.IsLocalConnName(connName)
-	shouldUseShellJobController := isPersistent && isRemote && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd)
+	isWSL := strings.HasPrefix(connName, "wsl://")
+	shouldUseShellJobController := isPersistent && isRemote && !isWSL && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd)
 
 	// Check if we need to morph controller type
 	if existing != nil {
