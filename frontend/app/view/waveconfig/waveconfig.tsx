@@ -225,7 +225,7 @@ const ConfigTabBar = memo(({ model, onEditJson }: ConfigTabBarProps) => {
                         </a>
                     </Tooltip>
                 )}
-                {selectedFile?.visualComponent && (
+                {selectedFile?.hasJsonView && selectedFile?.visualComponent && (
                     <button onClick={onEditJson} className="waveconfig-edit-json">
                         Edit in {selectedFile.path}
                     </button>

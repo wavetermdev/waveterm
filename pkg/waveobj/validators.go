@@ -100,6 +100,14 @@ func ValidatePath(key string, value interface{}, mustBeDir bool) error {
 		return nil
 	}
 
+	// Virtual paths (e.g. "virtual:appearance") are UI-only route
+	// identifiers with no backing file — skip filesystem validation
+	if strings.Contains(path, ":") && !filepath.IsAbs(path) {
+		// On Windows, absolute paths like "C:\foo" contain a colon but
+		// are absolute. Non-absolute paths with colons are virtual routes.
+		return nil
+	}
+
 	// Length check (DoS protection)
 	if len(path) > MaxPathLength {
 		return &ValidationError{
