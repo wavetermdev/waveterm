@@ -566,8 +566,8 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 			for _, f := range respUnion.Response.FileInfo {
 				fmt.Fprintln(os.Stdout, f.Name)
 			}
-			return nil
 		}
+		return nil
 	}
 
 	return filePrintColumns(filesChan)
