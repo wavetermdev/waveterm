@@ -56,7 +56,9 @@ func getWindowsDocumentsFolder() string {
 	windowsDocsFolderOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "reg", "query",
+		// Use the full path to reg.exe to avoid PATH-based resolution (S4036)
+		regExe := filepath.Join(os.Getenv("SystemRoot"), "System32", "reg.exe")
+		cmd := exec.CommandContext(ctx, regExe, "query",
 			`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders`,
 			"/v", "Personal")
 		output, err := cmd.Output()
