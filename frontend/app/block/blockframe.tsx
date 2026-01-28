@@ -255,8 +255,7 @@ const BlockFrame_Header = ({
         icon: "link-slash",
         title: "wsh is not installed for this connection",
     };
-    const showNoWshButton =
-        manageConnection && wshProblem && !util.isLocalConnName(connName) && !connName.startsWith("aws:");
+    const showNoWshButton = manageConnection && wshProblem && !util.isLocalConnName(connName);
 
     return (
         <div

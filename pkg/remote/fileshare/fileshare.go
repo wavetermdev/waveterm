@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -29,14 +26,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 		return nil, nil
 	}
 	conntype := conn.GetType()
-	if conntype == connparse.ConnectionTypeS3 {
-		config, err := awsconn.GetConfig(ctx, connection)
-		if err != nil {
-			log.Printf("error getting aws config: %v", err)
-			return nil, nil
-		}
-		return s3fs.NewS3Client(config), conn
-	} else if conntype == connparse.ConnectionTypeWave {
+	if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
 	} else if conntype == connparse.ConnectionTypeWsh {
 		return wshfs.NewWshClient(), conn
@@ -62,15 +52,6 @@ func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrE
 		return wshutil.SendErrCh[wshrpc.FileData](fmt.Errorf(ErrorParsingConnection, data.Info.Path))
 	}
 	return client.ReadStream(ctx, conn, data)
-}
-
-func ReadTarStream(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	log.Printf("ReadTarStream: %v", data.Path)
-	client, conn := CreateFileShareClient(ctx, data.Path)
-	if conn == nil || client == nil {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(ErrorParsingConnection, data.Path))
-	}
-	return client.ReadTarStream(ctx, conn, data.Opts)
 }
 
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {

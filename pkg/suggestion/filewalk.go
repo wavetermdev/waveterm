@@ -14,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -130,64 +128,6 @@ func cacheDispose(widgetId string) {
 type DirEntryResult struct {
 	Entry fs.DirEntry
 	Err   error
-}
-
-func listS3Directory(ctx context.Context, widgetId string, conn string, dir string, maxFiles int) (<-chan DirEntryResult, error) {
-	if !strings.HasPrefix(conn, "aws:") {
-		return nil, fmt.Errorf("invalid S3 connection: %s", conn)
-	}
-	key := widgetId + "|" + dir
-	if cached, ok := getCache(key); ok {
-		ch := make(chan DirEntryResult, ListDirChanSize)
-		go func() {
-			defer close(ch)
-			for _, r := range cached {
-				select {
-				case ch <- r:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-		return ch, nil
-	}
-
-	// Ensure only one operation populates the cache for this key.
-	value, err, _ := group.Do(key, func() (interface{}, error) {
-		path := conn + ":s3://" + dir
-		entries, err := wshclient.FileListCommand(wshclient.GetBareRpcClient(), wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{Limit: maxFiles}}, nil)
-		if err != nil {
-			return nil, err
-		}
-		var results []DirEntryResult
-		for _, entry := range entries {
-			mockEntry := &MockDirEntry{
-				NameStr:  entry.Name,
-				IsDirVal: entry.IsDir,
-				FileMode: entry.Mode,
-			}
-			results = append(results, DirEntryResult{Entry: mockEntry})
-		}
-		return results, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	results := value.([]DirEntryResult)
-	setCache(key, results)
-
-	ch := make(chan DirEntryResult, ListDirChanSize)
-	go func() {
-		defer close(ch)
-		for _, r := range results {
-			select {
-			case ch <- r:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-	return ch, nil
 }
 
 func listDirectory(ctx context.Context, widgetId string, dir string, maxFiles int) (<-chan DirEntryResult, error) {

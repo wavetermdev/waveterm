@@ -5,16 +5,18 @@ package wshfs
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
+
+const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
 var RpcClient *wshutil.WshRpc
@@ -41,14 +43,6 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 	return wshclient.RemoteStreamFileCommand(RpcClient, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	timeout := opts.Timeout
-	if timeout == 0 {
-		timeout = fstype.DefaultTimeout.Milliseconds()
-	}
-	return wshclient.RemoteTarStreamCommand(RpcClient, wshrpc.CommandRemoteStreamTarData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host), Timeout: timeout})
-}
-
 func (c WshClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
 	var entries []*wshrpc.FileInfo
 	rtnCh := c.ListEntriesStream(ctx, conn, opts)
@@ -71,6 +65,10 @@ func (c WshClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrp
 }
 
 func (c WshClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	dataSize := base64.StdEncoding.DecodedLen(len(data.Data64))
+	if dataSize > RemoteFileTransferSizeLimit {
+		return fmt.Errorf("file data size %d exceeds transfer limit of %d bytes", dataSize, RemoteFileTransferSizeLimit)
+	}
 	info := data.Info
 	if info == nil {
 		info = &wshrpc.FileInfo{Opts: &wshrpc.FileOpts{}}
@@ -84,6 +82,10 @@ func (c WshClient) PutFile(ctx context.Context, conn *connparse.Connection, data
 }
 
 func (c WshClient) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	dataSize := base64.StdEncoding.DecodedLen(len(data.Data64))
+	if dataSize > RemoteFileTransferSizeLimit {
+		return fmt.Errorf("file data size %d exceeds transfer limit of %d bytes", dataSize, RemoteFileTransferSizeLimit)
+	}
 	info := data.Info
 	if info == nil {
 		info = &wshrpc.FileInfo{Path: conn.Path, Opts: &wshrpc.FileOpts{}}

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -29,8 +28,6 @@ type FileShareClient interface {
 	Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error)
 	// ReadStream returns a stream of file data at the given path. If it's a directory, then the list of entries
 	ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData]
-	// ReadTarStream returns a stream of tar data at the given path
-	ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet]
 	// ListEntries returns the list of entries at the given path, or nothing if the path is a file
 	ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error)
 	// ListEntriesStream returns a stream of entries at the given path

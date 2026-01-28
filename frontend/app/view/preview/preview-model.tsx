@@ -167,8 +167,6 @@ export class PreviewModel implements ViewModel {
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
-    showS3 = atom(true);
-
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.viewType = "preview";
         this.blockId = blockId;
@@ -677,12 +675,6 @@ export class PreviewModel implements ViewModel {
     }
 
     async handleOpenFile(filePath: string) {
-        const conn = globalStore.get(this.connectionImmediate);
-        if (!isBlank(conn) && conn.startsWith("aws:")) {
-            if (!isBlank(filePath) && filePath != "/" && filePath.startsWith("/")) {
-                filePath = filePath.substring(1);
-            }
-        }
         const fileInfo = await globalStore.get(this.statFile);
         this.updateOpenFileModalAndError(false);
         if (fileInfo == null) {

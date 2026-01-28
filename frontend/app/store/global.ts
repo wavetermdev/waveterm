@@ -722,17 +722,6 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
                 wshenabled: false,
             };
             rtn = atom(connStatus);
-        } else if (conn.startsWith("aws:")) {
-            const connStatus: ConnStatus = {
-                connection: conn,
-                connected: true,
-                error: null,
-                status: "connected",
-                hasconnected: true,
-                activeconnnum: 0,
-                wshenabled: false,
-            };
-            rtn = atom(connStatus);
         } else {
             const connStatus: ConnStatus = {
                 connection: conn,

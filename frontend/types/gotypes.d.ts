@@ -508,12 +508,6 @@ declare global {
         byterange?: string;
     };
 
-    // wshrpc.CommandRemoteStreamTarData
-    type CommandRemoteStreamTarData = {
-        path: string;
-        opts?: FileCopyOpts;
-    };
-
     // wshrpc.CommandRemoteTerminateJobManagerData
     type CommandRemoteTerminateJobManagerData = {
         jobid: string;
@@ -1122,12 +1116,6 @@ declare global {
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
-    };
-
-    // iochantypes.Packet
-    type Packet = {
-        Data: string;
-        Checksum: string;
     };
 
     // wshrpc.PathCommandData

@@ -8,22 +8,16 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fspath"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
-	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -32,7 +26,9 @@ import (
 )
 
 const (
-	DirMode os.FileMode = 0755 | os.ModeDir
+	DirMode                   os.FileMode = 0755 | os.ModeDir
+	WaveFileTransferSizeLimit             = 32 * 1024 * 1024
+	MaxListEntriesLimit                   = 1024
 )
 
 type WaveClient struct{}
@@ -84,6 +80,10 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	if err != nil {
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
+	finfo, err := filestore.WFS.Stat(ctx, zoneId, fileName)
+	if err == nil && finfo.Size > WaveFileTransferSizeLimit {
+		return nil, fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", fileName, finfo.Size, WaveFileTransferSizeLimit)
+	}
 	if data.At != nil {
 		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, int64(data.At.Size))
 		if err == nil {
@@ -116,89 +116,6 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 			}}, nil
 	}
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
-}
-
-func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	log.Printf("ReadTarStream: conn: %v, opts: %v\n", conn, opts)
-	path := conn.Path
-	srcHasSlash := strings.HasSuffix(path, "/")
-	cleanedPath, err := cleanPath(path)
-	if err != nil {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error cleaning path: %w", err))
-	}
-
-	finfo, err := c.Stat(ctx, conn)
-	exists := err == nil && !finfo.NotFound
-	if err != nil {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error getting file info: %w", err))
-	}
-	if !exists {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("file not found: %s", conn.GetFullURI()))
-	}
-	singleFile := finfo != nil && !finfo.IsDir
-	var pathPrefix string
-	if !singleFile && srcHasSlash {
-		pathPrefix = cleanedPath
-	} else {
-		pathPrefix = filepath.Dir(cleanedPath)
-	}
-
-	schemeAndHost := conn.GetSchemeAndHost() + "/"
-
-	var entries []*wshrpc.FileInfo
-	if singleFile {
-		entries = []*wshrpc.FileInfo{finfo}
-	} else {
-		entries, err = c.ListEntries(ctx, conn, nil)
-		if err != nil {
-			return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
-		}
-	}
-
-	timeout := fstype.DefaultTimeout
-	if opts.Timeout > 0 {
-		timeout = time.Duration(opts.Timeout) * time.Millisecond
-	}
-	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
-	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, pathPrefix)
-
-	go func() {
-		defer func() {
-			tarClose()
-			cancel()
-		}()
-		for _, file := range entries {
-			if readerCtx.Err() != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](context.Cause(readerCtx))
-				return
-			}
-			file.Mode = 0644
-
-			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path, singleFile); err != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
-				return
-			}
-			if file.IsDir {
-				continue
-			}
-
-			log.Printf("ReadTarStream: reading file: %s\n", file.Path)
-
-			internalPath := strings.TrimPrefix(file.Path, schemeAndHost)
-
-			_, dataBuf, err := filestore.WFS.ReadFile(ctx, conn.Host, internalPath)
-			if err != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error reading blockfile: %w", err))
-				return
-			}
-			if _, err = fileWriter.Write(dataBuf); err != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar data: %w", err))
-				return
-			}
-		}
-	}()
-
-	return rtn
 }
 
 func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -234,6 +151,9 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 	var fileList []*wshrpc.FileInfo
 	dirMap := make(map[string]*wshrpc.FileInfo)
 	if err := listFilesPrefix(ctx, zoneId, prefix, func(wf *filestore.WaveFile) error {
+		if len(fileList) >= MaxListEntriesLimit {
+			return fmt.Errorf("file list limit exceeded: %d", MaxListEntriesLimit)
+		}
 		if !opts.All {
 			name, isDir := fspath.FirstLevelDir(strings.TrimPrefix(wf.Name, prefix))
 			if isDir {
@@ -432,91 +352,125 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 	if srcConn.Host != destConn.Host {
 		return fmt.Errorf("move internal, src and dest hosts do not match")
 	}
-	isDir, err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	_, err := c.CopyInternal(ctx, srcConn, destConn, opts)
 	if err != nil {
 		return fmt.Errorf("error copying blockfile: %w", err)
 	}
-	recursive := opts != nil && opts.Recursive && isDir
-	if err := c.Delete(ctx, srcConn, recursive); err != nil {
+	if err := c.Delete(ctx, srcConn, false); err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
 	}
 	return nil
 }
 
 func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error) {
-	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, zoneId, prefix string) ([]string, error) {
-		entryList := make([]string, 0)
-		if err := listFilesPrefix(ctx, zoneId, prefix, func(wf *filestore.WaveFile) error {
-			entryList = append(entryList, wf.Name)
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-		return entryList, nil
-	}, func(ctx context.Context, srcPath, destPath string) error {
-		srcHost := srcConn.Host
-		srcFileName := strings.TrimPrefix(srcPath, srcHost+fspath.Separator)
-		destHost := destConn.Host
-		destFileName := strings.TrimPrefix(destPath, destHost+fspath.Separator)
-		_, dataBuf, err := filestore.WFS.ReadFile(ctx, srcHost, srcFileName)
-		if err != nil {
-			return fmt.Errorf("error reading source blockfile: %w", err)
-		}
-		if err := filestore.WFS.WriteFile(ctx, destHost, destFileName, dataBuf); err != nil {
-			return fmt.Errorf("error writing to destination blockfile: %w", err)
-		}
-		wps.Broker.Publish(wps.WaveEvent{
-			Event:  wps.Event_BlockFile,
-			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, destHost).String()},
-			Data: &wps.WSFileEventData{
-				ZoneId:   destHost,
-				FileName: destFileName,
-				FileOp:   wps.FileOp_Invalidate,
-			},
-		})
-		return nil
+	srcHost := srcConn.Host
+	destHost := destConn.Host
+	if srcHost == "" || destHost == "" {
+		return false, fmt.Errorf("source and destination hosts must be specified")
+	}
+
+	srcFileName, err := cleanPath(srcConn.Path)
+	if err != nil {
+		return false, fmt.Errorf("error cleaning source path: %w", err)
+	}
+	destFileName, err := cleanPath(destConn.Path)
+	if err != nil {
+		return false, fmt.Errorf("error cleaning destination path: %w", err)
+	}
+
+	finfo, err := filestore.WFS.Stat(ctx, srcHost, srcFileName)
+	if err != nil {
+		return false, fmt.Errorf("error getting source blockfile info: %w", err)
+	}
+	if finfo.Size > WaveFileTransferSizeLimit {
+		return false, fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", srcFileName, finfo.Size, WaveFileTransferSizeLimit)
+	}
+
+	_, dataBuf, err := filestore.WFS.ReadFile(ctx, srcHost, srcFileName)
+	if err != nil {
+		return false, fmt.Errorf("error reading source blockfile: %w", err)
+	}
+
+	if err := filestore.WFS.WriteFile(ctx, destHost, destFileName, dataBuf); err != nil {
+		return false, fmt.Errorf("error writing to destination blockfile: %w", err)
+	}
+
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, destHost).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   destHost,
+			FileName: destFileName,
+			FileOp:   wps.FileOp_Invalidate,
+		},
 	})
+	return false, nil
 }
 
+// copying FROM somewhere TO wavefs
 func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
 	if srcConn.Scheme == connparse.ConnectionTypeWave && destConn.Scheme == connparse.ConnectionTypeWave {
 		return c.CopyInternal(ctx, srcConn, destConn, opts)
 	}
+
 	zoneId := destConn.Host
 	if zoneId == "" {
 		return false, fmt.Errorf("zoneid not found in connection")
 	}
-	return fsutil.PrefixCopyRemote(ctx, srcConn, destConn, srcClient, c, func(zoneId, path string, size int64, reader io.Reader) error {
-		dataBuf := make([]byte, size)
-		if _, err := reader.Read(dataBuf); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("error reading tar data: %w", err)
-			}
-		}
-		if _, err := filestore.WFS.Stat(ctx, zoneId, path); err != nil {
-			if !errors.Is(err, fs.ErrNotExist) {
-				return fmt.Errorf("error getting blockfile info: %w", err)
-			} else {
-				if err := filestore.WFS.MakeFile(ctx, zoneId, path, wshrpc.FileMeta{}, wshrpc.FileOpts{}); err != nil {
-					return fmt.Errorf("error making blockfile: %w", err)
-				}
-			}
-		}
 
-		if err := filestore.WFS.WriteFile(ctx, zoneId, path, dataBuf); err != nil {
-			return fmt.Errorf("error writing to blockfile: %w", err)
+	srcInfo, err := srcClient.Stat(ctx, srcConn)
+	if err != nil {
+		return false, fmt.Errorf("error getting source file info: %w", err)
+	}
+	if srcInfo.NotFound {
+		return false, fmt.Errorf("source file not found")
+	}
+	if srcInfo.IsDir {
+		return false, fmt.Errorf("cannot copy directories to wavefs: use single file only")
+	}
+	if srcInfo.Size > WaveFileTransferSizeLimit {
+		return false, fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", srcConn.Path, srcInfo.Size, WaveFileTransferSizeLimit)
+	}
+
+	fileData, err := srcClient.Read(ctx, srcConn, wshrpc.FileData{})
+	if err != nil {
+		return false, fmt.Errorf("error reading source file: %w", err)
+	}
+
+	dataBuf, err := base64.StdEncoding.DecodeString(fileData.Data64)
+	if err != nil {
+		return false, fmt.Errorf("error decoding file data: %w", err)
+	}
+
+	destPath, err := cleanPath(destConn.Path)
+	if err != nil {
+		return false, fmt.Errorf("error cleaning destination path: %w", err)
+	}
+
+	if _, err := filestore.WFS.Stat(ctx, zoneId, destPath); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return false, fmt.Errorf("error getting blockfile info: %w", err)
 		}
-		wps.Broker.Publish(wps.WaveEvent{
-			Event:  wps.Event_BlockFile,
-			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
-			Data: &wps.WSFileEventData{
-				ZoneId:   zoneId,
-				FileName: path,
-				FileOp:   wps.FileOp_Invalidate,
-			},
-		})
-		return nil
-	}, opts)
+		if err := filestore.WFS.MakeFile(ctx, zoneId, destPath, wshrpc.FileMeta{}, wshrpc.FileOpts{}); err != nil {
+			return false, fmt.Errorf("error making blockfile: %w", err)
+		}
+	}
+
+	if err := filestore.WFS.WriteFile(ctx, zoneId, destPath, dataBuf); err != nil {
+		return false, fmt.Errorf("error writing to blockfile: %w", err)
+	}
+
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   zoneId,
+			FileName: destPath,
+			FileOp:   wps.FileOp_Invalidate,
+		},
+	})
+
+	return false, nil
 }
 
 func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {

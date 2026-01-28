@@ -87,11 +87,6 @@ class RpcApiType {
         return client.wshRpcCall("connlist", null, opts);
     }
 
-    // command "connlistaws" [call]
-    ConnListAWSCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
-        return client.wshRpcCall("connlistaws", null, opts);
-    }
-
     // command "connreinstallwsh" [call]
     ConnReinstallWshCommand(client: WshClient, data: ConnExtData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connreinstallwsh", data, opts);
@@ -290,11 +285,6 @@ class RpcApiType {
     // command "filesharecapability" [call]
     FileShareCapabilityCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<FileShareCapability> {
         return client.wshRpcCall("filesharecapability", data, opts);
-    }
-
-    // command "filestreamtar" [responsestream]
-	FileStreamTarCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
-        return client.wshRpcStream("filestreamtar", data, opts);
     }
 
     // command "filewrite" [call]
@@ -590,11 +580,6 @@ class RpcApiType {
     // command "remotestreamfile" [responsestream]
 	RemoteStreamFileCommand(client: WshClient, data: CommandRemoteStreamFileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
         return client.wshRpcStream("remotestreamfile", data, opts);
-    }
-
-    // command "remotetarstream" [responsestream]
-	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
-        return client.wshRpcStream("remotetarstream", data, opts);
     }
 
     // command "remoteterminatejobmanager" [call]

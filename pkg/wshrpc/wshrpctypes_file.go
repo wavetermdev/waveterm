@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 )
 
 type WshRpcFileInterface interface {
@@ -21,7 +20,6 @@ type WshRpcFileInterface interface {
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
 	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
-	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
@@ -33,7 +31,6 @@ type WshRpcFileInterface interface {
 
 type WshRpcRemoteFileInterface interface {
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
-	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
@@ -119,11 +116,6 @@ type CommandFileCopyData struct {
 	SrcUri  string        `json:"srcuri"`
 	DestUri string        `json:"desturi"`
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
-}
-
-type CommandRemoteStreamTarData struct {
-	Path string        `json:"path"`
-	Opts *FileCopyOpts `json:"opts,omitempty"`
 }
 
 type FileCopyOpts struct {
