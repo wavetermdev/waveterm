@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 )
 
@@ -29,9 +30,14 @@ func SetClientId(clientId string) {
 	cachedClientId = clientId
 }
 
+// in the main server, this will not return empty string
+// it does return empty in wsh, but all wstore methods are invalid in wsh mode, so that shouldn't be an issue
 func GetClientId() string {
 	clientIdLock.Lock()
 	defer clientIdLock.Unlock()
+	if wavebase.IsDevMode() && cachedClientId == "" {
+		panic("cachedClientId is empty")
+	}
 	return cachedClientId
 }
 
