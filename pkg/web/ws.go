@@ -30,6 +30,7 @@ const wsInitialPingTime = 1 * time.Second
 const wsMaxMessageSize = 10 * 1024 * 1024
 
 const DefaultCommandTimeout = 2 * time.Second
+const WebSocketChannelSize = 128
 
 type StableConnInfo struct {
 	ConnId string
@@ -126,14 +127,6 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan ba
 	}
 }
 
-func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan baseds.RpcInputChType) {
-	wsCommand := getStringFromMap(jmsg, "wscommand")
-	if wsCommand == "" {
-		return
-	}
-	processWSCommand(jmsg, outputCh, rpcInputCh)
-}
-
 func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan baseds.RpcInputChType, routeId string) {
 	readWait := wsReadWaitTimeout
 	conn.SetReadLimit(wsMaxMessageSize)
@@ -163,7 +156,11 @@ func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInpu
 			outputCh <- pongMessage
 			continue
 		}
-		processMessage(jmsg, outputCh, rpcInputCh)
+		wsCommand := getStringFromMap(jmsg, "wscommand")
+		if wsCommand == "" {
+			continue
+		}
+		processWSCommand(jmsg, outputCh, rpcInputCh)
 	}
 }
 
@@ -271,12 +268,12 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer conn.Close()
 	wsConnId := uuid.New().String()
-	outputCh := make(chan any, 100)
+	outputCh := make(chan any, WebSocketChannelSize)
 	closeCh := make(chan any)
 	log.Printf("[websocket] new connection: connid:%s stableid:%s\n", wsConnId, stableId)
 	eventbus.RegisterWSChannel(wsConnId, stableId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
-	wproxy := wshutil.MakeRpcProxy(fmt.Sprintf("ws:%s", stableId))
+	wproxy := wshutil.MakeRpcProxyWithSize(fmt.Sprintf("ws:%s", stableId), WebSocketChannelSize, WebSocketChannelSize)
 	defer close(wproxy.ToRemoteCh)
 	registerConn(wsConnId, stableId, wproxy)
 	defer unregisterConn(wsConnId, stableId)

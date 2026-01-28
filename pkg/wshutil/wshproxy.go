@@ -21,10 +21,14 @@ type WshRpcProxy struct {
 }
 
 func MakeRpcProxy(peerInfo string) *WshRpcProxy {
+	return MakeRpcProxyWithSize(peerInfo, DefaultInputChSize, DefaultOutputChSize)
+}
+
+func MakeRpcProxyWithSize(peerInfo string, inputChSize int, outputChSize int) *WshRpcProxy {
 	return &WshRpcProxy{
 		Lock:         &sync.Mutex{},
-		ToRemoteCh:   make(chan []byte, DefaultInputChSize),
-		FromRemoteCh: make(chan baseds.RpcInputChType, DefaultOutputChSize),
+		ToRemoteCh:   make(chan []byte, inputChSize),
+		FromRemoteCh: make(chan baseds.RpcInputChType, outputChSize),
 		PeerInfo:     peerInfo,
 	}
 }
