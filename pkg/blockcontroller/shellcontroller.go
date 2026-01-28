@@ -197,7 +197,14 @@ func (sc *ShellController) resetTerminalState(logCtx context.Context) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	wfile, statErr := filestore.WFS.Stat(ctx, sc.BlockId, wavebase.BlockFile_Term)
-	if statErr == fs.ErrNotExist || wfile.Size == 0 {
+	if statErr == fs.ErrNotExist {
+		return
+	}
+	if statErr != nil {
+		log.Printf("error statting term file: %v\n", statErr)
+		return
+	}
+	if wfile.Size == 0 {
 		return
 	}
 	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state\n")

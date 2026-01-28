@@ -199,8 +199,11 @@ func (sjc *ShellJobController) Stop(graceful bool, newStatus string, destroy boo
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	jobcontroller.DetachJobFromBlock(ctx, jobId, false)
-	err := jobcontroller.TerminateJobManager(ctx, jobId)
+	err := jobcontroller.DetachJobFromBlock(ctx, jobId, false)
+	if err != nil {
+		log.Printf("error detaching job from block: %v\n", err)
+	}
+	err = jobcontroller.TerminateJobManager(ctx, jobId)
 	if err != nil {
 		log.Printf("error terminating job manager: %v\n", err)
 	}
@@ -290,7 +293,14 @@ func (sjc *ShellJobController) resetTerminalState(logCtx context.Context) {
 	}
 
 	wfile, statErr := filestore.WFS.Stat(ctx, jobId, jobcontroller.JobOutputFileName)
-	if statErr == fs.ErrNotExist || wfile.Size == 0 {
+	if statErr == fs.ErrNotExist {
+		return
+	}
+	if statErr != nil {
+		log.Printf("error statting job output file: %v\n", statErr)
+		return
+	}
+	if wfile.Size == 0 {
 		return
 	}
 
