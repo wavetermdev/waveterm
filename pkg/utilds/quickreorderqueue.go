@@ -201,31 +201,23 @@ func (q *QuickReorderQueue[T]) onTimeout() {
 
 	q.sortBuffer_withlock()
 
-	highestTimedOutSeq := -1
-	for _, item := range q.buffer {
+	highestTimedOutIdx := -1
+	for i, item := range q.buffer {
 		if now.Sub(item.timestamp) >= q.timeout {
-			highestTimedOutSeq = item.seqNum
+			highestTimedOutIdx = i
 		}
 	}
 
-	if highestTimedOutSeq == -1 {
-		return
-	}
-
-	enqueued := 0
-	for i, item := range q.buffer {
-		if item.seqNum <= highestTimedOutSeq {
+	if highestTimedOutIdx >= 0 {
+		for i := 0; i <= highestTimedOutIdx; i++ {
+			item := q.buffer[i]
 			q.outCh <- item.data
-			enqueued = i + 1
-			if item.seqNum >= q.nextSeqNum {
+			if item.sessionId == q.currentSessionId && item.seqNum >= q.nextSeqNum {
 				q.nextSeqNum = item.seqNum + 1
 			}
-		} else {
-			break
 		}
+		q.buffer = q.buffer[highestTimedOutIdx+1:]
 	}
-
-	q.buffer = q.buffer[enqueued:]
 
 	if len(q.buffer) > 0 {
 		oldestTime := q.buffer[0].timestamp
