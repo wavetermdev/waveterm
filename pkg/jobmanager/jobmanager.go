@@ -244,7 +244,7 @@ func (jm *JobManager) StartJob(msc *MainServerConn, data wshrpc.CommandStartJobD
 		log.Printf("StartJob: connected stream streamid=%s serverSeq=%d\n", data.StreamMeta.Id, serverSeq)
 	}
 
-	_, cmdPty := jobCmd.GetCmd()
+	cmd, cmdPty := jobCmd.GetCmd()
 	if cmdPty != nil {
 		log.Printf("StartJob: attaching pty reader to stream manager")
 		err = jm.StreamManager.AttachReader(cmdPty)
@@ -257,7 +257,6 @@ func (jm *JobManager) StartJob(msc *MainServerConn, data wshrpc.CommandStartJobD
 		log.Printf("StartJob: no pty to attach")
 	}
 
-	cmd, _ := jobCmd.GetCmd()
 	if cmd == nil || cmd.Process == nil {
 		log.Printf("StartJob: cmd or process is nil")
 		return nil, fmt.Errorf("cmd or process is nil")
