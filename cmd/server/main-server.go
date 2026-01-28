@@ -28,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -79,7 +80,7 @@ func doShutdown(reason string) {
 		log.Printf("shutting down: %s\n", reason)
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
-		go blockcontroller.StopAllBlockControllers()
+		go blockcontroller.StopAllBlockControllersForShutdown()
 		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		// TODO deal with flush in progress
@@ -162,15 +163,9 @@ func sendDiagnosticPing() bool {
 	if err != nil || !isOnline {
 		return false
 	}
-	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return false
-	}
-	if clientData == nil {
-		return false
-	}
+	clientId := wstore.GetClientId()
 	usageTelemetry := telemetry.IsTelemetryEnabled()
-	wcloud.SendDiagnosticPing(ctx, clientData.OID, usageTelemetry)
+	wcloud.SendDiagnosticPing(ctx, clientId, usageTelemetry)
 	return true
 }
 
@@ -226,12 +221,8 @@ func sendTelemetryWrapper() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		log.Printf("[error] getting client data for telemetry: %v\n", err)
-		return
-	}
-	err = wcloud.SendAllTelemetry(client.OID)
+	clientId := wstore.GetClientId()
+	err := wcloud.SendAllTelemetry(clientId)
 	if err != nil {
 		log.Printf("[error] sending telemetry: %v\n", err)
 	}
@@ -392,7 +383,10 @@ func createMainWshClient() {
 	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, wshremote.MakeRemoteRpcServerImpl(nil, wshutil.DefaultRouter, wshclient.GetBareRpcClient(), true), "conn:local")
+	localInitialEnv := envutil.PruneInitialEnv(envutil.SliceToMap(os.Environ()))
+	sockName := wavebase.GetDomainSocketName()
+	remoteImpl := wshremote.MakeRemoteRpcServerImpl(nil, wshutil.DefaultRouter, wshclient.GetBareRpcClient(), true, localInitialEnv, sockName)
+	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, remoteImpl, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
 	wshutil.DefaultRouter.RegisterTrustedLeaf(localConnWsh, wshutil.MakeConnectionRouteId(wshrpc.LocalConnName))
 }

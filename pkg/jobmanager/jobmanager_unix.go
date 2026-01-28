@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -69,6 +70,12 @@ func daemonize(clientId string, jobId string) error {
 	devNull.Close()
 
 	logPath := GetJobFilePath(clientId, jobId, "log")
+	logDir := filepath.Dir(logPath)
+	err = os.MkdirAll(logDir, 0700)
+	if err != nil {
+		return fmt.Errorf("failed to create log directory: %w", err)
+	}
+
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)

@@ -125,6 +125,12 @@ func ConnReinstallWshCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *w
 	return err
 }
 
+// command "connserverinit", wshserver.ConnServerInitCommand
+func ConnServerInitCommand(w *wshutil.WshRpc, data wshrpc.CommandConnServerInitData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "connserverinit", data, opts)
+	return err
+}
+
 // command "connstatus", wshserver.ConnStatusCommand
 func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnStatus, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.ConnStatus](w, "connstatus", nil, opts)
@@ -143,6 +149,12 @@ func ControllerAppendOutputCommand(w *wshutil.WshRpc, data wshrpc.CommandControl
 	return err
 }
 
+// command "controllerdestroy", wshserver.ControllerDestroyCommand
+func ControllerDestroyCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "controllerdestroy", data, opts)
+	return err
+}
+
 // command "controllerinput", wshserver.ControllerInputCommand
 func ControllerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "controllerinput", data, opts)
@@ -152,12 +164,6 @@ func ControllerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData
 // command "controllerresync", wshserver.ControllerResyncCommand
 func ControllerResyncCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerResyncData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "controllerresync", data, opts)
-	return err
-}
-
-// command "controllerstop", wshserver.ControllerStopCommand
-func ControllerStopCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "controllerstop", data, opts)
 	return err
 }
 

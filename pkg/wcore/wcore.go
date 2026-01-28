@@ -59,6 +59,7 @@ func EnsureInitialData() (bool, error) {
 		}
 	}
 	log.Printf("clientid: %s\n", client.OID)
+	wstore.SetClientId(client.OID)
 	if len(client.WindowIds) == 1 {
 		log.Println("client has one window")
 		CheckAndFixWindow(ctx, client.WindowIds[0])
@@ -151,16 +152,8 @@ func GoSendNoTelemetryUpdate(telemetryEnabled bool) {
 		}()
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
-		clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-		if err != nil {
-			log.Printf("telemetry update: error getting client data: %v\n", err)
-			return
-		}
-		if clientData == nil {
-			log.Printf("telemetry update: client data is nil\n")
-			return
-		}
-		err = wcloud.SendNoTelemetryUpdate(ctx, clientData.OID, !telemetryEnabled)
+		clientId := wstore.GetClientId()
+		err := wcloud.SendNoTelemetryUpdate(ctx, clientId, !telemetryEnabled)
 		if err != nil {
 			log.Printf("[error] sending no-telemetry update: %v\n", err)
 			return

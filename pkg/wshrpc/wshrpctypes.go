@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
@@ -44,7 +45,7 @@ type WshRpcInterface interface {
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
-	ControllerStopCommand(ctx context.Context, blockId string) error
+	ControllerDestroyCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
 	ControllerAppendOutputCommand(ctx context.Context, data CommandControllerAppendOutputData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
@@ -99,6 +100,7 @@ type WshRpcInterface interface {
 	DismissWshFailCommand(ctx context.Context, connName string) error
 	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
 	FindGitBashCommand(ctx context.Context, rescan bool) (string, error)
+	ConnServerInitCommand(ctx context.Context, data CommandConnServerInitData) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
@@ -203,14 +205,24 @@ type RpcOpts struct {
 }
 
 type RpcContext struct {
-	SockName string `json:"sockname,omitempty"` // the domain socket name
-	RouteId  string `json:"routeid"`            // the routeid from the jwt
-	BlockId  string `json:"blockid,omitempty"`  // blockid for this rpc
-	Conn     string `json:"conn,omitempty"`     // the conn name
-	IsRouter bool   `json:"isrouter,omitempty"` // if this is for a sub-router
+	SockName  string `json:"sockname,omitempty"`  // the domain socket name
+	RouteId   string `json:"routeid"`             // the routeid from the jwt
+	ProcRoute bool   `json:"procroute,omitempty"` // use a random procid for route
+	BlockId   string `json:"blockid,omitempty"`   // blockid for this rpc
+	Conn      string `json:"conn,omitempty"`      // the conn name
+	IsRouter  bool   `json:"isrouter,omitempty"`  // if this is for a sub-router
+}
+
+func (rc RpcContext) GenerateRouteId() string {
+	if rc.RouteId != "" {
+		return rc.RouteId
+	}
+	return "proc:" + uuid.New().String()
 }
 
 type CommandAuthenticateRtnData struct {
+	RouteId string `json:"routeid"`
+
 	// these fields are only set when doing a token swap
 	Env            map[string]string `json:"env,omitempty"`
 	InitScriptText string            `json:"initscripttext,omitempty"`
@@ -284,10 +296,12 @@ type CommandBlockInputData struct {
 }
 
 type CommandJobInputData struct {
-	JobId       string            `json:"jobid"`
-	InputData64 string            `json:"inputdata64,omitempty"`
-	SigName     string            `json:"signame,omitempty"`
-	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
+	JobId          string            `json:"jobid"`
+	InputSessionId string            `json:"inputsessionid,omitempty"`
+	SeqNum         int               `json:"seqnum,omitempty"`
+	InputData64    string            `json:"inputdata64,omitempty"`
+	SigName        string            `json:"signame,omitempty"`
+	TermSize       *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandWaitForRouteData struct {
@@ -382,6 +396,7 @@ type RemoteInfo struct {
 	ClientOs      string `json:"clientos"`
 	ClientVersion string `json:"clientversion"`
 	Shell         string `json:"shell"`
+	HomeDir       string `json:"homedir"`
 }
 
 const (
@@ -599,6 +614,10 @@ type ConnExtData struct {
 	LogBlockId string `json:"logblockid,omitempty"`
 }
 
+type CommandConnServerInitData struct {
+	ClientId string `json:"clientid"`
+}
+
 type FetchSuggestionsData struct {
 	SuggestionType string `json:"suggestiontype"`
 	Query          string `json:"query"`
@@ -764,8 +783,9 @@ type CommandStartJobRtnData struct {
 }
 
 type CommandJobPrepareConnectData struct {
-	StreamMeta StreamMeta `json:"streammeta"`
-	Seq        int64      `json:"seq"`
+	StreamMeta StreamMeta       `json:"streammeta"`
+	Seq        int64            `json:"seq"`
+	TermSize   waveobj.TermSize `json:"termsize"`
 }
 
 type CommandJobStartStreamData struct {
