@@ -50,7 +50,7 @@
         "@vitejs/plugin-react-swc": "4.2.2",
         "@vitest/coverage-istanbul": "^3.0.9",
         "electron": "^38.5.0",
-        "electron-builder": "^26.0",
+        "electron-builder": "^26.6",
         "electron-vite": "^4.0.1",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^10.1.8",
