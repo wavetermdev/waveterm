@@ -29,6 +29,7 @@ type WaveJwtClaims struct {
 	MainServer bool   `json:"mainserver,omitempty"`
 	Sock       string `json:"sock,omitempty"`
 	RouteId    string `json:"routeid,omitempty"`
+	ProcRoute  bool   `json:"procroute,omitempty"`
 	BlockId    string `json:"blockid,omitempty"`
 	JobId      string `json:"jobid,omitempty"`
 	Conn       string `json:"conn,omitempty"`

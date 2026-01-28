@@ -240,7 +240,7 @@ func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, t
 	if err == nil && tab != nil {
 		go func() {
 			for _, blockId := range tab.BlockIds {
-				blockcontroller.StopBlockController(blockId)
+				blockcontroller.DestroyBlockController(blockId)
 			}
 		}()
 	}

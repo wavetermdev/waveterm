@@ -41,6 +41,7 @@ const (
 	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdInteractive                   = "cmd:interactive"
 	MetaKey_CmdLogin                         = "cmd:login"
+	MetaKey_CmdPersistent                    = "cmd:persistent"
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
 	MetaKey_CmdClearOnStart                  = "cmd:clearonstart"
 	MetaKey_CmdRunOnce                       = "cmd:runonce"

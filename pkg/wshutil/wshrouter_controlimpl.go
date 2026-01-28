@@ -107,7 +107,7 @@ func (impl *WshRouterControlImpl) AuthenticateCommand(ctx context.Context, data 
 		return wshrpc.CommandAuthenticateRtnData{}, err
 	}
 
-	rtnData := wshrpc.CommandAuthenticateRtnData{}
+	rtnData := wshrpc.CommandAuthenticateRtnData{RouteId: routeId}
 	if newCtx.IsRouter {
 		log.Printf("wshrouter authenticate success linkid=%d (router)", linkId)
 		impl.Router.trustLink(linkId, LinkKind_Router)
@@ -132,10 +132,12 @@ func extractTokenData(token string) (wshrpc.CommandAuthenticateRtnData, error) {
 	if entry.RpcContext.IsRouter {
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("cannot auth router via token")
 	}
-	if entry.RpcContext.RouteId == "" {
+	routeId := entry.RpcContext.GenerateRouteId()
+	if routeId == "" {
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no routeid")
 	}
 	return wshrpc.CommandAuthenticateRtnData{
+		RouteId:        routeId,
 		Env:            entry.Env,
 		InitScriptText: entry.ScriptText,
 		RpcContext:     entry.RpcContext,
@@ -156,7 +158,7 @@ func (impl *WshRouterControlImpl) AuthenticateTokenVerifyCommand(ctx context.Con
 		return wshrpc.CommandAuthenticateRtnData{}, err
 	}
 
-	log.Printf("wshrouter authenticate-token-verify success routeid=%q", rtnData.RpcContext.RouteId)
+	log.Printf("wshrouter authenticate-token-verify success routeid=%q", rtnData.RouteId)
 	return rtnData, nil
 }
 
@@ -202,9 +204,12 @@ func (impl *WshRouterControlImpl) AuthenticateTokenCommand(ctx context.Context, 
 	if rtnData.RpcContext == nil {
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no rpccontext in token response")
 	}
-	log.Printf("wshrouter authenticate-token success linkid=%d routeid=%q", linkId, rtnData.RpcContext.RouteId)
+	if rtnData.RouteId == "" {
+		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no routeid in token response")
+	}
+	log.Printf("wshrouter authenticate-token success linkid=%d routeid=%q", linkId, rtnData.RouteId)
 	impl.Router.trustLink(linkId, LinkKind_Leaf)
-	impl.Router.bindRoute(linkId, rtnData.RpcContext.RouteId, true)
+	impl.Router.bindRoute(linkId, rtnData.RouteId, true)
 
 	return rtnData, nil
 }
@@ -291,11 +296,14 @@ func validateRpcContextFromAuth(newCtx *wshrpc.RpcContext) (string, error) {
 	if newCtx.IsRouter && newCtx.RouteId != "" {
 		return "", fmt.Errorf("invalid context, router cannot have a routeid")
 	}
-	if !newCtx.IsRouter && newCtx.RouteId == "" {
+	if newCtx.IsRouter && newCtx.ProcRoute {
+		return "", fmt.Errorf("invalid context, router cannot have a proc-route")
+	}
+	if !newCtx.IsRouter && newCtx.RouteId == "" && !newCtx.ProcRoute {
 		return "", fmt.Errorf("invalid context, must have a routeid")
 	}
 	if newCtx.IsRouter {
 		return "", nil
 	}
-	return newCtx.RouteId, nil
+	return newCtx.GenerateRouteId(), nil
 }

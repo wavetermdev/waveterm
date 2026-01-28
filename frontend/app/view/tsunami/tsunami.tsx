@@ -118,9 +118,9 @@ class TsunamiViewModel extends WebViewModel {
         this.doControllerResync(false, "resync", false);
     }
 
-    stopController() {
-        const prtn = RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
-        prtn.catch((e) => console.log("error stopping controller", e));
+    destroyController() {
+        const prtn = RpcApi.ControllerDestroyCommand(TabRpcClient, this.blockId);
+        prtn.catch((e) => console.log("error destroying controller", e));
     }
 
     async restartController() {
@@ -130,7 +130,7 @@ class TsunamiViewModel extends WebViewModel {
         this.triggerRestartAtom();
         try {
             // Stop the controller first
-            await RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+            await RpcApi.ControllerDestroyCommand(TabRpcClient, this.blockId);
             // Wait a bit for the controller to fully stop
             await new Promise((resolve) => setTimeout(resolve, 300));
             // Then resync to restart it
@@ -202,7 +202,7 @@ class TsunamiViewModel extends WebViewModel {
         const tsunamiItems: ContextMenuItem[] = [
             {
                 label: "Stop WaveApp",
-                click: () => this.stopController(),
+                click: () => this.destroyController(),
             },
             {
                 label: "Restart WaveApp",

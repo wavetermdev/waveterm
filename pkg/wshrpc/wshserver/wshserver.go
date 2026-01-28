@@ -280,8 +280,8 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 	return blockRef, nil
 }
 
-func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
-	blockcontroller.StopBlockController(blockId)
+func (ws *WshServer) ControllerDestroyCommand(ctx context.Context, blockId string) error {
+	blockcontroller.DestroyBlockController(blockId)
 	return nil
 }
 
@@ -292,21 +292,6 @@ func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
-	if err != nil {
-		return fmt.Errorf("error getting block: %w", err)
-	}
-
-	if block.JobId != "" {
-		jobInputData := wshrpc.CommandJobInputData{
-			JobId:       block.JobId,
-			InputData64: data.InputData64,
-			SigName:     data.SigName,
-			TermSize:    data.TermSize,
-		}
-		return jobcontroller.SendInput(ctx, jobInputData)
-	}
-
 	inputUnion := &blockcontroller.BlockInputUnion{
 		SigName:  data.SigName,
 		TermSize: data.TermSize,
@@ -818,13 +803,9 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 }
 
 func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client: %w", err)
-	}
 	return &wshrpc.WaveInfoData{
 		Version:   wavebase.WaveVersion,
-		ClientId:  client.OID,
+		ClientId:  wstore.GetClientId(),
 		BuildTime: wavebase.BuildTime,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
@@ -1204,11 +1185,7 @@ func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata
 }
 
 func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return fmt.Errorf("getting client data for telemetry: %v", err)
-	}
-	return wcloud.SendAllTelemetry(client.OID)
+	return wcloud.SendAllTelemetry(wstore.GetClientId())
 }
 
 func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
@@ -1221,12 +1198,6 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 		return fmt.Errorf("error setting telemetry enabled: %w", err)
 	}
 
-	// Get client for telemetry operations
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return fmt.Errorf("getting client data for telemetry: %v", err)
-	}
-
 	// Record the telemetry event
 	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
 	err = telemetry.RecordTEvent(ctx, event)
@@ -1235,7 +1206,7 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	}
 
 	// Immediately send telemetry to cloud
-	err = wcloud.SendAllTelemetry(client.OID)
+	err = wcloud.SendAllTelemetry(wstore.GetClientId())
 	if err != nil {
 		log.Printf("error sending telemetry after enabling: %v", err)
 	}
@@ -1510,7 +1481,7 @@ func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobI
 }
 
 func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId string) error {
-	return jobcontroller.ReconnectJob(ctx, jobId)
+	return jobcontroller.ReconnectJob(ctx, jobId, nil)
 }
 
 func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {

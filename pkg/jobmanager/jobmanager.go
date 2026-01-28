@@ -11,9 +11,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -23,6 +26,8 @@ import (
 
 const JobAccessTokenLabel = "Wave-JobAccessToken"
 const JobManagerStartLabel = "Wave-JobManagerStart"
+const JobInputQueueTimeout = 100 * time.Millisecond
+const JobInputQueueSize = 1000
 
 var WshCmdJobManager JobManager
 
@@ -33,6 +38,7 @@ type JobManager struct {
 	JwtPublicKey          []byte
 	JobAuthToken          string
 	StreamManager         *StreamManager
+	InputQueue            *utilds.QuickReorderQueue[wshrpc.CommandJobInputData]
 	lock                  sync.Mutex
 	attachedClient        *MainServerConn
 	connectedStreamClient *MainServerConn
@@ -48,6 +54,7 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	WshCmdJobManager.JwtPublicKey = publicKeyBytes
 	WshCmdJobManager.JobAuthToken = jobAuthToken
 	WshCmdJobManager.StreamManager = MakeStreamManager()
+	WshCmdJobManager.InputQueue = utilds.MakeQuickReorderQueue[wshrpc.CommandJobInputData](JobInputQueueSize, JobInputQueueTimeout)
 	err := wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to set public key: %w", err)
@@ -56,6 +63,14 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("JobManager:processInputQueue", recover())
+		}()
+		WshCmdJobManager.processInputQueue()
+	}()
+
 	fmt.Fprintf(readyFile, JobManagerStartLabel+"\n")
 	readyFile.Close()
 
@@ -65,6 +80,24 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	}
 
 	return nil
+}
+
+func (jm *JobManager) processInputQueue() {
+	for data := range jm.InputQueue.C() {
+		jm.lock.Lock()
+		cmd := jm.Cmd
+		jm.lock.Unlock()
+
+		if cmd == nil {
+			log.Printf("processInputQueue: skipping input, job not started\n")
+			continue
+		}
+
+		err := cmd.HandleInput(data)
+		if err != nil {
+			log.Printf("processInputQueue: error handling input: %v\n", err)
+		}
+	}
 }
 
 func (jm *JobManager) GetCmd() *JobCmd {
@@ -162,6 +195,174 @@ func (jm *JobManager) disconnectFromStreamHelper(mainServerConn *MainServerConn)
 	}
 	jm.StreamManager.ClientDisconnected()
 	jm.connectedStreamClient = nil
+}
+
+func (jm *JobManager) SetAttachedClient(msc *MainServerConn) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+
+	if jm.attachedClient != nil {
+		log.Printf("SetAttachedClient: kicking out existing client\n")
+		jm.attachedClient.Close()
+	}
+	jm.attachedClient = msc
+}
+
+func (jm *JobManager) StartJob(msc *MainServerConn, data wshrpc.CommandStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+
+	if jm.Cmd != nil {
+		log.Printf("StartJob: job already started")
+		return nil, fmt.Errorf("job already started")
+	}
+
+	cmdDef := CmdDef{
+		Cmd:      data.Cmd,
+		Args:     data.Args,
+		Env:      data.Env,
+		TermSize: data.TermSize,
+	}
+	log.Printf("StartJob: creating job cmd for jobid=%s", jm.JobId)
+	jobCmd, err := MakeJobCmd(jm.JobId, cmdDef)
+	if err != nil {
+		log.Printf("StartJob: failed to make job cmd: %v", err)
+		return nil, fmt.Errorf("failed to start job: %w", err)
+	}
+	jm.Cmd = jobCmd
+	log.Printf("StartJob: job cmd created successfully")
+
+	if data.StreamMeta != nil {
+		serverSeq, err := jm.connectToStreamHelper_withlock(msc, *data.StreamMeta, 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect stream: %w", err)
+		}
+		err = msc.WshRpc.StreamBroker.AttachStreamWriter(data.StreamMeta, jm.StreamManager)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach stream writer: %w", err)
+		}
+		log.Printf("StartJob: connected stream streamid=%s serverSeq=%d\n", data.StreamMeta.Id, serverSeq)
+	}
+
+	cmd, cmdPty := jobCmd.GetCmd()
+	if cmdPty != nil {
+		log.Printf("StartJob: attaching pty reader to stream manager")
+		err = jm.StreamManager.AttachReader(cmdPty)
+		if err != nil {
+			log.Printf("StartJob: failed to attach reader: %v", err)
+			return nil, fmt.Errorf("failed to attach reader to stream manager: %w", err)
+		}
+		log.Printf("StartJob: pty reader attached successfully")
+	} else {
+		log.Printf("StartJob: no pty to attach")
+	}
+
+	if cmd == nil || cmd.Process == nil {
+		log.Printf("StartJob: cmd or process is nil")
+		return nil, fmt.Errorf("cmd or process is nil")
+	}
+	cmdPid := cmd.Process.Pid
+	cmdProc, err := process.NewProcess(int32(cmdPid))
+	if err != nil {
+		log.Printf("StartJob: failed to get cmd process: %v", err)
+		return nil, fmt.Errorf("failed to get cmd process: %w", err)
+	}
+	cmdStartTs, err := cmdProc.CreateTime()
+	if err != nil {
+		log.Printf("StartJob: failed to get cmd start time: %v", err)
+		return nil, fmt.Errorf("failed to get cmd start time: %w", err)
+	}
+
+	jobManagerPid := os.Getpid()
+	jobManagerProc, err := process.NewProcess(int32(jobManagerPid))
+	if err != nil {
+		log.Printf("StartJob: failed to get job manager process: %v", err)
+		return nil, fmt.Errorf("failed to get job manager process: %w", err)
+	}
+	jobManagerStartTs, err := jobManagerProc.CreateTime()
+	if err != nil {
+		log.Printf("StartJob: failed to get job manager start time: %v", err)
+		return nil, fmt.Errorf("failed to get job manager start time: %w", err)
+	}
+
+	log.Printf("StartJob: job started successfully cmdPid=%d cmdStartTs=%d jobManagerPid=%d jobManagerStartTs=%d", cmdPid, cmdStartTs, jobManagerPid, jobManagerStartTs)
+	return &wshrpc.CommandStartJobRtnData{
+		CmdPid:            cmdPid,
+		CmdStartTs:        cmdStartTs,
+		JobManagerPid:     jobManagerPid,
+		JobManagerStartTs: jobManagerStartTs,
+	}, nil
+}
+
+func (jm *JobManager) PrepareConnect(msc *MainServerConn, data wshrpc.CommandJobPrepareConnectData) (*wshrpc.CommandJobConnectRtnData, error) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+
+	if jm.Cmd == nil {
+		return nil, fmt.Errorf("job not started")
+	}
+
+	err := jm.Cmd.SetTermSize(data.TermSize)
+	if err != nil {
+		log.Printf("PrepareConnect: failed to set term size: %v\n", err)
+	}
+
+	rtnData := &wshrpc.CommandJobConnectRtnData{}
+	streamDone, streamError := jm.StreamManager.GetStreamDoneInfo()
+
+	if streamDone {
+		log.Printf("PrepareConnect: stream already done, skipping connection streamError=%q\n", streamError)
+		rtnData.Seq = data.Seq
+		rtnData.StreamDone = true
+		rtnData.StreamError = streamError
+	} else {
+		corkedStreamMeta := data.StreamMeta
+		corkedStreamMeta.RWnd = 0
+		serverSeq, err := jm.connectToStreamHelper_withlock(msc, corkedStreamMeta, data.Seq)
+		if err != nil {
+			return nil, err
+		}
+		jm.pendingStreamMeta = &data.StreamMeta
+		rtnData.Seq = serverSeq
+		rtnData.StreamDone = false
+	}
+
+	hasExited, exitData := jm.Cmd.GetExitInfo()
+	if hasExited && exitData != nil {
+		rtnData.HasExited = true
+		rtnData.ExitCode = exitData.ExitCode
+		rtnData.ExitSignal = exitData.ExitSignal
+		rtnData.ExitErr = exitData.ExitErr
+	}
+
+	log.Printf("PrepareConnect: streamid=%s clientSeq=%d serverSeq=%d streamDone=%v streamError=%q hasExited=%v\n", data.StreamMeta.Id, data.Seq, rtnData.Seq, rtnData.StreamDone, rtnData.StreamError, hasExited)
+	return rtnData, nil
+}
+
+func (jm *JobManager) StartStream(msc *MainServerConn) error {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+
+	if jm.Cmd == nil {
+		return fmt.Errorf("job not started")
+	}
+	if jm.pendingStreamMeta == nil {
+		return fmt.Errorf("no pending stream (call PrepareConnect first)")
+	}
+
+	err := msc.WshRpc.StreamBroker.AttachStreamWriter(jm.pendingStreamMeta, jm.StreamManager)
+	if err != nil {
+		return fmt.Errorf("failed to attach stream writer: %w", err)
+	}
+
+	err = jm.StreamManager.SetRwndSize(int(jm.pendingStreamMeta.RWnd))
+	if err != nil {
+		return fmt.Errorf("failed to set rwnd size: %w", err)
+	}
+
+	log.Printf("StartStream: streamid=%s rwnd=%d streaming started\n", jm.pendingStreamMeta.Id, jm.pendingStreamMeta.RWnd)
+	jm.pendingStreamMeta = nil
+	return nil
 }
 
 func GetJobSocketPath(jobId string) string {

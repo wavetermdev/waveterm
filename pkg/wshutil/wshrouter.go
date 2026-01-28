@@ -40,6 +40,10 @@ const (
 	RoutePrefix_Bare       = "bare:"
 )
 
+const RouterInputChQueueSize = 100
+
+var BacklogLogThresholds = map[int]bool{1: true, 5: true, 10: true, 20: true, 30: true, 40: true, 50: true, 100: true, 200: true, 500: true, 1000: true}
+
 // this works like a network switch
 
 // TODO maybe move the wps integration here instead of in wshserver
@@ -76,6 +80,12 @@ type messageWrap struct {
 	debugStr string
 }
 
+type backlogMessageWrap struct {
+	msgBytes      []byte
+	ingressLinkId baseds.LinkId
+	debugStr      string
+}
+
 type WshRouter struct {
 	lock           *sync.Mutex
 	isRootRouter   bool
@@ -90,6 +100,10 @@ type WshRouter struct {
 	upstreamBufCond     *sync.Cond
 	upstreamBuf         []messageWrap
 	upstreamLoopStarted bool
+
+	linkBacklogCond      *sync.Cond
+	linkMsgBacklog       map[baseds.LinkId][]backlogMessageWrap
+	backlogHighWaterMark map[baseds.LinkId]int
 
 	controlRpc *WshRpc
 }
@@ -134,17 +148,21 @@ var DefaultRouter *WshRouter
 
 func NewWshRouter() *WshRouter {
 	rtn := &WshRouter{
-		lock:           &sync.Mutex{},
-		nextLinkId:     0,
-		upstreamLinkId: baseds.NoLinkId,
-		inputCh:        make(chan baseds.RpcInputChType),
-		rpcMap:         make(map[string]rpcRoutingInfo),
-		linkMap:        make(map[baseds.LinkId]*linkMeta),
-		routeMap:       make(map[string]baseds.LinkId),
+		lock:                 &sync.Mutex{},
+		nextLinkId:           0,
+		upstreamLinkId:       baseds.NoLinkId,
+		inputCh:              make(chan baseds.RpcInputChType, RouterInputChQueueSize),
+		rpcMap:               make(map[string]rpcRoutingInfo),
+		linkMap:              make(map[baseds.LinkId]*linkMeta),
+		routeMap:             make(map[string]baseds.LinkId),
+		linkMsgBacklog:       make(map[baseds.LinkId][]backlogMessageWrap),
+		backlogHighWaterMark: make(map[baseds.LinkId]int),
 	}
 	rtn.upstreamBufCond = sync.NewCond(&rtn.upstreamBufLock)
+	rtn.linkBacklogCond = sync.NewCond(rtn.lock)
 	rtn.registerControlPlane()
 	go rtn.runServer()
+	go rtn.processBacklog()
 	return rtn
 }
 
@@ -152,6 +170,10 @@ func (router *WshRouter) IsRootRouter() bool {
 	router.lock.Lock()
 	defer router.lock.Unlock()
 	return router.isRootRouter
+}
+
+func (router *WshRouter) GetControlRpc() *WshRpc {
+	return router.controlRpc
 }
 
 func (router *WshRouter) SetAsRootRouter() {
@@ -192,7 +214,7 @@ func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
 		// nothing to do
 		return
 	}
-	lm.client.SendRpcMessage(msgBytes, baseds.NoLinkId, "eventrecv")
+	router.sendRpcMessageToLink(lm.linkId, lm.client, msgBytes, baseds.NoLinkId, "eventrecv")
 }
 
 func (router *WshRouter) handleNoRoute(msg RpcMessage, ingressLinkId baseds.LinkId) {
@@ -214,7 +236,7 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage, ingressLinkId baseds.Link
 			Data:    wshrpc.CommandMessageData{Message: nrErr.Error()},
 		}
 		respBytes, _ := json.Marshal(respMsg)
-		lm.client.SendRpcMessage(respBytes, baseds.NoLinkId, "no-route-err")
+		router.sendRpcMessageToLink(lm.linkId, lm.client, respBytes, baseds.NoLinkId, "no-route-err")
 		return
 	}
 	// send error response
@@ -266,12 +288,12 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string, comm
 	}
 	lm := router.getLinkForRoute(routeId)
 	if lm != nil {
-		lm.client.SendRpcMessage(msgBytes, ingressLinkId, "route")
+		router.sendRpcMessageToLink(lm.linkId, lm.client, msgBytes, ingressLinkId, "route")
 		return true
 	}
-	upstream := router.getUpstreamClient()
+	upstreamLinkId, upstream := router.getUpstreamClient()
 	if upstream != nil {
-		upstream.SendRpcMessage(msgBytes, ingressLinkId, "route-upstream")
+		router.sendRpcMessageToLink(upstreamLinkId, upstream, msgBytes, ingressLinkId, "route-upstream")
 		return true
 	}
 	if commandName != "" {
@@ -287,8 +309,43 @@ func (router *WshRouter) sendMessageToLink(msgBytes []byte, linkId baseds.LinkId
 	if lm == nil {
 		return false
 	}
-	lm.client.SendRpcMessage(msgBytes, ingressLinkId, "link")
+	router.sendRpcMessageToLink(lm.linkId, lm.client, msgBytes, ingressLinkId, "link")
 	return true
+}
+
+func (router *WshRouter) addToBacklog_withlock(linkId baseds.LinkId, msgBytes []byte, ingressLinkId baseds.LinkId, debugStr string) {
+	mapWasEmpty := len(router.linkMsgBacklog) == 0
+	backlog := router.linkMsgBacklog[linkId]
+	backlog = append(backlog, backlogMessageWrap{msgBytes: msgBytes, ingressLinkId: ingressLinkId, debugStr: debugStr})
+	router.linkMsgBacklog[linkId] = backlog
+
+	newLen := len(backlog)
+	highWater := router.backlogHighWaterMark[linkId]
+
+	if BacklogLogThresholds[newLen] && highWater < newLen {
+		log.Printf("[router] backlog for linkid=%d reached %d messages\n", linkId, newLen)
+	}
+
+	if newLen > highWater {
+		router.backlogHighWaterMark[linkId] = newLen
+	}
+
+	if mapWasEmpty {
+		router.linkBacklogCond.Signal()
+	}
+}
+
+func (router *WshRouter) sendRpcMessageToLink(linkId baseds.LinkId, client AbstractRpcClient, msgBytes []byte, ingressLinkId baseds.LinkId, debugStr string) {
+	router.lock.Lock()
+	defer router.lock.Unlock()
+	sent := false
+	backlog := router.linkMsgBacklog[linkId]
+	if len(backlog) == 0 {
+		sent = client.SendRpcMessage(msgBytes, ingressLinkId, debugStr)
+	}
+	if !sent {
+		router.addToBacklog_withlock(linkId, msgBytes, ingressLinkId, debugStr)
+	}
 }
 
 func (router *WshRouter) runServer() {
@@ -355,7 +412,8 @@ func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) er
 
 // this will never block, can be called while holding router.Lock
 func (router *WshRouter) queueUpstreamMessage(msgBytes []byte, debugStr string) {
-	if router.getUpstreamClient() == nil {
+	_, upstream := router.getUpstreamClient()
+	if upstream == nil {
 		return
 	}
 	router.upstreamBufLock.Lock()
@@ -381,10 +439,65 @@ func (router *WshRouter) runUpstreamBufferLoop() {
 		router.upstreamBuf = router.upstreamBuf[1:]
 		router.upstreamBufLock.Unlock()
 
-		upstream := router.getUpstreamClient()
+		upstreamLinkId, upstream := router.getUpstreamClient()
 		if upstream != nil {
-			upstream.SendRpcMessage(msg.msgBytes, baseds.NoLinkId, msg.debugStr)
+			router.sendRpcMessageToLink(upstreamLinkId, upstream, msg.msgBytes, baseds.NoLinkId, msg.debugStr)
 		}
+	}
+}
+
+func (router *WshRouter) drainLinkBacklog_withLock(linkId baseds.LinkId, lm *linkMeta, backlog []backlogMessageWrap) []backlogMessageWrap {
+	for len(backlog) > 0 {
+		msg := backlog[0]
+		sent := lm.client.SendRpcMessage(msg.msgBytes, msg.ingressLinkId, msg.debugStr)
+		if !sent {
+			return backlog
+		}
+		backlog = backlog[1:]
+	}
+	return backlog
+}
+
+func (router *WshRouter) processOneBacklogRound() {
+	router.lock.Lock()
+	defer router.lock.Unlock()
+	for linkId, backlog := range router.linkMsgBacklog {
+		lm := router.linkMap[linkId]
+		if lm == nil {
+			highWater := router.backlogHighWaterMark[linkId]
+			if highWater > 0 {
+				log.Printf("[router] backlog for linkid=%d cleared, link gone (highwater mark was %d messages)\n", linkId, highWater)
+			}
+			delete(router.linkMsgBacklog, linkId)
+			delete(router.backlogHighWaterMark, linkId)
+			continue
+		}
+		newBacklog := router.drainLinkBacklog_withLock(linkId, lm, backlog)
+		if len(newBacklog) == 0 {
+			highWater := router.backlogHighWaterMark[linkId]
+			if highWater > 0 {
+				log.Printf("[router] backlog for linkid=%d cleared (highwater mark was %d messages)\n", linkId, highWater)
+			}
+			delete(router.linkMsgBacklog, linkId)
+			delete(router.backlogHighWaterMark, linkId)
+			continue
+		}
+		router.linkMsgBacklog[linkId] = newBacklog
+	}
+}
+
+func (router *WshRouter) processBacklog() {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:processBacklog", recover())
+	}()
+	for {
+		router.lock.Lock()
+		for len(router.linkMsgBacklog) == 0 {
+			router.linkBacklogCond.Wait()
+		}
+		router.lock.Unlock()
+		router.processOneBacklogRound()
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
@@ -459,7 +572,7 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client Abst
 			isControlRoute := rpcMsg.Route == ControlRoute || rpcMsg.Route == ControlRootRoute
 			if !lm.trusted {
 				if !isControlRoute {
-					sendControlUnauthenticatedErrorResponse(rpcMsg, *lm)
+					sendControlUnauthenticatedErrorResponse(rpcMsg, *lm, router)
 					continue
 				}
 				log.Printf("wshrouter control-msg route=%s link=%s command=%s source=%s", rpcMsg.Route, lm.Name(), rpcMsg.Command, rpcMsg.Source)
@@ -703,17 +816,17 @@ func (router *WshRouter) bindRoute(linkId baseds.LinkId, routeId string, isSourc
 	return nil
 }
 
-func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
+func (router *WshRouter) getUpstreamClient() (baseds.LinkId, AbstractRpcClient) {
 	router.lock.Lock()
 	defer router.lock.Unlock()
 	if router.upstreamLinkId == baseds.NoLinkId {
-		return nil
+		return baseds.NoLinkId, nil
 	}
 	lm := router.linkMap[router.upstreamLinkId]
 	if lm == nil {
-		return nil
+		return baseds.NoLinkId, nil
 	}
-	return lm.client
+	return router.upstreamLinkId, lm.client
 }
 
 func (router *WshRouter) publishRouteToBroker(routeId string) {
@@ -731,7 +844,7 @@ func (router *WshRouter) unsubscribeFromBroker(routeId string) {
 	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteDown, Scopes: []string{routeId}})
 }
 
-func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta) {
+func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta, router *WshRouter) {
 	if cmdMsg.ReqId == "" {
 		return
 	}
@@ -741,5 +854,5 @@ func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMet
 		Error:  fmt.Sprintf("link is unauthenticated (%s), cannot call %q", linkMeta.Name(), cmdMsg.Command),
 	}
 	rtnBytes, _ := json.Marshal(rtnMsg)
-	linkMeta.client.SendRpcMessage(rtnBytes, baseds.NoLinkId, "unauthenticated")
+	router.sendRpcMessageToLink(linkMeta.linkId, linkMeta.client, rtnBytes, baseds.NoLinkId, "unauthenticated")
 }

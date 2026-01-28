@@ -106,11 +106,8 @@ func resolveThis(ctx context.Context, data wshrpc.CommandResolveIdsData, value s
 		return &waveobj.ORef{OType: waveobj.OType_Workspace, OID: wsId}, nil
 	}
 	if value == SimpleId_Client || value == SimpleId_Global {
-		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-		if err != nil {
-			return nil, fmt.Errorf("error getting client: %v", err)
-		}
-		return &waveobj.ORef{OType: waveobj.OType_Client, OID: client.OID}, nil
+		clientId := wstore.GetClientId()
+		return &waveobj.ORef{OType: waveobj.OType_Client, OID: clientId}, nil
 	}
 	if value == SimpleId_Temp {
 		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)

@@ -190,6 +190,7 @@ declare global {
 
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
+        routeid: string;
         env?: {[key: string]: string};
         initscripttext?: string;
         rpccontext?: RpcContext;
@@ -224,6 +225,11 @@ declare global {
         gopath: string;
         goversion: string;
         errorstring?: string;
+    };
+
+    // wshrpc.CommandConnServerInitData
+    type CommandConnServerInitData = {
+        clientid: string;
     };
 
     // wshrpc.CommandControllerAppendOutputData
@@ -380,6 +386,8 @@ declare global {
     // wshrpc.CommandJobInputData
     type CommandJobInputData = {
         jobid: string;
+        inputsessionid?: string;
+        seqnum?: number;
         inputdata64?: string;
         signame?: string;
         termsize?: TermSize;
@@ -389,6 +397,7 @@ declare global {
     type CommandJobPrepareConnectData = {
         streammeta: StreamMeta;
         seq: number;
+        termsize: TermSize;
     };
 
     // wshrpc.CommandJobStartStreamData
@@ -986,6 +995,7 @@ declare global {
         cmd?: string;
         "cmd:interactive"?: boolean;
         "cmd:login"?: boolean;
+        "cmd:persistent"?: boolean;
         "cmd:runonstart"?: boolean;
         "cmd:clearonstart"?: boolean;
         "cmd:runonce"?: boolean;
@@ -1142,6 +1152,7 @@ declare global {
         clientos: string;
         clientversion: string;
         shell: string;
+        homedir: string;
     };
 
     // wshrpc.RestartBuilderAndWaitResult
@@ -1155,6 +1166,7 @@ declare global {
     type RpcContext = {
         sockname?: string;
         routeid: string;
+        procroute?: boolean;
         blockid?: string;
         conn?: string;
         isrouter?: boolean;
