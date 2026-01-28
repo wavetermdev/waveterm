@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -435,32 +434,46 @@ func fileMvRun(cmd *cobra.Command, args []string) error {
 }
 
 func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) error {
-	width := 80 // default if we can't get terminal
-	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil {
+	width := 80
+	w, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err == nil {
 		width = w
 	}
 
-	numCols := width / 10
+	var allNames []string
+	maxLen := 0
+	for respUnion := range filesChan {
+		if respUnion.Error != nil {
+			return respUnion.Error
+		}
+		for _, f := range respUnion.Response.FileInfo {
+			allNames = append(allNames, f.Name)
+			if len(f.Name) > maxLen {
+				maxLen = len(f.Name)
+			}
+		}
+	}
+
+	colWidth := maxLen + 2
+	numCols := width / colWidth
 	if numCols < 1 {
 		numCols = 1
 	}
 
-	return colprint.PrintColumnsArray(
-		filesChan,
-		numCols,
-		100, // sample size
-		func(respUnion wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) ([]string, error) {
-			if respUnion.Error != nil {
-				return []string{}, respUnion.Error
-			}
-			strs := make([]string, len(respUnion.Response.FileInfo))
-			for i, f := range respUnion.Response.FileInfo {
-				strs[i] = f.Name
-			}
-			return strs, nil
-		},
-		os.Stdout,
-	)
+	col := 0
+	for _, name := range allNames {
+		fmt.Fprintf(os.Stdout, "%-*s", colWidth, name)
+		col++
+		if col >= numCols {
+			fmt.Fprintln(os.Stdout)
+			col = 0
+		}
+	}
+	if col > 0 {
+		fmt.Fprintln(os.Stdout)
+	}
+
+	return nil
 }
 
 func filePrintLong(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) error {
