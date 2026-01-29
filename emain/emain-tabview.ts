@@ -20,7 +20,11 @@ import {
 } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
 
-function handleWindowsMenuAccelerators(waveEvent: WaveKeyboardEvent, tabView: WaveTabView): boolean {
+function handleWindowsMenuAccelerators(
+    waveEvent: WaveKeyboardEvent,
+    tabView: WaveTabView,
+    fullConfig: FullConfigType
+): boolean {
     const waveWindow = getWaveWindowById(tabView.waveWindowId);
 
     if (checkKeyPressed(waveEvent, "Ctrl:Shift:n")) {
@@ -34,7 +38,11 @@ function handleWindowsMenuAccelerators(waveEvent: WaveKeyboardEvent, tabView: Wa
     }
 
     if (checkKeyPressed(waveEvent, "Ctrl:v")) {
-        tabView.webContents.paste();
+        const ctrlVPaste = fullConfig?.settings?.["app:ctrlvpaste"];
+        const shouldPaste = ctrlVPaste ?? true;
+        if (shouldPaste) {
+            tabView.webContents.paste();
+        }
         return true;
     }
 
@@ -324,7 +332,7 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
         }
 
         if (unamePlatform === "win32" && input.type == "keyDown") {
-            if (handleWindowsMenuAccelerators(waveEvent, tabView)) {
+            if (handleWindowsMenuAccelerators(waveEvent, tabView, fullConfig)) {
                 e.preventDefault();
                 return;
             }
