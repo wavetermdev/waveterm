@@ -10,8 +10,8 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
     const bgColor = isYellow ? "bg-yellow-900/30" : "bg-red-900/30";
     const hoverBg = isYellow ? "hover:bg-yellow-700/60" : "hover:bg-red-700/60";
     const borderColor = isYellow ? "border-yellow-700/50" : "border-red-700/50";
-    const textColor = isYellow ? "text-yellow-200" : "text-red-200";
-    const iconColor = isYellow ? "text-yellow-400" : "text-red-400";
+    const textColor = isYellow ? "text-warning" : "text-error";
+    const iconColor = isYellow ? "text-warning" : "text-error";
     const iconHoverBg =
         showClose && isYellow
             ? "hover:has-[.close:hover]:bg-yellow-900/30"
@@ -88,13 +88,13 @@ const AIRateLimitStripComponent = memo(() => {
     if (preq > 0 && preq <= 5) {
         return (
             <div>
-                <div className="bg-yellow-900/30 border-b border-yellow-700/50 px-2 py-1.5 flex items-center gap-1 text-[11px] text-yellow-200">
-                    <i className="fa fa-sparkles text-yellow-400"></i>
+                <div className="bg-yellow-900/30 border-b border-yellow-700/50 px-2 py-1.5 flex items-center gap-1 text-[11px] text-warning">
+                    <i className="fa fa-sparkles text-warning"></i>
                     <span>
                         {preqlimit - preq}/{preqlimit} Premium Used
                     </span>
                     <div className="flex-1"></div>
-                    <span className="text-yellow-300/80">Resets in {timeRemaining}</span>
+                    <span className="text-warning/80">Resets in {timeRemaining}</span>
                 </div>
                 <GetMoreButton variant="yellow" />
             </div>
@@ -104,15 +104,15 @@ const AIRateLimitStripComponent = memo(() => {
     if (preq === 0 && req > 0) {
         return (
             <div>
-                <div className="bg-yellow-900/30 border-b border-yellow-700/50 px-2 pr-1 py-1.5 flex items-center gap-1 text-[11px] text-yellow-200">
-                    <i className="fa fa-check text-yellow-400"></i>
+                <div className="bg-yellow-900/30 border-b border-yellow-700/50 px-2 pr-1 py-1.5 flex items-center gap-1 text-[11px] text-warning">
+                    <i className="fa fa-check text-warning"></i>
                     <span>
                         {preqlimit}/{preqlimit} Premium
                     </span>
-                    <span className="text-yellow-400">•</span>
+                    <span className="text-warning">•</span>
                     <span className="font-medium">Now on Basic</span>
                     <div className="flex-1"></div>
-                    <span className="text-yellow-300/80">Resets in {timeRemaining}</span>
+                    <span className="text-warning/80">Resets in {timeRemaining}</span>
                 </div>
                 <GetMoreButton variant="yellow" />
             </div>
@@ -122,15 +122,15 @@ const AIRateLimitStripComponent = memo(() => {
     if (req === 0 && preq === 0) {
         return (
             <div>
-                <div className="bg-red-900/30 border-b border-red-700/50 px-2 py-1.5 flex items-center gap-2 text-[11px] text-red-200">
-                    <i className="fa fa-check text-red-400"></i>
+                <div className="bg-red-900/30 border-b border-red-700/50 px-2 py-1.5 flex items-center gap-2 text-[11px] text-error">
+                    <i className="fa fa-check text-error"></i>
                     <span>
                         {totalLimit}/{totalLimit} Reqs
                     </span>
-                    <span className="text-red-400">•</span>
+                    <span className="text-error">•</span>
                     <span className="font-medium">Limit Reached</span>
                     <div className="flex-1"></div>
-                    <span className="text-red-300/80">Resets in {timeRemaining}</span>
+                    <span className="text-error/80">Resets in {timeRemaining}</span>
                 </div>
                 <GetMoreButton variant="red" showClose={false} />
             </div>

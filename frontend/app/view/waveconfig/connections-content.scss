@@ -142,10 +142,10 @@
     background: var(--panel-bg-color);
     border-bottom: 1px solid var(--border-color);
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--secondary-text-color);
+    color: var(--grey-text-color);
 
     i {
         font-size: 11px;
@@ -225,12 +225,12 @@
         flex-shrink: 0;
 
         &.local {
-            background: rgba(76, 175, 80, 0.15);
+            background: rgb(from var(--success-color) r g b / 0.15);
             color: var(--success-color, #4caf50);
         }
 
         &.remote {
-            background: rgba(33, 150, 243, 0.15);
+            background: rgb(from var(--accent-color) r g b / 0.15);
             color: var(--accent-color);
         }
     }
@@ -491,12 +491,12 @@
         flex-shrink: 0;
 
         &.local {
-            background: rgba(76, 175, 80, 0.15);
+            background: rgb(from var(--success-color) r g b / 0.15);
             color: var(--success-color, #4caf50);
         }
 
         &.remote {
-            background: rgba(33, 150, 243, 0.15);
+            background: rgb(from var(--accent-color) r g b / 0.15);
             color: var(--accent-color);
         }
 
@@ -1074,7 +1074,7 @@
     border-radius: 4px;
 
     &.local {
-        background: rgba(76, 175, 80, 0.15);
+        background: rgb(from var(--success-color) r g b / 0.15);
         color: var(--success-color, #4caf50);
     }
 

@@ -46,8 +46,8 @@
     display: flex;
     gap: 16px;
     padding: 16px 20px;
-    background: linear-gradient(135deg, rgb(234 179 8 / 0.15), rgb(234 179 8 / 0.05));
-    border: 1px solid rgb(234 179 8 / 0.4);
+    background: linear-gradient(135deg, rgb(from var(--warning-color) r g b / 0.15), rgb(from var(--warning-color) r g b / 0.05));
+    border: 1px solid rgb(from var(--warning-color) r g b / 0.4);
     border-radius: 8px;
     align-items: flex-start;
 
@@ -58,9 +58,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgb(234 179 8 / 0.2);
+        background: rgb(from var(--warning-color) r g b / 0.2);
         border-radius: 8px;
-        color: rgb(234 179 8);
+        color: var(--warning-color);
         font-size: 20px;
     }
 
@@ -72,7 +72,7 @@
         margin: 0 0 8px;
         font-size: 16px;
         font-weight: 600;
-        color: rgb(250 204 21);
+        color: var(--warning-color);
     }
 
     .banner-description {

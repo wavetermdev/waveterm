@@ -10,7 +10,7 @@
     flex-direction: column;
     gap: 12px;
     padding: 12px;
-    background: var(--form-element-bg-color);
+    background: var(--card-bg-color);
     border-radius: 8px;
     border: 1px solid var(--form-element-border-color);
 }
@@ -87,8 +87,8 @@
     align-items: flex-start;
     gap: 12px;
     padding: 12px;
-    background: rgba(255, 193, 7, 0.1);
-    border: 1px solid rgba(255, 193, 7, 0.3);
+    background: rgb(from var(--warning-color) r g b / 0.1);
+    border: 1px solid rgb(from var(--warning-color) r g b / 0.3);
     border-radius: 6px;
 
     i {
@@ -200,8 +200,8 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(255, 107, 107, 0.1);
-    border: 1px solid rgba(255, 107, 107, 0.3);
+    background: rgb(from var(--error-color) r g b / 0.1);
+    border: 1px solid rgb(from var(--error-color) r g b / 0.3);
     border-radius: 4px;
     color: var(--error-color, #ff6b6b);
     font-size: 12px;

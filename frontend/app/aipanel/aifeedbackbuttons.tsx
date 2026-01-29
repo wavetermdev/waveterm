@@ -48,7 +48,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                     "p-1.5 rounded cursor-pointer transition-colors",
                     thumbsUpClicked
                         ? "text-accent"
-                        : "text-secondary hover:bg-zinc-700 hover:text-primary"
+                        : "text-secondary hover:bg-hover hover:text-primary"
                 )}
                 title="Good Response"
             >
@@ -60,7 +60,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                     "p-1.5 rounded cursor-pointer transition-colors",
                     thumbsDownClicked
                         ? "text-accent"
-                        : "text-secondary hover:bg-zinc-700 hover:text-primary"
+                        : "text-secondary hover:bg-hover hover:text-primary"
                 )}
                 title="Bad Response"
             >
@@ -73,7 +73,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                         "p-1.5 rounded cursor-pointer transition-colors",
                         copied
                             ? "text-success"
-                            : "text-secondary hover:bg-zinc-700 hover:text-primary"
+                            : "text-secondary hover:bg-hover hover:text-primary"
                     )}
                     title="Copy Message"
                 >

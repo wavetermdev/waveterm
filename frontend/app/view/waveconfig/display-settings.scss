@@ -1,83 +1,64 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+// Display Settings — reuses .setting-row from settings-controls.scss
+// Only defines subsection structure and edge-to-edge overrides.
+
 .display-settings {
     display: flex;
     flex-direction: column;
-    gap: 20px;
 }
 
 .display-subsection {
     display: flex;
     flex-direction: column;
-    gap: 8px;
 
     .display-subsection-title {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 11px;
+        font-weight: 500;
         color: var(--secondary-text-color);
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding-bottom: 4px;
+        padding: 6px 16px;
         border-bottom: 1px solid var(--border-color);
+        // Modified indicator: same 3px left accent as .setting-row.modified
+        border-left: 3px solid transparent;
+        // Second shade: lighter than body but darker than heading (--highlight-bg-color)
+        background: linear-gradient(var(--hover-bg-color), var(--hover-bg-color)), var(--main-bg-color);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+        // Extend to edges of collapsible section (cancel section-inner's 16px padding)
+        margin-left: -16px;
+        margin-right: -16px;
+
+        &.modified {
+            border-left-color: #e2c08d;
+        }
+    }
+
+    // First subsection sits flush against the heading — cancel section-inner's 16px top padding
+    &:first-child .display-subsection-title {
+        margin-top: -16px;
     }
 
     .display-subsection-content {
         display: flex;
         flex-direction: column;
-        gap: 4px;
-    }
-}
 
-.display-setting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 4px;
-    border-radius: 4px;
-    min-height: 36px;
+        // Extend setting rows to edges of collapsible section
+        .setting-row {
+            margin-left: -16px;
+            margin-right: -16px;
 
-    &:hover {
-        background: var(--hover-bg-color);
-    }
-
-    .display-setting-info {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex: 1;
-        min-width: 0;
-
-        .display-setting-label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--main-text-color);
-            white-space: nowrap;
-        }
-
-        .display-setting-restart {
-            font-size: 10px;
-            color: var(--warning-color, #e8a838);
-            background: rgba(232, 168, 56, 0.1);
-            padding: 1px 6px;
-            border-radius: 3px;
-            white-space: nowrap;
-        }
-
-        .display-setting-description {
-            font-size: 11px;
-            color: var(--grey-text-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            // Override base setting-row hover (var(--hover-bg-color)) with
+            // the same very subtle hover used in the General tab
+            &:hover {
+                background: rgb(from var(--main-text-color) r g b / 0.03);
+            }
         }
     }
 
-    .display-setting-control {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        min-width: 140px;
-        justify-content: flex-end;
+    // Last row in last subsection: no bottom border (matches General tab)
+    &:last-child .display-subsection-content .setting-row:last-child {
+        border-bottom: none;
     }
 }

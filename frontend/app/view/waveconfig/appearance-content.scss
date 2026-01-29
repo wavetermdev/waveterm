@@ -10,29 +10,14 @@
     gap: 16px;
 }
 
-.appearance-section {
+// All CollapsibleSection content areas that use .display-subsection
+// (Theme, Terminal Color Scheme, OMP Integration) get vertical padding
+// for non-setting-row content.
+.theme-subsections {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 0 4px;
 
-    .appearance-section-label {
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--grey-text-color);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+    .display-subsection-content {
+        padding: 12px 0;
     }
-}
-
-.omp-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.section-divider {
-    height: 1px;
-    background: var(--border-color);
-    margin: 8px 0;
 }

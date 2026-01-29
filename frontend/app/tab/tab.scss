@@ -51,8 +51,9 @@
         content: "";
         position: absolute;
         left: 0;
+        top: 0;
+        bottom: 0;
         width: 1px;
-        height: 14px;
         border-right: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
     }
 
@@ -73,6 +74,11 @@
     &.active {
         // Active tab: 75% white overlay on tab bar background (brightest)
         background: rgb(255 255 255 / 0.12);
+        // Drop shadow and side shadows to distinguish active tab
+        box-shadow:
+            0 2px 4px rgb(0 0 0 / 0.3),
+            inset 1px 0 0 rgb(255 255 255 / 0.06),
+            inset -1px 0 0 rgb(255 255 255 / 0.06);
 
         .tab-inner {
             border-color: transparent;

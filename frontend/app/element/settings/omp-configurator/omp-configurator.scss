@@ -213,8 +213,8 @@
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background: rgba(229, 57, 53, 0.1);
-    border: 1px solid rgba(229, 57, 53, 0.3);
+    background: rgb(from var(--error-color) r g b / 0.1);
+    border: 1px solid rgb(from var(--error-color) r g b / 0.3);
     border-radius: 6px;
     color: var(--error-color, #e53935);
 
@@ -247,8 +247,8 @@
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background: rgba(255, 167, 38, 0.1);
-    border: 1px solid rgba(255, 167, 38, 0.3);
+    background: rgb(from var(--warning-color) r g b / 0.1);
+    border: 1px solid rgb(from var(--warning-color) r g b / 0.3);
     border-radius: 6px;
     color: var(--warning-color, #ffa726);
     font-size: 13px;
@@ -418,7 +418,7 @@
 }
 
 .omp-block-item {
-    background: var(--form-element-bg-color);
+    background: var(--card-bg-color);
     border: 1px solid var(--form-element-border-color);
     border-radius: 6px;
     padding: 12px;
@@ -831,7 +831,7 @@
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: var(--form-element-bg-color);
+    background: var(--card-bg-color);
     border: 1px solid var(--form-element-border-color);
     border-radius: 6px;
     cursor: pointer;

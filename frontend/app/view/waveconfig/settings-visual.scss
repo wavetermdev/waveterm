@@ -189,7 +189,7 @@ $sidebar-width: 200px;
     .settings-search {
         display: flex;
         align-items: center;
-        background: var(--form-element-bg-color);
+        background: var(--card-bg-color);
         border: 1px solid var(--form-element-border-color);
         border-radius: 6px;
         padding: 0 12px;
@@ -202,7 +202,7 @@ $sidebar-width: 200px;
         &:focus-within {
             border-color: var(--accent-color);
             box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
-            background: linear-gradient(rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.15)), var(--form-element-bg-color);
+            background: linear-gradient(var(--card-bg-color), var(--card-bg-color)), var(--form-element-bg-color);
         }
 
         .search-icon {
@@ -401,19 +401,20 @@ $sidebar-width: 200px;
                 padding: 6px 16px;
                 font-weight: 500;
                 font-size: 11px;
-                color: var(--grey-text-color);
+                color: var(--secondary-text-color);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                // Use theme variable for light mode compatibility
-                background: var(--panel-bg-color);
+                // Second shade: lighter than body but darker than heading (--highlight-bg-color)
+                background: linear-gradient(var(--hover-bg-color), var(--hover-bg-color)), var(--main-bg-color);
                 border-bottom: 1px solid var(--border-color);
                 margin: 0;
+                box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
                 transition: box-shadow 0.15s ease;
             }
 
-            // When subcategory header is stuck (detected by JS)
+            // When subcategory header is stuck: stronger shadow
             .settings-subcategory-header.is-stuck {
-                box-shadow: 0 2px 4px rgb(0 0 0 / 0.08);
+                box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
             }
 
             .settings-subcategory-content {
@@ -427,7 +428,7 @@ $sidebar-width: 200px;
                 transition: background-color 0.15s ease;
 
                 &:hover {
-                    background: var(--hover-bg-color);
+                    background: rgb(from var(--main-text-color) r g b / 0.03);
                 }
 
                 &:last-child {
@@ -877,7 +878,7 @@ $sidebar-width: 200px;
     }
 
     .setting-row:focus-within {
-        background: var(--hover-bg-color);
+        background: rgb(from var(--main-text-color) r g b / 0.03);
     }
 }
 

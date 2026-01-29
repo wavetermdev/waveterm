@@ -95,13 +95,13 @@ const AIToolApprovalButtons = memo(({ count, onApprove, onDeny }: AIToolApproval
         <div className="mt-2 flex gap-2">
             <button
                 onClick={onApprove}
-                className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
+                className="px-3 py-1 border border-border text-secondary hover:text-primary text-sm rounded cursor-pointer transition-colors"
             >
                 {approveText}
             </button>
             <button
                 onClick={onDeny}
-                className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
+                className="px-3 py-1 border border-border text-secondary hover:text-primary text-sm rounded cursor-pointer transition-colors"
             >
                 {denyText}
             </button>
@@ -123,15 +123,15 @@ const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItem
             ? "text-success"
             : part.data.status === "error"
               ? "text-error"
-              : "text-gray-400";
+              : "text-muted";
     const effectiveErrorMessage = part.data.errormessage || (effectiveApproval === "timeout" ? "Not approved" : null);
 
     return (
         <div className="text-sm pl-2 flex items-start gap-1.5">
             <span className={cn("font-bold flex-shrink-0", statusColor)}>{statusIcon}</span>
             <div className="flex-1">
-                <span className="text-gray-400">{part.data.tooldesc}</span>
-                {effectiveErrorMessage && <div className="text-red-300 mt-0.5">{effectiveErrorMessage}</div>}
+                <span className="text-muted">{part.data.tooldesc}</span>
+                {effectiveErrorMessage && <div className="text-error mt-0.5">{effectiveErrorMessage}</div>}
             </div>
         </div>
     );
@@ -166,7 +166,7 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     };
 
     return (
-        <div className="flex items-start gap-2 p-2 rounded bg-zinc-800/60 border border-zinc-700">
+        <div className="flex items-start gap-2 p-2 rounded bg-hover border border-border">
             <div className="flex-1">
                 <div className="font-semibold">Reading Files</div>
                 <div className="mt-1 space-y-0.5">
@@ -200,7 +200,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
     const statusColor =
-        toolData.status === "completed" ? "text-success" : toolData.status === "error" ? "text-error" : "text-gray-400";
+        toolData.status === "completed" ? "text-success" : toolData.status === "error" ? "text-error" : "text-muted";
 
     const baseApproval = userApprovalOverride || toolData.approval;
     const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
@@ -267,7 +267,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     return (
         <div
-            className={cn("flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700", statusColor)}
+            className={cn("flex flex-col gap-1 p-2 rounded bg-hover border border-border", statusColor)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -285,7 +285,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                                 recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:open" });
                                 model.openRestoreBackupModal(toolData.toolcallid);
                             }}
-                            className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"
+                            className="flex-shrink-0 px-1.5 py-0.5 border border-border hover:bg-hover rounded cursor-pointer transition-colors flex items-center gap-1 text-muted"
                             title="Restore backup file"
                         >
                             <span className="text-xs">Revert File</span>
@@ -295,7 +295,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                 {isFileWriteTool && toolData.inputfilename && (
                     <button
                         onClick={handleOpenDiff}
-                        className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"
+                        className="flex-shrink-0 px-1.5 py-0.5 border border-border hover:bg-hover rounded cursor-pointer transition-colors flex items-center gap-1 text-muted"
                         title="Open in diff viewer"
                     >
                         <span className="text-xs">Show Diff</span>
@@ -303,9 +303,9 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     </button>
                 )}
             </div>
-            {toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-gray-400 pl-6" />}
+            {toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-muted pl-6" />}
             {(toolData.errormessage || effectiveApproval === "timeout") && (
-                <div className="text-sm text-red-300 pl-6">{toolData.errormessage || "Not approved"}</div>
+                <div className="text-sm text-error pl-6">{toolData.errormessage || "Not approved"}</div>
             )}
             {effectiveApproval === "needs-approval" && (
                 <div className="pl-6">
@@ -327,13 +327,13 @@ const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
     const progressData = part.data;
 
     return (
-        <div className="flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700">
+        <div className="flex flex-col gap-1 p-2 rounded bg-hover border border-border">
             <div className="flex items-center gap-2">
-                <i className="fa fa-spinner fa-spin text-gray-400"></i>
+                <i className="fa fa-spinner fa-spin text-muted"></i>
                 <div className="font-semibold">{progressData.toolname}</div>
             </div>
             {progressData.statuslines && progressData.statuslines.length > 0 && (
-                <ToolDesc text={progressData.statuslines} className="text-sm text-gray-400 pl-6 space-y-0.5" />
+                <ToolDesc text={progressData.statuslines} className="text-sm text-muted pl-6 space-y-0.5" />
             )}
         </div>
     );

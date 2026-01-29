@@ -23,7 +23,7 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: var(--form-element-bg-color);
+    background: var(--card-bg-color);
     border: 1px solid var(--form-element-border-color);
     border-radius: 6px;
 
@@ -105,7 +105,7 @@
     padding: 8px;
     border: 2px solid var(--form-element-border-color);
     border-radius: 8px;
-    background: var(--form-element-bg-color);
+    background: var(--card-bg-color);
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
     position: relative;

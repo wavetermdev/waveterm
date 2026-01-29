@@ -27,7 +27,7 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
             className={cn(
                 "w-full flex flex-col gap-0.5 px-3 transition-colors text-left",
                 isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5",
-                isDisabled ? "text-zinc-500" : "text-zinc-300 hover:bg-zinc-700 cursor-pointer"
+                isDisabled ? "text-muted" : "text-secondary hover:bg-hover cursor-pointer"
             )}
         >
             <div className="flex items-center gap-2 w-full">
@@ -40,7 +40,7 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
             </div>
             {config["display:description"] && (
                 <div
-                    className={cn("text-xs pl-5", isDisabled ? "text-gray-500" : "text-muted")}
+                    className={cn("text-xs pl-5", isDisabled ? "text-muted/60" : "text-muted")}
                     style={{ whiteSpace: "pre-line" }}
                 >
                     {config["display:description"]}
@@ -188,8 +188,8 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
-                    isOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
+                    "group flex items-center gap-1.5 px-2 py-1 text-xs text-secondary hover:text-primary rounded transition-colors cursor-pointer border border-border",
+                    isOpen ? "bg-hover" : "hover:bg-hover"
                 )}
                 title={`AI Mode: ${displayName}`}
             >
@@ -209,7 +209,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                     }
                     placement="bottom"
                 >
-                    <div className="flex items-center gap-1 text-[10px] text-yellow-600 mt-1 ml-1 cursor-default">
+                    <div className="flex items-center gap-1 text-[10px] text-warning mt-1 ml-1 cursor-default">
                         <i className="fa fa-triangle-exclamation"></i>
                         <span>No Tools Support</span>
                     </div>
@@ -219,26 +219,26 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-600 rounded shadow-lg z-50 min-w-[280px]">
+                    <div className="absolute top-full left-0 mt-1 bg-panel border border-border rounded shadow-lg z-50 min-w-[280px]">
                         {sections.map((section, sectionIndex) => {
                             const isFirstSection = sectionIndex === 0;
                             const isLastSection = sectionIndex === sections.length - 1;
 
                             return (
                                 <div key={section.sectionName}>
-                                    {!isFirstSection && <div className="border-t border-gray-600 my-2" />}
+                                    {!isFirstSection && <div className="border-t border-border my-2" />}
                                     {showSectionHeaders && (
                                         <>
                                             <div
                                                 className={cn(
-                                                    "pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide",
+                                                    "pb-1 text-center text-[10px] text-muted uppercase tracking-wide",
                                                     isFirstSection ? "pt-2" : "pt-0"
                                                 )}
                                             >
                                                 {section.sectionName}
                                             </div>
                                             {section.isIncompatible && (
-                                                <div className="text-center text-[11px] text-red-300 pb-1">
+                                                <div className="text-center text-[11px] text-error pb-1">
                                                     (Start a New Chat to Switch)
                                                 </div>
                                             )}
@@ -266,17 +266,17 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                 </div>
                             );
                         })}
-                        <div className="border-t border-gray-600 my-1" />
+                        <div className="border-t border-border my-1" />
                         <button
                             onClick={handleNewChatClick}
-                            className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
+                            className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-secondary hover:bg-hover cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("plus", false)}></i>
                             <span className="text-sm">New Chat</span>
                         </button>
                         <button
                             onClick={handleConfigureClick}
-                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
+                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-secondary hover:bg-hover cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("gear", false)}></i>
                             <span className="text-sm">Configure Modes</span>

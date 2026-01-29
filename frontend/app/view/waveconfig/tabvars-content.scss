@@ -23,8 +23,8 @@
     align-items: center;
     gap: 8px;
     padding: 12px 16px;
-    background: rgba(239, 68, 68, 0.1);
-    border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+    background: rgb(from var(--error-color) r g b / 0.1);
+    border-bottom: 1px solid rgb(from var(--error-color) r g b / 0.2);
 
     > div {
         flex: 1;
@@ -476,7 +476,7 @@
     border: 1px solid var(--error-color);
 
     &:hover:not(:disabled) {
-        background: rgba(239, 68, 68, 0.1);
+        background: rgb(from var(--error-color) r g b / 0.1);
     }
 }
 
@@ -489,8 +489,8 @@
     flex-direction: column;
     gap: 16px;
     padding: 16px;
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: rgb(from var(--error-color) r g b / 0.1);
+    border: 1px solid rgb(from var(--error-color) r g b / 0.2);
     border-radius: 8px;
     margin-top: 8px;
 }
