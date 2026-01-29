@@ -23,7 +23,7 @@ const (
 	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated"
 	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"
 	Event_AIModeConfig        = "waveai:modeconfig"
-	Event_TabBellIndicator    = "tab:bellindicator"
+	Event_TabIndicator        = "tab:indicator"
 )
 
 type WaveEvent struct {

@@ -307,9 +307,9 @@ class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
-    // command "getalltabbellindicators" [call]
-    GetAllTabBellIndicatorsCommand(client: WshClient, opts?: RpcOpts): Promise<{[key: string]: boolean}> {
-        return client.wshRpcCall("getalltabbellindicators", null, opts);
+    // command "getalltabindicators" [call]
+    GetAllTabIndicatorsCommand(client: WshClient, opts?: RpcOpts): Promise<{[key: string]: TabIndicator}> {
+        return client.wshRpcCall("getalltabindicators", null, opts);
     }
 
     // command "getallvars" [call]

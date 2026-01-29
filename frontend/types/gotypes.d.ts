@@ -1488,10 +1488,19 @@ declare global {
         blockids: string[];
     };
 
-    // wshrpc.TabBellIndicatorEventData
-    type TabBellIndicatorEventData = {
+    // wshrpc.TabIndicator
+    type TabIndicator = {
+        icon: string;
+        color?: string;
+        priority: number;
+        clearonfocus?: boolean;
+        persistentindicator?: TabIndicator;
+    };
+
+    // wshrpc.TabIndicatorEventData
+    type TabIndicatorEventData = {
         tabid: string;
-        bellindicator: boolean;
+        indicator: TabIndicator;
     };
 
     // waveobj.TermSize

@@ -6,7 +6,16 @@ import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { atoms, createBlock, getSettingsPrefixAtom, getTabBellIndicatorAtom, globalStore, isDev, removeFlashError, setTabBellIndicator } from "@/store/global";
+import {
+    atoms,
+    clearTabIndicatorFromFocus,
+    createBlock,
+    getSettingsPrefixAtom,
+    getTabIndicatorAtom,
+    globalStore,
+    isDev,
+    removeFlashError,
+} from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -205,24 +214,25 @@ const AppKeyHandlers = () => {
     return null;
 };
 
-const TabBellIndicatorAutoClearing = () => {
+const TabIndicatorAutoClearing = () => {
     const tabId = useAtomValue(atoms.staticTabId);
-    const hasBellIndicator = useAtomValue(getTabBellIndicatorAtom(tabId));
+    const indicator = useAtomValue(getTabIndicatorAtom(tabId));
     const documentHasFocus = useAtomValue(atoms.documentHasFocus);
 
     useEffect(() => {
-        if (!hasBellIndicator || !documentHasFocus) {
+        if (!indicator || !documentHasFocus || !indicator.clearonfocus) {
             return;
         }
 
         const timeoutId = setTimeout(() => {
-            if (globalStore.get(atoms.documentHasFocus)) {
-                setTabBellIndicator(tabId, false);
+            const currentIndicator = globalStore.get(getTabIndicatorAtom(tabId));
+            if (globalStore.get(atoms.documentHasFocus) && currentIndicator?.clearonfocus) {
+                clearTabIndicatorFromFocus(tabId);
             }
         }, 3000);
 
         return () => clearTimeout(timeoutId);
-    }, [tabId, hasBellIndicator, documentHasFocus]);
+    }, [tabId, indicator, documentHasFocus]);
 
     return null;
 };
@@ -326,7 +336,7 @@ const AppInner = () => {
             <AppKeyHandlers />
             <AppFocusHandler />
             <AppSettingsUpdater />
-            <TabBellIndicatorAutoClearing />
+            <TabIndicatorAutoClearing />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>

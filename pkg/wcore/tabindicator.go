@@ -9,81 +9,80 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
 type TabIndicatorStore struct {
-	lock          *sync.Mutex
-	bellIndicators map[string]bool // tabId -> bell indicator state
+	lock       *sync.Mutex
+	indicators map[string]*wshrpc.TabIndicator
 }
 
 var globalTabIndicatorStore = &TabIndicatorStore{
-	lock:          &sync.Mutex{},
-	bellIndicators: make(map[string]bool),
+	lock:       &sync.Mutex{},
+	indicators: make(map[string]*wshrpc.TabIndicator),
 }
 
 func InitTabIndicatorStore() {
 	log.Printf("initializing tab indicator store\n")
 	rpcClient := wshclient.GetBareRpcClient()
-	rpcClient.EventListener.On(wps.Event_TabBellIndicator, handleTabBellIndicatorEvent)
+	rpcClient.EventListener.On(wps.Event_TabIndicator, handleTabIndicatorEvent)
 	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
-		Event:     wps.Event_TabBellIndicator,
+		Event:     wps.Event_TabIndicator,
 		AllScopes: true,
 	}, nil)
 }
 
-type TabBellIndicatorData struct {
-	TabId          string `json:"tabid"`
-	BellIndicator bool   `json:"bellindicator"`
-}
-
-func handleTabBellIndicatorEvent(event *wps.WaveEvent) {
-	if event.Event != wps.Event_TabBellIndicator {
+func handleTabIndicatorEvent(event *wps.WaveEvent) {
+	if event.Event != wps.Event_TabIndicator {
 		return
 	}
-	var data TabBellIndicatorData
+	var data wshrpc.TabIndicatorEventData
 	err := utilfn.ReUnmarshal(&data, event.Data)
 	if err != nil {
-		log.Printf("error unmarshaling TabBellIndicatorData: %v\n", err)
+		log.Printf("error unmarshaling TabIndicatorEventData: %v\n", err)
 		return
 	}
-	SetTabBellIndicator(data.TabId, data.BellIndicator)
+	setTabIndicator(data.TabId, data.Indicator)
 }
 
-func SetTabBellIndicator(tabId string, value bool) {
+func setTabIndicator(tabId string, indicator *wshrpc.TabIndicator) {
 	globalTabIndicatorStore.lock.Lock()
 	defer globalTabIndicatorStore.lock.Unlock()
-	if value {
-		globalTabIndicatorStore.bellIndicators[tabId] = true
-	} else {
-		delete(globalTabIndicatorStore.bellIndicators, tabId)
+	if indicator == nil {
+		delete(globalTabIndicatorStore.indicators, tabId)
+		log.Printf("tab indicator cleared: tabId=%s\n", tabId)
+		return
 	}
-	log.Printf("tab bell indicator set: tabId=%s value=%v\n", tabId, value)
+	currentIndicator := globalTabIndicatorStore.indicators[tabId]
+	if currentIndicator == nil {
+		globalTabIndicatorStore.indicators[tabId] = indicator
+		log.Printf("tab indicator set: tabId=%s indicator=%v\n", tabId, indicator)
+		return
+	}
+	if indicator.Priority >= currentIndicator.Priority {
+		if indicator.ClearOnFocus && !currentIndicator.ClearOnFocus {
+			indicator.PersistentIndicator = currentIndicator
+		}
+		globalTabIndicatorStore.indicators[tabId] = indicator
+		log.Printf("tab indicator updated: tabId=%s indicator=%v\n", tabId, indicator)
+	} else {
+		log.Printf("tab indicator not updated (lower priority): tabId=%s currentPriority=%v newPriority=%v\n", tabId, currentIndicator.Priority, indicator.Priority)
+	}
 }
 
-func GetTabBellIndicator(tabId string) bool {
+func GetTabIndicator(tabId string) *wshrpc.TabIndicator {
 	globalTabIndicatorStore.lock.Lock()
 	defer globalTabIndicatorStore.lock.Unlock()
-	return globalTabIndicatorStore.bellIndicators[tabId]
+	return globalTabIndicatorStore.indicators[tabId]
 }
 
-func GetAllTabBellIndicators() map[string]bool {
+func GetAllTabIndicators() map[string]*wshrpc.TabIndicator {
 	globalTabIndicatorStore.lock.Lock()
 	defer globalTabIndicatorStore.lock.Unlock()
-	result := make(map[string]bool)
-	for tabId, value := range globalTabIndicatorStore.bellIndicators {
-		result[tabId] = value
+	result := make(map[string]*wshrpc.TabIndicator)
+	for tabId, indicator := range globalTabIndicatorStore.indicators {
+		result[tabId] = indicator
 	}
 	return result
-}
-
-func ClearTabBellIndicator(tabId string) {
-	SetTabBellIndicator(tabId, false)
-}
-
-func ClearAllTabBellIndicators() {
-	globalTabIndicatorStore.lock.Lock()
-	defer globalTabIndicatorStore.lock.Unlock()
-	globalTabIndicatorStore.bellIndicators = make(map[string]bool)
-	log.Printf("all tab bell indicators cleared\n")
 }

@@ -374,9 +374,9 @@ func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) er
 	return err
 }
 
-// command "getalltabbellindicators", wshserver.GetAllTabBellIndicatorsCommand
-func GetAllTabBellIndicatorsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (map[string]bool, error) {
-	resp, err := sendRpcRequestCallHelper[map[string]bool](w, "getalltabbellindicators", nil, opts)
+// command "getalltabindicators", wshserver.GetAllTabIndicatorsCommand
+func GetAllTabIndicatorsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (map[string]*wshrpc.TabIndicator, error) {
+	resp, err := sendRpcRequestCallHelper[map[string]*wshrpc.TabIndicator](w, "getalltabindicators", nil, opts)
 	return resp, err
 }
 

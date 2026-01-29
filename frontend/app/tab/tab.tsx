@@ -3,18 +3,19 @@
 
 import {
     atoms,
-    clearAllTabBellIndicators,
-    getTabBellIndicatorAtom,
+    clearAllTabIndicators,
+    clearTabIndicatorFromFocus,
+    getTabIndicatorAtom,
     globalStore,
     recordTEvent,
     refocusNode,
-    setTabBellIndicator,
+    setTabIndicator,
 } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { fireAndForget } from "@/util/util";
+import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
@@ -45,7 +46,7 @@ const Tab = memo(
             const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
-            const hasBellIndicator = useAtomValue(getTabBellIndicatorAtom(id));
+            const indicator = useAtomValue(getTabIndicatorAtom(id));
 
             const editableRef = useRef<HTMLDivElement>(null);
             const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
@@ -144,7 +145,10 @@ const Tab = memo(
             };
 
             const handleTabClick = () => {
-                setTabBellIndicator(id, false);
+                const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+                if (currentIndicator?.clearonfocus) {
+                    clearTabIndicatorFromFocus(id);
+                }
                 onSelect();
             };
 
@@ -152,16 +156,16 @@ const Tab = memo(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
                     let menu: ContextMenuItem[] = [];
-                    const hasBell = globalStore.get(getTabBellIndicatorAtom(id));
-                    if (hasBell) {
+                    const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+                    if (currentIndicator) {
                         menu.push(
                             {
-                                label: "Clear Tab Bell Indicator",
-                                click: () => setTabBellIndicator(id, false),
+                                label: "Clear Tab Indicator",
+                                click: () => setTabIndicator(id, null),
                             },
                             {
                                 label: "Clear All Indicators",
-                                click: () => clearAllTabBellIndicators(),
+                                click: () => clearAllTabIndicators(),
                             },
                             { type: "separator" }
                         );
@@ -238,12 +242,13 @@ const Tab = memo(
                         >
                             {tabData?.name}
                         </div>
-                        {hasBellIndicator && (
+                        {indicator && (
                             <div
-                                className="bell wave-button text-amber-500 pointer-events-none group-hover:opacity-80"
+                                className="bell wave-button pointer-events-none group-hover:opacity-80"
+                                style={{ color: indicator.color || "#fbbf24" }}
                                 title="Activity notification"
                             >
-                                <i className="fa fa-solid fa-bell" />
+                                <i className={makeIconClass(indicator.icon, true, { defaultIcon: "bell" })} />
                             </div>
                         )}
                         <Button

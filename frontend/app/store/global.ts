@@ -38,7 +38,7 @@ let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
-const TabBellIndicatorMap = new Map<string, PrimitiveAtom<boolean>>();
+const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobal(initOpts: GlobalInitOptions) {
@@ -250,11 +250,10 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             },
         },
         {
-            eventType: "tab:bellindicator",
+            eventType: "tab:indicator",
             handler: (event) => {
-                const data: TabBellIndicatorEventData = event.data;
-                const bellIndicatorAtom = getTabBellIndicatorAtom(data.tabid);
-                globalStore.set(bellIndicatorAtom, data.bellindicator);
+                const data: TabIndicatorEventData = event.data;
+                setTabIndicatorInternal(data.tabid, data.indicator);
             },
         }
     );
@@ -709,14 +708,14 @@ async function loadConnStatus() {
     }
 }
 
-async function loadTabBellIndicators() {
-    const tabBellIndicators = await RpcApi.GetAllTabBellIndicatorsCommand(TabRpcClient);
-    if (tabBellIndicators == null) {
+async function loadTabIndicators() {
+    const tabIndicators = await RpcApi.GetAllTabIndicatorsCommand(TabRpcClient);
+    if (tabIndicators == null) {
         return;
     }
-    for (const [tabId, bellState] of Object.entries(tabBellIndicators)) {
-        const curAtom = getTabBellIndicatorAtom(tabId);
-        globalStore.set(curAtom, bellState);
+    for (const [tabId, indicator] of Object.entries(tabIndicators)) {
+        const curAtom = getTabIndicatorAtom(tabId);
+        globalStore.set(curAtom, indicator);
     }
 }
 
@@ -773,35 +772,72 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     return rtn;
 }
 
-function getTabBellIndicatorAtom(tabId: string): PrimitiveAtom<boolean> {
-    let rtn = TabBellIndicatorMap.get(tabId);
+function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
+    let rtn = TabIndicatorMap.get(tabId);
     if (rtn == null) {
-        rtn = atom(false);
-        TabBellIndicatorMap.set(tabId, rtn);
+        rtn = atom(null) as PrimitiveAtom<TabIndicator>;
+        TabIndicatorMap.set(tabId, rtn);
     }
     return rtn;
 }
 
-function setTabBellIndicator(tabId: string, state: boolean) {
-    const bellIndicatorAtom = getTabBellIndicatorAtom(tabId);
-    globalStore.set(bellIndicatorAtom, state);
-    
+function setTabIndicatorInternal(tabId: string, indicator: TabIndicator) {
+    if (indicator == null) {
+        const indicatorAtom = getTabIndicatorAtom(tabId);
+        globalStore.set(indicatorAtom, null);
+        return;
+    }
+    const indicatorAtom = getTabIndicatorAtom(tabId);
+    const currentIndicator = globalStore.get(indicatorAtom);
+    if (currentIndicator == null) {
+        globalStore.set(indicatorAtom, indicator);
+        return;
+    }
+    if (indicator.priority >= currentIndicator.priority) {
+        if (indicator.clearonfocus && !currentIndicator.clearonfocus) {
+            indicator.persistentindicator = currentIndicator;
+        }
+        globalStore.set(indicatorAtom, indicator);
+    }
+}
+
+function setTabIndicator(tabId: string, indicator: TabIndicator) {
+    setTabIndicatorInternal(tabId, indicator);
+
     const eventData: WaveEvent = {
-        event: "tab:bellindicator",
+        event: "tab:indicator",
         scopes: [WOS.makeORef("tab", tabId)],
         data: {
             tabid: tabId,
-            bellindicator: state,
-        } as TabBellIndicatorEventData,
+            indicator: indicator,
+        } as TabIndicatorEventData,
     };
     fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
 }
 
-function clearAllTabBellIndicators() {
-    for (const [tabId, bellIndicatorAtom] of TabBellIndicatorMap.entries()) {
-        const hasBell = globalStore.get(bellIndicatorAtom);
-        if (hasBell) {
-            setTabBellIndicator(tabId, false);
+function clearTabIndicatorFromFocus(tabId: string) {
+    const indicatorAtom = getTabIndicatorAtom(tabId);
+    const currentIndicator = globalStore.get(indicatorAtom);
+    if (currentIndicator == null) {
+        return;
+    }
+    const persistentIndicator = currentIndicator.persistentindicator;
+    const eventData: WaveEvent = {
+        event: "tab:indicator",
+        scopes: [WOS.makeORef("tab", tabId)],
+        data: {
+            tabid: tabId,
+            indicator: persistentIndicator ?? null,
+        } as TabIndicatorEventData,
+    };
+    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+}
+
+function clearAllTabIndicators() {
+    for (const [tabId, indicatorAtom] of TabIndicatorMap.entries()) {
+        const indicator = globalStore.get(indicatorAtom);
+        if (indicator != null) {
+            setTabIndicator(tabId, null);
         }
     }
 }
@@ -868,7 +904,8 @@ function recordTEvent(event: string, props?: TEventProps) {
 
 export {
     atoms,
-    clearAllTabBellIndicators,
+    clearAllTabIndicators,
+    clearTabIndicatorFromFocus,
     counterInc,
     countersClear,
     countersPrint,
@@ -889,7 +926,7 @@ export {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
-    getTabBellIndicatorAtom,
+    getTabIndicatorAtom,
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
@@ -897,7 +934,7 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
-    loadTabBellIndicators,
+    loadTabIndicators,
     openLink,
     pushFlashError,
     pushNotification,
@@ -912,7 +949,7 @@ export {
     setActiveTab,
     setNodeFocus,
     setPlatform,
-    setTabBellIndicator,
+    setTabIndicator,
     subscribeToConnEvents,
     unregisterBlockComponentModel,
     useBlockAtom,
