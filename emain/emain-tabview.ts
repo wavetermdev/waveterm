@@ -40,9 +40,10 @@ function handleWindowsMenuAccelerators(
     if (checkKeyPressed(waveEvent, "Ctrl:v")) {
         const ctrlVPaste = fullConfig?.settings?.["app:ctrlvpaste"];
         const shouldPaste = ctrlVPaste ?? true;
-        if (shouldPaste) {
-            tabView.webContents.paste();
+        if (!shouldPaste) {
+            return false;
         }
+        tabView.webContents.paste();
         return true;
     }
 
