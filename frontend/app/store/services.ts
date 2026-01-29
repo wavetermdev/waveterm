@@ -85,6 +85,16 @@ class ObjectServiceType {
     }
 
     // @returns object updates
+    UpdateObjectMetaIfNotLocked(oref: string, meta: MetaType, lockKey: string, expectedVersion: number): Promise<void> {
+        return WOS.callBackendService("object", "UpdateObjectMetaIfNotLocked", Array.from(arguments))
+    }
+
+    // @returns object updates
+    UpdateObjectMetaWithVersion(oref: string, meta: MetaType, expectedVersion: number): Promise<void> {
+        return WOS.callBackendService("object", "UpdateObjectMetaWithVersion", Array.from(arguments))
+    }
+
+    // @returns object updates
     UpdateTabName(tabId: string, name: string): Promise<void> {
         return WOS.callBackendService("object", "UpdateTabName", Array.from(arguments))
     }

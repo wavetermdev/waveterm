@@ -45,6 +45,71 @@ You can switch to an existing tab by clicking on it in the tab bar. You can also
 
 Pinning a tab makes it harder to close accidentally. You can pin a tab by right-clicking on it and selecting "Pin Tab" from the context menu that appears. You can also pin a tab by dragging it to a lesser index than an existing pinned tab. When a tab is pinned, the <i className="fa-sharp fa-xmark-large" title="x"/> button for the tab will be replaced with a <i className="fa-solid fa-sharp fa-thumbtack" title="pin"/> button. Clicking this button will unpin the tab. You can also unpin a tab by dragging it to an index higher than an existing unpinned tab.
 
+### Tab Base Directory
+
+You can set a base directory for each tab to create project-centric workflows. All terminals and file previews launched within the tab will use this directory as their starting point.
+
+#### Setting the Base Directory
+
+1. Right-click on a tab in the tab bar
+2. Select "Base Directory" from the context menu
+3. Click "Set Base Directory..."
+4. Choose a directory using the file picker
+
+Once set, the base directory will be displayed in the tab header with a folder icon. All new terminals opened in that tab will start in this directory.
+
+#### Smart Auto-Detection
+
+Wave Terminal can automatically detect and set the base directory from your terminal's working directory. When you `cd` into a project directory, Wave uses OSC 7 escape sequences to learn this location.
+
+Auto-detection occurs when:
+- The tab has no base directory set yet
+- The base directory is not locked
+
+This means the first directory you navigate to in a new tab becomes the tab's base directory automatically.
+
+#### Locking the Base Directory
+
+To prevent auto-detection from changing your base directory:
+
+1. Right-click on the tab
+2. Select "Base Directory"
+3. Click "Lock (Disable Smart Detection)"
+
+A lock icon will appear next to the base directory indicator in the tab header. When locked, you can still manually change the base directory, but terminal navigation will not affect it. Click the lock icon directly to toggle the lock state.
+
+#### Clearing the Base Directory
+
+To remove the base directory and return to default behavior:
+
+1. Right-click on the tab
+2. Select "Base Directory"
+3. Click "Clear Base Directory"
+
+#### Use Cases
+
+- **Project-centric workflows:** Set tab base directory to project root; all terminals start there
+- **Multi-project organization:** Different tabs for different projects, each with its own base directory
+- **Stable context:** Lock the base directory when navigating to multiple subdirectories
+
+#### Configuration via Presets
+
+You can create presets that include base directory configuration. Add entries to your settings:
+
+```json
+{
+    "presets": {
+        "tabvar@my-project": {
+            "display:name": "My Project",
+            "tab:basedir": "/path/to/my-project",
+            "tab:basedirlock": true
+        }
+    }
+}
+```
+
+Apply presets via the tab's right-click menu: "Tab Variables" > Select preset
+
 ## Tab Layout System
 
 The tabs are comprised of tiled blocks. The contents of each block is a single widget. You can move blocks around and arrange them into layouts that best-suit your workflow. You can also magnify blocks to focus on a specific widget.

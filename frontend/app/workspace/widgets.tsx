@@ -5,7 +5,7 @@ import { Tooltip } from "@/app/element/tooltip";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, isDev } from "@/store/global";
+import { atoms, createBlock, globalStore, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     FloatingPortal,
@@ -32,7 +32,51 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 }
 
 async function handleWidgetSelect(widget: WidgetConfigType) {
-    const blockDef = widget.blockdef;
+    // Clone blockdef to avoid mutating the cached widget configuration
+    const blockDef: BlockDef = {
+        ...widget.blockdef,
+        meta: { ...widget.blockdef?.meta },
+    };
+
+    // ===== Tab Base Directory Inheritance for Widgets =====
+    // When launching widgets from the sidebar, inherit the tab's base directory.
+    // This applies to:
+    // - Terminal widgets: Sets cmd:cwd to tab:basedir
+    // - File preview widgets: Sets default browse path to tab:basedir (if currently "~")
+    //
+    // This ensures all blocks within a tab share the same project context,
+    // enabling project-centric workflows where users set tab = project root.
+    const tabData = globalStore.get(atoms.activeTab);
+    let tabBaseDir = tabData?.meta?.["tab:basedir"];
+
+    // Pre-use validation: quickly validate tab basedir before using it
+    if (tabBaseDir && tabBaseDir.trim() !== "") {
+        try {
+            const { validateTabBasedir } = await import("@/store/tab-basedir-validator");
+            const validationResult = await validateTabBasedir(tabData.oid, tabBaseDir);
+            if (!validationResult.valid) {
+                console.warn(
+                    `[widgets] Tab basedir validation failed at use-time: ${tabBaseDir} (${validationResult.reason}). Not using for widget.`
+                );
+                tabBaseDir = null; // Don't use invalid basedir
+            }
+        } catch (error) {
+            console.error("[widgets] Failed to validate tab basedir:", error);
+            tabBaseDir = null; // Don't use basedir on error
+        }
+    }
+
+    if (tabBaseDir) {
+        // For terminal blocks, set the working directory
+        if (blockDef?.meta?.view === "term" && !blockDef.meta["cmd:cwd"]) {
+            blockDef.meta["cmd:cwd"] = tabBaseDir;
+        }
+        // For file preview blocks, set the default file path (only if currently set to home)
+        if (blockDef?.meta?.view === "preview" && blockDef.meta.file === "~") {
+            blockDef.meta.file = tabBaseDir;
+        }
+    }
+
     createBlock(blockDef, widget.magnified);
 }
 

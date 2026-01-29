@@ -4,7 +4,7 @@
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
-import type { TabModel } from "@/app/store/tab-model";
+import { activeTabIdAtom, type TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -433,8 +433,87 @@ export class TermViewModel implements ViewModel {
         }
         const curStatus = globalStore.get(this.shellProcFullStatus);
         if (curStatus == null || curStatus.version < fullStatus.version) {
+            // Check if process just completed (running -> done) while tab is in background
+            const wasRunning = curStatus?.shellprocstatus === "running";
+            const isNowDone = fullStatus.shellprocstatus === "done";
+            if (wasRunning && isNowDone) {
+                // Check if this tab is currently active
+                const activeTabId = globalStore.get(activeTabIdAtom);
+                const isTabActive = activeTabId === this.tabModel?.tabId;
+                if (!isTabActive && this.tabModel) {
+                    // Mark tab as having unread completions
+                    this.tabModel.setFinishedUnread();
+                }
+            }
+
             globalStore.set(this.shellProcFullStatus, fullStatus);
+
+            // Update tab's terminal status tracking for reactive status icons
+            this.updateTabTerminalStatus();
         }
+    }
+
+    /**
+     * Updates the tab's terminal status tracking with current proc and shell integration status.
+     * This enables reactive status icons on tabs.
+     *
+     * For active tabs (where termRef is available), we use the local atom value directly
+     * for immediate updates. This is important because the onShellIntegrationStatusChange
+     * callback fires BEFORE SetRTInfoCommand completes, so RTInfo would return stale data.
+     *
+     * For background tabs or when termRef isn't available, we query RTInfo which has the
+     * last written shell state.
+     */
+    updateTabTerminalStatus() {
+        if (!this.tabModel) return;
+
+        const procStatus = globalStore.get(this.shellProcFullStatus);
+
+        // First, try to get shell integration status from local atom (for active tabs)
+        // This is the most up-to-date value since it's set synchronously on OSC 16162
+        const localShellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
+
+        // If we have a local value, use it immediately (active tab case)
+        if (localShellIntegrationStatus != null) {
+            this.tabModel.updateBlockTerminalStatus(this.blockId, {
+                shellProcStatus: procStatus?.shellprocstatus ?? null,
+                shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+                shellIntegrationStatus: localShellIntegrationStatus,
+            });
+            return;
+        }
+
+        // For background tabs or when termRef isn't ready, query RTInfo
+        // RTInfo stores the shell state written by the tab that processes OSC 16162
+        RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+        })
+            .then((rtInfo) => {
+                const shellIntegrationStatus = rtInfo?.["shell:state"] as string | null;
+
+                this.tabModel.updateBlockTerminalStatus(this.blockId, {
+                    shellProcStatus: procStatus?.shellprocstatus ?? null,
+                    shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+                    shellIntegrationStatus: shellIntegrationStatus ?? null,
+                });
+            })
+            .catch((err) => {
+                // If RTInfo query fails, update with null shell integration status
+                this.tabModel.updateBlockTerminalStatus(this.blockId, {
+                    shellProcStatus: procStatus?.shellprocstatus ?? null,
+                    shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+                    shellIntegrationStatus: null,
+                });
+            });
+    }
+
+    /**
+     * Clears any stale terminal status from previous sessions.
+     * Called when terminal initializes to ensure we don't show outdated status icons.
+     */
+    clearTabTerminalStatus() {
+        if (!this.tabModel) return;
+        this.tabModel.clearTerminalStatus();
     }
 
     getVDomModel(): VDomModel {
@@ -802,7 +881,7 @@ export class TermViewModel implements ViewModel {
         });
         fullMenu.push({ type: "separator" });
 
-        const shellIntegrationStatus = globalStore.get(this.termRef?.current?.shellIntegrationStatusAtom);
+        const shellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
         const canShowFileBrowser = shellIntegrationStatus === "ready" && cwd != null;
 

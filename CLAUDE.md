@@ -1,0 +1,386 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Wave Terminal is an open-source, AI-native terminal built with Electron. It combines traditional terminal features with graphical capabilities like file previews, web browsing, and AI assistance. The architecture consists of four main components:
+
+1. **Frontend** (React + TypeScript) - UI and user interactions
+2. **emain** (Electron Main Process) - Window management, native OS integration
+3. **wavesrv** (Go Backend) - Core business logic, database, remote connections
+4. **wsh** (Go CLI/Server) - Command-line tool and remote multiplexing server
+
+## Build System
+
+The project uses **Task** (modern Make alternative) for build orchestration. See `Taskfile.yml` for all available tasks.
+
+### Common Commands
+
+```bash
+# Install dependencies (run this first after cloning)
+task init
+
+# Development server with hot reload
+task dev
+
+# Run standalone without hot reload
+task start
+
+# Production build and packaging
+task package
+
+# TypeScript type checking
+task check:ts
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run coverage
+
+# Clean build artifacts
+task clean
+```
+
+### Quick Development Shortcuts
+
+```bash
+# Fast development mode (macOS ARM64 only, no docsite, no wsh)
+task electron:quickdev
+
+# Fast development mode (Windows x64 only, no docsite, no wsh)
+task electron:winquickdev
+```
+
+### Code Generation
+
+The project uses code generators to maintain type safety between Go and TypeScript:
+
+```bash
+# Generate TypeScript bindings from Go types
+task generate
+
+# This runs:
+# - cmd/generatets/main-generatets.go -> frontend/types/gotypes.d.ts
+# - cmd/generatets/main-generatets.go -> frontend/app/store/services.ts
+# - cmd/generatets/main-generatets.go -> frontend/app/store/wshclientapi.ts
+# - cmd/generatego/main-generatego.go -> various Go files
+```
+
+**Always run `task generate` after modifying:**
+- Go RPC types in `pkg/wshrpc/`
+- Service definitions in `pkg/service/`
+- Wave object types in `pkg/waveobj/`
+
+## Architecture Overview
+
+### Frontend Architecture
+
+**Entry Point:** `frontend/wave.ts`
+- Initializes the application with either Wave Terminal mode or Tsunami Builder mode
+- Sets up Jotai store, WPS (WebSocket Pub/Sub), and Monaco editor
+- Root React component: `frontend/app/app.tsx`
+
+**State Management:** Jotai (atom-based state)
+- Global atoms defined in `frontend/app/store/global.ts`
+- Store instance: `globalStore` (exported from `frontend/app/store/jotaiStore.ts`)
+- Key models: `GlobalModel`, `TabModel`, `ConnectionsModel`
+
+**Key Frontend Directories:**
+- `frontend/app/block/` - Terminal blocks and renderers
+- `frontend/app/view/` - Different view types (terminal, preview, web, etc.)
+- `frontend/app/workspace/` - Workspace and tab layout management
+- `frontend/layout/` - Layout system using `react-resizable-panels`
+- `frontend/app/store/` - State management, RPC clients, WOS (Wave Object Store)
+- `frontend/app/element/` - Reusable UI components
+- `frontend/app/monaco/` - Monaco editor integration
+
+**Hot Module Reloading:**
+- Vite enables HMR for most changes
+- State changes (Jotai atoms, layout) may require hard reload: `Cmd+Shift+R` / `Ctrl+Shift+R`
+
+### Electron Main Process (emain)
+
+**Entry Point:** `emain/emain.ts`
+- Manages Electron app lifecycle and window creation
+- Spawns and manages the `wavesrv` backend process
+- Handles native menus, context menus, and OS integration
+
+**IPC Communication:**
+- Functions exposed from emain to frontend are defined in two places:
+  1. `emain/preload.ts` - Electron preload script
+  2. `frontend/types/custom.d.ts` - TypeScript declarations
+- Frontend calls: `getApi().<function>()`
+
+**Key emain Files:**
+- `emain/emain.ts` - Main entry point
+- `emain/emain-window.ts` - Window management
+- `emain/emain-menu.ts` - Menu bar and context menus
+- `emain/emain-wavesrv.ts` - wavesrv process management
+- `emain/emain-tabview.ts` - Tab view management
+- `emain/preload.ts` - Preload script for renderer
+
+### Go Backend (wavesrv)
+
+**Entry Point:** `cmd/server/main-server.go`
+
+**Core Packages:**
+- `pkg/wstore/` - Database operations and Wave object persistence
+- `pkg/waveobj/` - Wave object type definitions (Client, Window, Tab, Block, etc.)
+- `pkg/service/` - HTTP service endpoints
+- `pkg/wshrpc/` - WebSocket RPC system (communication with frontend and wsh)
+- `pkg/blockcontroller/` - Terminal block lifecycle management
+- `pkg/remote/` - SSH and remote connection handling
+- `pkg/wcloud/` - Cloud sync and authentication
+- `pkg/waveai/` - AI integration (OpenAI, Claude, etc.)
+- `pkg/filestore/` - File storage and management
+
+**Database:**
+- SQLite databases in `db/migrations-wstore/` and `db/migrations-filestore/`
+- Wave objects: `Client`, `Window`, `Workspace`, `Tab`, `Block`, `LayoutState`
+- All Wave object types registered in `pkg/waveobj/waveobj.go`
+
+**RPC Communication:**
+- Uses custom `wshrpc` protocol over WebSocket
+- RPC types defined in `pkg/wshrpc/wshrpctypes.go`
+- Commands implemented in `pkg/wshrpc/wshserver/` and `pkg/wshrpc/wshremote/`
+
+### wsh (Wave Shell)
+
+**Entry Point:** `cmd/wsh/main-wsh.go`
+
+**Dual Purpose:**
+1. CLI tool for controlling Wave from the terminal
+2. Remote server for multiplexing connections and file streaming
+
+**Communication:**
+- Uses `wshrpc` protocol over domain socket or WebSocket
+- Enables single-connection multiplexing for remote terminals
+
+## Development Guidelines
+
+### Frontend Development
+
+1. **Use existing patterns:** Before adding new components, search for similar features:
+   ```bash
+   # Find similar views
+   grep -r "registerView" frontend/app/view/
+
+   # Find block implementations
+   ls frontend/app/block/
+   ```
+
+2. **State management:** Use Jotai atoms for reactive state
+   - Global atoms in `frontend/app/store/global.ts`
+   - Component-local atoms using `atom()` from `jotai`
+
+3. **RPC calls:** Use the generated `RpcApi` from `frontend/app/store/wshclientapi.ts`:
+   ```typescript
+   import { RpcApi } from "@/app/store/wshclientapi";
+   import { TabRpcClient } from "@/app/store/wshrpcutil";
+
+   const result = await RpcApi.SomeCommand(TabRpcClient, { param: "value" });
+   ```
+
+4. **Wave Objects:** Access via WOS (Wave Object Store):
+   ```typescript
+   import * as WOS from "@/store/wos";
+
+   const tab = WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabId));
+   ```
+
+### Backend Development
+
+1. **Database changes:** Add migrations to `db/migrations-wstore/` or `db/migrations-filestore/`
+
+2. **New RPC commands:**
+   - Define in `pkg/wshrpc/wshrpctypes.go`
+   - Implement handler in `pkg/wshrpc/wshserver/`
+   - Run `task generate` to update TypeScript bindings
+
+3. **New Wave object types:**
+   - Add to `pkg/waveobj/wtype.go`
+   - Register in `init()` function
+   - Run `task generate`
+
+4. **Testing:** Write tests in `*_test.go` files:
+   ```bash
+   # Run Go tests
+   go test ./pkg/...
+
+   # Run specific package
+   go test ./pkg/wstore/
+   ```
+
+### Code Style
+
+- **TypeScript:** Prettier + ESLint (configured in `eslint.config.js`, `prettier.config.cjs`)
+- **Go:** Standard `go fmt` + `staticcheck` (see `staticcheck.conf`)
+- **Text files:** Must end with a newline (`.editorconfig`)
+
+## Tsunami Framework
+
+Tsunami is Wave's internal UI framework for building reactive Go-based UIs that render in the terminal.
+
+**Location:** `tsunami/` directory
+- `tsunami/engine/` - Core rendering engine
+- `tsunami/frontend/` - React components for Tsunami UIs
+- `tsunami/vdom/` - Virtual DOM implementation
+
+**Usage:**
+- Powers the WaveApp Builder (`/builder/`)
+- Scaffold for new Tsunami apps in `dist/tsunamiscaffold/`
+
+**Build Tsunami:**
+```bash
+task tsunami:frontend:build
+task build:tsunamiscaffold
+```
+
+## Testing & Debugging
+
+### Frontend Debugging
+
+- **DevTools:** `Cmd+Option+I` (macOS) or `Ctrl+Option+I` (Windows/Linux)
+- **Console access to global state:**
+  ```javascript
+  globalStore
+  globalAtoms
+  WOS
+  RpcApi
+  ```
+
+### Backend Debugging
+
+- **Logs:** `~/.waveterm-dev/waveapp.log` (development mode)
+- Contains both NodeJS (emain) and Go (wavesrv) logs
+
+### Running Tests
+
+```bash
+# TypeScript/React tests
+npm test
+
+# With coverage
+npm run coverage
+
+# Go tests
+go test ./pkg/...
+```
+
+## File Organization Conventions
+
+- **Go files:** `packagename_descriptor.go` (e.g., `waveobj_wtype.go`)
+- **TypeScript files:** `component-name.tsx`, `util-name.ts`
+- **SCSS files:** `component-name.scss`
+- **Test files:** `*_test.go`, `*.test.ts`, `*.test.tsx`
+
+## Platform-Specific Notes
+
+### Windows
+
+- Use Zig for CGO static linking
+- Use `task electron:winquickdev` for fast iteration
+- Backslashes in file paths for Edit/MultiEdit tools
+
+### Linux
+
+- Requires Zig for CGO static linking
+- Platform-specific dependencies in `BUILD.md`
+- Use `USE_SYSTEM_FPM=1 task package` on ARM64
+
+### macOS
+
+- No special dependencies
+- `task electron:quickdev` works on ARM64 only
+
+## Important Paths
+
+- **Frontend entry:** `frontend/wave.ts`
+- **Main React app:** `frontend/app/app.tsx`
+- **Electron main:** `emain/emain.ts`
+- **Go backend entry:** `cmd/server/main-server.go`
+- **wsh entry:** `cmd/wsh/main-wsh.go`
+- **Generated types:** `frontend/types/gotypes.d.ts`
+- **RPC API:** `frontend/app/store/wshclientapi.ts`
+- **Dev logs:** `~/.waveterm-dev/waveapp.log`
+
+## Common Gotchas
+
+1. **After changing Go types, always run `task generate`** - TypeScript bindings won't update automatically
+2. **emain and wavesrv don't hot-reload** - Must restart `task dev` to see changes
+3. **Jotai atom changes may break HMR** - Use hard reload (`Cmd+Shift+R`)
+4. **Database schema changes require migrations** - Never modify schema directly
+5. **Wave objects must be registered** - Add to `init()` in `pkg/waveobj/waveobj.go`
+
+## Tab Base Directory Feature
+
+Wave Terminal supports per-tab base directories that provide a project-centric workflow where all terminals and widgets within a tab share the same working directory context.
+
+### Metadata Keys
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `tab:basedir` | `string` | Absolute path to base directory |
+| `tab:basedirlock` | `boolean` | When true, disables smart auto-detection |
+
+### Behavior Model
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         TAB                                  │
+│  tab:basedir = "/home/user/project"                          │
+│  tab:basedirlock = false                                     │
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐ │
+│  │   Terminal 1    │  │   Terminal 2    │  │  File View   │ │
+│  │ cmd:cwd = ...   │  │ cmd:cwd = ...   │  │ file = ...   │ │
+│  │ (inherits tab)  │  │ (inherits tab)  │  │ (inherits)   │ │
+│  └─────────────────┘  └─────────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Smart Auto-Detection (OSC 7)
+
+When a terminal reports its working directory via OSC 7:
+
+1. **Always:** Updates block's `cmd:cwd` metadata
+2. **Conditionally:** Updates tab's `tab:basedir` if:
+   - `tab:basedirlock` is false
+   - `tab:basedir` is empty OR equals "~"
+
+This allows the first terminal to "teach" the tab its project directory.
+
+### Lock Semantics
+
+| State | Behavior |
+|-------|----------|
+| Unlocked (default) | OSC 7 can update `tab:basedir` (under conditions) |
+| Locked | Only manual setting changes `tab:basedir` |
+
+### File Locations
+
+| Purpose | File |
+|---------|------|
+| Tab context menu UI | `frontend/app/tab/tab.tsx` |
+| OSC 7 handling | `frontend/app/view/term/termwrap.ts` |
+| Terminal inheritance | `frontend/app/store/keymodel.ts` |
+| Widget inheritance | `frontend/app/workspace/widgets.tsx` |
+| Go type definitions | `pkg/waveobj/wtypemeta.go` |
+| Metadata constants | `pkg/waveobj/metaconsts.go` |
+
+### Related Presets
+
+Tab variable presets can include base directory configuration:
+
+```json
+// File: pkg/wconfig/defaultconfig/presets/tabvars.json
+{
+    "tabvar@my-project": {
+        "display:name": "My Project",
+        "tab:basedir": "/home/user/my-project",
+        "tab:basedirlock": true
+    }
+}
+```

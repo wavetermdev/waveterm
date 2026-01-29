@@ -302,6 +302,22 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         );
         (window as any).term = termWrap;
         model.termRef.current = termWrap;
+
+        // Set up callback to update tab terminal status when shell integration status changes
+        termWrap.onShellIntegrationStatusChange = () => {
+            model.updateTabTerminalStatus();
+        };
+
+        // Update terminal status on init to reflect current state
+        // This ensures status icons show the correct state when switching tabs
+        model.updateTabTerminalStatus();
+
+        // Delayed status update to catch OSC data that was buffered while tab was inactive
+        // When webview resumes, xterm needs time to process buffered data including OSC 16162
+        const statusRefreshTimer = setTimeout(() => {
+            model.updateTabTerminalStatus();
+        }, 500);
+
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });
@@ -317,10 +333,25 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             }, 10);
         }
         return () => {
+            clearTimeout(statusRefreshTimer);
             termWrap.dispose();
             rszObs.disconnect();
         };
     }, [blockId, termSettings, termFontSize, connFontFamily]);
+
+    // Refresh terminal status when tab becomes focused
+    // This catches OSC data that was buffered while tab was in background
+    const wasFocusedRef = React.useRef(isFocused);
+    React.useEffect(() => {
+        if (isFocused && !wasFocusedRef.current) {
+            // Tab just became focused - refresh status after a delay to let xterm process buffered data
+            const timer = setTimeout(() => {
+                model.updateTabTerminalStatus();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+        wasFocusedRef.current = isFocused;
+    }, [isFocused, model]);
 
     React.useEffect(() => {
         if (termModeRef.current == "vdom" && termMode == "term") {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
@@ -86,7 +87,12 @@ func (svc *ObjectService) UpdateTabName(uiContext waveobj.UIContext, tabId, name
 	if err != nil {
 		return nil, fmt.Errorf("error updating tab name: %w", err)
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:UpdateTabName:SendUpdateEvents", recover())
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
 }
 
 func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
@@ -109,7 +115,12 @@ func (svc *ObjectService) CreateBlock(uiContext waveobj.UIContext, blockDef *wav
 		return "", nil, err
 	}
 
-	return blockData.OID, waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:CreateBlock:SendUpdateEvents", recover())
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return blockData.OID, updates, nil
 }
 
 func (svc *ObjectService) DeleteBlock_Meta() tsgenmeta.MethodMeta {
@@ -126,7 +137,12 @@ func (svc *ObjectService) DeleteBlock(uiContext waveobj.UIContext, blockId strin
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:DeleteBlock:SendUpdateEvents", recover())
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
 }
 
 func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
@@ -143,11 +159,80 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext waveobj.UIContext, orefStr 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing object reference: %w", err)
 	}
+	// Validate metadata before persistence
+	if err := waveobj.ValidateMetadata(*oref, meta); err != nil {
+		return nil, fmt.Errorf("metadata validation failed: %w", err)
+	}
 	err = wstore.UpdateObjectMeta(ctx, *oref, meta, false)
 	if err != nil {
 		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:UpdateObjectMeta:SendUpdateEvents", recover())
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
+}
+
+func (svc *ObjectService) UpdateObjectMetaWithVersion_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "oref", "meta", "expectedVersion"},
+	}
+}
+
+func (svc *ObjectService) UpdateObjectMetaWithVersion(uiContext waveobj.UIContext, orefStr string, meta waveobj.MetaMapType, expectedVersion int) (waveobj.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = waveobj.ContextWithUpdates(ctx)
+	oref, err := parseORef(orefStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing object reference: %w", err)
+	}
+	// Validate metadata before persistence
+	if err := waveobj.ValidateMetadata(*oref, meta); err != nil {
+		return nil, fmt.Errorf("metadata validation failed: %w", err)
+	}
+	err = wstore.UpdateObjectMetaWithVersion(ctx, *oref, meta, expectedVersion, false)
+	if err != nil {
+		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:UpdateObjectMetaWithVersion:SendUpdateEvents", recover())
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
+}
+
+func (svc *ObjectService) UpdateObjectMetaIfNotLocked_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "oref", "meta", "lockKey", "expectedVersion"},
+	}
+}
+
+func (svc *ObjectService) UpdateObjectMetaIfNotLocked(uiContext waveobj.UIContext, orefStr string, meta waveobj.MetaMapType, lockKey string, expectedVersion int) (waveobj.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = waveobj.ContextWithUpdates(ctx)
+	oref, err := parseORef(orefStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing object reference: %w", err)
+	}
+	// Validate metadata before persistence
+	if err := waveobj.ValidateMetadata(*oref, meta); err != nil {
+		return nil, fmt.Errorf("metadata validation failed: %w", err)
+	}
+	err = wstore.UpdateObjectMetaIfNotLocked(ctx, *oref, meta, lockKey, expectedVersion)
+	if err != nil {
+		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:UpdateObjectMetaIfNotLocked:SendUpdateEvents", recover())
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	return updates, nil
 }
 
 func (svc *ObjectService) UpdateObject_Meta() tsgenmeta.MethodMeta {
@@ -164,6 +249,13 @@ func (svc *ObjectService) UpdateObject(uiContext waveobj.UIContext, waveObj wave
 		return nil, fmt.Errorf("update wavobj is nil")
 	}
 	oref := waveobj.ORefFromWaveObj(waveObj)
+	// Validate metadata if present
+	meta := waveobj.GetMeta(waveObj)
+	if meta != nil && len(meta) > 0 {
+		if err := waveobj.ValidateMetadata(*oref, meta); err != nil {
+			return nil, fmt.Errorf("metadata validation failed: %w", err)
+		}
+	}
 	found, err := wstore.DBExistsORef(ctx, *oref)
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
@@ -175,12 +267,17 @@ func (svc *ObjectService) UpdateObject(uiContext waveobj.UIContext, waveObj wave
 	if err != nil {
 		return nil, fmt.Errorf("error updating object: %w", err)
 	}
-	if (waveObj.GetOType() == waveobj.OType_Workspace) && (waveObj.(*waveobj.Workspace).Name != "") {
-		wps.Broker.Publish(wps.WaveEvent{
-			Event: wps.Event_WorkspaceUpdate})
-	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer panichandler.PanicHandler("ObjectService:UpdateObject:SendUpdateEvents", recover())
+		if (waveObj.GetOType() == waveobj.OType_Workspace) && (waveObj.(*waveobj.Workspace).Name != "") {
+			wps.Broker.Publish(wps.WaveEvent{
+				Event: wps.Event_WorkspaceUpdate})
+		}
+		wps.Broker.SendUpdateEvents(updates)
+	}()
 	if returnUpdates {
-		return waveobj.ContextGetUpdatesRtn(ctx), nil
+		return updates, nil
 	}
 	return nil, nil
 }

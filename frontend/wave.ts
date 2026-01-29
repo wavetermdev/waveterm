@@ -190,6 +190,11 @@ async function initWave(initOpts: WaveInitOpts) {
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
+
+    // Initialize tab base directory validation
+    const { initTabBasedirValidation } = await import("@/store/tab-basedir-validation-hook");
+    initTabBasedirValidation();
+
     await loadMonaco();
     const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
     console.log("fullconfig", fullConfig);

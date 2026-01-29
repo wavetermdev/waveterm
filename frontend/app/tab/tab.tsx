@@ -1,17 +1,31 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
+import { atoms, getApi, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
+import { TabStatusType } from "../store/tab-model";
 import { makeORef, useWaveObjectValue } from "../store/wos";
+import { addPresetSubmenu } from "./tab-menu";
 import "./tab.scss";
+
+// Tab color palette for the context menu
+const TAB_COLORS = [
+    { name: "Red", value: "#ef4444" },
+    { name: "Orange", value: "#f97316" },
+    { name: "Yellow", value: "#eab308" },
+    { name: "Green", value: "#22c55e" },
+    { name: "Cyan", value: "#06b6d4" },
+    { name: "Blue", value: "#3b82f6" },
+    { name: "Purple", value: "#a855f7" },
+    { name: "Pink", value: "#ec4899" },
+];
 
 interface TabProps {
     id: string;
@@ -41,6 +55,42 @@ const Tab = memo(
             const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
             const loadedRef = useRef(false);
             const tabRef = useRef<HTMLDivElement>(null);
+
+            // Read terminal status from tab metadata (synced across webviews)
+            // Status shown on ALL tabs including active
+            const tabStatus = (tabData?.meta?.["tab:termstatus"] as TabStatusType) || null;
+
+            // Clear status after a delay when tab becomes active AND webview is visible
+            // "finished" clears after 2 seconds, "stopped" clears after 3 seconds
+            // We must check document.visibilityState because each tab has its own webview,
+            // and the "active" prop is always true for the owning webview even when in background
+            const [isDocVisible, setIsDocVisible] = useState(document.visibilityState === "visible");
+            useEffect(() => {
+                const handleVisibilityChange = () => {
+                    setIsDocVisible(document.visibilityState === "visible");
+                };
+                document.addEventListener("visibilitychange", handleVisibilityChange);
+                return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+            }, []);
+
+            useEffect(() => {
+                // Only clear status when:
+                // 1. This tab is marked as active (matches this webview's staticTabId)
+                // 2. This webview is actually visible to the user (not a background webview)
+                // 3. Status is finished or stopped
+                if (active && isDocVisible && (tabStatus === "finished" || tabStatus === "stopped")) {
+                    const delay = tabStatus === "stopped" ? 3000 : 2000;
+                    const timer = setTimeout(() => {
+                        // Use fireAndForget to avoid unhandled promise rejection
+                        fireAndForget(() =>
+                            ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                                "tab:termstatus": null,
+                            })
+                        );
+                    }, delay);
+                    return () => clearTimeout(timer);
+                }
+            }, [active, isDocVisible, tabStatus, id]);
 
             useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
@@ -133,9 +183,99 @@ const Tab = memo(
                 event.stopPropagation();
             };
 
+            /**
+             * Opens a native directory picker dialog and sets the tab's base directory.
+             *
+             * The selected directory becomes the default working directory for all
+             * terminals and file preview widgets launched within this tab.
+             *
+             * @remarks
+             * - Uses Electron's native dialog for cross-platform file picking
+             * - Defaults to current base directory if set, otherwise home (~)
+             * - Does NOT set the lock flag - allows smart auto-detection to continue
+             *
+             * @see handleClearBaseDir - To remove the base directory
+             * @see handleToggleLock - To prevent auto-detection
+             */
+            const handleSetBaseDir = useCallback(() => {
+                const currentDir = tabData?.meta?.["tab:basedir"] || "";
+                fireAndForget(async () => {
+                    const newDir = await getApi().showOpenDialog({
+                        title: "Set Tab Base Directory",
+                        defaultPath: currentDir || "~",
+                        properties: ["openDirectory"],
+                    });
+                    if (newDir && newDir.length > 0) {
+                        await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                            "tab:basedir": newDir[0],
+                        });
+                    }
+                });
+            }, [id, tabData]);
+
+            /**
+             * Clears the tab's base directory, restoring default behavior.
+             *
+             * After clearing:
+             * - New terminals use the default directory (typically home ~)
+             * - Smart auto-detection from OSC 7 is re-enabled
+             *
+             * @remarks
+             * Only clears `tab:basedir`, does NOT touch `tab:basedirlock`
+             */
+            const handleClearBaseDir = useCallback(() => {
+                fireAndForget(async () => {
+                    await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                        "tab:basedir": null,
+                    });
+                });
+            }, [id]);
+
+            /**
+             * Toggles the base directory lock state.
+             *
+             * Lock semantics:
+             * - **Unlocked (default):** OSC 7 smart auto-detection can update `tab:basedir`
+             * - **Locked:** OSC 7 updates are blocked; only manual setting changes directory
+             *
+             * Use cases for locking:
+             * - Working in multiple directories within same tab
+             * - Preventing cd commands from changing tab context
+             * - Maintaining a fixed project root despite navigation
+             *
+             * @see tab:basedirlock - The underlying metadata key
+             */
+            const handleToggleLock = useCallback(() => {
+                const currentLock = tabData?.meta?.["tab:basedirlock"] || false;
+                fireAndForget(async () => {
+                    await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                        "tab:basedirlock": !currentLock,
+                    });
+                });
+            }, [id, tabData]);
+
+            /**
+             * Sets the tab's color for visual identification.
+             *
+             * @param color - Hex color value or null to clear
+             */
+            const handleSetTabColor = useCallback(
+                (color: string | null) => {
+                    fireAndForget(async () => {
+                        await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                            "tab:color": color,
+                        });
+                    });
+                },
+                [id]
+            );
+
             const handleContextMenu = useCallback(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
+                    const currentBaseDir = tabData?.meta?.["tab:basedir"];
+                    const isLocked = tabData?.meta?.["tab:basedirlock"] || false;
+
                     let menu: ContextMenuItem[] = [
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
@@ -144,69 +284,120 @@ const Tab = memo(
                         },
                         { type: "separator" },
                     ];
-                    const fullConfig = globalStore.get(atoms.fullConfigAtom);
-                    const bgPresets: string[] = [];
-                    for (const key in fullConfig?.presets ?? {}) {
-                        if (key.startsWith("bg@")) {
-                            bgPresets.push(key);
-                        }
+
+                    // Base Directory submenu
+                    const baseDirSubmenu: ContextMenuItem[] = [
+                        {
+                            label: "Set Base Directory...",
+                            click: handleSetBaseDir,
+                        },
+                    ];
+
+                    if (currentBaseDir) {
+                        baseDirSubmenu.push({
+                            label: "Clear Base Directory",
+                            click: handleClearBaseDir,
+                        });
+                        baseDirSubmenu.push({ type: "separator" });
+                        baseDirSubmenu.push({
+                            label: isLocked ? "Unlock (Enable Smart Detection)" : "Lock (Disable Smart Detection)",
+                            click: handleToggleLock,
+                        });
                     }
-                    bgPresets.sort((a, b) => {
-                        const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
-                        const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
-                        return aOrder - bOrder;
+
+                    menu.push({ label: "Base Directory", type: "submenu", submenu: baseDirSubmenu }, { type: "separator" });
+
+                    // Tab Color submenu
+                    const currentTabColor = tabData?.meta?.["tab:color"];
+                    const colorSubmenu: ContextMenuItem[] = TAB_COLORS.map((color) => ({
+                        label: color.name,
+                        type: "checkbox" as const,
+                        checked: currentTabColor === color.value,
+                        click: () => handleSetTabColor(color.value),
+                    }));
+                    colorSubmenu.push({ type: "separator" });
+                    colorSubmenu.push({
+                        label: "Clear",
+                        click: () => handleSetTabColor(null),
                     });
-                    if (bgPresets.length > 0) {
-                        const submenu: ContextMenuItem[] = [];
-                        const oref = makeORef("tab", id);
-                        for (const presetName of bgPresets) {
-                            const preset = fullConfig.presets[presetName];
-                            if (preset == null) {
-                                continue;
-                            }
-                            submenu.push({
-                                label: preset["display:name"] ?? presetName,
-                                click: () =>
-                                    fireAndForget(async () => {
-                                        await ObjectService.UpdateObjectMeta(oref, preset);
-                                        RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
-                                        recordTEvent("action:settabtheme");
-                                    }),
-                            });
-                        }
-                        menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
-                    }
+
+                    menu.push({ label: "Tab Color", type: "submenu", submenu: colorSubmenu }, { type: "separator" });
+
+                    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+                    const oref = makeORef("tab", id);
+
+                    // Tab Variables presets
+                    addPresetSubmenu(menu, fullConfig, oref, "Tab Variables", {
+                        prefix: "tabvar@",
+                        stripPrefixFromLabel: true,
+                    });
+
+                    // Background presets
+                    addPresetSubmenu(menu, fullConfig, oref, "Backgrounds", {
+                        prefix: "bg@",
+                        sortByOrder: true,
+                        onApply: () => {
+                            RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                            recordTEvent("action:settabtheme");
+                        },
+                    });
                     menu.push({ label: "Close Tab", click: () => onClose(null) });
                     ContextMenuModel.showContextMenu(menu, e);
                 },
-                [handleRenameTab, id, onClose]
+                [handleRenameTab, id, onClose, tabData, handleSetBaseDir, handleClearBaseDir, handleToggleLock, handleSetTabColor]
             );
+
+            const tabColor = tabData?.meta?.["tab:color"];
+
+            /**
+             * Gets the status class name for the tab element.
+             * Used for VS Code style text coloring.
+             */
+            const getStatusClassName = (): string | null => {
+                switch (tabStatus) {
+                    case "stopped":
+                        return "status-stopped";
+                    case "finished":
+                        return "status-finished";
+                    case "running":
+                        return "status-running";
+                    default:
+                        return null;
+                }
+            };
+
+            const statusClassName = getStatusClassName();
 
             return (
                 <div
                     ref={tabRef}
-                    className={clsx("tab", {
+                    className={clsx("tab", statusClassName, {
                         active,
                         dragging: isDragging,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
+                        "has-color": !!tabColor,
                     })}
                     onMouseDown={onDragStart}
                     onClick={onSelect}
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
+                    {/* Top stripe for manual color only (VS Code style) */}
+                    {tabColor && <div className="tab-color-stripe" style={{ backgroundColor: tabColor }} />}
                     <div className="tab-inner">
-                        <div
-                            ref={editableRef}
-                            className={clsx("name", { focused: isEditable })}
-                            contentEditable={isEditable}
-                            onDoubleClick={handleRenameTab}
-                            onBlur={handleBlur}
-                            onKeyDown={handleKeyDown}
-                            suppressContentEditableWarning={true}
-                        >
-                            {tabData?.name}
+                        <div className="tab-name-wrapper">
+                            <div
+                                ref={editableRef}
+                                className={clsx("name", { focused: isEditable })}
+                                contentEditable={isEditable}
+                                onDoubleClick={handleRenameTab}
+                                onBlur={handleBlur}
+                                onKeyDown={handleKeyDown}
+                                suppressContentEditableWarning={true}
+                            >
+                                {tabData?.name}
+                            </div>
                         </div>
                         <Button
                             className="ghost grey close"
