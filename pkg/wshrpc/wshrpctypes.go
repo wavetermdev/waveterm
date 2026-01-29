@@ -123,6 +123,7 @@ type WshRpcInterface interface {
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
 	ElectronDecryptCommand(ctx context.Context, data CommandElectronDecryptData) (*CommandElectronDecryptRtnData, error)
 	NetworkOnlineCommand(ctx context.Context) (bool, error)
+	ElectronSystemBellCommand(ctx context.Context) error
 
 	// secrets
 	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)
@@ -839,4 +840,9 @@ type WaveFileInfo struct {
 	Size      int64    `json:"size"`
 	ModTs     int64    `json:"modts"`
 	Meta      FileMeta `json:"meta"`
+}
+
+type TabBellIndicatorEventData struct {
+	TabId         string `json:"tabid"`
+	BellIndicator bool   `json:"bellindicator"`
 }

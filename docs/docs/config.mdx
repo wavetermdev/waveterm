@@ -38,6 +38,7 @@ wsh editconfig
 | app:defaultnewblock                  | string   | Sets the default new block (Cmd:n, Cmd:d). "term" for terminal block, "launcher" for launcher block (default = "term")                                                                                                                                        |
 | app:showoverlayblocknums             | bool     | Set to false to disable the Ctrl+Shift block number overlay that appears when holding Ctrl+Shift (defaults to true)                                                                                                                                           |
 | app:ctrlvpaste                       | bool     | On Windows/Linux, when null (default) uses Control+V on Windows only. Set to true to force Control+V on all non-macOS platforms, false to disable the accelerator. macOS always uses Command+V regardless of this setting                                     |
+| app:confirmquit                      | bool     | Set to false to disable the quit confirmation dialog when closing Wave Terminal (defaults to true, requires app restart)                                                                                                                                      |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -62,6 +63,8 @@ wsh editconfig
 | term:allowbracketedpaste             | bool     | allow bracketed paste mode in terminal (default false)                                                                                                                                                                                                        |
 | term:shiftenternewline               | bool     | when enabled, Shift+Enter sends escape sequence + newline (\u001b\n) instead of carriage return, useful for claude code and similar AI coding tools (default false)                                                                                         |
 | term:macoptionismeta                 | bool     | on macOS, treat the Option key as Meta key for terminal keybindings (default false)                                                                                                                                                                          |
+| term:bellsound                       | bool     | when enabled, plays the system beep sound when the terminal bell (BEL character) is received (default false)                                                                                                                                                  |
+| term:bellindicator                   | bool     | when enabled, shows a visual indicator in the tab when the terminal bell is received (default true)                                                                                                                                                           |
 | editor:minimapenabled                | bool     | set to false to disable editor minimap                                                                                                                                                                                                                        |
 | editor:stickyscrollenabled           | bool     | enables monaco editor's stickyScroll feature (pinning headers of current context, e.g. class names, method names, etc.), defaults to false                                                                                                                    |
 | editor:wordwrap                      | bool     | set to true to enable word wrapping in the editor (defaults to false)                                                                                                                                                                                         |
@@ -108,6 +111,7 @@ For reference, this is the current default configuration (v0.11.5):
     "ai:maxtokens": 4000,
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
+    "app:confirmquit": true,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
@@ -126,7 +130,11 @@ For reference, this is the current default configuration (v0.11.5):
     "window:confirmclose": true,
     "window:savelastwindow": true,
     "telemetry:enabled": true,
-    "term:copyonselect": true
+    "term:bellsound": false,
+    "term:bellindicator": true,
+    "term:copyonselect": true,
+    "waveai:showcloudmodes": true,
+    "waveai:defaultmode": "waveai@balanced"
 }
 ```
 

@@ -235,6 +235,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
                 const rateLimitInfo: RateLimitInfo = event.data;
                 globalStore.set(atoms.waveAIRateLimitInfoAtom, rateLimitInfo);
             },
+        },
+        {
+            eventType: "tab:bellindicator",
+            handler: (event) => {
+                const data: TabBellIndicatorEventData = event.data;
+                console.log("tab:bellindicator event", data.tabid, data.bellindicator);
+            },
         }
     );
 }
@@ -826,7 +833,6 @@ export {
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
-    readAtom,
     initGlobal,
     initGlobalWaveEventSubs,
     isDev,
@@ -834,6 +840,7 @@ export {
     openLink,
     pushFlashError,
     pushNotification,
+    readAtom,
     recordTEvent,
     refocusNode,
     registerBlockComponentModel,

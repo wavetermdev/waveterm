@@ -5,7 +5,16 @@ import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
+import {
+    WOS,
+    fetchWaveFile,
+    getApi,
+    getOverrideConfigAtom,
+    getSettingsKeyAtom,
+    globalStore,
+    openLink,
+    recordTEvent,
+} from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
@@ -478,6 +487,20 @@ export class TermWrap {
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
             return handleOsc16162Command(data, this.blockId, this.loaded, this);
         });
+        this.toDispose.push(
+            this.terminal.onBell(() => {
+                if (!this.loaded) {
+                    return true;
+                }
+                console.log("BEL received in terminal", this.blockId);
+                const bellSoundEnabled =
+                    globalStore.get(getOverrideConfigAtom(this.blockId, "term:bellsound")) ?? false;
+                if (bellSoundEnabled) {
+                    fireAndForget(() => RpcApi.ElectronSystemBellCommand(TabRpcClient, { route: "electron" }));
+                }
+                return true;
+            })
+        );
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
         this.mainFileSubject = null;

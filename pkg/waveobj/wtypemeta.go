@@ -121,6 +121,8 @@ type MetaTSType struct {
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
+	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
+	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 
 	WebZoom          float64 `json:"web:zoom,omitempty"`
 	WebHideNav       *bool   `json:"web:hidenav,omitempty"`

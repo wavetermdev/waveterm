@@ -187,6 +187,11 @@ class RpcApiType {
         return client.wshRpcCall("electronencrypt", data, opts);
     }
 
+    // command "electronsystembell" [call]
+    ElectronSystemBellCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("electronsystembell", null, opts);
+    }
+
     // command "eventpublish" [call]
     EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);

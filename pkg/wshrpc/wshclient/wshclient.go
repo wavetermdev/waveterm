@@ -232,6 +232,12 @@ func ElectronEncryptCommand(w *wshutil.WshRpc, data wshrpc.CommandElectronEncryp
 	return resp, err
 }
 
+// command "electronsystembell", wshserver.ElectronSystemBellCommand
+func ElectronSystemBellCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "electronsystembell", nil, opts)
+	return err
+}
+
 // command "eventpublish", wshserver.EventPublishCommand
 func EventPublishCommand(w *wshutil.WshRpc, data wps.WaveEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "eventpublish", data, opts)

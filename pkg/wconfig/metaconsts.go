@@ -12,6 +12,7 @@ const (
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
+	ConfigKey_AppConfirmQuit                 = "app:confirmquit"
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
@@ -47,6 +48,8 @@ const (
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
+	ConfigKey_TermBellSound                  = "term:bellsound"
+	ConfigKey_TermBellIndicator              = "term:bellindicator"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
