@@ -36,3 +36,13 @@ storybook-static/
 test-results.xml
 
 docsite/
+
+# Development/debug files
+logs/
+*.diff
+start-debug.bat
+start-debug.ps1
+pr*.txt
+
+# Playwright MCP
+.playwright-mcp/

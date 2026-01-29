@@ -3,19 +3,18 @@
 import eslint from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
+import globals from "globals";
 
-const baseConfig = tseslint.config(eslint.configs.recommended, ...tseslint.configs.recommended);
-
-const customConfig = {
-    ...baseConfig,
-    overrides: [
-        {
-            files: ["emain/emain.ts", "electron.vite.config.ts"],
-            env: {
-                node: true,
+export default tseslint.config(
+    eslint.configs.recommended,
+    ...tseslint.configs.recommended,
+    {
+        files: ["emain/**/*.ts", "electron.vite.config.ts"],
+        languageOptions: {
+            globals: {
+                ...globals.node,
             },
         },
-    ],
-};
-
-export default [customConfig, eslintConfigPrettier];
+    },
+    eslintConfigPrettier
+);
