@@ -241,10 +241,16 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	}
 	tevent.EnsureTimestamps()
 
-	// Set AppFirstDay if within first day of TOS agreement
+	// Set AppFirstDay if on same calendar day as TOS agreement
 	tosAgreedTs := GetTosAgreedTs()
-	if tosAgreedTs == 0 || (tosAgreedTs != 0 && time.Now().UnixMilli()-tosAgreedTs <= int64(24*60*60*1000)) {
+	if tosAgreedTs == 0 {
 		tevent.Props.AppFirstDay = true
+	} else {
+		tosYear, tosMonth, tosDay := time.UnixMilli(tosAgreedTs).Date()
+		nowYear, nowMonth, nowDay := time.Now().Date()
+		if tosYear == nowYear && tosMonth == nowMonth && tosDay == nowDay {
+			tevent.Props.AppFirstDay = true
+		}
 	}
 
 	if tevent.Event == ActivityEventName {
