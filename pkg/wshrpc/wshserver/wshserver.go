@@ -1402,6 +1402,10 @@ func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.
 	return tab, nil
 }
 
+func (ws *WshServer) GetAllTabBellIndicatorsCommand(ctx context.Context) (map[string]bool, error) {
+	return wcore.GetAllTabBellIndicators(), nil
+}
+
 func (ws *WshServer) GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error) {
 	result := make(map[string]string)
 	for _, name := range names {

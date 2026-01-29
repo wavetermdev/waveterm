@@ -38,6 +38,7 @@ let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
+const TabBellIndicatorMap = new Map<string, PrimitiveAtom<boolean>>();
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobal(initOpts: GlobalInitOptions) {
@@ -146,6 +147,17 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     }
 
+    const documentHasFocusAtom = atom(true) as PrimitiveAtom<boolean>;
+    if (globalThis.window != null) {
+        globalStore.set(documentHasFocusAtom, document.hasFocus());
+        window.addEventListener("focus", () => {
+            globalStore.set(documentHasFocusAtom, true);
+        });
+        window.addEventListener("blur", () => {
+            globalStore.set(documentHasFocusAtom, false);
+        });
+    }
+
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
         const connStatusMap = get(ConnStatusMapAtom);
@@ -174,6 +186,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,
+        documentHasFocus: documentHasFocusAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
@@ -240,7 +253,8 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             eventType: "tab:bellindicator",
             handler: (event) => {
                 const data: TabBellIndicatorEventData = event.data;
-                console.log("tab:bellindicator event", data.tabid, data.bellindicator);
+                const bellIndicatorAtom = getTabBellIndicatorAtom(data.tabid);
+                globalStore.set(bellIndicatorAtom, data.bellindicator);
             },
         }
     );
@@ -695,6 +709,17 @@ async function loadConnStatus() {
     }
 }
 
+async function loadTabBellIndicators() {
+    const tabBellIndicators = await RpcApi.GetAllTabBellIndicatorsCommand(TabRpcClient);
+    if (tabBellIndicators == null) {
+        return;
+    }
+    for (const [tabId, bellState] of Object.entries(tabBellIndicators)) {
+        const curAtom = getTabBellIndicatorAtom(tabId);
+        globalStore.set(curAtom, bellState);
+    }
+}
+
 function subscribeToConnEvents() {
     waveEventSubscribe({
         eventType: "connchange",
@@ -746,6 +771,39 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
         globalStore.set(ConnStatusMapAtom, newConnStatusMap);
     }
     return rtn;
+}
+
+function getTabBellIndicatorAtom(tabId: string): PrimitiveAtom<boolean> {
+    let rtn = TabBellIndicatorMap.get(tabId);
+    if (rtn == null) {
+        rtn = atom(false);
+        TabBellIndicatorMap.set(tabId, rtn);
+    }
+    return rtn;
+}
+
+function setTabBellIndicator(tabId: string, state: boolean) {
+    const bellIndicatorAtom = getTabBellIndicatorAtom(tabId);
+    globalStore.set(bellIndicatorAtom, state);
+    
+    const eventData: WaveEvent = {
+        event: "tab:bellindicator",
+        scopes: [WOS.makeORef("tab", tabId)],
+        data: {
+            tabid: tabId,
+            bellindicator: state,
+        } as TabBellIndicatorEventData,
+    };
+    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+}
+
+function clearAllTabBellIndicators() {
+    for (const [tabId, bellIndicatorAtom] of TabBellIndicatorMap.entries()) {
+        const hasBell = globalStore.get(bellIndicatorAtom);
+        if (hasBell) {
+            setTabBellIndicator(tabId, false);
+        }
+    }
 }
 
 function pushFlashError(ferr: FlashErrorType) {
@@ -810,6 +868,7 @@ function recordTEvent(event: string, props?: TEventProps) {
 
 export {
     atoms,
+    clearAllTabBellIndicators,
     counterInc,
     countersClear,
     countersPrint,
@@ -830,6 +889,7 @@ export {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
+    getTabBellIndicatorAtom,
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
@@ -837,6 +897,7 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
+    loadTabBellIndicators,
     openLink,
     pushFlashError,
     pushNotification,
@@ -851,6 +912,7 @@ export {
     setActiveTab,
     setNodeFocus,
     setPlatform,
+    setTabBellIndicator,
     subscribeToConnEvents,
     unregisterBlockComponentModel,
     useBlockAtom,

@@ -1,13 +1,22 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
+import {
+    atoms,
+    clearAllTabBellIndicators,
+    getTabBellIndicatorAtom,
+    globalStore,
+    recordTEvent,
+    refocusNode,
+    setTabBellIndicator,
+} from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
+import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
@@ -36,6 +45,7 @@ const Tab = memo(
             const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
+            const hasBellIndicator = useAtomValue(getTabBellIndicatorAtom(id));
 
             const editableRef = useRef<HTMLDivElement>(null);
             const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
@@ -133,17 +143,37 @@ const Tab = memo(
                 event.stopPropagation();
             };
 
+            const handleTabClick = () => {
+                setTabBellIndicator(id, false);
+                onSelect();
+            };
+
             const handleContextMenu = useCallback(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
-                    let menu: ContextMenuItem[] = [
+                    let menu: ContextMenuItem[] = [];
+                    const hasBell = globalStore.get(getTabBellIndicatorAtom(id));
+                    if (hasBell) {
+                        menu.push(
+                            {
+                                label: "Clear Tab Bell Indicator",
+                                click: () => setTabBellIndicator(id, false),
+                            },
+                            {
+                                label: "Clear All Indicators",
+                                click: () => clearAllTabBellIndicators(),
+                            },
+                            { type: "separator" }
+                        );
+                    }
+                    menu.push(
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
                             label: "Copy TabId",
                             click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
                         },
-                        { type: "separator" },
-                    ];
+                        { type: "separator" }
+                    );
                     const fullConfig = globalStore.get(atoms.fullConfigAtom);
                     const bgPresets: string[] = [];
                     for (const key in fullConfig?.presets ?? {}) {
@@ -192,11 +222,11 @@ const Tab = memo(
                         "new-tab": isNew,
                     })}
                     onMouseDown={onDragStart}
-                    onClick={onSelect}
+                    onClick={handleTabClick}
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
-                    <div className="tab-inner">
+                    <div className="tab-inner group">
                         <div
                             ref={editableRef}
                             className={clsx("name", { focused: isEditable })}
@@ -208,6 +238,14 @@ const Tab = memo(
                         >
                             {tabData?.name}
                         </div>
+                        {hasBellIndicator && (
+                            <div
+                                className="bell wave-button text-amber-500 pointer-events-none group-hover:opacity-80"
+                                title="Activity notification"
+                            >
+                                <i className="fa fa-solid fa-bell" />
+                            </div>
+                        )}
                         <Button
                             className="ghost grey close"
                             onClick={onClose}

@@ -6,7 +6,7 @@ import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
+import { atoms, createBlock, getSettingsPrefixAtom, getTabBellIndicatorAtom, globalStore, isDev, removeFlashError, setTabBellIndicator } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -205,6 +205,28 @@ const AppKeyHandlers = () => {
     return null;
 };
 
+const TabBellIndicatorAutoClearing = () => {
+    const tabId = useAtomValue(atoms.staticTabId);
+    const hasBellIndicator = useAtomValue(getTabBellIndicatorAtom(tabId));
+    const documentHasFocus = useAtomValue(atoms.documentHasFocus);
+
+    useEffect(() => {
+        if (!hasBellIndicator || !documentHasFocus) {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            if (globalStore.get(atoms.documentHasFocus)) {
+                setTabBellIndicator(tabId, false);
+            }
+        }, 3000);
+
+        return () => clearTimeout(timeoutId);
+    }, [tabId, hasBellIndicator, documentHasFocus]);
+
+    return null;
+};
+
 const FlashError = () => {
     const flashErrors = useAtomValue(atoms.flashErrors);
     const [hoveredId, setHoveredId] = useState<string>(null);
@@ -304,6 +326,7 @@ const AppInner = () => {
             <AppKeyHandlers />
             <AppFocusHandler />
             <AppSettingsUpdater />
+            <TabBellIndicatorAutoClearing />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>

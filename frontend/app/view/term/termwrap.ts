@@ -6,6 +6,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
+    atoms,
     WOS,
     fetchWaveFile,
     getApi,
@@ -14,6 +15,7 @@ import {
     globalStore,
     openLink,
     recordTEvent,
+    setTabBellIndicator,
 } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -497,6 +499,12 @@ export class TermWrap {
                     globalStore.get(getOverrideConfigAtom(this.blockId, "term:bellsound")) ?? false;
                 if (bellSoundEnabled) {
                     fireAndForget(() => RpcApi.ElectronSystemBellCommand(TabRpcClient, { route: "electron" }));
+                }
+                const bellIndicatorEnabled =
+                    globalStore.get(getOverrideConfigAtom(this.blockId, "term:bellindicator")) ?? false;
+                if (bellIndicatorEnabled) {
+                    const tabId = globalStore.get(atoms.staticTabId);
+                    setTabBellIndicator(tabId, true);
                 }
                 return true;
             })
