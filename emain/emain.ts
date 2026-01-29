@@ -15,9 +15,11 @@ import {
     getAndClearTermCommandsRun,
     getForceQuit,
     getGlobalIsRelaunching,
+    getUserConfirmedQuit,
     setForceQuit,
     setGlobalIsQuitting,
     setGlobalIsStarting,
+    setUserConfirmedQuit,
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
@@ -242,6 +244,25 @@ electronApp.on("window-all-closed", () => {
     }
 });
 electronApp.on("before-quit", (e) => {
+    const allWindows = getAllWaveWindows();
+    const allBuilders = getAllBuilderWindows();
+    if (!getForceQuit() && !getUserConfirmedQuit() && (allWindows.length > 0 || allBuilders.length > 0)) {
+        e.preventDefault();
+        const choice = electron.dialog.showMessageBoxSync(null, {
+            type: "question",
+            buttons: ["Cancel", "Quit"],
+            title: "Confirm Quit",
+            message: "Are you sure you want to quit Wave Terminal?",
+            defaultId: 0,
+            cancelId: 0,
+        });
+        if (choice === 0) {
+            return;
+        }
+        setUserConfirmedQuit(true);
+        electronApp.quit();
+        return;
+    }
     setGlobalIsQuitting(true);
     updater?.stop();
     if (unamePlatform == "win32") {
@@ -255,11 +276,9 @@ electronApp.on("before-quit", (e) => {
         return;
     }
     e.preventDefault();
-    const allWindows = getAllWaveWindows();
     for (const window of allWindows) {
         hideWindowWithCatch(window);
     }
-    const allBuilders = getAllBuilderWindows();
     for (const builder of allBuilders) {
         builder.hide();
     }
