@@ -193,11 +193,16 @@ $sidebar-width: 200px;
         border: 1px solid var(--form-element-border-color);
         border-radius: 6px;
         padding: 0 12px;
-        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+
+        &:hover {
+            border-color: var(--form-element-primary-color, var(--accent-color));
+        }
 
         &:focus-within {
             border-color: var(--accent-color);
             box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
+            background: linear-gradient(rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.15)), var(--form-element-bg-color);
         }
 
         .search-icon {
@@ -321,7 +326,7 @@ $sidebar-width: 200px;
             margin: 8px 12px 16px 12px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.06);
+            box-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.03);
             // Note: overflow:hidden would break sticky, so we use border-radius on children instead
 
             &:first-child {
@@ -372,7 +377,7 @@ $sidebar-width: 200px;
             // Category header gets border and shadow only when no subcategory header is stuck below it
             &:not(:has(.settings-subcategory-header.is-stuck)) .settings-category-header.is-stuck {
                 border-bottom: 1px solid var(--border-color);
-                box-shadow: 0 2px 8px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.2);
+                box-shadow: 0 2px 8px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08);
             }
 
             // Subcategory section wrapper - no gaps
@@ -399,8 +404,8 @@ $sidebar-width: 200px;
                 color: var(--grey-text-color);
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
-                // Neutral grey background (not theme-tinted)
-                background: #2a2a2a;
+                // Use theme variable for light mode compatibility
+                background: var(--panel-bg-color);
                 border-bottom: 1px solid var(--border-color);
                 margin: 0;
                 transition: box-shadow 0.15s ease;
@@ -408,7 +413,7 @@ $sidebar-width: 200px;
 
             // When subcategory header is stuck (detected by JS)
             .settings-subcategory-header.is-stuck {
-                box-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+                box-shadow: 0 2px 4px rgb(0 0 0 / 0.08);
             }
 
             .settings-subcategory-content {

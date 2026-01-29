@@ -25,7 +25,7 @@ import { settingsService } from "@/app/store/settings-service";
 import { DisplaySettings } from "@/app/view/waveconfig/display-settings";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import "./appearance-content.scss";
 
@@ -37,7 +37,9 @@ interface AppearanceContentProps {
  * Main Appearance Content component
  */
 export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["terminal-theme"]));
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(
+        new Set(["theme", "display", "terminal-theme", "omp"])
+    );
     const [termPreviewBg, setTermPreviewBg] = useState<PreviewBackground>("dark");
     const [ompPreviewBg, setOmpPreviewBg] = useState<PreviewBackground>("dark");
 
@@ -46,6 +48,24 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
     const appAccent = (useAtomValue(getSettingsKeyAtom("app:accent")) as string) ?? "green";
     const termTheme = (useAtomValue(getSettingsKeyAtom("term:theme")) as string) ?? "default-dark";
     const ompTheme = (useAtomValue(getSettingsKeyAtom("term:omptheme")) as string) ?? "";
+    const themeOverridesRaw = useAtomValue(getSettingsKeyAtom("app:themeoverrides")) as
+        | Record<string, string>
+        | undefined;
+    const themeOverrides = useMemo(() => {
+        if (themeOverridesRaw && typeof themeOverridesRaw === "object") {
+            return themeOverridesRaw;
+        }
+        return {};
+    }, [themeOverridesRaw]);
+    const customAccentsRaw = useAtomValue(getSettingsKeyAtom("app:customaccents")) as
+        | Record<string, { label: string; overrides: Record<string, string> }>
+        | undefined;
+    const customAccents = useMemo(() => {
+        if (customAccentsRaw && typeof customAccentsRaw === "object") {
+            return customAccentsRaw;
+        }
+        return undefined;
+    }, [customAccentsRaw]);
 
     const toggleSection = useCallback((section: string) => {
         setExpandedSections((prev) => {
@@ -67,6 +87,58 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
         settingsService.setSetting("app:accent", value);
     }, []);
 
+    const handleOverrideChange = useCallback(
+        (variable: string, value: string | null) => {
+            const current = { ...themeOverrides };
+            if (value === null) {
+                delete current[variable];
+            } else {
+                current[variable] = value;
+            }
+            // Always save the object (even if empty) — avoids null-handling issues in backend
+            settingsService.setSetting("app:themeoverrides", current);
+        },
+        [themeOverrides]
+    );
+
+    const handleSaveCustomAccent = useCallback(
+        (name: string, overrides: Record<string, string>) => {
+            let id = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+            if (!id) {
+                alert("Please enter a valid name with at least one letter or number.");
+                return;
+            }
+            const current = customAccents ? { ...customAccents } : {};
+            // Avoid silently overwriting: append suffix if id already exists
+            if (id in current) {
+                let suffix = 2;
+                while (`${id}-${suffix}` in current) suffix++;
+                id = `${id}-${suffix}`;
+            }
+            current[id] = { label: name, overrides };
+            settingsService.setSetting("app:customaccents", current);
+            settingsService.setSetting("app:accent", `custom:${id}`);
+            // Clear theme overrides since they're now saved in the custom accent
+            settingsService.setSetting("app:themeoverrides", null);
+        },
+        [customAccents]
+    );
+
+    const handleDeleteCustomAccent = useCallback(
+        (id: string) => {
+            if (!customAccents) return;
+            const current = { ...customAccents };
+            delete current[id];
+            const isEmpty = Object.keys(current).length === 0;
+            settingsService.setSetting("app:customaccents", isEmpty ? null : current);
+            // If the deleted accent was selected, switch back to green
+            if (appAccent === `custom:${id}`) {
+                settingsService.setSetting("app:accent", "green");
+            }
+        },
+        [customAccents, appAccent]
+    );
+
     const handleTermThemeChange = useCallback((value: string) => {
         settingsService.setSetting("term:theme", value);
     }, []);
@@ -84,28 +156,53 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
 
     return (
         <div className="appearance-content">
-            <div className="appearance-header">
-                <h2>Appearance</h2>
-                <p className="appearance-subtitle">Customize the look and feel of Wave Terminal</p>
-            </div>
+            {/* Theme: Mode, Accent, Palette grouped in a collapsible section */}
+            <CollapsibleSection
+                title="Theme"
+                icon="palette"
+                isExpanded={expandedSections.has("theme")}
+                onToggle={() => toggleSection("theme")}
+            >
+                <div className="theme-subsections">
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">
+                            Mode
+                        </div>
+                        <div className="display-subsection-content">
+                            <ModeSelector value={appTheme} onChange={handleThemeChange} />
+                        </div>
+                    </div>
 
-            {/* Mode and Accent are always visible (not collapsible) */}
-            <div className="appearance-section">
-                <div className="appearance-section-label">Mode</div>
-                <ModeSelector value={appTheme} onChange={handleThemeChange} />
-            </div>
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">
+                            Accent Theme
+                        </div>
+                        <div className="display-subsection-content">
+                            <AccentSelector
+                                value={appAccent}
+                                onChange={handleAccentChange}
+                                customAccents={customAccents}
+                                themeOverrides={themeOverrides}
+                                onSaveCustomAccent={handleSaveCustomAccent}
+                                onDeleteCustomAccent={handleDeleteCustomAccent}
+                            />
+                        </div>
+                    </div>
 
-            <div className="appearance-section">
-                <div className="appearance-section-label">Accent Theme</div>
-                <AccentSelector value={appAccent} onChange={handleAccentChange} />
-            </div>
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">
+                            Color Palette Preview
+                        </div>
+                        <div className="display-subsection-content">
+                            <ThemePalettePreview
+                                themeOverrides={themeOverrides}
+                                onOverrideChange={handleOverrideChange}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </CollapsibleSection>
 
-            <div className="appearance-section">
-                <div className="appearance-section-label">Color Palette Preview</div>
-                <ThemePalettePreview />
-            </div>
-
-            {/* Collapsible sections */}
             <CollapsibleSection
                 title="Display Settings"
                 icon="sliders"
@@ -121,12 +218,21 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                 isExpanded={expandedSections.has("terminal-theme")}
                 onToggle={() => toggleSection("terminal-theme")}
             >
-                <PreviewBackgroundToggle value={termPreviewBg} onChange={setTermPreviewBg} />
-                <TermThemeControl
-                    value={termTheme}
-                    onChange={handleTermThemeChange}
-                    previewBackground={termPreviewBg}
-                />
+                <div className="theme-subsections">
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">
+                            Themes
+                        </div>
+                        <div className="display-subsection-content">
+                            <PreviewBackgroundToggle value={termPreviewBg} onChange={setTermPreviewBg} />
+                            <TermThemeControl
+                                value={termTheme}
+                                onChange={handleTermThemeChange}
+                                previewBackground={termPreviewBg}
+                            />
+                        </div>
+                    </div>
+                </div>
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -135,22 +241,40 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                 isExpanded={expandedSections.has("omp")}
                 onToggle={() => toggleSection("omp")}
             >
-                <div className="omp-section">
-                    <PreviewBackgroundToggle value={ompPreviewBg} onChange={setOmpPreviewBg} />
-                    <OmpThemeControl
-                        value={ompTheme}
-                        onChange={handleOmpThemeChange}
-                        previewBackground={ompPreviewBg}
-                    />
-                    <div className="section-divider" />
-                    <OmpHighContrast />
-                    <div className="section-divider" />
-                    <OmpPaletteExport />
-                    <div className="section-divider" />
-                    <OmpConfigurator
-                        previewBackground={ompPreviewBg}
-                        onConfigChange={handleOmpConfigChange}
-                    />
+                <div className="theme-subsections">
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">
+                            Theme
+                        </div>
+                        <div className="display-subsection-content">
+                            <PreviewBackgroundToggle value={ompPreviewBg} onChange={setOmpPreviewBg} />
+                            <OmpThemeControl
+                                value={ompTheme}
+                                onChange={handleOmpThemeChange}
+                                previewBackground={ompPreviewBg}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">Options</div>
+                        <div className="display-subsection-content">
+                            <OmpHighContrast />
+                            <OmpPaletteExport />
+                        </div>
+                    </div>
+
+                    <div className="display-subsection">
+                        <div className="display-subsection-title">
+                            Configurator
+                        </div>
+                        <div className="display-subsection-content">
+                            <OmpConfigurator
+                                previewBackground={ompPreviewBg}
+                                onConfigChange={handleOmpConfigChange}
+                            />
+                        </div>
+                    </div>
                 </div>
             </CollapsibleSection>
         </div>

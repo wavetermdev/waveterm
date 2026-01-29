@@ -21,6 +21,9 @@ This is a personal fork with experimental features. Key differences from upstrea
 - **Font Ligatures** - Enable with `"term:ligatures": true` in settings. Works with ligature fonts (Fira Code, JetBrains Mono, etc.).
 - **Tab Base Directory System** - Project-centric workflow with colored tabs, breadcrumb navigation, and smart OSC 7 auto-detection. See `docs/docs/tabs.mdx` for full documentation.
 - **Backend Validation** - Comprehensive metadata validation in `pkg/waveobj/validators.go` (path traversal prevention, URL validation, optimistic locking).
+- **Theme System Redesign** - Two-dimensional theme: Mode (Dark/Light/System via `app:theme`) × Accent (Green/Warm/Blue/Purple/Teal via `app:accent`). Uses `data-theme` and `data-accent` CSS attributes on `document.documentElement`. See `frontend/app/hook/usetheme.ts`.
+- **Oh-My-Posh Configurator** - Visual editor for OMP themes in the Appearance panel. Discovers config files, renders block/segment previews, edits properties. See `frontend/app/element/settings/omp-configurator/`.
+- **Remote Debugging in Dev Mode** - In dev mode (`WAVETERM_DEV` set), Electron automatically enables Chrome DevTools Protocol on port 9222. This allows Electron MCP tools and other CDP clients to connect for automated testing.
 - **PowerShell Profile Loading** - User's `$PROFILE` is now sourced automatically after Wave's shell integration.
 - **Windows PowerShell 7** - Build scripts require `pwsh` (PowerShell 7+), not Windows PowerShell 5.1.
 
@@ -257,6 +260,38 @@ task generate
   RpcApi
   ```
 
+### Remote Debugging (Electron MCP)
+
+In dev mode, Electron exposes Chrome DevTools Protocol on port 9222 automatically. This enables Electron MCP tools for automated testing without manual interaction.
+
+**How it works:**
+- `emain/emain.ts` checks `isDev` (set when `WAVETERM_DEV=1`) and appends `--remote-debugging-port=9222`
+- `task dev` or `task electron:winquickdev` set `WAVETERM_DEV=1` automatically
+- Electron MCP tools (`get_electron_window_info`, `take_screenshot`, `send_command_to_electron`) connect via CDP
+
+**Usage with Electron MCP:**
+```bash
+# Verify the app is running with debugging
+mcp__electron__get_electron_window_info
+
+# Take a screenshot
+mcp__electron__take_screenshot
+
+# Inspect page elements
+mcp__electron__send_command_to_electron(command="get_page_structure")
+
+# Click elements by text
+mcp__electron__send_command_to_electron(command="click_by_text", args={text: "Settings"})
+
+# Evaluate JavaScript in the renderer
+mcp__electron__send_command_to_electron(command="eval", args={code: "document.title"})
+
+# Check console for errors
+mcp__electron__read_electron_logs(logType="console")
+```
+
+**Note:** Do NOT use Playwright to control the Electron app — use Electron MCP tools instead.
+
 ### Backend Debugging
 
 - **Logs:** `~/.waveterm-dev/waveapp.log` (development mode)
@@ -313,6 +348,11 @@ go test ./pkg/...
 - **Dev logs:** `~/.waveterm-dev/waveapp.log`
 - **Metadata validators:** `pkg/waveobj/validators.go`
 - **Tab docs:** `docs/docs/tabs.mdx`
+- **Theme hook:** `frontend/app/hook/usetheme.ts`
+- **Theme CSS:** `frontend/app/theme.scss`
+- **Settings registry:** `frontend/app/store/settings-registry.ts`
+- **Appearance panel:** `frontend/app/view/waveconfig/appearance-content.tsx`
+- **OMP configurator:** `frontend/app/element/settings/omp-configurator/`
 
 ## Common Gotchas
 
@@ -322,6 +362,9 @@ go test ./pkg/...
 4. **Database schema changes require migrations** - Never modify schema directly
 5. **Wave objects must be registered** - Add to `init()` in `pkg/waveobj/waveobj.go`
 6. **Windows requires PowerShell 7** - Build scripts use `pwsh -NoProfile`, not Windows PowerShell 5.1
+7. **Theme system uses two CSS attributes** - `data-theme` (dark/light) and `data-accent` (green/warm/blue/purple/teal) on `document.documentElement`. Both must be set.
+8. **Settings `hideFromSettings` field** - Settings with `hideFromSettings: true` have custom controls in the Appearance panel and are hidden from the General settings panel. Both `searchSettings` functions filter these out.
+9. **Remote debugging is dev-only** - Port 9222 is only opened when `isDev` is true. Production builds do not expose CDP.
 
 ## Tab Base Directory Feature
 

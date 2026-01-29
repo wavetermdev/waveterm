@@ -10,23 +10,6 @@
     gap: 16px;
 }
 
-.appearance-header {
-    margin-bottom: 24px;
-
-    h2 {
-        font-size: 20px;
-        font-weight: 600;
-        margin: 0 0 6px 0;
-        color: var(--main-text-color);
-    }
-
-    .appearance-subtitle {
-        font-size: 13px;
-        color: var(--secondary-text-color);
-        margin: 0;
-    }
-}
-
 .appearance-section {
     display: flex;
     flex-direction: column;
@@ -34,9 +17,9 @@
     padding: 0 4px;
 
     .appearance-section-label {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--secondary-text-color);
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--grey-text-color);
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }

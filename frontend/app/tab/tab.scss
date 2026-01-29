@@ -160,8 +160,8 @@ body:not(.nohover) .tab.dragging {
         content: none;
     }
 
-    // Hover tab: 50% white overlay on tab bar background (middle brightness)
-    background: rgb(255 255 255 / 0.08);
+    // Hover tab: use shared hover variable for consistency with settings panel
+    background: var(--hover-bg-color);
 
     .tab-inner {
         border-color: transparent;

@@ -1,0 +1,456 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// macOS-style "Colors" Picker Popup
+// Title bar, segmented tabs, Grid/Spectrum/Sliders,
+// Hex input, opacity slider, recent colors
+// ============================================
+
+// Backdrop — transparent click target to close the picker
+.cp-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+}
+
+// Popup container
+.cp-popup {
+    position: fixed;
+    z-index: 1000;
+    width: 290px;
+    background: var(--modal-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+// ============================================
+// Title Bar
+// ============================================
+
+.cp-titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(var(--highlight-bg-color), var(--highlight-bg-color)), var(--main-bg-color);
+    user-select: none;
+}
+
+.cp-titlebar-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    padding: 0;
+
+    &:hover {
+        color: var(--main-text-color);
+        background: var(--hover-bg-color);
+    }
+}
+
+.cp-titlebar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--main-text-color);
+}
+
+.cp-titlebar-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+// ============================================
+// Tab Bar — Segmented Control
+// ============================================
+
+.cp-tabs {
+    display: flex;
+    margin: 10px 12px 0;
+    background: var(--card-bg-color);
+    border-radius: 7px;
+    padding: 2px;
+    border: 1px solid var(--border-color);
+}
+
+.cp-tab {
+    flex: 1;
+    padding: 5px 0;
+    border: none;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        color: var(--main-text-color);
+    }
+
+    &--active {
+        background: var(--highlight-bg-color);
+        color: var(--main-text-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+}
+
+// ============================================
+// Tab Content Area
+// ============================================
+
+.cp-content {
+    padding: 10px 12px;
+    min-height: 170px;
+}
+
+// ============================================
+// Grid Tab
+// ============================================
+
+.cp-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cp-grid-colors {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cp-grid-row {
+    display: flex;
+    gap: 2px;
+}
+
+.cp-grid-cell {
+    flex: 1;
+    aspect-ratio: 1;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s ease;
+
+    &:hover {
+        transform: scale(1.3);
+        z-index: 1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        border-color: var(--main-text-color);
+    }
+
+    &--selected {
+        box-shadow: 0 0 0 2px var(--main-text-color);
+        border-color: var(--main-text-color);
+    }
+}
+
+// ============================================
+// Spectrum Tab — Full Hue × Brightness
+// ============================================
+
+.cp-spectrum-area {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    border-radius: 4px;
+    cursor: crosshair;
+    // Full hue spectrum (left=red → right=red via all hues) with brightness (top=bright, bottom=black)
+    background:
+        linear-gradient(to bottom, transparent, #000),
+        linear-gradient(
+            to right,
+            hsl(0, 100%, 50%),
+            hsl(30, 100%, 50%),
+            hsl(60, 100%, 50%),
+            hsl(90, 100%, 50%),
+            hsl(120, 100%, 50%),
+            hsl(150, 100%, 50%),
+            hsl(180, 100%, 50%),
+            hsl(210, 100%, 50%),
+            hsl(240, 100%, 50%),
+            hsl(270, 100%, 50%),
+            hsl(300, 100%, 50%),
+            hsl(330, 100%, 50%),
+            hsl(360, 100%, 50%)
+        );
+}
+
+// Circle cursor on the spectrum
+.cp-spectrum-cursor {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+// ============================================
+// Sliders Tab
+// ============================================
+
+.cp-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 4px 0;
+}
+
+.cp-slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cp-slider-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cp-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cp-slider-number {
+    width: 36px;
+    padding: 2px 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--card-bg-color);
+    color: var(--main-text-color);
+    font-size: 11px;
+    font-family: var(--fixed-font);
+    text-align: center;
+    -moz-appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+    }
+
+    &:focus {
+        outline: 1px solid var(--accent-color);
+    }
+}
+
+// ============================================
+// Shared Slider Track
+// ============================================
+
+.cp-slider-track {
+    position: relative;
+    height: 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    flex: 1;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.cp-slider-handle {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    border: 1.5px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+// Hue slider — rainbow gradient (used in Sliders tab)
+.cp-hue-slider {
+    background: linear-gradient(
+        to right,
+        hsl(0, 100%, 50%),
+        hsl(60, 100%, 50%),
+        hsl(120, 100%, 50%),
+        hsl(180, 100%, 50%),
+        hsl(240, 100%, 50%),
+        hsl(300, 100%, 50%),
+        hsl(360, 100%, 50%)
+    );
+}
+
+// ============================================
+// Hex Input Row
+// ============================================
+
+.cp-hex-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px 8px;
+}
+
+.cp-hex-label {
+    font-size: 11px;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+}
+
+.cp-hex-input {
+    width: 72px;
+    padding: 4px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--card-bg-color);
+    color: var(--main-text-color);
+    font-family: var(--fixed-font);
+    font-size: 12px;
+    text-align: left;
+
+    &:focus {
+        outline: 1px solid var(--accent-color);
+    }
+}
+
+// ============================================
+// Opacity Slider
+// ============================================
+
+.cp-opacity-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px 10px;
+}
+
+.cp-opacity-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.cp-opacity-track-wrapper {
+    flex: 1;
+    position: relative;
+
+    // Checkerboard pattern behind the opacity gradient
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 7px;
+        background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 8px 8px;
+    }
+
+    .cp-opacity-slider {
+        position: relative; // above the checkerboard
+    }
+}
+
+.cp-opacity-value {
+    width: 36px;
+    font-size: 11px;
+    font-family: var(--fixed-font);
+    color: var(--secondary-text-color);
+    text-align: right;
+}
+
+// ============================================
+// Recent Colors — Large swatch + circles + add
+// ============================================
+
+.cp-recent {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border-color);
+    background: linear-gradient(var(--card-bg-color), var(--card-bg-color)), var(--main-bg-color);
+}
+
+// Large current-color square
+.cp-recent-current {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+
+    &:hover {
+        box-shadow: 0 0 0 2px var(--accent-color);
+    }
+}
+
+// Circle swatches container
+.cp-recent-swatches {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+// Individual recent color circle
+.cp-recent-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+
+    &:hover {
+        transform: scale(1.2);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+}
+
+// Add button circle
+.cp-recent-add {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px dashed var(--border-color);
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    padding: 0;
+    flex-shrink: 0;
+    transition: color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        color: var(--main-text-color);
+        border-color: var(--main-text-color);
+    }
+}

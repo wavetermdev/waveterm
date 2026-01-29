@@ -27,7 +27,16 @@
           "type": "string"
         },
         "app:accent": {
-          "type": "string"
+          "type": "string",
+          "description": "Accent color theme (green, warm, blue, purple, teal, or custom:<id>)"
+        },
+        "app:themeoverrides": {
+          "type": "object",
+          "description": "CSS variable overrides applied on top of current theme+accent"
+        },
+        "app:customaccents": {
+          "type": "object",
+          "description": "Named custom accent themes with saved override maps"
         },
         "ai:*": {
           "type": "boolean"

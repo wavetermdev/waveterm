@@ -20,28 +20,39 @@ type NativeThemeSource = "dark" | "light" | "system";
  * - "light-gray" -> app:theme = "light" (accent unchanged)
  * - "light-warm" -> app:theme = "light", app:accent = "warm"
  * Other values pass through unchanged.
+ * Uses setSettings (plural) for atomic batch update to avoid transient states.
  */
 function migrateThemeSetting(currentTheme: string): void {
     if (currentTheme === "light-gray") {
-        settingsService.setSetting("app:theme", "light");
+        settingsService.setSettings({ "app:theme": "light" });
     } else if (currentTheme === "light-warm") {
-        settingsService.setSetting("app:theme", "light");
-        settingsService.setSetting("app:accent", "warm");
+        settingsService.setSettings({ "app:theme": "light", "app:accent": "warm" });
     }
 }
+
+// Reactive atom tracking system dark mode preference.
+// Uses an effect-based approach: the atom holds a writable value that is kept
+// in sync with window.matchMedia via a module-level listener.
+const systemDarkModeAtom = atom<boolean>(window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+// Set up a module-level listener to keep systemDarkModeAtom in sync with OS preference.
+// This runs once when the module loads. The listener updates the atom whenever
+// the OS dark/light preference changes, making resolvedAppThemeAtom reactive.
+const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+darkModeQuery.addEventListener("change", (e) => {
+    globalStore.set(systemDarkModeAtom, e.matches);
+});
 
 // Step 9: resolvedAppThemeAtom (keep legacy value handling for migration window)
 /**
  * Atom that resolves the effective app theme category (dark/light).
  * This is used for terminal theme auto-switching.
- *
- * Note: This doesn't auto-update when system preference changes at runtime.
- * For that, use the useTheme hook which sets up listeners.
+ * Reactively tracks both the app:theme setting and OS dark mode preference.
  */
 export const resolvedAppThemeAtom = atom<ResolvedTheme>((get) => {
     const setting = (get(getSettingsKeyAtom("app:theme")) || "dark") as string;
     if (setting === "system") {
-        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        return get(systemDarkModeAtom) ? "dark" : "light";
     }
     // Handle legacy values during migration window
     if (setting === "light" || setting === "light-gray" || setting === "light-warm") {
@@ -55,8 +66,11 @@ export const resolvedAppThemeAtom = atom<ResolvedTheme>((get) => {
  * Atom that resolves the current accent setting.
  * Defaults to "green" if not set.
  */
-export const resolvedAccentAtom = atom<AccentSetting>((get) => {
+export const resolvedAccentAtom = atom<string>((get) => {
     const setting = get(getSettingsKeyAtom("app:accent"));
+    if (typeof setting === "string" && setting.startsWith("custom:")) {
+        return setting;
+    }
     const validAccents: AccentSetting[] = ["green", "warm", "blue", "purple", "teal"];
     if (setting && validAccents.includes(setting as AccentSetting)) {
         return setting as AccentSetting;
@@ -112,7 +126,13 @@ export function useTheme(): void {
     const themeSettingAtom = getSettingsKeyAtom("app:theme");
     const accentSettingAtom = getSettingsKeyAtom("app:accent");
     const themeSetting = (useAtomValue(themeSettingAtom) ?? "dark") as string;
-    const accentSetting = (useAtomValue(accentSettingAtom) ?? "green") as AccentSetting;
+    const accentSetting = (useAtomValue(accentSettingAtom) ?? "green") as string;
+    const themeOverrides = useAtomValue(getSettingsKeyAtom("app:themeoverrides")) as
+        | Record<string, string>
+        | undefined;
+    const customAccents = useAtomValue(getSettingsKeyAtom("app:customaccents")) as
+        | Record<string, { label: string; overrides: Record<string, string> }>
+        | undefined;
 
     // One-time migration from old theme variants
     const migratedRef = useRef(false);
@@ -129,13 +149,19 @@ export function useTheme(): void {
             ? "light"
             : ((themeSetting as ThemeSetting) ?? "dark");
 
+    // Determine the effective accent for CSS (custom accents use "green" as base)
+    const accentStr = String(accentSetting ?? "green");
+    const isCustomAccent = accentStr.startsWith("custom:");
+    const effectiveAccent = isCustomAccent ? "green" : accentStr;
+    const customAccentId = isCustomAccent ? accentStr.substring(7) : null;
+
     useEffect(() => {
         const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
         const updateTheme = () => {
             const systemPrefersDark = darkModeQuery.matches;
             const cssTheme = resolveCssTheme(normalizedTheme, systemPrefersDark);
-            applyThemeAndAccent(cssTheme, accentSetting);
+            applyThemeAndAccent(cssTheme, effectiveAccent);
         };
 
         updateTheme();
@@ -153,7 +179,54 @@ export function useTheme(): void {
         return () => {
             darkModeQuery.removeEventListener("change", handleSystemPreferenceChange);
         };
-    }, [normalizedTheme, accentSetting]);
+    }, [normalizedTheme, effectiveAccent]);
+
+    // Apply custom accent overrides when a custom accent is selected
+    useEffect(() => {
+        const root = document.documentElement;
+        const appliedOverrides =
+            customAccentId && customAccents && customAccents[customAccentId]?.overrides
+                ? { ...customAccents[customAccentId].overrides }
+                : null;
+        if (appliedOverrides && typeof appliedOverrides === "object") {
+            for (const [varName, value] of Object.entries(appliedOverrides)) {
+                if (varName.startsWith("--") && typeof value === "string") {
+                    root.style.setProperty(varName, value);
+                }
+            }
+        }
+        return () => {
+            if (appliedOverrides && typeof appliedOverrides === "object") {
+                for (const varName of Object.keys(appliedOverrides)) {
+                    if (varName.startsWith("--")) {
+                        root.style.removeProperty(varName);
+                    }
+                }
+            }
+        };
+    }, [customAccentId, customAccents]);
+
+    // Apply stored theme overrides from settings
+    useEffect(() => {
+        const root = document.documentElement;
+        const appliedOverrides = themeOverrides && typeof themeOverrides === "object" ? { ...themeOverrides } : null;
+        if (appliedOverrides) {
+            for (const [varName, value] of Object.entries(appliedOverrides)) {
+                if (varName.startsWith("--") && typeof value === "string") {
+                    root.style.setProperty(varName, value);
+                }
+            }
+        }
+        return () => {
+            if (appliedOverrides) {
+                for (const varName of Object.keys(appliedOverrides)) {
+                    if (varName.startsWith("--")) {
+                        root.style.removeProperty(varName);
+                    }
+                }
+            }
+        };
+    }, [themeOverrides]);
 }
 
 // Step 10: Updated getResolvedTheme
@@ -182,12 +255,30 @@ export function getResolvedTheme(): ResolvedTheme {
  * Gets the current resolved accent directly from the store.
  * Useful for non-React contexts or one-time reads.
  */
-export function getResolvedAccent(): AccentSetting {
+export function getResolvedAccent(): string {
     const accentSettingAtom = getSettingsKeyAtom("app:accent");
     const setting = globalStore.get(accentSettingAtom);
+    if (typeof setting === "string" && setting.startsWith("custom:")) {
+        return setting;
+    }
     const validAccents: AccentSetting[] = ["green", "warm", "blue", "purple", "teal"];
     if (setting && validAccents.includes(setting as AccentSetting)) {
         return setting as AccentSetting;
     }
     return "green";
+}
+
+/**
+ * Apply a single CSS variable override to the document root for live preview.
+ * Pass null as value to remove the override.
+ */
+export function applyThemeOverrideLive(varName: string, value: string | null): void {
+    if (!varName.startsWith("--")) {
+        return;
+    }
+    if (value === null) {
+        document.documentElement.style.removeProperty(varName);
+    } else {
+        document.documentElement.style.setProperty(varName, value);
+    }
 }

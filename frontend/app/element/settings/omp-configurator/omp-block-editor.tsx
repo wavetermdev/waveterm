@@ -94,6 +94,7 @@ const SegmentBadge = memo(
             (e: React.KeyboardEvent) => {
                 if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
+                    e.stopPropagation();
                     onClick();
                 }
             },
@@ -103,7 +104,10 @@ const SegmentBadge = memo(
         return (
             <div
                 className={cn("omp-segment-badge", { selected })}
-                onClick={onClick}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick();
+                }}
                 onKeyDown={handleKeyDown}
                 role="button"
                 tabIndex={0}

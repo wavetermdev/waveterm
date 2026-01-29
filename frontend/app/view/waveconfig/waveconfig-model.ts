@@ -377,6 +377,18 @@ export class WaveConfigViewModel implements ViewModel {
             return;
         }
 
+        // Virtual paths (e.g. "virtual:appearance") are UI-only routes
+        // with no backing file on disk — skip the filesystem read
+        if (file.path.startsWith("virtual:")) {
+            globalStore.set(this.selectedFileAtom, file);
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+                meta: { file: file.path },
+            });
+            globalStore.set(this.isLoadingAtom, false);
+            return;
+        }
+
         try {
             const fullPath = `${this.configDir}/${file.path}`;
             const fileData = await RpcApi.FileReadCommand(TabRpcClient, {

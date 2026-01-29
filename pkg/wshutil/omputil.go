@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,6 +37,48 @@ type OmpConfigInfo struct {
 	Writable       bool              `json:"writable"`
 	CurrentPalette map[string]string `json:"currentpalette,omitempty"`
 	Error          string            `json:"error,omitempty"`
+}
+
+// getWindowsDocumentsFolder returns the user's Documents folder path on Windows.
+// This handles OneDrive-redirected Documents folders that aren't covered by
+// standard environment variables ($OneDrive, $OneDriveConsumer, etc.).
+// Uses the Windows registry (Shell Folders) for the resolved path.
+// Result is cached after first call.
+var (
+	windowsDocsFolderOnce sync.Once
+	windowsDocsFolder     string
+)
+
+func getWindowsDocumentsFolder() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	windowsDocsFolderOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		// Use the full path to reg.exe to avoid PATH-based resolution (S4036)
+		regExe := filepath.Join(os.Getenv("SystemRoot"), "System32", "reg.exe")
+		cmd := exec.CommandContext(ctx, regExe, "query",
+			`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders`,
+			"/v", "Personal")
+		output, err := cmd.Output()
+		if err != nil {
+			return
+		}
+		for _, line := range strings.Split(string(output), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "Personal") {
+				if idx := strings.Index(trimmed, "REG_SZ"); idx != -1 {
+					p := strings.TrimSpace(trimmed[idx+len("REG_SZ"):])
+					if p != "" {
+						windowsDocsFolder = p
+					}
+				}
+				break
+			}
+		}
+	})
+	return windowsDocsFolder
 }
 
 // ValidateOmpConfigPath checks if the path is safe for OMP config operations
@@ -90,6 +133,21 @@ func ValidateOmpConfigPath(path string) error {
 	}
 	if oneDriveCommercial != "" {
 		validPrefixes = append(validPrefixes, oneDriveCommercial)
+	}
+
+	// On Windows, also check the Documents folder. It may be on a OneDrive
+	// that isn't represented by any standard env var (e.g. personal OneDrive
+	// when $OneDriveConsumer is empty). The Documents folder is where
+	// PowerShell profiles and OMP configs often live.
+	if runtime.GOOS == "windows" {
+		docsFolder := getWindowsDocumentsFolder()
+		if docsFolder != "" {
+			validPrefixes = append(validPrefixes, docsFolder)
+			// Also add the parent dir (the OneDrive root)
+			if parent := filepath.Dir(docsFolder); parent != "" && parent != docsFolder {
+				validPrefixes = append(validPrefixes, parent)
+			}
+		}
 	}
 
 	isUnderValidDir := false

@@ -115,7 +115,6 @@ tasks:
             - clean
             - npm:install
             - build:backend
-            - build:tsunamiscaffold
 
     build:frontend:dev:
         desc: Build the frontend in development mode.

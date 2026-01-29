@@ -22,8 +22,7 @@ const categoryConfigMap: Record<string, CategoryConfig> = {
     Markdown: { order: 10, icon: "file-lines", description: "Markdown viewer settings" },
     Widget: { order: 11, icon: "th-large", description: "Widget launcher settings" },
     BlockHeader: { order: 12, icon: "heading", description: "Block header display settings" },
-    Telemetry: { order: 13, icon: "chart-bar", description: "Usage data collection" },
-    Debug: { order: 14, icon: "bug", description: "Debugging and development options" },
+    Debug: { order: 13, icon: "bug", description: "Debugging and development options" },
 };
 
 // All settings metadata
@@ -877,6 +876,30 @@ const allSettings: SettingMetadata[] = [
         tags: ["accent", "theme", "color", "appearance"],
     },
     {
+        key: "app:themeoverrides",
+        label: "Theme Overrides",
+        description: "CSS variable overrides applied on top of current theme and accent.",
+        category: "App",
+        subcategory: "Appearance",
+        controlType: "text",
+        defaultValue: {},
+        type: "object",
+        hideFromSettings: true,
+        tags: ["theme", "overrides", "css", "custom"],
+    },
+    {
+        key: "app:customaccents",
+        label: "Custom Accents",
+        description: "Named custom accent themes with saved CSS variable override maps.",
+        category: "App",
+        subcategory: "Appearance",
+        controlType: "text",
+        defaultValue: {},
+        type: "object",
+        hideFromSettings: true,
+        tags: ["accent", "custom", "theme"],
+    },
+    {
         key: "app:dismissarchitecturewarning",
         label: "Dismiss Architecture Warning",
         description: "Dismiss the warning about running on non-native architecture.",
@@ -1021,20 +1044,6 @@ const allSettings: SettingMetadata[] = [
         type: "string",
         validation: { options: [] }, // Populated dynamically
         tags: ["tab", "preset"],
-    },
-
-    // ===================
-    // TELEMETRY SETTINGS
-    // ===================
-    {
-        key: "telemetry:enabled",
-        label: "Enable Telemetry",
-        description: "Allow anonymous usage data collection to help improve Wave Terminal.",
-        category: "Telemetry",
-        controlType: "toggle",
-        defaultValue: false,
-        type: "boolean",
-        tags: ["telemetry", "analytics", "usage", "privacy"],
     },
 
     // ===================
