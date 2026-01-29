@@ -1244,6 +1244,8 @@ declare global {
         "app:ctrlvpaste"?: boolean;
         "app:theme"?: string;
         "app:accent"?: string;
+        "app:themeoverrides"?: {[key: string]: any};
+        "app:customaccents"?: {[key: string]: any};
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
