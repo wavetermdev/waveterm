@@ -230,7 +230,7 @@ const Tab = memo(
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
-                    <div className="tab-inner group">
+                    <div className="tab-inner">
                         <div
                             ref={editableRef}
                             className={clsx("name", { focused: isEditable })}
@@ -244,7 +244,7 @@ const Tab = memo(
                         </div>
                         {indicator && (
                             <div
-                                className="bell wave-button pointer-events-none group-hover:opacity-80"
+                                className="tab-indicator pointer-events-none"
                                 style={{ color: indicator.color || "#fbbf24" }}
                                 title="Activity notification"
                             >

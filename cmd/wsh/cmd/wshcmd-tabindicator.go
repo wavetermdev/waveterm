@@ -74,10 +74,9 @@ func tabIndicatorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	event := wps.WaveEvent{
-		Event:   wps.Event_TabIndicator,
-		Scopes:  []string{waveobj.MakeORef(waveobj.OType_Tab, tabId).String()},
-		Data:    eventData,
-		Persist: 1024,
+		Event:  wps.Event_TabIndicator,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Tab, tabId).String()},
+		Data:   eventData,
 	}
 
 	err := wshclient.EventPublishCommand(RpcClient, event, &wshrpc.RpcOpts{NoResponse: true})
