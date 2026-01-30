@@ -11,13 +11,16 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
     const hoverBg = isYellow ? "hover:bg-yellow-700/60" : "hover:bg-red-700/60";
     const borderColor = isYellow ? "border-yellow-700/50" : "border-red-700/50";
     const textColor = isYellow ? "text-warning" : "text-error";
-    const iconColor = isYellow ? "text-warning" : "text-error";
     const iconHoverBg =
         showClose && isYellow
             ? "hover:has-[.close:hover]:bg-yellow-900/30"
             : showClose
               ? "hover:has-[.close:hover]:bg-red-900/30"
               : "";
+    // Use static class names for close icon hover - Tailwind JIT can't detect dynamic classes like `hover:${iconColor}`
+    const closeIconClasses = isYellow
+        ? "text-warning/60 hover:text-warning"
+        : "text-error/60 hover:text-error";
 
     if (true) {
         // disable now until we have modal
@@ -30,10 +33,10 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
                 className={`flex items-center gap-1.5 ${showClose ? "pl-1" : "pl-2"} pr-2 py-1 ${bgColor} ${iconHoverBg} ${hoverBg} rounded-b border border-t-0 ${borderColor} text-[11px] ${textColor} cursor-pointer transition-colors`}
             >
                 {showClose && (
-                    <i className={`close fa fa-xmark ${iconColor}/60 hover:${iconColor} transition-colors`}></i>
+                    <i className={`close fa fa-xmark ${closeIconClasses} transition-colors`}></i>
                 )}
                 <span>Get More</span>
-                <i className={`fa fa-arrow-right ${iconColor}`}></i>
+                <i className={`fa fa-arrow-right ${textColor}`}></i>
             </button>
         </div>
     );
