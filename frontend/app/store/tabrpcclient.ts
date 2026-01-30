@@ -89,4 +89,18 @@ export class TabClient extends WshClient {
             await model.handleSubmit();
         }
     }
+
+    async handle_setblockfocus(rh: RpcResponseHelper, blockId: string): Promise<void> {
+        const layoutModel = getLayoutModelForStaticTab();
+        if (!layoutModel) {
+            throw new Error("Layout model not found");
+        }
+
+        const node = layoutModel.getNodeByBlockId(blockId);
+        if (!node) {
+            throw new Error(`Block not found in tab: ${blockId}`);
+        }
+
+        layoutModel.focusNode(node.id);
+    }
 }
