@@ -66,10 +66,76 @@ func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
 	return job.JobManagerStatus, nil
 }
 
+type connState struct {
+	actual      bool
+	processed   bool
+	reconciling bool
+}
+
+type connStateManager struct {
+	sync.Mutex
+	m           map[string]*connState
+	reconcileCh chan struct{}
+}
+
 var (
 	jobConnStates     = make(map[string]string)
-	jobConnStatesLock sync.Mutex
+	jobControllerLock sync.Mutex
+
+	connStates = &connStateManager{
+		m:           make(map[string]*connState),
+		reconcileCh: make(chan struct{}, 1),
+	}
 )
+
+func connReconcileWorker() {
+	defer func() {
+		panichandler.PanicHandler("jobcontroller:connReconcileWorker", recover())
+	}()
+
+	for range connStates.reconcileCh {
+		reconcileAllConns()
+	}
+}
+
+func reconcileAllConns() {
+	connStates.Lock()
+	defer connStates.Unlock()
+
+	for connName, cs := range connStates.m {
+		if cs.reconciling || cs.actual == cs.processed {
+			continue
+		}
+
+		cs.reconciling = true
+		actual := cs.actual
+		go reconcileConn(connName, actual)
+	}
+}
+
+func reconcileConn(connName string, targetState bool) {
+	defer func() {
+		panichandler.PanicHandler("jobcontroller:reconcileConn", recover())
+	}()
+
+	if targetState {
+		onConnectionUp(connName)
+	} else {
+		onConnectionDown(connName)
+	}
+
+	connStates.Lock()
+	defer connStates.Unlock()
+	if cs, exists := connStates.m[connName]; exists {
+		cs.processed = targetState
+		cs.reconciling = false
+	}
+
+	select {
+	case connStates.reconcileCh <- struct{}{}:
+	default:
+	}
+}
 
 func getMetaInt64(meta wshrpc.FileMeta, key string) int64 {
 	val, ok := meta[key]
@@ -86,6 +152,8 @@ func getMetaInt64(meta wshrpc.FileMeta, key string) int64 {
 }
 
 func InitJobController() {
+	go connReconcileWorker()
+
 	rpcClient := wshclient.GetBareRpcClient()
 	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
 	rpcClient.EventListener.On(wps.Event_RouteDown, handleRouteDownEvent)
@@ -130,29 +198,72 @@ func handleConnChangeEvent(event *wps.WaveEvent) {
 		return
 	}
 
-	if !connStatus.Connected {
+	var connName string
+	for _, scope := range event.Scopes {
+		if strings.HasPrefix(scope, "connection:") {
+			connName = strings.TrimPrefix(scope, "connection:")
+			break
+		}
+	}
+	if connName == "" {
 		return
 	}
 
-	for _, scope := range event.Scopes {
-		if strings.HasPrefix(scope, "connection:") {
-			connName := strings.TrimPrefix(scope, "connection:")
-			log.Printf("[conn:%s] connection became connected, terminating jobs with TerminateOnReconnect", connName)
-			go func() {
-				defer func() {
-					panichandler.PanicHandler("jobcontroller:handleConnChangeEvent", recover())
-				}()
-				ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancelFn()
-				TerminateJobsOnConn(ctx, connName)
-			}()
-		}
+	connStates.Lock()
+	cs, exists := connStates.m[connName]
+	if !exists {
+		cs = &connState{actual: false, processed: false, reconciling: false}
+		connStates.m[connName] = cs
+	}
+	cs.actual = connStatus.Connected
+	connStates.Unlock()
+
+	select {
+	case connStates.reconcileCh <- struct{}{}:
+	default:
 	}
 }
 
+func onConnectionUp(connName string) {
+	log.Printf("[conn:%s] connection became connected, terminating jobs with TerminateOnReconnect", connName)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		log.Printf("[conn:%s] failed to get jobs for termination: %v", connName, err)
+		return
+	}
+
+	var jobsToTerminate []*waveobj.Job
+	for _, job := range allJobs {
+		if job.Connection == connName && job.TerminateOnReconnect {
+			jobsToTerminate = append(jobsToTerminate, job)
+		}
+	}
+
+	log.Printf("[conn:%s] found %d jobs to terminate", connName, len(jobsToTerminate))
+
+	successCount := 0
+	for _, job := range jobsToTerminate {
+		err = remoteTerminateJobManager(ctx, job)
+		if err != nil {
+			log.Printf("[job:%s] error terminating: %v", job.OID, err)
+		} else {
+			successCount++
+		}
+	}
+
+	log.Printf("[conn:%s] finished terminating jobs: %d/%d successful", connName, successCount, len(jobsToTerminate))
+}
+
+func onConnectionDown(connName string) {
+	log.Printf("[conn:%s] connection became disconnected", connName)
+}
+
 func GetJobConnStatus(jobId string) string {
-	jobConnStatesLock.Lock()
-	defer jobConnStatesLock.Unlock()
+	jobControllerLock.Lock()
+	defer jobControllerLock.Unlock()
 	status, exists := jobConnStates[jobId]
 	if !exists {
 		return JobConnStatus_Disconnected
@@ -161,8 +272,8 @@ func GetJobConnStatus(jobId string) string {
 }
 
 func SetJobConnStatus(jobId string, status string) {
-	jobConnStatesLock.Lock()
-	defer jobConnStatesLock.Unlock()
+	jobControllerLock.Lock()
+	defer jobControllerLock.Unlock()
 	if status == JobConnStatus_Disconnected {
 		delete(jobConnStates, jobId)
 	} else {
@@ -171,8 +282,8 @@ func SetJobConnStatus(jobId string, status string) {
 }
 
 func GetConnectedJobIds() []string {
-	jobConnStatesLock.Lock()
-	defer jobConnStatesLock.Unlock()
+	jobControllerLock.Lock()
+	defer jobControllerLock.Unlock()
 	var connectedJobIds []string
 	for jobId, status := range jobConnStates {
 		if status == JobConnStatus_Connected {
@@ -621,34 +732,6 @@ func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts
 	return RestartStreaming(ctx, jobId, true, rtOpts)
 }
 
-func TerminateJobsOnConn(ctx context.Context, connName string) {
-	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
-	if err != nil {
-		log.Printf("[conn:%s] failed to get jobs for termination: %v", connName, err)
-		return
-	}
-
-	var jobsToTerminate []*waveobj.Job
-	for _, job := range allJobs {
-		if job.Connection == connName && job.TerminateOnReconnect {
-			jobsToTerminate = append(jobsToTerminate, job)
-		}
-	}
-
-	log.Printf("[conn:%s] found %d jobs to terminate", connName, len(jobsToTerminate))
-
-	successCount := 0
-	for _, job := range jobsToTerminate {
-		err = remoteTerminateJobManager(ctx, job)
-		if err != nil {
-			log.Printf("[job:%s] error terminating: %v", job.OID, err)
-		} else {
-			successCount++
-		}
-	}
-
-	log.Printf("[conn:%s] finished terminating jobs: %d/%d successful", connName, successCount, len(jobsToTerminate))
-}
 
 func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	isConnected, err := conncontroller.IsConnected(connName)
