@@ -187,6 +187,13 @@ func tryTcpSocket(sockName string) (net.Conn, error) {
 
 func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugName string) (*WshRpc, error) {
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
+	resolvedPath, err := filepath.EvalSymlinks(sockName)
+	if err == nil {
+		sockName = resolvedPath
+	}
+	if !filepath.IsAbs(sockName) {
+		return nil, fmt.Errorf("socket path must be absolute: %s", sockName)
+	}
 	conn, tcpErr := tryTcpSocket(sockName)
 	var unixErr error
 	if tcpErr != nil {
@@ -211,30 +218,32 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugNam
 
 func MakeClientJWTToken(rpcCtx wshrpc.RpcContext) (string, error) {
 	if wavebase.IsDevMode() {
-		if rpcCtx.IsRouter && rpcCtx.RouteId != "" {
+		if rpcCtx.IsRouter && (rpcCtx.RouteId != "" || rpcCtx.ProcRoute) {
 			panic("Invalid RpcCtx, router w/ routeid")
 		}
-		if !rpcCtx.IsRouter && rpcCtx.RouteId == "" {
+		if !rpcCtx.IsRouter && (rpcCtx.RouteId == "" && !rpcCtx.ProcRoute) {
 			panic("Invalid RpcCtx, no routeid")
 		}
 	}
 	claims := &wavejwt.WaveJwtClaims{
-		Sock:    rpcCtx.SockName,
-		RouteId: rpcCtx.RouteId,
-		BlockId: rpcCtx.BlockId,
-		Conn:    rpcCtx.Conn,
-		Router:  rpcCtx.IsRouter,
+		Sock:      rpcCtx.SockName,
+		RouteId:   rpcCtx.RouteId,
+		ProcRoute: rpcCtx.ProcRoute,
+		BlockId:   rpcCtx.BlockId,
+		Conn:      rpcCtx.Conn,
+		Router:    rpcCtx.IsRouter,
 	}
 	return wavejwt.Sign(claims)
 }
 
 func claimsToRpcCtx(claims *wavejwt.WaveJwtClaims) *wshrpc.RpcContext {
 	return &wshrpc.RpcContext{
-		SockName: claims.Sock,
-		RouteId:  claims.RouteId,
-		BlockId:  claims.BlockId,
-		Conn:     claims.Conn,
-		IsRouter: claims.Router,
+		SockName:  claims.Sock,
+		RouteId:   claims.RouteId,
+		ProcRoute: claims.ProcRoute,
+		BlockId:   claims.BlockId,
+		Conn:      claims.Conn,
+		IsRouter:  claims.Router,
 	}
 }
 
@@ -395,8 +404,8 @@ func GetInfo() wshrpc.RemoteInfo {
 		ClientOs:      runtime.GOOS,
 		ClientVersion: wavebase.WaveVersion,
 		Shell:         getShell(),
+		HomeDir:       wavebase.GetHomeDir(),
 	}
-
 }
 
 func InstallRcFiles() error {

@@ -43,7 +43,7 @@ type ServerImpl interface {
 
 type AbstractRpcClient interface {
 	GetPeerInfo() string
-	SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string)
+	SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string) bool
 	RecvRpcMessage() ([]byte, bool) // blocking
 }
 
@@ -110,8 +110,13 @@ func (w *WshRpc) GetPeerInfo() string {
 	return w.DebugName
 }
 
-func (w *WshRpc) SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string) {
-	w.InputCh <- baseds.RpcInputChType{MsgBytes: msg, IngressLinkId: ingressLinkId}
+func (w *WshRpc) SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string) bool {
+	select {
+	case w.InputCh <- baseds.RpcInputChType{MsgBytes: msg, IngressLinkId: ingressLinkId}:
+		return true
+	default:
+		return false
+	}
 }
 
 func (w *WshRpc) RecvRpcMessage() ([]byte, bool) {
