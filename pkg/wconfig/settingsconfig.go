@@ -63,6 +63,7 @@ type SettingsType struct {
 	AppAccent                     string                 `json:"app:accent,omitempty"`
 	AppThemeOverrides             map[string]interface{} `json:"app:themeoverrides,omitempty"`
 	AppCustomAccents              map[string]interface{} `json:"app:customaccents,omitempty"`
+	AppConfirmQuit                *bool                  `json:"app:confirmquit,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -98,6 +99,8 @@ type SettingsType struct {
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermLigatures           bool     `json:"term:ligatures,omitempty"`
 	TermOmpTheme            string   `json:"term:omptheme,omitempty"`
+	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
+	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`

@@ -40,6 +40,7 @@ type MetaTSType struct {
 	Cmd                 string   `json:"cmd,omitempty"`
 	CmdInteractive      bool     `json:"cmd:interactive,omitempty"`
 	CmdLogin            bool     `json:"cmd:login,omitempty"`
+	CmdPersistent       bool     `json:"cmd:persistent,omitempty"`
 	CmdRunOnStart       bool     `json:"cmd:runonstart,omitempty"`
 	CmdClearOnStart     bool     `json:"cmd:clearonstart,omitempty"`
 	CmdRunOnce          bool     `json:"cmd:runonce,omitempty"`
@@ -123,6 +124,8 @@ type MetaTSType struct {
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
+	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
+	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 
 	WebZoom          float64 `json:"web:zoom,omitempty"`
 	WebHideNav       *bool   `json:"web:hidenav,omitempty"`

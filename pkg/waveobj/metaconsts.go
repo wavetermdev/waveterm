@@ -41,6 +41,7 @@ const (
 	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdInteractive                   = "cmd:interactive"
 	MetaKey_CmdLogin                         = "cmd:login"
+	MetaKey_CmdPersistent                    = "cmd:persistent"
 	MetaKey_CmdRunOnStart                    = "cmd:runonstart"
 	MetaKey_CmdClearOnStart                  = "cmd:clearonstart"
 	MetaKey_CmdRunOnce                       = "cmd:runonce"
@@ -120,6 +121,8 @@ const (
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
 	MetaKey_TermMacOptionIsMeta              = "term:macoptionismeta"
 	MetaKey_TermConnDebug                    = "term:conndebug"
+	MetaKey_TermBellSound                    = "term:bellsound"
+	MetaKey_TermBellIndicator                = "term:bellindicator"
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"

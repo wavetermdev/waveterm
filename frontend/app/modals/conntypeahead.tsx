@@ -174,30 +174,6 @@ function createLocalShellProfileItems(
     });
 }
 
-function createS3SuggestionItems(
-    s3Profiles: Array<string>,
-    connStatusMap: Map<string, ConnStatus>,
-    connection: string
-): Array<SuggestionConnectionItem> {
-    // TODO-S3 rewrite this so it fits the way the
-    // s3 connections work. is there a connection status?
-    // probably not, so color may be weird
-    // also, this currently only changes the connection
-    // an onSelect option must be added for different
-    // behavior
-    return s3Profiles.map((profileName) => {
-        const connStatus = connStatusMap.get(profileName);
-        const item: SuggestionConnectionItem = {
-            status: "connected",
-            icon: "database",
-            iconColor: "var(--accent-color)",
-            value: profileName,
-            label: profileName,
-            current: profileName == connection,
-        };
-        return item;
-    });
-}
 
 function getReconnectItem(
     connStatus: ConnStatus,
@@ -312,27 +288,6 @@ function getRemoteSuggestions(
     return remoteSuggestions;
 }
 
-function getS3Suggestions(
-    s3Profiles: Array<string>,
-    connection: string,
-    connSelected: string,
-    connStatusMap: Map<string, ConnStatus>,
-    fullConfig: FullConfigType,
-    filterOutNowsh: boolean
-): SuggestionConnectionScope | null {
-    const filtered = filterConnections(s3Profiles, connSelected, fullConfig, filterOutNowsh);
-    const s3Items = createS3SuggestionItems(filtered, connStatusMap, connection);
-    const sortedS3Items = sortConnSuggestionItems(s3Items, fullConfig);
-    if (sortedS3Items.length == 0) {
-        return null;
-    }
-    const s3Suggestions: SuggestionConnectionScope = {
-        headerText: "S3",
-        items: sortedS3Items,
-    };
-    return s3Suggestions;
-}
-
 function getDisconnectItem(
     connection: string,
     connStatusMap: Map<string, ConnStatus>,
@@ -394,11 +349,10 @@ function getNewConnectionSuggestionItem(
     localName: string,
     remoteConns: Array<string>,
     wslConns: Array<string>,
-    s3Conns: Array<string>,
     changeConnection: (connName: string) => Promise<void>,
     changeConnModalAtom: jotai.PrimitiveAtom<boolean>
 ): SuggestionConnectionItem | null {
-    const allCons = ["", localName, ...remoteConns, ...wslConns, ...s3Conns];
+    const allCons = ["", localName, ...remoteConns, ...wslConns];
     if (allCons.includes(connSelected)) {
         // do not offer to create a new connection if one
         // with the exact name already exists
@@ -443,13 +397,11 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatus = jotai.useAtomValue(connStatusAtom);
         const [connList, setConnList] = React.useState<Array<string>>([]);
         const [wslList, setWslList] = React.useState<Array<string>>([]);
-        const [s3List, setS3List] = React.useState<Array<string>>([]);
         const allConnStatus = jotai.useAtomValue(atoms.allConnStatus);
         const [rowIndex, setRowIndex] = React.useState(0);
         const connStatusMap = new Map<string, ConnStatus>();
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
-        const showS3 = util.useAtomValueSafe(viewModel.showS3) ?? false;
         const hasGitBash = jotai.useAtomValue(ConnectionsModel.getInstance().hasGitBashAtom);
 
         let maxActiveConnNum = 1;
@@ -480,9 +432,6 @@ const ChangeConnectionBlockModal = React.memo(
                     // typeahead was opened. good candidate for verbose log level.
                     //console.log("unable to load wsl list from backend. using blank list: ", e)
                 });
-            RpcApi.ConnListAWSCommand(TabRpcClient, { timeout: 2000 })
-                .then((s3List) => setS3List(s3List ?? []))
-                .catch((e) => console.log("unable to load s3 list from backend:", e));
         }, [changeConnModalOpen]);
 
         const changeConnection = React.useCallback(
@@ -493,16 +442,8 @@ const ChangeConnectionBlockModal = React.memo(
                 if (connName == blockData?.meta?.connection) {
                     return;
                 }
-                const isAws = connName?.startsWith("aws:");
                 const oldFile = blockData?.meta?.file ?? "";
-                let newFile: string;
-                if (oldFile == "") {
-                    newFile = "";
-                } else if (isAws) {
-                    newFile = "/";
-                } else {
-                    newFile = "~";
-                }
+                const newFile = oldFile == "" ? "" : "~";
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newFile, "cmd:cwd": null },
@@ -554,17 +495,6 @@ const ChangeConnectionBlockModal = React.memo(
             fullConfig,
             filterOutNowsh
         );
-        let s3Suggestions: SuggestionConnectionScope = null;
-        if (showS3) {
-            s3Suggestions = getS3Suggestions(
-                s3List,
-                connection,
-                connSelected,
-                connStatusMap,
-                fullConfig,
-                filterOutNowsh
-            );
-        }
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
         const disconnectItem = getDisconnectItem(connection, connStatusMap, fullConfig);
         const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
@@ -572,7 +502,6 @@ const ChangeConnectionBlockModal = React.memo(
             localName,
             connList,
             wslList,
-            s3List,
             changeConnection,
             changeConnModalAtom
         );
@@ -581,7 +510,6 @@ const ChangeConnectionBlockModal = React.memo(
             ...(reconnectSuggestionItem ? [reconnectSuggestionItem] : []),
             ...(localSuggestions ? [localSuggestions] : []),
             ...(remoteSuggestions ? [remoteSuggestions] : []),
-            ...(s3Suggestions ? [s3Suggestions] : []),
             ...(disconnectItem ? [disconnectItem] : []),
             ...(connectionsEditItem ? [connectionsEditItem] : []),
             ...(newConnectionSuggestionItem ? [newConnectionSuggestionItem] : []),

@@ -4,7 +4,7 @@
 import { WindowService } from "@/app/store/services";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { Notification, net, safeStorage } from "electron";
+import { Notification, net, safeStorage, shell } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
@@ -104,6 +104,10 @@ export class ElectronWshClientType extends WshClient {
 
     async handle_networkonline(rh: RpcResponseHelper): Promise<boolean> {
         return net.isOnline();
+    }
+
+    async handle_electronsystembell(rh: RpcResponseHelper): Promise<void> {
+        shell.beep();
     }
 
     // async handle_workspaceupdate(rh: RpcResponseHelper) {

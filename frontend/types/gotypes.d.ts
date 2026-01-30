@@ -113,7 +113,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
-        files: FileInfo[];
+        files: WaveFileInfo[];
     };
 
     // wshrpc.BlocksListEntry
@@ -144,13 +144,6 @@ declare global {
     type CloseTabRtnType = {
         closewindow?: boolean;
         newactivetabid?: string;
-    };
-
-    // wshrpc.CommandAppendIJsonData
-    type CommandAppendIJsonData = {
-        zoneid: string;
-        filename: string;
-        data: {[key: string]: any};
     };
 
     // wshrpc.CommandAuthenticateJobManagerData
@@ -505,12 +498,6 @@ declare global {
         byterange?: string;
     };
 
-    // wshrpc.CommandRemoteStreamTarData
-    type CommandRemoteStreamTarData = {
-        path: string;
-        opts?: FileCopyOpts;
-    };
-
     // wshrpc.CommandRemoteTerminateJobManagerData
     type CommandRemoteTerminateJobManagerData = {
         jobid: string;
@@ -646,6 +633,13 @@ declare global {
     type CommandWaveAIToolApproveData = {
         toolcallid: string;
         approval?: string;
+    };
+
+    // wshrpc.CommandWaveFileReadStreamData
+    type CommandWaveFileReadStreamData = {
+        zoneid: string;
+        name: string;
+        streammeta: StreamMeta;
     };
 
     // wshrpc.CommandWebSelectorData
@@ -857,12 +851,6 @@ declare global {
         append?: boolean;
     };
 
-    // wshrpc.FileShareCapability
-    type FileShareCapability = {
-        canappend: boolean;
-        canmkdir: boolean;
-    };
-
     // wconfig.FullConfigType
     type FullConfigType = {
         settings: SettingsType;
@@ -958,6 +946,7 @@ declare global {
         cmd?: string;
         "cmd:interactive"?: boolean;
         "cmd:login"?: boolean;
+        "cmd:persistent"?: boolean;
         "cmd:runonstart"?: boolean;
         "cmd:clearonstart"?: boolean;
         "cmd:runonce"?: boolean;
@@ -1028,6 +1017,8 @@ declare global {
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
         "term:conndebug"?: string;
+        "term:bellsound"?: boolean;
+        "term:bellindicator"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
@@ -1174,6 +1165,7 @@ declare global {
         Checksum: string;
     };
 
+
     // wshrpc.PathCommandData
     type PathCommandData = {
         pathtype: string;
@@ -1257,6 +1249,7 @@ declare global {
         "app:accent"?: string;
         "app:themeoverrides"?: {[key: string]: any};
         "app:customaccents"?: {[key: string]: any};
+        "app:confirmquit"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -1289,6 +1282,8 @@ declare global {
         "term:macoptionismeta"?: boolean;
         "term:ligatures"?: boolean;
         "term:omptheme"?: string;
+        "term:bellsound"?: boolean;
+        "term:bellindicator"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -1400,6 +1395,21 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
+    };
+
+    // wshrpc.TabIndicator
+    type TabIndicator = {
+        icon: string;
+        color?: string;
+        priority: number;
+        clearonfocus?: boolean;
+        persistentindicator?: TabIndicator;
+    };
+
+    // wshrpc.TabIndicatorEventData
+    type TabIndicatorEventData = {
+        tabid: string;
+        indicator: TabIndicator;
     };
 
     // waveobj.TermSize
@@ -1605,6 +1615,17 @@ declare global {
 
     // filestore.WaveFile
     type WaveFile = {
+        zoneid: string;
+        name: string;
+        opts: FileOpts;
+        createdts: number;
+        size: number;
+        modts: number;
+        meta: {[key: string]: any};
+    };
+
+    // wshrpc.WaveFileInfo
+    type WaveFileInfo = {
         zoneid: string;
         name: string;
         opts: FileOpts;

@@ -1,14 +1,25 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, getApi, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
+import {
+    atoms,
+    clearAllTabIndicators,
+    clearTabIndicatorFromFocus,
+    getApi,
+    getTabIndicatorAtom,
+    globalStore,
+    recordTEvent,
+    refocusNode,
+    setTabIndicator,
+} from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { fireAndForget } from "@/util/util";
+import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import React, { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { TabStatusType } from "../store/tab-model";
 import { makeORef, useWaveObjectValue } from "../store/wos";
@@ -50,6 +61,7 @@ const Tab = memo(
             const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
+            const indicator = useAtomValue(getTabIndicatorAtom(id));
 
             const editableRef = useRef<HTMLDivElement>(null);
             const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
@@ -270,22 +282,49 @@ const Tab = memo(
                 [id]
             );
 
+            // Tab indicator click handler - clear indicator on focus if configured
+            const handleTabClick = () => {
+                const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+                if (currentIndicator?.clearonfocus) {
+                    clearTabIndicatorFromFocus(id);
+                }
+                onSelect();
+            };
+
             const handleContextMenu = useCallback(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
                     const currentBaseDir = tabData?.meta?.["tab:basedir"];
                     const isLocked = tabData?.meta?.["tab:basedirlock"] || false;
 
-                    let menu: ContextMenuItem[] = [
+                    let menu: ContextMenuItem[] = [];
+
+                    // Tab indicator menu items (upstream feature)
+                    const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+                    if (currentIndicator) {
+                        menu.push(
+                            {
+                                label: "Clear Tab Indicator",
+                                click: () => setTabIndicator(id, null),
+                            },
+                            {
+                                label: "Clear All Indicators",
+                                click: () => clearAllTabIndicators(),
+                            },
+                            { type: "separator" }
+                        );
+                    }
+
+                    menu.push(
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
                             label: "Copy TabId",
                             click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
                         },
-                        { type: "separator" },
-                    ];
+                        { type: "separator" }
+                    );
 
-                    // Base Directory submenu
+                    // Base Directory submenu (fork feature)
                     const baseDirSubmenu: ContextMenuItem[] = [
                         {
                             label: "Set Base Directory...",
@@ -379,7 +418,7 @@ const Tab = memo(
                         "has-color": !!tabColor,
                     })}
                     onMouseDown={onDragStart}
-                    onClick={onSelect}
+                    onClick={handleTabClick}
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
@@ -399,6 +438,15 @@ const Tab = memo(
                                 {tabData?.name}
                             </div>
                         </div>
+                        {indicator && (
+                            <div
+                                className="tab-indicator pointer-events-none"
+                                style={{ color: indicator.color || "#fbbf24" }}
+                                title="Activity notification"
+                            >
+                                <i className={makeIconClass(indicator.icon, true, { defaultIcon: "bell" })} />
+                            </div>
+                        )}
                         <Button
                             className="ghost grey close"
                             onClick={onClose}

@@ -170,7 +170,7 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 		}
 		SendActiveTabUpdate(ctx, parentWorkspaceId, newActiveTabId)
 	}
-	go blockcontroller.StopBlockController(blockId)
+	go blockcontroller.DestroyBlockController(blockId)
 	sendBlockCloseEvent(blockId)
 	return nil
 }

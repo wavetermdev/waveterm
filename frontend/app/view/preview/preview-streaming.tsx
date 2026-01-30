@@ -61,9 +61,6 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     const remotePath = formatRemoteUri(filePath, conn);
     const usp = new URLSearchParams();
     usp.set("path", remotePath);
-    if (conn != null) {
-        usp.set("connection", conn);
-    }
     const streamingUrl = `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
     if (fileInfo.mimetype === "application/pdf") {
         return (

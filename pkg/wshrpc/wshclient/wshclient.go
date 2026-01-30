@@ -11,7 +11,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
@@ -105,12 +104,6 @@ func ConnListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) 
 	return resp, err
 }
 
-// command "connlistaws", wshserver.ConnListAWSCommand
-func ConnListAWSCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
-	resp, err := sendRpcRequestCallHelper[[]string](w, "connlistaws", nil, opts)
-	return resp, err
-}
-
 // command "connreinstallwsh", wshserver.ConnReinstallWshCommand
 func ConnReinstallWshCommand(w *wshutil.WshRpc, data wshrpc.ConnExtData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connreinstallwsh", data, opts)
@@ -132,6 +125,12 @@ func ConnStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnSt
 // command "connupdatewsh", wshserver.ConnUpdateWshCommand
 func ConnUpdateWshCommand(w *wshutil.WshRpc, data wshrpc.RemoteInfo, opts *wshrpc.RpcOpts) (bool, error) {
 	resp, err := sendRpcRequestCallHelper[bool](w, "connupdatewsh", data, opts)
+	return resp, err
+}
+
+// command "controlgetrouteid", wshserver.ControlGetRouteIdCommand
+func ControlGetRouteIdCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "controlgetrouteid", nil, opts)
 	return resp, err
 }
 
@@ -219,6 +218,12 @@ func ElectronEncryptCommand(w *wshutil.WshRpc, data wshrpc.CommandElectronEncryp
 	return resp, err
 }
 
+// command "electronsystembell", wshserver.ElectronSystemBellCommand
+func ElectronSystemBellCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "electronsystembell", nil, opts)
+	return err
+}
+
 // command "eventpublish", wshserver.EventPublishCommand
 func EventPublishCommand(w *wshutil.WshRpc, data wps.WaveEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "eventpublish", data, opts)
@@ -264,12 +269,6 @@ func FetchSuggestionsCommand(w *wshutil.WshRpc, data wshrpc.FetchSuggestionsData
 // command "fileappend", wshserver.FileAppendCommand
 func FileAppendCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "fileappend", data, opts)
-	return err
-}
-
-// command "fileappendijson", wshserver.FileAppendIJsonCommand
-func FileAppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "fileappendijson", data, opts)
 	return err
 }
 
@@ -343,17 +342,6 @@ func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreB
 	return err
 }
 
-// command "filesharecapability", wshserver.FileShareCapabilityCommand
-func FileShareCapabilityCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.FileShareCapability, error) {
-	resp, err := sendRpcRequestCallHelper[wshrpc.FileShareCapability](w, "filesharecapability", data, opts)
-	return resp, err
-}
-
-// command "filestreamtar", wshserver.FileStreamTarCommand
-func FileStreamTarCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamTarData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	return sendRpcRequestResponseStreamHelper[iochantypes.Packet](w, "filestreamtar", data, opts)
-}
-
 // command "filewrite", wshserver.FileWriteCommand
 func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filewrite", data, opts)
@@ -370,6 +358,18 @@ func FindGitBashCommand(w *wshutil.WshRpc, data bool, opts *wshrpc.RpcOpts) (str
 func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "focuswindow", data, opts)
 	return err
+}
+
+// command "getalltabindicators", wshserver.GetAllTabIndicatorsCommand
+func GetAllTabIndicatorsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (map[string]*wshrpc.TabIndicator, error) {
+	resp, err := sendRpcRequestCallHelper[map[string]*wshrpc.TabIndicator](w, "getalltabindicators", nil, opts)
+	return resp, err
+}
+
+// command "getallvars", wshserver.GetAllVarsCommand
+func GetAllVarsCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) ([]wshrpc.CommandVarResponseData, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.CommandVarResponseData](w, "getallvars", data, opts)
+	return resp, err
 }
 
 // command "getfullconfig", wshserver.GetFullConfigCommand
@@ -699,11 +699,6 @@ func RemoteStreamFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamF
 	return sendRpcRequestResponseStreamHelper[wshrpc.FileData](w, "remotestreamfile", data, opts)
 }
 
-// command "remotetarstream", wshserver.RemoteTarStreamCommand
-func RemoteTarStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamTarData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	return sendRpcRequestResponseStreamHelper[iochantypes.Packet](w, "remotetarstream", data, opts)
-}
-
 // command "remoteterminatejobmanager", wshserver.RemoteTerminateJobManagerCommand
 func RemoteTerminateJobManagerCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteTerminateJobManagerData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remoteterminatejobmanager", data, opts)
@@ -849,6 +844,12 @@ func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToo
 func WaveAIToolApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIToolApproveData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "waveaitoolapprove", data, opts)
 	return err
+}
+
+// command "wavefilereadstream", wshserver.WaveFileReadStreamCommand
+func WaveFileReadStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveFileReadStreamData, opts *wshrpc.RpcOpts) (*wshrpc.WaveFileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveFileInfo](w, "wavefilereadstream", data, opts)
+	return resp, err
 }
 
 // command "waveinfo", wshserver.WaveInfoCommand

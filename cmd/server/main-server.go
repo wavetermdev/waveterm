@@ -361,6 +361,7 @@ func main() {
 	// Telemetry removed - no startup activity update, telemetry loops, or counts loops
 	blocklogger.InitBlockLogger()
 	jobcontroller.InitJobController()
+	wcore.InitTabIndicatorStore()
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("GetSystemSummary", recover())

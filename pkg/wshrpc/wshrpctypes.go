@@ -34,8 +34,9 @@ type WshRpcInterface interface {
 	AuthenticateJobManagerCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error
 	AuthenticateJobManagerVerifyCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error // (special) validates job auth token without binding, root router only
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
-	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
-	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
+	RouteAnnounceCommand(ctx context.Context) error               // (special) announces a new route to the main router
+	RouteUnannounceCommand(ctx context.Context) error             // (special) unannounces a route to the main router
+	ControlGetRouteIdCommand(ctx context.Context) (string, error) // (special) gets the route for the link that we're on
 	SetPeerInfoCommand(ctx context.Context, peerInfo string) error
 	GetJwtPublicKeyCommand(ctx context.Context) (string, error) // (special) gets the public JWT signing key
 
@@ -76,11 +77,13 @@ type WshRpcInterface interface {
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
+	GetAllVarsCommand(ctx context.Context, data CommandVarData) ([]CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
+	GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*TabIndicator, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -90,7 +93,6 @@ type WshRpcInterface interface {
 	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
-	ConnListAWSCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
@@ -119,6 +121,7 @@ type WshRpcInterface interface {
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
 	ElectronDecryptCommand(ctx context.Context, data CommandElectronDecryptData) (*CommandElectronDecryptRtnData, error)
 	NetworkOnlineCommand(ctx context.Context) (bool, error)
+	ElectronSystemBellCommand(ctx context.Context) error
 
 	// secrets
 	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)
@@ -150,6 +153,7 @@ type WshRpcInterface interface {
 
 	// file
 	WshRpcFileInterface
+	WaveFileReadStreamCommand(ctx context.Context, data CommandWaveFileReadStreamData) (*WaveFileInfo, error)
 
 	// streams
 	StreamDataCommand(ctx context.Context, data CommandStreamData) error
@@ -458,11 +462,11 @@ type CommandWebSelectorData struct {
 }
 
 type BlockInfoData struct {
-	BlockId     string         `json:"blockid"`
-	TabId       string         `json:"tabid"`
-	WorkspaceId string         `json:"workspaceid"`
-	Block       *waveobj.Block `json:"block"`
-	Files       []*FileInfo    `json:"files"`
+	BlockId     string          `json:"blockid"`
+	TabId       string          `json:"tabid"`
+	WorkspaceId string          `json:"workspaceid"`
+	Block       *waveobj.Block  `json:"block"`
+	Files       []*WaveFileInfo `json:"files"`
 }
 
 type WaveNotificationOptions struct {
@@ -903,20 +907,20 @@ type CommandOmpRestoreBackupRtnData struct {
 
 // OmpConfigData represents the full OMP configuration for the configurator
 type OmpConfigData struct {
-	Schema                 string                   `json:"$schema,omitempty"`
-	Version                int                      `json:"version,omitempty"`
-	FinalSpace             bool                     `json:"final_space,omitempty"`
-	ConsoleTitleTemplate   string                   `json:"console_title_template,omitempty"`
-	Palette                map[string]string        `json:"palette,omitempty"`
-	Blocks                 []OmpBlockData           `json:"blocks"`
-	TransientPrompt        *OmpTransientData        `json:"transient_prompt,omitempty"`
-	SecondaryPrompt        *OmpSecondaryPromptData  `json:"secondary_prompt,omitempty"`
-	DebugPrompt            *OmpDebugPromptData      `json:"debug_prompt,omitempty"`
-	Tooltips               []OmpTooltipData         `json:"tooltips,omitempty"`
-	CycleCacheEnabled      bool                     `json:"cycle_cache_enabled,omitempty"`
-	DisableCursorPositioning bool                   `json:"disable_cursor_positioning,omitempty"`
-	PatchPwshBleed         bool                     `json:"patch_pwsh_bleed,omitempty"`
-	UpgradeNotice          bool                     `json:"upgrade_notice,omitempty"`
+	Schema                   string                  `json:"$schema,omitempty"`
+	Version                  int                     `json:"version,omitempty"`
+	FinalSpace               bool                    `json:"final_space,omitempty"`
+	ConsoleTitleTemplate     string                  `json:"console_title_template,omitempty"`
+	Palette                  map[string]string       `json:"palette,omitempty"`
+	Blocks                   []OmpBlockData          `json:"blocks"`
+	TransientPrompt          *OmpTransientData       `json:"transient_prompt,omitempty"`
+	SecondaryPrompt          *OmpSecondaryPromptData `json:"secondary_prompt,omitempty"`
+	DebugPrompt              *OmpDebugPromptData     `json:"debug_prompt,omitempty"`
+	Tooltips                 []OmpTooltipData        `json:"tooltips,omitempty"`
+	CycleCacheEnabled        bool                    `json:"cycle_cache_enabled,omitempty"`
+	DisableCursorPositioning bool                    `json:"disable_cursor_positioning,omitempty"`
+	PatchPwshBleed           bool                    `json:"patch_pwsh_bleed,omitempty"`
+	UpgradeNotice            bool                    `json:"upgrade_notice,omitempty"`
 }
 
 // OmpBlockData represents a block in the OMP config
@@ -1002,7 +1006,7 @@ type CommandOmpReadConfigRtnData struct {
 	Config       *OmpConfigData `json:"config,omitempty"`
 	RawContent   string         `json:"rawcontent,omitempty"`
 	Format       string         `json:"format"`
-	Source       string         `json:"source"`  // "POSH_THEME" or "default"
+	Source       string         `json:"source"` // "POSH_THEME" or "default"
 	BackupExists bool           `json:"backupexists"`
 	Error        string         `json:"error,omitempty"`
 }
@@ -1023,4 +1027,34 @@ type CommandOmpWriteConfigRtnData struct {
 // CommandOmpReinitData contains OMP reinit request
 type CommandOmpReinitData struct {
 	BlockId string `json:"blockid"`
+}
+
+type TabIndicator struct {
+	Icon                string        `json:"icon"`
+	Color               string        `json:"color,omitempty"`
+	Priority            float64       `json:"priority"`
+	ClearOnFocus        bool          `json:"clearonfocus,omitempty"`
+	PersistentIndicator *TabIndicator `json:"persistentindicator,omitempty"`
+}
+
+type TabIndicatorEventData struct {
+	TabId     string        `json:"tabid"`
+	Indicator *TabIndicator `json:"indicator"`
+}
+
+type CommandWaveFileReadStreamData struct {
+	ZoneId     string     `json:"zoneid"`
+	Name       string     `json:"name"`
+	StreamMeta StreamMeta `json:"streammeta"`
+}
+
+// see blockstore.go (WaveFile)
+type WaveFileInfo struct {
+	ZoneId    string   `json:"zoneid"`
+	Name      string   `json:"name"`
+	Opts      FileOpts `json:"opts"`
+	CreatedTs int64    `json:"createdts"`
+	Size      int64    `json:"size"`
+	ModTs     int64    `json:"modts"`
+	Meta      FileMeta `json:"meta"`
 }
