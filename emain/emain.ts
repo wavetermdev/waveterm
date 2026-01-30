@@ -15,9 +15,11 @@ import {
     getAndClearTermCommandsRun,
     getForceQuit,
     getGlobalIsRelaunching,
+    getUserConfirmedQuit,
     setForceQuit,
     setGlobalIsQuitting,
     setGlobalIsStarting,
+    setUserConfirmedQuit,
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
@@ -52,6 +54,8 @@ import { getLaunchSettings } from "./launchsettings";
 import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
+
+let confirmQuit = true;
 
 const waveDataDir = getWaveDataDir();
 const waveConfigDir = getWaveConfigDir();
@@ -238,10 +242,37 @@ electronApp.on("window-all-closed", () => {
         return;
     }
     if (unamePlatform !== "darwin") {
+        setUserConfirmedQuit(true);
         electronApp.quit();
     }
 });
 electronApp.on("before-quit", (e) => {
+    const allWindows = getAllWaveWindows();
+    const allBuilders = getAllBuilderWindows();
+    if (
+        confirmQuit &&
+        !getForceQuit() &&
+        !getUserConfirmedQuit() &&
+        (allWindows.length > 0 || allBuilders.length > 0) &&
+        !getIsWaveSrvDead() &&
+        !process.env.WAVETERM_NOCONFIRMQUIT
+    ) {
+        e.preventDefault();
+        const choice = electron.dialog.showMessageBoxSync(null, {
+            type: "question",
+            buttons: ["Cancel", "Quit"],
+            title: "Confirm Quit",
+            message: "Are you sure you want to quit Wave Terminal?",
+            defaultId: 0,
+            cancelId: 0,
+        });
+        if (choice === 0) {
+            return;
+        }
+        setUserConfirmedQuit(true);
+        electronApp.quit();
+        return;
+    }
     setGlobalIsQuitting(true);
     updater?.stop();
     if (unamePlatform == "win32") {
@@ -255,11 +286,9 @@ electronApp.on("before-quit", (e) => {
         return;
     }
     e.preventDefault();
-    const allWindows = getAllWaveWindows();
     for (const window of allWindows) {
         hideWindowWithCatch(window);
     }
-    const allBuilders = getAllBuilderWindows();
     for (const builder of allBuilders) {
         builder.hide();
     }
@@ -277,14 +306,17 @@ electronApp.on("before-quit", (e) => {
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");
+    setUserConfirmedQuit(true);
     electronApp.quit();
 });
 process.on("SIGHUP", () => {
     console.log("Caught SIGHUP, shutting down");
+    setUserConfirmedQuit(true);
     electronApp.quit();
 });
 process.on("SIGTERM", () => {
     console.log("Caught SIGTERM, shutting down");
+    setUserConfirmedQuit(true);
     electronApp.quit();
 });
 let caughtException = false;
@@ -304,6 +336,7 @@ process.on("uncaughtException", (error) => {
     console.log("Uncaught Exception, shutting down: ", error);
     console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
+    setUserConfirmedQuit(true);
     electronApp.quit();
 });
 
@@ -332,6 +365,7 @@ async function appMain() {
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
         console.log("waveterm-app could not get single-instance-lock, shutting down");
+        setUserConfirmedQuit(true);
         electronApp.quit();
         return;
     }
@@ -356,6 +390,9 @@ async function appMain() {
     }
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     checkIfRunningUnderARM64Translation(fullConfig);
+    if (fullConfig?.settings?.["app:confirmquit"] != null) {
+        confirmQuit = fullConfig.settings["app:confirmquit"];
+    }
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
@@ -383,5 +420,6 @@ async function appMain() {
 
 appMain().catch((e) => {
     console.log("appMain error", e);
+    setUserConfirmedQuit(true);
     electronApp.quit();
 });

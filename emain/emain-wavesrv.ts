@@ -6,7 +6,7 @@ import * as child_process from "node:child_process";
 import * as readline from "readline";
 import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
 import { AuthKey, WaveAuthKeyEnv } from "./authkey";
-import { setForceQuit } from "./emain-activity";
+import { setForceQuit, setUserConfirmedQuit } from "./emain-activity";
 import {
     getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,
@@ -112,6 +112,7 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
             );
             if (startParams == null) {
                 console.log("error parsing WAVESRV-ESTART line", line);
+                setUserConfirmedQuit(true);
                 electron.app.quit();
                 return;
             }

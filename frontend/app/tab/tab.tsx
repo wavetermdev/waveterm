@@ -1,13 +1,23 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
+import {
+    atoms,
+    clearAllTabIndicators,
+    clearTabIndicatorFromFocus,
+    getTabIndicatorAtom,
+    globalStore,
+    recordTEvent,
+    refocusNode,
+    setTabIndicator,
+} from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { fireAndForget } from "@/util/util";
+import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
+import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
@@ -36,6 +46,7 @@ const Tab = memo(
             const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
+            const indicator = useAtomValue(getTabIndicatorAtom(id));
 
             const editableRef = useRef<HTMLDivElement>(null);
             const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
@@ -133,17 +144,40 @@ const Tab = memo(
                 event.stopPropagation();
             };
 
+            const handleTabClick = () => {
+                const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+                if (currentIndicator?.clearonfocus) {
+                    clearTabIndicatorFromFocus(id);
+                }
+                onSelect();
+            };
+
             const handleContextMenu = useCallback(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
-                    let menu: ContextMenuItem[] = [
+                    let menu: ContextMenuItem[] = [];
+                    const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+                    if (currentIndicator) {
+                        menu.push(
+                            {
+                                label: "Clear Tab Indicator",
+                                click: () => setTabIndicator(id, null),
+                            },
+                            {
+                                label: "Clear All Indicators",
+                                click: () => clearAllTabIndicators(),
+                            },
+                            { type: "separator" }
+                        );
+                    }
+                    menu.push(
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
                             label: "Copy TabId",
                             click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
                         },
-                        { type: "separator" },
-                    ];
+                        { type: "separator" }
+                    );
                     const fullConfig = globalStore.get(atoms.fullConfigAtom);
                     const bgPresets: string[] = [];
                     for (const key in fullConfig?.presets ?? {}) {
@@ -192,7 +226,7 @@ const Tab = memo(
                         "new-tab": isNew,
                     })}
                     onMouseDown={onDragStart}
-                    onClick={onSelect}
+                    onClick={handleTabClick}
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
@@ -208,6 +242,15 @@ const Tab = memo(
                         >
                             {tabData?.name}
                         </div>
+                        {indicator && (
+                            <div
+                                className="tab-indicator pointer-events-none"
+                                style={{ color: indicator.color || "#fbbf24" }}
+                                title="Activity notification"
+                            >
+                                <i className={makeIconClass(indicator.icon, true, { defaultIcon: "bell" })} />
+                            </div>
+                        )}
                         <Button
                             className="ghost grey close"
                             onClick={onClose}

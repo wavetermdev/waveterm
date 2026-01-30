@@ -54,6 +54,7 @@ var ExtraTypes = []any{
 	waveobj.ObjRTInfo{},
 	uctypes.RateLimitInfo{},
 	wconfig.AIModeConfigUpdate{},
+	wshrpc.TabIndicatorEventData{},
 }
 
 // add extra type unions to generate here

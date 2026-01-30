@@ -34,6 +34,7 @@ const (
 	WaveDevVarName                 = "WAVETERM_DEV"
 	WaveDevViteVarName             = "WAVETERM_DEV_VITE"
 	WaveWshForceUpdateVarName      = "WAVETERM_WSHFORCEUPDATE"
+	WaveNoConfirmQuitVarName       = "WAVETERM_NOCONFIRMQUIT"
 
 	WaveJwtTokenVarName  = "WAVETERM_JWT"
 	WaveSwapTokenVarName = "WAVETERM_SWAPTOKEN"
@@ -106,6 +107,7 @@ func CacheAndRemoveEnvVars() error {
 	Dev_VarCache = os.Getenv(WaveDevVarName)
 	os.Unsetenv(WaveDevVarName)
 	os.Unsetenv(WaveDevViteVarName)
+	os.Unsetenv(WaveNoConfirmQuitVarName)
 	return nil
 }
 

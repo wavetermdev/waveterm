@@ -26,6 +26,7 @@ import {
     initGlobal,
     initGlobalWaveEventSubs,
     loadConnStatus,
+    loadTabIndicators,
     pushFlashError,
     pushNotification,
     removeNotificationById,
@@ -166,6 +167,7 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
+    await loadTabIndicators();
     initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
 
