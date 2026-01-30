@@ -15,12 +15,13 @@ interface AIModeMenuItemProps {
     config: AIModeConfigWithMode;
     isSelected: boolean;
     isDisabled: boolean;
+    isPremiumDisabled: boolean;
     onClick: () => void;
     isFirst?: boolean;
     isLast?: boolean;
 }
 
-const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst, isLast }: AIModeMenuItemProps) => {
+const AIModeMenuItem = memo(({ config, isSelected, isDisabled, isPremiumDisabled, onClick, isFirst, isLast }: AIModeMenuItemProps) => {
     return (
         <button
             key={config.mode}
@@ -36,7 +37,7 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
                 <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
                 <span className={cn("text-sm", isSelected && "font-bold")}>
                     {getModeDisplayName(config)}
-                    {isDisabled && " (premium)"}
+                    {isPremiumDisabled && " (premium)"}
                 </span>
                 {isSelected && <i className="fa fa-check ml-auto"></i>}
             </div>
@@ -293,6 +294,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                                 config={config}
                                                 isSelected={isSelected}
                                                 isDisabled={isDisabled}
+                                                isPremiumDisabled={isPremiumDisabled}
                                                 onClick={() => handleSelect(config.mode)}
                                                 isFirst={isFirst}
                                                 isLast={isLast}
