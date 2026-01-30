@@ -15,28 +15,12 @@ import { FontControl } from "@/app/element/settings/font-control";
 import { SliderControl } from "@/app/element/settings/slider-control";
 import { ToggleControl } from "@/app/element/settings/toggle-control";
 import { getSettingsKeyAtom } from "@/app/store/global";
+import { getDefaultValue } from "@/app/store/settings-registry";
 import { settingsService } from "@/app/store/settings-service";
 import { useAtomValue } from "jotai";
 import { memo, useCallback } from "react";
 
 import "./display-settings.scss";
-
-// Default values for display settings (used for modified detection and reset)
-const DEFAULTS: Record<string, boolean | number | string> = {
-    "window:transparent": false,
-    "window:blur": false,
-    "window:opacity": 1,
-    "window:bgcolor": "",
-    "window:zoom": 1,
-    "term:fontsize": 12,
-    "term:fontfamily": "",
-    "term:ligatures": false,
-    "term:transparency": 0,
-    "editor:fontsize": 12,
-    "editor:minimapenabled": false,
-    "ai:fontsize": 14,
-    "ai:fixedfontsize": 12,
-};
 
 interface SubSectionProps {
     title: string;
@@ -81,15 +65,11 @@ export const DisplaySettings = memo(() => {
         []
     );
 
+    // Cast makeSetter result for SettingControl's onChange prop type
     const makeOnChange = useCallback(
         (key: string) => makeSetter(key) as (value: boolean | number | string | string[] | Record<string, unknown> | null) => void,
         [makeSetter]
     );
-
-    const isModified = useCallback((key: string, value: unknown): boolean => {
-        const def = DEFAULTS[key];
-        return value !== def && value !== undefined && value !== null;
-    }, []);
 
     return (
         <div className="display-settings">
@@ -99,9 +79,9 @@ export const DisplaySettings = memo(() => {
                     label="Transparent Window"
                     description=""
                     value={windowTransparent as boolean}
-                    defaultValue={DEFAULTS["window:transparent"]}
+                    defaultValue={getDefaultValue("window:transparent")}
                     onChange={makeOnChange("window:transparent")}
-                    isModified={isModified("window:transparent", windowTransparent)}
+                    isModified={settingsService.isModified("window:transparent")}
                     requiresRestart
                 >
                     <ToggleControl
@@ -114,9 +94,9 @@ export const DisplaySettings = memo(() => {
                     label="Background Blur"
                     description=""
                     value={windowBlur as boolean}
-                    defaultValue={DEFAULTS["window:blur"]}
+                    defaultValue={getDefaultValue("window:blur")}
                     onChange={makeOnChange("window:blur")}
-                    isModified={isModified("window:blur", windowBlur)}
+                    isModified={settingsService.isModified("window:blur")}
                 >
                     <ToggleControl
                         value={Boolean(windowBlur)}
@@ -128,9 +108,9 @@ export const DisplaySettings = memo(() => {
                     label="Window Opacity"
                     description=""
                     value={windowOpacity as number}
-                    defaultValue={DEFAULTS["window:opacity"]}
+                    defaultValue={getDefaultValue("window:opacity")}
                     onChange={makeOnChange("window:opacity")}
-                    isModified={isModified("window:opacity", windowOpacity)}
+                    isModified={settingsService.isModified("window:opacity")}
                 >
                     <SliderControl
                         value={Number(windowOpacity)}
@@ -145,9 +125,9 @@ export const DisplaySettings = memo(() => {
                     label="Background Color"
                     description=""
                     value={windowBgcolor as string}
-                    defaultValue={DEFAULTS["window:bgcolor"]}
+                    defaultValue={getDefaultValue("window:bgcolor")}
                     onChange={makeOnChange("window:bgcolor")}
-                    isModified={isModified("window:bgcolor", windowBgcolor)}
+                    isModified={settingsService.isModified("window:bgcolor")}
                 >
                     <ColorControl
                         value={String(windowBgcolor)}
@@ -159,9 +139,9 @@ export const DisplaySettings = memo(() => {
                     label="Interface Zoom"
                     description=""
                     value={windowZoom as number}
-                    defaultValue={DEFAULTS["window:zoom"]}
+                    defaultValue={getDefaultValue("window:zoom")}
                     onChange={makeOnChange("window:zoom")}
-                    isModified={isModified("window:zoom", windowZoom)}
+                    isModified={settingsService.isModified("window:zoom")}
                 >
                     <SliderControl
                         value={Number(windowZoom)}
@@ -179,9 +159,9 @@ export const DisplaySettings = memo(() => {
                     label="Font Size"
                     description=""
                     value={termFontsize as number}
-                    defaultValue={DEFAULTS["term:fontsize"]}
+                    defaultValue={getDefaultValue("term:fontsize")}
                     onChange={makeOnChange("term:fontsize")}
-                    isModified={isModified("term:fontsize", termFontsize)}
+                    isModified={settingsService.isModified("term:fontsize")}
                 >
                     <SliderControl
                         value={Number(termFontsize)}
@@ -196,9 +176,9 @@ export const DisplaySettings = memo(() => {
                     label="Font Family"
                     description=""
                     value={termFontfamily as string}
-                    defaultValue={DEFAULTS["term:fontfamily"]}
+                    defaultValue={getDefaultValue("term:fontfamily")}
                     onChange={makeOnChange("term:fontfamily")}
-                    isModified={isModified("term:fontfamily", termFontfamily)}
+                    isModified={settingsService.isModified("term:fontfamily")}
                 >
                     <FontControl
                         value={String(termFontfamily)}
@@ -211,9 +191,9 @@ export const DisplaySettings = memo(() => {
                     label="Font Ligatures"
                     description=""
                     value={termLigatures as boolean}
-                    defaultValue={DEFAULTS["term:ligatures"]}
+                    defaultValue={getDefaultValue("term:ligatures")}
                     onChange={makeOnChange("term:ligatures")}
-                    isModified={isModified("term:ligatures", termLigatures)}
+                    isModified={settingsService.isModified("term:ligatures")}
                 >
                     <ToggleControl
                         value={Boolean(termLigatures)}
@@ -225,9 +205,9 @@ export const DisplaySettings = memo(() => {
                     label="Transparency"
                     description=""
                     value={termTransparency as number}
-                    defaultValue={DEFAULTS["term:transparency"]}
+                    defaultValue={getDefaultValue("term:transparency")}
                     onChange={makeOnChange("term:transparency")}
-                    isModified={isModified("term:transparency", termTransparency)}
+                    isModified={settingsService.isModified("term:transparency")}
                 >
                     <SliderControl
                         value={Number(termTransparency)}
@@ -245,9 +225,9 @@ export const DisplaySettings = memo(() => {
                     label="Font Size"
                     description=""
                     value={editorFontsize as number}
-                    defaultValue={DEFAULTS["editor:fontsize"]}
+                    defaultValue={getDefaultValue("editor:fontsize")}
                     onChange={makeOnChange("editor:fontsize")}
-                    isModified={isModified("editor:fontsize", editorFontsize)}
+                    isModified={settingsService.isModified("editor:fontsize")}
                 >
                     <SliderControl
                         value={Number(editorFontsize)}
@@ -262,9 +242,9 @@ export const DisplaySettings = memo(() => {
                     label="Show Minimap"
                     description=""
                     value={editorMinimap as boolean}
-                    defaultValue={DEFAULTS["editor:minimapenabled"]}
+                    defaultValue={getDefaultValue("editor:minimapenabled")}
                     onChange={makeOnChange("editor:minimapenabled")}
-                    isModified={isModified("editor:minimapenabled", editorMinimap)}
+                    isModified={settingsService.isModified("editor:minimapenabled")}
                 >
                     <ToggleControl
                         value={Boolean(editorMinimap)}
@@ -279,9 +259,9 @@ export const DisplaySettings = memo(() => {
                     label="Text Font Size"
                     description=""
                     value={aiFontsize as number}
-                    defaultValue={DEFAULTS["ai:fontsize"]}
+                    defaultValue={getDefaultValue("ai:fontsize")}
                     onChange={makeOnChange("ai:fontsize")}
-                    isModified={isModified("ai:fontsize", aiFontsize)}
+                    isModified={settingsService.isModified("ai:fontsize")}
                 >
                     <SliderControl
                         value={Number(aiFontsize)}
@@ -296,9 +276,9 @@ export const DisplaySettings = memo(() => {
                     label="Code Font Size"
                     description=""
                     value={aiFixedFontsize as number}
-                    defaultValue={DEFAULTS["ai:fixedfontsize"]}
+                    defaultValue={getDefaultValue("ai:fixedfontsize")}
                     onChange={makeOnChange("ai:fixedfontsize")}
-                    isModified={isModified("ai:fixedfontsize", aiFixedFontsize)}
+                    isModified={settingsService.isModified("ai:fixedfontsize")}
                 >
                     <SliderControl
                         value={Number(aiFixedFontsize)}
