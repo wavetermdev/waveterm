@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -30,17 +31,21 @@ type ServerImpl struct {
 	Router        *wshutil.WshRouter
 	RpcClient     *wshutil.WshRpc
 	IsLocal       bool
+	InitialEnv    map[string]string
 	JobManagerMap map[string]*JobManagerConnection
+	SockName      string
 	Lock          sync.Mutex
 }
 
-func MakeRemoteRpcServerImpl(logWriter io.Writer, router *wshutil.WshRouter, rpcClient *wshutil.WshRpc, isLocal bool) *ServerImpl {
+func MakeRemoteRpcServerImpl(logWriter io.Writer, router *wshutil.WshRouter, rpcClient *wshutil.WshRpc, isLocal bool, initialEnv map[string]string, sockName string) *ServerImpl {
 	return &ServerImpl{
 		LogWriter:     logWriter,
 		Router:        router,
 		RpcClient:     rpcClient,
 		IsLocal:       isLocal,
+		InitialEnv:    initialEnv,
 		JobManagerMap: make(map[string]*JobManagerConnection),
+		SockName:      sockName,
 	}
 }
 
@@ -89,6 +94,30 @@ func (*ServerImpl) FetchSuggestionsCommand(ctx context.Context, data wshrpc.Fetc
 
 func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId string) error {
 	suggestion.DisposeSuggestions(ctx, widgetId)
+	return nil
+}
+
+func (impl *ServerImpl) ConnServerInitCommand(ctx context.Context, data wshrpc.CommandConnServerInitData) error {
+	if data.ClientId == "" {
+		return fmt.Errorf("clientid is required")
+	}
+	if impl.SockName == "" {
+		return fmt.Errorf("sockname not set in server impl")
+	}
+	symlinkPath, err := wavebase.ExpandHomeDir(wavebase.GetPersistentRemoteSockName(data.ClientId))
+	if err != nil {
+		return fmt.Errorf("cannot expand symlink path: %w", err)
+	}
+	symlinkDir := filepath.Dir(symlinkPath)
+
+	if err := os.MkdirAll(symlinkDir, 0700); err != nil {
+		return fmt.Errorf("could not create client directory %s: %w", symlinkDir, err)
+	}
+	os.Remove(symlinkPath)
+	if err := os.Symlink(impl.SockName, symlinkPath); err != nil {
+		return fmt.Errorf("could not create symlink %s -> %s: %w", symlinkPath, impl.SockName, err)
+	}
+	impl.Log("created symlink %s -> %s\n", symlinkPath, impl.SockName)
 	return nil
 }
 

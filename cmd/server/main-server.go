@@ -26,6 +26,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/service"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -76,7 +77,7 @@ func doShutdown(reason string) {
 		log.Printf("shutting down: %s\n", reason)
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
-		go blockcontroller.StopAllBlockControllers()
+		go blockcontroller.StopAllBlockControllersForShutdown()
 		// Telemetry removed - no shutdown telemetry
 		clearTempFiles()
 		filestore.WFS.FlushCache(ctx)
@@ -142,14 +143,8 @@ func sendDiagnosticPing() bool {
 	if err != nil || !isOnline {
 		return false
 	}
-	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return false
-	}
-	if clientData == nil {
-		return false
-	}
-	wcloud.SendDiagnosticPing(ctx, clientData.OID)
+	clientId := wstore.GetClientId()
+	wcloud.SendDiagnosticPing(ctx, clientId)
 	return true
 }
 
@@ -175,7 +170,10 @@ func createMainWshClient() {
 	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, wshremote.MakeRemoteRpcServerImpl(nil, wshutil.DefaultRouter, wshclient.GetBareRpcClient(), true), "conn:local")
+	localInitialEnv := envutil.PruneInitialEnv(envutil.SliceToMap(os.Environ()))
+	sockName := wavebase.GetDomainSocketName()
+	remoteImpl := wshremote.MakeRemoteRpcServerImpl(nil, wshutil.DefaultRouter, wshclient.GetBareRpcClient(), true, localInitialEnv, sockName)
+	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, remoteImpl, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
 	wshutil.DefaultRouter.RegisterTrustedLeaf(localConnWsh, wshutil.MakeConnectionRouteId(wshrpc.LocalConnName))
 }
@@ -327,6 +325,15 @@ func main() {
 	if firstLaunch {
 		log.Printf("first launch detected")
 	}
+	// cache the clientId for use in wstore.GetClientId()
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	cancelFn()
+	if err != nil {
+		log.Printf("error getting client data: %v\n", err)
+		return
+	}
+	wstore.SetClientId(clientData.OID)
 	err = clearTempFiles()
 	if err != nil {
 		log.Printf("error clearing temp files: %v\n", err)

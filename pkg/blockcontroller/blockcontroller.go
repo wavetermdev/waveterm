@@ -268,6 +268,11 @@ func StopAllBlockControllers() {
 	}
 }
 
+// StopAllBlockControllersForShutdown is an alias for StopAllBlockControllers used during shutdown
+func StopAllBlockControllersForShutdown() {
+	StopAllBlockControllers()
+}
+
 func getBoolFromMeta(meta map[string]any, key string, def bool) bool {
 	ival, found := meta[key]
 	if !found || ival == nil {
