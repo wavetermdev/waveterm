@@ -82,7 +82,7 @@ export const DisplaySettings = memo(() => {
     );
 
     const makeOnChange = useCallback(
-        (key: string) => makeSetter(key) as (value: boolean | number | string | string[] | null) => void,
+        (key: string) => makeSetter(key) as (value: boolean | number | string | string[] | Record<string, unknown> | null) => void,
         [makeSetter]
     );
 
