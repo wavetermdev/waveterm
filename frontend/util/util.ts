@@ -16,7 +16,15 @@ function isLocalConnName(connName: string): boolean {
     if (isBlank(connName)) {
         return true;
     }
-    return connName === "local" || connName.startsWith("local:");
+    // "local", "local:*" are local
+    if (connName === "local" || connName.startsWith("local:")) {
+        return true;
+    }
+    // WSL connections are also local (not remote SSH)
+    if (connName.startsWith("wsl://")) {
+        return true;
+    }
+    return false;
 }
 
 /**

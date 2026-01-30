@@ -190,6 +190,9 @@ const BlockFrame_Header = ({
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
+    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+    const connectionsConfig = fullConfig?.connections;
+    const isLocalConn = util.isLocalConnection(connName, connectionsConfig);
     const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
     const wshProblem = connName && !connStatus?.wshenabled && connStatus?.status == "connected";
 
@@ -271,7 +274,7 @@ const BlockFrame_Header = ({
                 <div className="block-frame-view-type">{viewName}</div>
                 {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
             </div>
-            {manageConnection && connName && connName !== "local" && (
+            {manageConnection && !isLocalConn && (
                 <ConnectionButton
                     ref={connBtnRef}
                     key="connbutton"
