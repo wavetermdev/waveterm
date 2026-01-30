@@ -30,7 +30,7 @@ declare global {
     /**
      * The underlying JavaScript/TypeScript type for a setting value.
      */
-    type SettingValueType = "boolean" | "number" | "string" | "string[]" | "null";
+    type SettingValueType = "boolean" | "number" | "string" | "string[]" | "object" | "null";
 
     /**
      * Option for select controls.
@@ -73,7 +73,7 @@ declare global {
         /** The GUI control type to render */
         controlType: SettingControlType;
         /** Default value when not set by user */
-        defaultValue: boolean | number | string | string[] | null;
+        defaultValue: boolean | number | string | string[] | object | null;
         /** The JavaScript type of the value */
         type: SettingValueType;
         /** Optional validation rules */

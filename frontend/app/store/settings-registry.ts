@@ -1099,7 +1099,7 @@ function getSettingMetadata(key: string): SettingMetadata | undefined {
 /**
  * Get the default value for a setting.
  */
-function getDefaultValue(key: string): boolean | number | string | string[] | null {
+function getDefaultValue(key: string): boolean | number | string | string[] | object | null {
     const metadata = settingsRegistry.get(key);
     return metadata?.defaultValue ?? null;
 }
