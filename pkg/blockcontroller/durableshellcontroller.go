@@ -30,7 +30,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-type ShellJobController struct {
+type DurableShellController struct {
 	Lock *sync.Mutex
 
 	ControllerType string
@@ -46,8 +46,8 @@ type ShellJobController struct {
 	LastKnownStatus string
 }
 
-func MakeShellJobController(tabId string, blockId string, controllerType string) Controller {
-	return &ShellJobController{
+func MakeDurableShellController(tabId string, blockId string, controllerType string) Controller {
+	return &DurableShellController{
 		Lock:            &sync.Mutex{},
 		ControllerType:  controllerType,
 		TabId:           tabId,
@@ -57,63 +57,63 @@ func MakeShellJobController(tabId string, blockId string, controllerType string)
 	}
 }
 
-func (sjc *ShellJobController) WithLock(f func()) {
-	sjc.Lock.Lock()
-	defer sjc.Lock.Unlock()
+func (dsc *DurableShellController) WithLock(f func()) {
+	dsc.Lock.Lock()
+	defer dsc.Lock.Unlock()
 	f()
 }
 
-func (sjc *ShellJobController) getJobId() string {
-	sjc.Lock.Lock()
-	defer sjc.Lock.Unlock()
-	return sjc.JobId
+func (dsc *DurableShellController) getJobId() string {
+	dsc.Lock.Lock()
+	defer dsc.Lock.Unlock()
+	return dsc.JobId
 }
 
-func (sjc *ShellJobController) getNextInputSeq() (string, int) {
-	sjc.Lock.Lock()
-	defer sjc.Lock.Unlock()
-	sjc.inputSeqNum++
-	return sjc.InputSessionId, sjc.inputSeqNum
+func (dsc *DurableShellController) getNextInputSeq() (string, int) {
+	dsc.Lock.Lock()
+	defer dsc.Lock.Unlock()
+	dsc.inputSeqNum++
+	return dsc.InputSessionId, dsc.inputSeqNum
 }
 
-func (sjc *ShellJobController) getJobStatus_withlock() string {
-	if sjc.JobId == "" {
-		sjc.LastKnownStatus = Status_Init
+func (dsc *DurableShellController) getJobStatus_withlock() string {
+	if dsc.JobId == "" {
+		dsc.LastKnownStatus = Status_Init
 		return Status_Init
 	}
-	status, err := jobcontroller.GetJobManagerStatus(context.Background(), sjc.JobId)
+	status, err := jobcontroller.GetJobManagerStatus(context.Background(), dsc.JobId)
 	if err != nil {
-		log.Printf("error getting job status for %s: %v, using last known status: %s", sjc.JobId, err, sjc.LastKnownStatus)
-		return sjc.LastKnownStatus
+		log.Printf("error getting job status for %s: %v, using last known status: %s", dsc.JobId, err, dsc.LastKnownStatus)
+		return dsc.LastKnownStatus
 	}
-	sjc.LastKnownStatus = status
+	dsc.LastKnownStatus = status
 	return status
 }
 
-func (sjc *ShellJobController) getRuntimeStatus_withlock() BlockControllerRuntimeStatus {
+func (dsc *DurableShellController) getRuntimeStatus_withlock() BlockControllerRuntimeStatus {
 	var rtn BlockControllerRuntimeStatus
-	rtn.Version = sjc.VersionTs.GetVersionTs()
-	rtn.BlockId = sjc.BlockId
-	rtn.ShellProcStatus = sjc.getJobStatus_withlock()
+	rtn.Version = dsc.VersionTs.GetVersionTs()
+	rtn.BlockId = dsc.BlockId
+	rtn.ShellProcStatus = dsc.getJobStatus_withlock()
 	return rtn
 }
 
-func (sjc *ShellJobController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
+func (dsc *DurableShellController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 	var rtn BlockControllerRuntimeStatus
-	sjc.WithLock(func() {
-		rtn = sjc.getRuntimeStatus_withlock()
+	dsc.WithLock(func() {
+		rtn = dsc.getRuntimeStatus_withlock()
 	})
 	return &rtn
 }
 
-func (sjc *ShellJobController) sendUpdate_withlock() {
-	rtStatus := sjc.getRuntimeStatus_withlock()
+func (dsc *DurableShellController) sendUpdate_withlock() {
+	rtStatus := dsc.getRuntimeStatus_withlock()
 	log.Printf("sending blockcontroller update %#v\n", rtStatus)
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_ControllerStatus,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Tab, sjc.TabId).String(),
-			waveobj.MakeORef(waveobj.OType_Block, sjc.BlockId).String(),
+			waveobj.MakeORef(waveobj.OType_Tab, dsc.TabId).String(),
+			waveobj.MakeORef(waveobj.OType_Block, dsc.BlockId).String(),
 		},
 		Data: rtStatus,
 	})
@@ -128,8 +128,8 @@ func (sjc *ShellJobController) sendUpdate_withlock() {
 //   - force=false: returns without starting (leaves block unstarted)
 //
 // After establishing jobId, ensures job connection is active (reconnects if needed)
-func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
-	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, sjc.BlockId)
+func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, dsc.BlockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
@@ -147,10 +147,10 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 		}
 		if status != jobcontroller.JobStatus_Running {
 			if force {
-				log.Printf("block %q has jobId %s but manager is not running (status: %s), detaching (force=true)\n", sjc.BlockId, blockData.JobId, status)
+				log.Printf("block %q has jobId %s but manager is not running (status: %s), detaching (force=true)\n", dsc.BlockId, blockData.JobId, status)
 				jobcontroller.DetachJobFromBlock(ctx, blockData.JobId, false)
 			} else {
-				log.Printf("block %q has jobId %s but manager is not running (status: %s), not starting (force=false)\n", sjc.BlockId, blockData.JobId, status)
+				log.Printf("block %q has jobId %s but manager is not running (status: %s), not starting (force=false)\n", dsc.BlockId, blockData.JobId, status)
 				return nil
 			}
 		} else {
@@ -159,22 +159,22 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 	}
 
 	if jobId == "" {
-		log.Printf("block %q starting new shell job\n", sjc.BlockId)
-		newJobId, err := sjc.startNewJob(ctx, blockMeta, connName)
+		log.Printf("block %q starting new shell job\n", dsc.BlockId)
+		newJobId, err := dsc.startNewJob(ctx, blockMeta, connName)
 		if err != nil {
 			return fmt.Errorf("failed to start new job: %w", err)
 		}
 		jobId = newJobId
 
-		err = jobcontroller.AttachJobToBlock(ctx, jobId, sjc.BlockId)
+		err = jobcontroller.AttachJobToBlock(ctx, jobId, dsc.BlockId)
 		if err != nil {
 			log.Printf("error attaching job to block: %v\n", err)
 		}
 	}
 
-	sjc.WithLock(func() {
-		sjc.JobId = jobId
-		sjc.sendUpdate_withlock()
+	dsc.WithLock(func() {
+		dsc.JobId = jobId
+		dsc.sendUpdate_withlock()
 	})
 
 	_, err = jobcontroller.CheckJobConnected(ctx, jobId)
@@ -189,11 +189,11 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 	return nil
 }
 
-func (sjc *ShellJobController) Stop(graceful bool, newStatus string, destroy bool) {
+func (dsc *DurableShellController) Stop(graceful bool, newStatus string, destroy bool) {
 	if !destroy {
 		return
 	}
-	jobId := sjc.getJobId()
+	jobId := dsc.getJobId()
 	if jobId == "" {
 		return
 	}
@@ -209,15 +209,15 @@ func (sjc *ShellJobController) Stop(graceful bool, newStatus string, destroy boo
 	}
 }
 
-func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {
+func (dsc *DurableShellController) SendInput(inputUnion *BlockInputUnion) error {
 	if inputUnion == nil {
 		return nil
 	}
-	jobId := sjc.getJobId()
+	jobId := dsc.getJobId()
 	if jobId == "" {
 		return fmt.Errorf("no job attached to controller")
 	}
-	inputSessionId, seqNum := sjc.getNextInputSeq()
+	inputSessionId, seqNum := dsc.getNextInputSeq()
 	data := wshrpc.CommandJobInputData{
 		JobId:          jobId,
 		InputSessionId: inputSessionId,
@@ -231,7 +231,7 @@ func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {
 	return jobcontroller.SendInput(context.Background(), data)
 }
 
-func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveobj.MetaMapType, connName string) (string, error) {
+func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta waveobj.MetaMapType, connName string) (string, error) {
 	termSize := waveobj.TermSize{
 		Rows: shellutil.DefaultTermRows,
 		Cols: shellutil.DefaultTermCols,
@@ -252,12 +252,12 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 		return "", fmt.Errorf("unable to obtain remote info from connserver: %w", err)
 	}
 	shellType := shellutil.GetShellTypeFromShellPath(remoteInfo.Shell)
-	swapToken := makeSwapToken(ctx, ctx, sjc.BlockId, blockMeta, connName, shellType)
+	swapToken := makeSwapToken(ctx, ctx, dsc.BlockId, blockMeta, connName, shellType)
 	sockName := wavebase.GetPersistentRemoteSockName(wstore.GetClientId())
 	rpcContext := wshrpc.RpcContext{
 		ProcRoute: true,
 		SockName:  sockName,
-		BlockId:   sjc.BlockId,
+		BlockId:   dsc.BlockId,
 		Conn:      connName,
 	}
 	jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
@@ -280,13 +280,13 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 	return jobId, nil
 }
 
-func (sjc *ShellJobController) resetTerminalState(logCtx context.Context) {
+func (dsc *DurableShellController) resetTerminalState(logCtx context.Context) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 
 	jobId := ""
-	sjc.WithLock(func() {
-		jobId = sjc.JobId
+	dsc.WithLock(func() {
+		jobId = dsc.JobId
 	})
 	if jobId == "" {
 		return

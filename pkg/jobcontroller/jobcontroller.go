@@ -917,31 +917,33 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 	return nil
 }
 
-func IsBlockTermDurable(ctx context.Context, blockId string) (bool, error) {
-	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
-	if err != nil {
-		return false, fmt.Errorf("failed to get block: %w", err)
-	}
+// this function must be kept up to date with the isBlockTermDurable function in term-model.ts
+func IsBlockTermDurable(block *waveobj.Block) bool {
 	if block == nil {
-		return false, fmt.Errorf("block not found: %s", blockId)
+		return false
+	}
+
+	// Check if view is "term", and controller is "shell"
+	if block.Meta.GetString(waveobj.MetaKey_View, "") != "term" && block.Meta.GetString(waveobj.MetaKey_Controller, "") == "shell" {
+		return false
 	}
 
 	// 1. Check if block has a JobId
 	if block.JobId != "" {
-		return true, nil
+		return true
 	}
 
-	// 2. Check if connection is local (local connections aren't durable)
+	// 2. Check if connection is local or WSL (not durable)
 	connName := block.Meta.GetString(waveobj.MetaKey_Connection, "")
-	if conncontroller.IsLocalConnName(connName) {
-		return false, nil
+	if conncontroller.IsLocalConnName(connName) || conncontroller.IsWslConnName(connName) {
+		return false
 	}
 
 	// 3. Check config hierarchy: blockmeta → connection → global (default true)
 	// Check block meta first
-	if val, exists := block.Meta["term:durable"]; exists {
+	if val, exists := block.Meta[waveobj.MetaKey_TermDurable]; exists {
 		if boolVal, ok := val.(bool); ok {
-			return boolVal, nil
+			return boolVal
 		}
 	}
 	// Check connection config
@@ -949,16 +951,16 @@ func IsBlockTermDurable(ctx context.Context, blockId string) (bool, error) {
 	if connName != "" {
 		if connConfig, exists := fullConfig.Connections[connName]; exists {
 			if connConfig.TermDurable != nil {
-				return *connConfig.TermDurable, nil
+				return *connConfig.TermDurable
 			}
 		}
 	}
 	// Check global settings
 	if fullConfig.Settings.TermDurable != nil {
-		return *fullConfig.Settings.TermDurable, nil
+		return *fullConfig.Settings.TermDurable
 	}
 	// Default to true for non-local connections
-	return true, nil
+	return true
 }
 
 func DeleteJob(ctx context.Context, jobId string) error {

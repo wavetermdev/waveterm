@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -142,12 +143,9 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		return nil
 	}
 
-	// Determine if we should use ShellJobController vs ShellController
-	isPersistent := blockData.Meta.GetBool(waveobj.MetaKey_CmdPersistent, false)
+	// Determine if we should use DurableShellController vs ShellController
 	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
-	isRemote := !conncontroller.IsLocalConnName(connName)
-	isWSL := strings.HasPrefix(connName, "wsl://")
-	shouldUseShellJobController := isPersistent && isRemote && !isWSL && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd)
+	shouldUseDurableShellController := jobcontroller.IsBlockTermDurable(blockData) && controllerName == BlockController_Shell
 
 	// Check if we need to morph controller type
 	if existing != nil {
@@ -158,11 +156,11 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		case *ShellController:
 			if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
 				needsReplace = true
-			} else if shouldUseShellJobController {
+			} else if shouldUseDurableShellController {
 				needsReplace = true
 			}
-		case *ShellJobController:
-			if !shouldUseShellJobController {
+		case *DurableShellController:
+			if !shouldUseDurableShellController {
 				needsReplace = true
 			}
 		case *TsunamiController:
@@ -218,8 +216,8 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		// Create new controller based on type
 		switch controllerName {
 		case BlockController_Shell, BlockController_Cmd:
-			if shouldUseShellJobController {
-				controller = MakeShellJobController(tabId, blockId, controllerName)
+			if shouldUseDurableShellController {
+				controller = MakeDurableShellController(tabId, blockId, controllerName)
 			} else {
 				controller = MakeShellController(tabId, blockId, controllerName)
 			}
