@@ -11,9 +11,9 @@ export interface SettingControlProps {
     label: string;
     /** Description can be a string or a React node (for linked descriptions) */
     description: string | React.ReactNode;
-    value: boolean | number | string | string[] | null;
-    defaultValue: boolean | number | string | string[] | null;
-    onChange: (value: boolean | number | string | string[] | null) => void;
+    value: boolean | number | string | string[] | Record<string, unknown> | null;
+    defaultValue: boolean | number | string | string[] | Record<string, unknown> | null;
+    onChange: (value: boolean | number | string | string[] | Record<string, unknown> | null) => void;
     isModified: boolean;
     disabled?: boolean;
     requiresRestart?: boolean;
