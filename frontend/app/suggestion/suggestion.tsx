@@ -25,7 +25,7 @@ type BlockHeaderSuggestionControlProps = Omit<SuggestionControlProps, "anchorRef
     openAtom: Atom<boolean>;
 };
 
-const SuggestionControl: React.FC<SuggestionControlProps> = ({
+function SuggestionControl({
     anchorRef,
     isOpen,
     onClose,
@@ -34,13 +34,13 @@ const SuggestionControl: React.FC<SuggestionControlProps> = ({
     fetchSuggestions,
     className,
     children,
-}) => {
+}: SuggestionControlProps) {
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
 
     return (
         <SuggestionControlInner {...{ anchorRef, onClose, onSelect, onTab, fetchSuggestions, className, children }} />
     );
-};
+}
 
 function highlightPositions(target: string, positions: number[]): ReactNode[] {
     if (target == null) {
@@ -84,7 +84,7 @@ function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): 
     return [null, null];
 }
 
-const SuggestionIcon: React.FC<{ suggestion: SuggestionType }> = ({ suggestion }) => {
+function SuggestionIcon({ suggestion }: { suggestion: SuggestionType }) {
     if (suggestion.iconsrc) {
         return <img src={suggestion.iconsrc} alt="favicon" className="w-4 h-4 object-contain" />;
     }
@@ -110,11 +110,9 @@ const SuggestionIcon: React.FC<{ suggestion: SuggestionType }> = ({ suggestion }
     }
     const iconClass = makeIconClass("file", true);
     return <i className={iconClass} />;
-};
+}
 
-const SuggestionContent: React.FC<{
-    suggestion: SuggestionType;
-}> = ({ suggestion }) => {
+function SuggestionContent({ suggestion }: { suggestion: SuggestionType }) {
     if (!isBlank(suggestion.subtext)) {
         return (
             <div className="flex flex-col">
@@ -128,9 +126,9 @@ const SuggestionContent: React.FC<{
         );
     }
     return <span className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</span>;
-};
+}
 
-const BlockHeaderSuggestionControl: React.FC<BlockHeaderSuggestionControlProps> = (props) => {
+function BlockHeaderSuggestionControl(props: BlockHeaderSuggestionControlProps) {
     const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
     const isOpen = useAtomValue(props.openAtom);
 
@@ -145,31 +143,31 @@ const BlockHeaderSuggestionControl: React.FC<BlockHeaderSuggestionControlProps> 
 
     const newClass = clsx(props.className, "rounded-t-none");
     return <SuggestionControl {...props} anchorRef={{ current: headerElem }} isOpen={isOpen} className={newClass} />;
-};
+}
 
 /**
  * The empty state component that can be used as a child of SuggestionControl.
  * If no children are provided to SuggestionControl, this default empty state will be used.
  */
-const SuggestionControlNoResults: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+function SuggestionControlNoResults({ children }: { children?: React.ReactNode }) {
     return (
         <div className="flex items-center justify-center min-h-[120px] p-4">
             {children ?? <span className="text-gray-500">No Suggestions</span>}
         </div>
     );
-};
+}
 
-const SuggestionControlNoData: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+function SuggestionControlNoData({ children }: { children?: React.ReactNode }) {
     return (
         <div className="flex items-center justify-center min-h-[120px] p-4">
             {children ?? <span className="text-gray-500">No Suggestions</span>}
         </div>
     );
-};
+}
 
 interface SuggestionControlInnerProps extends Omit<SuggestionControlProps, "isOpen"> {}
 
-const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
+function SuggestionControlInner({
     anchorRef,
     onClose,
     onSelect,
@@ -178,7 +176,7 @@ const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
     className,
     placeholderText,
     children,
-}) => {
+}: SuggestionControlInnerProps) {
     const widgetId = useId();
     const [query, setQuery] = useState("");
     const reqNumRef = useRef(0);
@@ -345,6 +343,6 @@ const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
                 ))}
         </div>
     );
-};
+}
 
 export { BlockHeaderSuggestionControl, SuggestionControl, SuggestionControlNoData, SuggestionControlNoResults };

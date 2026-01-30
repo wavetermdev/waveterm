@@ -1,14 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
 interface ModalProps {
     config: ModalConfig;
     onClose: (confirmed: boolean) => void;
 }
 
-export const AlertModal: React.FC<ModalProps> = ({ config, onClose }) => {
+export function AlertModal({ config, onClose }: ModalProps) {
     const handleOk = () => {
         onClose(true);
     };
@@ -45,9 +45,9 @@ export const AlertModal: React.FC<ModalProps> = ({ config, onClose }) => {
             </div>
         </div>
     );
-};
+}
 
-export const ConfirmModal: React.FC<ModalProps> = ({ config, onClose }) => {
+export function ConfirmModal({ config, onClose }: ModalProps) {
     const handleConfirm = () => {
         onClose(true);
     };
@@ -94,4 +94,4 @@ export const ConfirmModal: React.FC<ModalProps> = ({ config, onClose }) => {
             </div>
         </div>
     );
-};
+}

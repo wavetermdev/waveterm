@@ -46,13 +46,13 @@ const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
     );
 };
 
-export const PlatformProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export function PlatformProvider({ children }: { children: ReactNode }) {
     return (
         <BrowserOnly fallback={<div />}>
             {() => <PlatformProviderInternal>{children}</PlatformProviderInternal>}
         </BrowserOnly>
     );
-};
+}
 
 export const usePlatform = (): PlatformContextProps => {
     const context = useContext(PlatformContext);
@@ -62,7 +62,7 @@ export const usePlatform = (): PlatformContextProps => {
     return context;
 };
 
-const PlatformSelectorButtonInternal: React.FC = () => {
+function PlatformSelectorButtonInternal() {
     const { platform, setPlatform } = usePlatform();
 
     return (
@@ -84,11 +84,11 @@ const PlatformSelectorButtonInternal: React.FC = () => {
             </button>
         </div>
     );
-};
+}
 
-export const PlatformSelectorButton: React.FC = () => {
+export function PlatformSelectorButton() {
     return <BrowserOnly fallback={<div />}>{() => <PlatformSelectorButtonInternal />}</BrowserOnly>;
-};
+}
 
 interface PlatformItemProps {
     children: ReactNode;
