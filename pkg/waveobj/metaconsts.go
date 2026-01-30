@@ -18,6 +18,8 @@ const (
 
 	MetaKey_Connection                       = "connection"
 
+	MetaKey_ShellProfile                     = "shell:profile"
+
 	MetaKey_Edit                             = "edit"
 
 	MetaKey_History                          = "history"

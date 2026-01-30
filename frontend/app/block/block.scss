@@ -181,6 +181,34 @@
                     }
                 }
 
+                .shell-button {
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    min-width: 0;
+                    font-weight: 400;
+                    color: var(--main-text-color);
+                    border-radius: 2px;
+                    padding: 2px 4px;
+                    cursor: pointer;
+
+                    &:hover {
+                        background-color: var(--highlight-bg-color);
+                    }
+
+                    .shell-icon {
+                        flex-shrink: 0;
+                    }
+
+                    .shell-name {
+                        flex: 1 1 auto;
+                        overflow: hidden;
+                        padding-right: 4px;
+                    }
+                }
+
                 .block-frame-textelems-wrapper {
                     display: flex;
                     flex: 1 2 auto;

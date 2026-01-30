@@ -928,6 +928,7 @@ declare global {
         url?: string;
         pinnedurl?: string;
         connection?: string;
+        "shell:profile"?: string;
         edit?: boolean;
         history?: string[];
         "history:forward"?: string[];
