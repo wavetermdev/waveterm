@@ -329,9 +329,6 @@ declare global {
         // If true, filters out 'nowsh' connections (when managing connections)
         filterOutNowsh?: jotai.Atom<boolean>;
 
-        // if true, show s3 connections in picker
-        showS3?: jotai.Atom<boolean>;
-
         // If true, removes padding inside the block content area.
         noPadding?: jotai.Atom<boolean>;
 

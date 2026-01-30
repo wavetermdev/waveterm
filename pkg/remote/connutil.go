@@ -19,7 +19,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -196,11 +195,6 @@ func ParseProfiles() []string {
 	if len(cerrs) > 0 {
 		log.Printf("error reading config file: %v", cerrs[0])
 		return nil
-	}
-
-	awsProfiles := awsconn.ParseProfiles()
-	for profile := range awsProfiles {
-		connfile[profile] = struct{}{}
 	}
 
 	return iterfn.MapKeysToSorted(connfile)
