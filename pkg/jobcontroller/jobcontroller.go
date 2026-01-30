@@ -917,7 +917,7 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 	return nil
 }
 
-// this function must be kept up to date with the isBlockTermDurable function in term-model.ts
+// this function must be kept up to date with getBlockTermDurableAtom in frontend/app/store/global.ts
 func IsBlockTermDurable(block *waveobj.Block) bool {
 	if block == nil {
 		return false

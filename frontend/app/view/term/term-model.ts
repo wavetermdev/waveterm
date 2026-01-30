@@ -22,6 +22,7 @@ import {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
+    getBlockTermDurableAtom,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
@@ -50,7 +51,7 @@ export class TermViewModel implements ViewModel {
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     blockId: string;
-    viewIcon: jotai.Atom<string>;
+    viewIcon: jotai.Atom<IconButtonDecl>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
@@ -100,12 +101,16 @@ export class TermViewModel implements ViewModel {
         this.viewIcon = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
-                return "bolt";
+                return { elemtype: "iconbutton", icon: "bolt" };
+            }
+            const isDurable = get(getBlockTermDurableAtom(this.blockId));
+            if (isDurable) {
+                return { elemtype: "iconbutton", icon: "shield", title: "Durable Session" };
             }
             const isCmd = get(this.isCmdController);
             if (isCmd) {
             }
-            return "terminal";
+            return { elemtype: "iconbutton", icon: "terminal" };
         });
         this.viewName = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -1098,51 +1103,4 @@ export function getAllBasicTermModels(): TermViewModel[] {
         }
     }
     return termModels;
-}
-
-// this function must be kept up to date with IsBlockTermDurable in jobcontroller.go
-export function isBlockTermDurable(block: Block): boolean {
-    if (block == null) {
-        return false;
-    }
-
-    // Check if view is "term", and controller is "shell"
-    if (block.meta?.view != "term" && block.meta?.controller == "shell") {
-        return false;
-    }
-
-    // 1. Check if block has a JobId
-    if (block.jobid != null && block.jobid != "") {
-        return true;
-    }
-
-    // 2. Check if connection is local or WSL (not durable)
-    const connName = block.meta?.connection ?? "";
-    // TODO: Need TypeScript equivalents of conncontroller.IsLocalConnName and IsWslConnName
-    // if (isLocalConnName(connName) || isWslConnName(connName)) {
-    //     return false;
-    // }
-
-    // 3. Check config hierarchy: blockmeta → connection → global (default true)
-    // Check block meta first
-    if (block.meta?.["term:durable"] != null) {
-        return block.meta["term:durable"];
-    }
-
-    // Check connection config
-    const fullConfig = globalStore.get(atoms.fullConfigAtom);
-    if (connName != "" && fullConfig?.connections?.[connName]) {
-        const connConfig = fullConfig.connections[connName];
-        if (connConfig["term:durable"] != null) {
-            return connConfig["term:durable"];
-        }
-    }
-
-    // Check global settings
-    if (fullConfig?.settings?.["term:durable"] != null) {
-        return fullConfig.settings["term:durable"];
-    }
-
-    // Default to true for non-local connections
-    return true;
 }

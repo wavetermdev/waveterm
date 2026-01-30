@@ -180,7 +180,6 @@ const BlockFrame_Header = ({
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
-    const viewIconColor = util.useAtomValueSafe(viewModel?.viewIconColor);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
@@ -217,7 +216,7 @@ const BlockFrame_Header = ({
     );
 
     const endIconsElem = computeEndIcons(viewModel, nodeModel, onContextMenu);
-    const viewIconElem = getViewIconElem(viewIconUnion, blockData, viewIconColor);
+    const viewIconElem = getViewIconElem(viewIconUnion, blockData);
     let preIconButtonElem: React.ReactElement = null;
     if (preIconButton) {
         preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;

@@ -24,6 +24,7 @@ import {
     getPrefixedSettings,
     isBlank,
     isLocalConnName,
+    isWslConnName,
 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
@@ -422,6 +423,52 @@ function getSingleOrefAtomCache(oref: string): Map<string, Atom<any>> {
         orefAtomCache.set(oref, orefCache);
     }
     return orefCache;
+}
+
+// this function must be kept up to date with IsBlockTermDurable in pkg/jobcontroller/jobcontroller.go
+function getBlockTermDurableAtom(blockId: string): Atom<boolean> {
+    const blockCache = getSingleBlockAtomCache(blockId);
+    const durableAtomName = "#termdurable";
+    let durableAtom = blockCache.get(durableAtomName);
+    if (durableAtom != null) {
+        return durableAtom;
+    }
+    durableAtom = atom((get) => {
+        const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+        const block = get(blockAtom);
+
+        if (block == null) {
+            return false;
+        }
+
+        // Check if view is "term", and controller is "shell"
+        if (block.meta?.view != "term" && block.meta?.controller == "shell") {
+            return false;
+        }
+
+        // 1. Check if block has a JobId
+        if (block.jobid != null && block.jobid != "") {
+            return true;
+        }
+
+        // 2. Check if connection is local or WSL (not durable)
+        const connName = block.meta?.connection ?? "";
+        if (isLocalConnName(connName) || isWslConnName(connName)) {
+            return false;
+        }
+
+        // 3. Check config hierarchy: blockmeta → connection → global (default true)
+        const durableConfigAtom = getOverrideConfigAtom(blockId, "term:durable");
+        const durableConfig = get(durableConfigAtom);
+        if (durableConfig != null) {
+            return durableConfig;
+        }
+
+        // Default to true for non-local connections
+        return true;
+    });
+    blockCache.set(durableAtomName, durableAtom);
+    return durableAtom;
 }
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
@@ -918,6 +965,7 @@ export {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
+    getBlockTermDurableAtom,
     getConnStatusAtom,
     getFocusedBlockId,
     getHostName,

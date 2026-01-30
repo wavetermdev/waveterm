@@ -301,9 +301,6 @@ declare global {
         // Icon representing the view, can be a string or an IconButton declaration.
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
 
-        // Optional color for the view icon.
-        viewIconColor?: jotai.Atom<string>;
-
         // Display name for the view, used in UI headers.
         viewName?: jotai.Atom<string>;
 
