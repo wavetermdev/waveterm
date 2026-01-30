@@ -24,7 +24,6 @@ $setting-modified-color: #e2c08d;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid var(--border-color);
-    border-left: 3px solid transparent;
     cursor: default;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
@@ -38,26 +37,24 @@ $setting-modified-color: #e2c08d;
         cursor: pointer;
 
         &:hover {
-            border: 1px solid var(--accent-color);
+            border-color: var(--accent-color);
             box-shadow: 0 0 0 2px var(--accent-color), 0 4px 12px rgba(0, 0, 0, 0.25);
         }
     }
 
     &--modified {
-        border-left-color: $setting-modified-color;
+        border-left: 3px solid $setting-modified-color;
 
-        &:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        // Preserve modified indicator on hover
+        &:hover,
+        &.palette-swatch-card--interactive:hover {
+            border-left: 3px solid $setting-modified-color;
         }
     }
 
     &--editing {
-        border: 1px solid var(--accent-color);
+        border-color: var(--accent-color);
         box-shadow: 0 0 0 1px var(--accent-color), 0 2px 6px rgba(0, 0, 0, 0.15);
-
-        &.palette-swatch-card--modified {
-            border-left: 3px solid $setting-modified-color;
-        }
     }
 }
 
