@@ -188,10 +188,10 @@ const AIErrorMessage = memo(() => {
     }
 
     return (
-        <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
+        <div className="px-4 py-2 text-error bg-error/10 border-l-4 border-error mx-2 mb-2 relative">
             <button
                 onClick={() => model.clearError()}
-                className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
+                className="absolute top-2 right-2 text-error hover:text-error/80 cursor-pointer z-10"
                 aria-label="Close error"
             >
                 <i className="fa fa-times text-sm"></i>
@@ -200,7 +200,7 @@ const AIErrorMessage = memo(() => {
                 {errorMessage}
                 <button
                     onClick={() => model.clearChat()}
-                    className="ml-2 text-xs text-red-300 hover:text-red-200 cursor-pointer underline"
+                    className="ml-2 text-xs text-error/80 hover:text-error cursor-pointer underline"
                 >
                     New Chat
                 </button>

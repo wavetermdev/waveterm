@@ -174,7 +174,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                                 onClick={() => model.stopResponse()}
                                 className={cn(
                                     "w-5 h-5 transition-colors flex items-center justify-center",
-                                    "text-green-500 hover:text-green-400 cursor-pointer"
+                                    "text-success hover:text-success/80 cursor-pointer"
                                 )}
                             >
                                 <i className="fa fa-square text-sm"></i>
