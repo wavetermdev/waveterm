@@ -279,7 +279,7 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 }
 
 func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
-	blockcontroller.StopBlockController(blockId)
+	blockcontroller.DestroyBlockController(blockId)
 	return nil
 }
 
@@ -1206,11 +1206,11 @@ func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobI
 }
 
 func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId string) error {
-	return jobcontroller.ReconnectJob(ctx, jobId)
+	return jobcontroller.ReconnectJob(ctx, jobId, nil)
 }
 
 func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {
-	return jobcontroller.ReconnectJobsForConn(ctx, connName)
+	return jobcontroller.ReconnectJobsForConn(ctx, connName, nil)
 }
 
 func (ws *WshServer) JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error) {
