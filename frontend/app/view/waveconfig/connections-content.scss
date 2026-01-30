@@ -501,8 +501,8 @@
         }
 
         &.wsl {
-            background: rgba(255, 152, 0, 0.15);
-            color: #ff9800;
+            background: rgb(from var(--warning-color) r g b / 0.15);
+            color: var(--warning-color);
         }
     }
 

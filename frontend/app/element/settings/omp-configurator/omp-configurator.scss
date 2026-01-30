@@ -259,6 +259,10 @@
 }
 
 // Config preview
+// NOTE: The dark-bg, light-bg, and split-bg backgrounds are intentionally hardcoded.
+// These preview modes show how the OMP theme will appear on fixed dark/light backgrounds,
+// regardless of the current app theme, so users can verify their theme looks correct
+// in both terminal color schemes.
 .omp-config-preview {
     background: var(--block-bg-color);
     border: 1px solid var(--border-color);
@@ -519,7 +523,7 @@
         width: 12px;
         height: 12px;
         border-radius: 2px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
     }
 }
 
@@ -684,7 +688,7 @@
 
     .btn-primary {
         background: var(--accent-color);
-        color: var(--button-text-color, white);
+        color: var(--button-text-color);
         border: none;
 
         &:hover:not(:disabled) {

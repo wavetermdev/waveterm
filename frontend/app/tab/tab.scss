@@ -28,6 +28,10 @@
     }
 
     // Status text colors (VS Code style)
+    // NOTE: These colors are intentionally hardcoded with !important to ensure
+    // consistent status indication across all themes. Status colors must remain
+    // recognizable regardless of the selected accent or mode, similar to how
+    // VS Code uses fixed colors for git status indicators in tabs.
     &.status-running .name {
         color: #3b82f6 !important;
         animation: text-pulse 1.5s ease-in-out infinite;
