@@ -194,7 +194,7 @@
     &.local {
         // Slightly different styling for local shells
         > i:first-child {
-            color: var(--success-color, #4caf50);
+            color: var(--success-color);
         }
     }
 
@@ -226,7 +226,7 @@
 
         &.local {
             background: rgb(from var(--success-color) r g b / 0.15);
-            color: var(--success-color, #4caf50);
+            color: var(--success-color);
         }
 
         &.remote {
@@ -492,7 +492,7 @@
 
         &.local {
             background: rgb(from var(--success-color) r g b / 0.15);
-            color: var(--success-color, #4caf50);
+            color: var(--success-color);
         }
 
         &.remote {
@@ -1075,7 +1075,7 @@
 
     &.local {
         background: rgb(from var(--success-color) r g b / 0.15);
-        color: var(--success-color, #4caf50);
+        color: var(--success-color);
     }
 
     &.default {

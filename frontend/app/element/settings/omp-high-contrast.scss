@@ -36,7 +36,7 @@
     flex-wrap: wrap;
     gap: 10px;
     padding: 8px 0;
-    color: var(--error-color, #ff6b6b);
+    color: var(--error-color);
     font-size: 13px;
 
     i {
@@ -69,7 +69,7 @@
     align-items: center;
     gap: 10px;
     padding: 8px 0;
-    color: var(--success-color, #4caf50);
+    color: var(--success-color);
     font-size: 13px;
 
     i {
@@ -92,7 +92,7 @@
     border-radius: 6px;
 
     i {
-        color: #ffc107;
+        color: var(--warning-color);
         font-size: 18px;
         margin-top: 2px;
         flex-shrink: 0;
@@ -132,7 +132,7 @@
     background: var(--accent-color);
     border: none;
     border-radius: 6px;
-    color: white;
+    color: var(--button-text-color);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -153,7 +153,7 @@
     }
 
     &.success {
-        background: var(--success-color, #4caf50);
+        background: var(--success-color);
     }
 
     i {
@@ -203,7 +203,7 @@
     background: rgb(from var(--error-color) r g b / 0.1);
     border: 1px solid rgb(from var(--error-color) r g b / 0.3);
     border-radius: 4px;
-    color: var(--error-color, #ff6b6b);
+    color: var(--error-color);
     font-size: 12px;
 }
 

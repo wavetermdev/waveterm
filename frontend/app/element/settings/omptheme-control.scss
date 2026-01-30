@@ -118,12 +118,12 @@
     &:focus {
         outline: none;
         border-color: var(--accent-color);
-        box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb, 88, 166, 255), 0.3);
+        box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.3);
     }
 
     &.selected {
         border-color: var(--accent-color);
-        box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb, 88, 166, 255), 0.2);
+        box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
 
         .omptheme-name {
             color: var(--accent-color);
@@ -180,7 +180,7 @@
     justify-content: center;
     background: var(--accent-color);
     border-radius: 50%;
-    color: white;
+    color: var(--button-text-color);
 
     i {
         font-size: 10px;
@@ -207,10 +207,10 @@
 }
 
 .omptheme-error {
-    color: var(--error-color, #ff6b6b);
+    color: var(--error-color);
 
     i {
-        color: var(--error-color, #ff6b6b);
+        color: var(--error-color);
     }
 }
 

@@ -68,7 +68,7 @@
 
         .path-source {
             background: var(--accent-color);
-            color: white;
+            color: var(--button-text-color);
             padding: 2px 6px;
             border-radius: 3px;
             font-size: 10px;
@@ -107,7 +107,7 @@
 
     i {
         font-size: 32px;
-        color: var(--error-color, #e53935);
+        color: var(--error-color);
     }
 
     .error-title {
@@ -168,7 +168,7 @@
 
     > i {
         font-size: 32px;
-        color: var(--warning-color, #ffa726);
+        color: var(--warning-color);
     }
 
     .warning-title {
@@ -216,7 +216,7 @@
     background: rgb(from var(--error-color) r g b / 0.1);
     border: 1px solid rgb(from var(--error-color) r g b / 0.3);
     border-radius: 6px;
-    color: var(--error-color, #e53935);
+    color: var(--error-color);
 
     > i {
         flex-shrink: 0;
@@ -250,7 +250,7 @@
     background: rgb(from var(--warning-color) r g b / 0.1);
     border: 1px solid rgb(from var(--warning-color) r g b / 0.3);
     border-radius: 6px;
-    color: var(--warning-color, #ffa726);
+    color: var(--warning-color);
     font-size: 13px;
 
     i {
@@ -431,7 +431,7 @@
 
     &.selected {
         border-color: var(--accent-color);
-        box-shadow: 0 0 0 2px rgba(88, 193, 66, 0.2);
+        box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
     }
 
     .block-header {
@@ -503,7 +503,7 @@
 
     &.selected {
         background: var(--accent-color);
-        color: white;
+        color: var(--button-text-color);
     }
 
     &:focus-visible {
@@ -703,8 +703,8 @@
     }
 
     .btn-danger {
-        background: var(--error-color, #e53935);
-        color: white;
+        background: var(--error-color);
+        color: var(--button-text-color);
         border: none;
 
         &:hover:not(:disabled) {
@@ -746,7 +746,7 @@
         margin-bottom: 12px;
 
         i {
-            color: var(--warning-color, #ffa726);
+            color: var(--warning-color);
         }
     }
 

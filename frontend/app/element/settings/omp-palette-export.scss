@@ -108,7 +108,7 @@
             gap: 8px;
             padding: 10px 20px;
             background-color: var(--accent-color);
-            color: white;
+            color: var(--button-text-color);
             border: none;
             border-radius: 6px;
             font-size: 13px;
@@ -127,10 +127,11 @@
             }
 
             &.success {
-                background-color: var(--success-color, #4caf50);
+                background-color: var(--success-color);
 
                 &:hover {
-                    background-color: var(--success-color-hover, #45a049);
+                    background-color: var(--success-color);
+                    opacity: 0.9;
                 }
             }
 
@@ -266,7 +267,7 @@
 
             i {
                 margin-top: 2px;
-                color: var(--warning-color, #ff9800);
+                color: var(--warning-color);
                 font-size: 14px;
                 flex-shrink: 0;
             }

@@ -230,14 +230,14 @@
         }
 
         &.token-indicator {
-            color: var(--success-color, #22c55e);
+            color: var(--success-color);
 
             i {
                 font-size: 11px;
             }
 
             .detail-value {
-                color: var(--success-color, #22c55e);
+                color: var(--success-color);
             }
         }
     }

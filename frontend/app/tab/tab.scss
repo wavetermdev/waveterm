@@ -212,39 +212,39 @@ body.nohover .tab.active .close {
     }
     10% {
         transform: rotate(-30deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     20% {
         transform: rotate(30deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     30% {
         transform: rotate(-30deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     40% {
         transform: rotate(30deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     50% {
         transform: rotate(-15deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     60% {
         transform: rotate(15deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     70% {
         transform: rotate(-15deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     80% {
         transform: rotate(15deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     90% {
         transform: rotate(0deg);
-        color: rgb(255, 193, 7);
+        color: var(--warning-color);
     }
     100% {
         transform: rotate(0deg);
