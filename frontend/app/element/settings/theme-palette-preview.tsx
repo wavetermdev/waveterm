@@ -130,6 +130,51 @@ function normalizeColorToHex6(color: string): string {
     return trimmed;
 }
 
+/**
+ * Normalizes a color string to a canonical form including alpha for comparison.
+ * Returns rgba(r,g,b,a) for colors with alpha < 1, hex6 otherwise.
+ */
+function normalizeColorWithAlpha(color: string): string {
+    const trimmed = color.trim().toLowerCase();
+
+    // Parse rgba/rgb
+    if (trimmed.startsWith("rgb")) {
+        const open = trimmed.indexOf("(");
+        const close = trimmed.lastIndexOf(")");
+        const end = close !== -1 ? close : trimmed.length;
+        if (open !== -1) {
+            const parts = trimmed.slice(open + 1, end).split(",");
+            if (parts.length >= 3) {
+                const r = Math.round(Number(parts[0].trim()));
+                const g = Math.round(Number(parts[1].trim()));
+                const b = Math.round(Number(parts[2].trim()));
+                const a = parts.length >= 4 ? Number(parts[3].trim()) : 1;
+                if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b) && !Number.isNaN(a)) {
+                    if (a < 1) {
+                        return `rgba(${r},${g},${b},${Math.round(a * 100) / 100})`;
+                    }
+                    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+                }
+            }
+        }
+    }
+
+    // Parse hex with alpha (#rrggbbaa)
+    if (/^#[0-9a-f]{8}$/.test(trimmed)) {
+        const r = Number.parseInt(trimmed.slice(1, 3), 16);
+        const g = Number.parseInt(trimmed.slice(3, 5), 16);
+        const b = Number.parseInt(trimmed.slice(5, 7), 16);
+        const a = Number.parseInt(trimmed.slice(7, 9), 16) / 255;
+        if (a < 1) {
+            return `rgba(${r},${g},${b},${Math.round(a * 100) / 100})`;
+        }
+        return trimmed.slice(0, 7);
+    }
+
+    // Hex6 or hex3 — no alpha
+    return normalizeColorToHex6(color);
+}
+
 interface OpenPicker {
     variable: string;
     rect: DOMRect;
@@ -202,19 +247,21 @@ const ThemePalettePreview = memo(({ themeOverrides, onOverrideChange }: ThemePal
         [onOverrideChange, themeOverrides]
     );
 
-    // Save immediately on every color change
+    // Save immediately on every color change (including opacity)
     const handlePickerChange = useCallback(
         (color: string) => {
             if (!openPicker) return;
-            const colorNorm = normalizeColorToHex6(color);
-            const defaultNorm = normalizeColorToHex6(openPicker.defaultColor);
-            if (colorNorm !== defaultNorm) {
+            // Use alpha-aware comparison to detect opacity changes
+            const colorNorm = normalizeColorWithAlpha(color);
+            const defaultNorm = normalizeColorWithAlpha(openPicker.defaultColor);
+            const isChanged = colorNorm !== defaultNorm;
+            if (isChanged) {
                 onOverrideChange?.(openPicker.variable, color);
             } else {
                 // Reverted to theme default — remove override
                 onOverrideChange?.(openPicker.variable, null);
             }
-            applyThemeOverrideLive(openPicker.variable, colorNorm !== defaultNorm ? color : null);
+            applyThemeOverrideLive(openPicker.variable, isChanged ? color : null);
             refreshColors();
         },
         [openPicker, onOverrideChange, refreshColors]
