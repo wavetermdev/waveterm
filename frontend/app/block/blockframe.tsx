@@ -271,7 +271,7 @@ const BlockFrame_Header = ({
                 <div className="block-frame-view-type">{viewName}</div>
                 {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
             </div>
-            {manageConnection && (
+            {manageConnection && connName && connName !== "local" && (
                 <ConnectionButton
                     ref={connBtnRef}
                     key="connbutton"
