@@ -16,13 +16,14 @@ const categoryConfigMap: Record<string, CategoryConfig> = {
     AI: { order: 4, icon: "robot", description: "AI assistant configuration" },
     Web: { order: 5, icon: "globe", description: "Web browser settings" },
     Connections: { order: 6, icon: "plug", description: "Remote connection settings" },
-    App: { order: 7, icon: "cog", description: "General application settings" },
-    AutoUpdate: { order: 8, icon: "sync", description: "Automatic update settings" },
-    Preview: { order: 9, icon: "file", description: "File preview settings" },
-    Markdown: { order: 10, icon: "file-lines", description: "Markdown viewer settings" },
-    Widget: { order: 11, icon: "th-large", description: "Widget launcher settings" },
-    BlockHeader: { order: 12, icon: "heading", description: "Block header display settings" },
-    Debug: { order: 13, icon: "bug", description: "Debugging and development options" },
+    Shell: { order: 7, icon: "terminal", description: "Local shell profile settings" },
+    App: { order: 8, icon: "cog", description: "General application settings" },
+    AutoUpdate: { order: 9, icon: "sync", description: "Automatic update settings" },
+    Preview: { order: 10, icon: "file", description: "File preview settings" },
+    Markdown: { order: 11, icon: "file-lines", description: "Markdown viewer settings" },
+    Widget: { order: 12, icon: "th-large", description: "Widget launcher settings" },
+    BlockHeader: { order: 13, icon: "heading", description: "Block header display settings" },
+    Debug: { order: 14, icon: "bug", description: "Debugging and development options" },
 };
 
 // All settings metadata
@@ -782,6 +783,32 @@ const allSettings: SettingMetadata[] = [
         type: "boolean",
         tags: ["wsh", "install", "prompt"],
         links: { "Enable WSH": "conn:wshenabled" },
+    },
+
+    // ===================
+    // SHELL SETTINGS
+    // ===================
+    {
+        key: "shell:default",
+        label: "Default Shell",
+        description: "The default shell profile to use for new terminals. Managed via the shell selector.",
+        category: "Shell",
+        controlType: "select",
+        defaultValue: "",
+        type: "string",
+        hideFromSettings: true,
+        tags: ["shell", "default", "terminal", "profile"],
+    },
+    {
+        key: "shell:profiles",
+        label: "Shell Profiles",
+        description: "Custom shell profile definitions for local shells (cmd, pwsh, bash, WSL, etc.).",
+        category: "Shell",
+        controlType: "text",
+        defaultValue: {},
+        type: "object",
+        hideFromSettings: true,
+        tags: ["shell", "profiles", "configuration", "wsl", "powershell", "bash"],
     },
 
     // ===================

@@ -113,6 +113,10 @@ const (
 	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
 	ConfigKey_ConnWshEnabled                 = "conn:wshenabled"
 
+	ConfigKey_ShellClear                     = "shell:*"
+	ConfigKey_ShellDefault                   = "shell:default"
+	ConfigKey_ShellProfiles                  = "shell:profiles"
+
 	ConfigKey_DebugClear                     = "debug:*"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"

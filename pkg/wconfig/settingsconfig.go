@@ -162,6 +162,10 @@ type SettingsType struct {
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
 	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
 
+	ShellClear    bool                         `json:"shell:*,omitempty"`
+	ShellDefault  string                       `json:"shell:default,omitempty"`
+	ShellProfiles map[string]ShellProfileType  `json:"shell:profiles,omitempty"`
+
 	DebugClear               bool `json:"debug:*,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
 	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
@@ -255,6 +259,17 @@ func MergeAiSettings(settings ...*AiSettingsType) *AiSettingsType {
 type ConfigError struct {
 	File string `json:"file"`
 	Err  string `json:"err"`
+}
+
+// ShellProfileType represents a local shell profile configuration
+// Used for the new shell selector feature that separates shells from connections
+type ShellProfileType struct {
+	DisplayName string   `json:"display:name,omitempty"`
+	DisplayIcon string   `json:"display:icon,omitempty"`
+	ShellPath   string   `json:"shell:path,omitempty"`
+	ShellOpts   []string `json:"shell:opts,omitempty"`
+	IsWsl       bool     `json:"shell:iswsl,omitempty"`
+	WslDistro   string   `json:"shell:wsldistro,omitempty"`
 }
 
 type WebBookmark struct {

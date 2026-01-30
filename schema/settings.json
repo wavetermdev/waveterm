@@ -284,6 +284,18 @@
         "conn:wshenabled": {
           "type": "boolean"
         },
+        "shell:*": {
+          "type": "boolean"
+        },
+        "shell:default": {
+          "type": "string"
+        },
+        "shell:profiles": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ShellProfileType"
+          },
+          "type": "object"
+        },
         "debug:*": {
           "type": "boolean"
         },
@@ -292,6 +304,33 @@
         },
         "debug:pprofmemprofilerate": {
           "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ShellProfileType": {
+      "properties": {
+        "display:name": {
+          "type": "string"
+        },
+        "display:icon": {
+          "type": "string"
+        },
+        "shell:path": {
+          "type": "string"
+        },
+        "shell:opts": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "shell:iswsl": {
+          "type": "boolean"
+        },
+        "shell:wsldistro": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

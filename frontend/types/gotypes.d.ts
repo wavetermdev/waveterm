@@ -1159,13 +1159,6 @@ declare global {
         newline?: boolean;
     };
 
-    // iochantypes.Packet
-    type Packet = {
-        Data: string;
-        Checksum: string;
-    };
-
-
     // wshrpc.PathCommandData
     type PathCommandData = {
         pathtype: string;
@@ -1331,9 +1324,22 @@ declare global {
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
+        "shell:*"?: boolean;
+        "shell:default"?: string;
+        "shell:profiles"?: {[key: string]: ShellProfileType};
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
+    };
+
+    // wconfig.ShellProfileType
+    type ShellProfileType = {
+        "display:name"?: string;
+        "display:icon"?: string;
+        "shell:path"?: string;
+        "shell:opts"?: string[];
+        "shell:iswsl"?: boolean;
+        "shell:wsldistro"?: string;
     };
 
     // waveobj.StickerClickOptsType
