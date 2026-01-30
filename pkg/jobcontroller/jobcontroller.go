@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -51,6 +52,34 @@ const DefaultStreamRwnd = 64 * 1024
 const MetaKey_TotalGap = "totalgap"
 const JobOutputFileName = "term"
 
+type connState struct {
+	actual      bool
+	processed   bool
+	reconciling bool
+}
+
+type connStateManager struct {
+	sync.Mutex
+	m           map[string]*connState
+	reconcileCh chan struct{}
+}
+
+type jobState struct {
+	stateLock       sync.Mutex
+	isConnecting    bool
+	connectedStatus string
+}
+
+var (
+	jobConnStates     = make(map[string]string)
+	jobControllerLock sync.Mutex
+
+	connStates = &connStateManager{
+		m:           make(map[string]*connState),
+		reconcileCh: make(chan struct{}, 1),
+	}
+)
+
 func isJobManagerRunning(job *waveobj.Job) bool {
 	return job.JobManagerStatus == JobStatus_Running
 }
@@ -65,28 +94,6 @@ func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
 	}
 	return job.JobManagerStatus, nil
 }
-
-type connState struct {
-	actual      bool
-	processed   bool
-	reconciling bool
-}
-
-type connStateManager struct {
-	sync.Mutex
-	m           map[string]*connState
-	reconcileCh chan struct{}
-}
-
-var (
-	jobConnStates     = make(map[string]string)
-	jobControllerLock sync.Mutex
-
-	connStates = &connStateManager{
-		m:           make(map[string]*connState),
-		reconcileCh: make(chan struct{}, 1),
-	}
-)
 
 func connReconcileWorker() {
 	defer func() {
@@ -729,9 +736,8 @@ func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts
 	}
 
 	log.Printf("[job:%s] route established, restarting streaming", jobId)
-	return RestartStreaming(ctx, jobId, true, rtOpts)
+	return restartStreaming(ctx, jobId, true, rtOpts)
 }
-
 
 func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	isConnected, err := conncontroller.IsConnected(connName)
@@ -766,7 +772,7 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	return nil
 }
 
-func RestartStreaming(ctx context.Context, jobId string, knownConnected bool, rtOpts *waveobj.RuntimeOpts) error {
+func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rtOpts *waveobj.RuntimeOpts) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
@@ -909,6 +915,50 @@ func RestartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 
 	log.Printf("[job:%s] streaming restarted successfully", jobId)
 	return nil
+}
+
+func IsBlockTermDurable(ctx context.Context, blockId string) (bool, error) {
+	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return false, fmt.Errorf("failed to get block: %w", err)
+	}
+	if block == nil {
+		return false, fmt.Errorf("block not found: %s", blockId)
+	}
+
+	// 1. Check if block has a JobId
+	if block.JobId != "" {
+		return true, nil
+	}
+
+	// 2. Check if connection is local (local connections aren't durable)
+	connName := block.Meta.GetString(waveobj.MetaKey_Connection, "")
+	if conncontroller.IsLocalConnName(connName) {
+		return false, nil
+	}
+
+	// 3. Check config hierarchy: blockmeta → connection → global (default true)
+	// Check block meta first
+	if val, exists := block.Meta["term:durable"]; exists {
+		if boolVal, ok := val.(bool); ok {
+			return boolVal, nil
+		}
+	}
+	// Check connection config
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	if connName != "" {
+		if connConfig, exists := fullConfig.Connections[connName]; exists {
+			if connConfig.TermDurable != nil {
+				return *connConfig.TermDurable, nil
+			}
+		}
+	}
+	// Check global settings
+	if fullConfig.Settings.TermDurable != nil {
+		return *fullConfig.Settings.TermDurable, nil
+	}
+	// Default to true for non-local connections
+	return true, nil
 }
 
 func DeleteJob(ctx context.Context, jobId string) error {

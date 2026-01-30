@@ -97,6 +97,7 @@ type SettingsType struct {
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
+	TermDurable             *bool    `json:"term:durable,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
@@ -319,6 +320,7 @@ type ConnKeywords struct {
 	TermFontSize   float64 `json:"term:fontsize,omitempty"`
 	TermFontFamily string  `json:"term:fontfamily,omitempty"`
 	TermTheme      string  `json:"term:theme,omitempty"`
+	TermDurable    *bool   `json:"term:durable,omitempty"`
 
 	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
 	CmdInitScript     string            `json:"cmd:initscript,omitempty"`
