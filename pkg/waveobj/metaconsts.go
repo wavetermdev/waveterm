@@ -121,6 +121,8 @@ const (
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
 	MetaKey_TermMacOptionIsMeta              = "term:macoptionismeta"
 	MetaKey_TermConnDebug                    = "term:conndebug"
+	MetaKey_TermBellSound                    = "term:bellsound"
+	MetaKey_TermBellIndicator                = "term:bellindicator"
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"

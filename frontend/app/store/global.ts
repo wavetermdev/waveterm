@@ -38,6 +38,7 @@ let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
+const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobal(initOpts: GlobalInitOptions) {
@@ -148,6 +149,17 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     }
 
+    const documentHasFocusAtom = atom(true) as PrimitiveAtom<boolean>;
+    if (globalThis.window != null) {
+        globalStore.set(documentHasFocusAtom, document.hasFocus());
+        window.addEventListener("focus", () => {
+            globalStore.set(documentHasFocusAtom, true);
+        });
+        window.addEventListener("blur", () => {
+            globalStore.set(documentHasFocusAtom, false);
+        });
+    }
+
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
         const connStatusMap = get(ConnStatusMapAtom);
@@ -174,6 +186,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,
+        documentHasFocus: documentHasFocusAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
@@ -233,6 +246,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             handler: (event) => {
                 const rateLimitInfo: RateLimitInfo = event.data;
                 globalStore.set(atoms.waveAIRateLimitInfoAtom, rateLimitInfo);
+            },
+        },
+        {
+            eventType: "tab:indicator",
+            handler: (event) => {
+                const data: TabIndicatorEventData = event.data;
+                setTabIndicatorInternal(data.tabid, data.indicator);
             },
         }
     );
@@ -686,6 +706,17 @@ async function loadConnStatus() {
     }
 }
 
+async function loadTabIndicators() {
+    const tabIndicators = await RpcApi.GetAllTabIndicatorsCommand(TabRpcClient);
+    if (tabIndicators == null) {
+        return;
+    }
+    for (const [tabId, indicator] of Object.entries(tabIndicators)) {
+        const curAtom = getTabIndicatorAtom(tabId);
+        globalStore.set(curAtom, indicator);
+    }
+}
+
 function subscribeToConnEvents() {
     waveEventSubscribe({
         eventType: "connchange",
@@ -750,6 +781,76 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     return rtn;
 }
 
+function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
+    let rtn = TabIndicatorMap.get(tabId);
+    if (rtn == null) {
+        rtn = atom(null) as PrimitiveAtom<TabIndicator>;
+        TabIndicatorMap.set(tabId, rtn);
+    }
+    return rtn;
+}
+
+function setTabIndicatorInternal(tabId: string, indicator: TabIndicator) {
+    if (indicator == null) {
+        const indicatorAtom = getTabIndicatorAtom(tabId);
+        globalStore.set(indicatorAtom, null);
+        return;
+    }
+    const indicatorAtom = getTabIndicatorAtom(tabId);
+    const currentIndicator = globalStore.get(indicatorAtom);
+    if (currentIndicator == null) {
+        globalStore.set(indicatorAtom, indicator);
+        return;
+    }
+    if (indicator.priority >= currentIndicator.priority) {
+        if (indicator.clearonfocus && !currentIndicator.clearonfocus) {
+            indicator.persistentindicator = currentIndicator;
+        }
+        globalStore.set(indicatorAtom, indicator);
+    }
+}
+
+function setTabIndicator(tabId: string, indicator: TabIndicator) {
+    setTabIndicatorInternal(tabId, indicator);
+
+    const eventData: WaveEvent = {
+        event: "tab:indicator",
+        scopes: [WOS.makeORef("tab", tabId)],
+        data: {
+            tabid: tabId,
+            indicator: indicator,
+        } as TabIndicatorEventData,
+    };
+    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+}
+
+function clearTabIndicatorFromFocus(tabId: string) {
+    const indicatorAtom = getTabIndicatorAtom(tabId);
+    const currentIndicator = globalStore.get(indicatorAtom);
+    if (currentIndicator == null) {
+        return;
+    }
+    const persistentIndicator = currentIndicator.persistentindicator;
+    const eventData: WaveEvent = {
+        event: "tab:indicator",
+        scopes: [WOS.makeORef("tab", tabId)],
+        data: {
+            tabid: tabId,
+            indicator: persistentIndicator ?? null,
+        } as TabIndicatorEventData,
+    };
+    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+}
+
+function clearAllTabIndicators() {
+    for (const [tabId, indicatorAtom] of TabIndicatorMap.entries()) {
+        const indicator = globalStore.get(indicatorAtom);
+        if (indicator != null) {
+            setTabIndicator(tabId, null);
+        }
+    }
+}
+
 function pushFlashError(ferr: FlashErrorType) {
     if (ferr.expiration == null) {
         ferr.expiration = Date.now() + 5000;
@@ -810,6 +911,8 @@ function recordTEvent(event: string, props?: Record<string, any>) {
 
 export {
     atoms,
+    clearAllTabIndicators,
+    clearTabIndicatorFromFocus,
     counterInc,
     countersClear,
     countersPrint,
@@ -830,17 +933,19 @@ export {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
+    getTabIndicatorAtom,
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
-    readAtom,
     initGlobal,
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
+    loadTabIndicators,
     openLink,
     pushFlashError,
     pushNotification,
+    readAtom,
     recordTEvent,
     refocusNode,
     registerBlockComponentModel,
@@ -851,6 +956,7 @@ export {
     setActiveTab,
     setNodeFocus,
     setPlatform,
+    setTabIndicator,
     subscribeToConnEvents,
     unregisterBlockComponentModel,
     useBlockAtom,

@@ -1029,6 +1029,8 @@ declare global {
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
         "term:conndebug"?: string;
+        "term:bellsound"?: boolean;
+        "term:bellindicator"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
@@ -1258,6 +1260,7 @@ declare global {
         "app:accent"?: string;
         "app:themeoverrides"?: {[key: string]: any};
         "app:customaccents"?: {[key: string]: any};
+        "app:confirmquit"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -1290,6 +1293,8 @@ declare global {
         "term:macoptionismeta"?: boolean;
         "term:ligatures"?: boolean;
         "term:omptheme"?: string;
+        "term:bellsound"?: boolean;
+        "term:bellindicator"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -1401,6 +1406,21 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
+    };
+
+    // wshrpc.TabIndicator
+    type TabIndicator = {
+        icon: string;
+        color?: string;
+        priority: number;
+        clearonfocus?: boolean;
+        persistentindicator?: TabIndicator;
+    };
+
+    // wshrpc.TabIndicatorEventData
+    type TabIndicatorEventData = {
+        tabid: string;
+        indicator: TabIndicator;
     };
 
     // waveobj.TermSize

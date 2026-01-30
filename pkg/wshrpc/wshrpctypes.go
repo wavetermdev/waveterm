@@ -81,6 +81,7 @@ type WshRpcInterface interface {
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
+	GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*TabIndicator, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -119,6 +120,7 @@ type WshRpcInterface interface {
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
 	ElectronDecryptCommand(ctx context.Context, data CommandElectronDecryptData) (*CommandElectronDecryptRtnData, error)
 	NetworkOnlineCommand(ctx context.Context) (bool, error)
+	ElectronSystemBellCommand(ctx context.Context) error
 
 	// secrets
 	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)
@@ -1023,4 +1025,17 @@ type CommandOmpWriteConfigRtnData struct {
 // CommandOmpReinitData contains OMP reinit request
 type CommandOmpReinitData struct {
 	BlockId string `json:"blockid"`
+}
+
+type TabIndicator struct {
+	Icon                string        `json:"icon"`
+	Color               string        `json:"color,omitempty"`
+	Priority            float64       `json:"priority"`
+	ClearOnFocus        bool          `json:"clearonfocus,omitempty"`
+	PersistentIndicator *TabIndicator `json:"persistentindicator,omitempty"`
+}
+
+type TabIndicatorEventData struct {
+	TabId     string        `json:"tabid"`
+	Indicator *TabIndicator `json:"indicator"`
 }

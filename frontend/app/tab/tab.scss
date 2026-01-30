@@ -131,6 +131,21 @@
         }
     }
 
+    .tab-indicator {
+        position: absolute;
+        top: 50%;
+        left: 4px;
+        transform: translate3d(0, -50%, 0);
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: var(--zindex-tab-name);
+        padding: 1px 2px;
+        transition: none !important;
+    }
+
     .wave-button {
         position: absolute;
         top: 50%;

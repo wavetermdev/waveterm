@@ -16,6 +16,7 @@ const (
 	ConfigKey_AppAccent                      = "app:accent"
 	ConfigKey_AppThemeOverrides              = "app:themeoverrides"
 	ConfigKey_AppCustomAccents               = "app:customaccents"
+	ConfigKey_AppConfirmQuit                 = "app:confirmquit"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -51,6 +52,8 @@ const (
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
 	ConfigKey_TermLigatures                  = "term:ligatures"
 	ConfigKey_TermOmpTheme                   = "term:omptheme"
+	ConfigKey_TermBellSound                  = "term:bellsound"
+	ConfigKey_TermBellIndicator              = "term:bellindicator"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

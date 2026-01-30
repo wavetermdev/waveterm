@@ -35,6 +35,9 @@
         "app:customaccents": {
           "type": "object"
         },
+        "app:confirmquit": {
+          "type": "boolean"
+        },
         "ai:*": {
           "type": "boolean"
         },
@@ -133,6 +136,12 @@
         },
         "term:omptheme": {
           "type": "string"
+        },
+        "term:bellsound": {
+          "type": "boolean"
+        },
+        "term:bellindicator": {
+          "type": "boolean"
         },
         "editor:minimapenabled": {
           "type": "boolean"

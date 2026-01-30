@@ -6,7 +6,16 @@ import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
+import {
+    atoms,
+    clearTabIndicatorFromFocus,
+    createBlock,
+    getSettingsPrefixAtom,
+    getTabIndicatorAtom,
+    globalStore,
+    isDev,
+    removeFlashError,
+} from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -211,6 +220,29 @@ const AppKeyHandlers = () => {
     return null;
 };
 
+const TabIndicatorAutoClearing = () => {
+    const tabId = useAtomValue(atoms.staticTabId);
+    const indicator = useAtomValue(getTabIndicatorAtom(tabId));
+    const documentHasFocus = useAtomValue(atoms.documentHasFocus);
+
+    useEffect(() => {
+        if (!indicator || !documentHasFocus || !indicator.clearonfocus) {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            const currentIndicator = globalStore.get(getTabIndicatorAtom(tabId));
+            if (globalStore.get(atoms.documentHasFocus) && currentIndicator?.clearonfocus) {
+                clearTabIndicatorFromFocus(tabId);
+            }
+        }, 3000);
+
+        return () => clearTimeout(timeoutId);
+    }, [tabId, indicator, documentHasFocus]);
+
+    return null;
+};
+
 const FlashError = () => {
     const flashErrors = useAtomValue(atoms.flashErrors);
     const [hoveredId, setHoveredId] = useState<string>(null);
@@ -311,6 +343,7 @@ const AppInner = () => {
             <AppFocusHandler />
             <AppThemeUpdater />
             <AppSettingsUpdater />
+            <TabIndicatorAutoClearing />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
