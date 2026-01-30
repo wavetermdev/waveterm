@@ -3,7 +3,6 @@
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { resolvedAppThemeAtom } from "@/app/hook/usetheme";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { activeTabIdAtom, type TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -184,8 +183,7 @@ export class TermViewModel implements ViewModel {
             const fullConfig = get(atoms.fullConfigAtom);
             const themeName = get(this.termThemeNameAtom);
             const termTransparency = get(this.termTransparencyAtom);
-            const appTheme = get(resolvedAppThemeAtom);
-            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency, appTheme);
+            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency);
             return bgcolor;
         });
         this.connStatus = jotai.atom((get) => {

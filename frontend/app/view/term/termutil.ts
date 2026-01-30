@@ -16,27 +16,18 @@ function applyTransparencyToColor(hexColor: string, transparency: number): strin
 }
 
 // returns (theme, bgcolor, transparency (0 - 1.0))
-// appTheme can be "dark", "light", or "system" - used to auto-select terminal theme
 export function computeTheme(
     fullConfig: FullConfigType,
     themeName: string,
-    termTransparency: number,
-    appTheme?: string
+    termTransparency: number
 ): [TermThemeType, string] {
-    // Determine effective theme name based on app theme
-    let effectiveThemeName = themeName;
-
-    // If no explicit terminal theme or using default dark, and app is in light mode,
-    // switch to light terminal theme
-    if (appTheme === "light" && (!themeName || themeName === DefaultTermTheme)) {
-        effectiveThemeName = DefaultLightTermTheme;
-    }
+    // Use the specified theme name, or fall back to default dark
+    const effectiveThemeName = themeName || DefaultTermTheme;
 
     let theme: TermThemeType = fullConfig?.termthemes?.[effectiveThemeName];
     if (theme == null) {
-        // Fallback based on app theme
-        const fallbackTheme = appTheme === "light" ? DefaultLightTermTheme : DefaultTermTheme;
-        theme = fullConfig?.termthemes?.[fallbackTheme] || fullConfig?.termthemes?.[DefaultTermTheme] || ({} as any);
+        // Fallback to default dark theme
+        theme = fullConfig?.termthemes?.[DefaultTermTheme] || ({} as any);
     }
     const themeCopy = { ...theme };
     if (termTransparency != null && termTransparency > 0) {
