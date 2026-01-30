@@ -2,12 +2,113 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NumActiveConnColors } from "@/app/block/blockframe";
-import { getConnStatusAtom, recordTEvent } from "@/app/store/global";
+import { atoms, getConnStatusAtom, recordTEvent } from "@/app/store/global";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 import DotsSvg from "../asset/dots-anim-4.svg";
+
+/**
+ * Gets a user-friendly display name for a connection.
+ * - WSL: "wsl://Ubuntu" → "Ubuntu"
+ * - Git Bash: "local:gitbash" → "Git Bash"
+ * - Shell profiles: "cmd" → "CMD", "pwsh-7.5" → "PowerShell 7.5"
+ * - Connections with display:name in config → use that
+ */
+function getConnectionDisplayName(
+    connection: string,
+    connectionsConfig?: Record<string, ConnKeywords>
+): { displayName: string | null; icon: string; isWsl: boolean } {
+    if (util.isBlank(connection)) {
+        return { displayName: null, icon: "laptop", isWsl: false };
+    }
+
+    // WSL connections: wsl://DistroName → DistroName
+    if (connection.startsWith("wsl://")) {
+        const distroName = connection.substring(6); // Remove "wsl://"
+        return { displayName: distroName, icon: "brands@linux", isWsl: true };
+    }
+
+    // Git Bash special case
+    if (connection === "local:gitbash") {
+        return { displayName: "Git Bash", icon: "brands@git-alt", isWsl: false };
+    }
+
+    // Other local:* patterns
+    if (connection.startsWith("local:")) {
+        const profileName = connection.substring(6); // Remove "local:"
+        // Check if there's a display name in config
+        if (connectionsConfig?.[connection]?.["display:name"]) {
+            return { displayName: connectionsConfig[connection]["display:name"], icon: "terminal", isWsl: false };
+        }
+        // Format the profile name nicely
+        return { displayName: formatShellName(profileName), icon: "terminal", isWsl: false };
+    }
+
+    // Plain "local" - no display name needed
+    if (connection === "local") {
+        return { displayName: null, icon: "laptop", isWsl: false };
+    }
+
+    // Check connections config for shell profiles (e.g., "cmd", "pwsh-7.5")
+    if (connectionsConfig?.[connection]) {
+        const connSettings = connectionsConfig[connection];
+        // Check if it's a local shell profile
+        const isLocalProfile =
+            connSettings["conn:local"] === true ||
+            (connSettings["conn:shellpath"] && !connSettings["ssh:hostname"]);
+
+        if (isLocalProfile) {
+            if (connSettings["display:name"]) {
+                return { displayName: connSettings["display:name"], icon: "terminal", isWsl: false };
+            }
+            return { displayName: formatShellName(connection), icon: "terminal", isWsl: false };
+        }
+    }
+
+    // Not a local connection - return null to indicate it's remote
+    return { displayName: null, icon: "arrow-right-arrow-left", isWsl: false };
+}
+
+/**
+ * Formats a shell profile name for display.
+ * - "cmd" → "CMD"
+ * - "pwsh" → "PowerShell"
+ * - "pwsh-7.5" → "PowerShell 7.5"
+ * - "bash" → "Bash"
+ */
+function formatShellName(name: string): string {
+    if (!name) return name;
+
+    const lowerName = name.toLowerCase();
+
+    // PowerShell variants
+    if (lowerName === "pwsh" || lowerName === "powershell") {
+        return "PowerShell";
+    }
+    if (lowerName.startsWith("pwsh-")) {
+        const version = name.substring(5);
+        return `PowerShell ${version}`;
+    }
+    if (lowerName.startsWith("powershell-")) {
+        const version = name.substring(11);
+        return `PowerShell ${version}`;
+    }
+
+    // CMD
+    if (lowerName === "cmd") {
+        return "CMD";
+    }
+
+    // Bash variants
+    if (lowerName === "bash" || lowerName === "gitbash") {
+        return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
+    // Default: capitalize first letter
+    return name.charAt(0).toUpperCase() + name.slice(1);
+}
 
 export const colorRegex = /^((#[0-9a-f]{6,8})|([a-z]+))$/;
 
@@ -160,7 +261,13 @@ export const ConnectionButton = React.memo(
     React.forwardRef<HTMLDivElement, ConnectionButtonProps>(
         ({ connection, changeConnModalAtom }: ConnectionButtonProps, ref) => {
             const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
-            const isLocal = util.isLocalConnName(connection);
+            const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+            const connectionsConfig = fullConfig?.connections;
+
+            // Check if this is a local connection (includes WSL and local shell profiles)
+            const isLocal = util.isLocalConnection(connection, connectionsConfig);
+            const { displayName, icon, isWsl } = getConnectionDisplayName(connection, connectionsConfig);
+
             const connStatusAtom = getConnStatusAtom(connection);
             const connStatus = jotai.useAtomValue(connStatusAtom);
             let showDisconnectedSlash = false;
@@ -173,22 +280,23 @@ export const ConnectionButton = React.memo(
             };
             let titleText = null;
             let shouldSpin = false;
-            let connDisplayName: string = null;
+
             if (isLocal) {
+                // Local connections (local, local:*, wsl://, and local shell profiles)
                 color = "var(--grey-text-color)";
-                if (connection === "local:gitbash") {
-                    titleText = "Connected to Git Bash";
-                    connDisplayName = "Git Bash";
+                if (displayName) {
+                    titleText = `Connected to ${displayName}`;
                 } else {
                     titleText = "Connected to Local Machine";
                 }
                 connIconElem = (
                     <i
-                        className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
+                        className={clsx(util.makeIconClass(icon, false), "fa-stack-1x")}
                         style={{ color: color, marginRight: 2 }}
                     />
                 );
             } else {
+                // Remote connections (SSH)
                 titleText = "Connected to " + connection;
                 let iconName = "arrow-right-arrow-left";
                 let iconSvg = null;
@@ -225,6 +333,9 @@ export const ConnectionButton = React.memo(
                 }
             }
 
+            // Determine what to display as the connection name
+            const connDisplayName = displayName ?? (isLocal ? null : connection);
+
             return (
                 <div ref={ref} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
                     <span className={clsx("fa-stack connection-icon-box", shouldSpin ? "fa-spin" : null)}>
@@ -239,11 +350,7 @@ export const ConnectionButton = React.memo(
                             }}
                         />
                     </span>
-                    {connDisplayName ? (
-                        <div className="connection-name ellipsis">{connDisplayName}</div>
-                    ) : isLocal ? null : (
-                        <div className="connection-name ellipsis">{connection}</div>
-                    )}
+                    {connDisplayName && <div className="connection-name ellipsis">{connDisplayName}</div>}
                 </div>
             );
         }

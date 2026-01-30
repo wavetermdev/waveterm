@@ -181,6 +181,8 @@ class SysinfoViewModel implements ViewModel {
             }
         });
         this.plotMetaAtom = jotai.atom(new Map(Object.entries(DefaultPlotMeta)));
+        // Sysinfo can show stats from local, WSL, or remote - allow connection selection
+        // but filter out shell profiles (cmd, pwsh, git-bash) since they share the same host
         this.manageConnection = jotai.atom(true);
         this.filterOutNowsh = jotai.atom(true);
         this.loadingAtom = jotai.atom(true);

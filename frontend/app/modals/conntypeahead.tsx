@@ -241,24 +241,37 @@ function getLocalSuggestions(
     const localSuggestionItem = createFilteredLocalSuggestionItem(localName, connection, connSelected);
 
     // Local shell profiles from connections config
-    const localShellProfilesFiltered = filterConnections(localShellProfiles, connSelected, fullConfig, filterOutNowsh);
-    const localShellProfileItems = createLocalShellProfileItems(
-        localShellProfilesFiltered,
-        connection,
-        connStatusMap,
-        fullConfig
-    );
+    // Only show shell profiles when NOT in file browser mode (filterOutNowsh=false)
+    // because shell profiles like cmd, pwsh, git-bash share the same Windows filesystem
+    // and don't provide a different filesystem to browse
+    let localShellProfileItems: Array<SuggestionConnectionItem> = [];
+    let gitBashItems: Array<SuggestionConnectionItem> = [];
 
-    const gitBashItems: Array<SuggestionConnectionItem> = [];
-    if (hasGitBash && "Git Bash".toLowerCase().includes(connSelected.toLowerCase())) {
-        gitBashItems.push({
-            status: "connected",
-            icon: "laptop",
-            iconColor: "var(--grey-text-color)",
-            value: "local:gitbash",
-            label: "Git Bash",
-            current: connection === "local:gitbash",
-        });
+    if (!filterOutNowsh) {
+        // Terminal mode: show all shell profiles
+        const localShellProfilesFiltered = filterConnections(
+            localShellProfiles,
+            connSelected,
+            fullConfig,
+            filterOutNowsh
+        );
+        localShellProfileItems = createLocalShellProfileItems(
+            localShellProfilesFiltered,
+            connection,
+            connStatusMap,
+            fullConfig
+        );
+
+        if (hasGitBash && "Git Bash".toLowerCase().includes(connSelected.toLowerCase())) {
+            gitBashItems.push({
+                status: "connected",
+                icon: "laptop",
+                iconColor: "var(--grey-text-color)",
+                value: "local:gitbash",
+                label: "Git Bash",
+                current: connection === "local:gitbash",
+            });
+        }
     }
 
     const combinedSuggestionItems = [
