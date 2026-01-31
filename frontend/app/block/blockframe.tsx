@@ -2,10 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockModel } from "@/app/block/block-model";
-import { blockViewToIcon, blockViewToName, ConnectionButton, getBlockHeaderIcon, Input } from "@/app/block/blockutil";
+import {
+    blockViewToIcon,
+    blockViewToName,
+    ConnectionButton,
+    getBlockHeaderIcon,
+    Input,
+    ShellButton,
+} from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
+import { ShellSelectorModal } from "@/app/modals/shellselector";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import {
     atoms,
@@ -176,8 +184,15 @@ const BlockFrame_Header = ({
     preview,
     connBtnRef,
     changeConnModalAtom,
+    shellBtnRef,
+    changeShellModalAtom,
     error,
-}: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
+}: BlockFrameProps & {
+    changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
+    shellBtnRef: React.RefObject<HTMLDivElement>;
+    changeShellModalAtom: jotai.PrimitiveAtom<boolean>;
+    error?: Error;
+}) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
@@ -190,8 +205,14 @@ const BlockFrame_Header = ({
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
+    const shellProfile = blockData?.meta?.["shell:profile"] || "";
     const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
     const wshProblem = connName && !connStatus?.wshenabled && connStatus?.status == "connected";
+    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+
+    // Determine if this is a local connection (no connection or local)
+    // For local connections in terminals, show ShellButton instead of ConnectionButton
+    const isLocalConn = util.isLocalConnection(connName, fullConfig?.connections);
 
     React.useEffect(() => {
         if (!magnified || preview || prevMagifiedState.current) {
@@ -270,7 +291,15 @@ const BlockFrame_Header = ({
                 <div className="block-frame-view-type">{viewName}</div>
                 {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
             </div>
-            {manageConnection && (
+            {manageConnection && isLocalConn && (
+                <ShellButton
+                    ref={shellBtnRef}
+                    key="shellbutton"
+                    shellProfile={shellProfile}
+                    changeShellModalAtom={changeShellModalAtom}
+                />
+            )}
+            {manageConnection && !isLocalConn && (
                 <ConnectionButton
                     ref={connBtnRef}
                     key="connbutton"
@@ -575,6 +604,10 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         return jotai.atom(false);
     }) as jotai.PrimitiveAtom<boolean>;
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
+    const changeShellModalAtom = useBlockAtom(nodeModel.blockId, "changeShell", () => {
+        return jotai.atom(false);
+    }) as jotai.PrimitiveAtom<boolean>;
+    const shellModalOpen = jotai.useAtomValue(changeShellModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const [magnifiedBlockBlurAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
@@ -582,6 +615,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
+    const shellBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
     React.useEffect(() => {
@@ -626,7 +660,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     }
     const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
     const headerElem = (
-        <BlockFrame_Header {...props} connBtnRef={connBtnRef} changeConnModalAtom={changeConnModalAtom} />
+        <BlockFrame_Header
+            {...props}
+            connBtnRef={connBtnRef}
+            changeConnModalAtom={changeConnModalAtom}
+            shellBtnRef={shellBtnRef}
+            changeShellModalAtom={changeShellModalAtom}
+        />
     );
     const headerElemNoView = React.cloneElement(headerElem, { viewModel: null });
     return (
@@ -671,6 +711,15 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     blockRef={blockModel?.blockRef}
                     changeConnModalAtom={changeConnModalAtom}
                     connBtnRef={connBtnRef}
+                />
+            )}
+            {preview || viewModel == null || !shellModalOpen ? null : (
+                <ShellSelectorModal
+                    blockId={nodeModel.blockId}
+                    blockRef={blockModel?.blockRef}
+                    shellBtnRef={shellBtnRef}
+                    changeShellModalAtom={changeShellModalAtom}
+                    nodeModel={nodeModel}
                 />
             )}
         </div>
