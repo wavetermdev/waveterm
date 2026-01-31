@@ -74,9 +74,9 @@ type ConnectionError struct {
 
 func (ce ConnectionError) Error() string {
 	if ce.CurrentClient == nil {
-		return fmt.Sprintf("Connecting to %s, Error: %v", ce.NextOpts, ce.Err)
+		return fmt.Sprintf("Connecting to %s, Error: %v", MaskString(ce.NextOpts.String()), ce.Err)
 	}
-	return fmt.Sprintf("Connecting from %v to %s (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+	return fmt.Sprintf("Connecting from client to %s (jump number %d), Error: %v", MaskString(ce.NextOpts.String()), ce.JumpNum, ce.Err)
 }
 
 func SimpleMessageFromPossibleConnectionError(err error) string {
@@ -87,6 +87,116 @@ func SimpleMessageFromPossibleConnectionError(err error) string {
 		return ce.Err.Error()
 	}
 	return err.Error()
+}
+
+// logSSHKeywords logs SSH configuration in a sanitized way (DEBUG level)
+func logSSHKeywords(ctx context.Context, sshKeywords *wconfig.ConnKeywords) {
+	blocklogger.Debugf(ctx, "[ssh-config] User: %s\n", MaskString(utilfn.SafeDeref(sshKeywords.SshUser)))
+	blocklogger.Debugf(ctx, "[ssh-config] HostName: %s\n", MaskString(utilfn.SafeDeref(sshKeywords.SshHostName)))
+	blocklogger.Debugf(ctx, "[ssh-config] Port: %s\n", utilfn.SafeDeref(sshKeywords.SshPort))
+	blocklogger.Debugf(ctx, "[ssh-config] IdentityAgent: %s\n", filepath.Base(utilfn.SafeDeref(sshKeywords.SshIdentityAgent)))
+	blocklogger.Debugf(ctx, "[ssh-config] IdentitiesOnly: %v\n", utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly))
+	blocklogger.Debugf(ctx, "[ssh-config] IdentityFile count: %d\n", len(sshKeywords.SshIdentityFile))
+	// Log masked identity file paths for privacy
+	for i, f := range sshKeywords.SshIdentityFile {
+		blocklogger.Debugf(ctx, "[ssh-config]   IdentityFile[%d]: %s\n", i, maskIdentityFile(f))
+	}
+	blocklogger.Debugf(ctx, "[ssh-config] PubkeyAuthentication: %v\n", utilfn.SafeDeref(sshKeywords.SshPubkeyAuthentication))
+	blocklogger.Debugf(ctx, "[ssh-config] PasswordAuthentication: %v\n", utilfn.SafeDeref(sshKeywords.SshPasswordAuthentication))
+	blocklogger.Debugf(ctx, "[ssh-config] KbdInteractiveAuthentication: %v\n", utilfn.SafeDeref(sshKeywords.SshKbdInteractiveAuthentication))
+	blocklogger.Debugf(ctx, "[ssh-config] PreferredAuthentications: %v\n", sshKeywords.SshPreferredAuthentications)
+	blocklogger.Debugf(ctx, "[ssh-config] AddKeysToAgent: %v\n", utilfn.SafeDeref(sshKeywords.SshAddKeysToAgent))
+	blocklogger.Debugf(ctx, "[ssh-config] ProxyJump count: %d\n", len(sshKeywords.SshProxyJump))
+	// Note: do not log PasswordSecretName value, only indicate if configured
+	if sshKeywords.SshPasswordSecretName != nil && *sshKeywords.SshPasswordSecretName != "" {
+		blocklogger.Debugf(ctx, "[ssh-config] PasswordSecretName: <configured>\n")
+	}
+}
+
+// MaskString masks a string for privacy, showing only first 3 and last 3 characters.
+// Uses rune-based slicing to properly handle multi-byte UTF-8 characters.
+func MaskString(s string) string {
+	if s == "" {
+		return "<empty>"
+	}
+	runes := []rune(s)
+	if len(runes) <= 6 {
+		return "***"
+	}
+	return string(runes[:3]) + "***" + string(runes[len(runes)-3:])
+}
+
+// maskIdentityFile masks an identity file path for privacy.
+// It masks the username in home directory paths (/home/user/ or C:\Users\user\)
+// and masks the filename while preserving .pub suffix if present.
+func maskIdentityFile(path string) string {
+	if path == "" {
+		return "<empty>"
+	}
+
+	// Normalize path separators for consistent handling
+	normalizedPath := filepath.ToSlash(path)
+
+	// Extract directory and filename
+	dir := filepath.Dir(path)
+	filename := filepath.Base(path)
+
+	// Check for .pub suffix
+	hasPubSuffix := strings.HasSuffix(filename, ".pub")
+	if hasPubSuffix {
+		filename = strings.TrimSuffix(filename, ".pub")
+	}
+
+	// Mask the filename
+	maskedFilename := MaskString(filename)
+	if hasPubSuffix {
+		maskedFilename += ".pub"
+	}
+
+	// Mask username in home directory paths
+	// Unix: /home/username/... or /Users/username/...
+	// Windows: C:\Users\username\... (normalized to C:/Users/username/...)
+	maskedDir := dir
+	if strings.HasPrefix(normalizedPath, "/home/") {
+		parts := strings.SplitN(normalizedPath, "/", 4) // ["", "home", "username", "rest..."]
+		if len(parts) >= 3 {
+			maskedUsername := MaskString(parts[2])
+			if len(parts) >= 4 {
+				subDir := filepath.Dir(parts[3])
+				if subDir == "." {
+					maskedDir = "/home/" + maskedUsername
+				} else {
+					maskedDir = "/home/" + maskedUsername + "/" + subDir
+				}
+			} else {
+				maskedDir = "/home/" + maskedUsername
+			}
+		}
+	} else if strings.Contains(normalizedPath, "/Users/") {
+		// Handle both Unix /Users/ and Windows C:/Users/
+		idx := strings.Index(normalizedPath, "/Users/")
+		prefix := normalizedPath[:idx]
+		rest := normalizedPath[idx+7:] // Skip "/Users/"
+		parts := strings.SplitN(rest, "/", 2)
+		if len(parts) >= 1 {
+			maskedUsername := MaskString(parts[0])
+			if len(parts) >= 2 {
+				subDir := filepath.Dir(parts[1])
+				if subDir == "." {
+					maskedDir = prefix + "/Users/" + maskedUsername
+				} else {
+					maskedDir = prefix + "/Users/" + maskedUsername + "/" + subDir
+				}
+			} else {
+				maskedDir = prefix + "/Users/" + maskedUsername
+			}
+		}
+	}
+
+	// Convert back to native path separators
+	maskedDir = filepath.FromSlash(maskedDir)
+
+	return filepath.Join(maskedDir, maskedFilename)
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -608,6 +718,9 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		remoteName = chosenUser + "@" + remoteName
 	}
 
+	// Log SSH configuration (DEBUG level)
+	logSSHKeywords(connCtx, sshKeywords)
+
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
 
@@ -615,12 +728,36 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
 	agentPath := strings.TrimSpace(utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
 	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
+		blocklogger.Debugf(connCtx, "[ssh-agent] attempting to connect to agent at %q\n", filepath.Base(agentPath))
 		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
-			log.Printf("Failed to open Identity Agent Socket %q: %v", agentPath, err)
+			blocklogger.Infof(connCtx, "[ssh-agent] ERROR failed to connect to agent at %q: %v\n", filepath.Base(agentPath), err)
+			if runtime.GOOS == "windows" {
+				blocklogger.Infof(connCtx, "[ssh-agent] hint: ensure OpenSSH Authentication Agent service is running (Get-Service ssh-agent)\n")
+			}
 		} else {
+			blocklogger.Infof(connCtx, "[ssh-agent] successfully connected to agent at %q\n", filepath.Base(agentPath))
 			agentClient = agent.NewClient(conn)
-			authSockSigners, _ = agentClient.Signers()
+			blocklogger.Debugf(connCtx, "[ssh-agent] requesting key list from agent...\n")
+			var signerErr error
+			authSockSigners, signerErr = agentClient.Signers()
+			if signerErr != nil {
+				blocklogger.Infof(connCtx, "[ssh-agent] WARNING failed to get signers from agent: %v\n", signerErr)
+			} else {
+				blocklogger.Infof(connCtx, "[ssh-agent] retrieved %d signers from agent\n", len(authSockSigners))
+				// Log public key fingerprints (DEBUG level, for troubleshooting)
+				for i, signer := range authSockSigners {
+					pubKey := signer.PublicKey()
+					fingerprint := ssh.FingerprintSHA256(pubKey)
+					blocklogger.Debugf(connCtx, "[ssh-agent]   key[%d]: type=%s fingerprint=%s\n", i, pubKey.Type(), MaskString(fingerprint))
+				}
+			}
+		}
+	} else {
+		if agentPath == "" {
+			blocklogger.Debugf(connCtx, "[ssh-agent] no agent path configured\n")
+		} else {
+			blocklogger.Debugf(connCtx, "[ssh-agent] agent skipped (IdentitiesOnly=%v)\n", utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly))
 		}
 	}
 
@@ -688,14 +825,14 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	var err error
 	if currentClient == nil {
 		d := net.Dialer{Timeout: clientConfig.Timeout}
-		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
+		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", MaskString(networkAddr))
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
 			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
 			return nil, err
 		}
 	} else {
-		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
+		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", MaskString(networkAddr))
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
 			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
@@ -707,12 +844,12 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 		blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
 		return nil, err
 	}
-	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)
+	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", MaskString(networkAddr))
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
-	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
+	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", MaskString(opts.String()), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
@@ -731,6 +868,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 
 	var sshConfigKeywords *wconfig.ConnKeywords
 	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreSshConfig) {
+		blocklogger.Debugf(connCtx, "[ssh-config] loading config for host %q (ignoresshconfig=true, using defaults only)\n", MaskString(opts.SSHHost))
 		var err error
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
@@ -738,6 +876,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	} else {
+		blocklogger.Debugf(connCtx, "[ssh-config] loading config for host %q (using ssh_config + internal)\n", MaskString(opts.SSHHost))
 		var err error
 		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
 		if err != nil {
