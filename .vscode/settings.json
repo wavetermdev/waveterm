@@ -59,7 +59,7 @@
         "analyses": {
             "QF1003": false
         },
-        "directoryFilters": ["-tsunami/frontend/scaffold", "-dist", "-make"]
+        "directoryFilters": ["-dist", "-make"]
     },
     "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
     "go.coverageDecorator": {

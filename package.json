@@ -150,8 +150,7 @@
     },
     "packageManager": "npm@10.9.2",
     "workspaces": [
-        "docs",
-        "tsunami/frontend"
+        "docs"
     ],
     "overrides": {
         "lodash-es": "^4.17.23"
