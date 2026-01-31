@@ -4,24 +4,22 @@
 /**
  * Connections Visual Content
  *
- * A visual component for managing local shell profiles and remote SSH/WSL connections.
+ * A visual component for managing remote SSH/WSL connections.
  * Features a two-panel layout with:
- * - Sidebar split into "Local Shell Profiles" and "Remote Connections" sections
+ * - Sidebar listing all configured connections
  * - Main panel for editing connection settings grouped by category
  *
- * Local shell profiles (PowerShell, Git Bash, cmd, WSL) are marked with conn:local=true
- * and are displayed with a green "Local" badge. Remote SSH connections show an "SSH" badge.
+ * Note: Local shell profiles are managed in the dedicated Shells tab.
  */
 
 import { atoms, getApi } from "@/app/store/global";
-import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import "./connections-content.scss";
 
@@ -29,13 +27,12 @@ import "./connections-content.scss";
 // Types
 // ============================================
 
-type ConnectionType = "ssh" | "wsl" | "local";
+type ConnectionType = "ssh" | "wsl";
 
 interface ConnectionInfo {
     name: string;
     type: ConnectionType;
     config: ConnKeywords;
-    isLocal: boolean;
 }
 
 interface SettingFieldDef {
@@ -322,65 +319,9 @@ const SETTING_CATEGORIES: SettingCategory[] = [
 // Helper Functions
 // ============================================
 
-/**
- * Determines if a connection is a local shell profile based on its name and config.
- * Local shells are: cmd, powershell, pwsh, git-bash, WSL distros, and any with conn:local set.
- */
-function isLocalShellProfile(name: string, config: ConnKeywords): boolean {
-    // Explicitly marked as local
-    if ((config as any)["conn:local"] === true) {
-        return true;
-    }
-
-    const nameLower = name.toLowerCase();
-
-    // WSL connections are always local
-    if (name.startsWith("wsl://")) {
-        return true;
-    }
-
-    // Common local shell names
-    const localShellPatterns = [
-        "cmd",
-        "powershell",
-        "pwsh",
-        "windows-powershell",
-        "git-bash",
-        "bash",
-        "zsh",
-        "fish",
-    ];
-
-    // Check if the name matches a local shell pattern exactly or with version suffix
-    for (const pattern of localShellPatterns) {
-        if (nameLower === pattern || nameLower.startsWith(`${pattern}-`)) {
-            return true;
-        }
-    }
-
-    // Check if it has a shell path configured and no SSH-specific settings
-    // This suggests it's a local shell, not a remote connection
-    const hasShellPath = !!config["conn:shellpath"];
-    const hasNoSSHSettings =
-        !config["ssh:user"] &&
-        !config["ssh:hostname"] &&
-        !config["ssh:port"] &&
-        !config["ssh:identityfile"];
-
-    // If it has a shell path and looks like a shell name (no @ or : for host)
-    if (hasShellPath && hasNoSSHSettings && !name.includes("@") && !name.includes(":")) {
-        return true;
-    }
-
-    return false;
-}
-
-function getConnectionType(name: string, config: ConnKeywords): ConnectionType {
+function getConnectionType(name: string): ConnectionType {
     if (name.startsWith("wsl://")) {
         return "wsl";
-    }
-    if (isLocalShellProfile(name, config)) {
-        return "local";
     }
     return "ssh";
 }
@@ -427,12 +368,10 @@ function parseConnections(connections: { [key: string]: ConnKeywords }): Connect
 
     return Object.entries(connections).map(([name, config]) => {
         const cfg = config || {};
-        const isLocal = isLocalShellProfile(name, cfg);
         return {
             name,
-            type: getConnectionType(name, cfg),
+            type: getConnectionType(name),
             config: cfg,
-            isLocal,
         };
     });
 }
@@ -488,43 +427,21 @@ LoadingSpinner.displayName = "LoadingSpinner";
 
 interface EmptyStateProps {
     onAddConnection: () => void;
-    onAutoDetect: () => void;
-    isDetecting: boolean;
 }
 
-const EmptyState = memo(({ onAddConnection, onAutoDetect, isDetecting }: EmptyStateProps) => {
+const EmptyState = memo(({ onAddConnection }: EmptyStateProps) => {
     return (
         <div className="connections-empty">
             <i className="fa-sharp fa-solid fa-plug" />
             <h3>No Connections</h3>
             <p>
-                Configure local shell profiles (PowerShell, WSL, Git Bash)
+                Configure remote SSH connections and WSL distributions.
                 <br />
-                and remote SSH connections in one place.
+                For local shells, use the Shells tab in settings.
             </p>
-            <button
-                className="connections-add-btn connections-detect-btn-primary"
-                onClick={onAutoDetect}
-                disabled={isDetecting}
-            >
-                {isDetecting ? (
-                    <>
-                        <i className="fa-sharp fa-solid fa-spinner fa-spin" />
-                        <span>Detecting...</span>
-                    </>
-                ) : (
-                    <>
-                        <i className="fa-sharp fa-solid fa-wand-magic-sparkles" />
-                        <span>Auto-Detect Local Shells</span>
-                    </>
-                )}
-            </button>
-            <div className="connections-empty-divider">
-                <span>Or manually add a connection</span>
-            </div>
-            <button className="connections-btn secondary" onClick={onAddConnection}>
+            <button className="connections-btn primary" onClick={onAddConnection}>
                 <i className="fa-sharp fa-solid fa-plus" />
-                <span>Add SSH Connection</span>
+                <span>Add Connection</span>
             </button>
         </div>
     );
@@ -534,9 +451,8 @@ EmptyState.displayName = "EmptyState";
 /**
  * Derives the icon for a saved connection based on name and config.
  */
-function getConnectionIcon(connection: ConnectionInfo): ShellIconInfo {
+function getConnectionIcon(connection: ConnectionInfo): { icon: string; isBrand: boolean } {
     const name = connection.name.toLowerCase();
-    const shellpath = connection.config["conn:shellpath"]?.toLowerCase() || "";
 
     // WSL connections with specific distros
     if (connection.type === "wsl" || name.startsWith("wsl://")) {
@@ -549,39 +465,8 @@ function getConnectionIcon(connection: ConnectionInfo): ShellIconInfo {
         return { icon: "linux", isBrand: true };
     }
 
-    // Git Bash
-    if (name.includes("git") || shellpath.includes("git")) {
-        return { icon: "git-alt", isBrand: true };
-    }
-
-    // Command Prompt
-    if (name === "cmd" || shellpath.includes("cmd.exe")) {
-        return { icon: "windows", isBrand: true };
-    }
-
-    // PowerShell (Windows or Core)
-    if (name.includes("powershell") || name.includes("pwsh") || shellpath.includes("pwsh") || shellpath.includes("powershell")) {
-        return { icon: "terminal", isBrand: false };
-    }
-
-    // Bash, Zsh, Fish
-    if (name === "bash" || name === "zsh" || name === "fish" ||
-        shellpath.includes("bash") || shellpath.includes("zsh") || shellpath.includes("fish")) {
-        return { icon: "terminal", isBrand: false };
-    }
-
-    // Local shell profiles (generic)
-    if (connection.isLocal || connection.type === "local") {
-        return { icon: "terminal", isBrand: false };
-    }
-
-    // SSH connections (user@host format)
-    if (name.includes("@") || connection.type === "ssh") {
-        return { icon: "server", isBrand: false };
-    }
-
-    // Default
-    return { icon: "terminal", isBrand: false };
+    // SSH connections
+    return { icon: "server", isBrand: false };
 }
 
 interface ConnectionListItemProps {
@@ -603,14 +488,16 @@ const ConnectionListItem = memo(({ connection, isSelected, onSelect }: Connectio
             className={cn("connections-list-item", {
                 selected: isSelected,
                 hidden: isHidden,
-                local: connection.isLocal,
             })}
             onClick={onSelect}
         >
             <i className={iconClass} />
             <span className="connections-list-item-name">{displayName}</span>
-            {connection.isLocal && (
-                <span className="connections-list-item-badge local">Local</span>
+            {connection.type === "wsl" && (
+                <span className="connections-list-item-badge wsl">WSL</span>
+            )}
+            {connection.type === "ssh" && (
+                <span className="connections-list-item-badge ssh">SSH</span>
             )}
             {isHidden && <i className="fa-sharp fa-solid fa-eye-slash connections-list-item-hidden" />}
             <i className="fa-sharp fa-solid fa-chevron-right connections-list-item-arrow" />
@@ -707,337 +594,6 @@ const AddConnectionForm = memo(({ onCancel, onSubmit, existingNames }: AddConnec
     );
 });
 AddConnectionForm.displayName = "AddConnectionForm";
-
-// ============================================
-// Shell Detection Components
-// ============================================
-
-interface DetectedShellItemProps {
-    shell: DetectedShell;
-    isSelected: boolean;
-    isAlreadyConfigured: boolean;
-    onToggle: () => void;
-}
-
-const DetectedShellItem = memo(({ shell, isSelected, isAlreadyConfigured, onToggle }: DetectedShellItemProps) => {
-    const iconInfo = getShellIcon(shell.shelltype, shell.name);
-    const iconClass = iconInfo.isBrand
-        ? `fa-brands fa-${iconInfo.icon}`
-        : `fa-sharp fa-solid fa-${iconInfo.icon}`;
-
-    return (
-        <div
-            className={cn("connections-detect-item", {
-                selected: isSelected,
-                disabled: isAlreadyConfigured,
-            })}
-            onClick={!isAlreadyConfigured ? onToggle : undefined}
-        >
-            <label className="connections-detect-item-checkbox">
-                <input
-                    type="checkbox"
-                    checked={isSelected}
-                    disabled={isAlreadyConfigured}
-                    onChange={onToggle}
-                    aria-label={`Select ${shell.name}`}
-                />
-                <span className="connections-detect-item-checkmark" />
-            </label>
-            <div className="connections-detect-item-icon">
-                <i className={iconClass} />
-            </div>
-            <div className="connections-detect-item-info">
-                <div className="connections-detect-item-name">
-                    {shell.name}
-                    {shell.version && <span className="connections-detect-item-version">{shell.version}</span>}
-                    <span className="connections-detect-item-badge local">Local</span>
-                    {shell.isdefault && <span className="connections-detect-item-badge default">Default</span>}
-                    {isAlreadyConfigured && (
-                        <span className="connections-detect-item-badge configured" aria-label="Already configured">
-                            Already added
-                        </span>
-                    )}
-                </div>
-                <div className="connections-detect-item-path">{shell.shellpath || "System default"}</div>
-            </div>
-        </div>
-    );
-});
-DetectedShellItem.displayName = "DetectedShellItem";
-
-interface ShellIconInfo {
-    icon: string;
-    isBrand: boolean;
-}
-
-function getShellIcon(shelltype: string, shellname?: string): ShellIconInfo {
-    // Check for specific WSL distro names first
-    if (shellname) {
-        const nameLower = shellname.toLowerCase();
-        if (nameLower.includes("ubuntu")) return { icon: "ubuntu", isBrand: true };
-        if (nameLower.includes("debian")) return { icon: "debian", isBrand: true };
-        if (nameLower.includes("fedora")) return { icon: "fedora", isBrand: true };
-        if (nameLower.includes("opensuse") || nameLower.includes("suse"))
-            return { icon: "suse", isBrand: true };
-        if (nameLower.includes("centos")) return { icon: "centos", isBrand: true };
-        if (nameLower.includes("redhat") || nameLower.includes("rhel"))
-            return { icon: "redhat", isBrand: true };
-        // Git Bash detection
-        if (nameLower.includes("git")) return { icon: "git-alt", isBrand: true };
-    }
-
-    switch (shelltype?.toLowerCase()) {
-        case "pwsh":
-        case "powershell":
-            return { icon: "terminal", isBrand: false };
-        case "bash":
-        case "zsh":
-        case "fish":
-        case "sh":
-            return { icon: "terminal", isBrand: false };
-        case "cmd":
-            return { icon: "windows", isBrand: true };
-        case "wsl":
-            return { icon: "linux", isBrand: true };
-        default:
-            return { icon: "terminal", isBrand: false };
-    }
-}
-
-/**
- * Generates a valid connection name from shell info.
- * Converts display names to valid identifiers (no spaces, lowercase).
- */
-function generateConnectionName(shell: DetectedShell): string {
-    // For WSL, extract the distro name and use wsl:// prefix
-    if (shell.shelltype === "wsl" || shell.source === "wsl") {
-        // Extract distro name from "WSL: Ubuntu (default)" -> "Ubuntu"
-        let distroName = shell.name;
-        if (distroName.startsWith("WSL:")) {
-            distroName = distroName.substring(4).trim();
-        }
-        // Remove "(default)" suffix if present
-        distroName = distroName.replace(/\s*\(default\)\s*$/i, "").trim();
-        return `wsl://${distroName}`;
-    }
-
-    // For other shells, create a slug from the shell type and version
-    // e.g., "PowerShell 7.5" -> "pwsh-7.5", "Git Bash" -> "git-bash"
-    const shellType = shell.shelltype?.toLowerCase() || "shell";
-
-    // Special cases for common shells
-    switch (shellType) {
-        case "pwsh":
-            // Differentiate Windows PowerShell (5.1) from PowerShell Core (7+)
-            if (shell.name?.toLowerCase().includes("windows")) {
-                return "windows-powershell";
-            }
-            if (shell.version) {
-                return `pwsh-${shell.version.replace(/\s+/g, "-")}`;
-            }
-            return "pwsh";
-        case "cmd":
-            return "cmd";
-        case "bash":
-            // Check if it's Git Bash
-            if (shell.name?.toLowerCase().includes("git")) {
-                return "git-bash";
-            }
-            return "bash";
-        case "zsh":
-            return "zsh";
-        case "fish":
-            return "fish";
-        default:
-            // Fallback: slugify the name
-            return shell.name
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-")
-                .replace(/^-|-$/g, "");
-    }
-}
-
-interface DetectedShellsPanelProps {
-    shells: DetectedShell[];
-    selectedShells: Set<string>;
-    configuredShellPaths: Set<string>;
-    isLoading: boolean;
-    error: string | null;
-    onToggleShell: (shellId: string) => void;
-    onSelectAll: () => void;
-    onSelectNone: () => void;
-    onAddSelected: () => void;
-    onClose: () => void;
-    onRetry: () => void;
-}
-
-const DetectedShellsPanel = memo(
-    ({
-        shells,
-        selectedShells,
-        configuredShellPaths,
-        isLoading,
-        error,
-        onToggleShell,
-        onSelectAll,
-        onSelectNone,
-        onAddSelected,
-        onClose,
-        onRetry,
-    }: DetectedShellsPanelProps) => {
-        const panelRef = useRef<HTMLDivElement>(null);
-
-        // Handle Escape key
-        useEffect(() => {
-            const handleKeyDown = (e: KeyboardEvent) => {
-                if (e.key === "Escape") {
-                    onClose();
-                }
-            };
-            document.addEventListener("keydown", handleKeyDown);
-            return () => document.removeEventListener("keydown", handleKeyDown);
-        }, [onClose]);
-
-        // Count available (not already configured) shells
-        const availableShells = useMemo(() => {
-            return shells.filter((s) => !configuredShellPaths.has(s.shellpath));
-        }, [shells, configuredShellPaths]);
-
-        const selectedCount = selectedShells.size;
-        const totalAvailable = availableShells.length;
-
-        // Render loading state
-        if (isLoading) {
-            return (
-                <div className="connections-detect-panel" role="dialog" aria-label="Detecting shells" ref={panelRef}>
-                    <div className="connections-detect-panel-header">
-                        <button className="connections-back-btn" onClick={onClose}>
-                            <i className="fa-sharp fa-solid fa-arrow-left" />
-                            <span>Back</span>
-                        </button>
-                        <h3>Detecting Shells</h3>
-                        <button className="connections-detect-close" onClick={onClose} aria-label="Close">
-                            <i className="fa-sharp fa-solid fa-times" />
-                        </button>
-                    </div>
-                    <div className="connections-detect-loading">
-                        <i className="fa-sharp fa-solid fa-spinner fa-spin" />
-                        <span>Detecting available shells...</span>
-                    </div>
-                </div>
-            );
-        }
-
-        // Render error state
-        if (error) {
-            return (
-                <div className="connections-detect-panel" role="dialog" aria-label="Detection error" ref={panelRef}>
-                    <div className="connections-detect-panel-header">
-                        <button className="connections-back-btn" onClick={onClose}>
-                            <i className="fa-sharp fa-solid fa-arrow-left" />
-                            <span>Back</span>
-                        </button>
-                        <h3>Detection Error</h3>
-                        <button className="connections-detect-close" onClick={onClose} aria-label="Close">
-                            <i className="fa-sharp fa-solid fa-times" />
-                        </button>
-                    </div>
-                    <div className="connections-detect-error">
-                        <i className="fa-sharp fa-solid fa-triangle-exclamation" />
-                        <span>{error}</span>
-                        <button className="connections-btn primary" onClick={onRetry}>
-                            <i className="fa-sharp fa-solid fa-rotate" />
-                            <span>Retry</span>
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-
-        // Render empty state
-        if (shells.length === 0) {
-            return (
-                <div className="connections-detect-panel" role="dialog" aria-label="No shells detected" ref={panelRef}>
-                    <div className="connections-detect-panel-header">
-                        <button className="connections-back-btn" onClick={onClose}>
-                            <i className="fa-sharp fa-solid fa-arrow-left" />
-                            <span>Back</span>
-                        </button>
-                        <h3>Local Shell Profiles</h3>
-                        <button className="connections-detect-close" onClick={onClose} aria-label="Close">
-                            <i className="fa-sharp fa-solid fa-times" />
-                        </button>
-                    </div>
-                    <div className="connections-detect-empty">
-                        <i className="fa-sharp fa-solid fa-terminal" />
-                        <span>No shells detected on this system</span>
-                        <button className="connections-btn secondary" onClick={onRetry}>
-                            <i className="fa-sharp fa-solid fa-rotate" />
-                            <span>Scan Again</span>
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div className="connections-detect-panel" role="dialog" aria-label="Detected shells" ref={panelRef}>
-                <div className="connections-detect-panel-header">
-                    <button className="connections-back-btn" onClick={onClose}>
-                        <i className="fa-sharp fa-solid fa-arrow-left" />
-                        <span>Back</span>
-                    </button>
-                    <h3>Local Shell Profiles ({shells.length})</h3>
-                    <button className="connections-detect-close" onClick={onClose} aria-label="Close">
-                        <i className="fa-sharp fa-solid fa-times" />
-                    </button>
-                </div>
-
-                <div className="connections-detect-list" aria-live="polite">
-                    {shells.map((shell) => (
-                        <DetectedShellItem
-                            key={shell.id}
-                            shell={shell}
-                            isSelected={selectedShells.has(shell.id)}
-                            isAlreadyConfigured={configuredShellPaths.has(shell.shellpath)}
-                            onToggle={() => onToggleShell(shell.id)}
-                        />
-                    ))}
-                </div>
-
-                <div className="connections-detect-footer">
-                    <div className="connections-detect-footer-left">
-                        <button
-                            className="connections-btn secondary"
-                            onClick={onSelectAll}
-                            disabled={selectedCount === totalAvailable}
-                        >
-                            Select All
-                        </button>
-                        <button
-                            className="connections-btn secondary"
-                            onClick={onSelectNone}
-                            disabled={selectedCount === 0}
-                        >
-                            Select None
-                        </button>
-                    </div>
-                    <div className="connections-detect-footer-right">
-                        <button
-                            className="connections-btn primary"
-                            onClick={onAddSelected}
-                            disabled={selectedCount === 0}
-                        >
-                            <i className="fa-sharp fa-solid fa-plus" />
-                            <span>Add Selected ({selectedCount})</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-);
-DetectedShellsPanel.displayName = "DetectedShellsPanel";
 
 interface SettingFieldProps {
     field: SettingFieldDef;
@@ -1255,10 +811,7 @@ const ConnectionEditor = memo(({ connection, onBack, onDelete, onSave }: Connect
                         return <i className={editorIconClass} />;
                     })()}
                     <span>{(connection.config as any)["display:name"] || connection.name}</span>
-                    {connection.isLocal && (
-                        <span className="connections-editor-badge local">Local Shell</span>
-                    )}
-                    {!connection.isLocal && connection.type === "ssh" && (
+                    {connection.type === "ssh" && (
                         <span className="connections-editor-badge remote">SSH</span>
                     )}
                     {connection.type === "wsl" && (
@@ -1347,13 +900,6 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Shell detection state
-    const [isDetecting, setIsDetecting] = useState(false);
-    const [showDetectionPanel, setShowDetectionPanel] = useState(false);
-    const [detectedShells, setDetectedShells] = useState<DetectedShell[]>([]);
-    const [selectedShells, setSelectedShells] = useState<Set<string>>(new Set());
-    const [detectionError, setDetectionError] = useState<string | null>(null);
-
     // Parse connections from fullConfig
     const connections = useMemo(() => {
         return parseConnections(fullConfig?.connections || {});
@@ -1369,32 +915,7 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
         });
     }, [connections]);
 
-    // Split connections into local shell profiles and remote connections
-    const { localConnections, remoteConnections } = useMemo(() => {
-        const local: ConnectionInfo[] = [];
-        const remote: ConnectionInfo[] = [];
-        for (const conn of sortedConnections) {
-            if (conn.isLocal) {
-                local.push(conn);
-            } else {
-                remote.push(conn);
-            }
-        }
-        return { localConnections: local, remoteConnections: remote };
-    }, [sortedConnections]);
-
     const existingNames = useMemo(() => connections.map((c) => c.name), [connections]);
-
-    // Get configured shell paths for duplicate detection
-    const configuredShellPaths = useMemo(() => {
-        const paths = new Set<string>();
-        for (const conn of connections) {
-            if (conn.config["conn:shellpath"]) {
-                paths.add(conn.config["conn:shellpath"]);
-            }
-        }
-        return paths;
-    }, [connections]);
 
     const selectedConnectionInfo = useMemo(() => {
         return connections.find((c) => c.name === selectedConnection) || null;
@@ -1406,135 +927,6 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
             setSelectedConnection(null);
         }
     }, [selectedConnection, existingNames]);
-
-    // Auto-detect handlers
-    const handleAutoDetect = useCallback(async (rescan: boolean = false) => {
-        setIsDetecting(true);
-        setDetectionError(null);
-        setShowDetectionPanel(true);
-
-        try {
-            const result = await RpcApi.DetectAvailableShellsCommand(TabRpcClient, {
-                connectionname: "", // Empty for local detection
-                rescan: rescan,
-            });
-
-            if (result.error) {
-                setDetectionError(result.error);
-                setDetectedShells([]);
-            } else {
-                setDetectedShells(result.shells || []);
-                // Auto-select shells that are not already configured
-                const autoSelected = new Set<string>();
-                for (const shell of result.shells || []) {
-                    if (!configuredShellPaths.has(shell.shellpath)) {
-                        autoSelected.add(shell.id);
-                    }
-                }
-                setSelectedShells(autoSelected);
-            }
-        } catch (err) {
-            setDetectionError(`Detection failed: ${err.message || String(err)}`);
-            setDetectedShells([]);
-        } finally {
-            setIsDetecting(false);
-        }
-    }, [configuredShellPaths]);
-
-    const handleToggleShell = useCallback((shellId: string) => {
-        setSelectedShells((prev) => {
-            const next = new Set(prev);
-            if (next.has(shellId)) {
-                next.delete(shellId);
-            } else {
-                next.add(shellId);
-            }
-            return next;
-        });
-    }, []);
-
-    const handleSelectAllShells = useCallback(() => {
-        const allAvailable = new Set<string>();
-        for (const shell of detectedShells) {
-            if (!configuredShellPaths.has(shell.shellpath)) {
-                allAvailable.add(shell.id);
-            }
-        }
-        setSelectedShells(allAvailable);
-    }, [detectedShells, configuredShellPaths]);
-
-    const handleSelectNoneShells = useCallback(() => {
-        setSelectedShells(new Set());
-    }, []);
-
-    const handleCloseDetectionPanel = useCallback(() => {
-        setShowDetectionPanel(false);
-        setDetectedShells([]);
-        setSelectedShells(new Set());
-        setDetectionError(null);
-    }, []);
-
-    const handleAddSelectedShells = useCallback(async () => {
-        if (selectedShells.size === 0) return;
-
-        setIsLoading(true);
-        setError(null);
-
-        let addedCount = 0;
-        let skippedCount = 0;
-
-        try {
-            for (const shellId of selectedShells) {
-                const shell = detectedShells.find((s) => s.id === shellId);
-                if (!shell) continue;
-
-                // Generate a valid connection name from shell info
-                const connName = generateConnectionName(shell);
-
-                // Validate connection name before adding
-                const validation = validateConnectionName(connName);
-                if (!validation.valid) {
-                    console.warn(
-                        `[connections] Skipping shell "${shell.name}": ${validation.error}`
-                    );
-                    skippedCount++;
-                    continue;
-                }
-
-                // Create connection config with shell path and display name
-                // Mark as local shell profile so backend knows not to SSH
-                const connConfig: ConnKeywords & { "conn:local"?: boolean; "display:name"?: string } = {};
-                if (shell.shellpath) {
-                    connConfig["conn:shellpath"] = shell.shellpath;
-                }
-                // Mark as local shell profile (crucial for backend to handle correctly)
-                connConfig["conn:local"] = true;
-                // Store the display name for UI purposes
-                connConfig["display:name"] = shell.name;
-
-                const data: ConnConfigRequest = {
-                    host: connName,
-                    metamaptype: connConfig as MetaType,
-                };
-                await RpcApi.SetConnectionsConfigCommand(TabRpcClient, data);
-                addedCount++;
-            }
-
-            // Close the panel after successful add
-            handleCloseDetectionPanel();
-
-            // Show warning if some shells were skipped
-            if (skippedCount > 0) {
-                console.warn(
-                    `[connections] Added ${addedCount} shell(s), skipped ${skippedCount} due to invalid names`
-                );
-            }
-        } catch (err) {
-            setError(`Failed to add shells: ${err.message || String(err)}`);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [selectedShells, detectedShells, handleCloseDetectionPanel]);
 
     const handleAddConnection = useCallback(async (name: string) => {
         setIsLoading(true);
@@ -1621,25 +1013,6 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
 
     // Render content based on state
     const renderContent = () => {
-        // Show detection panel if active
-        if (showDetectionPanel) {
-            return (
-                <DetectedShellsPanel
-                    shells={detectedShells}
-                    selectedShells={selectedShells}
-                    configuredShellPaths={configuredShellPaths}
-                    isLoading={isDetecting}
-                    error={detectionError}
-                    onToggleShell={handleToggleShell}
-                    onSelectAll={handleSelectAllShells}
-                    onSelectNone={handleSelectNoneShells}
-                    onAddSelected={handleAddSelectedShells}
-                    onClose={handleCloseDetectionPanel}
-                    onRetry={() => handleAutoDetect(true)}
-                />
-            );
-        }
-
         if (isAddingNew) {
             return (
                 <AddConnectionForm
@@ -1662,13 +1035,7 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
         }
 
         if (connections.length === 0) {
-            return (
-                <EmptyState
-                    onAddConnection={() => setIsAddingNew(true)}
-                    onAutoDetect={() => handleAutoDetect(false)}
-                    isDetecting={isDetecting}
-                />
-            );
+            return <EmptyState onAddConnection={() => setIsAddingNew(true)} />;
         }
 
         return (
@@ -1676,19 +1043,6 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
                 <div className="connections-list-header">
                     <h3>Connections</h3>
                     <div className="connections-list-header-actions">
-                        <button
-                            className="connections-detect-btn"
-                            onClick={() => handleAutoDetect(false)}
-                            disabled={isDetecting}
-                            title="Auto-detect shells"
-                            aria-label="Auto-detect shells"
-                        >
-                            {isDetecting ? (
-                                <i className="fa-sharp fa-solid fa-spinner fa-spin" />
-                            ) : (
-                                <i className="fa-sharp fa-solid fa-wand-magic-sparkles" />
-                            )}
-                        </button>
                         <button className="connections-add-btn small" onClick={() => setIsAddingNew(true)}>
                             <i className="fa-sharp fa-solid fa-plus" />
                             <span>Add</span>
@@ -1696,59 +1050,14 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
                     </div>
                 </div>
                 <div className="connections-list">
-                    {/* Local Shell Profiles Section */}
-                    {localConnections.length > 0 && (
-                        <div className="connections-section">
-                            <div className="connections-section-header">
-                                <i className="fa-sharp fa-solid fa-terminal" />
-                                <span>Local Shell Profiles</span>
-                                <span className="connections-section-count">{localConnections.length}</span>
-                            </div>
-                            <div className="connections-section-list">
-                                {localConnections.map((conn) => (
-                                    <ConnectionListItem
-                                        key={conn.name}
-                                        connection={conn}
-                                        isSelected={selectedConnection === conn.name}
-                                        onSelect={() => setSelectedConnection(conn.name)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Remote Connections Section */}
-                    {remoteConnections.length > 0 && (
-                        <div className="connections-section">
-                            <div className="connections-section-header">
-                                <i className="fa-sharp fa-solid fa-server" />
-                                <span>Remote Connections</span>
-                                <span className="connections-section-count">{remoteConnections.length}</span>
-                            </div>
-                            <div className="connections-section-list">
-                                {remoteConnections.map((conn) => (
-                                    <ConnectionListItem
-                                        key={conn.name}
-                                        connection={conn}
-                                        isSelected={selectedConnection === conn.name}
-                                        onSelect={() => setSelectedConnection(conn.name)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Fallback if no connections exist after split (shouldn't happen) */}
-                    {localConnections.length === 0 && remoteConnections.length === 0 && (
-                        sortedConnections.map((conn) => (
-                            <ConnectionListItem
-                                key={conn.name}
-                                connection={conn}
-                                isSelected={selectedConnection === conn.name}
-                                onSelect={() => setSelectedConnection(conn.name)}
-                            />
-                        ))
-                    )}
+                    {sortedConnections.map((conn) => (
+                        <ConnectionListItem
+                            key={conn.name}
+                            connection={conn}
+                            isSelected={selectedConnection === conn.name}
+                            onSelect={() => setSelectedConnection(conn.name)}
+                        />
+                    ))}
                 </div>
                 <div className="connections-cli-info">
                     <div className="connections-cli-info-header">

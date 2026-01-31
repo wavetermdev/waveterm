@@ -626,9 +626,10 @@ export class TermWrap {
         // Register CSI handler to optionally block DEC mode 1004 (focus reporting)
         // This prevents applications like Claude Code from receiving focus events
         // which can cause jarring UI changes when the terminal loses/gains focus
+        // Default is DISABLED (false) to protect users from UI corruption issues
         this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params: (number | number[])[]) => {
             const reportFocusEnabled =
-                globalStore.get(getOverrideConfigAtom(this.blockId, "term:reportfocus")) ?? true;
+                globalStore.get(getOverrideConfigAtom(this.blockId, "term:reportfocus")) ?? false;
             if (!reportFocusEnabled) {
                 // Check if this is mode 1004 (send focus events)
                 for (const param of params) {

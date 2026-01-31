@@ -144,7 +144,9 @@
           "type": "boolean"
         },
         "term:reportfocus": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false,
+          "description": "Enable DEC mode 1004 focus reporting. Disabled by default to prevent UI issues with applications like Claude Code."
         },
         "editor:minimapenabled": {
           "type": "boolean"
