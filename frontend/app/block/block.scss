@@ -99,6 +99,17 @@
                     gap: 8px;
                     overflow-x: hidden;
 
+                    &.clickable {
+                        cursor: pointer;
+                        border-radius: 4px;
+                        padding: 2px 6px;
+                        margin: -2px -6px;
+
+                        &:hover {
+                            background-color: var(--highlight-bg-color);
+                        }
+                    }
+
                     .block-frame-view-icon {
                         font-size: var(--header-icon-size);
                         opacity: 0.5;

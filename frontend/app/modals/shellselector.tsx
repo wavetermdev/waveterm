@@ -201,7 +201,7 @@ const ShellSelectorModal = React.memo(
         const [wslList, setWslList] = React.useState<Array<string>>([]);
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         const shellProfiles = fullConfig?.settings?.["shell:profiles"];
-        const defaultShell = fullConfig?.settings?.["shell:default"] || "";
+        const defaultShell = fullConfig?.settings?.["shell:default"] || "pwsh";
 
         // Load WSL distributions when modal opens
         React.useEffect(() => {

@@ -2,14 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockModel } from "@/app/block/block-model";
-import {
-    blockViewToIcon,
-    blockViewToName,
-    ConnectionButton,
-    getBlockHeaderIcon,
-    Input,
-    ShellButton,
-} from "@/app/block/blockutil";
+import { blockViewToIcon, blockViewToName, ConnectionButton, getBlockHeaderIcon, Input } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
@@ -205,13 +198,12 @@ const BlockFrame_Header = ({
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
     const connName = blockData?.meta?.connection;
-    const shellProfile = blockData?.meta?.["shell:profile"] || "";
     const connStatus = util.useAtomValueSafe(getConnStatusAtom(connName));
     const wshProblem = connName && !connStatus?.wshenabled && connStatus?.status == "connected";
     const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
 
     // Determine if this is a local connection (no connection or local)
-    // For local connections in terminals, show ShellButton instead of ConnectionButton
+    // For local connections, make the view name clickable to open shell selector
     const isLocalConn = util.isLocalConnection(connName, fullConfig?.connections);
 
     React.useEffect(() => {
@@ -286,19 +278,22 @@ const BlockFrame_Header = ({
             onContextMenu={onContextMenu}
         >
             {preIconButtonElem}
-            <div className="block-frame-default-header-iconview">
+            <div
+                className={clsx("block-frame-default-header-iconview", {
+                    clickable: manageConnection && isLocalConn,
+                })}
+                onClick={
+                    manageConnection && isLocalConn
+                        ? () => globalStore.set(changeShellModalAtom, true)
+                        : undefined
+                }
+                ref={manageConnection && isLocalConn ? shellBtnRef : undefined}
+                title={manageConnection && isLocalConn ? "Click to change shell" : undefined}
+            >
                 {viewIconElem}
                 <div className="block-frame-view-type">{viewName}</div>
                 {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
             </div>
-            {manageConnection && isLocalConn && (
-                <ShellButton
-                    ref={shellBtnRef}
-                    key="shellbutton"
-                    shellProfile={shellProfile}
-                    changeShellModalAtom={changeShellModalAtom}
-                />
-            )}
             {manageConnection && !isLocalConn && (
                 <ConnectionButton
                     ref={connBtnRef}
