@@ -8,7 +8,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { NodeModel } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
-import * as util from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -177,25 +176,6 @@ function createBuiltInShellItems(
     return items;
 }
 
-/**
- * Creates the "Default Shell" item that represents using the system default.
- */
-function createDefaultShellItem(currentShell: string, filterText: string): SuggestionConnectionItem | null {
-    const normalizedFilter = filterText.toLowerCase();
-    if (normalizedFilter && !"default".includes(normalizedFilter) && !"shell".includes(normalizedFilter)) {
-        return null;
-    }
-
-    return {
-        status: "connected",
-        icon: "laptop",
-        iconColor: "var(--grey-text-color)",
-        value: "", // Empty string means default/unset
-        label: "Default Shell",
-        current: util.isBlank(currentShell),
-    };
-}
-
 interface ShellSelectorModalProps {
     blockId: string;
     blockRef: React.RefObject<HTMLDivElement>;
@@ -259,21 +239,18 @@ const ShellSelectorModal = React.memo(
         // Build suggestion groups
         const suggestions: Array<SuggestionsType> = [];
 
-        // Default Shell item
-        const defaultItem = createDefaultShellItem(currentShell, filterText);
-        if (defaultItem) {
-            suggestions.push(defaultItem);
-        }
+        // Determine effective current shell (empty means using default)
+        const effectiveCurrentShell = currentShell || defaultShell || "pwsh";
 
         // Windows Shells group
         const windowsShells: Array<SuggestionConnectionItem> = [];
 
         // Built-in shells (cmd, pwsh)
-        windowsShells.push(...createBuiltInShellItems(currentShell, defaultShell, filterText));
+        windowsShells.push(...createBuiltInShellItems(effectiveCurrentShell, defaultShell, filterText));
 
         // Custom shell profiles from settings
         if (shellProfiles) {
-            const customItems = createShellSuggestionItems(shellProfiles, currentShell, defaultShell);
+            const customItems = createShellSuggestionItems(shellProfiles, effectiveCurrentShell, defaultShell);
             for (const item of customItems) {
                 // Filter by search text
                 if (filterText && !item.label.toLowerCase().includes(filterText.toLowerCase())) {
@@ -294,7 +271,7 @@ const ShellSelectorModal = React.memo(
         const filteredWsl = wslList.filter((distro) =>
             !filterText || distro.toLowerCase().includes(filterText.toLowerCase())
         );
-        const wslItems = createWslSuggestionItems(filteredWsl, currentShell, defaultShell);
+        const wslItems = createWslSuggestionItems(filteredWsl, effectiveCurrentShell, defaultShell);
 
         if (wslItems.length > 0) {
             suggestions.push({

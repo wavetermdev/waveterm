@@ -360,32 +360,35 @@ export const ConnectionButton = React.memo(
 /**
  * Gets shell profile display info from a profile ID.
  * Falls back to formatting the ID as a display name if no profile config exists.
+ * When profileId is blank, uses the default shell setting.
  */
 function getShellProfileDisplayInfo(
     profileId: string,
-    shellProfiles?: Record<string, ShellProfileType>
-): { displayName: string; icon: string } {
-    if (util.isBlank(profileId)) {
-        return { displayName: "Default Shell", icon: "terminal" };
-    }
+    shellProfiles?: Record<string, ShellProfileType>,
+    defaultShell?: string
+): { displayName: string; icon: string; isDefault: boolean } {
+    // Use default shell when profileId is blank
+    const effectiveProfileId = util.isBlank(profileId) ? (defaultShell || "pwsh") : profileId;
+    const isDefault = util.isBlank(profileId) || effectiveProfileId === defaultShell;
 
     // Check configured shell profiles
-    if (shellProfiles?.[profileId]) {
-        const profile = shellProfiles[profileId];
+    if (shellProfiles?.[effectiveProfileId]) {
+        const profile = shellProfiles[effectiveProfileId];
         return {
-            displayName: profile["display:name"] || formatShellName(profileId),
-            icon: profile["display:icon"] || getShellIcon(profileId, profile),
+            displayName: profile["display:name"] || formatShellName(effectiveProfileId),
+            icon: profile["display:icon"] || getShellIcon(effectiveProfileId, profile),
+            isDefault,
         };
     }
 
     // Handle WSL profile IDs (wsl:DistroName)
-    if (profileId.startsWith("wsl:")) {
-        const distroName = profileId.substring(4);
-        return { displayName: distroName, icon: "brands@linux" };
+    if (effectiveProfileId.startsWith("wsl:")) {
+        const distroName = effectiveProfileId.substring(4);
+        return { displayName: distroName, icon: "brands@linux", isDefault };
     }
 
     // Fallback to formatted profile ID
-    return { displayName: formatShellName(profileId), icon: getShellIcon(profileId, null) };
+    return { displayName: formatShellName(effectiveProfileId), icon: getShellIcon(effectiveProfileId, null), isDefault };
 }
 
 /**
@@ -441,18 +444,20 @@ interface ShellButtonProps {
 export const ShellButton = React.memo(
     React.forwardRef<HTMLDivElement, ShellButtonProps>(
         ({ shellProfile, changeShellModalAtom }: ShellButtonProps, ref) => {
-            const [shellModalOpen, setShellModalOpen] = jotai.useAtom(changeShellModalAtom);
+            const [, setShellModalOpen] = jotai.useAtom(changeShellModalAtom);
             const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
             const shellProfiles = fullConfig?.settings?.["shell:profiles"];
+            const defaultShell = fullConfig?.settings?.["shell:default"] || "";
 
-            const { displayName, icon } = getShellProfileDisplayInfo(shellProfile, shellProfiles);
+            const { displayName, icon, isDefault } = getShellProfileDisplayInfo(shellProfile, shellProfiles, defaultShell);
+            const displayLabel = isDefault ? `${displayName} (default)` : displayName;
 
             const clickHandler = function () {
                 recordTEvent("action:other", { "action:type": "shellselector", "action:initiator": "mouse" });
                 setShellModalOpen(true);
             };
 
-            const titleText = `Shell: ${displayName}`;
+            const titleText = `Shell: ${displayName}${isDefault ? " (default)" : ""}`;
 
             return (
                 <div ref={ref} className={clsx("shell-button")} onClick={clickHandler} title={titleText}>
@@ -460,7 +465,7 @@ export const ShellButton = React.memo(
                         className={clsx(util.makeIconClass(icon, false), "shell-icon")}
                         style={{ color: "var(--grey-text-color)", marginRight: 4 }}
                     />
-                    <div className="shell-name ellipsis">{displayName}</div>
+                    <div className="shell-name ellipsis">{displayLabel}</div>
                 </div>
             );
         }
