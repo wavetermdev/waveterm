@@ -110,9 +110,6 @@ type SettingsType struct {
 	WebDefaultUrl          string `json:"web:defaulturl,omitempty"`
 	WebDefaultSearch       string `json:"web:defaultsearch,omitempty"`
 
-	BlockHeaderClear        bool `json:"blockheader:*,omitempty"`
-	BlockHeaderShowBlockIds bool `json:"blockheader:showblockids,omitempty"`
-
 	AutoUpdateClear         bool    `json:"autoupdate:*,omitempty"`
 	AutoUpdateEnabled       bool    `json:"autoupdate:enabled,omitempty"`
 	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`

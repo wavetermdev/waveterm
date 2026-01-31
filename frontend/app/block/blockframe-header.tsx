@@ -10,7 +10,7 @@ import {
 } from "@/app/block/blockutil";
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { getSettingsKeyAtom, recordTEvent, WOS } from "@/app/store/global";
+import { recordTEvent, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -18,6 +18,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
+import { cn } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
@@ -167,9 +168,10 @@ const BlockFrame_Header = ({
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
-    const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
+    const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
+    const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
@@ -192,17 +194,20 @@ const BlockFrame_Header = ({
 
     return (
         <div
-            className="block-frame-default-header"
+            className={cn("block-frame-default-header", useTermHeader && "!pl-[2px]")}
             data-role="block-header"
             ref={dragHandleRef}
             onContextMenu={(e) => handleHeaderContextMenu(e, nodeModel.blockId, viewModel, nodeModel)}
         >
-            {preIconButton && <IconButton decl={preIconButton} className="block-frame-preicon-button" />}
-            <div className="block-frame-default-header-iconview">
-                {viewIconElem}
-                {viewName && <div className="block-frame-view-type">{viewName}</div>}
-                {showBlockIds && <div className="block-frame-blockid">[{nodeModel.blockId.substring(0, 8)}]</div>}
-            </div>
+            {!useTermHeader && (
+                <>
+                    {preIconButton && <IconButton decl={preIconButton} className="block-frame-preicon-button" />}
+                    <div className="block-frame-default-header-iconview">
+                        {viewIconElem}
+                        {viewName && <div className="block-frame-view-type">{viewName}</div>}
+                    </div>
+                </>
+            )}
             {manageConnection && (
                 <ConnectionButton
                     ref={connBtnRef}
@@ -211,6 +216,11 @@ const BlockFrame_Header = ({
                     changeConnModalAtom={changeConnModalAtom}
                     isTerminalBlock={isTerminalBlock}
                 />
+            )}
+            {useTermHeader && termDurableStatus != null && (
+                <div className="iconbutton disabled text-[13px] ml-[-4px]" key="durable-status">
+                    <i className="fa-sharp fa-solid fa-shield text-muted" title="Durable Session" />
+                </div>
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />
             <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} />

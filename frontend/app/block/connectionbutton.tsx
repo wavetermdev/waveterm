@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computeConnColorNum } from "@/app/block/blockutil";
-import { getConnStatusAtom, recordTEvent } from "@/app/store/global";
+import { getConnStatusAtom, getHostName, getUserName, recordTEvent } from "@/app/store/global";
 import { IconButton } from "@/element/iconbutton";
 import * as util from "@/util/util";
-import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 import DotsSvg from "../asset/dots-anim-4.svg";
@@ -34,18 +33,22 @@ export const ConnectionButton = React.memo(
             let titleText = null;
             let shouldSpin = false;
             let connDisplayName: string = null;
+            let extraDisplayNameClassName = "";
             if (isLocal) {
-                color = "var(--grey-text-color)";
+                color = "var(--color-secondary)";
                 if (connection === "local:gitbash") {
                     titleText = "Connected to Git Bash";
                     connDisplayName = "Git Bash";
                 } else {
+                    const localName = getUserName() + "@" + getHostName();
                     titleText = "Connected to Local Machine";
+                    connDisplayName = localName;
+                    extraDisplayNameClassName = "text-muted group-hover:text-secondary";
                 }
                 connIconElem = (
                     <i
-                        className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
-                        style={{ color: color, marginRight: 2 }}
+                        className={util.cn(util.makeIconClass("laptop", false), "fa-stack-1x mr-[2px]")}
+                        style={{ color: color }}
                     />
                 );
             } else {
@@ -57,7 +60,7 @@ export const ConnectionButton = React.memo(
                     titleText = "Connecting to " + connection;
                     shouldSpin = false;
                     iconSvg = (
-                        <div className="connecting-svg">
+                        <div className="relative top-[5px] left-[9px] [&_svg]:fill-warning">
                             <DotsSvg />
                         </div>
                     );
@@ -78,8 +81,8 @@ export const ConnectionButton = React.memo(
                 } else {
                     connIconElem = (
                         <i
-                            className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
-                            style={{ color: color, marginRight: 2 }}
+                            className={util.cn(util.makeIconClass(iconName, false), "fa-stack-1x mr-[2px]")}
+                            style={{ color: color }}
                         />
                     );
                 }
@@ -90,23 +93,28 @@ export const ConnectionButton = React.memo(
 
             return (
                 <>
-                    <div ref={ref} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
-                        <span className={clsx("fa-stack connection-icon-box", shouldSpin ? "fa-spin" : null)}>
+                    <div
+                        ref={ref}
+                        className="group flex items-center flex-nowrap overflow-hidden text-ellipsis min-w-0 font-normal text-primary rounded-sm hover:bg-highlightbg cursor-pointer"
+                        onClick={clickHandler}
+                        title={titleText}
+                    >
+                        <span
+                            className={util.cn("fa-stack flex-[1_1_auto] overflow-hidden", shouldSpin ? "fa-spin" : null)}
+                        >
                             {connIconElem}
                             <i
-                                className="fa-slash fa-solid fa-stack-1x"
-                                style={{
-                                    color: color,
-                                    marginRight: "2px",
-                                    textShadow: "0 1px black, 0 1.5px black",
-                                    opacity: showDisconnectedSlash ? 1 : 0,
-                                }}
+                                className={util.cn(
+                                    "fa-slash fa-solid fa-stack-1x mr-[2px] [text-shadow:0_1px_black,0_1.5px_black]",
+                                    showDisconnectedSlash ? "opacity-100" : "opacity-0"
+                                )}
+                                style={{ color: color }}
                             />
                         </span>
                         {connDisplayName ? (
-                            <div className="connection-name ellipsis">{connDisplayName}</div>
+                            <div className={util.cn("flex-[1_2_auto] overflow-hidden pr-1 ellipsis", extraDisplayNameClassName)}>{connDisplayName}</div>
                         ) : isLocal ? null : (
-                            <div className="connection-name ellipsis">{connection}</div>
+                            <div className="flex-[1_2_auto] overflow-hidden pr-1 ellipsis">{connection}</div>
                         )}
                     </div>
                     {showNoWshButton && (
@@ -116,7 +124,6 @@ export const ConnectionButton = React.memo(
                                 icon: "link-slash",
                                 title: "wsh is not installed for this connection",
                             }}
-                            className="block-frame-header-iconbutton"
                         />
                     )}
                 </>

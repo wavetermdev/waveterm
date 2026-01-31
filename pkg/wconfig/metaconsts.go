@@ -63,9 +63,6 @@ const (
 	ConfigKey_WebDefaultUrl                  = "web:defaulturl"
 	ConfigKey_WebDefaultSearch               = "web:defaultsearch"
 
-	ConfigKey_BlockHeaderClear               = "blockheader:*"
-	ConfigKey_BlockHeaderShowBlockIds        = "blockheader:showblockids"
-
 	ConfigKey_AutoUpdateClear                = "autoupdate:*"
 	ConfigKey_AutoUpdateEnabled              = "autoupdate:enabled"
 	ConfigKey_AutoUpdateIntervalMs           = "autoupdate:intervalms"

@@ -158,12 +158,6 @@
         "web:defaultsearch": {
           "type": "string"
         },
-        "blockheader:*": {
-          "type": "boolean"
-        },
-        "blockheader:showblockids": {
-          "type": "boolean"
-        },
         "autoupdate:*": {
           "type": "boolean"
         },
