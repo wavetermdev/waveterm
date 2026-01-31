@@ -1053,21 +1053,38 @@ func MergeDetectedShellProfiles(detectedShells []ShellProfileType) (added int, e
 }
 
 // generateShellProfileId creates a profile ID from shell info
+// IDs must be unique per shell instance, not just shell type
 func generateShellProfileId(profile ShellProfileType) string {
+	// WSL shells use distro name for uniqueness
 	if profile.IsWsl && profile.WslDistro != "" {
-		return "wsl:" + profile.WslDistro
+		return "wsl:" + sanitizeProfileId(profile.WslDistro)
 	}
-	if profile.ShellType != "" {
-		return profile.ShellType
-	}
-	// Fallback: use a sanitized version of the display name
+
+	// Use display name for uniqueness (e.g., "PowerShell 7.5" vs "Windows PowerShell")
 	name := profile.DisplayName
+	if name == "" {
+		name = profile.ShellType
+	}
 	if name == "" {
 		name = "shell"
 	}
-	// Remove spaces, lowercase
-	name = strings.ToLower(strings.ReplaceAll(name, " ", "-"))
-	return name
+	return sanitizeProfileId(name)
+}
+
+// sanitizeProfileId converts a name to a valid profile ID
+// Lowercase, replace spaces/dots with hyphens, remove special characters
+func sanitizeProfileId(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, ".", "-")
+	// Remove any character that's not alphanumeric or hyphen
+	var result strings.Builder
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }
 
 type WidgetConfigType struct {

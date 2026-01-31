@@ -21,6 +21,14 @@ import (
 // InvalidWslDistroNames are WSL distros that should be filtered out
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data", "rancher-desktop"}
 
+// InvalidShellPaths are shell paths that should be filtered out (Visual Studio, etc.)
+var InvalidShellPaths = []string{
+	"Visual Studio",
+	"Microsoft Visual Studio",
+	"Developer Command Prompt",
+	"Developer PowerShell",
+}
+
 // detectPlatformShells detects all available shells on Windows
 func detectPlatformShells(config *wconfig.FullConfigType, rescan bool) ([]DetectedShell, error) {
 	var shells []DetectedShell
@@ -199,7 +207,7 @@ func detectGitBash(config *wconfig.FullConfigType, rescan bool) *DetectedShell {
 		ShellPath: gitBashPath,
 		ShellType: ShellType_bash,
 		Source:    ShellSource_File,
-		Icon:      ShellIcon_Terminal,
+		Icon:      ShellIcon_GitBash,
 	}
 }
 
@@ -235,7 +243,7 @@ func detectWslDistros() []DetectedShell {
 			ShellPath: shellPath,
 			ShellType: ShellType_bash, // Default to bash for WSL
 			Source:    ShellSource_Wsl,
-			Icon:      ShellIcon_Linux,
+			Icon:      getWslDistroIcon(distroName),
 		}
 
 		// Check if this is the default distro (just update the name, keep wsl:// path format)
@@ -251,11 +259,37 @@ func detectWslDistros() []DetectedShell {
 	return shells
 }
 
+// getWslDistroIcon returns the appropriate icon for a WSL distribution
+func getWslDistroIcon(distroName string) string {
+	nameLower := strings.ToLower(distroName)
+	if strings.Contains(nameLower, "ubuntu") {
+		return ShellIcon_Ubuntu
+	}
+	if strings.Contains(nameLower, "debian") {
+		return ShellIcon_Debian
+	}
+	if strings.Contains(nameLower, "fedora") {
+		return ShellIcon_Fedora
+	}
+	return ShellIcon_Linux
+}
+
 // isInvalidWslDistro checks if a distro name should be filtered out
 func isInvalidWslDistro(name string) bool {
 	nameLower := strings.ToLower(name)
 	for _, invalid := range InvalidWslDistroNames {
 		if strings.HasPrefix(nameLower, strings.ToLower(invalid)) {
+			return true
+		}
+	}
+	return false
+}
+
+// isInvalidShellPath checks if a shell path should be filtered out (Visual Studio shells, etc.)
+func isInvalidShellPath(shellPath string) bool {
+	pathLower := strings.ToLower(shellPath)
+	for _, invalid := range InvalidShellPaths {
+		if strings.Contains(pathLower, strings.ToLower(invalid)) {
 			return true
 		}
 	}

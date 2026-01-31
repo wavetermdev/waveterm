@@ -40,12 +40,16 @@ const (
 	ShellSource_Path      = "path"
 )
 
-// Icon constants
+// Icon constants - use makeIconClass format from frontend
 const (
-	ShellIcon_Powershell = "powershell"
-	ShellIcon_Terminal   = "terminal"
-	ShellIcon_Linux      = "linux"
-	ShellIcon_Cmd        = "cmd"
+	ShellIcon_Powershell = "solid@terminal"     // PowerShell uses terminal icon
+	ShellIcon_Terminal   = "solid@terminal"     // Generic terminal
+	ShellIcon_Linux      = "brands@linux"       // Linux penguin
+	ShellIcon_Ubuntu     = "brands@ubuntu"      // Ubuntu specific
+	ShellIcon_Debian     = "brands@debian"      // Debian specific
+	ShellIcon_Fedora     = "brands@fedora"      // Fedora specific
+	ShellIcon_Cmd        = "brands@windows"     // Windows logo for CMD
+	ShellIcon_GitBash    = "brands@git-alt"     // Git logo for Git Bash
 )
 
 var (

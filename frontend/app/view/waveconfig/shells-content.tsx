@@ -381,10 +381,10 @@ const ShellEditor = memo(({
 
             <div className="editor-actions">
                 <div className="actions-left">
-                    {!isNew && !isAutodetected && (
+                    {!isNew && (
                         <button className="shells-btn danger" onClick={onDelete}>
                             <i className="fa-sharp fa-solid fa-trash" />
-                            Delete
+                            {isAutodetected ? "Remove" : "Delete"}
                         </button>
                     )}
                     {!isNew && (
