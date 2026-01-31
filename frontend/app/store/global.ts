@@ -663,6 +663,16 @@ function getHostName(): string {
     return cachedHostName;
 }
 
+function getLocalHostDisplayNameAtom(): Atom<string> {
+    return atom((get) => {
+        const configValue = get(getSettingsKeyAtom("conn:localhostdisplayname"));
+        if (configValue != null) {
+            return configValue;
+        }
+        return getUserName() + "@" + getHostName();
+    });
+}
+
 /**
  * Open a link in a new window, or in a new web widget. The user can set all links to open in a new web widget using the `web:openlinksinternally` setting.
  * @param uri The link to open.
@@ -969,6 +979,7 @@ export {
     getConnStatusAtom,
     getFocusedBlockId,
     getHostName,
+    getLocalHostDisplayNameAtom,
     getObjectId,
     getOrefMetaKeyAtom,
     getOverrideConfigAtom,

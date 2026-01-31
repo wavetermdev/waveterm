@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computeConnColorNum } from "@/app/block/blockutil";
-import { getConnStatusAtom, getHostName, getUserName, recordTEvent } from "@/app/store/global";
+import { getConnStatusAtom, getLocalHostDisplayNameAtom, recordTEvent } from "@/app/store/global";
 import { IconButton } from "@/element/iconbutton";
 import * as util from "@/util/util";
 import * as jotai from "jotai";
@@ -22,6 +22,7 @@ export const ConnectionButton = React.memo(
             const isLocal = util.isLocalConnName(connection);
             const connStatusAtom = getConnStatusAtom(connection);
             const connStatus = jotai.useAtomValue(connStatusAtom);
+            const localName = jotai.useAtomValue(getLocalHostDisplayNameAtom());
             let showDisconnectedSlash = false;
             let connIconElem: React.ReactNode = null;
             const connColorNum = computeConnColorNum(connStatus);
@@ -40,7 +41,6 @@ export const ConnectionButton = React.memo(
                     titleText = "Connected to Git Bash";
                     connDisplayName = "Git Bash";
                 } else {
-                    const localName = getUserName() + "@" + getHostName();
                     titleText = "Connected to Local Machine";
                     connDisplayName = localName;
                     extraDisplayNameClassName = "text-muted group-hover:text-secondary";

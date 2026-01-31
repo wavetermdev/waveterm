@@ -150,9 +150,10 @@ type SettingsType struct {
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 
-	ConnClear               bool  `json:"conn:*,omitempty"`
-	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
-	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
+	ConnClear                bool    `json:"conn:*,omitempty"`
+	ConnAskBeforeWshInstall  *bool   `json:"conn:askbeforewshinstall,omitempty"`
+	ConnWshEnabled           bool    `json:"conn:wshenabled,omitempty"`
+	ConnLocalHostnameDisplay *string `json:"conn:localhostdisplayname,omitempty"`
 
 	DebugClear               bool `json:"debug:*,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`

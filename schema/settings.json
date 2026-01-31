@@ -266,6 +266,9 @@
         "conn:wshenabled": {
           "type": "boolean"
         },
+        "conn:localhostdisplayname": {
+          "type": "string"
+        },
         "debug:*": {
           "type": "boolean"
         },
