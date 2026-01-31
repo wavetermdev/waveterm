@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
@@ -58,6 +58,7 @@ export class TermViewModel implements ViewModel {
     manageConnection: jotai.Atom<boolean>;
     filterOutNowsh?: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
+    useTermHeader: jotai.Atom<boolean>;
     termWshClient: TermWshClient;
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
@@ -74,6 +75,7 @@ export class TermViewModel implements ViewModel {
     termBPMUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
+    termDurableStatus: jotai.Atom<"connected" | "connecting" | "running" | "gone">;
     searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
@@ -103,10 +105,6 @@ export class TermViewModel implements ViewModel {
             if (termMode == "vdom") {
                 return { elemtype: "iconbutton", icon: "bolt" };
             }
-            const isDurable = get(getBlockTermDurableAtom(this.blockId));
-            if (isDurable) {
-                return { elemtype: "iconbutton", icon: "shield", title: "Durable Session" };
-            }
             const isCmd = get(this.isCmdController);
             if (isCmd) {
             }
@@ -121,7 +119,7 @@ export class TermViewModel implements ViewModel {
             if (blockData?.meta?.controller == "cmd") {
                 return "";
             }
-            return "Terminal";
+            return "";
         });
         this.viewText = jotai.atom((get) => {
             const termMode = get(this.termMode);
@@ -210,6 +208,17 @@ export class TermViewModel implements ViewModel {
             return rtn;
         });
         this.manageConnection = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return false;
+            }
+            const isCmd = get(this.isCmdController);
+            if (isCmd) {
+                return false;
+            }
+            return true;
+        });
+        this.useTermHeader = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
                 return false;
@@ -330,6 +339,13 @@ export class TermViewModel implements ViewModel {
         this.shellProcStatus = jotai.atom((get) => {
             const fullStatus = get(this.shellProcFullStatus);
             return fullStatus?.shellprocstatus ?? "init";
+        });
+        this.termDurableStatus = jotai.atom((get) => {
+            const isDurable = get(getBlockTermDurableAtom(this.blockId));
+            if (isDurable) {
+                return "running";
+            }
+            return null;
         });
         this.termBPMUnsubFn = globalStore.sub(this.termBPMAtom, () => {
             if (this.termRef.current?.terminal) {

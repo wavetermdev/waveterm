@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { type Placement } from "@floating-ui/react";
@@ -298,6 +298,8 @@ declare global {
         // The type of view, used for identifying and rendering the appropriate component.
         viewType: string;
 
+        useTermHeader?: jotai.Atom<boolean>;
+
         // Icon representing the view, can be a string or an IconButton declaration.
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
 
@@ -306,6 +308,8 @@ declare global {
 
         // Optional header text or elements for the view.
         viewText?: jotai.Atom<string | HeaderElem[]>;
+
+        termDurableStatus?: jotai.Atom<"connected" | "connecting" | "running" | "gone">;
 
         // Icon button displayed before the title in the header.
         preIconButton?: jotai.Atom<IconButtonDecl>;
