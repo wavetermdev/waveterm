@@ -741,6 +741,11 @@ declare global {
         count: number;
     };
 
+    // wshrpc.DeleteShellProfileRequest
+    type DeleteShellProfileRequest = {
+        profileid: string;
+    };
+
     // wshrpc.DetectShellsRequest
     type DetectShellsRequest = {
         connectionname?: string;
@@ -920,6 +925,17 @@ declare global {
         blockid: string;
     };
 
+    // wshrpc.MergeShellProfilesRequest
+    type MergeShellProfilesRequest = {
+        rescan?: boolean;
+    };
+
+    // wshrpc.MergeShellProfilesResponse
+    type MergeShellProfilesResponse = {
+        added: number;
+        error?: string;
+    };
+
     // waveobj.MetaTSType
     type MetaType = {
         view?: string;
@@ -1049,8 +1065,6 @@ declare global {
 
     // waveobj.ObjRTInfo
     type ObjRTInfo = {
-        "tsunami:appmeta"?: AppMeta;
-        "tsunami:schemas"?: any;
         "shell:hascurcwd"?: boolean;
         "shell:state"?: string;
         "shell:type"?: string;
@@ -1060,9 +1074,6 @@ declare global {
         "shell:inputempty"?: boolean;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
-        "builder:layout"?: {[key: string]: number};
-        "builder:appid"?: string;
-        "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
@@ -1231,6 +1242,12 @@ declare global {
         winsize?: WinSize;
     };
 
+    // wshrpc.SetShellProfileRequest
+    type SetShellProfileRequest = {
+        profileid: string;
+        profile: ShellProfileData;
+    };
+
     // wconfig.SettingsType
     type SettingsType = {
         "app:*"?: boolean;
@@ -1333,14 +1350,37 @@ declare global {
         "debug:pprofmemprofilerate"?: number;
     };
 
+    // wshrpc.ShellProfileData
+    type ShellProfileData = {
+        profileid: string;
+        "display:name"?: string;
+        "display:icon"?: string;
+        "display:order"?: number;
+        "shell:path"?: string;
+        "shell:opts"?: string[];
+        "shell:type"?: string;
+        "shell:iswsl"?: boolean;
+        "shell:wsldistro"?: string;
+        autodetected?: boolean;
+        hidden?: boolean;
+        source?: string;
+        usermodified?: boolean;
+    };
+
     // wconfig.ShellProfileType
     type ShellProfileType = {
         "display:name"?: string;
         "display:icon"?: string;
+        "display:order"?: number;
         "shell:path"?: string;
         "shell:opts"?: string[];
+        "shell:type"?: string;
         "shell:iswsl"?: boolean;
         "shell:wsldistro"?: string;
+        autodetected?: boolean;
+        hidden?: boolean;
+        source?: string;
+        usermodified?: boolean;
     };
 
     // waveobj.StickerClickOptsType

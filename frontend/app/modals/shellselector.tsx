@@ -84,21 +84,42 @@ function formatShellDisplayName(shellId: string, profile?: ShellProfileType): st
 
 /**
  * Creates shell suggestion items from configured shell profiles.
+ * Filters out hidden profiles.
  */
 function createShellSuggestionItems(
     shellProfiles: Record<string, ShellProfileType> | undefined,
     currentShell: string,
-    defaultShell: string
+    defaultShell: string,
+    filterText: string
 ): Array<SuggestionConnectionItem> {
     if (!shellProfiles) return [];
 
     const items: Array<SuggestionConnectionItem> = [];
+    const normalizedFilter = filterText.toLowerCase();
 
-    for (const [shellId, profile] of Object.entries(shellProfiles)) {
+    // Sort entries by display order, then by name
+    const sortedEntries = Object.entries(shellProfiles).sort(([idA, profileA], [idB, profileB]) => {
+        const orderA = profileA["display:order"] ?? 0;
+        const orderB = profileB["display:order"] ?? 0;
+        if (orderA !== orderB) return orderA - orderB;
+        const nameA = profileA["display:name"] || idA;
+        const nameB = profileB["display:name"] || idB;
+        return nameA.localeCompare(nameB);
+    });
+
+    for (const [shellId, profile] of sortedEntries) {
+        // Skip hidden profiles
+        if (profile.hidden) continue;
+
         const displayName = formatShellDisplayName(shellId, profile);
         const icon = getShellIcon(shellId, profile);
         const isDefault = shellId === defaultShell;
         const label = isDefault ? `${displayName} (default)` : displayName;
+
+        // Filter by search text
+        if (normalizedFilter && !displayName.toLowerCase().includes(normalizedFilter) && !shellId.toLowerCase().includes(normalizedFilter)) {
+            continue;
+        }
 
         items.push({
             status: "connected",
@@ -242,42 +263,73 @@ const ShellSelectorModal = React.memo(
         // Determine effective current shell (empty means using default)
         const effectiveCurrentShell = currentShell || defaultShell || "pwsh";
 
-        // Windows Shells group
-        const windowsShells: Array<SuggestionConnectionItem> = [];
+        // Check if we have shell profiles configured
+        const hasProfiles = shellProfiles && Object.keys(shellProfiles).length > 0;
 
-        // Built-in shells (cmd, pwsh)
-        windowsShells.push(...createBuiltInShellItems(effectiveCurrentShell, defaultShell, filterText));
+        // Windows/Local Shells group
+        const localShells: Array<SuggestionConnectionItem> = [];
 
-        // Custom shell profiles from settings
-        if (shellProfiles) {
-            const customItems = createShellSuggestionItems(shellProfiles, effectiveCurrentShell, defaultShell);
-            for (const item of customItems) {
-                // Filter by search text
-                if (filterText && !item.label.toLowerCase().includes(filterText.toLowerCase())) {
-                    continue;
-                }
-                windowsShells.push(item);
+        if (hasProfiles) {
+            // Use configured shell profiles (which includes detected shells)
+            // Filter out WSL profiles - they go in their own group
+            const nonWslProfiles = Object.fromEntries(
+                Object.entries(shellProfiles).filter(([id, profile]) => !profile["shell:iswsl"] && !id.startsWith("wsl:"))
+            );
+            const profileItems = createShellSuggestionItems(nonWslProfiles, effectiveCurrentShell, defaultShell, filterText);
+            localShells.push(...profileItems);
+
+            // WSL profiles from shell:profiles
+            const wslProfiles = Object.fromEntries(
+                Object.entries(shellProfiles).filter(([id, profile]) => profile["shell:iswsl"] || id.startsWith("wsl:"))
+            );
+            const wslProfileItems = createShellSuggestionItems(wslProfiles, effectiveCurrentShell, defaultShell, filterText);
+
+            if (localShells.length > 0) {
+                suggestions.push({
+                    headerText: "Shells",
+                    items: localShells,
+                });
             }
-        }
 
-        if (windowsShells.length > 0) {
-            suggestions.push({
-                headerText: "Windows Shells",
-                items: windowsShells,
-            });
-        }
+            // Also check for WSL distros not in profiles
+            const existingWslIds = new Set(Object.keys(wslProfiles));
+            const additionalWslDistros = wslList.filter((distro) => !existingWslIds.has(`wsl:${distro}`));
+            const filteredAdditionalWsl = additionalWslDistros.filter((distro) =>
+                !filterText || distro.toLowerCase().includes(filterText.toLowerCase())
+            );
+            const additionalWslItems = createWslSuggestionItems(filteredAdditionalWsl, effectiveCurrentShell, defaultShell);
 
-        // WSL Distributions group
-        const filteredWsl = wslList.filter((distro) =>
-            !filterText || distro.toLowerCase().includes(filterText.toLowerCase())
-        );
-        const wslItems = createWslSuggestionItems(filteredWsl, effectiveCurrentShell, defaultShell);
+            // Combine WSL items
+            const allWslItems = [...wslProfileItems, ...additionalWslItems];
+            if (allWslItems.length > 0) {
+                suggestions.push({
+                    headerText: "WSL Distributions",
+                    items: allWslItems,
+                });
+            }
+        } else {
+            // Fallback: show built-in shells when no profiles configured
+            localShells.push(...createBuiltInShellItems(effectiveCurrentShell, defaultShell, filterText));
 
-        if (wslItems.length > 0) {
-            suggestions.push({
-                headerText: "WSL Distributions",
-                items: wslItems,
-            });
+            if (localShells.length > 0) {
+                suggestions.push({
+                    headerText: "Windows Shells",
+                    items: localShells,
+                });
+            }
+
+            // WSL Distributions group from live query
+            const filteredWsl = wslList.filter((distro) =>
+                !filterText || distro.toLowerCase().includes(filterText.toLowerCase())
+            );
+            const wslItems = createWslSuggestionItems(filteredWsl, effectiveCurrentShell, defaultShell);
+
+            if (wslItems.length > 0) {
+                suggestions.push({
+                    headerText: "WSL Distributions",
+                    items: wslItems,
+                });
+            }
         }
 
         // Flatten selection list for keyboard navigation

@@ -12,6 +12,7 @@ import { AppearanceContent } from "@/app/view/waveconfig/appearance-content";
 import { ConnectionsContent } from "@/app/view/waveconfig/connections-content";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { SettingsVisualContent } from "@/app/view/waveconfig/settings-visual-content";
+import { ShellsContent } from "@/app/view/waveconfig/shells-content";
 import { TabVarsContent } from "@/app/view/waveconfig/tabvars-content";
 import { WaveAIVisualContent } from "@/app/view/waveconfig/waveaivisual";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
@@ -164,6 +165,13 @@ const configFiles: ConfigFile[] = [
         path: "virtual:appearance",
         hasJsonView: false,
         visualComponent: AppearanceContent,
+    },
+    {
+        name: "Shells",
+        path: "virtual:shells",
+        hasJsonView: false,
+        description: "Local shell profiles",
+        visualComponent: ShellsContent,
     },
     {
         name: "Connections",

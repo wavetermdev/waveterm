@@ -809,6 +809,75 @@ func (ws *WshServer) DetectAvailableShellsCommand(ctx context.Context, data wshr
 	}, nil
 }
 
+func (ws *WshServer) SetShellProfileCommand(ctx context.Context, data wshrpc.SetShellProfileRequest) error {
+	profile := wconfig.ShellProfileType{
+		DisplayName:  data.Profile.DisplayName,
+		DisplayIcon:  data.Profile.DisplayIcon,
+		DisplayOrder: data.Profile.DisplayOrder,
+		ShellPath:    data.Profile.ShellPath,
+		ShellOpts:    data.Profile.ShellOpts,
+		ShellType:    data.Profile.ShellType,
+		IsWsl:        data.Profile.IsWsl,
+		WslDistro:    data.Profile.WslDistro,
+		Autodetected: data.Profile.Autodetected,
+		Hidden:       data.Profile.Hidden,
+		Source:       data.Profile.Source,
+		UserModified: data.Profile.UserModified,
+	}
+	return wconfig.SetShellProfile(data.ProfileID, profile)
+}
+
+func (ws *WshServer) DeleteShellProfileCommand(ctx context.Context, data wshrpc.DeleteShellProfileRequest) error {
+	return wconfig.DeleteShellProfile(data.ProfileID)
+}
+
+func (ws *WshServer) MergeShellProfilesCommand(ctx context.Context, data wshrpc.MergeShellProfilesRequest) (wshrpc.MergeShellProfilesResponse, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	detectedShells, err := shellutil.DetectAllShells(&fullConfig, data.Rescan)
+
+	if err != nil {
+		return wshrpc.MergeShellProfilesResponse{
+			Added: 0,
+			Error: fmt.Sprintf("detection failed: %v", err),
+		}, nil
+	}
+
+	// Convert DetectedShell to ShellProfileType
+	profiles := make([]wconfig.ShellProfileType, len(detectedShells))
+	for i, shell := range detectedShells {
+		profiles[i] = wconfig.ShellProfileType{
+			DisplayName:  shell.Name,
+			DisplayIcon:  shell.Icon,
+			ShellPath:    shell.ShellPath,
+			ShellType:    shell.ShellType,
+			Source:       shell.Source,
+			Autodetected: true,
+		}
+		// Handle WSL shells
+		if shell.Source == shellutil.ShellSource_Wsl {
+			profiles[i].IsWsl = true
+			// Extract distro name from shell name (e.g., "WSL: Ubuntu" -> "Ubuntu")
+			distro := shell.Name
+			if len(distro) > 5 && distro[:5] == "WSL: " {
+				distro = distro[5:]
+			}
+			profiles[i].WslDistro = distro
+		}
+	}
+
+	added, err := wconfig.MergeDetectedShellProfiles(profiles)
+	if err != nil {
+		return wshrpc.MergeShellProfilesResponse{
+			Added: added,
+			Error: err.Error(),
+		}, nil
+	}
+
+	return wshrpc.MergeShellProfilesResponse{
+		Added: added,
+	}, nil
+}
+
 func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
 	return &wshrpc.WaveFileInfo{
 		ZoneId:    wf.ZoneId,

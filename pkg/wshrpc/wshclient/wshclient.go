@@ -176,6 +176,12 @@ func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, o
 	return err
 }
 
+// command "deleteshellprofile", wshserver.DeleteShellProfileCommand
+func DeleteShellProfileCommand(w *wshutil.WshRpc, data wshrpc.DeleteShellProfileRequest, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "deleteshellprofile", data, opts)
+	return err
+}
+
 // command "deletesubblock", wshserver.DeleteSubBlockCommand
 func DeleteSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "deletesubblock", data, opts)
@@ -540,6 +546,12 @@ func JobStartStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandJobStartStreamD
 	return err
 }
 
+// command "mergeshellprofiles", wshserver.MergeShellProfilesCommand
+func MergeShellProfilesCommand(w *wshutil.WshRpc, data wshrpc.MergeShellProfilesRequest, opts *wshrpc.RpcOpts) (wshrpc.MergeShellProfilesResponse, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.MergeShellProfilesResponse](w, "mergeshellprofiles", data, opts)
+	return resp, err
+}
+
 // command "message", wshserver.MessageCommand
 func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "message", data, opts)
@@ -762,6 +774,12 @@ func SetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandSetRTInfoData, opts 
 // command "setsecrets", wshserver.SetSecretsCommand
 func SetSecretsCommand(w *wshutil.WshRpc, data map[string]*string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setsecrets", data, opts)
+	return err
+}
+
+// command "setshellprofile", wshserver.SetShellProfileCommand
+func SetShellProfileCommand(w *wshutil.WshRpc, data wshrpc.SetShellProfileRequest, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setshellprofile", data, opts)
 	return err
 }
 

@@ -264,12 +264,18 @@ type ConfigError struct {
 // ShellProfileType represents a local shell profile configuration
 // Used for the new shell selector feature that separates shells from connections
 type ShellProfileType struct {
-	DisplayName string   `json:"display:name,omitempty"`
-	DisplayIcon string   `json:"display:icon,omitempty"`
-	ShellPath   string   `json:"shell:path,omitempty"`
-	ShellOpts   []string `json:"shell:opts,omitempty"`
-	IsWsl       bool     `json:"shell:iswsl,omitempty"`
-	WslDistro   string   `json:"shell:wsldistro,omitempty"`
+	DisplayName    string   `json:"display:name,omitempty"`
+	DisplayIcon    string   `json:"display:icon,omitempty"`
+	DisplayOrder   float64  `json:"display:order,omitempty"`
+	ShellPath      string   `json:"shell:path,omitempty"`
+	ShellOpts      []string `json:"shell:opts,omitempty"`
+	ShellType      string   `json:"shell:type,omitempty"`
+	IsWsl          bool     `json:"shell:iswsl,omitempty"`
+	WslDistro      string   `json:"shell:wsldistro,omitempty"`
+	Autodetected   bool     `json:"autodetected,omitempty"`
+	Hidden         bool     `json:"hidden,omitempty"`
+	Source         string   `json:"source,omitempty"`
+	UserModified   bool     `json:"usermodified,omitempty"`
 }
 
 type WebBookmark struct {
@@ -850,6 +856,218 @@ func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) err
 	}
 	m[connName] = connData
 	return WriteWaveHomeConfigFile(ConnectionsFile, m)
+}
+
+// SetShellProfile sets or updates a shell profile in settings.json
+func SetShellProfile(profileId string, profile ShellProfileType) error {
+	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	if m == nil {
+		m = make(waveobj.MetaMapType)
+	}
+
+	// Get existing profiles map or create new one
+	profilesRaw := m["shell:profiles"]
+	var profiles map[string]interface{}
+	if profilesRaw == nil {
+		profiles = make(map[string]interface{})
+	} else if p, ok := profilesRaw.(map[string]interface{}); ok {
+		profiles = p
+	} else {
+		profiles = make(map[string]interface{})
+	}
+
+	// Convert ShellProfileType to map for JSON storage
+	profileMap := make(map[string]interface{})
+	if profile.DisplayName != "" {
+		profileMap["display:name"] = profile.DisplayName
+	}
+	if profile.DisplayIcon != "" {
+		profileMap["display:icon"] = profile.DisplayIcon
+	}
+	if profile.DisplayOrder != 0 {
+		profileMap["display:order"] = profile.DisplayOrder
+	}
+	if profile.ShellPath != "" {
+		profileMap["shell:path"] = profile.ShellPath
+	}
+	if len(profile.ShellOpts) > 0 {
+		profileMap["shell:opts"] = profile.ShellOpts
+	}
+	if profile.ShellType != "" {
+		profileMap["shell:type"] = profile.ShellType
+	}
+	if profile.IsWsl {
+		profileMap["shell:iswsl"] = profile.IsWsl
+	}
+	if profile.WslDistro != "" {
+		profileMap["shell:wsldistro"] = profile.WslDistro
+	}
+	if profile.Autodetected {
+		profileMap["autodetected"] = profile.Autodetected
+	}
+	if profile.Hidden {
+		profileMap["hidden"] = profile.Hidden
+	}
+	if profile.Source != "" {
+		profileMap["source"] = profile.Source
+	}
+	if profile.UserModified {
+		profileMap["usermodified"] = profile.UserModified
+	}
+
+	profiles[profileId] = profileMap
+	m["shell:profiles"] = profiles
+	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+// DeleteShellProfile removes a shell profile from settings.json
+func DeleteShellProfile(profileId string) error {
+	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	if m == nil {
+		return nil // Nothing to delete
+	}
+
+	profilesRaw := m["shell:profiles"]
+	if profilesRaw == nil {
+		return nil
+	}
+	profiles, ok := profilesRaw.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	delete(profiles, profileId)
+	if len(profiles) == 0 {
+		delete(m, "shell:profiles")
+	} else {
+		m["shell:profiles"] = profiles
+	}
+	return WriteWaveHomeConfigFile(SettingsFile, m)
+}
+
+// GetShellProfiles returns all shell profiles from settings
+func GetShellProfiles() map[string]ShellProfileType {
+	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
+	if len(cerrs) > 0 || m == nil {
+		return make(map[string]ShellProfileType)
+	}
+
+	profilesRaw := m["shell:profiles"]
+	if profilesRaw == nil {
+		return make(map[string]ShellProfileType)
+	}
+
+	profiles, ok := profilesRaw.(map[string]interface{})
+	if !ok {
+		return make(map[string]ShellProfileType)
+	}
+
+	result := make(map[string]ShellProfileType)
+	for id, pRaw := range profiles {
+		pMap, ok := pRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		profile := ShellProfileType{}
+		if v, ok := pMap["display:name"].(string); ok {
+			profile.DisplayName = v
+		}
+		if v, ok := pMap["display:icon"].(string); ok {
+			profile.DisplayIcon = v
+		}
+		if v, ok := pMap["display:order"].(float64); ok {
+			profile.DisplayOrder = v
+		}
+		if v, ok := pMap["shell:path"].(string); ok {
+			profile.ShellPath = v
+		}
+		if v, ok := pMap["shell:opts"].([]interface{}); ok {
+			for _, opt := range v {
+				if s, ok := opt.(string); ok {
+					profile.ShellOpts = append(profile.ShellOpts, s)
+				}
+			}
+		}
+		if v, ok := pMap["shell:type"].(string); ok {
+			profile.ShellType = v
+		}
+		if v, ok := pMap["shell:iswsl"].(bool); ok {
+			profile.IsWsl = v
+		}
+		if v, ok := pMap["shell:wsldistro"].(string); ok {
+			profile.WslDistro = v
+		}
+		if v, ok := pMap["autodetected"].(bool); ok {
+			profile.Autodetected = v
+		}
+		if v, ok := pMap["hidden"].(bool); ok {
+			profile.Hidden = v
+		}
+		if v, ok := pMap["source"].(string); ok {
+			profile.Source = v
+		}
+		if v, ok := pMap["usermodified"].(bool); ok {
+			profile.UserModified = v
+		}
+		result[id] = profile
+	}
+	return result
+}
+
+// MergeDetectedShellProfiles merges newly detected shells with existing profiles
+// Only adds new shells; doesn't overwrite user-modified profiles
+func MergeDetectedShellProfiles(detectedShells []ShellProfileType) (added int, err error) {
+	existingProfiles := GetShellProfiles()
+
+	for _, shell := range detectedShells {
+		// Generate profile ID from shell type and path
+		profileId := generateShellProfileId(shell)
+
+		existing, exists := existingProfiles[profileId]
+		if exists {
+			// Don't overwrite if user has modified it
+			if existing.UserModified {
+				continue
+			}
+			// Don't overwrite existing autodetected shells that haven't changed
+			if existing.ShellPath == shell.ShellPath {
+				continue
+			}
+		}
+
+		// Mark as autodetected
+		shell.Autodetected = true
+
+		if err := SetShellProfile(profileId, shell); err != nil {
+			return added, err
+		}
+		added++
+	}
+	return added, nil
+}
+
+// generateShellProfileId creates a profile ID from shell info
+func generateShellProfileId(profile ShellProfileType) string {
+	if profile.IsWsl && profile.WslDistro != "" {
+		return "wsl:" + profile.WslDistro
+	}
+	if profile.ShellType != "" {
+		return profile.ShellType
+	}
+	// Fallback: use a sanitized version of the display name
+	name := profile.DisplayName
+	if name == "" {
+		name = "shell"
+	}
+	// Remove spaces, lowercase
+	name = strings.ToLower(strings.ReplaceAll(name, " ", "-"))
+	return name
 }
 
 type WidgetConfigType struct {

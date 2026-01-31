@@ -317,6 +317,9 @@
         "display:icon": {
           "type": "string"
         },
+        "display:order": {
+          "type": "number"
+        },
         "shell:path": {
           "type": "string"
         },
@@ -326,11 +329,26 @@
           },
           "type": "array"
         },
+        "shell:type": {
+          "type": "string"
+        },
         "shell:iswsl": {
           "type": "boolean"
         },
         "shell:wsldistro": {
           "type": "string"
+        },
+        "autodetected": {
+          "type": "boolean"
+        },
+        "hidden": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string"
+        },
+        "usermodified": {
+          "type": "boolean"
         }
       },
       "additionalProperties": false,

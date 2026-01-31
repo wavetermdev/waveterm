@@ -99,6 +99,9 @@ type WshRpcInterface interface {
 	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
 	FindGitBashCommand(ctx context.Context, rescan bool) (string, error)
 	DetectAvailableShellsCommand(ctx context.Context, data DetectShellsRequest) (DetectShellsResponse, error)
+	SetShellProfileCommand(ctx context.Context, data SetShellProfileRequest) error
+	DeleteShellProfileCommand(ctx context.Context, data DeleteShellProfileRequest) error
+	MergeShellProfilesCommand(ctx context.Context, data MergeShellProfilesRequest) (MergeShellProfilesResponse, error)
 	ConnServerInitCommand(ctx context.Context, data CommandConnServerInitData) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
@@ -833,6 +836,42 @@ type DetectedShell struct {
 type DetectShellsResponse struct {
 	Shells []DetectedShell `json:"shells"`
 	Error  string          `json:"error,omitempty"` // Non-fatal errors
+}
+
+// Shell profile management types
+
+type ShellProfileData struct {
+	ProfileID    string   `json:"profileid"`
+	DisplayName  string   `json:"display:name,omitempty"`
+	DisplayIcon  string   `json:"display:icon,omitempty"`
+	DisplayOrder float64  `json:"display:order,omitempty"`
+	ShellPath    string   `json:"shell:path,omitempty"`
+	ShellOpts    []string `json:"shell:opts,omitempty"`
+	ShellType    string   `json:"shell:type,omitempty"`
+	IsWsl        bool     `json:"shell:iswsl,omitempty"`
+	WslDistro    string   `json:"shell:wsldistro,omitempty"`
+	Autodetected bool     `json:"autodetected,omitempty"`
+	Hidden       bool     `json:"hidden,omitempty"`
+	Source       string   `json:"source,omitempty"`
+	UserModified bool     `json:"usermodified,omitempty"`
+}
+
+type SetShellProfileRequest struct {
+	ProfileID string           `json:"profileid"`
+	Profile   ShellProfileData `json:"profile"`
+}
+
+type DeleteShellProfileRequest struct {
+	ProfileID string `json:"profileid"`
+}
+
+type MergeShellProfilesRequest struct {
+	Rescan bool `json:"rescan,omitempty"` // Force detection refresh
+}
+
+type MergeShellProfilesResponse struct {
+	Added int    `json:"added"`
+	Error string `json:"error,omitempty"`
 }
 
 // OMP (Oh-My-Posh) configuration types
