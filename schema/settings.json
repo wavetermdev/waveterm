@@ -143,6 +143,9 @@
         "term:bellindicator": {
           "type": "boolean"
         },
+        "term:reportfocus": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },

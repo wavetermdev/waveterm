@@ -133,6 +133,18 @@ const allSettings: SettingMetadata[] = [
         links: { "Hardware Acceleration": "window:disablehardwareacceleration" },
     },
     {
+        key: "term:reportfocus",
+        label: "Report Focus Events",
+        description:
+            "Enable DEC mode 1004 focus reporting. When enabled, applications can detect when the terminal gains or loses focus. Disable this if applications (like Claude Code) show jarring UI changes on focus events.",
+        category: "Terminal",
+        subcategory: "Advanced",
+        controlType: "toggle",
+        defaultValue: true,
+        type: "boolean",
+        tags: ["focus", "events", "dec", "1004", "claude"],
+    },
+    {
         key: "term:localshellpath",
         label: "Local Shell Path",
         description: "Path to the shell executable to use for local terminals.",

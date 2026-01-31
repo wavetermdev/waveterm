@@ -622,6 +622,28 @@ export class TermWrap {
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
             return handleOsc16162Command(data, this.blockId, this.loaded, this);
         });
+
+        // Register CSI handler to optionally block DEC mode 1004 (focus reporting)
+        // This prevents applications like Claude Code from receiving focus events
+        // which can cause jarring UI changes when the terminal loses/gains focus
+        this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params: (number | number[])[]) => {
+            const reportFocusEnabled =
+                globalStore.get(getOverrideConfigAtom(this.blockId, "term:reportfocus")) ?? true;
+            if (!reportFocusEnabled) {
+                // Check if this is mode 1004 (send focus events)
+                for (const param of params) {
+                    if (param === 1004 || (Array.isArray(param) && param.includes(1004))) {
+                        dlog("Blocking DEC mode 1004 (focus reporting) - term:reportfocus is disabled");
+                        // Return true to indicate we handled it (by ignoring it)
+                        // This prevents the default handler from enabling focus reporting
+                        return true;
+                    }
+                }
+            }
+            // Return false to let the default handler process this CSI sequence
+            return false;
+        });
+
         this.toDispose.push(
             this.terminal.onBell(() => {
                 if (!this.loaded) {
