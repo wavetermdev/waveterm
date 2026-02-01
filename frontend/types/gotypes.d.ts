@@ -677,7 +677,6 @@ declare global {
         blockid: string;
         tabid: string;
         port?: number;
-        listenhost?: string;
         idletimeoutms?: number;
     };
 
@@ -1324,6 +1323,8 @@ declare global {
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
         "debug:*"?: boolean;
+        "debug:webcdp"?: boolean;
+        "debug:remotedebugport"?: number;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
         "tsunami:*"?: boolean;

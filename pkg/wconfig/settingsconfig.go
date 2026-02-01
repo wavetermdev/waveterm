@@ -157,6 +157,8 @@ type SettingsType struct {
 	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
 
 	DebugClear               bool `json:"debug:*,omitempty"`
+	DebugWebCdp              bool `json:"debug:webcdp,omitempty"`
+	DebugRemoteDebugPort     *int `json:"debug:remotedebugport,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
 	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
 

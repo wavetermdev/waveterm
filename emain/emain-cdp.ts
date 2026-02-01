@@ -8,9 +8,8 @@ import { URL } from "node:url";
 import WebSocket, { WebSocketServer } from "ws";
 
 export type CdpProxyStartOpts = {
-    host?: string; // default 127.0.0.1
     port?: number; // default 0 (ephemeral)
-    idleTimeoutMs?: number; // default 10 minutes
+    idleTimeoutMs?: number; // default 5 minutes
 };
 
 export type WebCdpTargetInfo = {
@@ -47,6 +46,8 @@ type CdpProxyInstance = {
     clients: Set<WebSocket>;
     idleTimer: NodeJS.Timeout | null;
     idleTimeoutMs: number;
+    secret: string;
+    basePath: string;
 };
 
 const proxyMap = new Map<string, CdpProxyInstance>();
@@ -73,6 +74,7 @@ function refreshIdleTimer(inst: CdpProxyInstance) {
     if (inst.idleTimer) clearTimeout(inst.idleTimer);
     inst.idleTimer = setTimeout(() => {
         if (inst.clients.size === 0) {
+            console.log("webcdp auto-stop (idle)", inst.key);
             stopWebCdpProxy(inst.key).catch(() => {});
         }
     }, inst.idleTimeoutMs);
@@ -110,6 +112,7 @@ function attachDebuggerEventForwarders(inst: CdpProxyInstance) {
 
     // Tear down if the target dies.
     inst.wc.once("destroyed", () => {
+        console.log("webcdp auto-stop (webcontents destroyed)", inst.key);
         stopWebCdpProxy(inst.key).catch(() => {});
     });
 }
@@ -118,7 +121,7 @@ function makeJsonListEntry(inst: CdpProxyInstance): any {
     const hostForUrl = getWsHostForUrl(inst.host);
     const wsUrl = `ws://${hostForUrl}:${inst.port}${inst.wsPath}`;
     // Provide a devtoolsFrontendUrl that Chrome can open directly.
-    const devtoolsFrontendUrl = `/devtools/inspector.html?ws=${hostForUrl}:${inst.port}${inst.wsPath}`;
+    const devtoolsFrontendUrl = `${inst.basePath}/devtools/inspector.html?ws=${hostForUrl}:${inst.port}${inst.wsPath}`;
     let url = "";
     try {
         url = inst.wc.getURL();
@@ -160,14 +163,17 @@ async function createServer(inst: Omit<CdpProxyInstance, "server" | "wss" | "por
             return;
         }
         const parsed = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
-        if (req.method === "GET" && parsed.pathname === "/json/version") {
+        if (req.method === "GET" && parsed.pathname === `${inst.basePath}/json/version`) {
             respondJson(res, 200, {
                 Browser: "Wave (Electron)",
                 "Protocol-Version": "1.3",
             });
             return;
         }
-        if (req.method === "GET" && (parsed.pathname === "/json" || parsed.pathname === "/json/list")) {
+        if (
+            req.method === "GET" &&
+            (parsed.pathname === `${inst.basePath}/json` || parsed.pathname === `${inst.basePath}/json/list`)
+        ) {
             const entry = makeJsonListEntry(inst as any);
             respondJson(res, 200, [entry]);
             return;
@@ -234,11 +240,14 @@ export async function startWebCdpProxy(
         };
     }
 
-    const host = opts?.host ?? "127.0.0.1";
+    // Always bind locally to loopback for security.
+    const host = "127.0.0.1";
     const port = opts?.port ?? 0;
-    const idleTimeoutMs = opts?.idleTimeoutMs ?? 10 * 60 * 1000;
+    const idleTimeoutMs = opts?.idleTimeoutMs ?? 5 * 60 * 1000;
     const targetid = randomUUID().replace(/-/g, "");
-    const wsPath = `/devtools/page/${targetid}`;
+    const secret = randomUUID().replace(/-/g, "");
+    const basePath = `/__wave_cdp/${secret}`;
+    const wsPath = `${basePath}/devtools/page/${targetid}`;
 
     const instPre: any = {
         key,
@@ -249,6 +258,8 @@ export async function startWebCdpProxy(
         port,
         targetid,
         wsPath,
+        secret,
+        basePath,
         wc,
         debuggerAttached: false,
         clients: new Set<WebSocket>(),
@@ -338,6 +349,7 @@ export async function stopWebCdpProxy(key: string): Promise<void> {
     const inst = proxyMap.get(key);
     if (!inst) return;
     proxyMap.delete(key);
+    console.log("webcdp stop", key);
     if (inst.idleTimer) {
         clearTimeout(inst.idleTimer);
         inst.idleTimer = null;

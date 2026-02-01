@@ -17,6 +17,7 @@ import (
 var webCdpCmd = &cobra.Command{
 	Use:               "cdp [start|stop|status]",
 	Short:             "Expose a CDP websocket for a web widget",
+	Long:              "Expose a local Chrome DevTools Protocol (CDP) websocket for a web widget. WARNING: CDP grants full control of the web widget (DOM, cookies, JS execution).",
 	PersistentPreRunE: preRunSetupRpcClient,
 }
 
@@ -41,15 +42,13 @@ var webCdpStatusCmd = &cobra.Command{
 	RunE:  webCdpStatusRun,
 }
 
-var webCdpListenHost string
 var webCdpPort int
 var webCdpIdleTimeoutMs int
 var webCdpJson bool
 
 func init() {
-	webCdpStartCmd.Flags().StringVar(&webCdpListenHost, "listen", "127.0.0.1", "listen host (default: 127.0.0.1)")
 	webCdpStartCmd.Flags().IntVar(&webCdpPort, "port", 0, "listen port (0 chooses an ephemeral port)")
-	webCdpStartCmd.Flags().IntVar(&webCdpIdleTimeoutMs, "idle-timeout-ms", 10*60*1000, "idle timeout in ms (0 disables)")
+	webCdpStartCmd.Flags().IntVar(&webCdpIdleTimeoutMs, "idle-timeout-ms", 5*60*1000, "idle timeout in ms (0 disables)")
 	webCdpStartCmd.Flags().BoolVar(&webCdpJson, "json", false, "output as json")
 
 	webCdpStatusCmd.Flags().BoolVar(&webCdpJson, "json", false, "output as json")
@@ -87,7 +86,6 @@ func webCdpStartRun(cmd *cobra.Command, args []string) error {
 		BlockId:       fullORef.OID,
 		TabId:         blockInfo.TabId,
 		Port:          webCdpPort,
-		ListenHost:    webCdpListenHost,
 		IdleTimeoutMs: webCdpIdleTimeoutMs,
 	}
 	resp, err := wshclient.WebCdpStartCommand(RpcClient, req, &wshrpc.RpcOpts{

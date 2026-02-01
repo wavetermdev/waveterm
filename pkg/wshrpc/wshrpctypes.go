@@ -470,7 +470,6 @@ type CommandWebCdpStartData struct {
 	BlockId       string `json:"blockid"`
 	TabId         string `json:"tabid"`
 	Port          int    `json:"port,omitempty"`          // 0 means choose an ephemeral port
-	ListenHost    string `json:"listenhost,omitempty"`    // default 127.0.0.1
 	IdleTimeoutMs int    `json:"idletimeoutms,omitempty"` // 0 disables idle shutdown
 }
 

@@ -36,6 +36,10 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("workspaceid, tabid and blockid are required");
         }
+        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+        if (!fullConfig?.settings?.["debug:webcdp"]) {
+            throw new Error("web cdp is disabled (enable debug:webcdp in settings.json)");
+        }
         const ww = getWaveWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
             throw new Error(`no window found with workspace ${data.workspaceid}`);
@@ -44,8 +48,8 @@ export class ElectronWshClientType extends WshClient {
         if (wc == null) {
             throw new Error(`no webcontents found with blockid ${data.blockid}`);
         }
+        console.log("webcdpstart", data.workspaceid, data.tabid, data.blockid, "port=", data.port);
         const info = await startWebCdpProxy(wc, data.workspaceid, data.tabid, data.blockid, {
-            host: data.listenhost,
             port: data.port,
             idleTimeoutMs: data.idletimeoutms,
         });
@@ -62,6 +66,7 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("workspaceid, tabid and blockid are required");
         }
+        console.log("webcdpstop", data.workspaceid, data.tabid, data.blockid);
         await stopWebCdpProxyForTarget(data.workspaceid, data.tabid, data.blockid);
     }
 

@@ -272,6 +272,12 @@
         "debug:*": {
           "type": "boolean"
         },
+        "debug:webcdp": {
+          "type": "boolean"
+        },
+        "debug:remotedebugport": {
+          "type": "integer"
+        },
         "debug:pprofport": {
           "type": "integer"
         },

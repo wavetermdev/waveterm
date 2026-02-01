@@ -365,11 +365,16 @@ async function appMain() {
     // NOTE: this does not directly solve per-<webview> debugging; see emain-cdp.ts for that.
     const remoteDebugPort = launchSettings?.["debug:remotedebugport"];
     if (remoteDebugPort != null) {
-        const portStr = String(remoteDebugPort);
-        console.log("enabling remote debugging port", portStr);
-        electronApp.commandLine.appendSwitch("remote-debugging-port", portStr);
-        // default to loopback to avoid exposing CDP to the LAN unless the user explicitly forwards it.
-        electronApp.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
+        const portNum = typeof remoteDebugPort === "number" ? remoteDebugPort : parseInt(String(remoteDebugPort), 10);
+        if (!Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
+            console.log("invalid debug:remotedebugport (expected 1-65535), skipping:", remoteDebugPort);
+        } else {
+            const portStr = String(portNum);
+            console.log("enabling remote debugging port", portStr);
+            electronApp.commandLine.appendSwitch("remote-debugging-port", portStr);
+            // default to loopback to avoid exposing CDP to the LAN unless the user explicitly forwards it.
+            electronApp.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
+        }
     }
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
