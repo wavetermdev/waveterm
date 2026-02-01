@@ -172,6 +172,7 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
     const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
+    const hideViewName = util.useAtomValueSafe(viewModel?.hideViewName);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
@@ -204,7 +205,7 @@ const BlockFrame_Header = ({
                     {preIconButton && <IconButton decl={preIconButton} className="block-frame-preicon-button" />}
                     <div className="block-frame-default-header-iconview">
                         {viewIconElem}
-                        {viewName && <div className="block-frame-view-type">{viewName}</div>}
+                        {viewName && !hideViewName && <div className="block-frame-view-type">{viewName}</div>}
                     </div>
                 </>
             )}

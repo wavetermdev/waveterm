@@ -45,7 +45,7 @@ export const ConnectionButton = React.memo(
                     if (localName) {
                         titleText += ` (${localName})`;
                     }
-                    if (!isTerminalBlock) {
+                    if (isTerminalBlock) {
                         connDisplayName = localName;
                         extraDisplayNameClassName = "text-muted group-hover:text-secondary";
                     }

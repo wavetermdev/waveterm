@@ -51,6 +51,7 @@ export class WebViewModel implements ViewModel {
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
     viewText: Atom<HeaderElem[]>;
+    hideViewName: Atom<boolean>;
     url: PrimitiveAtom<string>;
     homepageUrl: Atom<string>;
     urlInputFocused: PrimitiveAtom<boolean>;
@@ -91,6 +92,7 @@ export class WebViewModel implements ViewModel {
         this.refreshIcon = atom("rotate-right");
         this.viewIcon = atom("globe");
         this.viewName = atom("Web");
+        this.hideViewName = atom(true);
         this.urlInputRef = createRef<HTMLInputElement>();
         this.webviewRef = createRef<WebviewTag>();
         this.domReady = atom(false);

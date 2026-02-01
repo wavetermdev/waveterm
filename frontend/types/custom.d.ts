@@ -300,6 +300,8 @@ declare global {
 
         useTermHeader?: jotai.Atom<boolean>;
 
+        hideViewName?: jotai.Atom<boolean>;
+
         // Icon representing the view, can be a string or an IconButton declaration.
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
 
