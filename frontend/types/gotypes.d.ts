@@ -671,6 +671,32 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandWebCdpStartData
+    type CommandWebCdpStartData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+        port?: number;
+        listenhost?: string;
+        idletimeoutms?: number;
+    };
+
+    // wshrpc.CommandWebCdpStartRtnData
+    type CommandWebCdpStartRtnData = {
+        host: string;
+        port: number;
+        wsurl: string;
+        inspectorurl: string;
+        targetid: string;
+    };
+
+    // wshrpc.CommandWebCdpStopData
+    type CommandWebCdpStopData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         workspaceid: string;
@@ -2003,6 +2029,19 @@ declare global {
         method: string;
         uicontext?: UIContext;
         args: any[];
+    };
+
+    // wshrpc.WebCdpStatusEntry
+    type WebCdpStatusEntry = {
+        key: string;
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+        host: string;
+        port: number;
+        wsurl: string;
+        inspectorurl: string;
+        targetid: string;
     };
 
     // service.WebReturnType

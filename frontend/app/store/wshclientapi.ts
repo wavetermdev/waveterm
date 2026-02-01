@@ -782,6 +782,21 @@ class RpcApiType {
         return client.wshRpcCall("waveinfo", null, opts);
     }
 
+    // command "webcdpstart" [call]
+    WebCdpStartCommand(client: WshClient, data: CommandWebCdpStartData, opts?: RpcOpts): Promise<CommandWebCdpStartRtnData> {
+        return client.wshRpcCall("webcdpstart", data, opts);
+    }
+
+    // command "webcdpstatus" [call]
+    WebCdpStatusCommand(client: WshClient, opts?: RpcOpts): Promise<WebCdpStatusEntry[]> {
+        return client.wshRpcCall("webcdpstatus", null, opts);
+    }
+
+    // command "webcdpstop" [call]
+    WebCdpStopCommand(client: WshClient, data: CommandWebCdpStopData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("webcdpstop", data, opts);
+    }
+
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
