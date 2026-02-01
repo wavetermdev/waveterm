@@ -238,7 +238,7 @@ function DirectoryTable({
     useEffect(() => {
         const allRows = table.getRowModel()?.flatRows || [];
         setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
-    }, [table, focusIndex, data]);
+    }, [focusIndex, data, setSelectedPath]);
 
     const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();

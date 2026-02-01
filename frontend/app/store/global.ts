@@ -663,14 +663,16 @@ function getHostName(): string {
     return cachedHostName;
 }
 
+const LocalHostDisplayNameAtom: Atom<string> = atom((get) => {
+    const configValue = get(getSettingsKeyAtom("conn:localhostdisplayname"));
+    if (configValue != null) {
+        return configValue;
+    }
+    return getUserName() + "@" + getHostName();
+});
+
 function getLocalHostDisplayNameAtom(): Atom<string> {
-    return atom((get) => {
-        const configValue = get(getSettingsKeyAtom("conn:localhostdisplayname"));
-        if (configValue != null) {
-            return configValue;
-        }
-        return getUserName() + "@" + getHostName();
-    });
+    return LocalHostDisplayNameAtom;
 }
 
 /**
