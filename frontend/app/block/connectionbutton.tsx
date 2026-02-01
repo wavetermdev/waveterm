@@ -42,8 +42,13 @@ export const ConnectionButton = React.memo(
                     connDisplayName = "Git Bash";
                 } else {
                     titleText = "Connected to Local Machine";
-                    connDisplayName = localName;
-                    extraDisplayNameClassName = "text-muted group-hover:text-secondary";
+                    if (localName) {
+                        titleText += ` (${localName})`;
+                    }
+                    if (!isTerminalBlock) {
+                        connDisplayName = localName;
+                        extraDisplayNameClassName = "text-muted group-hover:text-secondary";
+                    }
                 }
                 connIconElem = (
                     <i
@@ -100,7 +105,10 @@ export const ConnectionButton = React.memo(
                         title={titleText}
                     >
                         <span
-                            className={util.cn("fa-stack flex-[1_1_auto] overflow-hidden", shouldSpin ? "fa-spin" : null)}
+                            className={util.cn(
+                                "fa-stack flex-[1_1_auto] overflow-hidden",
+                                shouldSpin ? "fa-spin" : null
+                            )}
                         >
                             {connIconElem}
                             <i
@@ -112,7 +120,14 @@ export const ConnectionButton = React.memo(
                             />
                         </span>
                         {connDisplayName ? (
-                            <div className={util.cn("flex-[1_2_auto] overflow-hidden pr-1 ellipsis", extraDisplayNameClassName)}>{connDisplayName}</div>
+                            <div
+                                className={util.cn(
+                                    "flex-[1_2_auto] overflow-hidden pr-1 ellipsis",
+                                    extraDisplayNameClassName
+                                )}
+                            >
+                                {connDisplayName}
+                            </div>
                         ) : isLocal ? null : (
                             <div className="flex-[1_2_auto] overflow-hidden pr-1 ellipsis">{connection}</div>
                         )}
