@@ -1,12 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.webview,
 .webview-container {
     height: 100%;
     width: 100%;
-    border: none !important;
-    outline: none !important;
+    position: relative;
     overflow: hidden;
     padding: 0;
     margin: 0;
@@ -19,11 +17,42 @@
     will-change: transform;
 }
 
-.webview.cdp-active {
-    // Border-like indicator without using border/outline (both are disabled above).
+.webview {
+    height: 100%;
+    width: 100%;
+    border: none !important;
+    outline: none !important;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    user-select: none;
+    border-radius: 0 0 var(--block-border-radius) var(--block-border-radius);
+}
+
+.webview-container.cdp-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: 0 0 var(--block-border-radius) var(--block-border-radius);
     box-shadow:
-        inset 0 0 0 2px var(--accent-color),
-        0 0 12px color-mix(in srgb, var(--accent-color) 35%, transparent);
+        inset 0 0 0 2px #f59e0b,
+        0 0 12px color-mix(in srgb, #f59e0b 35%, transparent);
+}
+
+.webview-cdp-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 200;
+    pointer-events: none;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--main-text-color, white);
+    background: color-mix(in srgb, #f59e0b 45%, rgba(0, 0, 0, 0.6));
 }
 
 .webview-error {

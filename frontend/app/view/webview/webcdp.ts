@@ -18,8 +18,12 @@ async function pollOnce() {
         globalStore.set(webCdpActiveMapAtom, {});
         return;
     }
+    // TabRpcClient may not be initialized yet during early startup; try again next tick.
+    if (!TabRpcClient) {
+        return;
+    }
     try {
-        const status = await RpcApi.WebCdpStatusCommand(TabRpcClient, null, { route: "electron", timeout: 2000 });
+        const status = await RpcApi.WebCdpStatusCommand(TabRpcClient, { route: "electron", timeout: 2000 });
         const next: Record<string, boolean> = {};
         for (const e of status ?? []) {
             if (e?.blockid) {
@@ -28,8 +32,7 @@ async function pollOnce() {
         }
         globalStore.set(webCdpActiveMapAtom, next);
     } catch (_e) {
-        // Fail closed: don't show the indicator if we can't confirm active status.
-        globalStore.set(webCdpActiveMapAtom, {});
+        // Avoid flicker on transient errors; keep last known value.
     }
 }
 
@@ -38,7 +41,7 @@ export function ensureWebCdpPollerStarted() {
     pollerStarted = true;
     // do one immediate poll, then periodic
     pollOnce();
-    pollerHandle = window.setInterval(pollOnce, 2500);
+    pollerHandle = window.setInterval(pollOnce, 750);
 }
 
 export function stopWebCdpPollerForTests() {

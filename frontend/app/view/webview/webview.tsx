@@ -1058,19 +1058,22 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
 
     return (
         <Fragment>
-            <webview
-                id="webview"
-                className={clsx("webview", cdpActive && "cdp-active")}
-                ref={model.webviewRef}
-                src={metaUrlInitial}
-                data-blockid={model.blockId}
-                data-webcontentsid={webContentsId} // needed for emain
-                preload={getWebviewPreloadUrl()}
-                // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
-                allowpopups="true"
-                partition={webPartition}
-                useragent={userAgent}
-            />
+            <div className={clsx("webview-container", cdpActive && "cdp-active")}>
+                {cdpActive && <div className="webview-cdp-badge">CONTROLLED</div>}
+                <webview
+                    id="webview"
+                    className="webview"
+                    ref={model.webviewRef}
+                    src={metaUrlInitial}
+                    data-blockid={model.blockId}
+                    data-webcontentsid={webContentsId} // needed for emain
+                    preload={getWebviewPreloadUrl()}
+                    // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
+                    allowpopups="true"
+                    partition={webPartition}
+                    useragent={userAgent}
+                />
+            </div>
             {errorText && (
                 <div className="webview-error">
                     <div>{errorText}</div>
