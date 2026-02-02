@@ -139,12 +139,14 @@ wsh ai architecture.png api-spec.pdf server.go -m "review the system design"
 ```
 
 **File Size Limits:**
+
 - Text files: 200KB maximum
 - PDF files: 5MB maximum
 - Image files: 7MB maximum (accounts for base64 encoding overhead)
 - Maximum 15 files per command
 
 **Flags:**
+
 - `-m, --message <text>` - Add message text along with files
 - `-s, --submit` - Auto-submit immediately (default waits for user)
 - `-n, --new` - Clear current chat and start fresh conversation
@@ -345,7 +347,7 @@ This will connect to a WSL distribution on the local machine. It will use the de
 The `web` command opens URLs in a web block within Wave Terminal.
 
 ```sh
-wsh web open [url] [-m] [-r blockid]
+wsh web open [url] [-m] [-r blockid] [--cdp|-c]
 ```
 
 You can open a specific URL or perform a search using the configured search engine.
@@ -354,6 +356,7 @@ Flags:
 
 - `-m, --magnified` - open the web block in magnified mode
 - `-r, --replace <blockid>` - replace an existing block instead of creating a new one
+- `--cdp, -c` - start a local CDP websocket for the created web widget (requires `debug:webcdp=true` and app restart)
 
 Examples:
 
@@ -369,9 +372,32 @@ wsh web open -m https://github.com
 
 # Replace an existing block
 wsh web open -r 2 https://example.com
+
+# Create web widget with CDP enabled
+wsh web open --cdp https://example.com
 ```
 
 The command will open a new web block with the desired page, or replace an existing block if the `-r` flag is used. Note that `--replace` and `--magnified` cannot be used together.
+
+### CDP
+
+Wave can expose a local Chrome DevTools Protocol (CDP) websocket for web widgets.
+
+```sh
+# List web widgets (in current workspace) and show which have CDP active
+wsh web cdp
+
+# Start CDP for a specific web widget
+wsh web cdp start -b <blockid>
+
+# Stop CDP
+wsh web cdp stop -b <blockid>
+
+# List active CDP proxies
+wsh web cdp status
+```
+
+Note: CDP is a powerful interface (DOM/JS/cookies). It is gated behind `debug:webcdp=true` in `settings.json`.
 
 ---
 
@@ -855,6 +881,7 @@ wsh blocks list [flags]
 List all blocks with optional filtering by workspace, window, tab, or view type. Output can be formatted as a table (default) or JSON for scripting.
 
 Flags:
+
 - `--workspace <id>` - restrict to specific workspace id
 - `--window <id>` - restrict to specific window id
 - `--tab <id>` - restrict to specific tab id
@@ -877,7 +904,6 @@ wsh blocks list --workspace=12d0c067-378e-454c-872e-77a314248114
 # Output as JSON for scripting
 wsh blocks list --json
 ```
-
 
 ---
 
@@ -988,4 +1014,5 @@ The secrets UI provides a convenient visual way to browse, add, edit, and delete
 :::tip
 Use secrets in your scripts to avoid hardcoding sensitive values. Secrets work across remote machines - store an API key locally with `wsh secret set`, then access it from any SSH or WSL connection with `wsh secret get`. The secret is securely retrieved from your local machine without needing to duplicate it on remote systems.
 :::
+
 </PlatformProvider>

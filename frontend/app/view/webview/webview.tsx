@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { Search, useSearch } from "@/app/element/search";
 import { createBlock, getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
@@ -21,6 +21,7 @@ import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { ensureWebCdpPollerStarted, webCdpActiveMapAtom } from "./webcdp";
 import "./webview.scss";
 
 // User agent strings for mobile emulation
@@ -881,6 +882,8 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
 
     const [webContentsId, setWebContentsId] = useState(null);
     const domReady = useAtomValue(model.domReady);
+    const cdpActiveMap = useAtomValue(webCdpActiveMapAtom);
+    const cdpActive = !!cdpActiveMap?.[model.blockId];
 
     const [errorText, setErrorText] = useState("");
 
@@ -909,6 +912,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     }
 
     useEffect(() => {
+        ensureWebCdpPollerStarted();
         return () => {
             globalStore.set(model.domReady, false);
         };
@@ -1056,7 +1060,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         <Fragment>
             <webview
                 id="webview"
-                className="webview"
+                className={clsx("webview", cdpActive && "cdp-active")}
                 ref={model.webviewRef}
                 src={metaUrlInitial}
                 data-blockid={model.blockId}

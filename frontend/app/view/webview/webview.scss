@@ -19,6 +19,13 @@
     will-change: transform;
 }
 
+.webview.cdp-active {
+    // Border-like indicator without using border/outline (both are disabled above).
+    box-shadow:
+        inset 0 0 0 2px var(--accent-color),
+        0 0 12px color-mix(in srgb, var(--accent-color) 35%, transparent);
+}
+
 .webview-error {
     display: flex;
     position: absolute;
