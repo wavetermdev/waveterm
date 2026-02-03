@@ -234,11 +234,11 @@ function DirectoryTable({
             newDirectory,
         },
     });
-
+    const sortingState = table.getState().sorting;
     useEffect(() => {
         const allRows = table.getRowModel()?.flatRows || [];
         setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
-    }, [focusIndex, data, setSelectedPath]);
+    }, [focusIndex, data, setSelectedPath, sortingState]);
 
     const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();
