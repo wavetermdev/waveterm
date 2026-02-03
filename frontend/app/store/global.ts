@@ -442,7 +442,7 @@ function getBlockTermDurableAtom(blockId: string): Atom<boolean> {
         }
 
         // Check if view is "term", and controller is "shell"
-        if (block.meta?.view != "term" && block.meta?.controller == "shell") {
+        if (block.meta?.view != "term" || block.meta?.controller != "shell") {
             return false;
         }
 
