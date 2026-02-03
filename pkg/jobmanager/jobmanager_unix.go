@@ -30,6 +30,9 @@ func parseSignal(sigName string) os.Signal {
 	sigName = strings.TrimSpace(sigName)
 	sigName = strings.ToUpper(sigName)
 	if n, err := strconv.Atoi(sigName); err == nil {
+		if n <= 0 {
+			return nil
+		}
 		return syscall.Signal(n)
 	}
 	if !strings.HasPrefix(sigName, "SIG") {
