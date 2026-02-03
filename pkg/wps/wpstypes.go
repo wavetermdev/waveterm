@@ -3,7 +3,9 @@
 
 package wps
 
-import "github.com/wavetermdev/waveterm/pkg/util/utilfn"
+import (
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+)
 
 const (
 	Event_BlockClose          = "blockclose"
@@ -24,6 +26,7 @@ const (
 	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"
 	Event_AIModeConfig        = "waveai:modeconfig"
 	Event_TabIndicator        = "tab:indicator"
+	Event_BlockJobStatus      = "block:jobstatus" // type: BlockJobStatusData
 )
 
 type WaveEvent struct {

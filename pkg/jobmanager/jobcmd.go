@@ -86,7 +86,7 @@ func (jm *JobCmd) waitForProcess() {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				if status.Signaled() {
-					jm.exitSignal = status.Signal().String()
+					jm.exitSignal = getSignalName(status.Signal())
 				} else if status.Exited() {
 					code := status.ExitStatus()
 					jm.exitCode = &code
@@ -197,7 +197,7 @@ func (jm *JobCmd) HandleInput(data wshrpc.CommandJobInputData) error {
 	}
 
 	if data.SigName != "" {
-		sig := normalizeSignal(data.SigName)
+		sig := parseSignal(data.SigName)
 		if sig != nil && jm.cmd.Process != nil {
 			err := jm.cmd.Process.Signal(sig)
 			if err != nil {

@@ -1,15 +1,16 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { NumActiveConnColors } from "@/app/block/blockframe";
-import { getConnStatusAtom, recordTEvent } from "@/app/store/global";
+import { Button } from "@/app/element/button";
+import { IconButton, ToggleIconButton } from "@/element/iconbutton";
+import { MagnifyIcon } from "@/element/magnify";
+import { MenuButton } from "@/element/menubutton";
 import * as util from "@/util/util";
 import clsx from "clsx";
-import * as jotai from "jotai";
 import * as React from "react";
-import DotsSvg from "../asset/dots-anim-4.svg";
 
 export const colorRegex = /^((#[0-9a-f]{6,8})|([a-z]+))$/;
+export const NumActiveConnColors = 8;
 
 export function blockViewToIcon(view: string): string {
     if (view == "term") {
@@ -142,113 +143,23 @@ export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.R
     return blockIconElem;
 }
 
-interface ConnectionButtonProps {
-    connection: string;
-    changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
-}
-
-export function computeConnColorNum(connStatus: ConnStatus): number {
-    // activeconnnum is 1-indexed, so we need to adjust for when mod is 0
-    const connColorNum = (connStatus?.activeconnnum ?? 1) % NumActiveConnColors;
-    if (connColorNum == 0) {
-        return NumActiveConnColors;
+export function getViewIconElem(
+    viewIconUnion: string | IconButtonDecl,
+    blockData: Block,
+    iconColor?: string
+): React.ReactElement {
+    if (viewIconUnion == null || typeof viewIconUnion === "string") {
+        const viewIcon = viewIconUnion as string;
+        const style: React.CSSProperties = iconColor ? { color: iconColor, opacity: 1.0 } : {};
+        return (
+            <div className="block-frame-view-icon" style={style}>
+                {getBlockHeaderIcon(viewIcon, blockData)}
+            </div>
+        );
+    } else {
+        return <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
     }
-    return connColorNum;
 }
-
-export const ConnectionButton = React.memo(
-    React.forwardRef<HTMLDivElement, ConnectionButtonProps>(
-        ({ connection, changeConnModalAtom }: ConnectionButtonProps, ref) => {
-            const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
-            const isLocal = util.isLocalConnName(connection);
-            const connStatusAtom = getConnStatusAtom(connection);
-            const connStatus = jotai.useAtomValue(connStatusAtom);
-            let showDisconnectedSlash = false;
-            let connIconElem: React.ReactNode = null;
-            const connColorNum = computeConnColorNum(connStatus);
-            let color = `var(--conn-icon-color-${connColorNum})`;
-            const clickHandler = function () {
-                recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "mouse" });
-                setConnModalOpen(true);
-            };
-            let titleText = null;
-            let shouldSpin = false;
-            let connDisplayName: string = null;
-            if (isLocal) {
-                color = "var(--grey-text-color)";
-                if (connection === "local:gitbash") {
-                    titleText = "Connected to Git Bash";
-                    connDisplayName = "Git Bash";
-                } else {
-                    titleText = "Connected to Local Machine";
-                }
-                connIconElem = (
-                    <i
-                        className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
-                        style={{ color: color, marginRight: 2 }}
-                    />
-                );
-            } else {
-                titleText = "Connected to " + connection;
-                let iconName = "arrow-right-arrow-left";
-                let iconSvg = null;
-                if (connStatus?.status == "connecting") {
-                    color = "var(--warning-color)";
-                    titleText = "Connecting to " + connection;
-                    shouldSpin = false;
-                    iconSvg = (
-                        <div className="connecting-svg">
-                            <DotsSvg />
-                        </div>
-                    );
-                } else if (connStatus?.status == "error") {
-                    color = "var(--error-color)";
-                    titleText = "Error connecting to " + connection;
-                    if (connStatus?.error != null) {
-                        titleText += " (" + connStatus.error + ")";
-                    }
-                    showDisconnectedSlash = true;
-                } else if (!connStatus?.connected) {
-                    color = "var(--grey-text-color)";
-                    titleText = "Disconnected from " + connection;
-                    showDisconnectedSlash = true;
-                }
-                if (iconSvg != null) {
-                    connIconElem = iconSvg;
-                } else {
-                    connIconElem = (
-                        <i
-                            className={clsx(util.makeIconClass(iconName, false), "fa-stack-1x")}
-                            style={{ color: color, marginRight: 2 }}
-                        />
-                    );
-                }
-            }
-
-            return (
-                <div ref={ref} className={clsx("connection-button")} onClick={clickHandler} title={titleText}>
-                    <span className={clsx("fa-stack connection-icon-box", shouldSpin ? "fa-spin" : null)}>
-                        {connIconElem}
-                        <i
-                            className="fa-slash fa-solid fa-stack-1x"
-                            style={{
-                                color: color,
-                                marginRight: "2px",
-                                textShadow: "0 1px black, 0 1.5px black",
-                                opacity: showDisconnectedSlash ? 1 : 0,
-                            }}
-                        />
-                    </span>
-                    {connDisplayName ? (
-                        <div className="connection-name ellipsis">{connDisplayName}</div>
-                    ) : isLocal ? null : (
-                        <div className="connection-name ellipsis">{connection}</div>
-                    )}
-                </div>
-            );
-        }
-    )
-);
 
 export const Input = React.memo(
     ({ decl, className, preview }: { decl: HeaderInput; className: string; preview: boolean }) => {
@@ -274,3 +185,75 @@ export const Input = React.memo(
         );
     }
 );
+
+export const OptMagnifyButton = React.memo(
+    ({ magnified, toggleMagnify, disabled }: { magnified: boolean; toggleMagnify: () => void; disabled: boolean }) => {
+        const magnifyDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: <MagnifyIcon enabled={magnified} />,
+            title: magnified ? "Minimize" : "Magnify",
+            click: toggleMagnify,
+            disabled,
+        };
+        return <IconButton key="magnify" decl={magnifyDecl} className="block-frame-magnify" />;
+    }
+);
+
+export const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; preview: boolean }) => {
+    if (elem.elemtype == "iconbutton") {
+        return <IconButton decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />;
+    } else if (elem.elemtype == "toggleiconbutton") {
+        return <ToggleIconButton decl={elem} className={clsx("block-frame-header-iconbutton", elem.className)} />;
+    } else if (elem.elemtype == "input") {
+        return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
+    } else if (elem.elemtype == "text") {
+        return (
+            <div className={clsx("block-frame-text ellipsis", elem.className, { "flex-nogrow": elem.noGrow })}>
+                <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
+                    &lrm;{elem.text}
+                </span>
+            </div>
+        );
+    } else if (elem.elemtype == "textbutton") {
+        return (
+            <Button className={elem.className} onClick={(e) => elem.onClick(e)} title={elem.title}>
+                {elem.text}
+            </Button>
+        );
+    } else if (elem.elemtype == "div") {
+        return (
+            <div
+                className={clsx("block-frame-div", elem.className)}
+                onMouseOver={elem.onMouseOver}
+                onMouseOut={elem.onMouseOut}
+            >
+                {elem.children.map((child, childIdx) => (
+                    <HeaderTextElem elem={child} key={childIdx} preview={preview} />
+                ))}
+            </div>
+        );
+    } else if (elem.elemtype == "menubutton") {
+        return <MenuButton className="block-frame-menubutton" {...(elem as MenuButtonProps)} />;
+    }
+    return null;
+});
+
+export function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): React.ReactElement[] {
+    const headerTextElems: React.ReactElement[] = [];
+    for (let idx = 0; idx < headerTextUnion.length; idx++) {
+        const elem = headerTextUnion[idx];
+        const renderedElement = <HeaderTextElem elem={elem} key={idx} preview={preview} />;
+        if (renderedElement) {
+            headerTextElems.push(renderedElement);
+        }
+    }
+    return headerTextElems;
+}
+
+export function computeConnColorNum(connStatus: ConnStatus): number {
+    const connColorNum = (connStatus?.activeconnnum ?? 1) % NumActiveConnColors;
+    if (connColorNum == 0) {
+        return NumActiveConnColors;
+    }
+    return connColorNum;
+}

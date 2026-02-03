@@ -1503,3 +1503,7 @@ func (ws *WshServer) JobControllerAttachJobCommand(ctx context.Context, data wsh
 func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId string) error {
 	return jobcontroller.DetachJobFromBlock(ctx, jobId, true)
 }
+
+func (ws *WshServer) BlockJobStatusCommand(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
+	return jobcontroller.GetBlockJobStatus(ctx, blockId)
+}

@@ -140,6 +140,18 @@ declare global {
         files: WaveFileInfo[];
     };
 
+    // wshrpc.BlockJobStatusData
+    type BlockJobStatusData = {
+        blockid: string;
+        jobid: string;
+        status: null | "init" | "connected" | "disconnected" | "done";
+        versionts: number;
+        donereason?: string;
+        cmdexitts?: number;
+        cmdexitcode?: number;
+        cmdexitsignal?: string;
+    };
+
     // wshrpc.BlocksListEntry
     type BlocksListEntry = {
         windowid: string;
@@ -610,12 +622,6 @@ declare global {
         lastupdated: number;
     };
 
-    // wshrpc.CommandTermUpdateAttachedJobData
-    type CommandTermUpdateAttachedJobData = {
-        blockid: string;
-        jobid?: string;
-    };
-
     // wshrpc.CommandVarData
     type CommandVarData = {
         key: string;
@@ -741,6 +747,7 @@ declare global {
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
         "term:theme"?: string;
+        "term:durable"?: boolean;
         "cmd:env"?: {[key: string]: string};
         "cmd:initscript"?: string;
         "cmd:initscript.sh"?: string;
@@ -940,6 +947,12 @@ declare global {
         streamerror?: string;
     };
 
+    // wshrpc.JobManagerStatusUpdate
+    type JobManagerStatusUpdate = {
+        jobid: string;
+        jobmanagerstatus: string;
+    };
+
     // waveobj.LayoutActionData
     type LayoutActionData = {
         actiontype: string;
@@ -1065,6 +1078,7 @@ declare global {
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:durable"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
@@ -1250,6 +1264,7 @@ declare global {
         "term:macoptionismeta"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:durable"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -1259,8 +1274,6 @@ declare global {
         "web:openlinksinternally"?: boolean;
         "web:defaulturl"?: string;
         "web:defaultsearch"?: string;
-        "blockheader:*"?: boolean;
-        "blockheader:showblockids"?: boolean;
         "autoupdate:*"?: boolean;
         "autoupdate:enabled"?: boolean;
         "autoupdate:intervalms"?: number;
@@ -1297,6 +1310,7 @@ declare global {
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
+        "conn:localhostdisplayname"?: string;
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;

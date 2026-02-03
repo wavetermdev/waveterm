@@ -51,7 +51,7 @@ export class AiFileDiffViewModel implements ViewModel {
     }
 }
 
-const AiFileDiffView: React.FC<ViewComponentProps<AiFileDiffViewModel>> = ({ blockId, model }) => {
+function AiFileDiffView({ blockId, model }: ViewComponentProps<AiFileDiffViewModel>) {
     const blockData = jotai.useAtomValue(model.blockAtom);
     const diffData = jotai.useAtomValue(model.diffDataAtom);
     const error = jotai.useAtomValue(model.errorAtom);
@@ -138,6 +138,6 @@ const AiFileDiffView: React.FC<ViewComponentProps<AiFileDiffViewModel>> = ({ blo
             fileName={diffData.fileName}
         />
     );
-};
+}
 
 export default AiFileDiffView;

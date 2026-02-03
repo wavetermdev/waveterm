@@ -619,6 +619,19 @@ func FixupWaveZshHistory() error {
 	return nil
 }
 
+func GetTerminalResetSeq() string {
+	resetSeq := "\x1b[0m"                 // reset attributes
+	resetSeq += "\x1b[?25h"               // show cursor
+	resetSeq += "\x1b[?1l"                // normal cursor keys
+	resetSeq += "\x1b[?7h"                // wraparound on
+	resetSeq += "\x1b[?1000l"             // disable mouse tracking
+	resetSeq += "\x1b[?1007l"             // disable alternate scroll mode
+	resetSeq += "\x1b[?1004l"             // disable focus reporting (FocusIn/FocusOut)
+	resetSeq += "\x1b[?2004l"             // disable bracketed paste mode
+	resetSeq += FormatOSC(16162, "R")     // disable alternate screen mode
+	return resetSeq
+}
+
 func FormatOSC(oscNum int, parts ...string) string {
 	if len(parts) == 0 {
 		return fmt.Sprintf("\x1b]%d\x07", oscNum)

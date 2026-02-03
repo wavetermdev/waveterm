@@ -36,6 +36,9 @@
         "term:theme": {
           "type": "string"
         },
+        "term:durable": {
+          "type": "boolean"
+        },
         "cmd:env": {
           "additionalProperties": {
             "type": "string"

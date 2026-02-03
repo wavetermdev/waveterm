@@ -137,7 +137,7 @@ export class LauncherViewModel implements ViewModel {
     }
 }
 
-const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId, model }) => {
+function LauncherView({ blockId, model }: ViewComponentProps<LauncherViewModel>) {
     // Search and selection state
     const [searchTerm, setSearchTerm] = useAtom(model.searchTerm);
     const [selectedIndex, setSelectedIndex] = useAtom(model.selectedIndex);
@@ -282,6 +282,6 @@ const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId
             </div>
         </div>
     );
-};
+}
 
 export default LauncherView;

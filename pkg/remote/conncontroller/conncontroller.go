@@ -96,6 +96,10 @@ func IsLocalConnName(connName string) bool {
 	return strings.HasPrefix(connName, "local:") || connName == "local" || connName == ""
 }
 
+func IsWslConnName(connName string) bool {
+	return strings.HasPrefix(connName, "wsl://")
+}
+
 func GetAllConnStatus() []wshrpc.ConnStatus {
 	globalLock.Lock()
 	defer globalLock.Unlock()

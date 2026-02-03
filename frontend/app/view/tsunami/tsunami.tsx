@@ -18,8 +18,8 @@ class TsunamiViewModel extends WebViewModel {
     appMeta: jotai.PrimitiveAtom<AppMeta>;
     appMetaUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
+    viewIcon: jotai.Atom<IconButtonDecl>;
     viewName: jotai.Atom<string>;
-    viewIconColor: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         super(blockId, nodeModel, tabModel);
@@ -49,11 +49,13 @@ class TsunamiViewModel extends WebViewModel {
         this.appMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
         this.viewIcon = jotai.atom((get) => {
             const meta = get(this.appMeta);
-            return meta?.icon || "cube";
-        });
-        this.viewIconColor = jotai.atom((get) => {
-            const meta = get(this.appMeta);
-            return meta?.iconcolor;
+            const icon = meta?.icon || "cube";
+            const iconColor = meta?.iconcolor;
+            return {
+                elemtype: "iconbutton" as const,
+                icon: icon,
+                iconColor: iconColor,
+            };
         });
         this.viewName = jotai.atom((get) => {
             const meta = get(this.appMeta);

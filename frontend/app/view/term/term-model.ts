@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
@@ -22,6 +22,7 @@ import {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
+    getBlockTermDurableAtom,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
@@ -50,13 +51,14 @@ export class TermViewModel implements ViewModel {
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     blockId: string;
-    viewIcon: jotai.Atom<string>;
+    viewIcon: jotai.Atom<IconButtonDecl>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
     blockBg: jotai.Atom<MetaType>;
     manageConnection: jotai.Atom<boolean>;
     filterOutNowsh?: jotai.Atom<boolean>;
     connStatus: jotai.Atom<ConnStatus>;
+    useTermHeader: jotai.Atom<boolean>;
     termWshClient: TermWshClient;
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
@@ -70,9 +72,13 @@ export class TermViewModel implements ViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
+    blockJobStatusAtom: jotai.PrimitiveAtom<BlockJobStatusData>;
+    blockJobStatusVersionTs: number;
+    blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
+    termDurableStatus: jotai.Atom<BlockJobStatusData | null>;
     searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
@@ -100,12 +106,9 @@ export class TermViewModel implements ViewModel {
         this.viewIcon = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
-                return "bolt";
+                return { elemtype: "iconbutton", icon: "bolt" };
             }
-            const isCmd = get(this.isCmdController);
-            if (isCmd) {
-            }
-            return "terminal";
+            return { elemtype: "iconbutton", icon: "terminal" };
         });
         this.viewName = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -116,7 +119,7 @@ export class TermViewModel implements ViewModel {
             if (blockData?.meta?.controller == "cmd") {
                 return "";
             }
-            return "Terminal";
+            return "";
         });
         this.viewText = jotai.atom((get) => {
             const termMode = get(this.termMode);
@@ -205,6 +208,17 @@ export class TermViewModel implements ViewModel {
             return rtn;
         });
         this.manageConnection = jotai.atom((get) => {
+            const termMode = get(this.termMode);
+            if (termMode == "vdom") {
+                return false;
+            }
+            const isCmd = get(this.isCmdController);
+            if (isCmd) {
+                return false;
+            }
+            return true;
+        });
+        this.useTermHeader = jotai.atom((get) => {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
                 return false;
@@ -326,6 +340,34 @@ export class TermViewModel implements ViewModel {
             const fullStatus = get(this.shellProcFullStatus);
             return fullStatus?.shellprocstatus ?? "init";
         });
+        this.termDurableStatus = jotai.atom((get) => {
+            const isDurable = get(getBlockTermDurableAtom(this.blockId));
+            if (!isDurable) {
+                return null;
+            }
+            const blockJobStatus = get(this.blockJobStatusAtom);
+            if (blockJobStatus?.jobid == null || blockJobStatus?.status == null) {
+                return null;
+            }
+            return blockJobStatus;
+        });
+        this.blockJobStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<BlockJobStatusData>;
+        this.blockJobStatusVersionTs = 0;
+        const initialBlockJobStatus = RpcApi.BlockJobStatusCommand(TabRpcClient, blockId);
+        initialBlockJobStatus
+            .then((status) => {
+                this.handleBlockJobStatusUpdate(status);
+            })
+            .catch((error) => {
+                console.log("error getting initial block job status", error);
+            });
+        this.blockJobStatusUnsubFn = waveEventSubscribe({
+            eventType: "block:jobstatus",
+            scope: `block:${blockId}`,
+            handler: (event) => {
+                this.handleBlockJobStatusUpdate(event.data);
+            },
+        });
         this.termBPMUnsubFn = globalStore.sub(this.termBPMAtom, () => {
             if (this.termRef.current?.terminal) {
                 const allowBPM = globalStore.get(this.termBPMAtom) ?? true;
@@ -427,6 +469,17 @@ export class TermViewModel implements ViewModel {
         }, 300);
     }
 
+    handleBlockJobStatusUpdate(status: BlockJobStatusData) {
+        if (status?.versionts == null) {
+            return;
+        }
+        if (status.versionts <= this.blockJobStatusVersionTs) {
+            return;
+        }
+        this.blockJobStatusVersionTs = status.versionts;
+        globalStore.set(this.blockJobStatusAtom, status);
+    }
+
     updateShellProcStatus(fullStatus: BlockControllerRuntimeStatus) {
         if (fullStatus == null) {
             return;
@@ -463,12 +516,9 @@ export class TermViewModel implements ViewModel {
 
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
-        if (this.shellProcStatusUnsubFn) {
-            this.shellProcStatusUnsubFn();
-        }
-        if (this.termBPMUnsubFn) {
-            this.termBPMUnsubFn();
-        }
+        this.shellProcStatusUnsubFn?.();
+        this.blockJobStatusUnsubFn?.();
+        this.termBPMUnsubFn?.();
     }
 
     giveFocus(): boolean {
@@ -680,6 +730,24 @@ export class TermViewModel implements ViewModel {
             rtopts: { termsize: termsize },
         });
         prtn.catch((e) => console.log("error controller resync (force restart)", e));
+    }
+
+    async restartSessionInStandardMode() {
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:durable": false },
+        });
+        await RpcApi.ControllerDestroyCommand(TabRpcClient, this.blockId);
+        const termsize = {
+            rows: this.termRef.current?.terminal?.rows,
+            cols: this.termRef.current?.terminal?.cols,
+        };
+        await RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+            rtopts: { termsize: termsize },
+        });
     }
 
     getContextMenuItems(): ContextMenuItem[] {
@@ -1069,6 +1137,20 @@ export class TermViewModel implements ViewModel {
                 },
             ],
         });
+
+        const isDurable = globalStore.get(getBlockTermDurableAtom(this.blockId));
+        if (isDurable) {
+            advancedSubmenu.push({
+                label: "Session Durability",
+                submenu: [
+                    {
+                        label: "Restart Session in Standard Mode",
+                        click: () => this.restartSessionInStandardMode(),
+                    },
+                ],
+            });
+        }
+
         fullMenu.push({
             label: "Advanced",
             submenu: advancedSubmenu,

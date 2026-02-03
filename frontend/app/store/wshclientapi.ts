@@ -52,6 +52,11 @@ class RpcApiType {
         return client.wshRpcCall("blockinfo", data, opts);
     }
 
+    // command "blockjobstatus" [call]
+    BlockJobStatusCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockJobStatusData> {
+        return client.wshRpcCall("blockjobstatus", data, opts);
+    }
+
     // command "blockslist" [call]
     BlocksListCommand(client: WshClient, data: BlocksListRequest, opts?: RpcOpts): Promise<BlocksListEntry[]> {
         return client.wshRpcCall("blockslist", data, opts);
@@ -432,6 +437,11 @@ class RpcApiType {
         return client.wshRpcCall("jobcontrollerexitjob", data, opts);
     }
 
+    // command "jobcontrollergetalljobmanagerstatus" [call]
+    JobControllerGetAllJobManagerStatusCommand(client: WshClient, opts?: RpcOpts): Promise<JobManagerStatusUpdate[]> {
+        return client.wshRpcCall("jobcontrollergetalljobmanagerstatus", null, opts);
+    }
+
     // command "jobcontrollerlist" [call]
     JobControllerListCommand(client: WshClient, opts?: RpcOpts): Promise<Job[]> {
         return client.wshRpcCall("jobcontrollerlist", null, opts);
@@ -637,6 +647,11 @@ class RpcApiType {
         return client.wshRpcCall("sendtelemetry", null, opts);
     }
 
+    // command "setblockfocus" [call]
+    SetBlockFocusCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setblockfocus", data, opts);
+    }
+
     // command "setconfig" [call]
     SetConfigCommand(client: WshClient, data: SettingsType, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setconfig", data, opts);
@@ -715,11 +730,6 @@ class RpcApiType {
     // command "termgetscrollbacklines" [call]
     TermGetScrollbackLinesCommand(client: WshClient, data: CommandTermGetScrollbackLinesData, opts?: RpcOpts): Promise<CommandTermGetScrollbackLinesRtnData> {
         return client.wshRpcCall("termgetscrollbacklines", data, opts);
-    }
-
-    // command "termupdateattachedjob" [call]
-    TermUpdateAttachedJobCommand(client: WshClient, data: CommandTermUpdateAttachedJobData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("termupdateattachedjob", data, opts);
     }
 
     // command "test" [call]

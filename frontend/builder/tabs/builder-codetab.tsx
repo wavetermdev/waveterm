@@ -7,7 +7,8 @@ import { atoms } from "@/store/global";
 import * as keyutil from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo } from "react";
+import type * as MonacoTypes from "monaco-editor";
+import { memo, useEffect } from "react";
 
 const BuilderCodeTab = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
@@ -16,12 +17,21 @@ const BuilderCodeTab = memo(() => {
     const isLoading = useAtomValue(model.isLoadingAtom);
     const error = useAtomValue(model.errorAtom);
     const saveNeeded = useAtomValue(model.saveNeededAtom);
+    const activeTab = useAtomValue(model.activeTab);
+
+    useEffect(() => {
+        if (activeTab === "code" && model.monacoEditorRef.current) {
+            setTimeout(() => {
+                model.monacoEditorRef.current?.layout();
+            }, 0);
+        }
+    }, [activeTab, model.monacoEditorRef]);
 
     const handleCodeChange = (newText: string) => {
         model.setCodeContent(newText);
     };
 
-    const handleEditorMount = (editor: any) => {
+    const handleEditorMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: typeof MonacoTypes) => {
         model.setMonacoEditorRef(editor);
         return () => {
             model.setMonacoEditorRef(null);
@@ -41,6 +51,14 @@ const BuilderCodeTab = memo(() => {
         }
         return false;
     });
+
+    if (!builderAppId) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="text-secondary">No builder app selected</div>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -72,7 +90,7 @@ const BuilderCodeTab = memo(() => {
                 Save
             </button>
             <CodeEditor
-                blockId={null}
+                blockId={builderAppId}
                 text={codeContent}
                 readonly={false}
                 language="go"

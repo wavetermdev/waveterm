@@ -216,7 +216,7 @@ interface WaveBlockProps {
     blockmap: Map<string, MarkdownContentBlockType>;
 }
 
-const WaveBlock: React.FC<WaveBlockProps> = (props) => {
+function WaveBlock(props: WaveBlockProps) {
     const { blockkey, blockmap } = props;
     const block = blockmap.get(blockkey);
     if (block == null) {
@@ -237,7 +237,7 @@ const WaveBlock: React.FC<WaveBlockProps> = (props) => {
             </div>
         </div>
     );
-};
+}
 
 const MarkdownImg = ({
     props,

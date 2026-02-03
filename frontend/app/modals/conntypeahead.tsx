@@ -4,7 +4,14 @@
 import { computeConnColorNum } from "@/app/block/blockutil";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ConnectionsModel } from "@/app/store/connections-model";
-import { atoms, createBlock, getConnStatusAtom, getHostName, getUserName, globalStore, WOS } from "@/app/store/global";
+import {
+    atoms,
+    createBlock,
+    getConnStatusAtom,
+    getLocalHostDisplayNameAtom,
+    globalStore,
+    WOS,
+} from "@/app/store/global";
 import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -304,6 +311,7 @@ const ChangeConnectionBlockModal = React.memo(
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
         const hasGitBash = jotai.useAtomValue(ConnectionsModel.getInstance().hasGitBashAtom);
+        const localName = jotai.useAtomValue(getLocalHostDisplayNameAtom());
 
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
@@ -364,7 +372,6 @@ const ChangeConnectionBlockModal = React.memo(
         );
 
         const reconnectSuggestionItem = getReconnectItem(connStatus, connSelected, blockId);
-        const localName = getUserName() + "@" + getHostName();
         const localSuggestions = getLocalSuggestions(
             localName,
             wslList,

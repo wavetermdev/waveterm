@@ -55,6 +55,7 @@ var ExtraTypes = []any{
 	uctypes.RateLimitInfo{},
 	wconfig.AIModeConfigUpdate{},
 	wshrpc.TabIndicatorEventData{},
+	wshrpc.BlockJobStatusData{},
 }
 
 // add extra type unions to generate here
