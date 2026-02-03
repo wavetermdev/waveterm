@@ -1100,7 +1100,7 @@ func IsBlockTermDurable(block *waveobj.Block) bool {
 	}
 
 	// Check if view is "term", and controller is "shell"
-	if block.Meta.GetString(waveobj.MetaKey_View, "") != "term" && block.Meta.GetString(waveobj.MetaKey_Controller, "") == "shell" {
+	if block.Meta.GetString(waveobj.MetaKey_View, "") != "term" || block.Meta.GetString(waveobj.MetaKey_Controller, "") != "shell" {
 		return false
 	}
 
