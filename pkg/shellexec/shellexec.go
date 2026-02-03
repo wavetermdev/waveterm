@@ -460,7 +460,7 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 	return &ShellProc{Cmd: sessionWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
-func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (string, error) {
+func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn, optBlockId string) (string, error) {
 	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
 	rpcClient := wshclient.GetBareRpcClient()
 	remoteInfo, err := wshclient.RemoteGetInfoCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
@@ -558,6 +558,7 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 		Args:     shellOpts,
 		Env:      env,
 		TermSize: &termSize,
+		BlockId:  optBlockId,
 	}
 	jobId, err := jobcontroller.StartJob(ctx, jobParams)
 	if err != nil {

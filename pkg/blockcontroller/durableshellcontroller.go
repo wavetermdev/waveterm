@@ -7,14 +7,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/fs"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
@@ -165,11 +162,6 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 			return fmt.Errorf("failed to start new job: %w", err)
 		}
 		jobId = newJobId
-
-		err = jobcontroller.AttachJobToBlock(ctx, jobId, dsc.BlockId)
-		if err != nil {
-			log.Printf("error attaching job to block: %v\n", err)
-		}
 	}
 
 	dsc.WithLock(func() {
@@ -273,44 +265,9 @@ func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta wa
 		SwapToken:   swapToken,
 		ForceJwt:    blockMeta.GetBool(waveobj.MetaKey_CmdJwt, false),
 	}
-	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn)
+	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn, dsc.BlockId)
 	if err != nil {
 		return "", fmt.Errorf("failed to start remote shell job: %w", err)
 	}
 	return jobId, nil
-}
-
-func (dsc *DurableShellController) resetTerminalState(logCtx context.Context) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-
-	jobId := ""
-	dsc.WithLock(func() {
-		jobId = dsc.JobId
-	})
-	if jobId == "" {
-		return
-	}
-
-	wfile, statErr := filestore.WFS.Stat(ctx, jobId, jobcontroller.JobOutputFileName)
-	if statErr == fs.ErrNotExist {
-		return
-	}
-	if statErr != nil {
-		log.Printf("error statting job output file: %v\n", statErr)
-		return
-	}
-	if wfile.Size == 0 {
-		return
-	}
-
-	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state for job\n")
-
-	resetSeq := shellutil.GetTerminalResetSeq()
-	resetSeq += "\r\n\r\n"
-
-	err := filestore.WFS.AppendData(ctx, jobId, jobcontroller.JobOutputFileName, []byte(resetSeq))
-	if err != nil {
-		log.Printf("error appending terminal reset to job file: %v\n", err)
-	}
 }

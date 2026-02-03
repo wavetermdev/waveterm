@@ -8,17 +8,20 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/streamclient"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
@@ -30,6 +33,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
+
+const DefaultTimeout = 2 * time.Second
 
 const (
 	JobManagerStatus_Init    = "init"
@@ -423,6 +428,7 @@ type StartJobParams struct {
 	Args     []string
 	Env      map[string]string
 	TermSize *waveobj.TermSize
+	BlockId  string
 }
 
 func StartJob(ctx context.Context, params StartJobParams) (string, error) {
@@ -468,6 +474,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		CmdTermSize:      *params.TermSize,
 		JobAuthToken:     jobAuthToken,
 		JobManagerStatus: JobManagerStatus_Init,
+		AttachedBlockId:  params.BlockId,
 		Meta:             make(waveobj.MetaMapType),
 	}
 
@@ -513,6 +520,8 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		Route:   wshutil.MakeConnectionRouteId(params.ConnName),
 		Timeout: 30000,
 	}
+
+	writeSessionSeparatorToTerminal(params.BlockId, params.TermSize.Cols)
 
 	log.Printf("[job:%s] sending RemoteStartJobCommand to connection %s, cmd=%q, args=%v", jobId, params.ConnName, params.Cmd, params.Args)
 	log.Printf("[job:%s] env=%v", jobId, params.Env)
@@ -659,6 +668,17 @@ func HandleCmdJobExited(ctx context.Context, jobId string, data wshrpc.CommandJo
 	}
 	sendBlockJobStatusEventByJob(ctx, updatedJob)
 	tryTerminateJobManager(ctx, jobId)
+
+	// the output file shouldn't be empty since this is a real termination.
+	// even if it is, we still want to write the exit codes
+	resetTerminalState(ctx, updatedJob.AttachedBlockId)
+	msg := "shell terminated"
+	if updatedJob.CmdExitCode != nil && *updatedJob.CmdExitCode != 0 {
+		msg = fmt.Sprintf("shell terminated (exit code %d)", *updatedJob.CmdExitCode)
+	} else if updatedJob.CmdExitSignal != "" {
+		msg = fmt.Sprintf("shell terminated (signal %s)", updatedJob.CmdExitSignal)
+	}
+	writeMutedMessageToTerminal(updatedJob.AttachedBlockId, "["+msg+"]")
 	return nil
 }
 
@@ -1202,4 +1222,95 @@ func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	}
 
 	return nil
+}
+
+func resetTerminalState(logCtx context.Context, blockId string) {
+	if blockId == "" {
+		return
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	if isFileEmpty(ctx, blockId) {
+		return
+	}
+	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state for block\n")
+	resetSeq := shellutil.GetTerminalResetSeq()
+	resetSeq += "\r\n"
+	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(resetSeq))
+	if err != nil {
+		log.Printf("error appending terminal reset to block file: %v\n", err)
+	}
+}
+
+func isFileEmpty(ctx context.Context, blockId string) bool {
+	if blockId == "" {
+		return true
+	}
+	file, statErr := filestore.WFS.Stat(ctx, blockId, JobOutputFileName)
+	if statErr == fs.ErrNotExist {
+		return true
+	}
+	if statErr != nil {
+		log.Printf("error statting block output file: %v\n", statErr)
+		return true
+	}
+	return file.Size == 0
+}
+
+const SimpleSeparator = true
+
+func writeSessionSeparatorToTerminal(blockId string, termWidth int) {
+	if blockId == "" {
+		return
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	if isFileEmpty(ctx, blockId) {
+		return
+	}
+	var separatorLine string
+	if SimpleSeparator {
+		separatorLine = "\r\n"
+	} else {
+
+		separatorWidth := 20
+		if termWidth < separatorWidth {
+			separatorWidth = termWidth
+		}
+		separatorChars := strings.Repeat("─", separatorWidth)
+		separatorLine = "\x1b[90m" + separatorChars + "\x1b[0m\r\n\r\n"
+	}
+	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(separatorLine))
+	if err != nil {
+		log.Printf("error writing session separator to terminal (blockid=%s): %v", blockId, err)
+	}
+}
+
+// msg should not have a terminating newline
+func writeWaveMessageToTerminal(blockId string, msg string) {
+	if blockId == "" {
+		return
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	waveMsg := "\x1b[0m\x1b[1;32m" + "[wave] " + "\x1b[0m"
+	fullMsg := waveMsg + msg + "\r\n"
+	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(fullMsg))
+	if err != nil {
+		log.Printf("error writing message to terminal (blockid=%s): %v", blockId, err)
+	}
+}
+
+// msg should not have a terminating newline
+func writeMutedMessageToTerminal(blockId string, msg string) {
+	if blockId == "" {
+		return
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	fullMsg := "\x1b[90m" + msg + "\x1b[0m\r\n"
+	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(fullMsg))
+	if err != nil {
+		log.Printf("error writing muted message to terminal (blockid=%s): %v", blockId, err)
+	}
 }

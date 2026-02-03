@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -25,32 +26,35 @@ func getProcessGroupId(pid int) (int, error) {
 	return pgid, nil
 }
 
-func normalizeSignal(sigName string) os.Signal {
+func parseSignal(sigName string) os.Signal {
+	sigName = strings.TrimSpace(sigName)
 	sigName = strings.ToUpper(sigName)
-	sigName = strings.TrimPrefix(sigName, "SIG")
-
-	switch sigName {
-	case "HUP":
-		return syscall.SIGHUP
-	case "INT":
-		return syscall.SIGINT
-	case "QUIT":
-		return syscall.SIGQUIT
-	case "KILL":
-		return syscall.SIGKILL
-	case "TERM":
-		return syscall.SIGTERM
-	case "USR1":
-		return syscall.SIGUSR1
-	case "USR2":
-		return syscall.SIGUSR2
-	case "STOP":
-		return syscall.SIGSTOP
-	case "CONT":
-		return syscall.SIGCONT
-	default:
+	if n, err := strconv.Atoi(sigName); err == nil {
+		return syscall.Signal(n)
+	}
+	if !strings.HasPrefix(sigName, "SIG") {
+		sigName = "SIG" + sigName
+	}
+	sig := unix.SignalNum(sigName)
+	if sig == 0 {
 		return nil
 	}
+	return sig
+}
+
+func getSignalName(sig os.Signal) string {
+	if sig == nil {
+		return ""
+	}
+	scSig, ok := sig.(syscall.Signal)
+	if !ok {
+		return sig.String()
+	}
+	name := unix.SignalName(scSig)
+	if name == "" {
+		return fmt.Sprintf("%d", int(scSig))
+	}
+	return name
 }
 
 func daemonize(clientId string, jobId string) error {

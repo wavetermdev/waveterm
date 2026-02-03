@@ -14,8 +14,15 @@ func getProcessGroupId(pid int) (int, error) {
 	return 0, fmt.Errorf("process group id not supported on windows")
 }
 
-func normalizeSignal(sigName string) os.Signal {
+func parseSignal(sigName string) os.Signal {
 	return nil
+}
+
+func getSignalName(sig os.Signal) string {
+	if sig == nil {
+		return ""
+	}
+	return sig.String()
 }
 
 func daemonize(clientId string, jobId string) error {
