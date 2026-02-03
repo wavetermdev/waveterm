@@ -735,6 +735,24 @@ export class TermViewModel implements ViewModel {
         prtn.catch((e) => console.log("error controller resync (force restart)", e));
     }
 
+    async restartSessionInStandardMode() {
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:durable": false },
+        });
+        await RpcApi.ControllerDestroyCommand(TabRpcClient, this.blockId);
+        const termsize = {
+            rows: this.termRef.current?.terminal?.rows,
+            cols: this.termRef.current?.terminal?.cols,
+        };
+        await RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+            rtopts: { termsize: termsize },
+        });
+    }
+
     getContextMenuItems(): ContextMenuItem[] {
         const menu: ContextMenuItem[] = [];
         const hasSelection = this.termRef.current?.terminal?.hasSelection();
@@ -1122,6 +1140,20 @@ export class TermViewModel implements ViewModel {
                 },
             ],
         });
+        
+        const isDurable = globalStore.get(getBlockTermDurableAtom(this.blockId));
+        if (isDurable) {
+            advancedSubmenu.push({
+                label: "Session Durability",
+                submenu: [
+                    {
+                        label: "Restart Session in Standard Mode",
+                        click: () => this.restartSessionInStandardMode(),
+                    },
+                ],
+            });
+        }
+        
         fullMenu.push({
             label: "Advanced",
             submenu: advancedSubmenu,
