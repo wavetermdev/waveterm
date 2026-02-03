@@ -866,9 +866,12 @@ type TabIndicatorEventData struct {
 }
 
 type BlockJobStatusData struct {
-	BlockId    string `json:"blockid"`
-	JobId      string `json:"jobid"`
-	Status     string `json:"status" tstype:"null | \"init\" | \"connected\" | \"disconnected\" | \"done\""`
-	VersionTs  int64  `json:"versionts"`
-	DoneReason string `json:"donereason,omitempty"`
+	BlockId       string `json:"blockid"`
+	JobId         string `json:"jobid"`
+	Status        string `json:"status" tstype:"null | \"init\" | \"connected\" | \"disconnected\" | \"done\""`
+	VersionTs     int64  `json:"versionts"`
+	DoneReason    string `json:"donereason,omitempty"`
+	CmdExitTs     int64  `json:"cmdexitts,omitempty"`
+	CmdExitCode   *int   `json:"cmdexitcode,omitempty"`
+	CmdExitSignal string `json:"cmdexitsignal,omitempty"`
 }

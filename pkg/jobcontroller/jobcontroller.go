@@ -142,6 +142,9 @@ func GetBlockJobStatus(ctx context.Context, blockId string) (*wshrpc.BlockJobSta
 
 	data.JobId = job.OID
 	data.DoneReason = job.JobManagerDoneReason
+	data.CmdExitTs = job.CmdExitTs
+	data.CmdExitCode = job.CmdExitCode
+	data.CmdExitSignal = job.CmdExitSignal
 
 	if job.JobManagerStatus == JobManagerStatus_Init {
 		data.Status = "init"
@@ -643,15 +646,18 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 }
 
 func HandleCmdJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobCmdExitedData) error {
+	var updatedJob *waveobj.Job
 	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 		job.CmdExitError = data.ExitErr
 		job.CmdExitCode = data.ExitCode
 		job.CmdExitSignal = data.ExitSignal
 		job.CmdExitTs = data.ExitTs
+		updatedJob = job
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update job exit status: %w", err)
 	}
+	sendBlockJobStatusEventByJob(ctx, updatedJob)
 	tryTerminateJobManager(ctx, jobId)
 	return nil
 }

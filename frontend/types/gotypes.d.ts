@@ -147,6 +147,9 @@ declare global {
         status: null | "init" | "connected" | "disconnected" | "done";
         versionts: number;
         donereason?: string;
+        cmdexitts?: number;
+        cmdexitcode?: number;
+        cmdexitsignal?: string;
     };
 
     // wshrpc.BlocksListEntry

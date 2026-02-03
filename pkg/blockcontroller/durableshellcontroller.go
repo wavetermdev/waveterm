@@ -306,12 +306,7 @@ func (dsc *DurableShellController) resetTerminalState(logCtx context.Context) {
 
 	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state for job\n")
 
-	resetSeq := "\x1b[0m"                       // reset attributes
-	resetSeq += "\x1b[?25h"                     // show cursor
-	resetSeq += "\x1b[?1000l"                   // disable mouse tracking
-	resetSeq += "\x1b[?1007l"                   // disable alternate scroll mode
-	resetSeq += "\x1b[?2004l"                   // disable bracketed paste mode
-	resetSeq += shellutil.FormatOSC(16162, "R") // disable alternate screen mode
+	resetSeq := shellutil.GetTerminalResetSeq()
 	resetSeq += "\r\n\r\n"
 
 	err := filestore.WFS.AppendData(ctx, jobId, jobcontroller.JobOutputFileName, []byte(resetSeq))
