@@ -221,13 +221,11 @@ const BlockFrame_Header = ({
     const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
 
     React.useEffect(() => {
-        // this is an effect and "reactive" since mangification can happen via keyboard or button click
-        // this catches both methods
-        if (!magnified || preview || prevMagifiedState.current) {
-            return;
+        if (magnified && !preview && !prevMagifiedState.current) {
+            RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
+            recordTEvent("action:magnify", { "block:view": viewName });
         }
-        RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
-        recordTEvent("action:magnify", { "block:view": viewName });
+        prevMagifiedState.current = magnified;
     }, [magnified]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
