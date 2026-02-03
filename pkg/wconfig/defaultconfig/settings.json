@@ -27,7 +27,7 @@
     "term:bellsound": false,
     "term:bellindicator": true,
     "term:copyonselect": true,
-    "term:durable": true,
+    "term:durable": false,
     "waveai:showcloudmodes": true,
     "waveai:defaultmode": "waveai@balanced"
 }
