@@ -32,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"golang.org/x/sync/singleflight"
 )
 
 const DefaultTimeout = 2 * time.Second
@@ -85,6 +86,8 @@ var (
 		m:           make(map[string]*connState),
 		reconcileCh: make(chan struct{}, 1),
 	}
+
+	reconnectGroup singleflight.Group
 )
 
 func isJobManagerRunning(job *waveobj.Job) bool {
@@ -482,8 +485,13 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create job in database: %w", err)
 	}
-	sendBlockJobStatusEventByJob(ctx, job)
-
+	if params.BlockId != "" {
+		// AttachJobToBlock will send status
+		err = AttachJobToBlock(ctx, jobId, params.BlockId)
+		if err != nil {
+			return "", fmt.Errorf("failed to attach job to block: %w", err)
+		}
+	}
 	bareRpc := wshclient.GetBareRpcClient()
 	broker := bareRpc.StreamBroker
 	readerRouteId := wshclient.GetBareRpcClientRouteId()
@@ -792,10 +800,25 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 }
 
 func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
+	_, err, _ := reconnectGroup.Do(jobId, func() (any, error) {
+		return nil, doReconnectJob(ctx, jobId, rtOpts)
+	})
+	return err
+}
+
+func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
+
+	_, err = CheckJobConnected(ctx, jobId)
+	if err == nil {
+		log.Printf("[job:%s] already connected, skipping reconnect", jobId)
+		return nil
+	}
+	log.Printf("[job:%s] not connected, proceeding with reconnect: %v", jobId, err)
+
 	isConnected, err := conncontroller.IsConnected(job.Connection)
 	if err != nil {
 		return fmt.Errorf("error checking connection status: %w", err)
@@ -1117,15 +1140,29 @@ func DeleteJob(ctx context.Context, jobId string) error {
 
 func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		var oldJobId string
+
 		err := wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
+			oldJobId = block.JobId
 			block.JobId = jobId
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update block: %w", err)
 		}
 
+		if oldJobId != "" && oldJobId != jobId {
+			err = wstore.DBUpdateFn(tx.Context(), oldJobId, func(oldJob *waveobj.Job) {
+				if oldJob.AttachedBlockId == blockId {
+					oldJob.AttachedBlockId = ""
+				}
+			})
+			if err != nil {
+				log.Printf("[job:%s] warning: could not detach old job: %v", oldJobId, err)
+			}
+		}
+
 		err = wstore.DBUpdateFnErr(tx.Context(), jobId, func(job *waveobj.Job) error {
-			if job.AttachedBlockId != "" {
+			if job.AttachedBlockId != "" && job.AttachedBlockId != blockId {
 				return fmt.Errorf("job %s already attached to block %s", jobId, job.AttachedBlockId)
 			}
 			job.AttachedBlockId = blockId

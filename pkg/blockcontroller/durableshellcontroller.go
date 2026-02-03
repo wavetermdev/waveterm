@@ -142,16 +142,14 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 		if err != nil {
 			return fmt.Errorf("error getting job manager status: %w", err)
 		}
-		if status != jobcontroller.JobManagerStatus_Running {
-			if force {
-				log.Printf("block %q has jobId %s but manager is not running (status: %s), detaching (force=true)\n", dsc.BlockId, blockData.JobId, status)
-				jobcontroller.DetachJobFromBlock(ctx, blockData.JobId, false)
-			} else {
-				log.Printf("block %q has jobId %s but manager is not running (status: %s), not starting (force=false)\n", dsc.BlockId, blockData.JobId, status)
-				return nil
-			}
-		} else {
+		if status == jobcontroller.JobManagerStatus_Running {
 			jobId = blockData.JobId
+		} else if !force {
+			log.Printf("block %q has jobId %s but manager is not running (status: %s), not starting (force=false)\n", dsc.BlockId, blockData.JobId, status)
+			return nil
+		} else {
+			log.Printf("block %q has jobId %s but manager is not running (status: %s), starting new job (force=true)\n", dsc.BlockId, blockData.JobId, status)
+			// intentionally leave jobId empty to trigger starting a new job below
 		}
 	}
 
@@ -169,13 +167,9 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 		dsc.sendUpdate_withlock()
 	})
 
-	_, err = jobcontroller.CheckJobConnected(ctx, jobId)
+	err = jobcontroller.ReconnectJob(ctx, jobId, rtOpts)
 	if err != nil {
-		log.Printf("job %s is not connected, attempting reconnect: %v\n", jobId, err)
-		err = jobcontroller.ReconnectJob(ctx, jobId, rtOpts)
-		if err != nil {
-			return fmt.Errorf("failed to reconnect to job: %w", err)
-		}
+		return fmt.Errorf("failed to reconnect to job: %w", err)
 	}
 
 	return nil
