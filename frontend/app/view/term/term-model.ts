@@ -108,9 +108,6 @@ export class TermViewModel implements ViewModel {
             if (termMode == "vdom") {
                 return { elemtype: "iconbutton", icon: "bolt" };
             }
-            const isCmd = get(this.isCmdController);
-            if (isCmd) {
-            }
             return { elemtype: "iconbutton", icon: "terminal" };
         });
         this.viewName = jotai.atom((get) => {
@@ -1140,7 +1137,7 @@ export class TermViewModel implements ViewModel {
                 },
             ],
         });
-        
+
         const isDurable = globalStore.get(getBlockTermDurableAtom(this.blockId));
         if (isDurable) {
             advancedSubmenu.push({
@@ -1153,7 +1150,7 @@ export class TermViewModel implements ViewModel {
                 ],
             });
         }
-        
+
         fullMenu.push({
             label: "Advanced",
             submenu: advancedSubmenu,
