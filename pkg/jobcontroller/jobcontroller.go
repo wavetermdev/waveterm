@@ -1304,8 +1304,6 @@ func isFileEmpty(ctx context.Context, blockId string) bool {
 	return file.Size == 0
 }
 
-const SimpleSeparator = true
-
 func writeSessionSeparatorToTerminal(blockId string, termWidth int) {
 	if blockId == "" {
 		return
@@ -1315,36 +1313,10 @@ func writeSessionSeparatorToTerminal(blockId string, termWidth int) {
 	if isFileEmpty(ctx, blockId) {
 		return
 	}
-	var separatorLine string
-	if SimpleSeparator {
-		separatorLine = "\r\n"
-	} else {
-
-		separatorWidth := 20
-		if termWidth < separatorWidth {
-			separatorWidth = termWidth
-		}
-		separatorChars := strings.Repeat("─", separatorWidth)
-		separatorLine = "\x1b[90m" + separatorChars + "\x1b[0m\r\n\r\n"
-	}
+	separatorLine := "\r\n"
 	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(separatorLine))
 	if err != nil {
 		log.Printf("error writing session separator to terminal (blockid=%s): %v", blockId, err)
-	}
-}
-
-// msg should not have a terminating newline
-func writeWaveMessageToTerminal(blockId string, msg string) {
-	if blockId == "" {
-		return
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	waveMsg := "\x1b[0m\x1b[1;32m" + "[wave] " + "\x1b[0m"
-	fullMsg := waveMsg + msg + "\r\n"
-	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(fullMsg))
-	if err != nil {
-		log.Printf("error writing message to terminal (blockid=%s): %v", blockId, err)
 	}
 }
 
