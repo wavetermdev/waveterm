@@ -357,9 +357,13 @@ export class TermViewModel implements ViewModel {
         this.blockJobStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<BlockJobStatusData>;
         this.blockJobStatusVersionTs = 0;
         const initialBlockJobStatus = RpcApi.BlockJobStatusCommand(TabRpcClient, blockId);
-        initialBlockJobStatus.then((status) => {
-            this.handleBlockJobStatusUpdate(status);
-        });
+        initialBlockJobStatus
+            .then((status) => {
+                this.handleBlockJobStatusUpdate(status);
+            })
+            .catch((error) => {
+                console.log("error getting initial block job status", error);
+            });
         this.blockJobStatusUnsubFn = waveEventSubscribe({
             eventType: "block:jobstatus",
             scope: `block:${blockId}`,
