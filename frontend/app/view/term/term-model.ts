@@ -72,10 +72,13 @@ export class TermViewModel implements ViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
+    blockJobStatusAtom: jotai.PrimitiveAtom<BlockJobStatusData>;
+    blockJobStatusVersionTs: number;
+    blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
-    termDurableStatus: jotai.Atom<"connected" | "connecting" | "running" | "gone">;
+    termDurableStatus: jotai.Atom<BlockJobStatusData | null>;
     searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
@@ -342,10 +345,27 @@ export class TermViewModel implements ViewModel {
         });
         this.termDurableStatus = jotai.atom((get) => {
             const isDurable = get(getBlockTermDurableAtom(this.blockId));
-            if (isDurable) {
-                return "running";
+            if (!isDurable) {
+                return null;
             }
-            return null;
+            const blockJobStatus = get(this.blockJobStatusAtom);
+            if (blockJobStatus?.jobid == null || blockJobStatus?.status == null) {
+                return null;
+            }
+            return blockJobStatus;
+        });
+        this.blockJobStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<BlockJobStatusData>;
+        this.blockJobStatusVersionTs = 0;
+        const initialBlockJobStatus = RpcApi.BlockJobStatusCommand(TabRpcClient, blockId);
+        initialBlockJobStatus.then((status) => {
+            this.handleBlockJobStatusUpdate(status);
+        });
+        this.blockJobStatusUnsubFn = waveEventSubscribe({
+            eventType: "block:jobstatus",
+            scope: `block:${blockId}`,
+            handler: (event) => {
+                this.handleBlockJobStatusUpdate(event.data);
+            },
         });
         this.termBPMUnsubFn = globalStore.sub(this.termBPMAtom, () => {
             if (this.termRef.current?.terminal) {
@@ -448,6 +468,17 @@ export class TermViewModel implements ViewModel {
         }, 300);
     }
 
+    handleBlockJobStatusUpdate(status: BlockJobStatusData) {
+        if (status?.versionts == null) {
+            return;
+        }
+        if (status.versionts <= this.blockJobStatusVersionTs) {
+            return;
+        }
+        this.blockJobStatusVersionTs = status.versionts;
+        globalStore.set(this.blockJobStatusAtom, status);
+    }
+
     updateShellProcStatus(fullStatus: BlockControllerRuntimeStatus) {
         if (fullStatus == null) {
             return;
@@ -484,12 +515,9 @@ export class TermViewModel implements ViewModel {
 
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
-        if (this.shellProcStatusUnsubFn) {
-            this.shellProcStatusUnsubFn();
-        }
-        if (this.termBPMUnsubFn) {
-            this.termBPMUnsubFn();
-        }
+        this.shellProcStatusUnsubFn?.();
+        this.blockJobStatusUnsubFn?.();
+        this.termBPMUnsubFn?.();
     }
 
     giveFocus(): boolean {

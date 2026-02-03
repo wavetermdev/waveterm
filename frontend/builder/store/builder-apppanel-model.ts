@@ -8,6 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, getApi, WOS } from "@/store/global";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
+import type * as MonacoTypes from "monaco-editor";
 import { debounce } from "throttle-debounce";
 
 export type TabType = "preview" | "files" | "code" | "secrets" | "configdata";
@@ -33,7 +34,7 @@ export class BuilderAppPanelModel {
     hasSecretsAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
     saveNeededAtom!: Atom<boolean>;
     focusElemRef: { current: HTMLInputElement | null } = { current: null };
-    monacoEditorRef: { current: any | null } = { current: null };
+    monacoEditorRef: { current: MonacoTypes.editor.IStandaloneCodeEditor | null } = { current: null };
     statusUnsubFn: (() => void) | null = null;
     appGoUpdateUnsubFn: (() => void) | null = null;
     debouncedRestart: (() => void) & { cancel: () => void };

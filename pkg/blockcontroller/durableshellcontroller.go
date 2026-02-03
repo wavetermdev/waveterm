@@ -145,7 +145,7 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 		if err != nil {
 			return fmt.Errorf("error getting job manager status: %w", err)
 		}
-		if status != jobcontroller.JobStatus_Running {
+		if status != jobcontroller.JobManagerStatus_Running {
 			if force {
 				log.Printf("block %q has jobId %s but manager is not running (status: %s), detaching (force=true)\n", dsc.BlockId, blockData.JobId, status)
 				jobcontroller.DetachJobFromBlock(ctx, blockData.JobId, false)

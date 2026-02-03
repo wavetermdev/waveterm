@@ -104,11 +104,6 @@ export class TermWshClient extends WshClient {
         }
     }
 
-    async handle_termupdateattachedjob(rh: RpcResponseHelper, data: CommandTermUpdateAttachedJobData): Promise<void> {
-        console.log("term-update-attached-job", this.blockId, data);
-        // TODO: implement frontend logic to handle job attachment updates
-    }
-
     async handle_termgetscrollbacklines(
         rh: RpcResponseHelper,
         data: CommandTermGetScrollbackLinesData

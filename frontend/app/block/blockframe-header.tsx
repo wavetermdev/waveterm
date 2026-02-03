@@ -10,7 +10,7 @@ import {
 } from "@/app/block/blockutil";
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { recordTEvent, WOS } from "@/app/store/global";
+import { getConnStatusAtom, recordTEvent, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -22,6 +22,43 @@ import { cn } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
+
+function getDurableIconProps(jobStatus: BlockJobStatusData, connStatus: ConnStatus) {
+    let color = "text-muted";
+    let titleText = "Durable Session";
+    const status = jobStatus?.status;
+    if (status === "connected") {
+        color = "text-sky-500";
+        titleText = "Durable Session (Attached)";
+    } else if (status === "disconnected") {
+        color = "text-sky-300";
+        titleText = "Durable Session (Detached)";
+    } else if (status === "init") {
+        color = "text-sky-300";
+        titleText = "Durable Session (Starting)";
+    } else if (status === "done") {
+        color = "text-muted";
+        const doneReason = jobStatus?.donereason;
+        if (doneReason === "terminated") {
+            titleText = "Durable Session (Ended, Exited)";
+        } else if (doneReason === "gone") {
+            titleText = "Durable Session (Ended, Environment Lost)";
+        } else if (doneReason === "startuperror") {
+            titleText = "Durable Session (Ended, Failed to Start)";
+        } else {
+            titleText = "Durable Session (Ended)";
+        }
+    } else if (status == null) {
+        if (!connStatus?.connected) {
+            color = "text-muted";
+            titleText = "Durable Session (Awaiting Connection)";
+        } else {
+            color = "text-muted";
+            titleText = "No Session";
+        }
+    }
+    return { color, titleText };
+}
 
 function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
@@ -180,6 +217,8 @@ const BlockFrame_Header = ({
     const isTerminalBlock = blockData?.meta?.view === "term";
     viewName = blockData?.meta?.["frame:title"] ?? viewName;
     viewIconUnion = blockData?.meta?.["frame:icon"] ?? viewIconUnion;
+    const connName = blockData?.meta?.connection;
+    const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
 
     React.useEffect(() => {
         // this is an effect and "reactive" since mangification can happen via keyboard or button click
@@ -192,6 +231,8 @@ const BlockFrame_Header = ({
     }, [magnified]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
+
+    const { color: durableIconColor, titleText: durableTitle } = getDurableIconProps(termDurableStatus, connStatus);
 
     return (
         <div
@@ -220,7 +261,7 @@ const BlockFrame_Header = ({
             )}
             {useTermHeader && termDurableStatus != null && (
                 <div className="iconbutton disabled text-[13px] ml-[-4px]" key="durable-status">
-                    <i className="fa-sharp fa-solid fa-shield text-muted" title="Durable Session" />
+                    <i className={`fa-sharp fa-solid fa-shield ${durableIconColor}`} title={durableTitle} />
                 </div>
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />

@@ -160,7 +160,6 @@ type WshRpcInterface interface {
 
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
-	TermUpdateAttachedJobCommand(ctx context.Context, data CommandTermUpdateAttachedJobData) error
 
 	// file
 	WshRpcFileInterface
@@ -196,6 +195,8 @@ type WshRpcInterface interface {
 	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
 	JobControllerAttachJobCommand(ctx context.Context, data CommandJobControllerAttachJobData) error
 	JobControllerDetachJobCommand(ctx context.Context, jobId string) error
+	JobControllerGetAllJobManagerStatusCommand(ctx context.Context) ([]*JobManagerStatusUpdate, error)
+	BlockJobStatusCommand(ctx context.Context, blockId string) (*BlockJobStatusData, error)
 }
 
 // for frontend
@@ -829,6 +830,11 @@ type CommandJobControllerAttachJobData struct {
 	BlockId string `json:"blockid"`
 }
 
+type JobManagerStatusUpdate struct {
+	JobId            string `json:"jobid"`
+	JobManagerStatus string `json:"jobmanagerstatus"`
+}
+
 type CommandWaveFileReadStreamData struct {
 	ZoneId     string     `json:"zoneid"`
 	Name       string     `json:"name"`
@@ -857,4 +863,12 @@ type TabIndicator struct {
 type TabIndicatorEventData struct {
 	TabId     string        `json:"tabid"`
 	Indicator *TabIndicator `json:"indicator"`
+}
+
+type BlockJobStatusData struct {
+	BlockId    string `json:"blockid"`
+	JobId      string `json:"jobid"`
+	Status     string `json:"status" tstype:"null | \"init\" | \"connected\" | \"disconnected\" | \"done\""`
+	VersionTs  int64  `json:"versionts"`
+	DoneReason string `json:"donereason,omitempty"`
 }

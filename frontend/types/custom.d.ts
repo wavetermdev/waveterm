@@ -311,7 +311,7 @@ declare global {
         // Optional header text or elements for the view.
         viewText?: jotai.Atom<string | HeaderElem[]>;
 
-        termDurableStatus?: jotai.Atom<"connected" | "connecting" | "running" | "gone">;
+        termDurableStatus?: jotai.Atom<BlockJobStatusData | null>;
 
         // Icon button displayed before the title in the header.
         preIconButton?: jotai.Atom<IconButtonDecl>;

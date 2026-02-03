@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/streamclient"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -31,9 +32,9 @@ import (
 )
 
 const (
-	JobStatus_Init    = "init"
-	JobStatus_Running = "running"
-	JobStatus_Done    = "done"
+	JobManagerStatus_Init    = "init"
+	JobManagerStatus_Running = "running"
+	JobManagerStatus_Done    = "done"
 )
 
 const (
@@ -71,8 +72,9 @@ type jobState struct {
 }
 
 var (
-	jobConnStates     = make(map[string]string)
-	jobControllerLock sync.Mutex
+	jobConnStates         = make(map[string]string)
+	jobControllerLock     sync.Mutex
+	blockJobStatusVersion utilds.VersionTs
 
 	connStates = &connStateManager{
 		m:           make(map[string]*connState),
@@ -81,7 +83,7 @@ var (
 )
 
 func isJobManagerRunning(job *waveobj.Job) bool {
-	return job.JobManagerStatus == JobStatus_Running
+	return job.JobManagerStatus == JobManagerStatus_Running
 }
 
 func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
@@ -90,9 +92,91 @@ func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
 		return "", fmt.Errorf("failed to get job: %w", err)
 	}
 	if job == nil {
-		return JobStatus_Done, nil
+		return JobManagerStatus_Done, nil
 	}
 	return job.JobManagerStatus, nil
+}
+
+func GetAllJobManagerStatus(ctx context.Context) ([]*wshrpc.JobManagerStatusUpdate, error) {
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs: %w", err)
+	}
+
+	var statuses []*wshrpc.JobManagerStatusUpdate
+	for _, job := range allJobs {
+		statuses = append(statuses, &wshrpc.JobManagerStatusUpdate{
+			JobId:            job.OID,
+			JobManagerStatus: job.JobManagerStatus,
+		})
+	}
+
+	return statuses, nil
+}
+
+func GetBlockJobStatus(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
+	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block: %w", err)
+	}
+	if block == nil {
+		return nil, fmt.Errorf("block not found: %s", blockId)
+	}
+
+	data := &wshrpc.BlockJobStatusData{
+		BlockId:   blockId,
+		VersionTs: blockJobStatusVersion.GetVersionTs(),
+	}
+
+	if block.JobId == "" {
+		return data, nil
+	}
+
+	job, err := wstore.DBGet[*waveobj.Job](ctx, block.JobId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+	if job == nil {
+		return data, nil
+	}
+
+	data.JobId = job.OID
+	data.DoneReason = job.JobManagerDoneReason
+
+	if job.JobManagerStatus == JobManagerStatus_Init {
+		data.Status = "init"
+	} else if job.JobManagerStatus == JobManagerStatus_Done {
+		data.Status = "done"
+	} else if job.JobManagerStatus == JobManagerStatus_Running {
+		connStatus := GetJobConnStatus(job.OID)
+		if connStatus == JobConnStatus_Connected {
+			data.Status = "connected"
+		} else {
+			data.Status = "disconnected"
+		}
+	}
+
+	return data, nil
+}
+
+func SendBlockJobStatusEvent(ctx context.Context, blockId string) {
+	data, err := GetBlockJobStatus(ctx, blockId)
+	if err != nil {
+		log.Printf("[block:%s] error getting block job status: %v", blockId, err)
+		return
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockJobStatus,
+		Scopes: []string{fmt.Sprintf("block:%s", blockId)},
+		Data:   data,
+	})
+}
+
+func sendBlockJobStatusEventByJob(ctx context.Context, job *waveobj.Job) {
+	if job == nil || job.AttachedBlockId == "" {
+		return
+	}
+	SendBlockJobStatusEvent(ctx, job.AttachedBlockId)
 }
 
 func connReconcileWorker() {
@@ -188,11 +272,19 @@ func handleRouteDownEvent(event *wps.WaveEvent) {
 }
 
 func handleRouteEvent(event *wps.WaveEvent, newStatus string) {
+	ctx := context.Background()
 	for _, scope := range event.Scopes {
 		if strings.HasPrefix(scope, "job:") {
 			jobId := strings.TrimPrefix(scope, "job:")
 			SetJobConnStatus(jobId, newStatus)
 			log.Printf("[job:%s] connection status changed to %s", jobId, newStatus)
+
+			job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
+			if err != nil {
+				log.Printf("[job:%s] error getting job for status event: %v", jobId, err)
+				continue
+			}
+			sendBlockJobStatusEventByJob(ctx, job)
 		}
 	}
 }
@@ -232,36 +324,36 @@ func handleConnChangeEvent(event *wps.WaveEvent) {
 }
 
 func onConnectionUp(connName string) {
-	log.Printf("[conn:%s] connection became connected, terminating jobs with TerminateOnReconnect", connName)
+	log.Printf("[conn:%s] connection became connected, reconnecting jobs", connName)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 
 	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
 	if err != nil {
-		log.Printf("[conn:%s] failed to get jobs for termination: %v", connName, err)
+		log.Printf("[conn:%s] failed to get jobs for reconnection: %v", connName, err)
 		return
 	}
 
-	var jobsToTerminate []*waveobj.Job
+	var jobsToReconnect []*waveobj.Job
 	for _, job := range allJobs {
-		if job.Connection == connName && job.TerminateOnReconnect {
-			jobsToTerminate = append(jobsToTerminate, job)
+		if job.Connection == connName && isJobManagerRunning(job) {
+			jobsToReconnect = append(jobsToReconnect, job)
 		}
 	}
 
-	log.Printf("[conn:%s] found %d jobs to terminate", connName, len(jobsToTerminate))
+	log.Printf("[conn:%s] found %d jobs to reconnect", connName, len(jobsToReconnect))
 
 	successCount := 0
-	for _, job := range jobsToTerminate {
-		err = remoteTerminateJobManager(ctx, job)
+	for _, job := range jobsToReconnect {
+		err = ReconnectJob(ctx, job.OID, nil)
 		if err != nil {
-			log.Printf("[job:%s] error terminating: %v", job.OID, err)
+			log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
 		} else {
 			successCount++
 		}
 	}
 
-	log.Printf("[conn:%s] finished terminating jobs: %d/%d successful", connName, successCount, len(jobsToTerminate))
+	log.Printf("[conn:%s] finished reconnecting jobs: %d/%d successful", connName, successCount, len(jobsToReconnect))
 }
 
 func onConnectionDown(connName string) {
@@ -372,7 +464,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		CmdEnv:           params.Env,
 		CmdTermSize:      *params.TermSize,
 		JobAuthToken:     jobAuthToken,
-		JobManagerStatus: JobStatus_Init,
+		JobManagerStatus: JobManagerStatus_Init,
 		Meta:             make(waveobj.MetaMapType),
 	}
 
@@ -380,6 +472,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create job in database: %w", err)
 	}
+	sendBlockJobStatusEventByJob(ctx, job)
 
 	bareRpc := wshclient.GetBareRpcClient()
 	broker := bareRpc.StreamBroker
@@ -424,26 +517,32 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	if err != nil {
 		log.Printf("[job:%s] RemoteStartJobCommand failed: %v", jobId, err)
 		errMsg := fmt.Sprintf("failed to start job: %v", err)
+		var updatedJob *waveobj.Job
 		wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.JobManagerStatus = JobStatus_Done
+			job.JobManagerStatus = JobManagerStatus_Done
 			job.JobManagerDoneReason = JobDoneReason_StartupError
 			job.JobManagerStartupError = errMsg
+			updatedJob = job
 		})
+		sendBlockJobStatusEventByJob(ctx, updatedJob)
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
 
 	log.Printf("[job:%s] RemoteStartJobCommand succeeded, cmdpid=%d cmdstartts=%d jobmanagerpid=%d jobmanagerstartts=%d", jobId, rtnData.CmdPid, rtnData.CmdStartTs, rtnData.JobManagerPid, rtnData.JobManagerStartTs)
+	var updatedJob *waveobj.Job
 	err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 		job.CmdPid = rtnData.CmdPid
 		job.CmdStartTs = rtnData.CmdStartTs
 		job.JobManagerPid = rtnData.JobManagerPid
 		job.JobManagerStartTs = rtnData.JobManagerStartTs
-		job.JobManagerStatus = JobStatus_Running
+		job.JobManagerStatus = JobManagerStatus_Running
+		updatedJob = job
 	})
 	if err != nil {
 		log.Printf("[job:%s] warning: failed to update job status to running: %v", jobId, err)
 	} else {
 		log.Printf("[job:%s] job status updated to running", jobId)
+		sendBlockJobStatusEventByJob(ctx, updatedJob)
 	}
 
 	go func() {
@@ -564,7 +663,7 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 		return
 	}
 
-	if job.JobManagerStatus != JobStatus_Running {
+	if job.JobManagerStatus != JobManagerStatus_Running {
 		return
 	}
 
@@ -645,17 +744,21 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 		return fmt.Errorf("failed to terminate job manager: %w", err)
 	}
 
+	var updatedJob *waveobj.Job
 	updateErr := wstore.DBUpdateFn(ctx, job.OID, func(job *waveobj.Job) {
-		job.JobManagerStatus = JobStatus_Done
+		job.JobManagerStatus = JobManagerStatus_Done
 		job.JobManagerDoneReason = JobDoneReason_Terminated
 		job.TerminateOnReconnect = false
 		if !job.StreamDone {
 			job.StreamDone = true
 			job.StreamError = "job manager terminated"
 		}
+		updatedJob = job
 	})
 	if updateErr != nil {
 		log.Printf("[job:%s] error updating job status after termination: %v", job.OID, updateErr)
+	} else {
+		sendBlockJobStatusEventByJob(ctx, updatedJob)
 	}
 
 	log.Printf("[job:%s] job manager terminated successfully", job.OID)
@@ -677,6 +780,12 @@ func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts
 
 	if job.TerminateOnReconnect {
 		return remoteTerminateJobManager(ctx, job)
+	}
+
+	if rtOpts == nil {
+		rtOpts = &waveobj.RuntimeOpts{
+			TermSize: job.CmdTermSize,
+		}
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
@@ -713,12 +822,16 @@ func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts
 	if !rtnData.Success {
 		log.Printf("[job:%s] RemoteReconnectToJobManagerCommand returned error: %s", jobId, rtnData.Error)
 		if rtnData.JobManagerGone {
+			var updatedJob *waveobj.Job
 			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-				job.JobManagerStatus = JobStatus_Done
+				job.JobManagerStatus = JobManagerStatus_Done
 				job.JobManagerDoneReason = JobDoneReason_Gone
+				updatedJob = job
 			})
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job manager running status: %v", jobId, updateErr)
+			} else {
+				sendBlockJobStatusEventByJob(ctx, updatedJob)
 			}
 			return fmt.Errorf("job manager has exited: %s", rtnData.Error)
 		}
@@ -844,14 +957,18 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 			exitCodeStr = fmt.Sprintf("%d", *rtnData.ExitCode)
 		}
 		log.Printf("[job:%s] job has already exited: code=%s signal=%q err=%q", jobId, exitCodeStr, rtnData.ExitSignal, rtnData.ExitErr)
+		var updatedJob *waveobj.Job
 		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.JobManagerStatus = JobStatus_Done
+			job.JobManagerStatus = JobManagerStatus_Done
 			job.CmdExitCode = rtnData.ExitCode
 			job.CmdExitSignal = rtnData.ExitSignal
 			job.CmdExitError = rtnData.ExitErr
+			updatedJob = job
 		})
 		if updateErr != nil {
 			log.Printf("[job:%s] error updating job exit status: %v", jobId, updateErr)
+		} else {
+			sendBlockJobStatusEventByJob(ctx, updatedJob)
 		}
 	}
 
@@ -999,16 +1116,7 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 		return err
 	}
 
-	rpcOpts := &wshrpc.RpcOpts{
-		Route:      wshutil.MakeFeBlockRouteId(blockId),
-		NoResponse: true,
-	}
-	bareRpc := wshclient.GetBareRpcClient()
-	wshclient.TermUpdateAttachedJobCommand(bareRpc, wshrpc.CommandTermUpdateAttachedJobData{
-		BlockId: blockId,
-		JobId:   jobId,
-	}, rpcOpts)
-
+	SendBlockJobStatusEvent(ctx, blockId)
 	return nil
 }
 
@@ -1052,15 +1160,7 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 	}
 
 	if blockId != "" {
-		rpcOpts := &wshrpc.RpcOpts{
-			Route:      wshutil.MakeFeBlockRouteId(blockId),
-			NoResponse: true,
-		}
-		bareRpc := wshclient.GetBareRpcClient()
-		wshclient.TermUpdateAttachedJobCommand(bareRpc, wshrpc.CommandTermUpdateAttachedJobData{
-			BlockId: blockId,
-			JobId:   "",
-		}, rpcOpts)
+		SendBlockJobStatusEvent(ctx, blockId)
 	}
 
 	return nil

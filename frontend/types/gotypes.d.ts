@@ -140,6 +140,15 @@ declare global {
         files: WaveFileInfo[];
     };
 
+    // wshrpc.BlockJobStatusData
+    type BlockJobStatusData = {
+        blockid: string;
+        jobid: string;
+        status: null | "init" | "connected" | "disconnected" | "done";
+        versionts: number;
+        donereason?: string;
+    };
+
     // wshrpc.BlocksListEntry
     type BlocksListEntry = {
         windowid: string;
@@ -610,12 +619,6 @@ declare global {
         lastupdated: number;
     };
 
-    // wshrpc.CommandTermUpdateAttachedJobData
-    type CommandTermUpdateAttachedJobData = {
-        blockid: string;
-        jobid?: string;
-    };
-
     // wshrpc.CommandVarData
     type CommandVarData = {
         key: string;
@@ -939,6 +942,12 @@ declare global {
         cmdexiterror?: string;
         streamdone?: boolean;
         streamerror?: string;
+    };
+
+    // wshrpc.JobManagerStatusUpdate
+    type JobManagerStatusUpdate = {
+        jobid: string;
+        jobmanagerstatus: string;
     };
 
     // waveobj.LayoutActionData
