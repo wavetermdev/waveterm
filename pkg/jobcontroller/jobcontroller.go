@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/streamclient"
+	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -86,6 +87,8 @@ var (
 		m:           make(map[string]*connState),
 		reconcileCh: make(chan struct{}, 1),
 	}
+
+	jobStreamIds = ds.MakeSyncMap[string]()
 
 	reconnectGroup singleflight.Group
 )
@@ -497,6 +500,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	readerRouteId := wshclient.GetBareRpcClientRouteId()
 	writerRouteId := wshutil.MakeJobRouteId(jobId)
 	reader, streamMeta := broker.CreateStreamReader(readerRouteId, writerRouteId, DefaultStreamRwnd)
+	jobStreamIds.Set(jobId, streamMeta.Id)
 
 	fileOpts := wshrpc.FileOpts{
 		MaxSize:  10 * 1024 * 1024,
@@ -569,7 +573,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		defer func() {
 			panichandler.PanicHandler("jobcontroller:runOutputLoop", recover())
 		}()
-		runOutputLoop(context.Background(), jobId, reader)
+		runOutputLoop(context.Background(), jobId, streamMeta.Id, reader)
 	}()
 
 	return jobId, nil
@@ -615,15 +619,20 @@ func handleAppendJobFile(ctx context.Context, jobId string, fileName string, dat
 	return nil
 }
 
-func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reader) {
+func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *streamclient.Reader) {
 	defer func() {
-		log.Printf("[job:%s] output loop finished", jobId)
+		log.Printf("[job:%s] [stream:%s] output loop finished", jobId, streamId)
 	}()
 
-	log.Printf("[job:%s] output loop started", jobId)
+	log.Printf("[job:%s] [stream:%s] output loop started", jobId, streamId)
 	buf := make([]byte, 4096)
 	for {
 		n, err := reader.Read(buf)
+		currentStreamId, _ := jobStreamIds.GetEx(jobId)
+		if currentStreamId != streamId {
+			log.Printf("[job:%s] [stream:%s] stream superseded by [stream:%s], exiting output loop", jobId, streamId, currentStreamId)
+			break
+		}
 		if n > 0 {
 			log.Printf("[job:%s] received %d bytes of data", jobId, n)
 			appendErr := handleAppendJobFile(ctx, jobId, JobOutputFileName, buf[:n])
@@ -896,6 +905,7 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 	if err != nil {
 		return fmt.Errorf("route did not establish after successful reconnection: %w", err)
 	}
+	SetJobConnStatus(jobId, JobConnStatus_Connected)
 
 	log.Printf("[job:%s] route established, restarting streaming", jobId)
 	return restartStreaming(ctx, jobId, true, rtOpts)
@@ -979,8 +989,8 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 	broker := bareRpc.StreamBroker
 	readerRouteId := wshclient.GetBareRpcClientRouteId()
 	writerRouteId := wshutil.MakeJobRouteId(jobId)
-
 	reader, streamMeta := broker.CreateStreamReaderWithSeq(readerRouteId, writerRouteId, DefaultStreamRwnd, currentSeq)
+	jobStreamIds.Set(jobId, streamMeta.Id)
 
 	prepareData := wshrpc.CommandJobPrepareConnectData{
 		StreamMeta: *streamMeta,
@@ -1076,7 +1086,7 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 		defer func() {
 			panichandler.PanicHandler("jobcontroller:RestartStreaming:runOutputLoop", recover())
 		}()
-		runOutputLoop(context.Background(), jobId, reader)
+		runOutputLoop(context.Background(), jobId, streamMeta.Id, reader)
 	}()
 
 	log.Printf("[job:%s] streaming restarted successfully", jobId)
