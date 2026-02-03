@@ -620,6 +620,7 @@ func handleAppendJobFile(ctx context.Context, jobId string, fileName string, dat
 }
 
 func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *streamclient.Reader) {
+	defer reader.Close()
 	defer func() {
 		log.Printf("[job:%s] [stream:%s] output loop finished", jobId, streamId)
 	}()
