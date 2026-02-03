@@ -50,7 +50,7 @@ export const ConnStatusOverlay = React.memo(
                 { timeout: 60000 }
             );
             prtn.catch((e) => console.log("error reconnecting", connName, e));
-        }, [connName]);
+        }, [connName, nodeModel.blockId]);
 
         const handleDisableWsh = React.useCallback(async () => {
             const metamaptype: unknown = {
