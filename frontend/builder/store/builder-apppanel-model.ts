@@ -310,7 +310,7 @@ export class BuilderAppPanelModel {
         this.focusElemRef.current = ref;
     }
 
-    setMonacoEditorRef(ref: any) {
+    setMonacoEditorRef(ref: MonacoTypes.editor.IStandaloneCodeEditor | null) {
         this.monacoEditorRef.current = ref;
     }
 
