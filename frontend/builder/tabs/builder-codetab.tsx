@@ -8,7 +8,6 @@ import * as keyutil from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
-import * as Monaco from "monaco-editor";
 import { memo, useEffect } from "react";
 
 const BuilderCodeTab = memo(() => {
@@ -32,7 +31,7 @@ const BuilderCodeTab = memo(() => {
         model.setCodeContent(newText);
     };
 
-    const handleEditorMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: typeof Monaco) => {
+    const handleEditorMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: typeof MonacoTypes) => {
         model.setMonacoEditorRef(editor);
         return () => {
             model.setMonacoEditorRef(null);
