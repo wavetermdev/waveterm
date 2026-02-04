@@ -116,7 +116,8 @@ function createFilteredLocalSuggestionItem(
 function getReconnectItem(
     connStatus: ConnStatus,
     connSelected: string,
-    blockId: string
+    blockId: string,
+    changeConnModalAtom: jotai.PrimitiveAtom<boolean>
 ): SuggestionConnectionItem | null {
     if (connSelected != "" || (connStatus.status != "disconnected" && connStatus.status != "error")) {
         return null;
@@ -128,6 +129,7 @@ function getReconnectItem(
         label: `Reconnect to ${connStatus.connection}`,
         value: "",
         onSelect: async (_: string) => {
+            globalStore.set(changeConnModalAtom, false);
             const prtn = RpcApi.ConnConnectCommand(
                 TabRpcClient,
                 { host: connStatus.connection, logblockid: blockId },
@@ -200,7 +202,8 @@ function getRemoteSuggestions(
 
 function getDisconnectItem(
     connection: string,
-    connStatusMap: Map<string, ConnStatus>
+    connStatusMap: Map<string, ConnStatus>,
+    changeConnModalAtom: jotai.PrimitiveAtom<boolean>
 ): SuggestionConnectionItem | null {
     if (util.isLocalConnName(connection)) {
         return null;
@@ -216,6 +219,7 @@ function getDisconnectItem(
         label: `Disconnect ${connStatus.connection}`,
         value: "",
         onSelect: async (_: string) => {
+            globalStore.set(changeConnModalAtom, false);
             const prtn = RpcApi.ConnDisconnectCommand(TabRpcClient, connection, { timeout: 60000 });
             prtn.catch((e) => console.log("error disconnecting", connStatus.connection, e));
         },
@@ -371,7 +375,7 @@ const ChangeConnectionBlockModal = React.memo(
             [blockId, blockData]
         );
 
-        const reconnectSuggestionItem = getReconnectItem(connStatus, connSelected, blockId);
+        const reconnectSuggestionItem = getReconnectItem(connStatus, connSelected, blockId, changeConnModalAtom);
         const localSuggestions = getLocalSuggestions(
             localName,
             wslList,
@@ -391,7 +395,7 @@ const ChangeConnectionBlockModal = React.memo(
             filterOutNowsh
         );
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
-        const disconnectItem = getDisconnectItem(connection, connStatusMap);
+        const disconnectItem = getDisconnectItem(connection, connStatusMap, changeConnModalAtom);
         const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
             connSelected,
             localName,
