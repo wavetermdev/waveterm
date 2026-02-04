@@ -598,17 +598,18 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		exitCode = shellProc.Cmd.ExitCode()
 		shellProc.SetWaitErrorAndSignalDone(waitErr)
 		bc.resetTerminalState(context.Background())
-		var msg string
+		exitSignal := shellProc.Cmd.ExitSignal()
+		var baseMsg string
 		if bc.ControllerType == BlockController_Shell {
-			msg = "shell terminated"
-			if exitCode != 0 {
-				msg = fmt.Sprintf("shell terminated (exit code %d)", exitCode)
-			}
+			baseMsg = "shell terminated"
 		} else {
-			msg = "command exited"
-			if exitCode != 0 {
-				msg = fmt.Sprintf("command exited (exit code %d)", exitCode)
-			}
+			baseMsg = "command exited"
+		}
+		msg := baseMsg
+		if exitSignal != "" {
+			msg = fmt.Sprintf("%s (signal %s)", baseMsg, exitSignal)
+		} else if exitCode != 0 {
+			msg = fmt.Sprintf("%s (exit code %d)", baseMsg, exitCode)
 		}
 		bc.writeMutedMessageToTerminal("[" + msg + "]")
 		go checkCloseOnExit(bc.BlockId, exitCode)

@@ -54,6 +54,10 @@ func (wc *WslCmd) ExitCode() int {
 	return -1
 }
 
+func (wc *WslCmd) ExitSignal() string {
+	return ""
+}
+
 func (c *WslCmd) SetStdin(stdin io.Reader) {
 	c.Stdin = stdin
 }
