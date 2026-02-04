@@ -16,6 +16,7 @@ import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { IconButton } from "@/element/iconbutton";
+import { Tooltip } from "@/element/tooltip";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import { cn } from "@/util/util";
@@ -272,9 +273,9 @@ const BlockFrame_Header = ({
                 />
             )}
             {useTermHeader && termConfigedDurable != null && (
-                <div className="iconbutton disabled text-[13px] ml-[-4px]" key="durable-status">
-                    <i className={`fa-sharp ${durableIconType} fa-shield ${durableIconColor}`} title={durableTitle} />
-                </div>
+                <Tooltip key="durable-status" content={durableTitle} placement="bottom" divClassName="iconbutton disabled text-[13px] ml-[-4px]">
+                    <i className={`fa-sharp ${durableIconType} fa-shield ${durableIconColor}`} />
+                </Tooltip>
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />
             <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} />
