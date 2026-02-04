@@ -23,6 +23,10 @@ function isTermViewModel(viewModel: ViewModel): viewModel is TermViewModel {
     return viewModel?.viewType === "term";
 }
 
+function handleLearnMore() {
+    getApi().openExternal("https://docs.waveterm.dev/features/durable-sessions");
+}
+
 interface StandardSessionContentProps {
     viewModel: TermViewModel;
     onClose: () => void;
@@ -32,10 +36,6 @@ function StandardSessionContent({ viewModel, onClose }: StandardSessionContentPr
     const handleRestartAsDurable = () => {
         onClose();
         util.fireAndForget(() => viewModel.restartSessionWithDurability(true));
-    };
-
-    const handleLearnMore = () => {
-        getApi().openExternal("https://docs.waveterm.dev/features/durable-sessions");
     };
 
     return (
@@ -58,6 +58,60 @@ function StandardSessionContent({ viewModel, onClose }: StandardSessionContentPr
                 </button>
                 <button
                     className="text-muted text-xs hover:underline cursor-pointer text-left mt-1"
+                    onClick={handleLearnMore}
+                >
+                    Learn More
+                </button>
+            </div>
+        </div>
+    );
+}
+
+interface DurableAttachedContentProps {
+    onClose: () => void;
+}
+
+function DurableAttachedContent({ onClose }: DurableAttachedContentProps) {
+    return (
+        <div className="flex flex-col gap-2 max-w-[280px]">
+            <div className="font-semibold text-sm flex items-center gap-2 text-secondary">
+                <i className="fa-sharp fa-solid fa-shield text-sky-500" />
+                Durable Session (Attached)
+            </div>
+            <div className="text-xs text-secondary leading-relaxed">
+                Your shell state, running programs, and history are protected. This session will survive network
+                disconnects.
+            </div>
+            <div className="flex flex-col mt-1">
+                <button
+                    className="text-muted text-xs hover:underline cursor-pointer text-left"
+                    onClick={handleLearnMore}
+                >
+                    Learn More
+                </button>
+            </div>
+        </div>
+    );
+}
+
+interface DurableDetachedContentProps {
+    onClose: () => void;
+}
+
+function DurableDetachedContent({ onClose }: DurableDetachedContentProps) {
+    return (
+        <div className="flex flex-col gap-2 max-w-[280px]">
+            <div className="font-semibold text-sm flex items-center gap-2 text-secondary">
+                <i className="fa-sharp fa-solid fa-shield text-sky-300" />
+                Durable Session (Detached)
+            </div>
+            <div className="text-xs text-secondary leading-relaxed">
+                Connection lost, but your session is still running on the remote server. Wave will automatically
+                reconnect when the connection is restored.
+            </div>
+            <div className="flex flex-col mt-1">
+                <button
+                    className="text-muted text-xs hover:underline cursor-pointer text-left"
                     onClick={handleLearnMore}
                 >
                     Learn More
@@ -234,6 +288,10 @@ export function DurableSessionFlyover({
                     >
                         {termConfigedDurable === false ? (
                             <StandardSessionContent viewModel={viewModel} onClose={handleClose} />
+                        ) : termDurableStatus?.status === "connected" ? (
+                            <DurableAttachedContent onClose={handleClose} />
+                        ) : termDurableStatus?.status === "disconnected" ? (
+                            <DurableDetachedContent onClose={handleClose} />
                         ) : (
                             titleText
                         )}
