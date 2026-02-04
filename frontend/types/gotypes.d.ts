@@ -144,9 +144,10 @@ declare global {
     type BlockJobStatusData = {
         blockid: string;
         jobid: string;
-        status: null | "init" | "connected" | "disconnected" | "done";
+        status?: null | "init" | "connected" | "disconnected" | "done";
         versionts: number;
         donereason?: string;
+        startuperror?: string;
         cmdexitts?: number;
         cmdexitcode?: number;
         cmdexitsignal?: string;
@@ -930,6 +931,7 @@ declare global {
         cmdenv?: {[key: string]: string};
         jobauthtoken: string;
         attachedblockid?: string;
+        waveversion?: string;
         terminateonreconnect?: boolean;
         jobmanagerstatus: string;
         jobmanagerdonereason?: string;

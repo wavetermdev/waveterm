@@ -158,6 +158,7 @@ func GetBlockJobStatus(ctx context.Context, blockId string) (*wshrpc.BlockJobSta
 
 	data.JobId = job.OID
 	data.DoneReason = job.JobManagerDoneReason
+	data.StartupError = job.JobManagerStartupError
 	data.CmdExitTs = job.CmdExitTs
 	data.CmdExitCode = job.CmdExitCode
 	data.CmdExitSignal = job.CmdExitSignal
