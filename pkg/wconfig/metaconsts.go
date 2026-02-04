@@ -111,7 +111,7 @@ const (
 
 	ConfigKey_DebugClear                     = "debug:*"
 	ConfigKey_DebugWebCdp                    = "debug:webcdp"
-	ConfigKey_DebugRemoteDebugPort           = "debug:remotedebugport"
+	ConfigKey_DebugWebCdpPort                = "debug:webcdpport"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
 

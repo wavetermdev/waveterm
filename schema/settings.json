@@ -275,7 +275,7 @@
         "debug:webcdp": {
           "type": "boolean"
         },
-        "debug:remotedebugport": {
+        "debug:webcdpport": {
           "type": "integer"
         },
         "debug:pprofport": {

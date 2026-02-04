@@ -158,7 +158,7 @@ type SettingsType struct {
 
 	DebugClear               bool `json:"debug:*,omitempty"`
 	DebugWebCdp              bool `json:"debug:webcdp,omitempty"`
-	DebugRemoteDebugPort     *int `json:"debug:remotedebugport,omitempty"`
+	DebugWebCdpPort          *int `json:"debug:webcdpport,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
 	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
 

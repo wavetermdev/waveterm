@@ -1,144 +1,128 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ipcMain, webContents } from "electron";
 import type { WebContents } from "electron";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { URL } from "node:url";
 import WebSocket, { WebSocketServer } from "ws";
 
-export type CdpProxyStartOpts = {
-    port?: number; // default 0 (ephemeral)
-    idleTimeoutMs?: number; // default 5 minutes
+// ---- Public API (used by emain.ts / emain-wsh.ts) ---------------------------
+
+export type WebCdpServerConfig = {
+    enabled: boolean;
+    port: number; // default 9222
+    idleDetachMs?: number; // default 30000
+};
+
+export type WebCdpBlockOps = {
+    createWebBlock?: (url: string) => Promise<string>; // returns blockId
+    deleteBlock?: (blockId: string) => Promise<void>;
 };
 
 export type WebCdpTargetInfo = {
-    key: string;
-    workspaceid: string;
-    tabid: string;
-    blockid: string;
-
     host: string;
     port: number;
     targetid: string;
+    blockid: string;
     wsPath: string;
     wsUrl: string;
     httpUrl: string;
     inspectorUrl: string;
+    controlled: boolean;
 };
 
-type CdpProxyInstance = {
-    key: string;
-    workspaceid: string;
-    tabid: string;
-    blockid: string;
-
-    host: string;
-    port: number;
-    targetid: string;
-    wsPath: string;
-
-    server: http.Server;
-    wss: WebSocketServer;
-
-    wc: WebContents;
-    debuggerAttached: boolean;
-    clients: Set<WebSocket>;
-    idleTimer: NodeJS.Timeout | null;
-    idleTimeoutMs: number;
-    secret: string;
-    basePath: string;
-};
-
-const proxyMap = new Map<string, CdpProxyInstance>();
-
-function makeKey(workspaceid: string, tabid: string, blockid: string): string {
-    return `${workspaceid}:${tabid}:${blockid}`;
+// Configure (injected) block creation/deletion handlers.
+let blockOps: WebCdpBlockOps = {};
+export function setWebCdpBlockOps(ops: WebCdpBlockOps) {
+    blockOps = ops ?? {};
 }
+
+// Start/stop shared server from emain.ts once config is known.
+export async function configureWebCdpServer(cfg: WebCdpServerConfig) {
+    serverCfg = {
+        enabled: !!cfg?.enabled,
+        port: cfg?.port ?? 9222,
+        idleDetachMs: cfg?.idleDetachMs ?? 30_000,
+    };
+    if (!serverCfg.enabled) {
+        await stopSharedServer();
+        return;
+    }
+    await ensureSharedServer();
+}
+
+// For WSH/UI: list targets that are currently controlled.
+export function getControlledWebCdpTargets(): WebCdpTargetInfo[] {
+    const out: WebCdpTargetInfo[] = [];
+    for (const t of targetsById.values()) {
+        if (!t.controlled()) continue;
+        out.push(makeTargetInfo(t));
+    }
+    return out;
+}
+
+// For WSH/UI: return connection info for a specific block (even if not controlled).
+export function getWebCdpTargetForBlock(blockid: string): WebCdpTargetInfo | null {
+    const t = targetsById.get(blockid);
+    if (!t) return null;
+    return makeTargetInfo(t);
+}
+
+// For WSH: explicitly register a target when the caller already has WebContents.
+export function registerWebCdpTarget(blockid: string, wc: WebContents): WebCdpTargetInfo {
+    const t = registerTarget(blockid, wc);
+    return makeTargetInfo(t);
+}
+
+// For WSH: drop control for a target (disconnect clients + detach debugger).
+export function stopWebCdpForBlock(blockid: string) {
+    const t = targetsById.get(blockid);
+    if (!t) return;
+    for (const ws of t.clients) {
+        try {
+            ws.close();
+        } catch (_) {}
+    }
+    t.clients.clear();
+    detachDebugger(t);
+}
+
+// ---- Internal implementation ------------------------------------------------
+
+type TargetInstance = {
+    id: string; // Chrome target id; we use blockid
+    blockid: string;
+    wc: WebContents;
+    clients: Set<WebSocket>;
+    debuggerAttached: boolean;
+    idleTimer: NodeJS.Timeout | null;
+    destroyedUnsub: (() => void) | null;
+    dbgMsgHandler: ((event: any, method: string, params: any) => void) | null;
+    dbgDetachHandler: (() => void) | null;
+    controlled: () => boolean;
+};
+
+const HOST = "127.0.0.1";
+const WS_PAGE_PREFIX = "/devtools/page/";
+
+let serverCfg: WebCdpServerConfig = { enabled: false, port: 9222, idleDetachMs: 30_000 };
+
+let httpServer: http.Server | null = null;
+let wsServer: WebSocketServer | null = null;
+let actualPort: number | null = null;
+
+// blockId == targetId for now
+const targetsById = new Map<string, TargetInstance>();
+
+let discoveryPoller: NodeJS.Timeout | null = null;
 
 function safeJsonSend(ws: WebSocket, obj: any) {
     if (ws.readyState !== WebSocket.OPEN) return;
     try {
         ws.send(JSON.stringify(obj));
     } catch (_) {}
-}
-
-function getWsHostForUrl(host: string): string {
-    // For inspector URLs, 0.0.0.0 is not a valid connect target; use loopback.
-    if (host === "0.0.0.0") return "127.0.0.1";
-    return host;
-}
-
-function refreshIdleTimer(inst: CdpProxyInstance) {
-    if (inst.idleTimeoutMs <= 0) return;
-    if (inst.idleTimer) clearTimeout(inst.idleTimer);
-    inst.idleTimer = setTimeout(() => {
-        if (inst.clients.size === 0) {
-            console.log("webcdp auto-stop (idle)", inst.key);
-            stopWebCdpProxy(inst.key).catch(() => {});
-        }
-    }, inst.idleTimeoutMs);
-}
-
-async function ensureDebuggerAttached(inst: CdpProxyInstance) {
-    if (inst.debuggerAttached) return;
-    try {
-        // "1.3" is the commonly-used version string in Electron docs; Electron will negotiate.
-        inst.wc.debugger.attach("1.3");
-        inst.debuggerAttached = true;
-    } catch (e: any) {
-        const msg = e?.message || String(e);
-        if (msg.includes("already attached")) {
-            throw new Error(
-                "CDP attach failed: another debugger is already attached (close DevTools for this webview)"
-            );
-        }
-        throw new Error(`CDP attach failed: ${msg}`);
-    }
-}
-
-function attachDebuggerEventForwarders(inst: CdpProxyInstance) {
-    // Forward CDP events to all connected WS clients.
-    const onMessage = (_event: any, method: string, params: any) => {
-        for (const ws of inst.clients) {
-            safeJsonSend(ws, { method, params });
-        }
-    };
-    const onDetach = () => {
-        inst.debuggerAttached = false;
-    };
-    inst.wc.debugger.on("message", onMessage);
-    inst.wc.debugger.on("detach", onDetach);
-
-    // Tear down if the target dies.
-    inst.wc.once("destroyed", () => {
-        console.log("webcdp auto-stop (webcontents destroyed)", inst.key);
-        stopWebCdpProxy(inst.key).catch(() => {});
-    });
-}
-
-function makeJsonListEntry(inst: CdpProxyInstance): any {
-    const hostForUrl = getWsHostForUrl(inst.host);
-    const wsUrl = `ws://${hostForUrl}:${inst.port}${inst.wsPath}`;
-    // Provide a devtoolsFrontendUrl that Chrome can open directly.
-    const devtoolsFrontendUrl = `${inst.basePath}/devtools/inspector.html?ws=${hostForUrl}:${inst.port}${inst.wsPath}`;
-    let url = "";
-    try {
-        url = inst.wc.getURL();
-    } catch (_) {}
-    let title = "";
-    try {
-        title = inst.wc.getTitle();
-    } catch (_) {}
-    return {
-        description: "Wave WebView (web block)",
-        devtoolsFrontendUrl,
-        id: inst.targetid,
-        title: title || "Wave WebView",
-        type: "page",
-        url,
-        webSocketDebuggerUrl: wsUrl,
-    };
 }
 
 function respondJson(res: http.ServerResponse, status: number, obj: any) {
@@ -156,139 +140,376 @@ function respondText(res: http.ServerResponse, status: number, text: string) {
     res.end(text);
 }
 
-async function createServer(inst: Omit<CdpProxyInstance, "server" | "wss" | "port"> & { port: number }) {
-    const server = http.createServer((req, res) => {
+function makeWsPath(targetId: string) {
+    return `${WS_PAGE_PREFIX}${targetId}`;
+}
+
+function makeWsUrl(targetId: string) {
+    const port = actualPort ?? serverCfg.port;
+    return `ws://${HOST}:${port}${makeWsPath(targetId)}`;
+}
+
+function makeHttpUrl() {
+    const port = actualPort ?? serverCfg.port;
+    return `http://${HOST}:${port}`;
+}
+
+function makeTargetInfo(t: TargetInstance): WebCdpTargetInfo {
+    const wsPath = makeWsPath(t.id);
+    const wsUrl = makeWsUrl(t.id);
+    const httpUrl = makeHttpUrl();
+    return {
+        host: HOST,
+        port: actualPort ?? serverCfg.port,
+        targetid: t.id,
+        blockid: t.blockid,
+        wsPath,
+        wsUrl,
+        httpUrl,
+        inspectorUrl: `devtools://devtools/bundled/inspector.html?ws=${HOST}:${actualPort ?? serverCfg.port}${wsPath}`,
+        controlled: t.controlled(),
+    };
+}
+
+function makeChromeJsonEntry(t: TargetInstance): any {
+    let url = "";
+    let title = "";
+    try {
+        url = t.wc.getURL();
+    } catch (_) {}
+    try {
+        title = t.wc.getTitle();
+    } catch (_) {}
+    return {
+        description: "Wave WebView (web widget)",
+        id: t.id,
+        title: title || "Wave WebView",
+        type: "page",
+        url,
+        webSocketDebuggerUrl: makeWsUrl(t.id),
+    };
+}
+
+async function ensureDebuggerAttached(t: TargetInstance) {
+    if (t.debuggerAttached) return;
+    try {
+        t.wc.debugger.attach("1.3");
+        t.debuggerAttached = true;
+    } catch (e: any) {
+        const msg = e?.message || String(e);
+        if (msg.includes("already attached")) {
+            throw new Error("CDP attach failed: target already has a debugger attached");
+        }
+        throw new Error(`CDP attach failed: ${msg}`);
+    }
+
+    // Attach forwarders once.
+    if (!t.dbgMsgHandler) {
+        t.dbgMsgHandler = (_event: any, method: string, params: any) => {
+            for (const ws of t.clients) {
+                safeJsonSend(ws, { method, params });
+            }
+        };
+        t.wc.debugger.on("message", t.dbgMsgHandler);
+    }
+    if (!t.dbgDetachHandler) {
+        t.dbgDetachHandler = () => {
+            t.debuggerAttached = false;
+        };
+        t.wc.debugger.on("detach", t.dbgDetachHandler);
+    }
+}
+
+function detachDebugger(t: TargetInstance) {
+    if (t.idleTimer) {
+        clearTimeout(t.idleTimer);
+        t.idleTimer = null;
+    }
+    try {
+        if (t.debuggerAttached) {
+            t.wc.debugger.detach();
+        }
+    } catch (_) {}
+    t.debuggerAttached = false;
+    // Remove listeners to avoid leaks if this webcontents gets re-used.
+    try {
+        if (t.dbgMsgHandler) {
+            t.wc.debugger.removeListener("message", t.dbgMsgHandler as any);
+        }
+        if (t.dbgDetachHandler) {
+            t.wc.debugger.removeListener("detach", t.dbgDetachHandler as any);
+        }
+    } catch (_) {}
+    t.dbgMsgHandler = null;
+    t.dbgDetachHandler = null;
+}
+
+function scheduleIdleDetach(t: TargetInstance) {
+    const idleMs = serverCfg.idleDetachMs ?? 30_000;
+    if (idleMs <= 0) return;
+    if (t.idleTimer) clearTimeout(t.idleTimer);
+    t.idleTimer = setTimeout(() => {
+        if (t.clients.size === 0) {
+            detachDebugger(t);
+        }
+    }, idleMs);
+}
+
+function registerTarget(blockid: string, wc: WebContents) {
+    const existing = targetsById.get(blockid);
+    if (existing) {
+        existing.wc = wc;
+        return existing;
+    }
+    const t: TargetInstance = {
+        id: blockid,
+        blockid,
+        wc,
+        clients: new Set<WebSocket>(),
+        debuggerAttached: false,
+        idleTimer: null,
+        destroyedUnsub: null,
+        dbgMsgHandler: null,
+        dbgDetachHandler: null,
+        // A widget is considered "controlled" when there is an active CDP client connection.
+        // (Debugger may remain attached briefly for idle-detach smoothing, but that does not imply control.)
+        controlled: () => t.clients.size > 0,
+    };
+
+    const onDestroyed = () => {
+        unregisterTarget(blockid);
+    };
+    wc.once("destroyed", onDestroyed);
+    t.destroyedUnsub = () => {
+        try {
+            wc.removeListener("destroyed", onDestroyed as any);
+        } catch (_) {}
+    };
+
+    targetsById.set(blockid, t);
+    return t;
+}
+
+function unregisterTarget(blockid: string) {
+    const t = targetsById.get(blockid);
+    if (!t) return;
+    targetsById.delete(blockid);
+    for (const ws of t.clients) {
+        try {
+            ws.close();
+        } catch (_) {}
+    }
+    t.clients.clear();
+    detachDebugger(t);
+    try {
+        t.destroyedUnsub?.();
+    } catch (_) {}
+}
+
+function startDiscoveryPoller() {
+    if (discoveryPoller) return;
+    discoveryPoller = setInterval(() => {
+        refreshTargetsFromRenderers().catch(() => {});
+    }, 750);
+    refreshTargetsFromRenderers().catch(() => {});
+}
+
+function stopDiscoveryPoller() {
+    if (!discoveryPoller) return;
+    clearInterval(discoveryPoller);
+    discoveryPoller = null;
+}
+
+async function refreshTargetsFromRenderers() {
+    // Ask any Wave tab renderer to report currently-mounted webviews.
+    // This only discovers web widgets that are currently loaded (i.e. have a live <webview> WebContents).
+    const all = webContents.getAllWebContents();
+    const seen = new Map<string, number>(); // blockId -> webContentsId
+
+    await Promise.all(
+        all.map(async (wc) => {
+            // Skip <webview> contents themselves; ask their host renderers.
+            try {
+                if ((wc as any).getType?.() === "webview") return;
+            } catch (_) {}
+
+            const reqId = randomUUID().replace(/-/g, "");
+            const respCh = `webviews-list-resp-${reqId}`;
+            const p = new Promise<void>((resolve) => {
+                const timeout = setTimeout(() => {
+                    ipcMain.removeAllListeners(respCh);
+                    resolve();
+                }, 200);
+                ipcMain.once(respCh, (_evt, payload) => {
+                    clearTimeout(timeout);
+                    try {
+                        for (const item of payload ?? []) {
+                            const bid = item?.blockId;
+                            const wcId = item?.webContentsId;
+                            if (!bid || !wcId) continue;
+                            const n = parseInt(String(wcId), 10);
+                            if (!Number.isFinite(n)) continue;
+                            seen.set(bid, n);
+                        }
+                    } catch (_) {}
+                    resolve();
+                });
+            });
+            try {
+                wc.send("webviews-list", respCh);
+            } catch (_) {
+                ipcMain.removeAllListeners(respCh);
+                return;
+            }
+            await p;
+        })
+    );
+
+    // Register/update targets
+    for (const [blockId, wcId] of seen.entries()) {
+        const wv = webContents.fromId(wcId);
+        if (!wv) continue;
+        registerTarget(blockId, wv);
+    }
+
+    // Remove targets that no longer exist (webcontents destroyed or unmounted)
+    for (const [blockId, t] of Array.from(targetsById.entries())) {
+        if (seen.has(blockId)) continue;
+        // If currently controlled, keep it until it disconnects/destroys; it should still be visible.
+        if (t.clients.size > 0) continue;
+        // If not controlled and not seen, drop it.
+        unregisterTarget(blockId);
+    }
+}
+
+async function ensureSharedServer() {
+    if (httpServer && wsServer && actualPort != null) {
+        startDiscoveryPoller();
+        return;
+    }
+
+    const server = http.createServer(async (req, res) => {
         if (!req.url) {
             respondText(res, 400, "missing url");
             return;
         }
-        const parsed = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
-        if (req.method === "GET" && parsed.pathname === `${inst.basePath}/json/version`) {
+        const parsed = new URL(req.url, `http://${req.headers.host || HOST}`);
+
+        if (req.method === "GET" && (parsed.pathname === "/json" || parsed.pathname === "/json/list")) {
+            const targets = Array.from(targetsById.values());
+            targets.sort((a, b) => a.blockid.localeCompare(b.blockid));
+            const entries = targets.map(makeChromeJsonEntry);
+            respondJson(res, 200, entries);
+            return;
+        }
+        if (req.method === "GET" && parsed.pathname === "/json/version") {
             respondJson(res, 200, {
                 Browser: "Wave (Electron)",
                 "Protocol-Version": "1.3",
             });
             return;
         }
-        if (
-            req.method === "GET" &&
-            (parsed.pathname === `${inst.basePath}/json` || parsed.pathname === `${inst.basePath}/json/list`)
-        ) {
-            const entry = makeJsonListEntry(inst as any);
-            respondJson(res, 200, [entry]);
+
+        // Chrome-ish: PUT /json/new?<encodedUrl>
+        if (req.method === "PUT" && parsed.pathname === "/json/new") {
+            const encodedUrl = parsed.search ? parsed.search.slice(1) : "";
+            let url = "about:blank";
+            try {
+                if (encodedUrl) url = decodeURIComponent(encodedUrl);
+            } catch (_) {
+                url = encodedUrl || "about:blank";
+            }
+            if (!blockOps.createWebBlock) {
+                respondText(res, 500, "createWebBlock not configured");
+                return;
+            }
+            try {
+                const blockId = await blockOps.createWebBlock(url);
+                // Wait briefly for renderer to mount and report webcontents id.
+                const deadline = Date.now() + 4000;
+                while (Date.now() < deadline) {
+                    await refreshTargetsFromRenderers();
+                    const t = targetsById.get(blockId);
+                    if (t) {
+                        respondJson(res, 200, makeChromeJsonEntry(t));
+                        return;
+                    }
+                    await new Promise((r) => setTimeout(r, 150));
+                }
+                respondText(res, 504, "created block but webview not ready");
+                return;
+            } catch (e: any) {
+                respondText(res, 500, e?.message || String(e));
+                return;
+            }
+        }
+
+        // Chrome-ish: GET /json/close/<id>
+        if (req.method === "GET" && parsed.pathname.startsWith("/json/close/")) {
+            const id = parsed.pathname.slice("/json/close/".length);
+            if (!id) {
+                respondText(res, 400, "missing id");
+                return;
+            }
+            if (!blockOps.deleteBlock) {
+                respondText(res, 500, "deleteBlock not configured");
+                return;
+            }
+            try {
+                await blockOps.deleteBlock(id);
+            } catch (e: any) {
+                respondText(res, 500, e?.message || String(e));
+                return;
+            }
+            // Best-effort cleanup locally.
+            unregisterTarget(id);
+            respondText(res, 200, "Target is closing");
             return;
         }
+
         respondText(res, 404, "not found");
     });
 
     const wss = new WebSocketServer({ noServer: true });
     server.on("upgrade", (req, socket, head) => {
+        let pathname = "";
         try {
-            const urlObj = new URL(req.url || "", `http://${req.headers.host || "127.0.0.1"}`);
-            if (urlObj.pathname !== inst.wsPath) {
-                socket.destroy();
-                return;
-            }
+            const urlObj = new URL(req.url || "", `http://${req.headers.host || HOST}`);
+            pathname = urlObj.pathname;
         } catch (_) {
             socket.destroy();
             return;
         }
+        if (!pathname.startsWith(WS_PAGE_PREFIX)) {
+            socket.destroy();
+            return;
+        }
+        const targetId = pathname.slice(WS_PAGE_PREFIX.length);
+        const target = targetsById.get(targetId);
+        if (!target) {
+            socket.destroy();
+            return;
+        }
         wss.handleUpgrade(req, socket, head, (ws) => {
-            wss.emit("connection", ws, req);
+            wss.emit("connection", ws, targetId);
         });
     });
 
-    await new Promise<void>((resolve, reject) => {
-        server.once("error", reject);
-        server.listen(inst.port, inst.host, () => resolve());
-    });
-
-    const address = server.address();
-    let actualPort = inst.port;
-    if (address && typeof address === "object") {
-        actualPort = address.port;
-    }
-
-    return { server, wss, port: actualPort };
-}
-
-export async function startWebCdpProxy(
-    wc: WebContents,
-    workspaceid: string,
-    tabid: string,
-    blockid: string,
-    opts?: CdpProxyStartOpts
-): Promise<WebCdpTargetInfo> {
-    const key = makeKey(workspaceid, tabid, blockid);
-    const existing = proxyMap.get(key);
-    if (existing) {
-        const hostForUrl = getWsHostForUrl(existing.host);
-        const wsUrl = `ws://${hostForUrl}:${existing.port}${existing.wsPath}`;
-        const httpUrl = `http://${hostForUrl}:${existing.port}`;
-        return {
-            key,
-            workspaceid,
-            tabid,
-            blockid,
-            host: existing.host,
-            port: existing.port,
-            targetid: existing.targetid,
-            wsPath: existing.wsPath,
-            wsUrl,
-            httpUrl,
-            inspectorUrl: `devtools://devtools/bundled/inspector.html?ws=${hostForUrl}:${existing.port}${existing.wsPath}`,
-        };
-    }
-
-    // Always bind locally to loopback for security.
-    const host = "127.0.0.1";
-    const port = opts?.port ?? 0;
-    const idleTimeoutMs = opts?.idleTimeoutMs ?? 5 * 60 * 1000;
-    const targetid = randomUUID().replace(/-/g, "");
-    const secret = randomUUID().replace(/-/g, "");
-    const basePath = `/__wave_cdp/${secret}`;
-    const wsPath = `${basePath}/devtools/page/${targetid}`;
-
-    const instPre: any = {
-        key,
-        workspaceid,
-        tabid,
-        blockid,
-        host,
-        port,
-        targetid,
-        wsPath,
-        secret,
-        basePath,
-        wc,
-        debuggerAttached: false,
-        clients: new Set<WebSocket>(),
-        idleTimer: null,
-        idleTimeoutMs,
-    };
-
-    const { server, wss, port: actualPort } = await createServer(instPre);
-    // Important: createServer() closes over instPre for /json/list responses.
-    // If the caller requested port=0, the OS assigns an ephemeral port. Update instPre.port so /json/list reports
-    // the actual port instead of ":0".
-    instPre.port = actualPort;
-
-    const inst: CdpProxyInstance = {
-        ...instPre,
-        server,
-        wss,
-        port: actualPort,
-    };
-    proxyMap.set(key, inst);
-    refreshIdleTimer(inst);
-
-    attachDebuggerEventForwarders(inst);
-
-    wss.on("connection", async (ws) => {
-        inst.clients.add(ws);
-        refreshIdleTimer(inst);
+    wss.on("connection", async (ws: WebSocket, targetId: any) => {
+        const t = targetsById.get(String(targetId));
+        if (!t) {
+            try {
+                ws.close();
+            } catch (_) {}
+            return;
+        }
+        t.clients.add(ws);
+        if (t.idleTimer) {
+            clearTimeout(t.idleTimer);
+            t.idleTimer = null;
+        }
         try {
-            await ensureDebuggerAttached(inst);
+            await ensureDebuggerAttached(t);
         } catch (e: any) {
             safeJsonSend(ws, { error: e?.message || String(e) });
             try {
@@ -298,7 +519,6 @@ export async function startWebCdpProxy(
         }
 
         ws.on("message", async (data) => {
-            refreshIdleTimer(inst);
             let msg: any;
             try {
                 msg = JSON.parse(data.toString());
@@ -314,7 +534,7 @@ export async function startWebCdpProxy(
                 return;
             }
             try {
-                const result = await inst.wc.debugger.sendCommand(method, params);
+                const result = await t.wc.debugger.sendCommand(method, params);
                 safeJsonSend(ws, { id, result });
             } catch (e: any) {
                 safeJsonSend(ws, { id, error: { code: -32000, message: e?.message || String(e) } });
@@ -322,86 +542,53 @@ export async function startWebCdpProxy(
         });
 
         ws.on("close", () => {
-            inst.clients.delete(ws);
-            refreshIdleTimer(inst);
+            t.clients.delete(ws);
+            if (t.clients.size === 0) {
+                scheduleIdleDetach(t);
+            }
         });
     });
 
-    const hostForUrl = getWsHostForUrl(host);
-    const wsUrl = `ws://${hostForUrl}:${actualPort}${wsPath}`;
-    const httpUrl = `http://${hostForUrl}:${actualPort}`;
-    return {
-        key,
-        workspaceid,
-        tabid,
-        blockid,
-        host,
-        port: actualPort,
-        targetid,
-        wsPath,
-        wsUrl,
-        httpUrl,
-        inspectorUrl: `devtools://devtools/bundled/inspector.html?ws=${hostForUrl}:${actualPort}${wsPath}`,
-    };
-}
-
-export async function stopWebCdpProxy(key: string): Promise<void> {
-    const inst = proxyMap.get(key);
-    if (!inst) return;
-    proxyMap.delete(key);
-    console.log("webcdp stop", key);
-    if (inst.idleTimer) {
-        clearTimeout(inst.idleTimer);
-        inst.idleTimer = null;
-    }
-    for (const ws of inst.clients) {
-        try {
-            ws.close();
-        } catch (_) {}
-    }
-    inst.clients.clear();
-    try {
-        inst.wss.close();
-    } catch (_) {}
-    await new Promise<void>((resolve) => {
-        try {
-            inst.server.close(() => resolve());
-        } catch (_) {
-            resolve();
-        }
+    await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(serverCfg.port, HOST, () => resolve());
     });
+
+    httpServer = server;
+    wsServer = wss;
+    const addr = server.address();
+    if (addr && typeof addr === "object") {
+        actualPort = addr.port;
+    } else {
+        actualPort = serverCfg.port;
+    }
+
+    console.log("webcdp server listening", `${HOST}:${actualPort}`);
+    startDiscoveryPoller();
+}
+
+async function stopSharedServer() {
+    stopDiscoveryPoller();
+
+    for (const id of Array.from(targetsById.keys())) {
+        unregisterTarget(id);
+    }
+
     try {
-        if (inst.debuggerAttached) {
-            inst.wc.debugger.detach();
-            inst.debuggerAttached = false;
-        }
+        wsServer?.close();
     } catch (_) {}
-}
+    wsServer = null;
 
-export async function stopWebCdpProxyForTarget(workspaceid: string, tabid: string, blockid: string): Promise<void> {
-    const key = makeKey(workspaceid, tabid, blockid);
-    return stopWebCdpProxy(key);
-}
-
-export function getWebCdpProxyStatus(): WebCdpTargetInfo[] {
-    const out: WebCdpTargetInfo[] = [];
-    for (const inst of proxyMap.values()) {
-        const hostForUrl = getWsHostForUrl(inst.host);
-        const wsUrl = `ws://${hostForUrl}:${inst.port}${inst.wsPath}`;
-        const httpUrl = `http://${hostForUrl}:${inst.port}`;
-        out.push({
-            key: inst.key,
-            workspaceid: inst.workspaceid,
-            tabid: inst.tabid,
-            blockid: inst.blockid,
-            host: inst.host,
-            port: inst.port,
-            targetid: inst.targetid,
-            wsPath: inst.wsPath,
-            wsUrl,
-            httpUrl,
-            inspectorUrl: `devtools://devtools/bundled/inspector.html?ws=${hostForUrl}:${inst.port}${inst.wsPath}`,
+    const srv = httpServer;
+    httpServer = null;
+    actualPort = null;
+    if (srv) {
+        await new Promise<void>((resolve) => {
+            try {
+                srv.close(() => resolve());
+            } catch (_) {
+                resolve();
+            }
         });
     }
-    return out;
 }

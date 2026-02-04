@@ -101,8 +101,8 @@ wsh editconfig
 | window:confirmonclose                | bool     | when `true`, a prompt will ask a user to confirm that they want to close a window if it has an unsaved workspace with more than one tab (defaults to `true`)                                                                                                  |
 | window:dimensions                    | string   | set the default dimensions for new windows using the format "WIDTHxHEIGHT" (e.g. "1920x1080"). when a new window is created, these dimensions will be automatically applied. The width and height values should be specified in pixels.                       |
 | telemetry:enabled                    | bool     | set to enable/disable telemetry                                                                                                                                                                                                                               |
-| debug:remotedebugport                | int      | (debug) enable Electron's global remote debugging port for inspecting the main Wave UI (CDP). bound to `127.0.0.1`. requires app restart.                                                                                                                  |
 | debug:webcdp                         | bool     | (debug) enable `wsh web cdp` to expose a CDP websocket for web widgets. **This grants full control of the web widget (DOM, cookies, JS execution).** disabled by default.                                                                                    |
+| debug:webcdpport                     | int      | (debug) set the shared WebWidget CDP server port (Chrome-style `/json` endpoints), bound to `127.0.0.1`. default 9222. requires app restart.                                                                                                               |
 
 For reference, this is the current default configuration (v0.11.5):
 

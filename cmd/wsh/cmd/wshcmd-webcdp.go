@@ -47,13 +47,9 @@ var webCdpStatusCmd = &cobra.Command{
 	RunE:  webCdpStatusRun,
 }
 
-var webCdpPort int
-var webCdpIdleTimeoutMs int
 var webCdpJson bool
 
 func init() {
-	webCdpStartCmd.Flags().IntVar(&webCdpPort, "port", 0, "listen port (0 chooses an ephemeral port)")
-	webCdpStartCmd.Flags().IntVar(&webCdpIdleTimeoutMs, "idle-timeout-ms", 5*60*1000, "idle timeout in ms (0 disables)")
 	webCdpStartCmd.Flags().BoolVar(&webCdpJson, "json", false, "output as json")
 
 	webCdpStatusCmd.Flags().BoolVar(&webCdpJson, "json", false, "output as json")
@@ -207,8 +203,8 @@ func webCdpStartRun(cmd *cobra.Command, args []string) error {
 		WorkspaceId:   blockInfo.WorkspaceId,
 		BlockId:       fullORef.OID,
 		TabId:         blockInfo.TabId,
-		Port:          webCdpPort,
-		IdleTimeoutMs: webCdpIdleTimeoutMs,
+		Port:          0,
+		IdleTimeoutMs: 0,
 	}
 	resp, err := wshclient.WebCdpStartCommand(RpcClient, req, &wshrpc.RpcOpts{
 		Route:   wshutil.ElectronRoute,
@@ -228,6 +224,7 @@ func webCdpStartRun(cmd *cobra.Command, args []string) error {
 	WriteStdout("cdp wsurl: %s\n", resp.WsUrl)
 	WriteStdout("inspector: %s\n", resp.InspectorUrl)
 	WriteStdout("host=%s port=%d targetid=%s\n", resp.Host, resp.Port, resp.TargetId)
+	WriteStdout("http: http://%s:%d (try /json)\n", resp.Host, resp.Port)
 	return nil
 }
 

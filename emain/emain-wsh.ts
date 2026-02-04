@@ -6,7 +6,12 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification, net, safeStorage, shell } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
-import { getWebCdpProxyStatus, startWebCdpProxy, stopWebCdpProxyForTarget } from "./emain-cdp";
+import {
+    configureWebCdpServer,
+    getControlledWebCdpTargets,
+    registerWebCdpTarget,
+    stopWebCdpForBlock,
+} from "./emain-cdp";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
@@ -40,6 +45,8 @@ export class ElectronWshClientType extends WshClient {
         if (!fullConfig?.settings?.["debug:webcdp"]) {
             throw new Error("web cdp is disabled (enable debug:webcdp in settings.json)");
         }
+        const cdpPort = fullConfig?.settings?.["debug:webcdpport"] ?? 9222;
+        await configureWebCdpServer({ enabled: true, port: cdpPort });
         const ww = getWaveWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
             throw new Error(`no window found with workspace ${data.workspaceid}`);
@@ -48,11 +55,8 @@ export class ElectronWshClientType extends WshClient {
         if (wc == null) {
             throw new Error(`no webcontents found with blockid ${data.blockid}`);
         }
-        console.log("webcdpstart", data.workspaceid, data.tabid, data.blockid, "port=", data.port);
-        const info = await startWebCdpProxy(wc, data.workspaceid, data.tabid, data.blockid, {
-            port: data.port,
-            idleTimeoutMs: data.idletimeoutms,
-        });
+        console.log("webcdpstart", data.workspaceid, data.tabid, data.blockid);
+        const info = registerWebCdpTarget(data.blockid, wc);
         return {
             host: info.host,
             port: info.port,
@@ -67,15 +71,15 @@ export class ElectronWshClientType extends WshClient {
             throw new Error("workspaceid, tabid and blockid are required");
         }
         console.log("webcdpstop", data.workspaceid, data.tabid, data.blockid);
-        await stopWebCdpProxyForTarget(data.workspaceid, data.tabid, data.blockid);
+        stopWebCdpForBlock(data.blockid);
     }
 
     async handle_webcdpstatus(rh: RpcResponseHelper): Promise<WebCdpStatusEntry[]> {
-        const status = getWebCdpProxyStatus();
+        const status = getControlledWebCdpTargets();
         return status.map((s) => ({
-            key: s.key,
-            workspaceid: s.workspaceid,
-            tabid: s.tabid,
+            key: s.targetid,
+            workspaceid: "",
+            tabid: "",
             blockid: s.blockid,
             host: s.host,
             port: s.port,

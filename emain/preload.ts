@@ -81,3 +81,19 @@ ipcRenderer.on("webcontentsid-from-blockid", (e, blockId, responseCh) => {
     const wcId = webviewElem?.dataset?.webcontentsid;
     ipcRenderer.send(responseCh, wcId);
 });
+
+ipcRenderer.on("webviews-list", (_e, responseCh) => {
+    try {
+        const out: Array<{ blockId: string; webContentsId: string }> = [];
+        const nodes: NodeListOf<WebviewTag> = document.querySelectorAll("div[data-blockid] webview");
+        for (const wv of Array.from(nodes)) {
+            const blockId = (wv.closest("div[data-blockid]") as any)?.dataset?.blockid;
+            const webContentsId = (wv as any)?.dataset?.webcontentsid;
+            if (!blockId || !webContentsId) continue;
+            out.push({ blockId, webContentsId });
+        }
+        ipcRenderer.send(responseCh, out);
+    } catch (_err) {
+        ipcRenderer.send(responseCh, []);
+    }
+});

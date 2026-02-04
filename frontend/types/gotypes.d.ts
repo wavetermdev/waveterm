@@ -1324,7 +1324,7 @@ declare global {
         "conn:wshenabled"?: boolean;
         "debug:*"?: boolean;
         "debug:webcdp"?: boolean;
-        "debug:remotedebugport"?: number;
+        "debug:webcdpport"?: number;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
         "tsunami:*"?: boolean;

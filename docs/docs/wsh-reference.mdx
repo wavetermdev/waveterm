@@ -393,8 +393,14 @@ wsh web cdp start -b <blockid>
 # Stop CDP
 wsh web cdp stop -b <blockid>
 
-# List active CDP proxies
+# List active controlled web widgets
 wsh web cdp status
+```
+
+When enabled, Wave exposes a Chrome-style remote debugging endpoint on `127.0.0.1` (see `debug:webcdpport`). Tools can discover targets via:
+
+```sh
+curl http://127.0.0.1:<port>/json
 ```
 
 Note: CDP is a powerful interface (DOM/JS/cookies). It is gated behind `debug:webcdp=true` in `settings.json`.
