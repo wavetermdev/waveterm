@@ -425,8 +425,10 @@ function getSingleOrefAtomCache(oref: string): Map<string, Atom<any>> {
     return orefCache;
 }
 
-// this function must be kept up to date with IsBlockTermDurable in pkg/jobcontroller/jobcontroller.go
-function getBlockTermDurableAtom(blockId: string): Atom<boolean> {
+// this function should be kept up to date with IsBlockTermDurable in pkg/jobcontroller/jobcontroller.go
+// Note: null/false both map to false in the Go code, but this returns a special null value
+// to indicate when the block is not even eligible to be durable
+function getBlockTermDurableAtom(blockId: string): Atom<null | boolean> {
     const blockCache = getSingleBlockAtomCache(blockId);
     const durableAtomName = "#termdurable";
     let durableAtom = blockCache.get(durableAtomName);
@@ -438,12 +440,12 @@ function getBlockTermDurableAtom(blockId: string): Atom<boolean> {
         const block = get(blockAtom);
 
         if (block == null) {
-            return false;
+            return null;
         }
 
         // Check if view is "term", and controller is "shell"
         if (block.meta?.view != "term" || block.meta?.controller != "shell") {
-            return false;
+            return null;
         }
 
         // 1. Check if block has a JobId
@@ -451,10 +453,10 @@ function getBlockTermDurableAtom(blockId: string): Atom<boolean> {
             return true;
         }
 
-        // 2. Check if connection is local or WSL (not durable)
+        // 2. Check if connection is local or WSL (not eligible for durability)
         const connName = block.meta?.connection ?? "";
         if (isLocalConnName(connName) || isWslConnName(connName)) {
-            return false;
+            return null;
         }
 
         // 3. Check config hierarchy: blockmeta → connection → global (default true)

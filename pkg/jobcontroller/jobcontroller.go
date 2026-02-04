@@ -1140,6 +1140,14 @@ func IsBlockTermDurable(block *waveobj.Block) bool {
 	return true
 }
 
+func IsBlockIdTermDurable(blockId string) bool {
+	block, err := wstore.DBGet[*waveobj.Block](context.Background(), blockId)
+	if err != nil || block == nil {
+		return false
+	}
+	return IsBlockTermDurable(block)
+}
+
 func DeleteJob(ctx context.Context, jobId string) error {
 	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
 	err := filestore.WFS.DeleteZone(ctx, jobId)

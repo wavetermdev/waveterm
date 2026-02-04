@@ -35,7 +35,7 @@ import {
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
-import { boundNumber, stringToBase64 } from "@/util/util";
+import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
@@ -79,6 +79,7 @@ export class TermViewModel implements ViewModel {
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
     termDurableStatus: jotai.Atom<BlockJobStatusData | null>;
+    termConfigedDurable: jotai.Atom<null | boolean>;
     searchAtoms?: SearchAtoms;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
@@ -312,7 +313,7 @@ export class TermViewModel implements ViewModel {
                 const buttonDecl: IconButtonDecl = {
                     elemtype: "iconbutton",
                     icon: iconName,
-                    click: this.forceRestartController.bind(this),
+                    click: () => fireAndForget(() => this.forceRestartController()),
                     title: title,
                 };
                 rtn.push(buttonDecl);
@@ -351,6 +352,7 @@ export class TermViewModel implements ViewModel {
             }
             return blockJobStatus;
         });
+        this.termConfigedDurable = getBlockTermDurableAtom(this.blockId);
         this.blockJobStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<BlockJobStatusData>;
         this.blockJobStatusVersionTs = 0;
         const initialBlockJobStatus = RpcApi.BlockJobStatusCommand(TabRpcClient, blockId);
@@ -695,7 +697,7 @@ export class TermViewModel implements ViewModel {
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
         if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
-            this.forceRestartController();
+            fireAndForget(() => this.forceRestartController());
             return false;
         }
         const appHandled = appHandleKeyDown(waveEvent);
@@ -714,22 +716,22 @@ export class TermViewModel implements ViewModel {
         });
     }
 
-    forceRestartController() {
+    async forceRestartController() {
         if (globalStore.get(this.isRestarting)) {
             return;
         }
         this.triggerRestartAtom();
+        await RpcApi.ControllerDestroyCommand(TabRpcClient, this.blockId);
         const termsize = {
             rows: this.termRef.current?.terminal?.rows,
             cols: this.termRef.current?.terminal?.cols,
         };
-        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+        await RpcApi.ControllerResyncCommand(TabRpcClient, {
             tabid: globalStore.get(atoms.staticTabId),
             blockid: this.blockId,
             forcerestart: true,
             rtopts: { termsize: termsize },
         });
-        prtn.catch((e) => console.log("error controller resync (force restart)", e));
     }
 
     async restartSessionInStandardMode() {
@@ -1040,7 +1042,7 @@ export class TermViewModel implements ViewModel {
         });
         advancedSubmenu.push({
             label: "Force Restart Controller",
-            click: this.forceRestartController.bind(this),
+            click: () => fireAndForget(() => this.forceRestartController()),
         });
         const isClearOnStart = blockData?.meta?.["cmd:clearonstart"];
         advancedSubmenu.push({

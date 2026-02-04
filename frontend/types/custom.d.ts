@@ -312,6 +312,7 @@ declare global {
         viewText?: jotai.Atom<string | HeaderElem[]>;
 
         termDurableStatus?: jotai.Atom<BlockJobStatusData | null>;
+        termConfigedDurable?: jotai.Atom<null | boolean>;
 
         // Icon button displayed before the title in the header.
         preIconButton?: jotai.Atom<IconButtonDecl>;
