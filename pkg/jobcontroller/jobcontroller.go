@@ -28,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -265,6 +266,7 @@ func InitJobController() {
 	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
 	rpcClient.EventListener.On(wps.Event_RouteDown, handleRouteDownEvent)
 	rpcClient.EventListener.On(wps.Event_ConnChange, handleConnChangeEvent)
+	rpcClient.EventListener.On(wps.Event_BlockClose, handleBlockCloseEvent)
 	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
 		Event:     wps.Event_RouteUp,
 		AllScopes: true,
@@ -275,6 +277,10 @@ func InitJobController() {
 	}, nil)
 	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
 		Event:     wps.Event_ConnChange,
+		AllScopes: true,
+	}, nil)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_BlockClose,
 		AllScopes: true,
 	}, nil)
 }
@@ -336,6 +342,36 @@ func handleConnChangeEvent(event *wps.WaveEvent) {
 	select {
 	case connStates.reconcileCh <- struct{}{}:
 	default:
+	}
+}
+
+func handleBlockCloseEvent(event *wps.WaveEvent) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId, ok := event.Data.(string)
+	if !ok {
+		log.Printf("[blockclose] invalid event data type")
+		return
+	}
+
+	jobIds, err := wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]string, error) {
+		query := `SELECT oid FROM db_job WHERE json_extract(data, '$.attachedblockid') = ?`
+		jobIds := tx.SelectStrings(query, blockId)
+		return jobIds, nil
+	})
+	if err != nil {
+		log.Printf("[block:%s] error looking up jobids: %v", blockId, err)
+		return
+	}
+	if len(jobIds) == 0 {
+		return
+	}
+
+	for _, jobId := range jobIds {
+		err := DetachJobFromBlock(ctx, jobId, false)
+		if err != nil {
+			log.Printf("[job:%s] error detaching from block %s: %v", jobId, blockId, err)
+		}
 	}
 }
 
@@ -1213,11 +1249,13 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 	}
 
 	SendBlockJobStatusEvent(ctx, blockId)
+	wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	return nil
 }
 
 func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) error {
 	var blockId string
+	var blockUpdated bool
 	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		job, err := wstore.DBMustGet[*waveobj.Job](tx.Context(), jobId)
 		if err != nil {
@@ -1237,6 +1275,8 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 				})
 				if err != nil {
 					log.Printf("[job:%s] warning: failed to clear JobId from block:%s: %v", jobId, blockId, err)
+				} else {
+					blockUpdated = true
 				}
 			}
 		}
@@ -1257,6 +1297,9 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 
 	if blockId != "" {
 		SendBlockJobStatusEvent(ctx, blockId)
+		if blockUpdated {
+			wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
+		}
 	}
 
 	return nil

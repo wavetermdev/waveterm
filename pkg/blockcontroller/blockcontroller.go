@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -116,6 +117,24 @@ func getAllControllers() map[string]Controller {
 		result[k] = v
 	}
 	return result
+}
+
+func InitBlockController() {
+	rpcClient := wshclient.GetBareRpcClient()
+	rpcClient.EventListener.On(wps.Event_BlockClose, handleBlockCloseEvent)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_BlockClose,
+		AllScopes: true,
+	}, nil)
+}
+
+func handleBlockCloseEvent(event *wps.WaveEvent) {
+	blockId, ok := event.Data.(string)
+	if !ok {
+		log.Printf("[blockclose] invalid event data type")
+		return
+	}
+	go DestroyBlockController(blockId)
 }
 
 // Public API Functions

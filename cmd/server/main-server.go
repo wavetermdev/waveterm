@@ -568,6 +568,7 @@ func main() {
 	go startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
 	jobcontroller.InitJobController()
+	blockcontroller.InitBlockController()
 	wcore.InitTabIndicatorStore()
 	go func() {
 		defer func() {
