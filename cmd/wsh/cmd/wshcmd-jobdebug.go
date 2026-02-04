@@ -95,6 +95,12 @@ var jobDebugDetachJobCmd = &cobra.Command{
 	RunE:  jobDebugDetachJobRun,
 }
 
+var jobDebugBlockAttachmentCmd = &cobra.Command{
+	Use:   "blockattachment",
+	Short: "show the attached job for a block",
+	RunE:  jobDebugBlockAttachmentRun,
+}
+
 var jobIdFlag string
 var jobDebugJsonFlag bool
 var jobConnFlag string
@@ -120,6 +126,7 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugStartCmd)
 	jobDebugCmd.AddCommand(jobDebugAttachJobCmd)
 	jobDebugCmd.AddCommand(jobDebugDetachJobCmd)
+	jobDebugCmd.AddCommand(jobDebugBlockAttachmentCmd)
 
 	jobDebugListCmd.Flags().BoolVar(&jobDebugJsonFlag, "json", false, "output as JSON")
 
@@ -416,5 +423,25 @@ func jobDebugDetachJobRun(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Job %s detached successfully\n", detachJobIdFlag)
+	return nil
+}
+
+func jobDebugBlockAttachmentRun(cmd *cobra.Command, args []string) error {
+	blockORef, err := resolveBlockArg()
+	if err != nil {
+		return err
+	}
+
+	blockId := blockORef.OID
+	jobStatus, err := wshclient.BlockJobStatusCommand(RpcClient, blockId, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("getting block job status: %w", err)
+	}
+
+	if jobStatus.JobId == "" {
+		fmt.Printf("Block %s: no attached job\n", blockId)
+	} else {
+		fmt.Printf("Block %s: attached to job %s\n", blockId, jobStatus.JobId)
+	}
 	return nil
 }

@@ -85,6 +85,11 @@ func (c *WslCmd) ExitCode() int {
 	}
 	return state.ExitCode()
 }
+
+func (c *WslCmd) ExitSignal() string {
+	return ""
+}
+
 func (c *WslCmd) GetProcess() *os.Process {
 	return c.c.Process
 }

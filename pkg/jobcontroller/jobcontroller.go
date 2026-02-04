@@ -28,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -90,7 +91,10 @@ var (
 
 	jobStreamIds = ds.MakeSyncMap[string]()
 
-	reconnectGroup singleflight.Group
+	jobTerminationMessageWritten = ds.MakeSyncMap[bool]()
+
+	reconnectGroup           singleflight.Group
+	terminateJobManagerGroup singleflight.Group
 )
 
 func isJobManagerRunning(job *waveobj.Job) bool {
@@ -258,11 +262,13 @@ func getMetaInt64(meta wshrpc.FileMeta, key string) int64 {
 
 func InitJobController() {
 	go connReconcileWorker()
+	go jobPruningWorker()
 
 	rpcClient := wshclient.GetBareRpcClient()
 	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
 	rpcClient.EventListener.On(wps.Event_RouteDown, handleRouteDownEvent)
 	rpcClient.EventListener.On(wps.Event_ConnChange, handleConnChangeEvent)
+	rpcClient.EventListener.On(wps.Event_BlockClose, handleBlockCloseEvent)
 	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
 		Event:     wps.Event_RouteUp,
 		AllScopes: true,
@@ -275,6 +281,54 @@ func InitJobController() {
 		Event:     wps.Event_ConnChange,
 		AllScopes: true,
 	}, nil)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_BlockClose,
+		AllScopes: true,
+	}, nil)
+}
+
+func jobPruningWorker() {
+	defer func() {
+		panichandler.PanicHandler("jobcontroller:jobPruningWorker", recover())
+	}()
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	var previousCandidates []string
+	for range ticker.C {
+		previousCandidates = pruneUnusedJobs(previousCandidates)
+	}
+}
+
+func pruneUnusedJobs(previousCandidates []string) []string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelFn()
+
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		log.Printf("[jobpruner] error getting all jobs: %v", err)
+		return previousCandidates
+	}
+
+	var currentCandidates []string
+	for _, job := range allJobs {
+		if job.JobManagerStatus == JobManagerStatus_Done && job.AttachedBlockId == "" {
+			currentCandidates = append(currentCandidates, job.OID)
+		}
+	}
+
+	jobsToDelete := utilfn.StrSetIntersection(previousCandidates, currentCandidates)
+	log.Printf("[jobpruner] prev=%d current=%d deleting=%d", len(previousCandidates), len(currentCandidates), len(jobsToDelete))
+
+	for _, jobId := range jobsToDelete {
+		err := DeleteJob(ctx, jobId)
+		if err != nil {
+			log.Printf("[jobpruner] error deleting job %s: %v", jobId, err)
+		}
+	}
+
+	return currentCandidates
 }
 
 func handleRouteUpEvent(event *wps.WaveEvent) {
@@ -334,6 +388,33 @@ func handleConnChangeEvent(event *wps.WaveEvent) {
 	select {
 	case connStates.reconcileCh <- struct{}{}:
 	default:
+	}
+}
+
+func handleBlockCloseEvent(event *wps.WaveEvent) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId, ok := event.Data.(string)
+	if !ok {
+		log.Printf("[blockclose] invalid event data type")
+		return
+	}
+
+	jobIds, err := wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]string, error) {
+		query := `SELECT oid FROM db_job WHERE json_extract(data, '$.attachedblockid') = ?`
+		jobIds := tx.SelectStrings(query, blockId)
+		return jobIds, nil
+	})
+	if err != nil {
+		log.Printf("[block:%s] error looking up jobids: %v", blockId, err)
+		return
+	}
+	if len(jobIds) == 0 {
+		return
+	}
+
+	for _, jobId := range jobIds {
+		TerminateAndDetachJob(ctx, jobId)
 	}
 }
 
@@ -687,16 +768,19 @@ func HandleCmdJobExited(ctx context.Context, jobId string, data wshrpc.CommandJo
 	sendBlockJobStatusEventByJob(ctx, updatedJob)
 	tryTerminateJobManager(ctx, jobId)
 
-	// the output file shouldn't be empty since this is a real termination.
-	// even if it is, we still want to write the exit codes
-	resetTerminalState(ctx, updatedJob.AttachedBlockId)
-	msg := "shell terminated"
-	if updatedJob.CmdExitCode != nil && *updatedJob.CmdExitCode != 0 {
-		msg = fmt.Sprintf("shell terminated (exit code %d)", *updatedJob.CmdExitCode)
-	} else if updatedJob.CmdExitSignal != "" {
-		msg = fmt.Sprintf("shell terminated (signal %s)", updatedJob.CmdExitSignal)
+	shouldWrite := jobTerminationMessageWritten.TestAndSet(jobId, true, func(val bool, exists bool) bool {
+		return !exists || !val
+	})
+	if shouldWrite {
+		resetTerminalState(ctx, updatedJob.AttachedBlockId)
+		msg := "shell terminated"
+		if updatedJob.CmdExitCode != nil && *updatedJob.CmdExitCode != 0 {
+			msg = fmt.Sprintf("shell terminated (exit code %d)", *updatedJob.CmdExitCode)
+		} else if updatedJob.CmdExitSignal != "" {
+			msg = fmt.Sprintf("shell terminated (signal %s)", updatedJob.CmdExitSignal)
+		}
+		writeMutedMessageToTerminal(updatedJob.AttachedBlockId, "["+msg+"]")
 	}
-	writeMutedMessageToTerminal(updatedJob.AttachedBlockId, "["+msg+"]")
 	return nil
 }
 
@@ -726,17 +810,44 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 	}
 }
 
+func TerminateAndDetachJob(ctx context.Context, jobId string) {
+	err := TerminateJobManager(ctx, jobId)
+	if err != nil {
+		log.Printf("[job:%s] error terminating job manager: %v", jobId, err)
+	}
+	err = DetachJobFromBlock(ctx, jobId, true)
+	if err != nil {
+		log.Printf("[job:%s] error detaching job from block: %v", jobId, err)
+	}
+}
+
 func TerminateJobManager(ctx context.Context, jobId string) error {
-	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		job.TerminateOnReconnect = true
+	_, err, _ := terminateJobManagerGroup.Do(jobId, func() (any, error) {
+		err := doTerminateJobManager(ctx, jobId)
+		return nil, err
+	})
+	return err
+}
+
+func doTerminateJobManager(ctx context.Context, jobId string) error {
+	var shouldTerminate bool
+	var job *waveobj.Job
+	err := wstore.DBUpdateFn(ctx, jobId, func(j *waveobj.Job) {
+		job = j
+		if j.JobManagerStatus == JobManagerStatus_Done {
+			shouldTerminate = false
+			return
+		}
+		j.TerminateOnReconnect = true
+		shouldTerminate = true
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set TerminateOnReconnect: %w", err)
 	}
 
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
-	if err != nil {
-		return fmt.Errorf("failed to get job: %w", err)
+	if !shouldTerminate {
+		log.Printf("[job:%s] already terminated, skipping", jobId)
+		return nil
 	}
 
 	return remoteTerminateJobManager(ctx, job)
@@ -769,6 +880,14 @@ func DisconnectJob(ctx context.Context, jobId string) error {
 
 func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	log.Printf("[job:%s] terminating job manager", job.OID)
+
+	shouldWrite := jobTerminationMessageWritten.TestAndSet(job.OID, true, func(val bool, exists bool) bool {
+		return !exists || !val
+	})
+	if shouldWrite {
+		resetTerminalState(ctx, job.AttachedBlockId)
+		writeMutedMessageToTerminal(job.AttachedBlockId, "[shell terminated]")
+	}
 
 	bareRpc := wshclient.GetBareRpcClient()
 	terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
@@ -1140,8 +1259,17 @@ func IsBlockTermDurable(block *waveobj.Block) bool {
 	return true
 }
 
+func IsBlockIdTermDurable(blockId string) bool {
+	block, err := wstore.DBGet[*waveobj.Block](context.Background(), blockId)
+	if err != nil || block == nil {
+		return false
+	}
+	return IsBlockTermDurable(block)
+}
+
 func DeleteJob(ctx context.Context, jobId string) error {
 	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
+	jobTerminationMessageWritten.Delete(jobId)
 	err := filestore.WFS.DeleteZone(ctx, jobId)
 	if err != nil {
 		log.Printf("[job:%s] warning: error deleting WaveFS zone: %v", jobId, err)
@@ -1191,11 +1319,13 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 	}
 
 	SendBlockJobStatusEvent(ctx, blockId)
+	wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	return nil
 }
 
 func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) error {
 	var blockId string
+	var blockUpdated bool
 	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		job, err := wstore.DBMustGet[*waveobj.Job](tx.Context(), jobId)
 		if err != nil {
@@ -1215,6 +1345,8 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 				})
 				if err != nil {
 					log.Printf("[job:%s] warning: failed to clear JobId from block:%s: %v", jobId, blockId, err)
+				} else {
+					blockUpdated = true
 				}
 			}
 		}
@@ -1235,6 +1367,9 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 
 	if blockId != "" {
 		SendBlockJobStatusEvent(ctx, blockId)
+		if blockUpdated {
+			wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
+		}
 	}
 
 	return nil

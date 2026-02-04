@@ -40,6 +40,7 @@ type DurableShellController struct {
 	inputSeqNum    int    // monotonic sequence number for inputs, starts at 1
 
 	JobId           string
+	ConnName        string
 	LastKnownStatus string
 }
 
@@ -92,6 +93,7 @@ func (dsc *DurableShellController) getRuntimeStatus_withlock() BlockControllerRu
 	rtn.Version = dsc.VersionTs.GetVersionTs()
 	rtn.BlockId = dsc.BlockId
 	rtn.ShellProcStatus = dsc.getJobStatus_withlock()
+	rtn.ShellProcConnName = dsc.ConnName
 	return rtn
 }
 
@@ -116,7 +118,7 @@ func (dsc *DurableShellController) sendUpdate_withlock() {
 	})
 }
 
-// Start initializes or reconnects to a shell job for the block.
+// Start initializes or reconnects to a durable shell for the block.
 // Logic:
 // - If block has no existing jobId: starts a new job and attaches it
 // - If block has existing jobId with running job manager: reconnects to existing job
@@ -133,7 +135,7 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 
 	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
 	if conncontroller.IsLocalConnName(connName) {
-		return fmt.Errorf("shell job controller requires a remote connection")
+		return fmt.Errorf("durable shell controller requires a remote connection")
 	}
 
 	var jobId string
@@ -154,7 +156,7 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 	}
 
 	if jobId == "" {
-		log.Printf("block %q starting new shell job\n", dsc.BlockId)
+		log.Printf("block %q starting new durable shell\n", dsc.BlockId)
 		newJobId, err := dsc.startNewJob(ctx, blockMeta, connName)
 		if err != nil {
 			return fmt.Errorf("failed to start new job: %w", err)
@@ -164,6 +166,7 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 
 	dsc.WithLock(func() {
 		dsc.JobId = jobId
+		dsc.ConnName = connName
 		dsc.sendUpdate_withlock()
 	})
 
@@ -185,14 +188,7 @@ func (dsc *DurableShellController) Stop(graceful bool, newStatus string, destroy
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := jobcontroller.DetachJobFromBlock(ctx, jobId, false)
-	if err != nil {
-		log.Printf("error detaching job from block: %v\n", err)
-	}
-	err = jobcontroller.TerminateJobManager(ctx, jobId)
-	if err != nil {
-		log.Printf("error terminating job manager: %v\n", err)
-	}
+	jobcontroller.TerminateAndDetachJob(ctx, jobId)
 }
 
 func (dsc *DurableShellController) SendInput(inputUnion *BlockInputUnion) error {
@@ -261,7 +257,7 @@ func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta wa
 	}
 	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn, dsc.BlockId)
 	if err != nil {
-		return "", fmt.Errorf("failed to start remote shell job: %w", err)
+		return "", fmt.Errorf("failed to start durable shell: %w", err)
 	}
 	return jobId, nil
 }

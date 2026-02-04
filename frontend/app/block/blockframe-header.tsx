@@ -23,9 +23,18 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
 
-function getDurableIconProps(jobStatus: BlockJobStatusData, connStatus: ConnStatus) {
+function getDurableIconProps(jobStatus: BlockJobStatusData, connStatus: ConnStatus, isConfigedDurable?: boolean | null) {
     let color = "text-muted";
     let titleText = "Durable Session";
+    let iconType: "fa-solid" | "fa-regular" = "fa-solid";
+    
+    if (isConfigedDurable === false) {
+        color = "text-muted";
+        titleText = "Standard Session";
+        iconType = "fa-regular";
+        return { color, titleText, iconType };
+    }
+    
     const status = jobStatus?.status;
     if (status === "connected") {
         color = "text-sky-500";
@@ -57,7 +66,7 @@ function getDurableIconProps(jobStatus: BlockJobStatusData, connStatus: ConnStat
             titleText = "No Session";
         }
     }
-    return { color, titleText };
+    return { color, titleText, iconType };
 }
 
 function handleHeaderContextMenu(
@@ -209,6 +218,7 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
     const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
+    const termConfigedDurable = util.useAtomValueSafe(viewModel?.termConfigedDurable);
     const hideViewName = util.useAtomValueSafe(viewModel?.hideViewName);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const prevMagifiedState = React.useRef(magnified);
@@ -230,7 +240,11 @@ const BlockFrame_Header = ({
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
 
-    const { color: durableIconColor, titleText: durableTitle } = getDurableIconProps(termDurableStatus, connStatus);
+    const { color: durableIconColor, titleText: durableTitle, iconType: durableIconType } = getDurableIconProps(
+        termDurableStatus,
+        connStatus,
+        termConfigedDurable
+    );
 
     return (
         <div
@@ -257,9 +271,9 @@ const BlockFrame_Header = ({
                     isTerminalBlock={isTerminalBlock}
                 />
             )}
-            {useTermHeader && termDurableStatus != null && (
+            {useTermHeader && termConfigedDurable != null && (
                 <div className="iconbutton disabled text-[13px] ml-[-4px]" key="durable-status">
-                    <i className={`fa-sharp fa-solid fa-shield ${durableIconColor}`} title={durableTitle} />
+                    <i className={`fa-sharp ${durableIconType} fa-shield ${durableIconColor}`} title={durableTitle} />
                 </div>
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />

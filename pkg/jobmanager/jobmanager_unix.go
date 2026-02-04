@@ -11,54 +11,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"golang.org/x/sys/unix"
 )
-
-func getProcessGroupId(pid int) (int, error) {
-	pgid, err := syscall.Getpgid(pid)
-	if err != nil {
-		return 0, err
-	}
-	return pgid, nil
-}
-
-func parseSignal(sigName string) os.Signal {
-	sigName = strings.TrimSpace(sigName)
-	sigName = strings.ToUpper(sigName)
-	if n, err := strconv.Atoi(sigName); err == nil {
-		if n <= 0 {
-			return nil
-		}
-		return syscall.Signal(n)
-	}
-	if !strings.HasPrefix(sigName, "SIG") {
-		sigName = "SIG" + sigName
-	}
-	sig := unix.SignalNum(sigName)
-	if sig == 0 {
-		return nil
-	}
-	return sig
-}
-
-func getSignalName(sig os.Signal) string {
-	if sig == nil {
-		return ""
-	}
-	scSig, ok := sig.(syscall.Signal)
-	if !ok {
-		return sig.String()
-	}
-	name := unix.SignalName(scSig)
-	if name == "" {
-		return fmt.Sprintf("%d", int(scSig))
-	}
-	return name
-}
 
 func daemonize(clientId string, jobId string) error {
 	_, err := unix.Setsid()
@@ -102,8 +58,4 @@ func daemonize(clientId string, jobId string) error {
 	signal.Ignore(syscall.SIGHUP)
 
 	return nil
-}
-
-func setCloseOnExec(fd int) {
-	unix.CloseOnExec(fd)
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -118,6 +119,24 @@ func getAllControllers() map[string]Controller {
 	return result
 }
 
+func InitBlockController() {
+	rpcClient := wshclient.GetBareRpcClient()
+	rpcClient.EventListener.On(wps.Event_BlockClose, handleBlockCloseEvent)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_BlockClose,
+		AllScopes: true,
+	}, nil)
+}
+
+func handleBlockCloseEvent(event *wps.WaveEvent) {
+	blockId, ok := event.Data.(string)
+	if !ok {
+		log.Printf("[blockclose] invalid event data type")
+		return
+	}
+	go DestroyBlockController(blockId)
+}
+
 // Public API Functions
 
 func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts *waveobj.RuntimeOpts, force bool) error {
@@ -131,9 +150,21 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	}
 
 	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
+	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
 
 	// Get existing controller
 	existing := getController(blockId)
+
+	// Check for connection change FIRST - always destroy on conn change
+	if existing != nil {
+		existingStatus := existing.GetRuntimeStatus()
+		if existingStatus.ShellProcConnName != connName {
+			log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingStatus.ShellProcConnName, connName)
+			DestroyBlockController(blockId)
+			time.Sleep(100 * time.Millisecond)
+			existing = nil
+		}
+	}
 
 	// If no controller needed, stop existing if present
 	if controllerName == "" {
@@ -144,12 +175,10 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	}
 
 	// Determine if we should use DurableShellController vs ShellController
-	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
-	shouldUseDurableShellController := jobcontroller.IsBlockTermDurable(blockData) && controllerName == BlockController_Shell
+	shouldUseDurableShellController := controllerName == BlockController_Shell && jobcontroller.IsBlockIdTermDurable(blockId)
 
 	// Check if we need to morph controller type
 	if existing != nil {
-		existingStatus := existing.GetRuntimeStatus()
 		needsReplace := false
 
 		switch existing.(type) {
@@ -174,19 +203,6 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 			DestroyBlockController(blockId)
 			time.Sleep(100 * time.Millisecond)
 			existing = nil
-		}
-
-		// For shell/cmd, check if connection changed (but not for job controller)
-		if !needsReplace && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd) {
-			if _, isShellController := existing.(*ShellController); isShellController {
-				// Check if connection changed, including between different local connections
-				if existingStatus.ShellProcStatus == Status_Running && existingStatus.ShellProcConnName != connName {
-					log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingStatus.ShellProcConnName, connName)
-					DestroyBlockController(blockId)
-					time.Sleep(100 * time.Millisecond)
-					existing = nil
-				}
-			}
 		}
 	}
 
@@ -237,7 +253,6 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	if status.ShellProcStatus == Status_Init {
 		// For shell/cmd, check connection status first (for non-local connections)
 		if controllerName == BlockController_Shell || controllerName == BlockController_Cmd {
-			connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
 			if !conncontroller.IsLocalConnName(connName) {
 				err = CheckConnStatus(blockId)
 				if err != nil {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/util/unixutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"golang.org/x/crypto/ssh"
 )
@@ -24,6 +25,7 @@ type ConnInterface interface {
 	Wait() error
 	Start() error
 	ExitCode() int
+	ExitSignal() string
 	StdinPipe() (io.WriteCloser, error)
 	StdoutPipe() (io.ReadCloser, error)
 	StderrPipe() (io.ReadCloser, error)
@@ -64,6 +66,19 @@ func (cw CmdWrap) ExitCode() int {
 		return -1
 	}
 	return state.ExitCode()
+}
+
+func (cw CmdWrap) ExitSignal() string {
+	state := cw.Cmd.ProcessState
+	if state == nil {
+		return ""
+	}
+	if ws, ok := state.Sys().(syscall.WaitStatus); ok {
+		if ws.Signaled() {
+			return unixutil.GetSignalName(ws.Signal())
+		}
+	}
+	return ""
 }
 
 func (cw CmdWrap) KillGraceful(timeout time.Duration) {
@@ -154,6 +169,19 @@ func (sw SessionWrap) ExitCode() int {
 		return -1
 	}
 	return ExitCodeFromWaitErr(waitErr)
+}
+
+func (sw SessionWrap) ExitSignal() string {
+	if sw.WaitErr == nil {
+		return ""
+	}
+	if exitErr, ok := sw.WaitErr.(*ssh.ExitError); ok {
+		signal := exitErr.Signal()
+		if signal != "" {
+			return signal
+		}
+	}
+	return ""
 }
 
 func (sw SessionWrap) Wait() error {

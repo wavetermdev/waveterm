@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/util/unixutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -62,7 +63,7 @@ func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to start command: %w", err)
 	}
-	setCloseOnExec(int(cmdPty.Fd()))
+	unixutil.SetCloseOnExec(int(cmdPty.Fd()))
 	jm.cmd = ecmd
 	jm.cmdPty = cmdPty
 	jm.ptsName = jm.cmdPty.Name()
@@ -86,7 +87,7 @@ func (jm *JobCmd) waitForProcess() {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				if status.Signaled() {
-					jm.exitSignal = getSignalName(status.Signal())
+					jm.exitSignal = unixutil.GetSignalName(status.Signal())
 				} else if status.Exited() {
 					code := status.ExitStatus()
 					jm.exitCode = &code
@@ -123,7 +124,7 @@ func (jm *JobCmd) GetPGID() (int, error) {
 	if jm.processExited {
 		return 0, fmt.Errorf("process already exited")
 	}
-	pgid, err := getProcessGroupId(jm.cmd.Process.Pid)
+	pgid, err := unixutil.GetProcessGroupId(jm.cmd.Process.Pid)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get pgid: %w", err)
 	}
@@ -197,7 +198,7 @@ func (jm *JobCmd) HandleInput(data wshrpc.CommandJobInputData) error {
 	}
 
 	if data.SigName != "" {
-		sig := parseSignal(data.SigName)
+		sig := unixutil.ParseSignal(data.SigName)
 		if sig != nil && jm.cmd.Process != nil {
 			err := jm.cmd.Process.Signal(sig)
 			if err != nil {

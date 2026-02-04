@@ -4,7 +4,6 @@
 package blockcontroller
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -208,13 +207,22 @@ func (sc *ShellController) resetTerminalState(logCtx context.Context) {
 		return
 	}
 	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state\n")
-	// controller type = "shell"
-	var buf bytes.Buffer
-	buf.WriteString(shellutil.GetTerminalResetSeq())
-	buf.WriteString("\r\n\r\n")
-	err := HandleAppendBlockFile(sc.BlockId, wavebase.BlockFile_Term, buf.Bytes())
+	resetSeq := shellutil.GetTerminalResetSeq()
+	resetSeq += "\r\n"
+	err := HandleAppendBlockFile(sc.BlockId, wavebase.BlockFile_Term, []byte(resetSeq))
 	if err != nil {
 		log.Printf("error appending to blockfile (terminal reset): %v\n", err)
+	}
+}
+
+func (sc *ShellController) writeMutedMessageToTerminal(msg string) {
+	if sc.BlockId == "" {
+		return
+	}
+	fullMsg := "\x1b[90m" + msg + "\x1b[0m\r\n"
+	err := HandleAppendBlockFile(sc.BlockId, wavebase.BlockFile_Term, []byte(fullMsg))
+	if err != nil {
+		log.Printf("error writing muted message to terminal (blockid=%s): %v", sc.BlockId, err)
 	}
 }
 
@@ -589,6 +597,21 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		waitErr := shellProc.Cmd.Wait()
 		exitCode = shellProc.Cmd.ExitCode()
 		shellProc.SetWaitErrorAndSignalDone(waitErr)
+		bc.resetTerminalState(context.Background())
+		exitSignal := shellProc.Cmd.ExitSignal()
+		var baseMsg string
+		if bc.ControllerType == BlockController_Shell {
+			baseMsg = "shell terminated"
+		} else {
+			baseMsg = "command exited"
+		}
+		msg := baseMsg
+		if exitSignal != "" {
+			msg = fmt.Sprintf("%s (signal %s)", baseMsg, exitSignal)
+		} else if exitCode != 0 {
+			msg = fmt.Sprintf("%s (exit code %d)", baseMsg, exitCode)
+		}
+		bc.writeMutedMessageToTerminal("[" + msg + "]")
 		go checkCloseOnExit(bc.BlockId, exitCode)
 	}()
 	return nil
