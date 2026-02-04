@@ -261,6 +261,7 @@ func getMetaInt64(meta wshrpc.FileMeta, key string) int64 {
 
 func InitJobController() {
 	go connReconcileWorker()
+	go jobPruningWorker()
 
 	rpcClient := wshclient.GetBareRpcClient()
 	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
@@ -283,6 +284,50 @@ func InitJobController() {
 		Event:     wps.Event_BlockClose,
 		AllScopes: true,
 	}, nil)
+}
+
+func jobPruningWorker() {
+	defer func() {
+		panichandler.PanicHandler("jobcontroller:jobPruningWorker", recover())
+	}()
+
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	var previousCandidates []string
+	for range ticker.C {
+		previousCandidates = pruneUnusedJobs(previousCandidates)
+	}
+}
+
+func pruneUnusedJobs(previousCandidates []string) []string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelFn()
+
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		log.Printf("[jobpruner] error getting all jobs: %v", err)
+		return previousCandidates
+	}
+
+	var currentCandidates []string
+	for _, job := range allJobs {
+		if job.JobManagerStatus == JobManagerStatus_Done && job.AttachedBlockId == "" {
+			currentCandidates = append(currentCandidates, job.OID)
+		}
+	}
+
+	jobsToDelete := utilfn.StrSetIntersection(previousCandidates, currentCandidates)
+	log.Printf("[jobpruner] prev=%d current=%d deleting=%d", len(previousCandidates), len(currentCandidates), len(jobsToDelete))
+
+	for _, jobId := range jobsToDelete {
+		err := DeleteJob(ctx, jobId)
+		if err != nil {
+			log.Printf("[jobpruner] error deleting job %s: %v", jobId, err)
+		}
+	}
+
+	return currentCandidates
 }
 
 func handleRouteUpEvent(event *wps.WaveEvent) {

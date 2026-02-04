@@ -589,6 +589,20 @@ func CombineStrArrays(sarr1 []string, sarr2 []string) []string {
 	return rtn
 }
 
+func StrSetIntersection(s1 []string, s2 []string) []string {
+	set := make(map[string]bool)
+	for _, s := range s1 {
+		set[s] = true
+	}
+	var rtn []string
+	for _, s := range s2 {
+		if set[s] {
+			rtn = append(rtn, s)
+		}
+	}
+	return rtn
+}
+
 func QuickJson(v interface{}) string {
 	barr, _ := json.Marshal(v)
 	return string(barr)
