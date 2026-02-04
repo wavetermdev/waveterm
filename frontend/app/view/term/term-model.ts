@@ -734,10 +734,10 @@ export class TermViewModel implements ViewModel {
         });
     }
 
-    async restartSessionInStandardMode() {
+    async restartSessionWithDurability(isDurable: boolean) {
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("block", this.blockId),
-            meta: { "term:durable": false },
+            meta: { "term:durable": isDurable },
         });
         await RpcApi.ControllerDestroyCommand(TabRpcClient, this.blockId);
         const termsize = {
@@ -1147,7 +1147,17 @@ export class TermViewModel implements ViewModel {
                 submenu: [
                     {
                         label: "Restart Session in Standard Mode",
-                        click: () => this.restartSessionInStandardMode(),
+                        click: () => this.restartSessionWithDurability(false),
+                    },
+                ],
+            });
+        } else if (isDurable === false) {
+            advancedSubmenu.push({
+                label: "Session Durability",
+                submenu: [
+                    {
+                        label: "Restart Session in Durable Mode",
+                        click: () => this.restartSessionWithDurability(true),
                     },
                 ],
             });

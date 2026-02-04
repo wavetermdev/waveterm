@@ -90,6 +90,8 @@ var (
 
 	jobStreamIds = ds.MakeSyncMap[string]()
 
+	jobTerminationMessageWritten = ds.MakeSyncMap[bool]()
+
 	reconnectGroup singleflight.Group
 )
 
@@ -687,16 +689,19 @@ func HandleCmdJobExited(ctx context.Context, jobId string, data wshrpc.CommandJo
 	sendBlockJobStatusEventByJob(ctx, updatedJob)
 	tryTerminateJobManager(ctx, jobId)
 
-	// the output file shouldn't be empty since this is a real termination.
-	// even if it is, we still want to write the exit codes
-	resetTerminalState(ctx, updatedJob.AttachedBlockId)
-	msg := "shell terminated"
-	if updatedJob.CmdExitCode != nil && *updatedJob.CmdExitCode != 0 {
-		msg = fmt.Sprintf("shell terminated (exit code %d)", *updatedJob.CmdExitCode)
-	} else if updatedJob.CmdExitSignal != "" {
-		msg = fmt.Sprintf("shell terminated (signal %s)", updatedJob.CmdExitSignal)
+	shouldWrite := jobTerminationMessageWritten.TestAndSet(jobId, true, func(val bool, exists bool) bool {
+		return !exists || !val
+	})
+	if shouldWrite {
+		resetTerminalState(ctx, updatedJob.AttachedBlockId)
+		msg := "shell terminated"
+		if updatedJob.CmdExitCode != nil && *updatedJob.CmdExitCode != 0 {
+			msg = fmt.Sprintf("shell terminated (exit code %d)", *updatedJob.CmdExitCode)
+		} else if updatedJob.CmdExitSignal != "" {
+			msg = fmt.Sprintf("shell terminated (signal %s)", updatedJob.CmdExitSignal)
+		}
+		writeMutedMessageToTerminal(updatedJob.AttachedBlockId, "["+msg+"]")
 	}
-	writeMutedMessageToTerminal(updatedJob.AttachedBlockId, "["+msg+"]")
 	return nil
 }
 
@@ -769,6 +774,14 @@ func DisconnectJob(ctx context.Context, jobId string) error {
 
 func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	log.Printf("[job:%s] terminating job manager", job.OID)
+
+	shouldWrite := jobTerminationMessageWritten.TestAndSet(job.OID, true, func(val bool, exists bool) bool {
+		return !exists || !val
+	})
+	if shouldWrite {
+		resetTerminalState(ctx, job.AttachedBlockId)
+		writeMutedMessageToTerminal(job.AttachedBlockId, "[shell terminated]")
+	}
 
 	bareRpc := wshclient.GetBareRpcClient()
 	terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
@@ -1150,6 +1163,7 @@ func IsBlockIdTermDurable(blockId string) bool {
 
 func DeleteJob(ctx context.Context, jobId string) error {
 	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
+	jobTerminationMessageWritten.Delete(jobId)
 	err := filestore.WFS.DeleteZone(ctx, jobId)
 	if err != nil {
 		log.Printf("[job:%s] warning: error deleting WaveFS zone: %v", jobId, err)

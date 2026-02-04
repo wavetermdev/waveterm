@@ -188,13 +188,13 @@ func (dsc *DurableShellController) Stop(graceful bool, newStatus string, destroy
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := jobcontroller.DetachJobFromBlock(ctx, jobId, true)
-	if err != nil {
-		log.Printf("error detaching job from block: %v\n", err)
-	}
-	err = jobcontroller.TerminateJobManager(ctx, jobId)
+	err := jobcontroller.TerminateJobManager(ctx, jobId)
 	if err != nil {
 		log.Printf("error terminating job manager: %v\n", err)
+	}
+	err = jobcontroller.DetachJobFromBlock(ctx, jobId, true)
+	if err != nil {
+		log.Printf("error detaching job from block: %v\n", err)
 	}
 }
 
