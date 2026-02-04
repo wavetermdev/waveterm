@@ -93,7 +93,8 @@ var (
 
 	jobTerminationMessageWritten = ds.MakeSyncMap[bool]()
 
-	reconnectGroup singleflight.Group
+	reconnectGroup           singleflight.Group
+	terminateJobManagerGroup singleflight.Group
 )
 
 func isJobManagerRunning(job *waveobj.Job) bool {
@@ -413,10 +414,7 @@ func handleBlockCloseEvent(event *wps.WaveEvent) {
 	}
 
 	for _, jobId := range jobIds {
-		err := DetachJobFromBlock(ctx, jobId, false)
-		if err != nil {
-			log.Printf("[job:%s] error detaching from block %s: %v", jobId, blockId, err)
-		}
+		TerminateAndDetachJob(ctx, jobId)
 	}
 }
 
@@ -812,17 +810,44 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 	}
 }
 
+func TerminateAndDetachJob(ctx context.Context, jobId string) {
+	err := TerminateJobManager(ctx, jobId)
+	if err != nil {
+		log.Printf("[job:%s] error terminating job manager: %v", jobId, err)
+	}
+	err = DetachJobFromBlock(ctx, jobId, true)
+	if err != nil {
+		log.Printf("[job:%s] error detaching job from block: %v", jobId, err)
+	}
+}
+
 func TerminateJobManager(ctx context.Context, jobId string) error {
-	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		job.TerminateOnReconnect = true
+	_, err, _ := terminateJobManagerGroup.Do(jobId, func() (any, error) {
+		err := doTerminateJobManager(ctx, jobId)
+		return nil, err
+	})
+	return err
+}
+
+func doTerminateJobManager(ctx context.Context, jobId string) error {
+	var shouldTerminate bool
+	var job *waveobj.Job
+	err := wstore.DBUpdateFn(ctx, jobId, func(j *waveobj.Job) {
+		job = j
+		if j.JobManagerStatus == JobManagerStatus_Done {
+			shouldTerminate = false
+			return
+		}
+		j.TerminateOnReconnect = true
+		shouldTerminate = true
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set TerminateOnReconnect: %w", err)
 	}
 
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
-	if err != nil {
-		return fmt.Errorf("failed to get job: %w", err)
+	if !shouldTerminate {
+		log.Printf("[job:%s] already terminated, skipping", jobId)
+		return nil
 	}
 
 	return remoteTerminateJobManager(ctx, job)
