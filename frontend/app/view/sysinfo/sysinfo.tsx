@@ -547,7 +547,7 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
                     "grid-cols-2": cols2,
                 })}
             >
-                {yvals.map((yval, idx) => {
+                {plotData && plotData.length > 0 && yvals.map((yval, idx) => {
                     return (
                         <SingleLinePlot
                             key={`plot-${model.blockId}-${yval}`}
