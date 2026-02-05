@@ -21,6 +21,12 @@ import (
 
 var MainUserInputHandler = UserInputHandler{Channels: make(map[string](chan *UserInputResponse), 1)}
 
+var defaultProvider UserInputProvider = &FrontendProvider{}
+
+type UserInputProvider interface {
+	GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputResponse, error)
+}
+
 type UserInputRequest struct {
 	RequestId    string `json:"requestid"`
 	QueryText    string `json:"querytext"`
@@ -47,6 +53,8 @@ type UserInputHandler struct {
 	Lock     sync.Mutex
 	Channels map[string](chan *UserInputResponse)
 }
+
+type FrontendProvider struct{}
 
 func (ui *UserInputHandler) registerChannel() (string, chan *UserInputResponse) {
 	ui.Lock.Lock()
@@ -96,7 +104,7 @@ func determineScopes(ctx context.Context) ([]string, error) {
 	return []string{windowId}, nil
 }
 
-func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputResponse, error) {
+func (p *FrontendProvider) GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputResponse, error) {
 	id, uiCh := MainUserInputHandler.registerChannel()
 	defer MainUserInputHandler.unregisterChannel(id)
 	request.RequestId = id
@@ -131,4 +139,12 @@ func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputRes
 	}
 
 	return response, err
+}
+
+func GetUserInput(ctx context.Context, request *UserInputRequest) (*UserInputResponse, error) {
+	return defaultProvider.GetUserInput(ctx, request)
+}
+
+func SetUserInputProvider(provider UserInputProvider) {
+	defaultProvider = provider
 }
