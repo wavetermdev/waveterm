@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi, getConnStatusAtom, WOS } from "@/app/store/global";
+import { getApi, getConnStatusAtom, recordTEvent, WOS } from "@/app/store/global";
 import { TermViewModel } from "@/app/view/term/term-model";
 import * as util from "@/util/util";
 import { cn } from "@/util/util";
@@ -42,6 +42,7 @@ interface StandardSessionContentProps {
 
 function StandardSessionContent({ viewModel, onClose }: StandardSessionContentProps) {
     const handleRestartAsDurable = () => {
+        recordTEvent("action:termdurable", { "action:type": "restartdurable" });
         onClose();
         util.fireAndForget(() => viewModel.restartSessionWithDurability(true));
     };

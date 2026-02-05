@@ -28,6 +28,7 @@ var ValidEventNames = map[string]bool{
 	"action:openwaveai":  true,
 	"action:other":       true,
 	"action:term":        true,
+	"action:termdurable": true,
 
 	"wsh:run": true,
 
