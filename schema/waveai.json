@@ -46,6 +46,15 @@
             "high"
           ]
         },
+        "ai:verbosity": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "description": "Text verbosity level (OpenAI Responses API only)"
+        },
         "ai:endpoint": {
           "type": "string"
         },
