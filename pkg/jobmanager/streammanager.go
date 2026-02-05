@@ -184,6 +184,7 @@ func (sm *StreamManager) ClientDisconnected() {
 // RecvAck processes an ACK from the client
 // must be connected, and streamid must match
 func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
+	log.Printf("streammanager RECV ACK seq=%d", ackPk.Seq)
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -289,13 +290,22 @@ func (sm *StreamManager) readLoop() {
 
 func (sm *StreamManager) handleReadData(data []byte) {
 	log.Printf("handleReadData: writing %d bytes to buffer", len(data))
-	sm.buf.Write(data)
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-	log.Printf("handleReadData: buffer size=%d, connected=%t, signaling=%t", sm.buf.Size(), sm.connected, sm.connected)
-	if sm.connected {
-		sm.drainCond.Signal()
+	offset := 0
+	for offset < len(data) {
+		n, waitCh := sm.buf.WriteAvailable(data[offset:])
+		offset += n
+
+		if n > 0 {
+			sm.lock.Lock()
+			sm.drainCond.Signal()
+			sm.lock.Unlock()
+		}
+
+		if waitCh != nil {
+			<-waitCh
+		}
 	}
+	log.Printf("handleReadData: write complete, buffer size=%d", sm.buf.Size())
 }
 
 func (sm *StreamManager) handleEOF() {

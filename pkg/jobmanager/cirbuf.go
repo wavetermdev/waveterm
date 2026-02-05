@@ -4,7 +4,6 @@
 package jobmanager
 
 import (
-	"context"
 	"fmt"
 	"sync"
 )
@@ -63,46 +62,12 @@ func (cb *CirBuf) SetEffectiveWindow(syncMode bool, windowSize int) {
 	}
 }
 
-// Write will never block if syncMode is false
-// If syncMode is true, write will block until enough data is consumed to allow the write to finish
-// to cancel a write in progress use WriteCtx
-func (cb *CirBuf) Write(data []byte) (int, error) {
-	return cb.WriteCtx(context.Background(), data)
-}
-
-// WriteCtx writes data to the circular buffer with context support for cancellation.
-// In sync mode, blocks when buffer is full until space is available or context is cancelled.
-// Returns partial byte count and context error if cancelled mid-write.
+// WriteAvailable attempts to write as much data as possible without blocking.
+// Returns the number of bytes written and a channel to wait on if buffer is full (nil if not blocking).
+// In sync mode when buffer is full, returns 0 written and a channel that will be closed when space is available.
+// The caller should wait on the channel and retry the write.
 // NOTE: Only one concurrent blocked write is allowed. Multiple blocked writes will panic.
-func (cb *CirBuf) WriteCtx(ctx context.Context, data []byte) (int, error) {
-	if len(data) == 0 {
-		return 0, nil
-	}
-
-	bytesWritten := 0
-	for bytesWritten < len(data) {
-		if err := ctx.Err(); err != nil {
-			return bytesWritten, err
-		}
-
-		n, spaceAvailable := cb.writeAvailable(data[bytesWritten:])
-		bytesWritten += n
-
-		if spaceAvailable != nil {
-			select {
-			case <-spaceAvailable:
-				continue
-			case <-ctx.Done():
-				tryReadCh(cb.waiterChan)
-				return bytesWritten, ctx.Err()
-			}
-		}
-	}
-
-	return bytesWritten, nil
-}
-
-func (cb *CirBuf) writeAvailable(data []byte) (int, chan struct{}) {
+func (cb *CirBuf) WriteAvailable(data []byte) (int, <-chan struct{}) {
 	cb.lock.Lock()
 	defer cb.lock.Unlock()
 
@@ -111,11 +76,14 @@ func (cb *CirBuf) writeAvailable(data []byte) (int, chan struct{}) {
 
 	for i := 0; i < len(data); i++ {
 		if cb.syncMode && cb.count >= cb.windowSize {
+			if written > 0 {
+				return written, nil
+			}
 			spaceAvailable := make(chan struct{})
 			if !tryWriteCh(cb.waiterChan, spaceAvailable) {
 				panic("CirBuf: multiple concurrent blocked writes not allowed")
 			}
-			return written, spaceAvailable
+			return 0, spaceAvailable
 		}
 
 		cb.buf[cb.writePos] = data[i]
