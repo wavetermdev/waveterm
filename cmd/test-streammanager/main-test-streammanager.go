@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -20,6 +21,7 @@ type TestConfig struct {
 	Delay      time.Duration
 	Skew       time.Duration
 	WindowSize int
+	SlowReader int
 	Verbose    bool
 }
 
@@ -38,6 +40,7 @@ func init() {
 	rootCmd.Flags().DurationVar(&config.Delay, "delay", 0, "Base delivery delay (e.g., 10ms)")
 	rootCmd.Flags().DurationVar(&config.Skew, "skew", 0, "Delivery skew +/- (e.g., 5ms)")
 	rootCmd.Flags().IntVar(&config.WindowSize, "windowsize", 64*1024, "Window size for both sender and receiver")
+	rootCmd.Flags().IntVar(&config.SlowReader, "slowreader", 0, "Slow reader mode: bytes per second (0=disabled, e.g., 1024)")
 	rootCmd.Flags().BoolVar(&config.Verbose, "verbose", false, "Enable verbose logging")
 }
 
@@ -52,6 +55,9 @@ func runTest(config TestConfig) error {
 	fmt.Printf("  Data Size: %d bytes\n", config.DataSize)
 	fmt.Printf("  Delay: %v, Skew: %v\n", config.Delay, config.Skew)
 	fmt.Printf("  Window Size: %d\n", config.WindowSize)
+	if config.SlowReader > 0 {
+		fmt.Printf("  Slow Reader: %d bytes/sec\n", config.SlowReader)
+	}
 
 	// 1. Create metrics
 	metrics := NewMetrics()
@@ -110,12 +116,18 @@ func runTest(config TestConfig) error {
 		metrics: metrics,
 	}
 
-	// 14. Start reading from stream reader and writing to verifier
+	// 14. Wrap reader with slow reader if configured
+	var actualReader io.Reader = reader
+	if config.SlowReader > 0 {
+		actualReader = NewSlowReader(reader, config.SlowReader)
+	}
+
+	// 15. Start reading from stream reader and writing to verifier
 	metrics.Start()
 
 	done := make(chan error)
 	go func() {
-		_, err := io.Copy(metricsWriter, reader)
+		_, err := io.Copy(metricsWriter, actualReader)
 		done <- err
 	}()
 
@@ -166,5 +178,31 @@ func (mw *MetricsWriter) Write(p []byte) (n int, err error) {
 	if n > 0 {
 		mw.metrics.AddBytes(int64(n))
 	}
+	return n, err
+}
+
+// SlowReader wraps an io.Reader and rate-limits reads to a specified bytes/sec
+type SlowReader struct {
+	reader      io.Reader
+	bytesPerSec int
+}
+
+func NewSlowReader(reader io.Reader, bytesPerSec int) *SlowReader {
+	return &SlowReader{
+		reader:      reader,
+		bytesPerSec: bytesPerSec,
+	}
+}
+
+func (sr *SlowReader) Read(p []byte) (n int, err error) {
+	time.Sleep(1 * time.Second)
+	
+	readSize := sr.bytesPerSec
+	if readSize > len(p) {
+		readSize = len(p)
+	}
+	
+	n, err = sr.reader.Read(p[:readSize])
+	log.Printf("SlowReader: read %d bytes, err=%v", n, err)
 	return n, err
 }
