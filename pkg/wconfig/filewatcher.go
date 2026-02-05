@@ -5,6 +5,7 @@ package wconfig
 
 import (
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sync"
@@ -41,6 +42,7 @@ func GetWatcher() *Watcher {
 			return
 		}
 		configDirAbsPath := wavebase.GetWaveConfigDir()
+		log.Printf("create config watcher, configdir=%q", configDirAbsPath)
 		instance = &Watcher{watcher: watcher}
 		err = instance.watcher.Add(configDirAbsPath)
 		const failedStr = "failed to add path %s to watcher: %v"
@@ -51,7 +53,7 @@ func GetWatcher() *Watcher {
 		subdirs := GetConfigSubdirs()
 		for _, dir := range subdirs {
 			err = instance.watcher.Add(dir)
-			if err != nil {
+			if err != nil && !os.IsNotExist(err) {
 				log.Printf(failedStr, dir, err)
 			}
 		}
