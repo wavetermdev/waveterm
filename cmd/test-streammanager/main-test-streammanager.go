@@ -17,6 +17,7 @@ import (
 )
 
 type TestConfig struct {
+	Mode       string
 	DataSize   int64
 	Delay      time.Duration
 	Skew       time.Duration
@@ -36,6 +37,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.Flags().StringVar(&config.Mode, "mode", "streammanager", "Writer mode: 'streammanager' or 'writer'")
 	rootCmd.Flags().Int64Var(&config.DataSize, "size", 10*1024*1024, "Total data to transfer (bytes)")
 	rootCmd.Flags().DurationVar(&config.Delay, "delay", 0, "Base delivery delay (e.g., 10ms)")
 	rootCmd.Flags().DurationVar(&config.Skew, "skew", 0, "Delivery skew +/- (e.g., 5ms)")
@@ -51,7 +53,12 @@ func main() {
 }
 
 func runTest(config TestConfig) error {
-	fmt.Printf("Starting StreamManager Integration Test\n")
+	if config.Mode != "streammanager" && config.Mode != "writer" {
+		return fmt.Errorf("invalid mode: %s (must be 'streammanager' or 'writer')", config.Mode)
+	}
+
+	fmt.Printf("Starting Streaming Integration Test\n")
+	fmt.Printf("  Mode: %s\n", config.Mode)
 	fmt.Printf("  Data Size: %d bytes\n", config.DataSize)
 	fmt.Printf("  Delay: %v, Skew: %v\n", config.Delay, config.Skew)
 	fmt.Printf("  Window Size: %d\n", config.WindowSize)
@@ -85,68 +92,62 @@ func runTest(config TestConfig) error {
 	// 6. Create the reader side
 	reader, streamMeta := readerBroker.CreateStreamReader("reader-route", "writer-route", int64(config.WindowSize))
 
-	// 7. Create the stream manager (writer side)
-	streamManager := jobmanager.MakeStreamManagerWithSizes(config.WindowSize, 2*1024*1024)
-
-	// 8. Attach stream manager to writer broker as a StreamWriter
-	writerBroker.AttachStreamWriter(streamMeta, streamManager)
-
-	// 9. Create data sender that routes through broker
-	dataSender := &BrokerDataSender{broker: writerBroker}
-
-	// 10. Connect the stream manager
-	startSeq, err := streamManager.ClientConnected(streamMeta.Id, dataSender, config.WindowSize, 0)
-	if err != nil {
-		return fmt.Errorf("failed to connect: %w", err)
-	}
-	fmt.Printf("  Stream connected, startSeq: %d\n", startSeq)
-
-	// 11. Create test data generator and attach to stream manager
-	generator := NewTestDataGenerator(config.DataSize)
-	if err := streamManager.AttachReader(generator); err != nil {
-		return fmt.Errorf("failed to attach reader: %w", err)
+	// 7. Set up writer side based on mode
+	var writerDone chan error
+	if config.Mode == "streammanager" {
+		writerDone = runStreamManagerMode(config, writerBroker, streamMeta)
+	} else {
+		writerDone = runWriterMode(config, writerBroker, streamMeta)
 	}
 
-	// 12. Create verifier
+	// 8. Create verifier
 	verifier := NewVerifier(config.DataSize)
 
-	// 13. Create metrics writer wrapper
+	// 9. Create metrics writer wrapper
 	metricsWriter := &MetricsWriter{
 		writer:  verifier,
 		metrics: metrics,
 	}
 
-	// 14. Wrap reader with slow reader if configured
+	// 10. Wrap reader with slow reader if configured
 	var actualReader io.Reader = reader
 	if config.SlowReader > 0 {
 		actualReader = NewSlowReader(reader, config.SlowReader)
 	}
 
-	// 15. Start reading from stream reader and writing to verifier
+	// 11. Start reading from stream reader and writing to verifier
 	metrics.Start()
 
-	done := make(chan error)
+	readerDone := make(chan error)
 	go func() {
 		_, err := io.Copy(metricsWriter, actualReader)
-		done <- err
+		readerDone <- err
 	}()
 
-	// 16. Wait for completion
-	err = <-done
+	// 12. Wait for completion
+	var writerErr, readerErr error
+	if writerDone != nil {
+		writerErr = <-writerDone
+	}
+	readerErr = <-readerDone
 	metrics.End()
 
-	// 17. Cleanup
+	// 13. Cleanup
 	pipe.Close()
 	writerBroker.Close()
 	readerBroker.Close()
 
-	// 18. Report results
+	// 14. Report results
 	fmt.Println(metrics.Report())
 	fmt.Printf("Verification: received=%d, mismatches=%d\n",
 		verifier.TotalReceived(), verifier.Mismatches())
 
-	if err != nil && err != io.EOF {
-		return fmt.Errorf("transfer error: %w", err)
+	if writerErr != nil && writerErr != io.EOF {
+		return fmt.Errorf("writer error: %w", writerErr)
+	}
+
+	if readerErr != nil && readerErr != io.EOF {
+		return fmt.Errorf("reader error: %w", readerErr)
 	}
 
 	if verifier.Mismatches() > 0 {
@@ -156,6 +157,51 @@ func runTest(config TestConfig) error {
 
 	fmt.Println("TEST PASSED")
 	return nil
+}
+
+func runStreamManagerMode(config TestConfig, writerBroker *streamclient.Broker, streamMeta *wshrpc.StreamMeta) chan error {
+	streamManager := jobmanager.MakeStreamManagerWithSizes(config.WindowSize, 2*1024*1024)
+	writerBroker.AttachStreamWriter(streamMeta, streamManager)
+
+	dataSender := &BrokerDataSender{broker: writerBroker}
+	startSeq, err := streamManager.ClientConnected(streamMeta.Id, dataSender, config.WindowSize, 0)
+	if err != nil {
+		fmt.Printf("failed to connect stream manager: %v\n", err)
+		return nil
+	}
+	fmt.Printf("  Stream connected, startSeq: %d\n", startSeq)
+
+	generator := NewTestDataGenerator(config.DataSize)
+	if err := streamManager.AttachReader(generator); err != nil {
+		fmt.Printf("failed to attach reader: %v\n", err)
+		return nil
+	}
+
+	return nil
+}
+
+func runWriterMode(config TestConfig, writerBroker *streamclient.Broker, streamMeta *wshrpc.StreamMeta) chan error {
+	writer, err := writerBroker.CreateStreamWriter(streamMeta)
+	if err != nil {
+		fmt.Printf("failed to create stream writer: %v\n", err)
+		return nil
+	}
+	fmt.Printf("  Stream writer created\n")
+
+	generator := NewTestDataGenerator(config.DataSize)
+
+	done := make(chan error, 1)
+	go func() {
+		_, copyErr := io.Copy(writer, generator)
+		closeErr := writer.Close()
+		if copyErr != nil && copyErr != io.EOF {
+			done <- copyErr
+		} else {
+			done <- closeErr
+		}
+	}()
+
+	return done
 }
 
 // BrokerDataSender implements DataSender interface

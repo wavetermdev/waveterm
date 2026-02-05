@@ -98,6 +98,7 @@ func (b *Broker) DetachStreamWriter(streamId string) {
 	delete(b.writers, streamId)
 	delete(b.writerRoutes, streamId)
 }
+
 func (b *Broker) CreateStreamWriter(meta *wshrpc.StreamMeta) (*Writer, error) {
 	writer := NewWriter(meta.Id, meta.RWnd, b)
 	err := b.AttachStreamWriter(meta, writer)
