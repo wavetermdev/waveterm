@@ -69,6 +69,7 @@ type Controller interface {
 	Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error
 	Stop(graceful bool, newStatus string, destroy bool)
 	GetRuntimeStatus() *BlockControllerRuntimeStatus // does not return nil
+	GetConnName() string
 	SendInput(input *BlockInputUnion) error
 }
 
@@ -157,9 +158,9 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 
 	// Check for connection change FIRST - always destroy on conn change
 	if existing != nil {
-		existingStatus := existing.GetRuntimeStatus()
-		if existingStatus.ShellProcConnName != connName {
-			log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingStatus.ShellProcConnName, connName)
+		existingConnName := existing.GetConnName()
+		if existingConnName != connName {
+			log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingConnName, connName)
 			DestroyBlockController(blockId)
 			time.Sleep(100 * time.Millisecond)
 			existing = nil
@@ -233,14 +234,14 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		switch controllerName {
 		case BlockController_Shell, BlockController_Cmd:
 			if shouldUseDurableShellController {
-				controller = MakeDurableShellController(tabId, blockId, controllerName)
+				controller = MakeDurableShellController(tabId, blockId, controllerName, connName)
 			} else {
-				controller = MakeShellController(tabId, blockId, controllerName)
+				controller = MakeShellController(tabId, blockId, controllerName, connName)
 			}
 			registerController(blockId, controller)
 
 		case BlockController_Tsunami:
-			controller = MakeTsunamiController(tabId, blockId)
+			controller = MakeTsunamiController(tabId, blockId, connName)
 			registerController(blockId, controller)
 
 		default:

@@ -1065,6 +1065,7 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 			} else {
 				sendBlockJobStatusEventByJob(ctx, updatedJob)
 			}
+			writeJobTerminationMessage(ctx, jobId, updatedJob, "[session gone]")
 			return fmt.Errorf("job manager has exited: %s", rtnData.Error)
 		}
 		return fmt.Errorf("failed to reconnect to job manager: %s", rtnData.Error)
@@ -1190,19 +1191,13 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 			exitCodeStr = fmt.Sprintf("%d", *rtnData.ExitCode)
 		}
 		log.Printf("[job:%s] job has already exited: code=%s signal=%q err=%q", jobId, exitCodeStr, rtnData.ExitSignal, rtnData.ExitErr)
-		var updatedJob *waveobj.Job
-		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.JobManagerStatus = JobManagerStatus_Done
-			job.CmdExitCode = rtnData.ExitCode
-			job.CmdExitSignal = rtnData.ExitSignal
-			job.CmdExitError = rtnData.ExitErr
-			updatedJob = job
-		})
-		if updateErr != nil {
-			log.Printf("[job:%s] error updating job exit status: %v", jobId, updateErr)
-		} else {
-			sendBlockJobStatusEventByJob(ctx, updatedJob)
+		exitData := wshrpc.CommandJobCmdExitedData{
+			ExitCode:   rtnData.ExitCode,
+			ExitSignal: rtnData.ExitSignal,
+			ExitErr:    rtnData.ExitErr,
+			ExitTs:     time.Now().UnixMilli(),
 		}
+		HandleCmdJobExited(ctx, jobId, exitData)
 	}
 
 	if rtnData.StreamDone {
@@ -1521,5 +1516,18 @@ func writeMutedMessageToTerminal(blockId string, msg string) {
 	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(fullMsg))
 	if err != nil {
 		log.Printf("error writing muted message to terminal (blockid=%s): %v", blockId, err)
+	}
+}
+
+func writeJobTerminationMessage(ctx context.Context, jobId string, job *waveobj.Job, msg string) {
+	if job == nil {
+		return
+	}
+	shouldWrite := jobTerminationMessageWritten.TestAndSet(jobId, true, func(val bool, exists bool) bool {
+		return !exists || !val
+	})
+	if shouldWrite {
+		resetTerminalState(ctx, job.AttachedBlockId)
+		writeMutedMessageToTerminal(job.AttachedBlockId, msg)
 	}
 }
