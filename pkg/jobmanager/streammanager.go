@@ -53,6 +53,10 @@ type StreamManager struct {
 	sentNotAcked      int64
 	terminalEventSent bool
 
+	// track max acked to handle out-of-order ACKs (reset on disconnect)
+	maxAckedSeq  int64
+	maxAckedRwnd int64
+
 	// terminal state - once true, stream is complete
 	terminalEventAcked bool
 	closed             bool
@@ -174,6 +178,8 @@ func (sm *StreamManager) ClientDisconnected() {
 	sm.connected = false
 	sm.dataSender = nil
 	sm.sentNotAcked = 0
+	sm.maxAckedSeq = 0
+	sm.maxAckedRwnd = 0
 	if !sm.terminalEventAcked {
 		sm.terminalEventSent = false
 	}
@@ -184,7 +190,7 @@ func (sm *StreamManager) ClientDisconnected() {
 // RecvAck processes an ACK from the client
 // must be connected, and streamid must match
 func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
-	log.Printf("streammanager RECV ACK seq=%d", ackPk.Seq)
+	log.Printf("streammanager RECV ACK seq=%d rwnd=%d", ackPk.Seq, ackPk.RWnd)
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -199,6 +205,19 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 
 	seq := ackPk.Seq
+	rwnd := ackPk.RWnd
+
+	// Ignore stale ACKs using tuple comparison (seq, rwnd)
+	if seq < sm.maxAckedSeq || (seq == sm.maxAckedSeq && rwnd <= sm.maxAckedRwnd) {
+		log.Printf("streammanager ignoring stale ACK: seq=%d rwnd=%d (max: seq=%d rwnd=%d)",
+			seq, rwnd, sm.maxAckedSeq, sm.maxAckedRwnd)
+		return
+	}
+
+	// Update max acked tuple
+	sm.maxAckedSeq = seq
+	sm.maxAckedRwnd = rwnd
+
 	headPos := sm.buf.HeadPos()
 	if seq < headPos {
 		return
