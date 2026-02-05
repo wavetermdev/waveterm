@@ -22,7 +22,8 @@ type Writer struct {
 	nextSeq      int64
 	buffer       []byte
 	sentNotAcked int64
-	lastAckedSeq int64
+	maxAckedSeq  int64
+	maxAckedRwnd int64
 	finAcked     bool
 	canceled     bool
 	canceledChan chan struct{}
@@ -38,7 +39,7 @@ func NewWriter(id string, readWindow int64, dataSender DataSender) *Writer {
 		dataSender:   dataSender,
 		nextSeq:      0,
 		sentNotAcked: 0,
-		lastAckedSeq: 0,
+		maxAckedSeq:  0,
 		canceledChan: make(chan struct{}),
 	}
 	w.cond = sync.NewCond(&w.lock)
@@ -54,12 +55,12 @@ func (w *Writer) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 
 	ackedSeq := ackPk.Seq
-	if ackedSeq > w.lastAckedSeq {
-		w.lastAckedSeq = ackedSeq
-	}
+	rwnd := ackPk.RWnd
 
 	if ackPk.Fin {
 		w.finAcked = true
+		w.maxAckedSeq = ackedSeq
+		return
 	}
 
 	if ackPk.Cancel && !w.canceled {
@@ -72,6 +73,15 @@ func (w *Writer) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 		return
 	}
 
+	// Ignore stale ACKs using tuple comparison (seq, rwnd)
+	if ackedSeq < w.maxAckedSeq || (ackedSeq == w.maxAckedSeq && rwnd <= w.maxAckedRwnd) {
+		return
+	}
+
+	// Update max acked tuple
+	w.maxAckedSeq = ackedSeq
+	w.maxAckedRwnd = rwnd
+
 	if !w.closed {
 		if ackedSeq > (w.nextSeq - w.sentNotAcked) {
 			ackedBytes := ackedSeq - (w.nextSeq - w.sentNotAcked)
@@ -81,16 +91,16 @@ func (w *Writer) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 			}
 		}
 
-		w.readWindow = ackPk.RWnd
+		w.readWindow = rwnd
 		w.cond.Broadcast()
 	}
 }
 
-func (w *Writer) GetAckState() (lastAckedSeq int64, finAcked bool, canceled bool) {
+func (w *Writer) GetAckState() (maxAckedSeq int64, finAcked bool, canceled bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	return w.lastAckedSeq, w.finAcked, w.canceled
+	return w.maxAckedSeq, w.finAcked, w.canceled
 }
 
 func (w *Writer) GetCanceledChan() <-chan struct{} {

@@ -53,6 +53,10 @@ type StreamManager struct {
 	sentNotAcked      int64
 	terminalEventSent bool
 
+	// track max acked to handle out-of-order ACKs (reset on disconnect)
+	maxAckedSeq  int64
+	maxAckedRwnd int64
+
 	// terminal state - once true, stream is complete
 	terminalEventAcked bool
 	closed             bool
@@ -174,6 +178,8 @@ func (sm *StreamManager) ClientDisconnected() {
 	sm.connected = false
 	sm.dataSender = nil
 	sm.sentNotAcked = 0
+	sm.maxAckedSeq = 0
+	sm.maxAckedRwnd = 0
 	if !sm.terminalEventAcked {
 		sm.terminalEventSent = false
 	}
@@ -198,6 +204,19 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 
 	seq := ackPk.Seq
+	rwnd := ackPk.RWnd
+
+	// Ignore stale ACKs using tuple comparison (seq, rwnd)
+	if seq < sm.maxAckedSeq || (seq == sm.maxAckedSeq && rwnd <= sm.maxAckedRwnd) {
+		// log.Printf("streammanager ignoring stale ACK: seq=%d rwnd=%d (max: seq=%d rwnd=%d)",
+		// 	seq, rwnd, sm.maxAckedSeq, sm.maxAckedRwnd)
+		return
+	}
+
+	// Update max acked tuple
+	sm.maxAckedSeq = seq
+	sm.maxAckedRwnd = rwnd
+
 	headPos := sm.buf.HeadPos()
 	if seq < headPos {
 		return
@@ -287,11 +306,20 @@ func (sm *StreamManager) readLoop() {
 }
 
 func (sm *StreamManager) handleReadData(data []byte) {
-	sm.buf.Write(data)
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-	if sm.connected {
-		sm.drainCond.Signal()
+	offset := 0
+	for offset < len(data) {
+		n, waitCh := sm.buf.WriteAvailable(data[offset:])
+		offset += n
+
+		if n > 0 {
+			sm.lock.Lock()
+			sm.drainCond.Signal()
+			sm.lock.Unlock()
+		}
+
+		if waitCh != nil {
+			<-waitCh
+		}
 	}
 }
 
