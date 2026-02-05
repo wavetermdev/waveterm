@@ -25,7 +25,7 @@
     "window:savelastwindow": true,
     "telemetry:enabled": true,
     "term:bellsound": false,
-    "term:bellindicator": true,
+    "term:bellindicator": false,
     "term:copyonselect": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,
