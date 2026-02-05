@@ -20,6 +20,7 @@ interface TooltipProps {
     placement?: "top" | "bottom" | "left" | "right";
     forceOpen?: boolean;
     disable?: boolean;
+    openDelay?: number;
     divClassName?: string;
     divStyle?: React.CSSProperties;
     divOnClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -30,6 +31,7 @@ function TooltipInner({
     content,
     placement = "top",
     forceOpen = false,
+    openDelay = 300,
     divClassName,
     divStyle,
     divOnClick,
@@ -52,7 +54,7 @@ function TooltipInner({
                 }
                 timeoutRef.current = window.setTimeout(() => {
                     setIsVisible(true);
-                }, 300);
+                }, openDelay);
             } else {
                 setIsVisible(false);
                 if (timeoutRef.current !== null) {
@@ -146,6 +148,7 @@ export function Tooltip({
     placement = "top",
     forceOpen = false,
     disable = false,
+    openDelay = 300,
     divClassName,
     divStyle,
     divOnClick,
@@ -164,6 +167,7 @@ export function Tooltip({
             content={content}
             placement={placement}
             forceOpen={forceOpen}
+            openDelay={openDelay}
             divClassName={divClassName}
             divStyle={divStyle}
             divOnClick={divOnClick}

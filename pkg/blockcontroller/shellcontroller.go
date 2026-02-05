@@ -55,6 +55,7 @@ type ShellController struct {
 	ControllerType string
 	TabId          string
 	BlockId        string
+	ConnName       string
 	BlockDef       *waveobj.BlockDef
 	RunLock        *atomic.Bool
 	ProcStatus     string
@@ -67,12 +68,13 @@ type ShellController struct {
 }
 
 // Constructor that returns the Controller interface
-func MakeShellController(tabId string, blockId string, controllerType string) Controller {
+func MakeShellController(tabId string, blockId string, controllerType string, connName string) Controller {
 	return &ShellController{
 		Lock:           &sync.Mutex{},
 		ControllerType: controllerType,
 		TabId:          tabId,
 		BlockId:        blockId,
+		ConnName:       connName,
 		ProcStatus:     Status_Init,
 		RunLock:        &atomic.Bool{},
 	}
@@ -122,9 +124,7 @@ func (sc *ShellController) getRuntimeStatus_nolock() BlockControllerRuntimeStatu
 	rtn.Version = sc.VersionTs.GetVersionTs()
 	rtn.BlockId = sc.BlockId
 	rtn.ShellProcStatus = sc.ProcStatus
-	if sc.ShellProc != nil {
-		rtn.ShellProcConnName = sc.ShellProc.ConnName
-	}
+	rtn.ShellProcConnName = sc.ConnName
 	rtn.ShellProcExitCode = sc.ProcExitCode
 	return rtn
 }
@@ -135,6 +135,10 @@ func (sc *ShellController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 		rtn = sc.getRuntimeStatus_nolock()
 	})
 	return &rtn
+}
+
+func (sc *ShellController) GetConnName() string {
+	return sc.ConnName
 }
 
 func (sc *ShellController) SendInput(inputUnion *BlockInputUnion) error {

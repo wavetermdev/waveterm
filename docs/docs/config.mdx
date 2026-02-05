@@ -66,7 +66,7 @@ wsh editconfig
 | term:shiftenternewline               | bool     | when enabled, Shift+Enter sends escape sequence + newline (\u001b\n) instead of carriage return, useful for claude code and similar AI coding tools (default false)                                                                                         |
 | term:macoptionismeta                 | bool     | on macOS, treat the Option key as Meta key for terminal keybindings (default false)                                                                                                                                                                          |
 | term:bellsound <VersionBadge version="v0.14" />                      | bool     | when enabled, plays the system beep sound when the terminal bell (BEL character) is received (default false)                                                                                                                                                  |
-| term:bellindicator <VersionBadge version="v0.14" />                  | bool     | when enabled, shows a visual indicator in the tab when the terminal bell is received (default true)                                                                                                                                                           |
+| term:bellindicator <VersionBadge version="v0.14" />                  | bool     | when enabled, shows a visual indicator in the tab when the terminal bell is received (default false)                                                                                                                                                           |
 | term:durable <VersionBadge version="v0.14" />                        | bool     | makes remote terminal sessions durable across network disconnects (defaults to true)                                                                                                                                                                           |
 | editor:minimapenabled                | bool     | set to false to disable editor minimap                                                                                                                                                                                                                        |
 | editor:stickyscrollenabled           | bool     | enables monaco editor's stickyScroll feature (pinning headers of current context, e.g. class names, method names, etc.), defaults to false                                                                                                                    |
@@ -133,7 +133,7 @@ For reference, this is the current default configuration (v0.11.5):
     "window:savelastwindow": true,
     "telemetry:enabled": true,
     "term:bellsound": false,
-    "term:bellindicator": true,
+    "term:bellindicator": false,
     "term:copyonselect": true,
     "term:durable": true,
     "waveai:showcloudmodes": true,
