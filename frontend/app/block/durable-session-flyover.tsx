@@ -199,19 +199,17 @@ function DurableEndedContent({ doneReason, startupError, viewModel, onClose }: D
     };
 
     let titleText = "Durable Session (Ended)";
-    let descriptionText = "[Placeholder text - will be updated]";
-    let showRestartButton = false;
+    let descriptionText = "The durable session has ended. This block is still configured for durable sessions.";
+    let showRestartButton = true;
 
     if (doneReason === "terminated") {
         titleText = "Durable Session (Ended, Exited)";
         descriptionText =
             "The shell was terminated and is no longer running. This block is still configured for durable sessions.";
-        showRestartButton = true;
     } else if (doneReason === "gone") {
         titleText = "Durable Session (Ended, Lost)";
         descriptionText =
             "The session was lost or not found on the remote server. This may have occurred due to a system reboot or the session being manually terminated.";
-        showRestartButton = true;
     } else if (doneReason === "startuperror") {
         titleText = "Durable Session (Failed to Start)";
         descriptionText = "The durable session failed to start.";
