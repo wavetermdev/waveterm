@@ -190,7 +190,6 @@ func (sm *StreamManager) ClientDisconnected() {
 // RecvAck processes an ACK from the client
 // must be connected, and streamid must match
 func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
-	log.Printf("streammanager RECV ACK seq=%d rwnd=%d", ackPk.Seq, ackPk.RWnd)
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
@@ -209,8 +208,8 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 
 	// Ignore stale ACKs using tuple comparison (seq, rwnd)
 	if seq < sm.maxAckedSeq || (seq == sm.maxAckedSeq && rwnd <= sm.maxAckedRwnd) {
-		log.Printf("streammanager ignoring stale ACK: seq=%d rwnd=%d (max: seq=%d rwnd=%d)",
-			seq, rwnd, sm.maxAckedSeq, sm.maxAckedRwnd)
+		// log.Printf("streammanager ignoring stale ACK: seq=%d rwnd=%d (max: seq=%d rwnd=%d)",
+		// 	seq, rwnd, sm.maxAckedSeq, sm.maxAckedRwnd)
 		return
 	}
 
@@ -307,7 +306,6 @@ func (sm *StreamManager) readLoop() {
 }
 
 func (sm *StreamManager) handleReadData(data []byte) {
-	log.Printf("handleReadData: writing %d bytes to buffer", len(data))
 	offset := 0
 	for offset < len(data) {
 		n, waitCh := sm.buf.WriteAvailable(data[offset:])
@@ -323,7 +321,6 @@ func (sm *StreamManager) handleReadData(data []byte) {
 			<-waitCh
 		}
 	}
-	log.Printf("handleReadData: write complete, buffer size=%d", sm.buf.Size())
 }
 
 func (sm *StreamManager) handleEOF() {
