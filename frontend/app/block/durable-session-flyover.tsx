@@ -157,12 +157,6 @@ function DurableAwaitingStart({ connected, viewModel, onClose }: DurableAwaiting
     );
 }
 
-interface DurableEndedContentProps {
-    doneReason: string;
-    viewModel: TermViewModel;
-    onClose: () => void;
-}
-
 interface DurableStartingContentProps {
     onClose: () => void;
 }
