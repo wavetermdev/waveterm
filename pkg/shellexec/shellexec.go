@@ -339,6 +339,9 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain client info: %w", err)
 	}
+	if remoteInfo.HomeDir == "" {
+		return nil, fmt.Errorf("unable to obtain home directory from remote machine")
+	}
 	log.Printf("client info collected: %+#v", remoteInfo)
 	var shellPath string
 	if cmdOpts.ShellPath != "" {
@@ -466,6 +469,9 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	remoteInfo, err := wshclient.RemoteGetInfoCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
 	if err != nil {
 		return "", fmt.Errorf("unable to obtain client info: %w", err)
+	}
+	if remoteInfo.HomeDir == "" {
+		return "", fmt.Errorf("unable to obtain home directory from remote machine")
 	}
 	log.Printf("client info collected: %+#v", remoteInfo)
 	var shellPath string
