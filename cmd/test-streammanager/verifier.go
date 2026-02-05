@@ -27,6 +27,8 @@ func (v *Verifier) Write(p []byte) (n int, err error) {
 	defer v.lock.Unlock()
 
 	expected := make([]byte, len(p))
+	// expectedGen.Read() error ignored: TestDataGenerator is deterministic and won't fail,
+	// and any data length mismatch will be caught by byte comparison below
 	v.expectedGen.Read(expected)
 
 	for i := 0; i < len(p); i++ {

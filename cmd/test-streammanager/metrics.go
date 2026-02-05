@@ -89,7 +89,11 @@ func (m *Metrics) Report() string {
 	defer m.lock.Unlock()
 
 	duration := m.endTime.Sub(m.startTime)
-	throughput := float64(m.totalBytes) / duration.Seconds() / 1024 / 1024
+	durationSecs := duration.Seconds()
+	if durationSecs == 0 {
+		durationSecs = 1.0
+	}
+	throughput := float64(m.totalBytes) / durationSecs / 1024 / 1024
 
 	return fmt.Sprintf(`
 StreamManager Integration Test Results

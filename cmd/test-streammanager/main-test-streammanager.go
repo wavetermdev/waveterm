@@ -131,16 +131,16 @@ func runTest(config TestConfig) error {
 		done <- err
 	}()
 
-	// 15. Wait for completion
+	// 16. Wait for completion
 	err = <-done
 	metrics.End()
 
-	// 16. Cleanup
+	// 17. Cleanup
 	pipe.Close()
 	writerBroker.Close()
 	readerBroker.Close()
 
-	// 17. Report results
+	// 18. Report results
 	fmt.Println(metrics.Report())
 	fmt.Printf("Verification: received=%d, mismatches=%d\n",
 		verifier.TotalReceived(), verifier.Mismatches())
@@ -196,12 +196,12 @@ func NewSlowReader(reader io.Reader, bytesPerSec int) *SlowReader {
 
 func (sr *SlowReader) Read(p []byte) (n int, err error) {
 	time.Sleep(1 * time.Second)
-	
+
 	readSize := sr.bytesPerSec
 	if readSize > len(p) {
 		readSize = len(p)
 	}
-	
+
 	n, err = sr.reader.Read(p[:readSize])
 	log.Printf("SlowReader: read %d bytes, err=%v", n, err)
 	return n, err
