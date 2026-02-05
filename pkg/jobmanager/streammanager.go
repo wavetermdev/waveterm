@@ -270,7 +270,6 @@ func (sm *StreamManager) readLoop() {
 		}
 
 		n, err := sm.reader.Read(readBuf)
-		log.Printf("readLoop: read %d bytes from PTY, err=%v", n, err)
 
 		if n > 0 {
 			sm.handleReadData(readBuf[:n])
@@ -288,11 +287,9 @@ func (sm *StreamManager) readLoop() {
 }
 
 func (sm *StreamManager) handleReadData(data []byte) {
-	log.Printf("handleReadData: writing %d bytes to buffer", len(data))
 	sm.buf.Write(data)
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
-	log.Printf("handleReadData: buffer size=%d, connected=%t, signaling=%t", sm.buf.Size(), sm.connected, sm.connected)
 	if sm.connected {
 		sm.drainCond.Signal()
 	}
@@ -336,25 +333,20 @@ func (sm *StreamManager) prepareNextPacket() (done bool, pkt *wshrpc.CommandStre
 	defer sm.lock.Unlock()
 
 	available := sm.buf.Size()
-	log.Printf("prepareNextPacket: connected=%t, available=%d, closed=%t, terminalEventAcked=%t, terminalEvent=%v",
-		sm.connected, available, sm.closed, sm.terminalEventAcked, sm.terminalEvent != nil)
 
 	if sm.closed || sm.terminalEventAcked {
 		return true, nil, nil
 	}
 
 	if !sm.connected {
-		log.Printf("prepareNextPacket: waiting for connection")
 		sm.drainCond.Wait()
 		return false, nil, nil
 	}
 
 	if available == 0 {
 		if sm.terminalEvent != nil && !sm.terminalEventSent {
-			log.Printf("prepareNextPacket: preparing terminal packet")
 			return false, sm.prepareTerminalPacket(), sm.dataSender
 		}
-		log.Printf("prepareNextPacket: no data available, waiting")
 		sm.drainCond.Wait()
 		return false, nil, nil
 	}
@@ -381,7 +373,6 @@ func (sm *StreamManager) prepareNextPacket() (done bool, pkt *wshrpc.CommandStre
 	data := make([]byte, peekSize)
 	n := sm.buf.PeekDataAt(int(sm.sentNotAcked), data)
 	if n == 0 {
-		log.Printf("prepareNextPacket: PeekDataAt returned 0 bytes, waiting for ACK")
 		sm.drainCond.Wait()
 		return false, nil, nil
 	}
@@ -390,7 +381,6 @@ func (sm *StreamManager) prepareNextPacket() (done bool, pkt *wshrpc.CommandStre
 	seq := sm.buf.HeadPos() + sm.sentNotAcked
 	sm.sentNotAcked += int64(n)
 
-	log.Printf("prepareNextPacket: sending packet seq=%d, len=%d bytes", seq, n)
 	return false, &wshrpc.CommandStreamData{
 		Id:     sm.streamId,
 		Seq:    seq,

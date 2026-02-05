@@ -39,6 +39,7 @@ type TsunamiAppProc struct {
 type TsunamiController struct {
 	blockId     string
 	tabId       string
+	connName    string
 	runLock     sync.Mutex
 	tsunamiProc *TsunamiAppProc
 	statusLock  sync.Mutex
@@ -271,6 +272,7 @@ func (c *TsunamiController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 			BlockId:           c.blockId,
 			Version:           c.versionTs.GetVersionTs(),
 			ShellProcStatus:   c.status,
+			ShellProcConnName: c.connName,
 			ShellProcExitCode: c.exitCode,
 		}
 
@@ -280,6 +282,10 @@ func (c *TsunamiController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 	})
 
 	return rtn
+}
+
+func (c *TsunamiController) GetConnName() string {
+	return c.connName
 }
 
 func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
@@ -399,12 +405,13 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 	}
 }
 
-func MakeTsunamiController(tabId string, blockId string) Controller {
+func MakeTsunamiController(tabId string, blockId string, connName string) Controller {
 	log.Printf("make tsunami controller: %s %s\n", tabId, blockId)
 	return &TsunamiController{
-		blockId: blockId,
-		tabId:   tabId,
-		status:  Status_Init,
+		blockId:  blockId,
+		tabId:    tabId,
+		connName: connName,
+		status:   Status_Init,
 	}
 }
 

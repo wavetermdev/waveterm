@@ -9,6 +9,7 @@ import {
     renderHeaderElements,
 } from "@/app/block/blockutil";
 import { ConnectionButton } from "@/app/block/connectionbutton";
+import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { getConnStatusAtom, recordTEvent, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
@@ -22,52 +23,6 @@ import { cn } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
-
-function getDurableIconProps(jobStatus: BlockJobStatusData, connStatus: ConnStatus, isConfigedDurable?: boolean | null) {
-    let color = "text-muted";
-    let titleText = "Durable Session";
-    let iconType: "fa-solid" | "fa-regular" = "fa-solid";
-    
-    if (isConfigedDurable === false) {
-        color = "text-muted";
-        titleText = "Standard Session";
-        iconType = "fa-regular";
-        return { color, titleText, iconType };
-    }
-    
-    const status = jobStatus?.status;
-    if (status === "connected") {
-        color = "text-sky-500";
-        titleText = "Durable Session (Attached)";
-    } else if (status === "disconnected") {
-        color = "text-sky-300";
-        titleText = "Durable Session (Detached)";
-    } else if (status === "init") {
-        color = "text-sky-300";
-        titleText = "Durable Session (Starting)";
-    } else if (status === "done") {
-        color = "text-muted";
-        const doneReason = jobStatus?.donereason;
-        if (doneReason === "terminated") {
-            titleText = "Durable Session (Ended, Exited)";
-        } else if (doneReason === "gone") {
-            titleText = "Durable Session (Ended, Environment Lost)";
-        } else if (doneReason === "startuperror") {
-            titleText = "Durable Session (Ended, Failed to Start)";
-        } else {
-            titleText = "Durable Session (Ended)";
-        }
-    } else if (status == null) {
-        if (!connStatus?.connected) {
-            color = "text-muted";
-            titleText = "Durable Session (Awaiting Connection)";
-        } else {
-            color = "text-muted";
-            titleText = "No Session";
-        }
-    }
-    return { color, titleText, iconType };
-}
 
 function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
@@ -217,7 +172,6 @@ const BlockFrame_Header = ({
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
-    const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
     const termConfigedDurable = util.useAtomValueSafe(viewModel?.termConfigedDurable);
     const hideViewName = util.useAtomValueSafe(viewModel?.hideViewName);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
@@ -227,8 +181,6 @@ const BlockFrame_Header = ({
     const isTerminalBlock = blockData?.meta?.view === "term";
     viewName = blockData?.meta?.["frame:title"] ?? viewName;
     viewIconUnion = blockData?.meta?.["frame:icon"] ?? viewIconUnion;
-    const connName = blockData?.meta?.connection;
-    const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
 
     React.useEffect(() => {
         if (magnified && !preview && !prevMagifiedState.current) {
@@ -239,12 +191,6 @@ const BlockFrame_Header = ({
     }, [magnified]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
-
-    const { color: durableIconColor, titleText: durableTitle, iconType: durableIconType } = getDurableIconProps(
-        termDurableStatus,
-        connStatus,
-        termConfigedDurable
-    );
 
     return (
         <div
@@ -272,9 +218,7 @@ const BlockFrame_Header = ({
                 />
             )}
             {useTermHeader && termConfigedDurable != null && (
-                <div className="iconbutton disabled text-[13px] ml-[-4px]" key="durable-status">
-                    <i className={`fa-sharp ${durableIconType} fa-shield ${durableIconColor}`} title={durableTitle} />
-                </div>
+                <DurableSessionFlyover key="durable-status" blockId={nodeModel.blockId} viewModel={viewModel} placement="bottom" divClassName="iconbutton disabled text-[13px] ml-[-4px]" />
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />
             <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} />

@@ -1147,7 +1147,7 @@ export class TermViewModel implements ViewModel {
                 submenu: [
                     {
                         label: "Restart Session in Standard Mode",
-                        click: () => this.restartSessionWithDurability(false),
+                        click: () => fireAndForget(() => this.restartSessionWithDurability(false)),
                     },
                 ],
             });
@@ -1157,7 +1157,7 @@ export class TermViewModel implements ViewModel {
                 submenu: [
                     {
                         label: "Restart Session in Durable Mode",
-                        click: () => this.restartSessionWithDurability(true),
+                        click: () => fireAndForget(() => this.restartSessionWithDurability(true)),
                     },
                 ],
             });

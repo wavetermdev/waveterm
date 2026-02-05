@@ -33,6 +33,7 @@ type DurableShellController struct {
 	ControllerType string
 	TabId          string
 	BlockId        string
+	ConnName       string
 	BlockDef       *waveobj.BlockDef
 	VersionTs      utilds.VersionTs
 
@@ -40,16 +41,16 @@ type DurableShellController struct {
 	inputSeqNum    int    // monotonic sequence number for inputs, starts at 1
 
 	JobId           string
-	ConnName        string
 	LastKnownStatus string
 }
 
-func MakeDurableShellController(tabId string, blockId string, controllerType string) Controller {
+func MakeDurableShellController(tabId string, blockId string, controllerType string, connName string) Controller {
 	return &DurableShellController{
 		Lock:            &sync.Mutex{},
 		ControllerType:  controllerType,
 		TabId:           tabId,
 		BlockId:         blockId,
+		ConnName:        connName,
 		LastKnownStatus: Status_Init,
 		InputSessionId:  uuid.New().String(),
 	}
@@ -105,6 +106,12 @@ func (dsc *DurableShellController) GetRuntimeStatus() *BlockControllerRuntimeSta
 	return &rtn
 }
 
+func (dsc *DurableShellController) GetConnName() string {
+	dsc.Lock.Lock()
+	defer dsc.Lock.Unlock()
+	return dsc.ConnName
+}
+
 func (dsc *DurableShellController) sendUpdate_withlock() {
 	rtStatus := dsc.getRuntimeStatus_withlock()
 	log.Printf("sending blockcontroller update %#v\n", rtStatus)
@@ -133,8 +140,7 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 		return fmt.Errorf("error getting block: %w", err)
 	}
 
-	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
-	if conncontroller.IsLocalConnName(connName) {
+	if conncontroller.IsLocalConnName(dsc.ConnName) {
 		return fmt.Errorf("durable shell controller requires a remote connection")
 	}
 
@@ -157,7 +163,7 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 
 	if jobId == "" {
 		log.Printf("block %q starting new durable shell\n", dsc.BlockId)
-		newJobId, err := dsc.startNewJob(ctx, blockMeta, connName)
+		newJobId, err := dsc.startNewJob(ctx, blockMeta, dsc.ConnName)
 		if err != nil {
 			return fmt.Errorf("failed to start new job: %w", err)
 		}
@@ -166,7 +172,6 @@ func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.
 
 	dsc.WithLock(func() {
 		dsc.JobId = jobId
-		dsc.ConnName = connName
 		dsc.sendUpdate_withlock()
 	})
 
