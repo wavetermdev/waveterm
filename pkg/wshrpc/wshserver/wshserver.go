@@ -755,6 +755,11 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	return nil
 }
 
+func (ws *WshServer) NotifySystemResumeCommand(ctx context.Context) error {
+	log.Printf("NotifySystemResumeCommand called\n")
+	return nil
+}
+
 func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (string, error) {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	return shellutil.FindGitBash(&fullConfig, rescan), nil
