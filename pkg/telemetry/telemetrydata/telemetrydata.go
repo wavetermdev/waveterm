@@ -122,7 +122,7 @@ type TEventProps struct {
 	ConnType         string `json:"conn:conntype,omitempty"`
 	ConnWshErrorCode string `json:"conn:wsherrorcode,omitempty"`
 
-	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"magnify\" | \"wsh\""`
+	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"durable\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`
 	OnboardingGithubStar string `json:"onboarding:githubstar,omitempty" tstype:"\"already\" | \"star\" | \"later\""`
 
