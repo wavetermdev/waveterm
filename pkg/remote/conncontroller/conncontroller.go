@@ -323,11 +323,11 @@ func (conn *SSHConn) GetEnvironmentMaps(ctx context.Context) (map[string]string,
 
 func runSessionWithContext(ctx context.Context, session *ssh.Session, cmd string) error {
 	errCh := make(chan error, 1)
-	
+
 	go func() {
 		errCh <- session.Run(cmd)
 	}()
-	
+
 	select {
 	case <-ctx.Done():
 		session.Close()

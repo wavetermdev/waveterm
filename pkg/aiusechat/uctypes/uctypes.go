@@ -154,6 +154,10 @@ const (
 	ThinkingLevelLow    = "low"
 	ThinkingLevelMedium = "medium"
 	ThinkingLevelHigh   = "high"
+
+	VerbosityLevelLow    = "low"
+	VerbosityLevelMedium = "medium"
+	VerbosityLevelHigh   = "high"
 )
 
 const (

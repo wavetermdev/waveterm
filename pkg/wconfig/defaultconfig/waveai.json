@@ -8,8 +8,9 @@
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5-mini",
         "ai:thinkinglevel": "low",
+        "ai:verbosity": "low",
         "ai:capabilities": ["tools", "images", "pdfs"],
-		"ai:switchcompat": ["wavecloud"]
+        "ai:switchcompat": ["wavecloud"]
     },
     "waveai@balanced": {
         "display:name": "Balanced",
@@ -20,9 +21,10 @@
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "low",
+        "ai:verbosity": "low",
         "ai:capabilities": ["tools", "images", "pdfs"],
         "waveai:premium": true,
-		"ai:switchcompat": ["wavecloud"]
+        "ai:switchcompat": ["wavecloud"]
     },
     "waveai@deep": {
         "display:name": "Deep",
@@ -33,8 +35,9 @@
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "medium",
+        "ai:verbosity": "low",
         "ai:capabilities": ["tools", "images", "pdfs"],
         "waveai:premium": true,
-		"ai:switchcompat": ["wavecloud"]
+        "ai:switchcompat": ["wavecloud"]
     }
 }
