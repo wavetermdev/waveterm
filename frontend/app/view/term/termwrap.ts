@@ -251,12 +251,14 @@ function checkCommandForTelemetry(decodedCmd: string) {
         return;
     }
 
-    if (decodedCmd.startsWith("claude")) {
+    const claudeRegex = /^claude\b/;
+    if (claudeRegex.test(decodedCmd)) {
         recordTEvent("action:term", { "action:type": "claude" });
         return;
     }
 
-    if (decodedCmd.startsWith("opencode")) {
+    const opencodeRegex = /^opencode\b/;
+    if (opencodeRegex.test(decodedCmd)) {
         recordTEvent("action:term", { "action:type": "opencode" });
         return;
     }
