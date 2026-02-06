@@ -250,6 +250,16 @@ function checkCommandForTelemetry(decodedCmd: string) {
         recordTEvent("action:term", { "action:type": "cli-tailf" });
         return;
     }
+
+    if (decodedCmd.startsWith("claude")) {
+        recordTEvent("action:term", { "action:type": "claude" });
+        return;
+    }
+
+    if (decodedCmd.startsWith("opencode")) {
+        recordTEvent("action:term", { "action:type": "opencode" });
+        return;
+    }
 }
 
 // OSC 16162 - Shell Integration Commands
