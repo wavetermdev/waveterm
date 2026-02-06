@@ -909,6 +909,19 @@ declare global {
         append?: boolean;
     };
 
+    // wshrpc.FocusedBlockData
+    type FocusedBlockData = {
+        blockid: string;
+        viewtype: string;
+        controller: string;
+        connname: string;
+        blockmeta: MetaType;
+        termjobstatus?: BlockJobStatusData;
+        connstatus?: ConnStatus;
+        termshellintegrationstatus?: string;
+        termlastcommand?: string;
+    };
+
     // wconfig.FullConfigType
     type FullConfigType = {
         settings: SettingsType;

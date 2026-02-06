@@ -332,6 +332,11 @@ class RpcApiType {
         return client.wshRpcCall("getbuilderstatus", data, opts);
     }
 
+    // command "getfocusedblockdata" [call]
+    GetFocusedBlockDataCommand(client: WshClient, opts?: RpcOpts): Promise<FocusedBlockData> {
+        return client.wshRpcCall("getfocusedblockdata", null, opts);
+    }
+
     // command "getfullconfig" [call]
     GetFullConfigCommand(client: WshClient, opts?: RpcOpts): Promise<FullConfigType> {
         return client.wshRpcCall("getfullconfig", null, opts);
