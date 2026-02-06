@@ -12,13 +12,17 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -75,6 +79,26 @@ func initTestHarness(autoAccept bool) error {
 	wstore.SetClientId("test-client-" + fmt.Sprintf("%d", time.Now().Unix()))
 
 	userinput.SetUserInputProvider(&CLIProvider{AutoAccept: autoAccept})
+
+	keyPair, err := wavejwt.GenerateKeyPair()
+	if err != nil {
+		return fmt.Errorf("failed to generate JWT key pair: %w", err)
+	}
+
+	err = wavejwt.SetPrivateKey(keyPair.PrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to set JWT private key: %w", err)
+	}
+
+	err = wavejwt.SetPublicKey(keyPair.PublicKey)
+	if err != nil {
+		return fmt.Errorf("failed to set JWT public key: %w", err)
+	}
+
+	rpc := wshserver.GetMainRpcClient()
+	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
+
+	wconfig.GetWatcher().Start()
 
 	log.Printf("Test harness initialized")
 	return nil
@@ -196,8 +220,22 @@ func testWshExec(connName string, cmd string, timeout time.Duration) error {
 
 	log.Printf("Starting wsh-enabled shell...")
 
+	swapToken := &shellutil.TokenSwapEntry{
+		Token: uuid.New().String(),
+		Env:   make(map[string]string),
+		Exp:   time.Now().Add(5 * time.Minute),
+	}
+	swapToken.Env["TERM_PROGRAM"] = "waveterm"
+	swapToken.Env["WAVETERM"] = "1"
+	swapToken.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
+	swapToken.Env["WAVETERM_CONN"] = connName
+
+	cmdOpts := shellexec.CommandOptsType{
+		SwapToken: swapToken,
+	}
+
 	termSize := waveobj.TermSize{Rows: 24, Cols: 80}
-	shellProc, err := shellexec.StartRemoteShellProc(ctx, ctx, termSize, "", shellexec.CommandOptsType{}, conn)
+	shellProc, err := shellexec.StartRemoteShellProc(ctx, ctx, termSize, "", cmdOpts, conn)
 	if err != nil {
 		return fmt.Errorf("failed to start shell: %w", err)
 	}
