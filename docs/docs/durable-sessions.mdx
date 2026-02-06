@@ -1,0 +1,217 @@
+---
+sidebar_position: 3.5
+id: "durable-sessions"
+title: "Durable Sessions"
+---
+
+import { VersionBadge } from "@site/src/components/versionbadge";
+
+# Durable Sessions <VersionBadge version="v0.14" />
+
+Keep your remote SSH shell sessions alive through network changes, computer sleep, and Wave restarts.
+
+## Overview
+
+:::info Remote Connections Only
+Durable sessions are designed for **remote SSH connections only**. Local terminals and WSL connections use standard sessions, as they're not affected by network interruptions and remain active as long as Wave is running.
+:::
+
+Durable sessions protect your terminal state when working with remote SSH connections. Unlike standard SSH sessions that terminate when the connection drops, durable sessions maintain your:
+
+- **Shell state** - Current directory, environment variables, and shell history
+- **Running programs** - Background jobs and long-running commands continue executing
+- **Terminal history** - Full scrollback buffer preserved across reconnections
+
+Durable sessions automatically reconnect when your connection is restored, picking up right where you left off.
+
+## How It Works
+
+When you start a durable session, Wave launches a persistent job manager on the remote server. This manager:
+
+1. Keeps your shell process running independently of the Wave connection
+2. Buffers terminal output while disconnected
+3. Automatically reattaches when you reconnect
+4. Survives Wave restarts and network interruptions
+
+The session continues running on the remote server even if you close Wave, put your computer to sleep, or switch networks.
+
+## Session Status Indicator
+
+The shield icon in your terminal header shows the current session status:
+
+| Icon | Status | Description |
+|------|--------|-------------|
+| <i className="fa-sharp fa-regular fa-shield text-muted"></i> | Standard Session | Connection drops will end the session |
+| <i className="fa-sharp fa-solid fa-shield text-sky-500"></i> | Durable (Attached) | Session is protected and connected |
+| <i className="fa-sharp fa-solid fa-shield text-sky-300"></i> | Durable (Detached) | Session running, currently disconnected |
+| <i className="fa-sharp fa-solid fa-shield text-muted"></i> | Durable (Awaiting) | Configured but not yet started |
+
+Hover over the shield icon to see detailed status information and available actions.
+
+## Configuration
+
+Durable sessions can be configured at three levels, with more specific settings overriding general ones:
+
+### Global Settings (Lowest Priority)
+
+Set the default for all SSH connections in your `settings.json`:
+
+```json
+{
+  "term:durable": true
+}
+```
+
+### Connection Settings (Medium Priority)
+
+Configure durability per connection in your `connections.json`:
+
+```json
+{
+  "connections": {
+    "user@host": {
+      "term:durable": true
+    }
+  }
+}
+```
+
+### Block Settings (Highest Priority)
+
+Override for individual terminal blocks through:
+
+- **Context Menu**: Right-click terminal → Advanced → Session Durability
+- **Flyover Actions**: Click shield icon → "Restart as Durable" or "Restart as Standard"
+- **Command Line**: Use `wsh setmeta term:durable=true` or `wsh setmeta term:durable=false`
+
+Configuration hierarchy (highest to lowest priority):
+1. Block-level setting
+2. Connection-level setting  
+3. Global setting
+
+### Default Behavior
+
+- **SSH connections**: Durable sessions enabled by default
+- **Local terminals**: Always use standard sessions (durability not applicable)
+- **WSL connections**: Always use standard sessions (durability not applicable)
+
+## Switching Between Modes
+
+### Standard to Durable
+
+1. Hover over the regular shield icon
+2. Click **"Restart as Durable"** in the flyover
+3. Your session will restart with durability enabled
+
+Or use the context menu:
+- Right-click terminal → Advanced → Session Durability → Restart Session in Durable Mode
+
+### Durable to Standard
+
+1. Access the terminal context menu (right-click)
+2. Navigate to Advanced → Session Durability
+3. Select **"Restart Session in Standard Mode"**
+
+:::warning Switching Modes Restarts the Session
+Converting between standard and durable modes requires restarting the shell. Any running processes in the current session will be terminated.
+:::
+
+## Session States
+
+### Attached
+Your terminal is connected to the remote session. You can interact with the shell and see real-time output.
+
+### Detached
+Connection lost, but the session continues running on the remote server. Wave will automatically reconnect when possible. Any commands you ran continue executing.
+
+### Awaiting Start
+Session configured for durability but not yet started. Click "Start Session" or run a command to begin.
+
+### Starting
+Job manager is initializing on the remote server. The session will become attached shortly.
+
+### Ended
+Session has terminated. Common reasons:
+- **Exited**: Shell was closed normally (e.g., typed `exit`)
+- **Lost**: Session not found on server (may have been terminated or system rebooted)
+- **Failed to Start**: Job manager encountered an error during initialization
+
+Click "Restart Session" to start a new durable session, or "Restart as Standard" to switch modes.
+
+## Use Cases
+
+### Long-Running Commands
+Start a build, deployment, or data processing job and close your laptop. The command continues executing, and you can check on it later.
+
+```bash
+# Start a long build
+./build.sh
+
+# Close your laptop, get coffee
+# Later: reconnect and see the completed output
+```
+
+### Unstable Networks
+Work from a café, train, or cellular connection. Brief disconnections won't terminate your session or lose your work.
+
+### Multiple Locations
+Start work on your desktop, continue on your laptop. Your session and its state are preserved on the remote server.
+
+### System Maintenance
+Wave updates, restarts, or crashes won't interrupt your remote work. Reconnect and resume immediately.
+
+## Session Lifecycle
+
+Durable sessions are tied to the terminal block in Wave. The session will be terminated when you:
+
+- **Close the block**: Closes the terminal and terminates the remote session
+- **Switch connections**: Changing the connection on a block terminates the old session
+- **Delete the workspace/tab**: Removes the block and terminates associated sessions
+
+### Cleanup Behavior
+
+If you close a block while **disconnected**, the remote session continues running until the next reconnection. When Wave reconnects to that server, it will automatically clean up any orphaned sessions from closed blocks.
+
+This ensures that remote sessions don't accumulate on your servers when you close terminals while offline.
+
+## Limitations
+
+- **Local terminals**: Not applicable (already persistent with your local machine)
+- **WSL connections**: Not applicable (WSL sessions managed by Windows)
+- **Network latency**: Detached sessions buffer output; reconnecting may take a moment to sync
+- **Server resources**: Each durable session maintains a lightweight Go process on the remote server for session management
+
+## Troubleshooting
+
+### Session Shows as "Lost"
+The session was terminated on the remote server, possibly due to:
+- Server reboot
+- Manual termination of the job manager process
+- Remote system running out of resources
+
+**Solution**: Click "Restart Session" to start a new durable session.
+
+### Session Won't Reconnect
+Verify that:
+- Your SSH connection to the server is working (check the connection status)
+- The remote server can reach Wave's connection manager
+- The job manager process is still running on the remote server
+
+**Solution**: Right-click terminal → Advanced → Force Restart Controller
+
+### "Failed to Start" Error
+The job manager couldn't initialize on the remote server. Check:
+- Remote server has sufficient resources
+- Required directories and permissions are available
+- No conflicting processes using the same socket
+
+:::info Technical Details
+Durable sessions use Unix domain sockets on the remote server to maintain persistent connections between the shell and Wave's job manager. The job manager process runs independently and survives SSH disconnections.
+:::
+
+## Privacy & Security
+
+- Durable sessions run entirely on your remote servers
+- No session data is transmitted through Wave's cloud services
+- Job managers use authentication tokens to prevent unauthorized access
+- Sessions are isolated per user and use your remote user's permissions
