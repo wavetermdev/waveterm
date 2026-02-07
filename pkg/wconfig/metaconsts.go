@@ -109,6 +109,8 @@ const (
 	ConfigKey_ConnLocalHostnameDisplay       = "conn:localhostdisplayname"
 
 	ConfigKey_DebugClear                     = "debug:*"
+	ConfigKey_DebugWebCdp                    = "debug:webcdp"
+	ConfigKey_DebugRemoteDebugPort           = "debug:remotedebugport"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
 
