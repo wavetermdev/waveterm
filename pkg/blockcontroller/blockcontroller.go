@@ -290,11 +290,28 @@ func DestroyBlockController(blockId string) {
 	deleteController(blockId)
 }
 
+func sendConnMonitorInputNotification(controller Controller) {
+	connName := controller.GetConnName()
+	if connName == "" || conncontroller.IsLocalConnName(connName) || conncontroller.IsWslConnName(connName) {
+		return
+	}
+
+	connOpts, parseErr := remote.ParseOpts(connName)
+	if parseErr != nil {
+		return
+	}
+	sshConn := conncontroller.GetConn(connOpts)
+	if sshConn != nil && sshConn.Monitor != nil {
+		sshConn.Monitor.NotifyInput()
+	}
+}
+
 func SendInput(blockId string, inputUnion *BlockInputUnion) error {
 	controller := getController(blockId)
 	if controller == nil {
 		return fmt.Errorf("no controller found for block %s", blockId)
 	}
+	sendConnMonitorInputNotification(controller)
 	return controller.SendInput(inputUnion)
 }
 
