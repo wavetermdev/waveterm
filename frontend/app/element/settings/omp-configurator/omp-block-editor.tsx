@@ -10,6 +10,8 @@
 import { cn } from "@/util/util";
 import { memo, useCallback } from "react";
 
+import { NerdFontPicker, SymbolStrip } from "./omp-symbol-picker";
+
 interface OmpBlockEditorProps {
     config: OmpConfigData | null;
     selectedBlockIndex: number;
@@ -55,10 +57,26 @@ function getSegmentDisplayName(type: string): string {
 }
 
 /**
- * Get icon for a segment type
+ * Get segment type icon class string (includes fa-solid or fa-brands prefix)
  */
-function getSegmentIcon(type: string): string {
-    const iconMap: Record<string, string> = {
+function getSegmentIconClass(type: string): string {
+    // Brand icons require fa-brands instead of fa-solid
+    const brandIcons: Record<string, string> = {
+        node: "fa-node-js",
+        python: "fa-python",
+        go: "fa-golang",
+        rust: "fa-rust",
+        java: "fa-java",
+        php: "fa-php",
+        dotnet: "fa-microsoft",
+        aws: "fa-aws",
+        az: "fa-microsoft",
+        gcp: "fa-google",
+        docker: "fa-docker",
+    };
+
+    // Solid icons use fa-solid
+    const solidIcons: Record<string, string> = {
         os: "fa-desktop",
         path: "fa-folder",
         git: "fa-code-branch",
@@ -69,12 +87,21 @@ function getSegmentIcon(type: string): string {
         text: "fa-font",
         exit: "fa-circle-xmark",
         root: "fa-hashtag",
-        node: "fa-node-js",
-        python: "fa-python",
+        ruby: "fa-gem",
+        kubectl: "fa-cloud",
+        terraform: "fa-cubes",
         executiontime: "fa-stopwatch",
         status: "fa-circle-check",
+        cmake: "fa-gears",
     };
-    return iconMap[type] || "fa-puzzle-piece";
+
+    if (brandIcons[type]) {
+        return `fa-brands ${brandIcons[type]}`;
+    }
+    if (solidIcons[type]) {
+        return `fa-solid ${solidIcons[type]}`;
+    }
+    return "fa-solid fa-puzzle-piece";
 }
 
 /**
@@ -114,7 +141,7 @@ const SegmentBadge = memo(
                 aria-pressed={selected}
                 aria-label={`${getSegmentDisplayName(segment.type)} segment${selected ? " (selected)" : ""}`}
             >
-                <i className={`fa fa-solid ${getSegmentIcon(segment.type)} segment-icon`} />
+                <i className={`${getSegmentIconClass(segment.type)} segment-icon`} />
                 <span className="segment-name">{getSegmentDisplayName(segment.type)}</span>
                 {segment.background && segment.background !== "transparent" && (
                     <span
@@ -178,6 +205,12 @@ const BlockItem = memo(
                             })}
                         />
                         {block.type}
+                        {block.newline && (
+                            <i
+                                className="fa-solid fa-arrow-turn-down newline-badge"
+                                title="Starts on new line"
+                            />
+                        )}
                     </span>
                     <span className="block-alignment">{block.alignment}</span>
                 </div>
@@ -243,6 +276,34 @@ const SegmentPropertiesPanel = memo(
             [onUpdate]
         );
 
+        const handleLeadingDiamondChange = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                onUpdate({ leading_diamond: e.target.value });
+            },
+            [onUpdate]
+        );
+
+        const handleTrailingDiamondChange = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                onUpdate({ trailing_diamond: e.target.value });
+            },
+            [onUpdate]
+        );
+
+        const handlePowerlineSymbolChange = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                onUpdate({ powerline_symbol: e.target.value });
+            },
+            [onUpdate]
+        );
+
+        const handleInvertPowerlineChange = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                onUpdate({ invert_powerline: e.target.checked });
+            },
+            [onUpdate]
+        );
+
         if (!segment) {
             return (
                 <div className="omp-segment-properties empty">
@@ -277,6 +338,81 @@ const SegmentPropertiesPanel = memo(
                             <option value="accordion">Accordion</option>
                         </select>
                     </div>
+
+                    {segment.style === "diamond" && (
+                        <>
+                            <div className="property-row full-width">
+                                <label className="property-label">Leading</label>
+                                <div className="property-value">
+                                    <input
+                                        type="text"
+                                        className="property-template"
+                                        value={segment.leading_diamond || ""}
+                                        onChange={handleLeadingDiamondChange}
+                                        placeholder="Pick a left-pointing symbol"
+                                    />
+                                    <SymbolStrip
+                                        value={segment.leading_diamond || ""}
+                                        direction="left"
+                                        onChange={(char) => onUpdate({ leading_diamond: char })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="property-row full-width">
+                                <label className="property-label">Trailing</label>
+                                <div className="property-value">
+                                    <input
+                                        type="text"
+                                        className="property-template"
+                                        value={segment.trailing_diamond || ""}
+                                        onChange={handleTrailingDiamondChange}
+                                        placeholder="Pick a right-pointing symbol"
+                                    />
+                                    <SymbolStrip
+                                        value={segment.trailing_diamond || ""}
+                                        direction="right"
+                                        onChange={(char) => onUpdate({ trailing_diamond: char })}
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {segment.style === "powerline" && (
+                        <>
+                            <div className="property-row full-width">
+                                <label className="property-label">Symbol</label>
+                                <div className="property-value">
+                                    <input
+                                        type="text"
+                                        className="property-template"
+                                        value={segment.powerline_symbol || ""}
+                                        onChange={handlePowerlineSymbolChange}
+                                        placeholder="Default: arrow (pick below)"
+                                    />
+                                    <SymbolStrip
+                                        value={segment.powerline_symbol || ""}
+                                        direction="right"
+                                        onChange={(char) => onUpdate({ powerline_symbol: char })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="property-row">
+                                <label className="property-label">Invert</label>
+                                <div className="property-value checkbox-input">
+                                    <input
+                                        type="checkbox"
+                                        checked={segment.invert_powerline ?? false}
+                                        onChange={handleInvertPowerlineChange}
+                                        id="segment-invert-powerline"
+                                    />
+                                    <label htmlFor="segment-invert-powerline">
+                                        Swap foreground/background colors
+                                    </label>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     <div className="property-row">
                         <label className="property-label">Foreground</label>
@@ -328,6 +464,11 @@ const SegmentPropertiesPanel = memo(
                             placeholder="{{ .SegmentTemplate }}"
                         />
                     </div>
+                    <NerdFontPicker
+                        onInsert={(char) => {
+                            onUpdate({ template: (segment.template || "") + char });
+                        }}
+                    />
                 </div>
             </div>
         );
@@ -335,6 +476,56 @@ const SegmentPropertiesPanel = memo(
 );
 
 SegmentPropertiesPanel.displayName = "SegmentPropertiesPanel";
+
+/**
+ * Block properties panel - shows block-level settings (newline, filler)
+ */
+const BlockPropertiesPanel = memo(
+    ({
+        block,
+        blockIndex,
+        onUpdate,
+    }: {
+        block: OmpBlockData | null;
+        blockIndex: number;
+        onUpdate: (updates: Partial<OmpBlockData>) => void;
+    }) => {
+        const handleNewlineChange = useCallback(
+            (e: React.ChangeEvent<HTMLInputElement>) => {
+                onUpdate({ newline: e.target.checked });
+            },
+            [onUpdate]
+        );
+
+        if (!block || blockIndex === 0) {
+            return null;
+        }
+
+        return (
+            <div className="omp-block-properties">
+                <div className="property-group">
+                    <div className="group-title">Block</div>
+                    <div className="property-row">
+                        <label className="property-label">Newline</label>
+                        <div className="property-value checkbox-input">
+                            <input
+                                type="checkbox"
+                                checked={block.newline ?? false}
+                                onChange={handleNewlineChange}
+                                id={`block-newline-${blockIndex}`}
+                            />
+                            <label htmlFor={`block-newline-${blockIndex}`}>
+                                Start this block on a new line
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+);
+
+BlockPropertiesPanel.displayName = "BlockPropertiesPanel";
 
 export const OmpBlockEditor = memo(
     ({
@@ -360,6 +551,20 @@ export const OmpBlockEditor = memo(
                 }
             },
             [config, selectedBlockIndex, selectedSegmentIndex, onConfigUpdate]
+        );
+
+        const handleBlockUpdate = useCallback(
+            (updates: Partial<OmpBlockData>) => {
+                if (!config) return;
+
+                const newConfig = structuredClone(config);
+                const block = newConfig.blocks?.[selectedBlockIndex];
+                if (block) {
+                    Object.assign(block, updates);
+                    onConfigUpdate(newConfig);
+                }
+            },
+            [config, selectedBlockIndex, onConfigUpdate]
         );
 
         if (!config) {
@@ -401,6 +606,11 @@ export const OmpBlockEditor = memo(
                             <i className="fa fa-solid fa-sliders" />
                             <span>Properties</span>
                         </div>
+                        <BlockPropertiesPanel
+                            block={selectedBlock}
+                            blockIndex={selectedBlockIndex}
+                            onUpdate={handleBlockUpdate}
+                        />
                         <SegmentPropertiesPanel segment={selectedSegment} onUpdate={handleSegmentUpdate} />
                     </div>
                 </div>

@@ -285,7 +285,7 @@
     .preview-container {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 4px;
     }
 
     .preview-empty {
@@ -299,45 +299,52 @@
     }
 }
 
-// Block preview
-.block-preview {
-    .block-label {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 8px;
-        font-size: 11px;
-        color: var(--secondary-text-color);
+// Preview line: groups left and right blocks on the same row
+.preview-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 24px;
 
-        .block-type {
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .block-alignment {
-            opacity: 0.7;
-        }
+    &.has-newline {
+        border-top: 1px dashed rgba(128, 128, 128, 0.3);
+        padding-top: 4px;
+        margin-top: 2px;
     }
 
-    .block-segments {
+    .line-left {
         display: flex;
+        align-items: center;
         flex-wrap: wrap;
-        gap: 0;
     }
 
-    &.right {
-        .block-segments {
-            justify-content: flex-end;
-        }
+    .line-right {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-left: auto;
     }
 }
+
+// Block segments group (segments within a single block)
+.block-segments-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+// Shared height for segments and separators in the preview
+$preview-segment-height: 22px;
 
 // Segment preview
 .segment-preview {
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
+    height: $preview-segment-height;
+    padding: 0 8px;
     font-family: var(--fixed-font);
-    font-size: 13px;
+    font-size: 12px;
+    line-height: $preview-segment-height;
 
     &.transparent {
         background: repeating-linear-gradient(
@@ -353,7 +360,7 @@
     .segment-content {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
     }
 
     .segment-type {
@@ -361,11 +368,24 @@
         opacity: 0.8;
     }
 
-    .powerline-arrow {
-        font-family: 'MesloLGS NF', 'Fira Code', monospace;
-        margin-left: 0;
-        margin-right: -10px;
+    .segment-template-preview {
+        font-family: var(--termfontfamily, "MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", monospace);
+        font-size: 12px;
+        white-space: nowrap;
     }
+}
+
+// Powerline/diamond separators rendered BETWEEN segments
+// Must match segment height exactly for seamless visual connection
+.powerline-separator,
+.diamond-separator {
+    font-family: var(--termfontfamily, "MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", monospace);
+    font-size: $preview-segment-height;
+    line-height: 1;
+    height: $preview-segment-height;
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
 }
 
 // Block editor
@@ -456,6 +476,12 @@
             i {
                 color: var(--secondary-text-color);
             }
+
+            .newline-badge {
+                font-size: 10px;
+                color: var(--accent-color);
+                margin-left: 2px;
+            }
         }
 
         .block-alignment {
@@ -525,6 +551,15 @@
         border-radius: 2px;
         border: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
     }
+}
+
+// Block properties panel
+.omp-block-properties {
+    background: var(--panel-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 8px;
 }
 
 // Segment properties panel
@@ -652,8 +687,27 @@
     }
 
     .property-template {
-        font-family: var(--fixed-font);
+        font-family: var(--termfontfamily, "MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", "Hack", monospace);
         font-size: 12px;
+    }
+
+    .checkbox-input {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        label {
+            font-size: 12px;
+            color: var(--secondary-text-color);
+            cursor: pointer;
+        }
     }
 }
 
@@ -871,5 +925,149 @@
         font-size: 12px;
         color: var(--secondary-text-color);
         margin-top: 2px;
+    }
+}
+
+// Symbol strip for powerline/diamond character selection
+.omp-symbol-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-top: 6px;
+
+    .symbol-option {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 28px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: var(--termfontfamily, "MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", monospace);
+        font-size: 18px;
+        color: var(--main-text-color);
+        background: var(--highlight-bg-color);
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+        padding: 0;
+
+        &:hover {
+            background: var(--hover-bg-color);
+            border-color: var(--form-element-primary-color);
+        }
+
+        &.selected {
+            background: var(--accent-color);
+            color: var(--button-text-color);
+            border-color: var(--accent-color);
+        }
+
+        &.symbol-none {
+            font-family: inherit;
+            font-size: 10px;
+            color: var(--secondary-text-color);
+            width: 24px;
+
+            &.selected {
+                color: var(--button-text-color);
+            }
+        }
+    }
+}
+
+// Nerd Font icon picker
+.omp-nerdfont-picker {
+    margin-top: 8px;
+
+    .picker-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        background: var(--highlight-bg-color);
+        border: 1px solid var(--form-element-border-color);
+        color: var(--secondary-text-color);
+        font-size: 12px;
+        transition: all 0.15s ease;
+
+        &:hover {
+            background: var(--hover-bg-color);
+            color: var(--main-text-color);
+        }
+
+        &.active {
+            background: var(--accent-color);
+            color: var(--button-text-color);
+            border-color: var(--accent-color);
+        }
+
+        i {
+            font-size: 11px;
+        }
+    }
+
+    .picker-panel {
+        margin-top: 8px;
+        background: var(--card-bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 10px;
+        max-height: 260px;
+        overflow-y: auto;
+    }
+
+    .picker-category {
+        margin-bottom: 10px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--secondary-text-color);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+            padding: 2px 0;
+
+            i {
+                font-size: 10px;
+            }
+        }
+
+        .category-icons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+    }
+
+    .icon-option {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 30px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: var(--termfontfamily, "MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", monospace);
+        font-size: 16px;
+        color: var(--main-text-color);
+        background: transparent;
+        border: 1px solid transparent;
+        padding: 0;
+        transition: all 0.15s ease;
+
+        &:hover {
+            background: var(--hover-bg-color);
+            border-color: var(--form-element-primary-color);
+        }
     }
 }
