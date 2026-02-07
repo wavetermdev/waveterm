@@ -97,7 +97,7 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 				router.UnregisterLink(baseds.LinkId(linkId))
 			}
 		}()
-		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
+		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh, nil)
 	}()
 	linkId := router.RegisterUntrustedLink(proxy)
 	linkIdContainer.Store(int32(linkId))
@@ -265,7 +265,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 			log.Printf("upstream domain socket closed, shutting down")
 			wshutil.DoShutdown("", 0, true)
 		}()
-		wshutil.AdaptStreamToMsgCh(conn, upstreamProxy.FromRemoteCh)
+		wshutil.AdaptStreamToMsgCh(conn, upstreamProxy.FromRemoteCh, nil)
 	}()
 
 	// register the domain socket connection as upstream

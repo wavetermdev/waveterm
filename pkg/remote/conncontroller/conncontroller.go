@@ -61,6 +61,11 @@ const (
 	NoWshCode_InstallVerifyError    = "install-verify-error"
 )
 
+const (
+	ConnHealthStatus_Good    = "good"
+	ConnHealthStatus_Stalled = "stalled"
+)
+
 const DefaultConnectionTimeout = 60 * time.Second
 
 var globalLock = &sync.Mutex{}
@@ -72,6 +77,7 @@ type SSHConn struct {
 	lifecycleLock *sync.Mutex // this protects the lifecycle from concurrent calls
 
 	Status             string
+	ConnHealthStatus   string
 	WshEnabled         *atomic.Bool
 	Opts               *remote.SSHOpts
 	Client             *ssh.Client
@@ -84,6 +90,7 @@ type SSHConn struct {
 	WshVersion         string
 	LastConnectTime    int64
 	ActiveConnNum      int
+	Monitor            *ConnMonitor
 }
 
 var ConnServerCmdTemplate = strings.TrimSpace(
@@ -128,16 +135,17 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	conn.lock.Lock()
 	defer conn.lock.Unlock()
 	return wshrpc.ConnStatus{
-		Status:        conn.Status,
-		Connected:     conn.Status == Status_Connected,
-		Connection:    conn.Opts.String(),
-		HasConnected:  (conn.LastConnectTime > 0),
-		ActiveConnNum: conn.ActiveConnNum,
-		Error:         conn.Error,
-		WshEnabled:    conn.WshEnabled.Load(),
-		WshError:      conn.WshError,
-		NoWshReason:   conn.NoWshReason,
-		WshVersion:    conn.WshVersion,
+		Status:           conn.Status,
+		Connected:        conn.Status == Status_Connected,
+		Connection:       conn.Opts.String(),
+		HasConnected:     (conn.LastConnectTime > 0),
+		ActiveConnNum:    conn.ActiveConnNum,
+		Error:            conn.Error,
+		WshEnabled:       conn.WshEnabled.Load(),
+		WshError:         conn.WshError,
+		NoWshReason:      conn.NoWshReason,
+		WshVersion:       conn.WshVersion,
+		ConnHealthStatus: conn.ConnHealthStatus,
 	}
 }
 
@@ -276,7 +284,7 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 			conn.DomainSockListener = nil
 			conn.DomainSockName = ""
 		})
-		wshutil.RunWshRpcOverListener(listener)
+		wshutil.RunWshRpcOverListener(listener, conn.Monitor.UpdateLastActivityTime)
 	}()
 	return nil
 }
@@ -323,11 +331,11 @@ func (conn *SSHConn) GetEnvironmentMaps(ctx context.Context) (map[string]string,
 
 func runSessionWithContext(ctx context.Context, session *ssh.Session, cmd string) error {
 	errCh := make(chan error, 1)
-	
+
 	go func() {
 		errCh <- session.Run(cmd)
 	}()
-	
+
 	select {
 	case <-ctx.Done():
 		session.Close()
@@ -527,6 +535,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 				log.Printf("[conncontroller:%s:output] error: %v\n", conn.GetName(), output.Error)
 				continue
 			}
+			conn.Monitor.UpdateLastActivityTime()
 			line := output.Line
 			if !strings.HasSuffix(line, "\n") {
 				line += "\n"
@@ -986,18 +995,26 @@ func (conn *SSHConn) ClearWshError() {
 	})
 }
 
+func (conn *SSHConn) SetConnHealthStatus(status string) {
+	conn.WithLock(func() {
+		conn.ConnHealthStatus = status
+	})
+}
+
 func getConnInternal(opts *remote.SSHOpts, createIfNotExists bool) *SSHConn {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	rtn := clientControllerMap[*opts]
 	if rtn == nil && createIfNotExists {
 		rtn = &SSHConn{
-			lock:          &sync.Mutex{},
-			lifecycleLock: &sync.Mutex{},
-			Status:        Status_Init,
-			WshEnabled:    &atomic.Bool{},
-			Opts:          opts,
+			lock:             &sync.Mutex{},
+			lifecycleLock:    &sync.Mutex{},
+			Status:           Status_Init,
+			ConnHealthStatus: ConnHealthStatus_Good,
+			WshEnabled:       &atomic.Bool{},
+			Opts:             opts,
 		}
+		rtn.Monitor = MakeConnMonitor(rtn)
 		clientControllerMap[*opts] = rtn
 	}
 	return rtn
