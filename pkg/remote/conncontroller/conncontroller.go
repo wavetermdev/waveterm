@@ -996,9 +996,24 @@ func (conn *SSHConn) ClearWshError() {
 }
 
 func (conn *SSHConn) SetConnHealthStatus(status string) {
+	changed := false
 	conn.WithLock(func() {
-		conn.ConnHealthStatus = status
+		if conn.ConnHealthStatus != status {
+			conn.ConnHealthStatus = status
+			changed = true
+		}
 	})
+	if changed {
+		conn.FireConnChangeEvent()
+	}
+}
+
+func (conn *SSHConn) GetConnHealthStatus() string {
+	var status string
+	conn.WithLock(func() {
+		status = conn.ConnHealthStatus
+	})
+	return status
 }
 
 func getConnInternal(opts *remote.SSHOpts, createIfNotExists bool) *SSHConn {
