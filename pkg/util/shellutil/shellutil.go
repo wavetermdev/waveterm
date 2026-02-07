@@ -526,7 +526,7 @@ func getShellVersion(shellPath string, shellType string) (string, error) {
 		cmd = exec.CommandContext(ctx, shellPath, "--version")
 		versionRegex = fishVersionRegexp
 	case ShellType_pwsh:
-		cmd = exec.CommandContext(ctx, shellPath, "--version")
+		cmd = exec.CommandContext(ctx, shellPath, "-NoProfile", "-NonInteractive", "--version")
 		versionRegex = pwshVersionRegexp
 	default:
 		return "", fmt.Errorf("unsupported shell type: %s", shellType)

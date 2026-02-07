@@ -353,9 +353,15 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 		shellPath = cmdOpts.ShellPath
 	}
 	configShellPath := conn.GetConfigShellPath()
+	// Only use config shell path if it's a valid Unix path (starts with / or ~).
+	// Connection URIs (like wsl:// or ssh://) should be ignored.
 	if shellPath == "" && configShellPath != "" {
-		conn.Infof(logCtx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
-		shellPath = configShellPath
+		if strings.HasPrefix(configShellPath, "/") || strings.HasPrefix(configShellPath, "~") {
+			conn.Infof(logCtx, "using shell path from config (conn:shellpath): %s\n", configShellPath)
+			shellPath = configShellPath
+		} else {
+			conn.Infof(logCtx, "ignoring config shell path %q - not a valid Unix shell path\n", configShellPath)
+		}
 	}
 	if shellPath == "" && remoteInfo.Shell != "" {
 		conn.Infof(logCtx, "using shell path detected on remote machine: %s\n", remoteInfo.Shell)

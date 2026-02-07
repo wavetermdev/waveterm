@@ -852,6 +852,13 @@ func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) err
 		connData = make(waveobj.MetaMapType)
 	}
 	for configKey, val := range toMerge {
+		if configKey == "conn:shellpath" {
+			if s, ok := val.(string); ok && s != "" {
+				if strings.HasPrefix(s, "wsl://") || strings.HasPrefix(s, "ssh://") {
+					return fmt.Errorf("conn:shellpath must be a shell executable path, not a connection URI: %q", s)
+				}
+			}
+		}
 		connData[configKey] = val
 	}
 	m[connName] = connData

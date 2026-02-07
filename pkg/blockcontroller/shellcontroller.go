@@ -329,13 +329,15 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 	wshEnabled := !blockMeta.GetBool(waveobj.MetaKey_CmdNoWsh, false)
 	if strings.HasPrefix(remoteName, "wsl://") {
 		wslName := strings.TrimPrefix(remoteName, "wsl://")
+		ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelFn()
+		err := wslconn.EnsureConnection(ctx, wslName)
+		if err != nil {
+			return ConnUnion{}, fmt.Errorf("wsl connection %s not connected: %w", remoteName, err)
+		}
 		wslConn := wslconn.GetWslConn(wslName)
 		if wslConn == nil {
 			return ConnUnion{}, fmt.Errorf("wsl connection not found: %s", remoteName)
-		}
-		connStatus := wslConn.DeriveConnStatus()
-		if connStatus.Status != conncontroller.Status_Connected {
-			return ConnUnion{}, fmt.Errorf("wsl connection %s not connected, cannot start shellproc", remoteName)
 		}
 		rtn.ConnType = ConnType_Wsl
 		rtn.WslConn = wslConn
@@ -344,6 +346,12 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		rtn.ConnType = ConnType_Local
 		rtn.WshEnabled = wshEnabled
 	} else {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelFn()
+		err := conncontroller.EnsureConnection(ctx, remoteName)
+		if err != nil {
+			return ConnUnion{}, fmt.Errorf("ssh connection %s not connected: %w", remoteName, err)
+		}
 		opts, err := remote.ParseOpts(remoteName)
 		if err != nil {
 			return ConnUnion{}, fmt.Errorf("invalid ssh remote name (%s): %w", remoteName, err)
@@ -351,10 +359,6 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		conn := conncontroller.GetConn(opts)
 		if conn == nil {
 			return ConnUnion{}, fmt.Errorf("ssh connection not found: %s", remoteName)
-		}
-		connStatus := conn.DeriveConnStatus()
-		if connStatus.Status != conncontroller.Status_Connected {
-			return ConnUnion{}, fmt.Errorf("ssh connection %s not connected, cannot start shellproc", remoteName)
 		}
 		rtn.ConnType = ConnType_Ssh
 		rtn.SshConn = conn

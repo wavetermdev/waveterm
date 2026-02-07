@@ -150,6 +150,12 @@ func ValidatePath(key string, value interface{}, mustBeDir bool) error {
 		expandedPath = expanded
 	}
 
+	// On Windows, skip os.Stat for Unix-style absolute paths (e.g., /home/user)
+	// since these are likely remote/WSL paths that don't exist on the host
+	if runtime.GOOS == "windows" && strings.HasPrefix(expandedPath, "/") {
+		return nil
+	}
+
 	// Check existence and type (soft validation - warn but allow)
 	info, err := os.Stat(expandedPath)
 	if err != nil {
