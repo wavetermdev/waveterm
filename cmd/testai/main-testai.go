@@ -27,6 +27,7 @@ const (
 	DefaultAnthropicModel  = "claude-sonnet-4-5"
 	DefaultOpenAIModel     = "gpt-5.1"
 	DefaultOpenRouterModel = "mistralai/mistral-small-3.2-24b-instruct"
+	DefaultNanoGPTModel    = "zai-org/glm-4.7"
 	DefaultGeminiModel     = "gemini-3-pro-preview"
 )
 
@@ -257,6 +258,55 @@ func testOpenRouter(ctx context.Context, model, message string, tools []uctypes.
 	}
 }
 
+func testNanoGPT(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
+	apiKey := os.Getenv("NANOGPT_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: NANOGPT_KEY environment variable not set")
+		os.Exit(1)
+	}
+
+	opts := &uctypes.AIOptsType{
+		APIType:   uctypes.APIType_OpenAIChat,
+		APIToken:  apiKey,
+		Endpoint:  "https://nano-gpt.com/api/v1/chat/completions",
+		Model:     model,
+		MaxTokens: 4096,
+	}
+
+	chatID := uuid.New().String()
+
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
+			{
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
+			},
+		},
+	}
+
+	fmt.Printf("Testing NanoGPT with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
+	fmt.Println("---")
+
+	testWriter := &TestResponseWriter{}
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
+	defer sseHandler.Close()
+
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId:       chatID,
+		ClientId:     uuid.New().String(),
+		Config:       *opts,
+		Tools:        tools,
+		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	if err != nil {
+		fmt.Printf("NanoGPT streaming error: %v\n", err)
+	}
+}
+
 func testAnthropic(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("ANTHROPIC_APIKEY")
 	if apiKey == "" {
@@ -381,7 +431,7 @@ func testT4(ctx context.Context) {
 }
 
 func printUsage() {
-	fmt.Println("Usage: go run main-testai.go [--anthropic|--openaicomp|--openrouter|--gemini] [--tools] [--model <model>] [message]")
+	fmt.Println("Usage: go run main-testai.go [--anthropic|--openaicomp|--openrouter|--nanogpt|--gemini] [--tools] [--model <model>] [message]")
 	fmt.Println("Examples:")
 	fmt.Println("  go run main-testai.go 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --model o4-mini 'What is 2+2?'")
@@ -390,6 +440,8 @@ func printUsage() {
 	fmt.Println("  go run main-testai.go --openaicomp --model gpt-4o 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --openrouter 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --openrouter --model anthropic/claude-3.5-sonnet 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --nanogpt 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --nanogpt --model gpt-4o 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --gemini 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --gemini --model gemini-1.5-pro 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --tools 'Help me configure GitHub Actions monitoring'")
@@ -399,24 +451,27 @@ func printUsage() {
 	fmt.Printf("  Anthropic: %s\n", DefaultAnthropicModel)
 	fmt.Printf("  OpenAI Completions: gpt-4o\n")
 	fmt.Printf("  OpenRouter: %s\n", DefaultOpenRouterModel)
+	fmt.Printf("  NanoGPT: %s\n", DefaultNanoGPTModel)
 	fmt.Printf("  Google Gemini: %s\n", DefaultGeminiModel)
 	fmt.Println("")
 	fmt.Println("Environment variables:")
 	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
 	fmt.Println("  ANTHROPIC_APIKEY (for Anthropic models)")
 	fmt.Println("  OPENROUTER_APIKEY (for OpenRouter models)")
+	fmt.Println("  NANOGPT_KEY (for NanoGPT models)")
 	fmt.Println("  GOOGLE_APIKEY (for Google Gemini models)")
 }
 
 func main() {
-	var anthropic, openaicomp, openrouter, gemini, tools, help, t1, t2, t3, t4 bool
+	var anthropic, openaicomp, openrouter, nanogpt, gemini, tools, help, t1, t2, t3, t4 bool
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&openaicomp, "openaicomp", false, "Use OpenAI Completions API")
 	flag.BoolVar(&openrouter, "openrouter", false, "Use OpenRouter API")
+	flag.BoolVar(&nanogpt, "nanogpt", false, "Use NanoGPT API")
 	flag.BoolVar(&gemini, "gemini", false, "Use Google Gemini API")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
-	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic, %s for OpenRouter, %s for Gemini)", DefaultOpenAIModel, DefaultAnthropicModel, DefaultOpenRouterModel, DefaultGeminiModel))
+	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic, %s for OpenRouter, %s for NanoGPT, %s for Gemini)", DefaultOpenAIModel, DefaultAnthropicModel, DefaultOpenRouterModel, DefaultNanoGPTModel, DefaultGeminiModel))
 	flag.BoolVar(&help, "help", false, "Show usage information")
 	flag.BoolVar(&t1, "t1", false, fmt.Sprintf("Run preset T1 test (%s with 'what is 2+2')", DefaultAnthropicModel))
 	flag.BoolVar(&t2, "t2", false, fmt.Sprintf("Run preset T2 test (%s with 'what is 2+2')", DefaultOpenAIModel))
@@ -457,6 +512,8 @@ func main() {
 			model = "gpt-4o"
 		} else if openrouter {
 			model = DefaultOpenRouterModel
+		} else if nanogpt {
+			model = DefaultNanoGPTModel
 		} else if gemini {
 			model = DefaultGeminiModel
 		} else {
@@ -481,6 +538,8 @@ func main() {
 		testOpenAIComp(ctx, model, message, toolDefs)
 	} else if openrouter {
 		testOpenRouter(ctx, model, message, toolDefs)
+	} else if nanogpt {
+		testNanoGPT(ctx, model, message, toolDefs)
 	} else if gemini {
 		testGemini(ctx, model, message, toolDefs)
 	} else {

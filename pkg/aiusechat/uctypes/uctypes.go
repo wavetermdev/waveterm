@@ -27,6 +27,7 @@ const (
 	AIProvider_Wave        = "wave"
 	AIProvider_Google      = "google"
 	AIProvider_OpenRouter  = "openrouter"
+	AIProvider_NanoGPT     = "nanogpt"
 	AIProvider_OpenAI      = "openai"
 	AIProvider_Azure       = "azure"
 	AIProvider_AzureLegacy = "azure-legacy"
