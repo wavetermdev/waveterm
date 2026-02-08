@@ -123,6 +123,7 @@ type MetaTSType struct {
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
+	TermExitIndicator       *bool    `json:"term:exitindicator,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
 
 	WebZoom          float64 `json:"web:zoom,omitempty"`
