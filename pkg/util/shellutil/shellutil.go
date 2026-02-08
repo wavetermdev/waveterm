@@ -447,15 +447,21 @@ func initCustomShellStartupFilesInternal() error {
 		return nil
 	}
 	wshDstPath := filepath.Join(binDir, "wsh")
+	waveDstPath := filepath.Join(binDir, "wave")
 	if runtime.GOOS == "windows" {
 		wshDstPath = wshDstPath + ".exe"
+		waveDstPath = waveDstPath + ".exe"
 	}
 	err = utilfn.AtomicRenameCopy(wshDstPath, wshFullPath, 0755)
 	if err != nil {
 		return fmt.Errorf("error copying wsh binary to bin: %v", err)
 	}
+	err = utilfn.AtomicRenameCopy(waveDstPath, wshFullPath, 0755)
+	if err != nil {
+		return fmt.Errorf("error copying wave binary to bin: %v", err)
+	}
 	wshBaseName := filepath.Base(wshFullPath)
-	log.Printf("wsh binary successfully copied from %q to %q\n", wshBaseName, wshDstPath)
+	log.Printf("wsh binary successfully copied from %q to %q and %q\n", wshBaseName, wshDstPath, waveDstPath)
 	return nil
 }
 
