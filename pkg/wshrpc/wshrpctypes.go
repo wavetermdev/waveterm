@@ -442,17 +442,19 @@ type ConnConfigRequest struct {
 }
 
 type ConnStatus struct {
-	Status           string `json:"status"`
-	ConnHealthStatus string `json:"connhealthstatus,omitempty"`
-	WshEnabled       bool   `json:"wshenabled"`
-	Connection       string `json:"connection"`
-	Connected        bool   `json:"connected"`
-	HasConnected     bool   `json:"hasconnected"` // true if it has *ever* connected successfully
-	ActiveConnNum    int    `json:"activeconnnum"`
-	Error            string `json:"error,omitempty"`
-	WshError         string `json:"wsherror,omitempty"`
-	NoWshReason      string `json:"nowshreason,omitempty"`
-	WshVersion       string `json:"wshversion,omitempty"`
+	Status                        string `json:"status"`
+	ConnHealthStatus              string `json:"connhealthstatus,omitempty"`
+	WshEnabled                    bool   `json:"wshenabled"`
+	Connection                    string `json:"connection"`
+	Connected                     bool   `json:"connected"`
+	HasConnected                  bool   `json:"hasconnected"` // true if it has *ever* connected successfully
+	ActiveConnNum                 int    `json:"activeconnnum"`
+	Error                         string `json:"error,omitempty"`
+	WshError                      string `json:"wsherror,omitempty"`
+	NoWshReason                   string `json:"nowshreason,omitempty"`
+	WshVersion                    string `json:"wshversion,omitempty"`
+	LastActivityBeforeStalledTime int64  `json:"lastactivitybeforerstalledtime,omitempty"`
+	KeepAliveSentTime             int64  `json:"keepalivesenttime,omitempty"`
 }
 
 type WebSelectorOpts struct {

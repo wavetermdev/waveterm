@@ -18,7 +18,7 @@ type ConnMonitor struct {
 	Conn              *SSHConn
 	LastActivityTime  atomic.Int64
 	LastInputTime     atomic.Int64
-	KeepAliveSentTime int64
+	KeepAliveSentTime atomic.Int64
 	KeepAliveInFlight bool
 	ctx               context.Context
 	cancelFunc        context.CancelFunc
@@ -68,7 +68,7 @@ func (cm *ConnMonitor) setKeepAliveInFlight() bool {
 		return false
 	}
 	cm.KeepAliveInFlight = true
-	cm.KeepAliveSentTime = time.Now().UnixMilli()
+	cm.KeepAliveSentTime.Store(time.Now().UnixMilli())
 	return true
 }
 
@@ -86,7 +86,7 @@ func (cm *ConnMonitor) getTimeSinceKeepAlive() int64 {
 	if !cm.KeepAliveInFlight {
 		return 0
 	}
-	return time.Now().UnixMilli() - cm.KeepAliveSentTime
+	return time.Now().UnixMilli() - cm.KeepAliveSentTime.Load()
 }
 
 func (cm *ConnMonitor) SendKeepAlive() error {

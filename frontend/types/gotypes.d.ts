@@ -795,6 +795,8 @@ declare global {
         wsherror?: string;
         nowshreason?: string;
         wshversion?: string;
+        lastactivitybeforerstalledtime?: number;
+        keepalivesenttime?: number;
     };
 
     // wshrpc.CpuDataRequest

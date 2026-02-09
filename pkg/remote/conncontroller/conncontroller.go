@@ -134,18 +134,26 @@ func GetNumSSHHasConnected() int {
 func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	conn.lock.Lock()
 	defer conn.lock.Unlock()
+	var lastActivityBeforeStalledTime int64
+	var keepAliveSentTime int64
+	if conn.ConnHealthStatus == ConnHealthStatus_Stalled && conn.Monitor != nil {
+		lastActivityBeforeStalledTime = conn.Monitor.LastActivityTime.Load()
+		keepAliveSentTime = conn.Monitor.KeepAliveSentTime.Load()
+	}
 	return wshrpc.ConnStatus{
-		Status:           conn.Status,
-		Connected:        conn.Status == Status_Connected,
-		Connection:       conn.Opts.String(),
-		HasConnected:     (conn.LastConnectTime > 0),
-		ActiveConnNum:    conn.ActiveConnNum,
-		Error:            conn.Error,
-		WshEnabled:       conn.WshEnabled.Load(),
-		WshError:         conn.WshError,
-		NoWshReason:      conn.NoWshReason,
-		WshVersion:       conn.WshVersion,
-		ConnHealthStatus: conn.ConnHealthStatus,
+		Status:                        conn.Status,
+		Connected:                     conn.Status == Status_Connected,
+		Connection:                    conn.Opts.String(),
+		HasConnected:                  (conn.LastConnectTime > 0),
+		ActiveConnNum:                 conn.ActiveConnNum,
+		Error:                         conn.Error,
+		WshEnabled:                    conn.WshEnabled.Load(),
+		WshError:                      conn.WshError,
+		NoWshReason:                   conn.NoWshReason,
+		WshVersion:                    conn.WshVersion,
+		ConnHealthStatus:              conn.ConnHealthStatus,
+		LastActivityBeforeStalledTime: lastActivityBeforeStalledTime,
+		KeepAliveSentTime:             keepAliveSentTime,
 	}
 }
 
