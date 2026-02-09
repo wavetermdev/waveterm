@@ -91,7 +91,8 @@ func (cm *ConnMonitor) getTimeSinceKeepAlive() int64 {
 
 func (cm *ConnMonitor) SendKeepAlive() error {
 	conn := cm.Conn
-	if conn == nil || conn.Client == nil {
+	client := conn.GetClient()
+	if conn == nil || client == nil {
 		return fmt.Errorf("no active connection")
 	}
 	if !cm.setKeepAliveInFlight() {
@@ -102,7 +103,7 @@ func (cm *ConnMonitor) SendKeepAlive() error {
 			panichandler.PanicHandler("conncontroller:SendKeepAlive", recover())
 		}()
 		defer cm.clearKeepAliveInFlight()
-		_, _, _ = conn.Client.SendRequest("keepalive@openssh.com", true, nil)
+		_, _, _ = client.SendRequest("keepalive@openssh.com", true, nil)
 		cm.UpdateLastActivityTime()
 	}()
 	return nil
