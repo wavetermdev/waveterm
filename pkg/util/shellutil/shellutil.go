@@ -620,24 +620,23 @@ func FixupWaveZshHistory() error {
 }
 
 func GetTerminalResetSeq() string {
-	resetSeq := "\x1b[0m"                 // reset attributes
-	resetSeq += "\x1b[?25h"               // show cursor
-	resetSeq += "\x1b[?1l"                // normal cursor keys
-	resetSeq += "\x1b[?6l"                // origin mode off (DECOM)
-	resetSeq += "\x1b[?7h"                // wraparound on
-	resetSeq += "\x1b[?45l"               // reverse wraparound off
-	resetSeq += "\x1b[?66l"               // application keypad off (DECNKM)
-	resetSeq += "\x1b[4l"                 // insert mode off (IRM)
-	resetSeq += "\x1b[?9l"                // X10 mouse tracking off
-	resetSeq += "\x1b[?1000l"             // disable Send Mouse X & Y on button press
-	resetSeq += "\x1b[?1002l"             // disable Use Cell Motion Mouse Tracking
-	resetSeq += "\x1b[?1003l"             // disable Use All Motion Mouse Tracking
-	resetSeq += "\x1b[?1004l"             // disable Send FocusIn/FocusOut events
-	resetSeq += "\x1b[?1006l"             // disable Enable SGR Mouse Mode
-	resetSeq += "\x1b[?1007l"             // disable Enable Alternate Scroll Mode
-	resetSeq += "\x1b[?2004l"             // disable bracketed paste mode
-	resetSeq += "\x1b[?2026l"             // synchronized output off
-	resetSeq += FormatOSC(16162, "R")     // disable alternate screen mode
+	resetSeq := "\x1b[0m"             // reset attributes
+	resetSeq += "\x1b[?25h"           // show cursor
+	resetSeq += "\x1b[?1l"            // normal cursor keys
+	resetSeq += "\x1b[?7h"            // wraparound on
+	resetSeq += "\x1b[?45l"           // reverse wraparound off
+	resetSeq += "\x1b[?66l"           // application keypad off (DECNKM)
+	resetSeq += "\x1b[4l"             // insert mode off (IRM)
+	resetSeq += "\x1b[?9l"            // X10 mouse tracking off
+	resetSeq += "\x1b[?1000l"         // disable Send Mouse X & Y on button press
+	resetSeq += "\x1b[?1002l"         // disable Use Cell Motion Mouse Tracking
+	resetSeq += "\x1b[?1003l"         // disable Use All Motion Mouse Tracking
+	resetSeq += "\x1b[?1004l"         // disable Send FocusIn/FocusOut events
+	resetSeq += "\x1b[?1006l"         // disable Enable SGR Mouse Mode
+	resetSeq += "\x1b[?1007l"         // disable Enable Alternate Scroll Mode
+	resetSeq += "\x1b[?2004l"         // disable bracketed paste mode
+	resetSeq += "\x1b[?2026l"         // synchronized output off
+	resetSeq += FormatOSC(16162, "R") // disable alternate screen mode
 	return resetSeq
 }
 
