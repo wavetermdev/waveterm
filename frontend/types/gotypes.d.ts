@@ -795,7 +795,7 @@ declare global {
         wsherror?: string;
         nowshreason?: string;
         wshversion?: string;
-        lastactivitybeforerstalledtime?: number;
+        lastactivitybeforestalledtime?: number;
         keepalivesenttime?: number;
     };
 

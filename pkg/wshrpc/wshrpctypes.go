@@ -453,7 +453,7 @@ type ConnStatus struct {
 	WshError                      string `json:"wsherror,omitempty"`
 	NoWshReason                   string `json:"nowshreason,omitempty"`
 	WshVersion                    string `json:"wshversion,omitempty"`
-	LastActivityBeforeStalledTime int64  `json:"lastactivitybeforerstalledtime,omitempty"`
+	LastActivityBeforeStalledTime int64  `json:"lastactivitybeforestalledtime,omitempty"`
 	KeepAliveSentTime             int64  `json:"keepalivesenttime,omitempty"`
 }
 

@@ -61,13 +61,13 @@ const StalledOverlay = React.memo(
         }, [connName]);
 
         React.useEffect(() => {
-            if (!connStatus.lastactivitybeforerstalledtime) {
+            if (!connStatus.lastactivitybeforestalledtime) {
                 return;
             }
 
             const updateElapsed = () => {
                 const now = Date.now();
-                const lastActivity = connStatus.lastactivitybeforerstalledtime!;
+                const lastActivity = connStatus.lastactivitybeforestalledtime!;
                 const elapsed = now - lastActivity;
                 setElapsedTime(formatElapsedTime(elapsed));
             };
@@ -76,7 +76,7 @@ const StalledOverlay = React.memo(
             const interval = setInterval(updateElapsed, 1000);
 
             return () => clearInterval(interval);
-        }, [connStatus.lastactivitybeforerstalledtime]);
+        }, [connStatus.lastactivitybeforestalledtime]);
 
         return (
             <div
