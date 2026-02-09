@@ -221,7 +221,6 @@ export const ConnStatusOverlay = React.memo(
         );
 
         let showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
-        showStalled = true;
         if (!showWshError && !showStalled && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
