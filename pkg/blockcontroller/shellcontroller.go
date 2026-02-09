@@ -355,7 +355,7 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		if err != nil {
 			return ConnUnion{}, fmt.Errorf("invalid ssh remote name (%s): %w", remoteName, err)
 		}
-		conn := conncontroller.GetConn(opts)
+		conn := conncontroller.MaybeGetConn(opts)
 		if conn == nil {
 			return ConnUnion{}, fmt.Errorf("ssh connection not found: %s", remoteName)
 		}

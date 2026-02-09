@@ -300,7 +300,7 @@ func sendConnMonitorInputNotification(controller Controller) {
 	if parseErr != nil {
 		return
 	}
-	sshConn := conncontroller.GetConn(connOpts)
+	sshConn := conncontroller.MaybeGetConn(connOpts)
 	if sshConn != nil && sshConn.Monitor != nil {
 		sshConn.Monitor.NotifyInput()
 	}
@@ -430,7 +430,10 @@ func CheckConnStatus(blockId string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(opts)
+	conn := conncontroller.MaybeGetConn(opts)
+	if conn == nil {
+		return fmt.Errorf("no connection found")
+	}
 	connStatus := conn.DeriveConnStatus()
 	if connStatus.Status != conncontroller.Status_Connected {
 		return fmt.Errorf("not connected: %s", connStatus.Status)

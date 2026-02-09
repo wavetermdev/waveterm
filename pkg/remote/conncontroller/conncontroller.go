@@ -91,7 +91,7 @@ type SSHConn struct {
 	WshVersion         string
 	LastConnectTime    int64
 	ActiveConnNum      int
-	Monitor            *ConnMonitor
+	Monitor            *ConnMonitor // will not be nil
 }
 
 var ConnServerCmdTemplate = strings.TrimSpace(
@@ -293,6 +293,7 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 			conn.DomainSockListener = nil
 			conn.DomainSockName = ""
 		})
+		// monitor will never be nil (set up in Make)
 		wshutil.RunWshRpcOverListener(listener, conn.Monitor.UpdateLastActivityTime)
 	}()
 	return nil
@@ -1047,6 +1048,12 @@ func getConnInternal(opts *remote.SSHOpts, createIfNotExists bool) *SSHConn {
 // does NOT connect, does not return nil
 func GetConn(opts *remote.SSHOpts) *SSHConn {
 	conn := getConnInternal(opts, true)
+	return conn
+}
+
+// does NOT connect, can return nil
+func MaybeGetConn(opts *remote.SSHOpts) *SSHConn {
+	conn := getConnInternal(opts, false)
 	return conn
 }
 
