@@ -47,17 +47,18 @@ const StalledOverlay = React.memo(
     ({
         connName,
         connStatus,
-        reconClassName,
-        handleDisconnect,
         overlayRefCallback,
     }: {
         connName: string;
         connStatus: ConnStatus;
-        reconClassName: string;
-        handleDisconnect: () => void;
         overlayRefCallback: (el: HTMLDivElement | null) => void;
     }) => {
         const [elapsedTime, setElapsedTime] = React.useState<string>("");
+
+        const handleDisconnect = React.useCallback(() => {
+            const prtn = RpcApi.ConnDisconnectCommand(TabRpcClient, connName, { timeout: 5000 });
+            prtn.catch((e) => console.log("error disconnecting", connName, e));
+        }, [connName]);
 
         React.useEffect(() => {
             if (!connStatus.lastactivitybeforerstalledtime) {
@@ -92,9 +93,13 @@ const StalledOverlay = React.memo(
                         {elapsedTime && ` (no activity for ${elapsedTime})`}
                     </div>
                     <div className="flex-1 hidden @max-xxs:block"></div>
-                    <Button className={reconClassName} onClick={handleDisconnect} title="Disconnect">
-                        <span className="@max-w450:hidden">Disconnect</span>
-                        <i className="fa-solid fa-link-slash hidden! @max-w450:inline!"></i>
+                    <Button
+                        className="outlined grey text-[11px] py-[3px] px-[7px] @max-w350:text-[12px] @max-w350:py-[5px] @max-w350:px-[6px]"
+                        onClick={handleDisconnect}
+                        title="Disconnect"
+                    >
+                        <span className="@max-w350:hidden!">Disconnect</span>
+                        <i className="fa-solid fa-link-slash hidden! @max-w350:inline!"></i>
                     </Button>
                 </div>
             </div>
@@ -216,19 +221,14 @@ export const ConnStatusOverlay = React.memo(
         );
 
         let showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
+        showStalled = true;
         if (!showWshError && !showStalled && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
 
         if (showStalled && !showWshError) {
             return (
-                <StalledOverlay
-                    connName={connName}
-                    connStatus={connStatus}
-                    reconClassName={reconClassName}
-                    handleDisconnect={handleDisconnect}
-                    overlayRefCallback={overlayRefCallback}
-                />
+                <StalledOverlay connName={connName} connStatus={connStatus} overlayRefCallback={overlayRefCallback} />
             );
         }
 
