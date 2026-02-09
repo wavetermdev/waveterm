@@ -15,6 +15,10 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 
 function formatElapsedTime(elapsedMs: number): string {
+    if (elapsedMs <= 0) {
+        return "";
+    }
+
     const elapsedSeconds = Math.floor(elapsedMs / 1000);
 
     if (elapsedSeconds < 60) {
@@ -62,7 +66,7 @@ const StalledOverlay = React.memo(
 
             const updateElapsed = () => {
                 const now = Date.now();
-                const lastActivity = connStatus.lastactivitybeforerstalledtime! * 1000;
+                const lastActivity = connStatus.lastactivitybeforerstalledtime!;
                 const elapsed = now - lastActivity;
                 setElapsedTime(formatElapsedTime(elapsed));
             };
@@ -75,7 +79,7 @@ const StalledOverlay = React.memo(
 
         return (
             <div
-                className="@container absolute top-[calc(var(--header-height)+6px)] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden rounded-md bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] shadow-lg"
+                className="@container absolute top-[calc(var(--header-height)+6px)] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden rounded-md bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] shadow-lg opacity-85"
                 ref={overlayRefCallback}
             >
                 <div className="flex items-center gap-3 w-full pt-2.5 pb-2.5 pr-2 pl-3">
@@ -212,7 +216,6 @@ export const ConnStatusOverlay = React.memo(
         );
 
         let showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
-        showStalled = true;
         if (!showWshError && !showStalled && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }

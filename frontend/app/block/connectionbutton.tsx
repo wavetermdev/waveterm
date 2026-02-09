@@ -80,6 +80,14 @@ export const ConnectionButton = React.memo(
                     color = "var(--grey-text-color)";
                     titleText = "Disconnected from " + connection;
                     showDisconnectedSlash = true;
+                } else if (connStatus?.connhealthstatus === "degraded" || connStatus?.connhealthstatus === "stalled") {
+                    color = "var(--warning-color)";
+                    iconName = "signal-bars-slash";
+                    if (connStatus.connhealthstatus === "degraded") {
+                        titleText = "Connection degraded: " + connection;
+                    } else {
+                        titleText = "Connection stalled: " + connection;
+                    }
                 }
                 if (iconSvg != null) {
                     connIconElem = iconSvg;

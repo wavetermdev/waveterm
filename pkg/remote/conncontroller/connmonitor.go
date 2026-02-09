@@ -152,6 +152,7 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 				if cm.LastActivityTime.Load() >= inputTime {
 					break
 				}
+				cm.Conn.SetConnHealthStatus(ConnHealthStatus_Degraded)
 				cm.checkConnection()
 			case <-cm.ctx.Done():
 				return
