@@ -5,17 +5,21 @@ package conncontroller
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"golang.org/x/crypto/ssh"
 )
 
+// Lock ordering: conn.lock > cm.lock (conn.lock is outer, cm.lock is inner)
+// CRITICAL: Methods that hold cm.lock must NEVER call into SSHConn (deadlock - violates ordering).
+// Methods called from SSHConn while conn.lock is held should avoid acquiring cm.lock (keep locking simple).
 type ConnMonitor struct {
 	lock              *sync.Mutex
-	Conn              *SSHConn
+	Conn              *SSHConn    // always non-nil, set at creation
+	Client            *ssh.Client // always non-nil, set at creation
 	LastActivityTime  atomic.Int64
 	LastInputTime     atomic.Int64
 	KeepAliveSentTime atomic.Int64
@@ -25,11 +29,18 @@ type ConnMonitor struct {
 	inputNotifyCh     chan int64
 }
 
-func MakeConnMonitor(conn *SSHConn) *ConnMonitor {
+func MakeConnMonitor(conn *SSHConn, client *ssh.Client) *ConnMonitor {
+	if conn == nil {
+		panic("conn cannot be nil")
+	}
+	if client == nil {
+		panic("client cannot be nil")
+	}
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	cm := &ConnMonitor{
 		lock:          &sync.Mutex{},
 		Conn:          conn,
+		Client:        client,
 		ctx:           ctx,
 		cancelFunc:    cancelFunc,
 		inputNotifyCh: make(chan int64, 1),
@@ -38,9 +49,15 @@ func MakeConnMonitor(conn *SSHConn) *ConnMonitor {
 	return cm
 }
 
+// setConnHealthStatus calls into SSHConn.SetConnHealthStatus
+// CRITICAL: cm.lock must NOT be held when calling this method (violates lock ordering)
+func (cm *ConnMonitor) setConnHealthStatus(status string) {
+	cm.Conn.SetConnHealthStatus(cm.Client, status)
+}
+
 func (cm *ConnMonitor) UpdateLastActivityTime() {
 	cm.LastActivityTime.Store(time.Now().UnixMilli())
-	cm.Conn.SetConnHealthStatus(ConnHealthStatus_Good)
+	cm.setConnHealthStatus(ConnHealthStatus_Good)
 }
 
 func (cm *ConnMonitor) NotifyInput() {
@@ -90,11 +107,7 @@ func (cm *ConnMonitor) getTimeSinceKeepAlive() int64 {
 }
 
 func (cm *ConnMonitor) SendKeepAlive() error {
-	conn := cm.Conn
-	client := conn.GetClient()
-	if conn == nil || client == nil {
-		return fmt.Errorf("no active connection")
-	}
+	client := cm.Client
 	if !cm.setKeepAliveInFlight() {
 		return nil
 	}
@@ -131,7 +144,7 @@ func (cm *ConnMonitor) checkConnection() {
 	}
 	timeSinceKeepAlive := cm.getTimeSinceKeepAlive()
 	if timeSinceKeepAlive > stalledThreshold {
-		cm.Conn.SetConnHealthStatus(ConnHealthStatus_Stalled)
+		cm.setConnHealthStatus(ConnHealthStatus_Stalled)
 	}
 }
 
@@ -143,6 +156,11 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 	defer ticker.Stop()
 
 	for {
+		// check if our client is still the active one
+		if cm.Conn.GetClient() != cm.Client {
+			return
+		}
+
 		select {
 		case <-ticker.C:
 			cm.checkConnection()
@@ -153,7 +171,7 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 				if cm.LastActivityTime.Load() >= inputTime {
 					break
 				}
-				cm.Conn.SetConnHealthStatus(ConnHealthStatus_Degraded)
+				cm.setConnHealthStatus(ConnHealthStatus_Degraded)
 				cm.checkConnection()
 			case <-cm.ctx.Done():
 				return

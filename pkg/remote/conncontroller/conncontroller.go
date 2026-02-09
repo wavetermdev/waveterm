@@ -137,9 +137,10 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	defer conn.lock.Unlock()
 	var lastActivityBeforeStalledTime int64
 	var keepAliveSentTime int64
-	if conn.ConnHealthStatus == ConnHealthStatus_Stalled && conn.Monitor != nil {
-		lastActivityBeforeStalledTime = conn.Monitor.LastActivityTime.Load()
-		keepAliveSentTime = conn.Monitor.KeepAliveSentTime.Load()
+	monitor := conn.Monitor
+	if conn.ConnHealthStatus == ConnHealthStatus_Stalled && monitor != nil {
+		lastActivityBeforeStalledTime = monitor.LastActivityTime.Load()
+		keepAliveSentTime = monitor.KeepAliveSentTime.Load()
 	}
 	return wshrpc.ConnStatus{
 		Status:                        conn.Status,
@@ -197,9 +198,14 @@ func (conn *SSHConn) Close() error {
 
 func (conn *SSHConn) closeInternal_withlifecyclelock() {
 	// does not set status (that should happen at another level)
-	client := WithLockRtn(conn, func() *ssh.Client {
-		return conn.Client
+	conn.WithLock(func() {
+		if conn.Monitor != nil {
+			conn.Monitor.Close()
+			conn.Monitor = nil
+		}
+		conn.Monitor = nil
 	})
+	client := conn.GetClient()
 	if client != nil {
 		// this MUST go first to force close the connection.
 		// the DomainSockListener.Close() sends SSH protocol packets which can block on a dead network conn
@@ -293,8 +299,12 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 			conn.DomainSockListener = nil
 			conn.DomainSockName = ""
 		})
-		// monitor will never be nil (set up in Make)
-		wshutil.RunWshRpcOverListener(listener, conn.Monitor.UpdateLastActivityTime)
+		monitor := conn.GetMonitor()
+		var updateCallback func()
+		if monitor != nil {
+			updateCallback = monitor.UpdateLastActivityTime
+		}
+		wshutil.RunWshRpcOverListener(listener, updateCallback)
 	}()
 	return nil
 }
@@ -545,7 +555,10 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 				log.Printf("[conncontroller:%s:output] error: %v\n", conn.GetName(), output.Error)
 				continue
 			}
-			conn.Monitor.UpdateLastActivityTime()
+			monitor := conn.GetMonitor()
+			if monitor != nil {
+				monitor.UpdateLastActivityTime()
+			}
 			line := output.Line
 			if !strings.HasSuffix(line, "\n") {
 				line += "\n"
@@ -680,6 +693,12 @@ func (conn *SSHConn) GetClient() *ssh.Client {
 	conn.lock.Lock()
 	defer conn.lock.Unlock()
 	return conn.Client
+}
+
+func (conn *SSHConn) GetMonitor() *ConnMonitor {
+	conn.lock.Lock()
+	defer conn.lock.Unlock()
+	return conn.Monitor
 }
 
 func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
@@ -935,7 +954,13 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		return err
 	}
 	conn.WithLock(func() {
+		if conn.Monitor != nil {
+			conn.Monitor.Close()
+			conn.Monitor = nil
+		}
 		conn.Client = client
+		conn.ConnHealthStatus = ConnHealthStatus_Good
+		conn.Monitor = MakeConnMonitor(conn, client)
 	})
 	go func() {
 		defer func() {
@@ -973,6 +998,11 @@ func (conn *SSHConn) waitForDisconnect() {
 		return
 	}
 	err := client.Wait()
+	if err != nil {
+		log.Printf("[conn:%s] client.Wait() returned error: %v", conn.GetName(), err)
+	} else {
+		log.Printf("[conn:%s] client.Wait() completed (clean disconnect)", conn.GetName())
+	}
 	conn.lifecycleLock.Lock()
 	defer conn.lifecycleLock.Unlock()
 	conn.WithLock(func() {
@@ -1005,9 +1035,12 @@ func (conn *SSHConn) ClearWshError() {
 	})
 }
 
-func (conn *SSHConn) SetConnHealthStatus(status string) {
+func (conn *SSHConn) SetConnHealthStatus(client *ssh.Client, status string) {
 	changed := false
 	conn.WithLock(func() {
+		if conn.Client != client {
+			return
+		}
 		if conn.ConnHealthStatus != status {
 			conn.ConnHealthStatus = status
 			changed = true
@@ -1039,7 +1072,6 @@ func getConnInternal(opts *remote.SSHOpts, createIfNotExists bool) *SSHConn {
 			WshEnabled:       &atomic.Bool{},
 			Opts:             opts,
 		}
-		rtn.Monitor = MakeConnMonitor(rtn)
 		clientControllerMap[*opts] = rtn
 	}
 	return rtn

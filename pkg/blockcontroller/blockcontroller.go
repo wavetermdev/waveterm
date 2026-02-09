@@ -301,8 +301,11 @@ func sendConnMonitorInputNotification(controller Controller) {
 		return
 	}
 	sshConn := conncontroller.MaybeGetConn(connOpts)
-	if sshConn != nil && sshConn.Monitor != nil {
-		sshConn.Monitor.NotifyInput()
+	if sshConn != nil {
+		monitor := sshConn.GetMonitor()
+		if monitor != nil {
+			monitor.NotifyInput()
+		}
 	}
 }
 
