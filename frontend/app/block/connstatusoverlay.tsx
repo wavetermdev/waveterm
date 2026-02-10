@@ -146,11 +146,6 @@ export const ConnStatusOverlay = React.memo(
             prtn.catch((e) => console.log("error reconnecting", connName, e));
         }, [connName, nodeModel.blockId]);
 
-        const handleDisconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnDisconnectCommand(TabRpcClient, connName, { timeout: 5000 });
-            prtn.catch((e) => console.log("error disconnecting", connName, e));
-        }, [connName]);
-
         const handleDisableWsh = React.useCallback(async () => {
             const metamaptype: unknown = {
                 "conn:wshenabled": false,
