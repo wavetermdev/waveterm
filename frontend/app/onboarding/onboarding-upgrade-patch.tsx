@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
@@ -20,6 +20,7 @@ import { UpgradeOnboardingModal_v0_12_2_Content } from "./onboarding-upgrade-v01
 import { UpgradeOnboardingModal_v0_12_3_Content } from "./onboarding-upgrade-v0123";
 import { UpgradeOnboardingModal_v0_13_0_Content } from "./onboarding-upgrade-v0130";
 import { UpgradeOnboardingModal_v0_13_1_Content } from "./onboarding-upgrade-v0131";
+import { UpgradeOnboardingModal_v0_14_0_Content } from "./onboarding-upgrade-v0140";
 
 interface VersionConfig {
     version: string;
@@ -56,6 +57,12 @@ const versions: VersionConfig[] = [
         version: "v0.13.1",
         content: () => <UpgradeOnboardingModal_v0_13_1_Content />,
         prevText: "Prev (v0.13.0)",
+        nextText: "Next (v0.14.0)",
+    },
+    {
+        version: "v0.14.0",
+        content: () => <UpgradeOnboardingModal_v0_14_0_Content />,
+        prevText: "Prev (v0.13.1)",
     },
 ];
 
