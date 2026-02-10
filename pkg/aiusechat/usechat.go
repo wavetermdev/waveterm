@@ -112,7 +112,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 	}
 	verbosity := config.Verbosity
 	if verbosity == "" {
-		verbosity = uctypes.ThinkingLevelMedium // default to medium
+		verbosity = uctypes.VerbosityLevelMedium // default to medium
 	}
 	opts := &uctypes.AIOptsType{
 		Provider:      config.Provider,
