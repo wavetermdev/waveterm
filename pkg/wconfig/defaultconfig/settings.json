@@ -6,6 +6,8 @@
     "app:defaultnewblock": "term",
     "app:confirmquit": true,
     "app:hideaibutton": false,
+    "app:disablectrlshiftarrows": false,
+    "app:disablectrlshiftdisplay": false,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
