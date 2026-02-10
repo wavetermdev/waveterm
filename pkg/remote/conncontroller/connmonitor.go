@@ -5,6 +5,7 @@ package conncontroller
 
 import (
 	"context"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -116,7 +117,12 @@ func (cm *ConnMonitor) SendKeepAlive() error {
 			panichandler.PanicHandler("conncontroller:SendKeepAlive", recover())
 		}()
 		defer cm.clearKeepAliveInFlight()
-		_, _, _ = client.SendRequest("keepalive@openssh.com", true, nil)
+		startTime := time.Now()
+		_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
+		duration := time.Since(startTime).Milliseconds()
+		if err != nil {
+			log.Printf("[conncontroller] conn:%s keepalive error (duration=%dms): %v", cm.Conn.GetName(), duration, err)
+		}
 		cm.UpdateLastActivityTime()
 	}()
 	return nil
