@@ -40,6 +40,9 @@ wsh editconfig
 | app:showoverlayblocknums             | bool     | Set to false to disable the Ctrl+Shift block number overlay that appears when holding Ctrl+Shift (defaults to true)                                                                                                                                           |
 | app:ctrlvpaste                       | bool     | On Windows/Linux, when null (default) uses Control+V on Windows only. Set to true to force Control+V on all non-macOS platforms, false to disable the accelerator. macOS always uses Command+V regardless of this setting                                     |
 | app:confirmquit <VersionBadge version="v0.14" />                     | bool     | Set to false to disable the quit confirmation dialog when closing Wave Terminal (defaults to true, requires app restart)                                                                                                                                      |
+| app:hideaibutton <VersionBadge version="v0.14" />                    | bool     | Set to true to hide the AI button in the tab bar (defaults to false)                                                                                                                                                                                          |
+| app:disablectrlshiftarrows <VersionBadge version="v0.14" />          | bool     | Set to true to disable Ctrl+Shift+Arrow keybindings for block navigation (defaults to false)                                                                                                                                                                  |
+| app:disablectrlshiftdisplay <VersionBadge version="v0.14" />         | bool     | Set to true to disable the Ctrl+Shift visual indicator display (defaults to false)                                                                                                                                                                            |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -67,7 +70,7 @@ wsh editconfig
 | term:macoptionismeta                 | bool     | on macOS, treat the Option key as Meta key for terminal keybindings (default false)                                                                                                                                                                          |
 | term:bellsound <VersionBadge version="v0.14" />                      | bool     | when enabled, plays the system beep sound when the terminal bell (BEL character) is received (default false)                                                                                                                                                  |
 | term:bellindicator <VersionBadge version="v0.14" />                  | bool     | when enabled, shows a visual indicator in the tab when the terminal bell is received (default false)                                                                                                                                                           |
-| term:durable <VersionBadge version="v0.14" />                        | bool     | makes remote terminal sessions durable across network disconnects (defaults to true)                                                                                                                                                                           |
+| term:durable <VersionBadge version="v0.14" />                        | bool     | makes remote terminal sessions durable across network disconnects (defaults to false)                                                                                                                                                                           |
 | editor:minimapenabled                | bool     | set to false to disable editor minimap                                                                                                                                                                                                                        |
 | editor:stickyscrollenabled           | bool     | enables monaco editor's stickyScroll feature (pinning headers of current context, e.g. class names, method names, etc.), defaults to false                                                                                                                    |
 | editor:wordwrap                      | bool     | set to true to enable word wrapping in the editor (defaults to false)                                                                                                                                                                                         |
@@ -99,12 +102,13 @@ wsh editconfig
 | window:showmenubar                   | bool     | set to use the OS-native menu bar (Windows and Linux only, requires app restart)                                                                                                                                                                              |
 | window:nativetitlebar                | bool     | set to use the OS-native title bar, rather than the overlay (Windows and Linux only, requires app restart)                                                                                                                                                    |
 | window:disablehardwareacceleration   | bool     | set to disable Chromium hardware acceleration to resolve graphical bugs (requires app restart)                                                                                                                                                                |
+| window:fullscreenonlaunch            | bool     | set to true to launch the foreground window in fullscreen mode (defaults to false)                                                                                                                                                                            |
 | window:savelastwindow                | bool     | when `true`, the last window that is closed is preserved and is reopened the next time the app is launched (defaults to `true`)                                                                                                                               |
 | window:confirmonclose                | bool     | when `true`, a prompt will ask a user to confirm that they want to close a window if it has an unsaved workspace with more than one tab (defaults to `true`)                                                                                                  |
 | window:dimensions                    | string   | set the default dimensions for new windows using the format "WIDTHxHEIGHT" (e.g. "1920x1080"). when a new window is created, these dimensions will be automatically applied. The width and height values should be specified in pixels.                       |
 | telemetry:enabled                    | bool     | set to enable/disable telemetry                                                                                                                                                                                                                               |
 
-For reference, this is the current default configuration (v0.11.5):
+For reference, this is the current default configuration (v0.14.0):
 
 ```json
 {
@@ -114,6 +118,9 @@ For reference, this is the current default configuration (v0.11.5):
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
     "app:confirmquit": true,
+    "app:hideaibutton": false,
+    "app:disablectrlshiftarrows": false,
+    "app:disablectrlshiftdisplay": false,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
@@ -128,6 +135,7 @@ For reference, this is the current default configuration (v0.11.5):
     "window:magnifiedblockopacity": 0.6,
     "window:magnifiedblocksize": 0.9,
     "window:magnifiedblockblurprimarypx": 10,
+    "window:fullscreenonlaunch": false,
     "window:magnifiedblockblursecondarypx": 2,
     "window:confirmclose": true,
     "window:savelastwindow": true,
@@ -135,7 +143,7 @@ For reference, this is the current default configuration (v0.11.5):
     "term:bellsound": false,
     "term:bellindicator": false,
     "term:copyonselect": true,
-    "term:durable": true,
+    "term:durable": false,
     "waveai:showcloudmodes": true,
     "waveai:defaultmode": "waveai@balanced"
 }

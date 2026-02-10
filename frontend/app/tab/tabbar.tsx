@@ -5,7 +5,7 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
+import { atoms, createTab, getApi, getSettingsKeyAtom, globalStore, setActiveTab } from "@/store/global";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -44,11 +44,16 @@ interface TabBarProps {
 
 const WaveAIButton = memo(() => {
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+    const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
 
     const onClick = () => {
         const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
     };
+
+    if (hideAiButton) {
+        return null;
+    }
 
     return (
         <div

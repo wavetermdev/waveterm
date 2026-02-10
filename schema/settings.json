@@ -26,6 +26,15 @@
         "app:confirmquit": {
           "type": "boolean"
         },
+        "app:hideaibutton": {
+          "type": "boolean"
+        },
+        "app:disablectrlshiftarrows": {
+          "type": "boolean"
+        },
+        "app:disablectrlshiftdisplay": {
+          "type": "boolean"
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },
