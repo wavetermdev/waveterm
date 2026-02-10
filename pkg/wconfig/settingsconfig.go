@@ -60,6 +60,7 @@ type SettingsType struct {
 	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
 	AppCtrlVPaste                 *bool  `json:"app:ctrlvpaste,omitempty"`
 	AppConfirmQuit                *bool  `json:"app:confirmquit,omitempty"`
+	AppHideAiButton               bool   `json:"app:hideaibutton,omitempty"`
 
 	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
 

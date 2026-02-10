@@ -13,6 +13,7 @@ const (
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
 	ConfigKey_AppConfirmQuit                 = "app:confirmquit"
+	ConfigKey_AppHideAiButton                = "app:hideaibutton"
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 

@@ -5,6 +5,7 @@
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
     "app:confirmquit": true,
+    "app:hideaibutton": false,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
