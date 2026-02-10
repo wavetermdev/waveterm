@@ -10,7 +10,7 @@ import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from 
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect } from "react";
 
 interface ConfigSidebarProps {
     model: WaveConfigViewModel;
@@ -96,7 +96,6 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const hasChanges = useAtomValue(model.hasEditedAtom);
     const [activeTab, setActiveTab] = useAtom(model.activeTabAtom);
-    const editorContainerRef = useRef<HTMLDivElement>(null);
 
     const handleContentChange = useCallback(
         (newContent: string) => {
@@ -156,7 +155,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
             <div className={`h-full ${isMenuOpen ? "" : "@max-w600:hidden"}`}>
                 <ConfigSidebar model={model} />
             </div>
-            <div ref={editorContainerRef} className="flex flex-col flex-1 min-w-0">
+            <div className="flex flex-col flex-1 min-w-0">
                 {selectedFile && (
                     <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
