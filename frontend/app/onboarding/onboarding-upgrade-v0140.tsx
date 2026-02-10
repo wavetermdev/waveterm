@@ -31,19 +31,14 @@ const UpgradeOnboardingModal_v0_14_0_Content = () => {
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
                             <li>
-                                <strong>Survive Interruptions</strong> - SSH sessions persist through network changes,
-                                computer sleep, and Wave restarts
+                                <strong>Session Protection</strong> - Programs and shell state survive disconnects
                             </li>
                             <li>
-                                <strong>Session Protection</strong> - Shell state, running programs, and terminal
-                                history are maintained even when disconnected
+                                <strong>Visual Status Indicators</strong> - Shield icons show status
                             </li>
                             <li>
-                                <strong>Visual Status Indicators</strong> - Shield icons show session status
-                            </li>
-                            <li>
-                                <strong>Flexible Configuration</strong> - Configure at global, connection, or block
-                                level
+                                <strong>Flexible Configuration</strong> - Enable globally, per-connection, or
+                                per-terminal
                             </li>
                         </ul>
                     </div>
