@@ -107,7 +107,7 @@ wsh editconfig
 | window:dimensions                    | string   | set the default dimensions for new windows using the format "WIDTHxHEIGHT" (e.g. "1920x1080"). when a new window is created, these dimensions will be automatically applied. The width and height values should be specified in pixels.                       |
 | telemetry:enabled                    | bool     | set to enable/disable telemetry                                                                                                                                                                                                                               |
 
-For reference, this is the current default configuration (v0.11.5):
+For reference, this is the current default configuration (v0.14.0):
 
 ```json
 {
@@ -117,6 +117,9 @@ For reference, this is the current default configuration (v0.11.5):
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
     "app:confirmquit": true,
+    "app:hideaibutton": false,
+    "app:disablectrlshiftarrows": false,
+    "app:disablectrlshiftdisplay": false,
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
@@ -131,6 +134,7 @@ For reference, this is the current default configuration (v0.11.5):
     "window:magnifiedblockopacity": 0.6,
     "window:magnifiedblocksize": 0.9,
     "window:magnifiedblockblurprimarypx": 10,
+    "window:fullscreenonlaunch": false,
     "window:magnifiedblockblursecondarypx": 2,
     "window:confirmclose": true,
     "window:savelastwindow": true,
@@ -138,7 +142,7 @@ For reference, this is the current default configuration (v0.11.5):
     "term:bellsound": false,
     "term:bellindicator": false,
     "term:copyonselect": true,
-    "term:durable": true,
+    "term:durable": false,
     "waveai:showcloudmodes": true,
     "waveai:defaultmode": "waveai@balanced"
 }
