@@ -5,6 +5,7 @@ import { loadMonaco } from "@/app/monaco/monaco-env";
 import type * as MonacoTypes from "monaco-editor";
 import * as monaco from "monaco-editor";
 import { useEffect, useRef } from "react";
+import { debounce } from "throttle-debounce";
 
 function createModel(value: string, path: string, language?: string) {
     const uri = monaco.Uri.parse(`wave://editor/${encodeURIComponent(path)}`);
@@ -70,6 +71,23 @@ export function MonacoCodeEditor({
         };
         // mount/unmount only
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        const editor = editorRef.current;
+        const el = divRef.current;
+        if (!editor || !el) return;
+
+        const debouncedLayout = debounce(100, () => {
+            editor.layout();
+        });
+        const resizeObserver = new ResizeObserver(debouncedLayout);
+        resizeObserver.observe(el);
+
+        return () => {
+            resizeObserver.disconnect();
+            debouncedLayout.cancel();
+        };
     }, []);
 
     // Keep model value in sync with props
@@ -143,6 +161,23 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
             diffRef.current = null;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        const diff = diffRef.current;
+        const el = divRef.current;
+        if (!diff || !el) return;
+
+        const debouncedLayout = debounce(100, () => {
+            diff.layout();
+        });
+        const resizeObserver = new ResizeObserver(debouncedLayout);
+        resizeObserver.observe(el);
+
+        return () => {
+            resizeObserver.disconnect();
+            debouncedLayout.cancel();
+        };
     }, []);
 
     // Update models on prop change
