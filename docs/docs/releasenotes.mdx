@@ -6,6 +6,64 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.14.0 &mdash; Feb 10, 2026
+
+**Durable SSH Sessions and Enhanced Connection Monitoring**
+
+Wave v0.14 introduces Durable Sessions for SSH connections, allowing your remote terminal sessions to survive connection interruptions, network changes, and Wave restarts. This release also includes major improvements to connection monitoring, RPC infrastructure with flow control, and expanded terminal capabilities.
+
+**Durable Sessions (Remote SSH Only):**
+- **Survive Interruptions** - SSH terminal sessions persist through network changes, computer sleep, and Wave restarts, automatically reconnecting when the connection is restored
+- **Session Protection** - Shell state, running programs, and terminal history are maintained even when Wave is closed or disconnected
+- **Visual Status Indicators** - Shield icons in terminal headers show session status (Standard, Durable Attached, Durable Detached, Durable Awaiting) with detailed flyover information
+- **Flexible Configuration** - Configure at global, per-connection, or per-block level with easy switching between standard and durable modes
+- See the new [Durable Sessions documentation](https://docs.waveterm.dev/durable-sessions) for setup and usage
+
+**Enhanced Connection Monitoring:**
+- **Connection Keepalives** - Active monitoring of SSH connections with automatic keepalive probes
+- **Stalled Connection Detection** - New connection monitor detects and displays "stalled" connection states when network issues occur, providing clear visual feedback
+- **Better Error Handling** - Improved connection status tracking and user-facing connection state indicators
+
+**Terminal Improvements:**
+- **OSC 52 Clipboard Support** - Terminal applications can now copy directly to your system clipboard using OSC 52 escape sequences
+- **Enhanced Context Menu** - Right-click terminals for quick access to splits, URL opening, themes, file browser, and more
+
+**Wave AI Updates:**
+- **Image/Vision Support** - Added image support for OpenAI chat completions API, enabling vision capabilities with compatible models
+- **Stop Generation** - New ability to stop AI responses mid-generation across OpenAI and Gemini backends
+- **AI Panel Scroll Latch** - Improved auto-scrolling behavior in Wave AI panel
+- **Configurable Verbosity** - Control verbosity levels for OpenAI Responses API
+- Deprecated old AI-widget proxy endpoint
+
+**RPC and Performance:**
+- **RPC Streaming with Flow Control** - New streaming primitives with built-in flow control for better performance and reliability
+- **WSH Router Refactor** - Major routing architecture improvements to prevent hangs on connection interruptions
+- **RPC Client/Server Cleanup** - Improved RPC implementation and error handling
+
+**Configuration Updates:**
+- **Hide AI Button** - New `app:hideaibutton` setting to hide the AI button from the UI
+- **Disable Ctrl+Shift Arrows** - New `app:disablectrlshiftarrows` setting for keyboard shortcut conflicts
+- **Disable Ctrl+Shift Display** - New `app:disablectrlshiftdisplay` setting to disable overlay block numbers
+
+**Breaking Changes:**
+- **Removed Pinned Tabs** - Pinned tabs feature has been removed from the UI
+- **Removed S3 and WaveFile** - S3 filesystem and wavefile implementations removed to prevent large/recursive file transfer issues and simplify codebase
+
+**Other Changes:**
+- **Confirm on Quit** - Added confirmation dialog when closing Wave with active sessions
+- Monaco Editor upgrade removing `monaco-editor/loader` and `monaco-editor/react` dependencies for better performance and stability
+- New Tab model with React provider for improved state management
+- Removed OSC 23198 and OSC 9283 legacy handlers
+- Updated contribution guidelines
+- Upgraded Go toolchain to 1.25.6
+- Enhanced OpenAI-compatible API provider documentation
+- [bugfix] Fixed empty data handling in sysinfo view
+- [bugfix] Fixed `app:ctrlvpaste` setting on Windows (can now be disabled)
+- [bugfix] Fixed duplicated Wave AI system prompt for some providers
+- [bugfix] Fixed disconnect hanging issue - disconnects now happen immediately
+- [bugfix] Fixed tool approval lifecycle to match SSE connection timing
+- Package updates and dependency upgrades
+
 ### v0.13.1 &mdash; Dec 16, 2025
 
 **Windows Improvements and Wave AI Enhancements**
