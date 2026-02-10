@@ -1,23 +1,31 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getApi } from "@/app/store/global";
+
 const UpgradeOnboardingModal_v0_14_0_Content = () => {
     return (
-        <div className="flex flex-col items-start gap-6 w-full mb-4 unselectable">
-            <div className="text-secondary leading-relaxed">
+        <div className="flex flex-col items-start w-full mb-2 unselectable">
+            <div className="text-secondary leading-relaxed mb-4">
                 <p className="mb-0">
-                    Wave v0.14 introduces Durable Sessions for SSH connections, enhanced connection monitoring, and major
-                    improvements to RPC infrastructure and terminal capabilities.
+                    Wave v0.14 keeps your remote sessions running through network changes, restarts, and interruptions —
+                    plus enhanced connection monitoring and major improvements to terminal capabilities.
                 </p>
             </div>
 
-            <div className="flex w-full items-start gap-4">
+            <div className="flex w-full items-start gap-4 mb-4">
                 <div className="flex-shrink-0">
                     <i className="text-[24px] text-sky-500 fa-sharp fa-solid fa-shield"></i>
                 </div>
                 <div className="flex flex-col items-start gap-2 flex-1">
                     <div className="text-foreground text-base font-semibold leading-[18px]">
-                        Durable SSH Sessions
+                        Durable SSH Sessions{" "}
+                        <button
+                            onClick={() => getApi().openExternal("https://docs.waveterm.dev/durable-sessions")}
+                            className="text-accent text-sm font-normal cursor-pointer hover:underline"
+                        >
+                            [see docs]
+                        </button>
                     </div>
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
@@ -26,23 +34,22 @@ const UpgradeOnboardingModal_v0_14_0_Content = () => {
                                 computer sleep, and Wave restarts
                             </li>
                             <li>
-                                <strong>Session Protection</strong> - Shell state, running programs, and terminal history
-                                are maintained even when disconnected
+                                <strong>Session Protection</strong> - Shell state, running programs, and terminal
+                                history are maintained even when disconnected
                             </li>
                             <li>
-                                <strong>Visual Status Indicators</strong> - Shield icons show session status (Standard,
-                                Durable Attached, Durable Detached, Durable Awaiting)
+                                <strong>Visual Status Indicators</strong> - Shield icons show session status
                             </li>
                             <li>
-                                <strong>Flexible Configuration</strong> - Configure at global, per-connection, or
-                                per-block level
+                                <strong>Flexible Configuration</strong> - Configure at global, connection, or block
+                                level
                             </li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-            <div className="flex w-full items-start gap-4">
+            <div className="flex w-full items-start gap-4 mb-4">
                 <div className="flex-shrink-0">
                     <i className="text-[24px] text-accent fa-solid fa-network-wired"></i>
                 </div>
@@ -53,16 +60,32 @@ const UpgradeOnboardingModal_v0_14_0_Content = () => {
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
                             <li>
-                                <strong>Connection Keepalives</strong> - Active monitoring with automatic keepalive
-                                probes
+                                <strong>Connection Keepalives</strong> - Active monitoring with keepalive probes
                             </li>
                             <li>
-                                <strong>Stalled Connection Detection</strong> - Clear visual feedback when network issues
-                                occur
+                                <strong>Stalled Connection Detection</strong> - Visual feedback for network issues
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex w-full items-start gap-4 mb-4">
+                <div className="flex-shrink-0">
+                    <i className="text-[24px] text-accent fa-solid fa-sparkles"></i>
+                </div>
+                <div className="flex flex-col items-start gap-2 flex-1">
+                    <div className="text-foreground text-base font-semibold leading-[18px]">Wave AI Updates</div>
+                    <div className="text-secondary leading-5">
+                        <ul className="list-disc list-outside space-y-1 pl-5">
+                            <li>
+                                <strong>Image Support</strong> - Added vision support for OpenAI compatible providers
                             </li>
                             <li>
-                                <strong>Better Error Handling</strong> - Improved connection status tracking and
-                                indicators
+                                <strong>Stop Generation</strong> - Ability to stop AI responses mid-generation
+                            </li>
+                            <li>
+                                <strong>Improved Auto-scrolling</strong>
                             </li>
                         </ul>
                     </div>
@@ -78,59 +101,10 @@ const UpgradeOnboardingModal_v0_14_0_Content = () => {
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
                             <li>
-                                <strong>OSC 52 Clipboard Support</strong> - Terminal applications can copy directly to
-                                system clipboard
+                                <strong>Enhanced Context Menu</strong> - Quick access to splits, themes, and more
                             </li>
                             <li>
-                                <strong>Enhanced Context Menu</strong> - Quick access to splits, URL opening, themes,
-                                and more
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex w-full items-start gap-4">
-                <div className="flex-shrink-0">
-                    <i className="text-[24px] text-accent fa-solid fa-sparkles"></i>
-                </div>
-                <div className="flex flex-col items-start gap-2 flex-1">
-                    <div className="text-foreground text-base font-semibold leading-[18px]">Wave AI Updates</div>
-                    <div className="text-secondary leading-5">
-                        <ul className="list-disc list-outside space-y-1 pl-5">
-                            <li>
-                                <strong>Image/Vision Support</strong> - Added image support for OpenAI chat completions
-                                API
-                            </li>
-                            <li>
-                                <strong>Stop Generation</strong> - Ability to stop AI responses mid-generation across
-                                OpenAI and Gemini
-                            </li>
-                            <li>
-                                <strong>Improved Auto-scrolling</strong> - Better scroll behavior in Wave AI panel
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex w-full items-start gap-4">
-                <div className="flex-shrink-0">
-                    <i className="text-[24px] text-accent fa-solid fa-sliders"></i>
-                </div>
-                <div className="flex flex-col items-start gap-2 flex-1">
-                    <div className="text-foreground text-base font-semibold leading-[18px]">Other Improvements</div>
-                    <div className="text-secondary leading-5">
-                        <ul className="list-disc list-outside space-y-1 pl-5">
-                            <li>
-                                <strong>RPC Streaming with Flow Control</strong> - Better performance and reliability
-                            </li>
-                            <li>
-                                <strong>Confirm on Quit</strong> - Confirmation dialog when closing Wave with active
-                                sessions
-                            </li>
-                            <li>
-                                <strong>Monaco Editor Upgrade</strong> - Improved performance and stability
+                                <strong>OSC 52 Clipboard Support</strong> - CLI apps can copy to system clipboard
                             </li>
                         </ul>
                     </div>
