@@ -512,6 +512,11 @@ class RpcApiType {
         return client.wshRpcCall("notify", data, opts);
     }
 
+    // command "notifysystemresume" [call]
+    NotifySystemResumeCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("notifysystemresume", null, opts);
+    }
+
     // command "path" [call]
     PathCommand(client: WshClient, data: PathCommandData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("path", data, opts);

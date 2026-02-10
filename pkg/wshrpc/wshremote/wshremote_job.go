@@ -75,7 +75,7 @@ func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, m
 			close(proxy.FromRemoteCh)
 			cleanup()
 		}()
-		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
+		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh, nil)
 	}()
 
 	routeId := wshutil.MakeLinkRouteId(linkId)

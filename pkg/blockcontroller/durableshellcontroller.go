@@ -229,7 +229,7 @@ func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta wa
 	if err != nil {
 		return "", fmt.Errorf("invalid ssh remote name (%s): %w", connName, err)
 	}
-	conn := conncontroller.GetConn(opts)
+	conn := conncontroller.MaybeGetConn(opts)
 	if conn == nil {
 		return "", fmt.Errorf("connection %q not found", connName)
 	}

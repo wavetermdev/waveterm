@@ -56,7 +56,7 @@ func streamToLines_processBuf(lineBuf *lineBuf, readBuf []byte, lineFn func([]by
 	}
 }
 
-func StreamToLines(input io.Reader, lineFn func([]byte)) error {
+func StreamToLines(input io.Reader, lineFn func([]byte), readCallback func()) error {
 	var lineBuf lineBuf
 	readBuf := make([]byte, 64*1024)
 	for {
@@ -64,6 +64,9 @@ func StreamToLines(input io.Reader, lineFn func([]byte)) error {
 		streamToLines_processBuf(&lineBuf, readBuf[:n], lineFn)
 		if err != nil {
 			return err
+		}
+		if readCallback != nil {
+			readCallback()
 		}
 	}
 }
@@ -76,7 +79,7 @@ func StreamToLinesChan(input io.Reader) chan LineOutput {
 		defer close(ch)
 		err := StreamToLines(input, func(line []byte) {
 			ch <- LineOutput{Line: string(line)}
-		})
+		}, nil)
 		if err != nil && err != io.EOF {
 			ch <- LineOutput{Error: err}
 		}

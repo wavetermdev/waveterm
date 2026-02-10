@@ -412,6 +412,16 @@ async function appMain() {
             fireAndForget(createNewWaveWindow);
         }
     });
+    electron.powerMonitor.on("resume", () => {
+        console.log("system resumed from sleep, notifying server");
+        fireAndForget(async () => {
+            try {
+                await RpcApi.NotifySystemResumeCommand(ElectronWshClient, { noresponse: true });
+            } catch (e) {
+                console.log("error calling NotifySystemResumeCommand", e);
+            }
+        });
+    });
     const rawGlobalHotKey = launchSettings?.["app:globalhotkey"];
     if (rawGlobalHotKey) {
         registerGlobalHotkey(rawGlobalHotKey);

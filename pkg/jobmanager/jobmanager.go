@@ -440,7 +440,7 @@ func handleJobDomainSocketClient(conn net.Conn) {
 			panichandler.PanicHandler("handleJobDomainSocketClient:AdaptStreamToMsgCh", recover())
 		}()
 		defer serverImpl.Close()
-		wshutil.AdaptStreamToMsgCh(conn, inputCh)
+		wshutil.AdaptStreamToMsgCh(conn, inputCh, nil)
 	}()
 
 	_ = wshRpc

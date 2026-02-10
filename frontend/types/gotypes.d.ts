@@ -785,6 +785,7 @@ declare global {
     // wshrpc.ConnStatus
     type ConnStatus = {
         status: string;
+        connhealthstatus?: string;
         wshenabled: boolean;
         connection: string;
         connected: boolean;
@@ -794,6 +795,8 @@ declare global {
         wsherror?: string;
         nowshreason?: string;
         wshversion?: string;
+        lastactivitybeforestalledtime?: number;
+        keepalivesenttime?: number;
     };
 
     // wshrpc.CpuDataRequest

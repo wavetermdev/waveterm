@@ -595,7 +595,7 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(connOpts)
+	conn := conncontroller.MaybeGetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -752,6 +752,11 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	}
 	conn.ClearWshError()
 	conn.FireConnChangeEvent()
+	return nil
+}
+
+func (ws *WshServer) NotifySystemResumeCommand(ctx context.Context) error {
+	log.Printf("NotifySystemResumeCommand called\n")
 	return nil
 }
 
