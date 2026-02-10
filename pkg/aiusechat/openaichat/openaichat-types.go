@@ -4,6 +4,7 @@
 package openaichat
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -100,7 +101,7 @@ func (cm *ChatRequestMessage) UnmarshalJSON(data []byte) error {
 	cm.Name = raw.Name
 	cm.Content = ""
 	cm.ContentParts = nil
-	if len(raw.Content) == 0 {
+	if len(raw.Content) == 0 || bytes.Equal(raw.Content, []byte("null")) {
 		return nil
 	}
 	// try array first
