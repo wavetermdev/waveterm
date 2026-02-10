@@ -12,10 +12,6 @@ Keep your remote SSH shell sessions alive through network changes, computer slee
 
 ## Overview
 
-:::info Remote Connections Only
-Durable sessions are designed for **remote SSH connections only**. Local terminals and WSL connections use standard sessions, as they're not affected by network interruptions and remain active as long as Wave is running.
-:::
-
 Durable sessions protect your terminal state when working with remote SSH connections, similar to tmux or screen but built directly into Wave. Unlike standard SSH sessions that terminate when the connection drops, durable sessions maintain your:
 
 - **Shell state** - Current directory, environment variables, and shell history
@@ -24,13 +20,17 @@ Durable sessions protect your terminal state when working with remote SSH connec
 
 Durable sessions automatically reconnect when your connection is restored, picking up right where you left off.
 
+:::info Remote Connections Only
+Durable sessions are designed for **remote SSH connections only**. Local terminals and WSL connections use standard sessions, as they're not affected by network interruptions and remain active as long as Wave is running.
+:::
+
 ## How It Works
 
-When you start a durable session, Wave launches a persistent job manager on the remote server. This manager:
+When you start a durable session, Wave launches a lightweight job manager on the remote server. Similar to how tmux and screen work, this manager:
 
 1. Keeps your shell process running independently of the Wave connection
 2. Buffers terminal output while disconnected
-3. Automatically reattaches when you reconnect
+3. Enables Wave to seamlessly reattach when you reconnect
 4. Survives Wave restarts and network interruptions
 
 The session continues running on the remote server even if you close Wave, put your computer to sleep, or switch networks.
