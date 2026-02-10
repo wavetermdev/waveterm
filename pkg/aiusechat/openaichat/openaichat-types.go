@@ -61,7 +61,7 @@ type ChatRequestMessage struct {
 // chatRequestMessageJSON is the wire format for ChatRequestMessage
 type chatRequestMessageJSON struct {
 	Role       string          `json:"role"`
-	Content    json.RawMessage `json:"content,omitempty"`
+	Content    json.RawMessage `json:"content"`
 	ToolCalls  []ToolCall      `json:"tool_calls,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"`
 	Name       string          `json:"name,omitempty"`
