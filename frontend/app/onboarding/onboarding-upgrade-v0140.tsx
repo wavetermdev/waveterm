@@ -75,7 +75,7 @@ const UpgradeOnboardingModal_v0_14_0_Content = () => {
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
                             <li>
-                                <strong>Image Support</strong> - Added vision support for OpenAI compatible providers
+                                <strong>Image Support</strong> - Vision capabilities for BYOK providers
                             </li>
                             <li>
                                 <strong>Stop Generation</strong> - Ability to stop AI responses mid-generation
