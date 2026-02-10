@@ -1428,7 +1428,7 @@ declare global {
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
         "conn:wsherrorcode"?: string;
-        "onboarding:feature"?: "waveai" | "magnify" | "wsh";
+        "onboarding:feature"?: "waveai" | "durable" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
         "display:height"?: number;

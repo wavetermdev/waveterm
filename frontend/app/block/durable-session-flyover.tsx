@@ -24,7 +24,7 @@ function isTermViewModel(viewModel: ViewModel): viewModel is TermViewModel {
 }
 
 function handleLearnMore() {
-    getApi().openExternal("https://docs.waveterm.dev/features/durable-sessions");
+    getApi().openExternal("https://docs.waveterm.dev/durable-sessions");
 }
 
 function LearnMoreButton() {
