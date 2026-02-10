@@ -119,9 +119,11 @@ func (cm *ConnMonitor) SendKeepAlive() error {
 		defer cm.clearKeepAliveInFlight()
 		startTime := time.Now()
 		_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
-		duration := time.Since(startTime).Milliseconds()
 		if err != nil {
+			// errors are only returned for network and I/O issues (likely disconnection). do not update last activity time
+			duration := time.Since(startTime).Milliseconds()
 			log.Printf("[conncontroller] conn:%s keepalive error (duration=%dms): %v", cm.Conn.GetName(), duration, err)
+			return
 		}
 		cm.UpdateLastActivityTime()
 	}()
