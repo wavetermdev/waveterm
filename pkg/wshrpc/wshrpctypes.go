@@ -154,6 +154,7 @@ type WshRpcInterface interface {
 
 	// block focus
 	SetBlockFocusCommand(ctx context.Context, blockId string) error
+	GetFocusedBlockDataCommand(ctx context.Context) (*FocusedBlockData, error)
 
 	// rtinfo
 	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)
@@ -879,4 +880,16 @@ type BlockJobStatusData struct {
 	CmdExitTs     int64  `json:"cmdexitts,omitempty"`
 	CmdExitCode   *int   `json:"cmdexitcode,omitempty"`
 	CmdExitSignal string `json:"cmdexitsignal,omitempty"`
+}
+
+type FocusedBlockData struct {
+	BlockId                     string               `json:"blockid"`
+	ViewType                    string               `json:"viewtype"`
+	Controller                  string               `json:"controller"`
+	ConnName                    string               `json:"connname"`
+	BlockMeta                   waveobj.MetaMapType  `json:"blockmeta"`
+	TermJobStatus               *BlockJobStatusData  `json:"termjobstatus,omitempty"`
+	ConnStatus                  *ConnStatus          `json:"connstatus,omitempty"`
+	TermShellIntegrationStatus  string               `json:"termshellintegrationstatus,omitempty"`
+	TermLastCommand             string               `json:"termlastcommand,omitempty"`
 }
