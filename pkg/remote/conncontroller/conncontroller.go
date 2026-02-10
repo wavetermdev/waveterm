@@ -745,7 +745,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 		conn.Infof(ctx, "cannot connect to %q when status is %q\n", conn.GetName(), conn.GetStatus())
 		return fmt.Errorf("cannot connect to %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
-	conn.Infof(ctx, "trying to connect to %q...\n", conn.GetName())
+	conn.Infof(ctx, "trying to connect to %q...\n", remote.MaskString(conn.GetName()))
 	conn.FireConnChangeEvent()
 	err := conn.connectInternal(ctx, connFlags)
 	if err != nil {
@@ -946,7 +946,7 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 
 // returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
-	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
+	conn.Infof(ctx, "connectInternal %s\n", remote.MaskString(conn.GetName()))
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		conn.Infof(ctx, "ERROR ConnectToClient: %s\n", remote.SimpleMessageFromPossibleConnectionError(err))
@@ -969,7 +969,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		conn.waitForDisconnect()
 	}()
 	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))
-	conn.Infof(ctx, "normalized knownhosts address: %s\n", fmtAddr)
+	conn.Infof(ctx, "normalized knownhosts address: %s\n", remote.MaskString(fmtAddr))
 	clientDisplayName := fmt.Sprintf("%s (%s)", conn.GetName(), fmtAddr)
 	wshResult := conn.tryEnableWsh(ctx, clientDisplayName)
 	if !wshResult.WshEnabled {
