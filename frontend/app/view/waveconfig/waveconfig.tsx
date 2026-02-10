@@ -11,7 +11,6 @@ import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
 import { memo, useCallback, useEffect, useRef } from "react";
-import { debounce } from "throttle-debounce";
 
 interface ConfigSidebarProps {
     model: WaveConfigViewModel;
@@ -147,20 +146,6 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [hasChanges, isSaving, model]);
 
-    useEffect(() => {
-        if (!editorContainerRef.current) {
-            return;
-        }
-        const debouncedLayout = debounce(100, () => {
-            if (model.editorRef.current) {
-                model.editorRef.current.layout();
-            }
-        });
-        const resizeObserver = new ResizeObserver(debouncedLayout);
-        resizeObserver.observe(editorContainerRef.current);
-        return () => resizeObserver.disconnect();
-    }, [model]);
-
     const saveTooltip = `Save (${model.saveShortcut})`;
 
     return (
@@ -279,7 +264,8 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 <div className="flex items-center justify-center h-full text-muted-foreground">
                                     Loading...
                                 </div>
-                            ) : selectedFile.visualComponent && (!selectedFile.hasJsonView || activeTab === "visual") ? (
+                            ) : selectedFile.visualComponent &&
+                              (!selectedFile.hasJsonView || activeTab === "visual") ? (
                                 (() => {
                                     const VisualComponent = selectedFile.visualComponent;
                                     return <VisualComponent model={model} />;
