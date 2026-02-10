@@ -46,14 +46,6 @@ func RunChatStep(
 	// Convert stored messages to chat completions format
 	var messages []ChatRequestMessage
 
-	// Add system prompt if provided
-	if len(chatOpts.SystemPrompt) > 0 {
-		messages = append(messages, ChatRequestMessage{
-			Role:    "system",
-			Content: strings.Join(chatOpts.SystemPrompt, "\n"),
-		})
-	}
-
 	// Convert native messages
 	for _, genMsg := range chat.NativeMessages {
 		chatMsg, ok := genMsg.(*StoredChatMessage)
