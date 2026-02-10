@@ -396,7 +396,7 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 	if err != nil {
 		return nil, err
 	}
-	blocklogger.Infof(logCtx, "[conndebug] remoteName: %q, connType: %s, wshEnabled: %v, shell: %q, shellType: %s\n", remoteName, connUnion.ConnType, connUnion.WshEnabled, connUnion.ShellPath, connUnion.ShellType)
+	blocklogger.Infof(logCtx, "[conndebug] remoteName: %q, connType: %s, wshEnabled: %v, shell: %q, shellType: %s\n", remote.MaskString(remoteName), connUnion.ConnType, connUnion.WshEnabled, remote.MaskString(connUnion.ShellPath), connUnion.ShellType)
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
 	if bc.ControllerType == BlockController_Shell {
