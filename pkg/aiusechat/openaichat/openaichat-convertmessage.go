@@ -237,6 +237,9 @@ func convertAIMessageTextOnly(aiMsg uctypes.AIMessage) (*StoredChatMessage, erro
 
 func convertAIMessageMultimodal(aiMsg uctypes.AIMessage) (*StoredChatMessage, error) {
 	var contentParts []ChatContentPart
+	imageCount := 0
+	imageFailCount := 0
+
 	for _, part := range aiMsg.Parts {
 		switch {
 		case part.Type == uctypes.AIMessagePartTypeText:
@@ -248,8 +251,10 @@ func convertAIMessageMultimodal(aiMsg uctypes.AIMessage) (*StoredChatMessage, er
 			}
 
 		case strings.HasPrefix(part.MimeType, "image/"):
+			imageCount++
 			imageUrl, err := aiutil.ExtractImageUrl(part.Data, part.URL, part.MimeType)
 			if err != nil {
+				imageFailCount++
 				log.Printf("openaichat: error extracting image URL for %s: %v\n", part.FileName, err)
 				continue
 			}
@@ -295,6 +300,13 @@ func convertAIMessageMultimodal(aiMsg uctypes.AIMessage) (*StoredChatMessage, er
 		default:
 			continue
 		}
+	}
+
+	if len(contentParts) == 0 {
+		if imageCount > 0 && imageFailCount == imageCount {
+			return nil, fmt.Errorf("all %d image conversions failed", imageCount)
+		}
+		return nil, errors.New("message has no valid content after processing all parts")
 	}
 
 	return &StoredChatMessage{
