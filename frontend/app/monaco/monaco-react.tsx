@@ -84,7 +84,10 @@ export function MonacoCodeEditor({
         const resizeObserver = new ResizeObserver(debouncedLayout);
         resizeObserver.observe(el);
 
-        return () => resizeObserver.disconnect();
+        return () => {
+            resizeObserver.disconnect();
+            debouncedLayout.cancel();
+        };
     }, []);
 
     // Keep model value in sync with props
@@ -171,7 +174,10 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
         const resizeObserver = new ResizeObserver(debouncedLayout);
         resizeObserver.observe(el);
 
-        return () => resizeObserver.disconnect();
+        return () => {
+            resizeObserver.disconnect();
+            debouncedLayout.cancel();
+        };
     }, []);
 
     // Update models on prop change
