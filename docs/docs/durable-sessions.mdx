@@ -16,7 +16,7 @@ Keep your remote SSH shell sessions alive through network changes, computer slee
 Durable sessions are designed for **remote SSH connections only**. Local terminals and WSL connections use standard sessions, as they're not affected by network interruptions and remain active as long as Wave is running.
 :::
 
-Durable sessions protect your terminal state when working with remote SSH connections. Unlike standard SSH sessions that terminate when the connection drops, durable sessions maintain your:
+Durable sessions protect your terminal state when working with remote SSH connections, similar to tmux or screen but built directly into Wave. Unlike standard SSH sessions that terminate when the connection drops, durable sessions maintain your:
 
 - **Shell state** - Current directory, environment variables, and shell history
 - **Running programs** - Background jobs and long-running commands continue executing
@@ -194,16 +194,14 @@ The session was terminated on the remote server, possibly due to:
 ### Session Won't Reconnect
 Verify that:
 - Your SSH connection to the server is working (check the connection status)
-- The remote server can reach Wave's connection manager
 - The job manager process is still running on the remote server
 
-**Solution**: Right-click terminal → Advanced → Force Restart Controller
+**Try**: Right-click terminal → Advanced → Force Restart Controller
 
 ### "Failed to Start" Error
-The job manager couldn't initialize on the remote server. Check:
-- Remote server has sufficient resources
-- Required directories and permissions are available
-- No conflicting processes using the same socket
+The job manager couldn't initialize on the remote server. Check the error message for specific details.
+
+**Try**: Restart the session. If the issue persists, file a bug report with the error details.
 
 :::info Technical Details
 Durable sessions use Unix domain sockets on the remote server to maintain persistent connections between the shell and Wave's job manager. The job manager process runs independently and survives SSH disconnections.
@@ -212,6 +210,7 @@ Durable sessions use Unix domain sockets on the remote server to maintain persis
 ## Privacy & Security
 
 - Durable sessions run entirely on your remote servers
-- No session data is transmitted through Wave's cloud services
-- Job managers use authentication tokens to prevent unauthorized access
+- All data is transmitted over SSH between your local Wave instance and the remote machine
+- No open ports on the remote machine - communication happens through your existing SSH connection
+- When disconnected, output is buffered locally on the remote machine until you reconnect
 - Sessions are isolated per user and use your remote user's permissions
