@@ -355,7 +355,7 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		if err != nil {
 			return ConnUnion{}, fmt.Errorf("invalid ssh remote name (%s): %w", remoteName, err)
 		}
-		conn := conncontroller.MaybeGetConn(opts)
+		conn := conncontroller.GetConn(opts)
 		if conn == nil {
 			return ConnUnion{}, fmt.Errorf("ssh connection not found: %s", remoteName)
 		}
@@ -526,6 +526,34 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 
+	// Fire amber "running" indicator for cmd blocks
+	if bc.ControllerType == BlockController_Cmd {
+		exitIndicatorEnabled := blockMeta.GetBool(waveobj.MetaKey_TermExitIndicator, false)
+		if !blockMeta.HasKey(waveobj.MetaKey_TermExitIndicator) {
+			if globalVal := wconfig.GetWatcher().GetFullConfig().Settings.TermExitIndicator; globalVal != nil {
+				exitIndicatorEnabled = *globalVal
+			}
+		}
+		if exitIndicatorEnabled {
+			indicator := wshrpc.TabIndicator{
+				Icon:         "spinner+spin",
+				Color:        "#f59e0b",
+				Priority:     1.5,
+				ClearOnFocus: false,
+			}
+			eventData := wshrpc.TabIndicatorEventData{
+				TabId:     bc.TabId,
+				Indicator: &indicator,
+			}
+			event := wps.WaveEvent{
+				Event:  wps.Event_TabIndicator,
+				Scopes: []string{waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String()},
+				Data:   eventData,
+			}
+			wps.Broker.Publish(event)
+		}
+	}
+
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
@@ -616,6 +644,77 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 			msg = fmt.Sprintf("%s (exit code %d)", baseMsg, exitCode)
 		}
 		bc.writeMutedMessageToTerminal("[" + msg + "]")
+		go func(exitCode int, exitSignal string) {
+			defer func() {
+				panichandler.PanicHandler("blockcontroller:exit-indicator", recover())
+			}()
+			ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+			defer cancelFn()
+			blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, bc.BlockId)
+			if err != nil {
+				log.Printf("error getting block data for exit indicator: %v\n", err)
+				return
+			}
+			exitIndicatorEnabled := blockData.Meta.GetBool(waveobj.MetaKey_TermExitIndicator, false)
+			if !blockData.Meta.HasKey(waveobj.MetaKey_TermExitIndicator) {
+				if globalVal := wconfig.GetWatcher().GetFullConfig().Settings.TermExitIndicator; globalVal != nil {
+					exitIndicatorEnabled = *globalVal
+				}
+			}
+			if !exitIndicatorEnabled {
+				return
+			}
+			closeOnExit := blockData.Meta.GetBool(waveobj.MetaKey_CmdCloseOnExit, false)
+			closeOnExitForce := blockData.Meta.GetBool(waveobj.MetaKey_CmdCloseOnExitForce, false)
+			if closeOnExitForce || (closeOnExit && exitCode == 0) {
+				// Clear running indicator before block gets deleted
+				if bc.ControllerType == BlockController_Cmd {
+					clearEvent := wps.WaveEvent{
+						Event:  wps.Event_TabIndicator,
+						Scopes: []string{waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String()},
+						Data:   wshrpc.TabIndicatorEventData{TabId: bc.TabId, Indicator: nil},
+					}
+					wps.Broker.Publish(clearEvent)
+				}
+				return
+			}
+			// Clear running indicator before exit indicator to prevent
+			// PersistentIndicator from resurrecting the amber glow
+			if bc.ControllerType == BlockController_Cmd {
+				clearEvent := wps.WaveEvent{
+					Event:  wps.Event_TabIndicator,
+					Scopes: []string{waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String()},
+					Data:   wshrpc.TabIndicatorEventData{TabId: bc.TabId, Indicator: nil},
+				}
+				wps.Broker.Publish(clearEvent)
+			}
+			var indicator wshrpc.TabIndicator
+			if exitCode == 0 && exitSignal == "" {
+				indicator = wshrpc.TabIndicator{
+					Icon:         "check",
+					Color:        "#4ade80",
+					Priority:     2,
+					ClearOnFocus: true,
+				}
+			} else {
+				indicator = wshrpc.TabIndicator{
+					Icon:         "xmark-large",
+					Color:        "#f87171",
+					Priority:     2,
+					ClearOnFocus: true,
+				}
+			}
+			eventData := wshrpc.TabIndicatorEventData{
+				TabId:     bc.TabId,
+				Indicator: &indicator,
+			}
+			event := wps.WaveEvent{
+				Event:  wps.Event_TabIndicator,
+				Scopes: []string{waveobj.MakeORef(waveobj.OType_Tab, bc.TabId).String()},
+				Data:   eventData,
+			}
+			wps.Broker.Publish(event)
+		}(exitCode, exitSignal)
 		go checkCloseOnExit(bc.BlockId, exitCode)
 	}()
 	return nil

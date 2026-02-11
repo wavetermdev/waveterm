@@ -137,6 +137,9 @@
         "term:bellindicator": {
           "type": "boolean"
         },
+        "term:exitindicator": {
+          "type": "boolean"
+        },
         "term:durable": {
           "type": "boolean"
         },

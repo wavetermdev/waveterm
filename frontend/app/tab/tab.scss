@@ -1,6 +1,28 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+// Animate a shared breathing phase on :root so all indicator tabs pulse in sync.
+// Uses CSS @property for an animatable custom property (Chromium 78+).
+@property --breathe-phase {
+    syntax: "<number>";
+    initial-value: 0;
+    inherits: true;
+}
+
+:root {
+    animation: indicatorBreathePhase 16s ease-in-out infinite;
+}
+
+@keyframes indicatorBreathePhase {
+    0%,
+    100% {
+        --breathe-phase: 0;
+    }
+    50% {
+        --breathe-phase: 1;
+    }
+}
+
 .tab {
     position: absolute;
     width: 130px;
@@ -46,6 +68,8 @@
 
         .name {
             color: var(--main-text-color);
+            font-weight: 700;
+            filter: brightness(1.15);
         }
 
         & + .tab::after,
@@ -96,6 +120,24 @@
         transition: none !important;
     }
 
+    &.has-indicator {
+        .tab-inner {
+            background: rgb(from var(--tab-indicator-color) r g b / 0.15);
+        }
+        &.active .tab-inner {
+            background: rgb(from var(--tab-indicator-color) r g b / 0.2);
+        }
+    }
+
+    &.indicator-breathing {
+        .tab-inner {
+            background: rgb(from var(--tab-indicator-color) r g b / calc(0.08 + var(--breathe-phase) * 0.14));
+        }
+        &.active .tab-inner {
+            background: rgb(from var(--tab-indicator-color) r g b / calc(0.12 + var(--breathe-phase) * 0.14));
+        }
+    }
+
     .wave-button {
         position: absolute;
         top: 50%;
@@ -128,6 +170,18 @@ body:not(.nohover) .tab.dragging {
     .tab-inner {
         border-color: transparent;
         background: rgb(from var(--main-text-color) r g b / 0.1);
+    }
+    &.has-indicator .tab-inner {
+        background: rgb(from var(--tab-indicator-color) r g b / 0.15);
+    }
+    &.has-indicator.active .tab-inner {
+        background: rgb(from var(--tab-indicator-color) r g b / 0.2);
+    }
+    &.indicator-breathing .tab-inner {
+        background: rgb(from var(--tab-indicator-color) r g b / calc(0.08 + var(--breathe-phase) * 0.14));
+    }
+    &.indicator-breathing.active .tab-inner {
+        background: rgb(from var(--tab-indicator-color) r g b / calc(0.12 + var(--breathe-phase) * 0.14));
     }
     .close {
         visibility: visible;
