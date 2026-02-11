@@ -123,7 +123,7 @@ These files provide step-by-step instructions, code examples, and best practices
   - Explaining complex algorithms that can't be simplified
 - **When in doubt, leave it out**. No comment is better than a redundant comment.
 - **Never add comments explaining code changes** - The code should speak for itself, and version control tracks changes. The one exception to this rule is if it is a very unobvious implementation. Something that someone would typically implement in a different (wrong) way. Then the comment helps us remember WHY we changed it to a less obvious implementation.
-- **Never removed existing comments** unless specifically directed by the user. Comments that are already defined in existing code have been vetted by the user.
+- **Never remove existing comments** unless specifically directed by the user. Comments that are already defined in existing code have been vetted by the user.
 
 ### Jotai Model Pattern (our rules)
 
