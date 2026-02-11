@@ -65,7 +65,7 @@ export const DurableSessionPage = ({
 
                             <div className="flex items-start gap-3 w-full">
                                 <i className="fa-sharp fa-solid fa-box text-accent text-lg mt-1 flex-shrink-0" />
-                                <p>Buffered output streams back in — you never miss a line</p>
+                                <p>Buffered output streams back in, never miss a line</p>
                             </div>
 
                             <p className="italic">

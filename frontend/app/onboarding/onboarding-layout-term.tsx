@@ -85,75 +85,178 @@ const deployMessages = [
     "[8/8] Deploy complete ✓",
 ];
 
-const DeployLogOutput = ({ onComplete }: { onComplete?: () => void }) => {
+type OverlayState = null | "disconnected" | "connected";
+
+const ConnectionOverlay = ({ state }: { state: OverlayState }) => {
+    if (!state) return null;
+
+    const isConnected = state === "connected";
+
+    return (
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div className="bg-white/20 backdrop-blur-[2px] rounded-lg flex flex-col items-center justify-center gap-4 px-12 py-8 w-[50%]">
+                <i
+                    className={cn(
+                        "fa-sharp fa-solid",
+                        isConnected ? "fa-wifi text-green-400" : "fa-wifi-slash text-red-400",
+                        "text-6xl"
+                    )}
+                />
+                <div className="text-2xl font-semibold text-foreground">
+                    {isConnected ? "Connected" : "Disconnected"}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const DeployLogOutput = ({
+    onComplete,
+    onOverlayStateChange,
+}: {
+    onComplete?: () => void;
+    onOverlayStateChange?: (state: OverlayState) => void;
+}) => {
+    const [key, setKey] = useState(0);
     const [commandComplete, setCommandComplete] = useState(false);
     const [visibleLines, setVisibleLines] = useState(0);
     const [showPrompt, setShowPrompt] = useState(false);
     const [showCursor, setShowCursor] = useState(false);
+    const [overlayState, setOverlayState] = useState<OverlayState>(null);
+
+    useLayoutEffect(() => {
+        if (onOverlayStateChange) {
+            onOverlayStateChange(overlayState);
+        }
+    }, [overlayState, onOverlayStateChange]);
 
     const handleCommandComplete = useCallback(() => {
         setCommandComplete(true);
     }, []);
 
+    const resetAnimation = useCallback(() => {
+        setCommandComplete(false);
+        setVisibleLines(0);
+        setShowPrompt(false);
+        setShowCursor(false);
+        setOverlayState(null);
+        setKey((prev) => prev + 1);
+    }, []);
+
     useLayoutEffect(() => {
         if (!commandComplete) return;
 
-        let lineIndex = 0;
-        const lineInterval = setInterval(() => {
-            if (lineIndex < deployMessages.length) {
-                setVisibleLines(lineIndex + 1);
-                lineIndex++;
-            } else {
-                clearInterval(lineInterval);
-                setTimeout(() => {
-                    setShowPrompt(true);
-                    setShowCursor(true);
-                    if (onComplete) {
-                        onComplete();
-                    }
-                }, 200);
-            }
-        }, 1000);
+        let timeoutId: NodeJS.Timeout;
 
-        return () => clearInterval(lineInterval);
-    }, [commandComplete, onComplete]);
+        const runSequence = async () => {
+            // Show message 1
+            setVisibleLines(1);
+            await new Promise((resolve) => {
+                timeoutId = setTimeout(resolve, 1000);
+            });
+
+            // Show message 2
+            setVisibleLines(2);
+            await new Promise((resolve) => {
+                timeoutId = setTimeout(resolve, 1000);
+            });
+
+            // Show disconnected overlay
+            setOverlayState("disconnected");
+            await new Promise((resolve) => {
+                timeoutId = setTimeout(resolve, 2500);
+            });
+
+            // Change to connected
+            setOverlayState("connected");
+            await new Promise((resolve) => {
+                timeoutId = setTimeout(resolve, 1000);
+            });
+
+            // Remove overlay and show messages 3-7 instantly
+            setOverlayState(null);
+            setVisibleLines(7);
+
+            // Show message 8
+            setVisibleLines(8);
+            await new Promise((resolve) => {
+                timeoutId = setTimeout(resolve, 1000);
+            });
+
+            // Show prompt
+            setShowPrompt(true);
+            setShowCursor(true);
+            if (onComplete) {
+                onComplete();
+            }
+
+            // Wait 6 seconds then restart
+            await new Promise((resolve) => {
+                timeoutId = setTimeout(resolve, 6000);
+            });
+
+            resetAnimation();
+        };
+
+        runSequence();
+
+        return () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        };
+    }, [commandComplete, onComplete, resetAnimation]);
 
     useLayoutEffect(() => {
-        if (!showCursor) return;
+        if (!showPrompt) return;
 
         const cursorInterval = setInterval(() => {
             setShowCursor((prev) => !prev);
         }, 500);
 
         return () => clearInterval(cursorInterval);
-    }, [showCursor]);
+    }, [showPrompt]);
 
     return (
-        <div className="font-mono text-sm flex flex-col gap-1">
-            <CommandReveal command="tail -f deploy.log" typeIntervalMs={80} onComplete={handleCommandComplete} />
-            {commandComplete && (
-                <>
-                    {deployMessages.slice(0, visibleLines).map((msg, idx) => (
-                        <div key={idx} className="text-foreground/70">
-                            {msg}
-                        </div>
-                    ))}
-                    {showPrompt && (
-                        <div className="flex items-center gap-2">
-                            <span className="text-accent">&gt;</span>
-                            {showCursor && <span className="inline-block w-2 h-4 bg-foreground/80 align-middle"></span>}
-                        </div>
-                    )}
-                </>
-            )}
-        </div>
+        <>
+            <div className="font-mono text-sm flex flex-col gap-1">
+                <CommandReveal
+                    key={key}
+                    command="tail -f deploy.log"
+                    typeIntervalMs={80}
+                    onComplete={handleCommandComplete}
+                />
+                {commandComplete && (
+                    <>
+                        {deployMessages.slice(0, visibleLines).map((msg, idx) => (
+                            <div key={idx} className="text-foreground/70">
+                                {msg}
+                            </div>
+                        ))}
+                        {showPrompt && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-accent">&gt;</span>
+                                {showCursor && (
+                                    <span className="inline-block w-2 h-4 bg-foreground/80 align-middle"></span>
+                                )}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+            {overlayState && <ConnectionOverlay state={overlayState} />}
+        </>
     );
 };
 
 export const TailDeployLogCommand = ({ onComplete }: { onComplete?: () => void }) => {
+    const [overlayState, setOverlayState] = useState<OverlayState>(null);
+
+    const durableStatus = overlayState === "disconnected" ? "detached" : "connected";
+
     return (
-        <FakeTermBlock connectionName="ubuntu@remoteserver" durableStatus="connected" className="">
-            <DeployLogOutput onComplete={onComplete} />
+        <FakeTermBlock connectionName="ubuntu@remoteserver" durableStatus={durableStatus} className="relative">
+            <DeployLogOutput onComplete={onComplete} onOverlayStateChange={setOverlayState} />
         </FakeTermBlock>
     );
 };
