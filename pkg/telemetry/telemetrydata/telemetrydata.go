@@ -99,15 +99,15 @@ type TEventUserProps struct {
 type TEventProps struct {
 	TEventUserProps `tstype:"-"` // generally don't need to set these since they will be automatically copied over
 
-	ActiveMinutes          int `json:"activity:activeminutes,omitempty"`
-	FgMinutes              int `json:"activity:fgminutes,omitempty"`
-	OpenMinutes            int `json:"activity:openminutes,omitempty"`
-	WaveAIActiveMinutes    int `json:"activity:waveaiactiveminutes,omitempty"`
-	WaveAIFgMinutes        int `json:"activity:waveaifgminutes,omitempty"`
-	TermCommandsRun        int `json:"activity:termcommandsrun,omitempty"`
-	TermCommandsRemote     int `json:"activity:termcommands:remote,omitempty"`
-	TermCommandsDurable    int `json:"activity:termcommands:durable,omitempty"`
-	TermCommandsWsl        int `json:"activity:termcommands:wsl,omitempty"`
+	ActiveMinutes       int `json:"activity:activeminutes,omitempty"`
+	FgMinutes           int `json:"activity:fgminutes,omitempty"`
+	OpenMinutes         int `json:"activity:openminutes,omitempty"`
+	WaveAIActiveMinutes int `json:"activity:waveaiactiveminutes,omitempty"`
+	WaveAIFgMinutes     int `json:"activity:waveaifgminutes,omitempty"`
+	TermCommandsRun     int `json:"activity:termcommandsrun,omitempty"`
+	TermCommandsRemote  int `json:"activity:termcommands:remote,omitempty"`
+	TermCommandsDurable int `json:"activity:termcommands:durable,omitempty"`
+	TermCommandsWsl     int `json:"activity:termcommands:wsl,omitempty"`
 
 	AppFirstDay    bool `json:"app:firstday,omitempty"`
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`
@@ -128,6 +128,7 @@ type TEventProps struct {
 
 	ConnType         string `json:"conn:conntype,omitempty"`
 	ConnWshErrorCode string `json:"conn:wsherrorcode,omitempty"`
+	ConnErrorCode    string `json:"conn:errorcode,omitempty"`
 
 	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"durable\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`
@@ -178,7 +179,7 @@ type TEventProps struct {
 	WaveAIAction               string         `json:"waveai:action,omitempty"`
 
 	JobDoneReason string `json:"job:donereason,omitempty"`
-	JobKind       string `json:"job:jobkind,omitempty"`
+	JobKind       string `json:"job:kind,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

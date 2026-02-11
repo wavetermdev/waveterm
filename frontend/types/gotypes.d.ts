@@ -1451,6 +1451,7 @@ declare global {
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
         "conn:wsherrorcode"?: string;
+        "conn:errorcode"?: string;
         "onboarding:feature"?: "waveai" | "durable" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
@@ -1496,7 +1497,7 @@ declare global {
         "waveai:feedback"?: "good" | "bad";
         "waveai:action"?: string;
         "job:donereason"?: string;
-        "job:jobkind"?: string;
+        "job:kind"?: string;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };
