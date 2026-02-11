@@ -60,3 +60,11 @@ func GetSignalName(sig os.Signal) string {
 func SetCloseOnExec(fd int) {
 	unix.CloseOnExec(fd)
 }
+
+func SignalTerm(pid int) error {
+	return syscall.Kill(pid, syscall.SIGTERM)
+}
+
+func SignalHup(pid int) error {
+	return syscall.Kill(pid, syscall.SIGHUP)
+}

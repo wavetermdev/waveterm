@@ -27,3 +27,16 @@ func GetSignalName(sig os.Signal) string {
 
 func SetCloseOnExec(fd int) {
 }
+
+func SignalTerm(pid int) error {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	return proc.Kill()
+}
+
+// this is a no-op on windows
+func SignalHup(pid int) error {
+	return nil
+}
