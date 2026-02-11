@@ -82,6 +82,10 @@ func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
 }
 
+func (uice UserInputCancelError) Unwrap() error {
+	return uice.Err
+}
+
 type ConnectionDebugInfo struct {
 	CurrentClient *ssh.Client
 	NextOpts      *SSHOpts
