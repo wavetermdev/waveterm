@@ -38,6 +38,12 @@ var serverCmd = &cobra.Command{
 	RunE:   serverRun,
 }
 
+const (
+	JobLogRetentionTime   = 48 * time.Hour
+	JobLogCleanupDelay    = 10 * time.Second
+	JobLogCleanupInterval = 1 * time.Hour
+)
+
 var connServerRouter bool
 var connServerRouterDomainSocket bool
 var connServerConnName string
@@ -51,6 +57,61 @@ func init() {
 	serverCmd.Flags().StringVar(&connServerConnName, "conn", "", "connection name")
 	serverCmd.Flags().BoolVar(&connServerDev, "dev", false, "enable dev mode with file logging and PID in logs")
 	rootCmd.AddCommand(serverCmd)
+}
+
+func cleanupOldJobLogs() {
+	jobDir := wavebase.GetRemoteJobLogDir()
+	entries, err := os.ReadDir(jobDir)
+	if err != nil {
+		return
+	}
+
+	cutoffTime := time.Now().Add(-JobLogRetentionTime)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".log") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		if info.ModTime().Before(cutoffTime) {
+			filePath := filepath.Join(jobDir, name)
+			err := os.Remove(filePath)
+			if err != nil {
+				log.Printf("error removing old job log file %s: %v", filePath, err)
+			} else {
+				log.Printf("removed old job log file: %s", filePath)
+			}
+		}
+	}
+}
+
+func startJobLogCleanup() {
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("startJobLogCleanup", recover())
+		}()
+
+		time.Sleep(JobLogCleanupDelay)
+
+		cleanupOldJobLogs()
+
+		ticker := time.NewTicker(JobLogCleanupInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			cleanupOldJobLogs()
+		}
+	}()
 }
 
 func getRemoteDomainSocketName() string {
@@ -218,6 +279,7 @@ func serverRunRouter() error {
 		}()
 		wshremote.RunSysInfoLoop(client, connServerConnName)
 	}()
+	startJobLogCleanup()
 	log.Printf("running server, successfully started")
 	select {}
 }
@@ -324,6 +386,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 		}()
 		wshremote.RunSysInfoLoop(client, connServerConnName)
 	}()
+	startJobLogCleanup()
 
 	log.Printf("running server (router-domainsocket mode), successfully started")
 	select {}
@@ -346,6 +409,7 @@ func serverRunNormal(jwtToken string) error {
 		}()
 		wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
 	}()
+	startJobLogCleanup()
 	select {} // run forever
 }
 

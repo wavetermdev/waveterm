@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/wavetermdev/waveterm/pkg/jobmanager"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -43,7 +43,7 @@ func isProcessRunning(pid int, pidStartTs int64) (*process.Process, error) {
 
 // returns jobRouteId, cleanupFunc, error
 func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, mainServerJwtToken string) (string, func(), error) {
-	socketPath := jobmanager.GetJobSocketPath(jobId)
+	socketPath := wavebase.GetRemoteJobSocketPath(jobId)
 	log.Printf("connectToJobManager: connecting to socket: %s\n", socketPath)
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"golang.org/x/sys/unix"
 )
 
@@ -32,7 +33,7 @@ func daemonize(clientId string, jobId string) error {
 	}
 	devNull.Close()
 
-	logPath := GetJobFilePath(clientId, jobId, "log")
+	logPath := wavebase.GetRemoteJobFilePath(jobId, "log")
 	logDir := filepath.Dir(logPath)
 	err = os.MkdirAll(logDir, 0700)
 	if err != nil {
@@ -54,6 +55,7 @@ func daemonize(clientId string, jobId string) error {
 
 	log.SetOutput(logFile)
 	log.Printf("job manager daemonized, logging to %s\n", logPath)
+	log.Printf("job owner clientid: %s\n", clientId)
 
 	signal.Ignore(syscall.SIGHUP)
 
