@@ -42,8 +42,8 @@ type routedDataSender struct {
 }
 
 func (rds *routedDataSender) SendData(dataPk wshrpc.CommandStreamData) {
-	log.Printf("SendData: sending seq=%d, len=%d, eof=%t, error=%s, route=%s",
-		dataPk.Seq, len(dataPk.Data64), dataPk.Eof, dataPk.Error, rds.route)
+	// log.Printf("SendData: sending seq=%d, len=%d, eof=%t, error=%s, route=%s",
+	// 	dataPk.Seq, len(dataPk.Data64), dataPk.Eof, dataPk.Error, rds.route)
 	err := wshclient.StreamDataCommand(rds.wshRpc, dataPk, &wshrpc.RpcOpts{NoResponse: true, Route: rds.route})
 	if err != nil {
 		log.Printf("SendData: error sending stream data: %v\n", err)
@@ -132,4 +132,3 @@ func (msc *MainServerConn) JobInputCommand(ctx context.Context, data wshrpc.Comm
 	WshCmdJobManager.InputQueue.QueueItem(data.InputSessionId, data.SeqNum, data)
 	return nil
 }
-

@@ -162,8 +162,8 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 // ignores the timestamp in tevent, and uses the current time
 func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	eventTs := time.Now()
-	// compute to 2-hour boundary, and round up to next 2-hour boundary
-	eventTs = eventTs.Truncate(2 * time.Hour).Add(2 * time.Hour)
+	// compute to 1-hour boundary, and round up to next 1-hour boundary
+	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
 
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		// find event that matches this timestamp with event name "app:activity"
@@ -195,7 +195,7 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 
 func TruncateActivityTEventForShutdown(ctx context.Context) error {
 	nowTs := time.Now()
-	eventTs := nowTs.Truncate(2 * time.Hour).Add(2 * time.Hour)
+	eventTs := nowTs.Truncate(time.Hour).Add(time.Hour)
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		// find event that matches this timestamp with event name "app:activity"
 		uuidStr := tx.GetString(`SELECT uuid FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)

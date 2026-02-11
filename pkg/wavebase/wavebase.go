@@ -435,3 +435,22 @@ func getSystemSummary(ctx context.Context) string {
 		return fmt.Sprintf("%s (%s)", runtime.GOOS, runtime.GOARCH)
 	}
 }
+
+// job socket path on remote machine
+func GetRemoteJobSocketPath(jobId string) string {
+	socketDir := filepath.Join("/tmp", fmt.Sprintf("waveterm-%d", os.Getuid()))
+	return filepath.Join(socketDir, fmt.Sprintf("%s.sock", jobId))
+}
+
+// job file path on remote machine
+func GetRemoteJobFilePath(jobId string, extension string) string {
+	jobDir := GetRemoteJobLogDir()
+	return filepath.Join(jobDir, fmt.Sprintf("%s.%s", jobId, extension))
+}
+
+// job file dir on remote machines
+func GetRemoteJobLogDir() string {
+	homeDir := GetHomeDir()
+	jobDir := filepath.Join(homeDir, ".waveterm", "jobs")
+	return jobDir
+}

@@ -79,6 +79,17 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 		return fmt.Errorf("failed to daemonize: %w", err)
 	}
 
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("JobManager:keepalive", recover())
+		}()
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			log.Printf("keepalive: job manager active\n")
+		}
+	}()
+
 	return nil
 }
 
@@ -365,17 +376,6 @@ func (jm *JobManager) StartStream(msc *MainServerConn) error {
 	return nil
 }
 
-func GetJobSocketPath(jobId string) string {
-	socketDir := filepath.Join("/tmp", fmt.Sprintf("waveterm-%d", os.Getuid()))
-	return filepath.Join(socketDir, fmt.Sprintf("%s.sock", jobId))
-}
-
-func GetJobFilePath(clientId string, jobId string, extension string) string {
-	homeDir := wavebase.GetHomeDir()
-	jobDir := filepath.Join(homeDir, ".waveterm", "jobs", clientId)
-	return filepath.Join(jobDir, fmt.Sprintf("%s.%s", jobId, extension))
-}
-
 func MakeJobDomainSocket(clientId string, jobId string) error {
 	socketDir := filepath.Join("/tmp", fmt.Sprintf("waveterm-%d", os.Getuid()))
 	err := os.MkdirAll(socketDir, 0700)
@@ -383,7 +383,7 @@ func MakeJobDomainSocket(clientId string, jobId string) error {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
-	socketPath := GetJobSocketPath(jobId)
+	socketPath := wavebase.GetRemoteJobSocketPath(jobId)
 
 	os.Remove(socketPath)
 
