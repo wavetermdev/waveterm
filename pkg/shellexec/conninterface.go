@@ -91,11 +91,13 @@ func (cw CmdWrap) KillGraceful(timeout time.Duration) {
 		return
 	}
 	if runtime.GOOS == "windows" {
-		cw.Cmd.Process.Signal(os.Interrupt)
-	} else if cw.IsShell {
-		syscall.Kill(cw.Cmd.Process.Pid, syscall.SIGHUP)
+		cw.Cmd.Process.Kill()
+		return
+	}
+	if cw.IsShell {
+		unixutil.SignalHup(cw.Cmd.Process.Pid)
 	} else {
-		cw.Cmd.Process.Signal(syscall.SIGTERM)
+		unixutil.SignalTerm(cw.Cmd.Process.Pid)
 	}
 	go func() {
 		defer func() {
