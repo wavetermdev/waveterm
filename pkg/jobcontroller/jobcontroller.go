@@ -1155,6 +1155,7 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 		return fmt.Errorf("route did not establish after successful reconnection: %w", err)
 	}
 	SetJobConnStatus(jobId, JobConnStatus_Connected)
+	sendBlockJobStatusEventByJob(ctx, job)
 
 	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
 		Event: "job:reconnect",
