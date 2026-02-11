@@ -1461,6 +1461,8 @@ declare global {
         "count:workspaces"?: number;
         "count:sshconn"?: number;
         "count:wslconn"?: number;
+        "count:jobs"?: number;
+        "count:jobsconnected"?: number;
         "count:views"?: {[key: string]: number};
         "waveai:apitype"?: string;
         "waveai:model"?: string;

@@ -543,6 +543,34 @@ func GetConnectedJobIds() []string {
 	return connectedJobIds
 }
 
+func GetNumJobsRunning() int {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		return 0
+	}
+	count := 0
+	for _, job := range allJobs {
+		if job.JobManagerStatus == JobManagerStatus_Running {
+			count++
+		}
+	}
+	return count
+}
+
+func GetNumJobsConnected() int {
+	jobControllerLock.Lock()
+	defer jobControllerLock.Unlock()
+	count := 0
+	for _, status := range jobConnStates {
+		if status == JobConnStatus_Connected {
+			count++
+		}
+	}
+	return count
+}
+
 func CheckJobConnected(ctx context.Context, jobId string) (*waveobj.Job, error) {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {

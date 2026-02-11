@@ -132,13 +132,15 @@ type TEventProps struct {
 	DisplayCount  int         `json:"display:count,omitempty"`
 	DisplayAll    interface{} `json:"display:all,omitempty"`
 
-	CountBlocks     int            `json:"count:blocks,omitempty"`
-	CountTabs       int            `json:"count:tabs,omitempty"`
-	CountWindows    int            `json:"count:windows,omitempty"`
-	CountWorkspaces int            `json:"count:workspaces,omitempty"`
-	CountSSHConn    int            `json:"count:sshconn,omitempty"`
-	CountWSLConn    int            `json:"count:wslconn,omitempty"`
-	CountViews      map[string]int `json:"count:views,omitempty"`
+	CountBlocks        int            `json:"count:blocks,omitempty"`
+	CountTabs          int            `json:"count:tabs,omitempty"`
+	CountWindows       int            `json:"count:windows,omitempty"`
+	CountWorkspaces    int            `json:"count:workspaces,omitempty"`
+	CountSSHConn       int            `json:"count:sshconn,omitempty"`
+	CountWSLConn       int            `json:"count:wslconn,omitempty"`
+	CountJobs          int            `json:"count:jobs,omitempty"`
+	CountJobsConnected int            `json:"count:jobsconnected,omitempty"`
+	CountViews         map[string]int `json:"count:views,omitempty"`
 
 	WaveAIAPIType              string         `json:"waveai:apitype,omitempty"`
 	WaveAIModel                string         `json:"waveai:model,omitempty"`
