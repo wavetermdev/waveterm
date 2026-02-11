@@ -23,6 +23,10 @@ function isWslConnName(connName: string): boolean {
     return connName != null && connName.startsWith("wsl://");
 }
 
+function isSshConnName(connName: string): boolean {
+    return !isLocalConnName(connName) && !isWslConnName(connName);
+}
+
 function base64ToString(b64: string): string {
     if (b64 == null) {
         return null;
@@ -521,6 +525,7 @@ export {
     getPromiseValue,
     isBlank,
     isLocalConnName,
+    isSshConnName,
     isWslConnName,
     jotaiLoadableValue,
     jsonDeepEqual,

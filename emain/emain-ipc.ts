@@ -12,7 +12,7 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, parseDataUrl } from "../frontend/util/util";
-import { incrementTermCommandsRun } from "./emain-activity";
+import { incrementTermCommandsDurable, incrementTermCommandsRemote, incrementTermCommandsRun } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
@@ -407,8 +407,14 @@ export function initIpcHandlers() {
         console.log("fe-log", logStr);
     });
 
-    electron.ipcMain.on("increment-term-commands", () => {
+    electron.ipcMain.on("increment-term-commands", (event, opts?: { isRemote?: boolean; isDurable?: boolean }) => {
         incrementTermCommandsRun();
+        if (opts?.isRemote) {
+            incrementTermCommandsRemote();
+        }
+        if (opts?.isDurable) {
+            incrementTermCommandsDurable();
+        }
     });
 
     electron.ipcMain.on("native-paste", (event) => {
