@@ -533,7 +533,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 			}
 			knownHostsFiles = okFiles
 		} else if err != nil {
-			return nil, nil, utilds.Errorf(ConnErrCode_KnownHostsFmt, "known_hosts formatting error: %+v", err)
+			return nil, nil, utilds.Errorf(ConnErrCode_KnownHostsFmt, "known_hosts formatting error: %w", err)
 		} else {
 			basicCallback = keyDb.HostKeyCallback()
 			hostKeyAlgorithms = keyDb.HostKeyAlgorithms
@@ -603,7 +603,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 				}
 			}
 			if err != nil {
-				return utilds.Errorf(ConnErrCode_HostKeyVerify, "unable to create new knownhost key: %e", err)
+				return utilds.Errorf(ConnErrCode_HostKeyVerify, "unable to create new knownhost key: %w", err)
 			}
 		} else {
 			// the key changed
