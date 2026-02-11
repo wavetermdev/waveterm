@@ -8,6 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useState } from "react";
 import { CurrentOnboardingVersion } from "./onboarding-common";
 import { OnboardingFooter } from "./onboarding-features-footer";
+import { TailDeployLogCommand } from "./onboarding-layout-term";
 
 export const DurableSessionPage = ({
     onNext,
@@ -42,11 +43,11 @@ export const DurableSessionPage = ({
                 <div className="text-[25px] font-normal text-foreground">Durable SSH Sessions</div>
             </header>
             <div className="flex-1 flex flex-row gap-0 min-h-0">
-                <div className="flex-1 flex flex-col items-center justify-center gap-8 pr-6 unselectable">
-                    <div className="flex flex-col items-start gap-6 max-w-md">
-                        <div className="flex h-[52px] ml-[-4px] pl-3 pr-4 items-center rounded-lg bg-hover text-[18px]">
+                <div className="flex-1 flex flex-col items-center justify-center gap-8 pr-3 unselectable">
+                    <div className="flex flex-col items-start gap-3 max-w-md">
+                        <div className="flex h-[52px] ml-[-4px] pl-3 pr-3 items-center rounded-lg bg-hover text-[15px]">
                             <i className="fa-sharp fa-solid fa-shield text-sky-500" />
-                            <span className="font-bold ml-2 text-primary">Your SSH Sessions, Protected</span>
+                            <span className="font-bold ml-2 text-primary">SSH Sessions, Protected</span>
                         </div>
 
                         <div className="flex flex-col items-start gap-4 text-secondary">
@@ -77,46 +78,8 @@ export const DurableSessionPage = ({
                     </div>
                 </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
-                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    <div className="flex flex-col gap-6 text-secondary">
-                        <div className="text-lg font-semibold text-foreground">Session States</div>
-
-                        <div className="flex items-start gap-3">
-                            <i className="fa-sharp fa-solid fa-shield text-sky-500 text-xl mt-0.5" />
-                            <div>
-                                <div className="font-semibold text-foreground">Attached</div>
-                                <div className="text-sm">Session is protected and connected</div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                            <i className="fa-sharp fa-solid fa-shield text-sky-300 text-xl mt-0.5" />
-                            <div>
-                                <div className="font-semibold text-foreground">Detached</div>
-                                <div className="text-sm">Session running, currently disconnected</div>
-                            </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                            <i className="fa-sharp fa-regular fa-shield text-muted text-xl mt-0.5" />
-                            <div>
-                                <div className="font-semibold text-foreground">Standard</div>
-                                <div className="text-sm">Connection drops will end the session</div>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 p-4 bg-hover rounded-lg border border-border/50">
-                            <div className="text-sm">
-                                <div className="font-semibold text-foreground mb-2">Common use cases:</div>
-                                <ul className="space-y-1.5 ml-2">
-                                    <li>• Alternative to tmux or screen</li>
-                                    <li>• Long-running builds and deployments</li>
-                                    <li>• Working from unstable networks</li>
-                                    <li>• Surviving Wave restarts</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[500px]">
+                    <TailDeployLogCommand />
                 </div>
             </div>
             <OnboardingFooter currentStep={2} totalSteps={4} onNext={onNext} onPrev={onPrev} onSkip={onSkip} />
