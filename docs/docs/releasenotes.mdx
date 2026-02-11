@@ -27,6 +27,7 @@ Wave v0.14 introduces Durable Sessions for SSH connections, allowing your remote
 **Terminal Improvements:**
 - **OSC 52 Clipboard Support** - Terminal applications can now copy directly to your system clipboard using OSC 52 escape sequences
 - **Enhanced Context Menu** - Right-click terminals for quick access to splits, URL opening, themes, file browser, and more
+- **Streamlined Header Layout** - Terminal headers now focus on connection info without redundant view type labels
 
 **Wave AI Updates:**
 - **Image/Vision Support** - Added image support for OpenAI chat completions API, enabling vision capabilities with compatible models
@@ -62,6 +63,8 @@ Wave v0.14 introduces Durable Sessions for SSH connections, allowing your remote
 - [bugfix] Fixed duplicated Wave AI system prompt for some providers
 - [bugfix] Fixed disconnect hanging issue - disconnects now happen immediately
 - [bugfix] Fixed tool approval lifecycle to match SSE connection timing
+- [bugfix] Increased WSL connection timeout to handle slow initial WSL startup
+- [bugfix] Improved terminal shutdown with SIGHUP for graceful shell exit
 - Package updates and dependency upgrades
 
 ### v0.13.1 &mdash; Dec 16, 2025
