@@ -386,6 +386,7 @@ func jobDebugStartRun(cmd *cobra.Command, args []string) error {
 
 	data := wshrpc.CommandJobControllerStartJobData{
 		ConnName: jobConnFlag,
+		JobKind:  "task",
 		Cmd:      cmdToRun,
 		Args:     cmdArgs,
 		Env:      make(map[string]string),

@@ -12,7 +12,10 @@ import { fireAndForget, sleep } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
 import {
     getActivityState,
+    getAndClearTermCommandsDurable,
+    getAndClearTermCommandsRemote,
     getAndClearTermCommandsRun,
+    getAndClearTermCommandsWsl,
     getForceQuit,
     getGlobalIsRelaunching,
     getUserConfirmedQuit,
@@ -182,6 +185,9 @@ function logActiveState() {
         if (termCmdCount > 0) {
             activity.termcommandsrun = termCmdCount;
         }
+        const termCmdRemoteCount = getAndClearTermCommandsRemote();
+        const termCmdWslCount = getAndClearTermCommandsWsl();
+        const termCmdDurableCount = getAndClearTermCommandsDurable();
 
         const props: TEventProps = {
             "activity:activeminutes": activity.activeminutes,
@@ -190,6 +196,15 @@ function logActiveState() {
         };
         if (termCmdCount > 0) {
             props["activity:termcommandsrun"] = termCmdCount;
+        }
+        if (termCmdRemoteCount > 0) {
+            props["activity:termcommands:remote"] = termCmdRemoteCount;
+        }
+        if (termCmdWslCount > 0) {
+            props["activity:termcommands:wsl"] = termCmdWslCount;
+        }
+        if (termCmdDurableCount > 0) {
+            props["activity:termcommands:durable"] = termCmdDurableCount;
         }
         if (astate.wasActive && isWaveAIOpen) {
             props["activity:waveaiactiveminutes"] = 1;

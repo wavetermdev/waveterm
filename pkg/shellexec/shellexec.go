@@ -565,6 +565,7 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 
 	jobParams := jobcontroller.StartJobParams{
 		ConnName: conn.GetName(),
+		JobKind:  jobcontroller.JobKind_Shell,
 		Cmd:      shellPath,
 		Args:     shellOpts,
 		Env:      env,

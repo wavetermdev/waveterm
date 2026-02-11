@@ -238,6 +238,8 @@ func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.T
 	props.CountWorkspaces, _, _ = wstore.DBGetWSCounts(ctx)
 	props.CountSSHConn = conncontroller.GetNumSSHHasConnected()
 	props.CountWSLConn = wslconn.GetNumWSLHasConnected()
+	props.CountJobs = jobcontroller.GetNumJobsRunning()
+	props.CountJobsConnected = jobcontroller.GetNumJobsConnected()
 	props.CountViews, _ = wstore.DBGetBlockViewCounts(ctx)
 
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
