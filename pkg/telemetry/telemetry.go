@@ -156,6 +156,7 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.TermCommandsRun += newActivity.TermCommandsRun
 	curActivity.TermCommandsRemote += newActivity.TermCommandsRemote
 	curActivity.TermCommandsDurable += newActivity.TermCommandsDurable
+	curActivity.TermCommandsWsl += newActivity.TermCommandsWsl
 	if newActivity.AppFirstDay {
 		curActivity.AppFirstDay = true
 	}

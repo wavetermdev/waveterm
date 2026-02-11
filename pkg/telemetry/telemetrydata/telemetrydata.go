@@ -107,6 +107,7 @@ type TEventProps struct {
 	TermCommandsRun        int `json:"activity:termcommandsrun,omitempty"`
 	TermCommandsRemote     int `json:"activity:termcommands:remote,omitempty"`
 	TermCommandsDurable    int `json:"activity:termcommands:durable,omitempty"`
+	TermCommandsWsl        int `json:"activity:termcommands:wsl,omitempty"`
 
 	AppFirstDay    bool `json:"app:firstday,omitempty"`
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`

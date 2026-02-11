@@ -15,6 +15,7 @@ import {
     getAndClearTermCommandsDurable,
     getAndClearTermCommandsRemote,
     getAndClearTermCommandsRun,
+    getAndClearTermCommandsWsl,
     getForceQuit,
     getGlobalIsRelaunching,
     getUserConfirmedQuit,
@@ -185,6 +186,7 @@ function logActiveState() {
             activity.termcommandsrun = termCmdCount;
         }
         const termCmdRemoteCount = getAndClearTermCommandsRemote();
+        const termCmdWslCount = getAndClearTermCommandsWsl();
         const termCmdDurableCount = getAndClearTermCommandsDurable();
 
         const props: TEventProps = {
@@ -197,6 +199,9 @@ function logActiveState() {
         }
         if (termCmdRemoteCount > 0) {
             props["activity:termcommands:remote"] = termCmdRemoteCount;
+        }
+        if (termCmdWslCount > 0) {
+            props["activity:termcommands:wsl"] = termCmdWslCount;
         }
         if (termCmdDurableCount > 0) {
             props["activity:termcommands:durable"] = termCmdDurableCount;

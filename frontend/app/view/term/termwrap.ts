@@ -21,7 +21,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { base64ToArray, base64ToString, fireAndForget, isSshConnName } from "@/util/util";
+import { base64ToArray, base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -322,8 +322,9 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             globalStore.set(termWrap.shellIntegrationStatusAtom, "running-command");
             const connName = globalStore.get(getBlockMetaKeyAtom(blockId, "connection")) ?? "";
             const isRemote = isSshConnName(connName);
+            const isWsl = isWslConnName(connName);
             const isDurable = globalStore.get(getBlockTermDurableAtom(blockId)) ?? false;
-            getApi().incrementTermCommands({ isRemote, isDurable });
+            getApi().incrementTermCommands({ isRemote, isWsl, isDurable });
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
                 if (decodedLen > 8192) {

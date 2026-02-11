@@ -1435,6 +1435,9 @@ declare global {
         "activity:waveaiactiveminutes"?: number;
         "activity:waveaifgminutes"?: number;
         "activity:termcommandsrun"?: number;
+        "activity:termcommands:remote"?: number;
+        "activity:termcommands:durable"?: number;
+        "activity:termcommands:wsl"?: number;
         "app:firstday"?: boolean;
         "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
