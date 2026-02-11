@@ -48,6 +48,10 @@ var ValidEventNames = map[string]bool{
 	"onboarding:skip":       true,
 	"onboarding:fire":       true,
 	"onboarding:githubstar": true,
+
+	"job:start":     true,
+	"job:reconnect": true,
+	"job:done":      true,
 }
 
 type TEvent struct {
@@ -169,6 +173,9 @@ type TEventProps struct {
 	WaveAIIsLocal              bool           `json:"waveai:islocal,omitempty"`
 	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
 	WaveAIAction               string         `json:"waveai:action,omitempty"`
+
+	JobDoneReason string `json:"job:donereason,omitempty"`
+	JobKind       string `json:"job:jobkind,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

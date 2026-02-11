@@ -391,6 +391,7 @@ declare global {
     // wshrpc.CommandJobControllerStartJobData
     type CommandJobControllerStartJobData = {
         connname: string;
+        jobkind: string;
         cmd: string;
         args: string[];
         env: {[key: string]: string};
@@ -1491,6 +1492,8 @@ declare global {
         "waveai:islocal"?: boolean;
         "waveai:feedback"?: "good" | "bad";
         "waveai:action"?: string;
+        "job:donereason"?: string;
+        "job:jobkind"?: string;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };

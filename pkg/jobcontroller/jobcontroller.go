@@ -20,6 +20,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/streamclient"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -56,6 +58,11 @@ const (
 	JobConnStatus_Disconnected = "disconnected"
 	JobConnStatus_Connecting   = "connecting"
 	JobConnStatus_Connected    = "connected"
+)
+
+const (
+	JobKind_Shell = "shell"
+	JobKind_Task  = "task"
 )
 
 const DefaultStreamRwnd = 64 * 1024
@@ -595,6 +602,7 @@ func CheckJobConnected(ctx context.Context, jobId string) (*waveobj.Job, error) 
 
 type StartJobParams struct {
 	ConnName string
+	JobKind  string
 	Cmd      string
 	Args     []string
 	Env      map[string]string
@@ -605,6 +613,9 @@ type StartJobParams struct {
 func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	if params.ConnName == "" {
 		return "", fmt.Errorf("connection name is required")
+	}
+	if params.JobKind != JobKind_Shell && params.JobKind != JobKind_Task {
+		return "", fmt.Errorf("jobkind must be %q or %q", JobKind_Shell, JobKind_Task)
 	}
 	if params.Cmd == "" {
 		return "", fmt.Errorf("command is required")
@@ -639,6 +650,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	job := &waveobj.Job{
 		OID:              jobId,
 		Connection:       params.ConnName,
+		JobKind:          params.JobKind,
 		Cmd:              params.Cmd,
 		CmdArgs:          params.Args,
 		CmdEnv:           params.Env,
@@ -715,6 +727,13 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 			updatedJob = job
 		})
 		sendBlockJobStatusEventByJob(ctx, updatedJob)
+		telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+			Event: "job:done",
+			Props: telemetrydata.TEventProps{
+				JobDoneReason: JobDoneReason_StartupError,
+				JobKind:       params.JobKind,
+			},
+		})
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
 
@@ -734,6 +753,13 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		log.Printf("[job:%s] job status updated to running", jobId)
 		sendBlockJobStatusEventByJob(ctx, updatedJob)
 	}
+
+	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+		Event: "job:start",
+		Props: telemetrydata.TEventProps{
+			JobKind: params.JobKind,
+		},
+	})
 
 	go func() {
 		defer func() {
@@ -971,6 +997,11 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 		writeMutedMessageToTerminal(job.AttachedBlockId, "[shell terminated]")
 	}
 
+	if job.JobManagerStatus == JobManagerStatus_Done {
+		log.Printf("[job:%s] job manager already marked as done, skipping termination", job.OID)
+		return nil
+	}
+
 	bareRpc := wshclient.GetBareRpcClient()
 	terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
 		JobId:             job.OID,
@@ -1005,6 +1036,14 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	} else {
 		sendBlockJobStatusEventByJob(ctx, updatedJob)
 	}
+
+	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+		Event: "job:done",
+		Props: telemetrydata.TEventProps{
+			JobDoneReason: JobDoneReason_Terminated,
+			JobKind:       job.JobKind,
+		},
+	})
 
 	log.Printf("[job:%s] job manager terminated successfully", job.OID)
 	return nil
@@ -1093,6 +1132,13 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 			} else {
 				sendBlockJobStatusEventByJob(ctx, updatedJob)
 			}
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "job:done",
+				Props: telemetrydata.TEventProps{
+					JobDoneReason: JobDoneReason_Gone,
+					JobKind:       job.JobKind,
+				},
+			})
 			writeJobTerminationMessage(ctx, jobId, updatedJob, "[session gone]")
 			return fmt.Errorf("job manager has exited: %s", rtnData.Error)
 		}
@@ -1109,6 +1155,13 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 		return fmt.Errorf("route did not establish after successful reconnection: %w", err)
 	}
 	SetJobConnStatus(jobId, JobConnStatus_Connected)
+
+	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+		Event: "job:reconnect",
+		Props: telemetrydata.TEventProps{
+			JobKind: job.JobKind,
+		},
+	})
 
 	log.Printf("[job:%s] route established, restarting streaming", jobId)
 	return restartStreaming(ctx, jobId, true, rtOpts)

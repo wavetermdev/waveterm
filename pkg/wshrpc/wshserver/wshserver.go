@@ -1473,6 +1473,7 @@ func (ws *WshServer) JobControllerDeleteJobCommand(ctx context.Context, jobId st
 func (ws *WshServer) JobControllerStartJobCommand(ctx context.Context, data wshrpc.CommandJobControllerStartJobData) (string, error) {
 	params := jobcontroller.StartJobParams{
 		ConnName: data.ConnName,
+		JobKind:  data.JobKind,
 		Cmd:      data.Cmd,
 		Args:     data.Args,
 		Env:      data.Env,
