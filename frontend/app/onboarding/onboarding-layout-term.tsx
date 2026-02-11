@@ -3,6 +3,7 @@
 
 import { MagnifyIcon } from "@/app/element/magnify";
 import { cn, makeIconClass } from "@/util/util";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { CommandReveal } from "./onboarding-command";
 
 export type FakeTermBlockProps = {
@@ -12,6 +13,7 @@ export type FakeTermBlockProps = {
     command?: string;
     typeIntervalMs?: number;
     onComplete?: () => void;
+    children?: React.ReactNode;
 };
 
 export const FakeTermBlock = ({
@@ -21,6 +23,7 @@ export const FakeTermBlock = ({
     command,
     typeIntervalMs = 80,
     onComplete,
+    children,
 }: FakeTermBlockProps) => {
     const color = "var(--conn-icon-color-1)";
 
@@ -55,7 +58,9 @@ export const FakeTermBlock = ({
                 <i className={makeIconClass("xmark-large", false) + " text-xs text-foreground/50"} />
             </div>
             <div className="flex-1 overflow-auto p-4">
-                {command ? (
+                {children ? (
+                    children
+                ) : command ? (
                     <div className="font-mono text-sm">
                         <CommandReveal command={command} typeIntervalMs={typeIntervalMs} onComplete={onComplete} />
                     </div>
@@ -69,14 +74,86 @@ export const FakeTermBlock = ({
     );
 };
 
+const deployMessages = [
+    "[1/8] Installing dependencies...",
+    "[2/8] Generating TypeScript types from Go...",
+    "[3/8] Building Go backend (wavesrv)...",
+    "[4/8] Compiling TypeScript frontend...",
+    "[5/8] Bundling Electron renderer...",
+    "[6/8] Packaging application artifacts...",
+    "[7/8] Code signing binaries...",
+    "[8/8] Deploy complete ✓",
+];
+
+const DeployLogOutput = ({ onComplete }: { onComplete?: () => void }) => {
+    const [commandComplete, setCommandComplete] = useState(false);
+    const [visibleLines, setVisibleLines] = useState(0);
+    const [showPrompt, setShowPrompt] = useState(false);
+    const [showCursor, setShowCursor] = useState(false);
+
+    const handleCommandComplete = useCallback(() => {
+        setCommandComplete(true);
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!commandComplete) return;
+
+        let lineIndex = 0;
+        const lineInterval = setInterval(() => {
+            if (lineIndex < deployMessages.length) {
+                setVisibleLines(lineIndex + 1);
+                lineIndex++;
+            } else {
+                clearInterval(lineInterval);
+                setTimeout(() => {
+                    setShowPrompt(true);
+                    setShowCursor(true);
+                    if (onComplete) {
+                        onComplete();
+                    }
+                }, 200);
+            }
+        }, 1000);
+
+        return () => clearInterval(lineInterval);
+    }, [commandComplete, onComplete]);
+
+    useLayoutEffect(() => {
+        if (!showCursor) return;
+
+        const cursorInterval = setInterval(() => {
+            setShowCursor((prev) => !prev);
+        }, 500);
+
+        return () => clearInterval(cursorInterval);
+    }, [showCursor]);
+
+    return (
+        <div className="font-mono text-sm flex flex-col gap-1">
+            <CommandReveal command="tail -f deploy.log" typeIntervalMs={80} onComplete={handleCommandComplete} />
+            {commandComplete && (
+                <>
+                    {deployMessages.slice(0, visibleLines).map((msg, idx) => (
+                        <div key={idx} className="text-foreground/70">
+                            {msg}
+                        </div>
+                    ))}
+                    {showPrompt && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-accent">&gt;</span>
+                            {showCursor && <span className="inline-block w-2 h-4 bg-foreground/80 align-middle"></span>}
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
+
 export const TailDeployLogCommand = ({ onComplete }: { onComplete?: () => void }) => {
     return (
-        <FakeTermBlock
-            connectionName="ubuntu@remoteserver"
-            durableStatus="connected"
-            command="tail -f deploy.log"
-            typeIntervalMs={80}
-            onComplete={onComplete}
-        />
+        <FakeTermBlock connectionName="ubuntu@remoteserver" durableStatus="connected" className="">
+            <DeployLogOutput onComplete={onComplete} />
+        </FakeTermBlock>
     );
 };
