@@ -224,7 +224,14 @@ const Tab = memo(
                         dragging: isDragging,
                         "before-active": isBeforeActive,
                         "new-tab": isNew,
+                        "has-indicator": indicator != null,
+                        "indicator-breathing": indicator != null && indicator.icon === "none",
                     })}
+                    style={
+                        indicator != null
+                            ? ({ "--tab-indicator-color": indicator.color || "#f59e0b" } as React.CSSProperties)
+                            : undefined
+                    }
                     onMouseDown={onDragStart}
                     onClick={handleTabClick}
                     onContextMenu={handleContextMenu}
@@ -242,10 +249,10 @@ const Tab = memo(
                         >
                             {tabData?.name}
                         </div>
-                        {indicator && (
+                        {indicator && indicator.icon !== "none" && (
                             <div
                                 className="tab-indicator pointer-events-none"
-                                style={{ color: indicator.color || "#fbbf24" }}
+                                style={{ color: indicator.color || "#f59e0b" }}
                                 title="Activity notification"
                             >
                                 <i className={makeIconClass(indicator.icon, true, { defaultIcon: "bell" })} />

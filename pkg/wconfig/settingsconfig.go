@@ -100,6 +100,7 @@ type SettingsType struct {
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
+	TermExitIndicator       *bool    `json:"term:exitindicator,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
