@@ -433,7 +433,7 @@ export class WaveBrowserWindow extends BaseWindow {
             await Promise.all([p1, p2]);
         } else {
             console.log("reusing an existing tab, calling wave-init", tabView.waveTabId);
-            const p1 = this.repositionTabsSlowly(35);
+            const p1 = this.repositionTabsSlowly(35, true);
             const p2 = tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
             await Promise.all([p1, p2]);
         }
@@ -452,13 +452,16 @@ export class WaveBrowserWindow extends BaseWindow {
         }, 30);
     }
 
-    private async repositionTabsSlowly(delayMs: number) {
+    private async repositionTabsSlowly(delayMs: number, skipIntermediate: boolean = false) {
         const activeTabView = this.activeTabView;
         const winBounds = this.getContentBounds();
         if (activeTabView == null) {
             return;
         }
-        if (activeTabView.isOnScreen()) {
+        if (skipIntermediate || activeTabView.isOnScreen()) {
+            // For already-initialized tabs (skipIntermediate=true) or tabs already on screen,
+            // go directly to final bounds to avoid an intermediate resize that causes
+            // xterm.js buffer reflow and scroll position loss.
             activeTabView.setBounds({
                 x: 0,
                 y: 0,

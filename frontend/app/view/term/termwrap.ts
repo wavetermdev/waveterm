@@ -104,6 +104,9 @@ export class TermWrap {
     lastPasteData: string = "";
     lastPasteTime: number = 0;
 
+    // Scroll position preservation across buffer swaps (alt screen exit)
+    savedBaseY: number | null = null;
+
     constructor(
         tabId: string,
         blockId: string,
@@ -197,6 +200,19 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+
+        // Restore scroll position after alternate buffer exit (buffer swap)
+        this.toDispose.push(
+            this.terminal.buffer.onBufferChange(() => {
+                if (this.savedBaseY !== null) {
+                    const restoreY = this.savedBaseY;
+                    this.savedBaseY = null;
+                    requestAnimationFrame(() => {
+                        this.terminal.scrollToLine(restoreY);
+                    });
+                }
+            })
+        );
         this.handleResize();
         const pasteHandler = this.pasteHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteHandler, true);
@@ -465,8 +481,19 @@ export class TermWrap {
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
+        // Save scroll position before fit (only if user scrolled up from bottom)
+        const buffer = this.terminal.buffer.active;
+        const wasAtBottom = buffer.baseY >= buffer.length - this.terminal.rows;
+        const fitSavedY = wasAtBottom ? null : buffer.baseY;
         this.fitAddon.fit();
-        if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
+        // Only restore scroll if rows/cols actually changed (reflow happened)
+        const dimsChanged = oldRows !== this.terminal.rows || oldCols !== this.terminal.cols;
+        if (fitSavedY !== null && dimsChanged) {
+            requestAnimationFrame(() => {
+                this.terminal.scrollToLine(fitSavedY);
+            });
+        }
+        if (dimsChanged) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
