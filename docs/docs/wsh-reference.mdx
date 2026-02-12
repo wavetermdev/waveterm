@@ -387,14 +387,14 @@ Wave can expose a local Chrome DevTools Protocol (CDP) websocket for web widgets
 # List web widgets (in current workspace) and show which have CDP active
 wsh web cdp
 
-# Start CDP for a specific web widget
-wsh web cdp start -b <blockid>
+# Start CDP for a specific web widget (or current block if it's a web widget)
+wsh web cdp start [-b <blockid>]
 
 # Stop CDP
-wsh web cdp stop -b <blockid>
+wsh web cdp stop [-b <blockid>]
 
 # List active controlled web widgets
-wsh web cdp status
+wsh web cdp status [--json]
 ```
 
 When enabled, Wave exposes a Chrome-style remote debugging endpoint on `127.0.0.1` (see `debug:webcdpport`). Tools can discover targets via:
@@ -402,6 +402,8 @@ When enabled, Wave exposes a Chrome-style remote debugging endpoint on `127.0.0.
 ```sh
 curl http://127.0.0.1:<port>/json
 ```
+
+When no `-b` flag is given, `start` and `stop` auto-resolve to the current block if it is a web widget. Use `--json` with `start` or `status` to get machine-readable output.
 
 Note: CDP is a powerful interface (DOM/JS/cookies). It is gated behind `debug:webcdp=true` in `settings.json`.
 

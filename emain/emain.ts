@@ -23,6 +23,7 @@ import {
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { configureWebCdpServer, setWebCdpBlockOps } from "./emain-cdp";
 import { initIpcHandlers } from "./emain-ipc";
 import { log } from "./emain-log";
 import { initMenuEventSubscriptions, makeAndSetAppMenu, makeDockTaskbar } from "./emain-menu";
@@ -49,7 +50,6 @@ import {
     relaunchBrowserWindows,
     WaveBrowserWindow,
 } from "./emain-window";
-import { configureWebCdpServer, setWebCdpBlockOps } from "./emain-cdp";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { configureAutoUpdater, updater } from "./updater";

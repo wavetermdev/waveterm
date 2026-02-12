@@ -172,22 +172,28 @@ func mustBeWebBlock(fullORef *waveobj.ORef) (*wshrpc.BlockInfoData, error) {
 	return blockInfo, nil
 }
 
+func resolveBlockArgFromContext() error {
+	thisORef, err := resolveSimpleId("this")
+	if err != nil {
+		return nil
+	}
+	_, err = mustBeWebBlock(thisORef)
+	if err == nil {
+		blockArg = "this"
+		return nil
+	}
+	entries, lerr := listWebBlocksInCurrentWorkspace()
+	if lerr == nil && len(entries) > 0 {
+		printWebCdpList(entries)
+		return fmt.Errorf("no -b specified and current block is not a web widget; use: wsh web cdp start -b <blockid>")
+	}
+	return err
+}
+
 func webCdpStartRun(cmd *cobra.Command, args []string) error {
-	// If the user did not specify -b, try to start CDP for the current block if it's a web widget;
-	// otherwise list available web widgets in the workspace.
 	if strings.TrimSpace(blockArg) == "" {
-		thisORef, err := resolveSimpleId("this")
-		if err == nil {
-			if _, err2 := mustBeWebBlock(thisORef); err2 == nil {
-				blockArg = "this"
-			} else {
-				entries, lerr := listWebBlocksInCurrentWorkspace()
-				if lerr == nil && len(entries) > 0 {
-					printWebCdpList(entries)
-					return fmt.Errorf("no -b specified and current block is not a web widget; use: wsh web cdp start -b <blockid>")
-				}
-				return err2
-			}
+		if err := resolveBlockArgFromContext(); err != nil {
+			return err
 		}
 	}
 
@@ -229,6 +235,11 @@ func webCdpStartRun(cmd *cobra.Command, args []string) error {
 }
 
 func webCdpStopRun(cmd *cobra.Command, args []string) error {
+	if strings.TrimSpace(blockArg) == "" {
+		if err := resolveBlockArgFromContext(); err != nil {
+			return err
+		}
+	}
 	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)

@@ -1,12 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ipcMain, webContents } from "electron";
 import type { WebContents } from "electron";
+import { ipcMain, webContents } from "electron";
 import { randomUUID } from "node:crypto";
 import http from "node:http";
 import { URL } from "node:url";
 import WebSocket, { WebSocketServer } from "ws";
+import { log } from "./emain-log";
 
 // ---- Public API (used by emain.ts / emain-wsh.ts) ---------------------------
 
@@ -563,7 +564,7 @@ async function ensureSharedServer() {
         actualPort = serverCfg.port;
     }
 
-    console.log("webcdp server listening", `${HOST}:${actualPort}`);
+    log("webcdp server listening", `${HOST}:${actualPort}`);
     startDiscoveryPoller();
 }
 

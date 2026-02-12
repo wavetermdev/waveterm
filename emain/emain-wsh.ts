@@ -12,6 +12,7 @@ import {
     registerWebCdpTarget,
     stopWebCdpForBlock,
 } from "./emain-cdp";
+import { log } from "./emain-log";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
@@ -55,7 +56,7 @@ export class ElectronWshClientType extends WshClient {
         if (wc == null) {
             throw new Error(`no webcontents found with blockid ${data.blockid}`);
         }
-        console.log("webcdpstart", data.workspaceid, data.tabid, data.blockid);
+        log("webcdpstart", data.workspaceid, data.tabid, data.blockid);
         const info = registerWebCdpTarget(data.blockid, wc);
         return {
             host: info.host,
@@ -70,7 +71,7 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("workspaceid, tabid and blockid are required");
         }
-        console.log("webcdpstop", data.workspaceid, data.tabid, data.blockid);
+        log("webcdpstop", data.workspaceid, data.tabid, data.blockid);
         stopWebCdpForBlock(data.blockid);
     }
 
