@@ -31,7 +31,7 @@
         "@tailwindcss/vite": "^4.1.18",
         "@types/react": "^19",
         "@types/react-dom": "^19",
-        "@vitejs/plugin-react-swc": "^4.2.2",
+        "@vitejs/plugin-react-swc": "^4.2.3",
         "tailwindcss": "^4.1.18",
         "typescript": "^5.9.3",
         "vite": "^6.4.1"
