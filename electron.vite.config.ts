@@ -83,6 +83,7 @@ export default defineConfig({
                 },
             },
             outDir: "dist/main",
+            externalizeDeps: false,
         },
         plugins: [tsconfigPaths()],
         resolve: {
@@ -113,6 +114,7 @@ export default defineConfig({
                 },
             },
             outDir: "dist/preload",
+            externalizeDeps: false,
         },
         server: {
             open: false,
