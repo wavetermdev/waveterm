@@ -8,7 +8,7 @@ import { Notification, net, safeStorage, shell } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import {
     configureWebCdpServer,
-    getControlledWebCdpTargets,
+    getAllRegisteredWebCdpTargets,
     registerWebCdpTarget,
     stopWebCdpForBlock,
 } from "./emain-cdp";
@@ -76,7 +76,7 @@ export class ElectronWshClientType extends WshClient {
     }
 
     async handle_webcdpstatus(rh: RpcResponseHelper): Promise<WebCdpStatusEntry[]> {
-        const status = getControlledWebCdpTargets();
+        const status = getAllRegisteredWebCdpTargets();
         return status.map((s) => ({
             key: s.targetid,
             workspaceid: "",
@@ -87,6 +87,7 @@ export class ElectronWshClientType extends WshClient {
             wsurl: s.wsUrl,
             inspectorurl: s.inspectorUrl,
             targetid: s.targetid,
+            controlled: s.controlled,
         }));
     }
 

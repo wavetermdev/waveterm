@@ -26,7 +26,7 @@ async function pollOnce() {
         const status = await RpcApi.WebCdpStatusCommand(TabRpcClient, { route: "electron", timeout: 2000 });
         const next: Record<string, boolean> = {};
         for (const e of status ?? []) {
-            if (e?.blockid) {
+            if (e?.blockid && e?.controlled) {
                 next[e.blockid] = true;
             }
         }

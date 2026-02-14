@@ -23,6 +23,7 @@ var webCdpCmd = &cobra.Command{
 	Short:             "Expose a CDP websocket for a web widget",
 	Long:              "Expose a local Chrome DevTools Protocol (CDP) websocket for a web widget. WARNING: CDP grants full control of the web widget (DOM, cookies, JS execution).",
 	PersistentPreRunE: preRunSetupRpcClient,
+	Args:              cobra.NoArgs,
 	RunE:              webCdpListRun,
 }
 
@@ -57,8 +58,6 @@ func init() {
 	webCdpCmd.AddCommand(webCdpStartCmd)
 	webCdpCmd.AddCommand(webCdpStopCmd)
 	webCdpCmd.AddCommand(webCdpStatusCmd)
-
-	// attach under: wsh web cdp ...
 	webCmd.AddCommand(webCdpCmd)
 }
 
@@ -66,13 +65,12 @@ type webCdpListEntry struct {
 	BlockId     string
 	TabId       string
 	Url         string
-	CdpActive   bool
+	CdpState    string
 	CdpWsUrl    string
 	WorkspaceId string
 }
 
 func getCurrentWorkspaceId() (string, error) {
-	// Prefer resolving from current block context if available.
 	if os.Getenv("WAVETERM_BLOCKID") != "" {
 		oref, err := resolveSimpleId("this")
 		if err != nil {
@@ -100,9 +98,9 @@ func listWebBlocksInCurrentWorkspace() ([]webCdpListEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	activeMap := make(map[string]wshrpc.WebCdpStatusEntry)
+	statusMap := make(map[string]wshrpc.WebCdpStatusEntry)
 	for _, s := range status {
-		activeMap[s.BlockId] = s
+		statusMap[s.BlockId] = s
 	}
 	var out []webCdpListEntry
 	for _, b := range blocks {
@@ -115,13 +113,17 @@ func listWebBlocksInCurrentWorkspace() ([]webCdpListEntry, error) {
 			WorkspaceId: b.WorkspaceId,
 			Url:         b.Meta.GetString(waveobj.MetaKey_Url, ""),
 		}
-		if st, ok := activeMap[b.BlockId]; ok {
-			ent.CdpActive = true
+		if st, ok := statusMap[b.BlockId]; ok {
 			ent.CdpWsUrl = st.WsUrl
+			if st.Controlled {
+				ent.CdpState = "active"
+			} else {
+				ent.CdpState = "ready"
+			}
 		}
 		out = append(out, ent)
 	}
-	sort.SliceStable(out, func(i, j int) bool {
+	sort.Slice(out, func(i, j int) bool {
 		if out[i].TabId != out[j].TabId {
 			return out[i].TabId < out[j].TabId
 		}
@@ -135,20 +137,11 @@ func printWebCdpList(entries []webCdpListEntry) {
 	defer w.Flush()
 	fmt.Fprintf(w, "BLOCK ID\tTAB ID\tURL\tCDP\tWSURL\n")
 	for _, e := range entries {
-		cdp := "no"
-		wsurl := ""
-		if e.CdpActive {
-			cdp = "yes"
-			wsurl = e.CdpWsUrl
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", e.BlockId, e.TabId, e.Url, cdp, wsurl)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", e.BlockId, e.TabId, e.Url, e.CdpState, e.CdpWsUrl)
 	}
 }
 
 func webCdpListRun(cmd *cobra.Command, args []string) error {
-	if len(args) != 0 {
-		return fmt.Errorf("unexpected arguments")
-	}
 	entries, err := listWebBlocksInCurrentWorkspace()
 	if err != nil {
 		return err
@@ -172,31 +165,33 @@ func mustBeWebBlock(fullORef *waveobj.ORef) (*wshrpc.BlockInfoData, error) {
 	return blockInfo, nil
 }
 
+func isTransientCdpError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "no webcontents found") || strings.Contains(msg, "timeout waiting for response")
+}
+
 func resolveBlockArgFromContext() error {
 	thisORef, err := resolveSimpleId("this")
 	if err != nil {
-		return nil
+		return fmt.Errorf("no -b specified and could not resolve current block: %w", err)
 	}
-	_, err = mustBeWebBlock(thisORef)
-	if err == nil {
+	if _, err := mustBeWebBlock(thisORef); err == nil {
 		blockArg = "this"
 		return nil
 	}
-	entries, lerr := listWebBlocksInCurrentWorkspace()
-	if lerr == nil && len(entries) > 0 {
+	entries, err := listWebBlocksInCurrentWorkspace()
+	if err == nil && len(entries) > 0 {
 		printWebCdpList(entries)
-		return fmt.Errorf("no -b specified and current block is not a web widget; use: wsh web cdp start -b <blockid>")
 	}
-	return err
+	return fmt.Errorf("no -b specified and current block is not a web widget; use: wsh web cdp start -b <blockid>")
 }
 
 func webCdpStartRun(cmd *cobra.Command, args []string) error {
-	if strings.TrimSpace(blockArg) == "" {
+	if blockArg == "" {
 		if err := resolveBlockArgFromContext(); err != nil {
 			return err
 		}
 	}
-
 	fullORef, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving blockid: %w", err)
@@ -206,11 +201,9 @@ func webCdpStartRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	req := wshrpc.CommandWebCdpStartData{
-		WorkspaceId:   blockInfo.WorkspaceId,
-		BlockId:       fullORef.OID,
-		TabId:         blockInfo.TabId,
-		Port:          0,
-		IdleTimeoutMs: 0,
+		WorkspaceId: blockInfo.WorkspaceId,
+		BlockId:     fullORef.OID,
+		TabId:       blockInfo.TabId,
 	}
 	resp, err := wshclient.WebCdpStartCommand(RpcClient, req, &wshrpc.RpcOpts{
 		Route:   wshutil.ElectronRoute,
@@ -235,7 +228,7 @@ func webCdpStartRun(cmd *cobra.Command, args []string) error {
 }
 
 func webCdpStopRun(cmd *cobra.Command, args []string) error {
-	if strings.TrimSpace(blockArg) == "" {
+	if blockArg == "" {
 		if err := resolveBlockArgFromContext(); err != nil {
 			return err
 		}
@@ -281,7 +274,11 @@ func webCdpStatusRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	for _, e := range resp {
-		WriteStdout("%s %s\n", e.BlockId, e.WsUrl)
+		state := "ready"
+		if e.Controlled {
+			state = "active"
+		}
+		WriteStdout("%s %s %s\n", e.BlockId, state, e.WsUrl)
 	}
 	return nil
 }

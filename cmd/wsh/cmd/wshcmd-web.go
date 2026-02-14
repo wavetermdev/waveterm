@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -143,7 +142,6 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	WriteStdout("created block %s\n", oref)
 
 	if webOpenCdp {
-		// Fetch workspace/tab info for the newly-created block then start CDP.
 		blockInfo, err := wshclient.BlockInfoCommand(RpcClient, oref.OID, nil)
 		if err != nil {
 			return fmt.Errorf("getting block info for created web widget: %w", err)
@@ -152,12 +150,9 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			WorkspaceId:   blockInfo.WorkspaceId,
 			BlockId:       oref.OID,
 			TabId:         blockInfo.TabId,
-			Port:          0,
-			IdleTimeoutMs: int((5 * time.Minute) / time.Millisecond),
+			IdleTimeoutMs: int(5 * time.Minute / time.Millisecond),
 		}
-
-		// Web blocks are created asynchronously in the UI; the underlying <webview> WebContents may not exist yet.
-		// Retry briefly so `wsh web open --cdp` works reliably.
+		// Web blocks are created asynchronously; the webview may not exist yet.
 		var cdpResp *wshrpc.CommandWebCdpStartRtnData
 		var cdpErr error
 		deadline := time.Now().Add(7 * time.Second)
@@ -170,19 +165,12 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			if cdpErr == nil {
 				break
 			}
-			errStr := cdpErr.Error()
-			// Only retry the “not ready yet” cases. Fail fast for config gating or other errors.
-			if strings.Contains(errStr, "no webcontents found") || strings.Contains(errStr, "timeout waiting for response") {
-				if time.Now().After(deadline) {
-					break
-				}
-				time.Sleep(200 * time.Millisecond)
-				continue
+			if !isTransientCdpError(cdpErr) || time.Now().After(deadline) {
+				break
 			}
-			break
+			time.Sleep(200 * time.Millisecond)
 		}
 		if cdpErr != nil {
-			// Preserve the created block output so user can recover; then return error.
 			return fmt.Errorf("starting cdp for created web widget: %w", cdpErr)
 		}
 		WriteStdout("cdp wsurl: %s\n", cdpResp.WsUrl)

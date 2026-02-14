@@ -54,11 +54,10 @@ export async function configureWebCdpServer(cfg: WebCdpServerConfig) {
     await ensureSharedServer();
 }
 
-// For WSH/UI: list targets that are currently controlled.
-export function getControlledWebCdpTargets(): WebCdpTargetInfo[] {
+// For WSH/UI: list all registered targets (each includes a `controlled` flag).
+export function getAllRegisteredWebCdpTargets(): WebCdpTargetInfo[] {
     const out: WebCdpTargetInfo[] = [];
     for (const t of targetsById.values()) {
-        if (!t.controlled()) continue;
         out.push(makeTargetInfo(t));
     }
     return out;

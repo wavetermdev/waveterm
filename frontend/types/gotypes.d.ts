@@ -2043,6 +2043,7 @@ declare global {
         wsurl: string;
         inspectorurl: string;
         targetid: string;
+        controlled: boolean;
     };
 
     // service.WebReturnType

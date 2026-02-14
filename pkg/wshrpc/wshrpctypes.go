@@ -497,6 +497,7 @@ type WebCdpStatusEntry struct {
 	WsUrl        string `json:"wsurl"`
 	InspectorUrl string `json:"inspectorurl"`
 	TargetId     string `json:"targetid"`
+	Controlled   bool   `json:"controlled"`
 }
 
 type BlockInfoData struct {
