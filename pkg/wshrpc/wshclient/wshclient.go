@@ -960,6 +960,24 @@ func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoD
 	return resp, err
 }
 
+// command "webcdpstart", wshserver.WebCdpStartCommand
+func WebCdpStartCommand(w *wshutil.WshRpc, data wshrpc.CommandWebCdpStartData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWebCdpStartRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWebCdpStartRtnData](w, "webcdpstart", data, opts)
+	return resp, err
+}
+
+// command "webcdpstatus", wshserver.WebCdpStatusCommand
+func WebCdpStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.WebCdpStatusEntry, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.WebCdpStatusEntry](w, "webcdpstatus", nil, opts)
+	return resp, err
+}
+
+// command "webcdpstop", wshserver.WebCdpStopCommand
+func WebCdpStopCommand(w *wshutil.WshRpc, data wshrpc.CommandWebCdpStopData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "webcdpstop", data, opts)
+	return err
+}
+
 // command "webselector", wshserver.WebSelectorCommand
 func WebSelectorCommand(w *wshutil.WshRpc, data wshrpc.CommandWebSelectorData, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "webselector", data, opts)

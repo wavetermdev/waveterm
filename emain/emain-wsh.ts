@@ -6,6 +6,13 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification, net, safeStorage, shell } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
+import {
+    configureWebCdpServer,
+    getAllRegisteredWebCdpTargets,
+    registerWebCdpTarget,
+    stopWebCdpForBlock,
+} from "./emain-cdp";
+import { log } from "./emain-log";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
@@ -29,6 +36,59 @@ export class ElectronWshClientType extends WshClient {
         }
         const rtn = await webGetSelector(wc, data.selector, data.opts);
         return rtn;
+    }
+
+    async handle_webcdpstart(rh: RpcResponseHelper, data: CommandWebCdpStartData): Promise<CommandWebCdpStartRtnData> {
+        if (!data.tabid || !data.blockid || !data.workspaceid) {
+            throw new Error("workspaceid, tabid and blockid are required");
+        }
+        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+        if (!fullConfig?.settings?.["debug:webcdp"]) {
+            throw new Error("web cdp is disabled (enable debug:webcdp in settings.json)");
+        }
+        const cdpPort = fullConfig?.settings?.["debug:webcdpport"] ?? 9222;
+        await configureWebCdpServer({ enabled: true, port: cdpPort });
+        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        if (ww == null) {
+            throw new Error(`no window found with workspace ${data.workspaceid}`);
+        }
+        const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
+        if (wc == null) {
+            throw new Error(`no webcontents found with blockid ${data.blockid}`);
+        }
+        log("webcdpstart", data.workspaceid, data.tabid, data.blockid);
+        const info = registerWebCdpTarget(data.blockid, wc);
+        return {
+            host: info.host,
+            port: info.port,
+            wsurl: info.wsUrl,
+            inspectorurl: info.inspectorUrl,
+            targetid: info.targetid,
+        };
+    }
+
+    async handle_webcdpstop(rh: RpcResponseHelper, data: CommandWebCdpStopData): Promise<void> {
+        if (!data.tabid || !data.blockid || !data.workspaceid) {
+            throw new Error("workspaceid, tabid and blockid are required");
+        }
+        log("webcdpstop", data.workspaceid, data.tabid, data.blockid);
+        stopWebCdpForBlock(data.blockid);
+    }
+
+    async handle_webcdpstatus(rh: RpcResponseHelper): Promise<WebCdpStatusEntry[]> {
+        const status = getAllRegisteredWebCdpTargets();
+        return status.map((s) => ({
+            key: s.targetid,
+            workspaceid: "",
+            tabid: "",
+            blockid: s.blockid,
+            host: s.host,
+            port: s.port,
+            wsurl: s.wsUrl,
+            inspectorurl: s.inspectorUrl,
+            targetid: s.targetid,
+            controlled: s.controlled,
+        }));
     }
 
     async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {
