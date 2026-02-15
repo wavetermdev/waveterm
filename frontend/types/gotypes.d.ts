@@ -800,6 +800,30 @@ declare global {
         keepalivesenttime?: number;
     };
 
+    // wshrpc.CopilotDeviceLoginPollData
+    type CopilotDeviceLoginPollData = {
+    };
+
+    // wshrpc.CopilotDeviceLoginPollRtnData
+    type CopilotDeviceLoginPollRtnData = {
+        status: string;
+        error?: string;
+        modename?: string;
+    };
+
+    // wshrpc.CopilotDeviceLoginStartRtnData
+    type CopilotDeviceLoginStartRtnData = {
+        usercode: string;
+        verificationuri: string;
+        expiresin: number;
+    };
+
+    // wshrpc.CopilotDeviceLoginStatusRtnData
+    type CopilotDeviceLoginStatusRtnData = {
+        loggedin: boolean;
+        error?: string;
+    };
+
     // wshrpc.CpuDataRequest
     type CpuDataRequest = {
         id: string;

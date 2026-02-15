@@ -151,6 +151,31 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 
 	req.Header.Set("Accept", "text/event-stream")
 
+	// GitHub Copilot requires IDE identification headers
+	if opts.Provider == uctypes.AIProvider_GitHubCopilot {
+		// Static headers — IDE identification
+		req.Header.Set("User-Agent", "GitHubCopilotChat/0.35.0")
+		req.Header.Set("Editor-Version", "WaveTerm/"+wavebase.WaveVersion)
+		req.Header.Set("Editor-Plugin-Version", "CopilotChat/0.35.0")
+		req.Header.Set("Copilot-Integration-Id", "vscode-chat")
+
+		// Dynamic headers — per-request context
+		req.Header.Set("Openai-Intent", "conversation-edits")
+		initiator := "user"
+		if len(finalMessages) > 0 && finalMessages[len(finalMessages)-1].Role != "user" {
+			initiator = "agent"
+		}
+		req.Header.Set("X-Initiator", initiator)
+
+		// Vision header — only when images are present
+		for _, msg := range finalMessages {
+			if len(msg.ContentParts) > 0 {
+				req.Header.Set("Copilot-Vision-Request", "true")
+				break
+			}
+		}
+	}
+
 	// Only send Wave-specific headers when using Wave provider
 	if opts.Provider == uctypes.AIProvider_Wave {
 		if chatOpts.ClientId != "" {

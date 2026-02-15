@@ -28,10 +28,11 @@ const (
 
 	AzureLegacyDefaultAPIVersion = "2025-04-01-preview"
 
-	OpenAIAPITokenSecretName      = "OPENAI_KEY"
-	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
-	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
-	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
+	OpenAIAPITokenSecretName         = "OPENAI_KEY"
+	OpenRouterAPITokenSecretName     = "OPENROUTER_KEY"
+	AzureOpenAIAPITokenSecretName    = "AZURE_OPENAI_KEY"
+	GoogleAIAPITokenSecretName       = "GOOGLE_AI_KEY"
+	GitHubCopilotAPITokenSecretName  = "GITHUB_COPILOT_TOKEN"
 )
 
 func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
@@ -145,6 +146,25 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if len(config.Capabilities) == 0 {
 			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
+		}
+	}
+	if config.Provider == uctypes.AIProvider_GitHubCopilot {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_GitHubCopilot
+		}
+		// The endpoint is dynamically resolved during token exchange,
+		// but we set a placeholder so validation doesn't fail.
+		if config.Endpoint == "" {
+			config.Endpoint = "https://api.individual.githubcopilot.com/chat/completions"
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = GitHubCopilotAPITokenSecretName
+		}
+		if config.Model == "" {
+			config.Model = "gpt-4o"
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages}
 		}
 	}
 	if config.APIType == "" {

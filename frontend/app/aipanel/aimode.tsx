@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getApi, getSettingsKeyAtom } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { getFilteredAIModeConfigs, getModeDisplayName } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
@@ -147,6 +147,91 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const copilotLoginAbortRef = useRef<AbortController | null>(null);
+    const [copilotLoggedIn, setCopilotLoggedIn] = useState(false);
+    const [copilotLoginState, setCopilotLoginState] = useState<
+        | { status: "idle" }
+        | { status: "waiting"; userCode: string; verificationUri: string }
+        | { status: "polling" }
+        | { status: "complete" }
+        | { status: "error"; message: string }
+    >({ status: "idle" });
+
+    // Check Copilot login status on mount and when dropdown opens
+    useEffect(() => {
+        fireAndForget(async () => {
+            try {
+                const status = await RpcApi.CopilotDeviceLoginStatusCommand(TabRpcClient);
+                setCopilotLoggedIn(status.loggedin);
+            } catch {
+                // ignore errors
+            }
+        });
+    }, [isOpen]);
+
+    const handleCopilotLogin = useCallback(() => {
+        const abortController = new AbortController();
+        copilotLoginAbortRef.current = abortController;
+        fireAndForget(async () => {
+            setCopilotLoginState({ status: "polling" });
+            try {
+                const startData = await RpcApi.CopilotDeviceLoginStartCommand(TabRpcClient);
+                if (abortController.signal.aborted) return;
+                setCopilotLoginState({
+                    status: "waiting",
+                    userCode: startData.usercode,
+                    verificationUri: startData.verificationuri,
+                });
+                // Copy code to clipboard and open browser
+                await navigator.clipboard.writeText(startData.usercode);
+                getApi().openExternal(startData.verificationuri);
+                // Now poll for completion
+                const pollResult = await RpcApi.CopilotDeviceLoginPollCommand(TabRpcClient, {}, { timeout: 15 * 60 * 1000 });
+                if (abortController.signal.aborted) return;
+                if (pollResult.status === "complete") {
+                    setCopilotLoginState({ status: "complete" });
+                    setCopilotLoggedIn(true);
+                    // Auto-switch to the copilot mode if one was created
+                    if (pollResult.modename) {
+                        // Wait briefly for config watcher to pick up the new mode
+                        setTimeout(() => {
+                            model.setAIMode(pollResult.modename);
+                        }, 500);
+                    }
+                    setTimeout(() => setCopilotLoginState({ status: "idle" }), 3000);
+                } else {
+                    setCopilotLoginState({
+                        status: "error",
+                        message: pollResult.error || "Login failed",
+                    });
+                    setTimeout(() => setCopilotLoginState({ status: "idle" }), 5000);
+                }
+            } catch (e: any) {
+                if (abortController.signal.aborted) return;
+                setCopilotLoginState({ status: "error", message: e.message || "Login failed" });
+                setTimeout(() => setCopilotLoginState({ status: "idle" }), 5000);
+            }
+        });
+    }, []);
+
+    const handleCopilotLoginCancel = useCallback(() => {
+        if (copilotLoginAbortRef.current) {
+            copilotLoginAbortRef.current.abort();
+            copilotLoginAbortRef.current = null;
+        }
+        setCopilotLoginState({ status: "idle" });
+    }, []);
+
+    const handleCopilotLogout = useCallback(() => {
+        fireAndForget(async () => {
+            try {
+                await RpcApi.CopilotDeviceLogoutCommand(TabRpcClient);
+                setCopilotLoggedIn(false);
+            } catch (e: any) {
+                console.error("Failed to logout from Copilot:", e);
+            }
+        });
+    }, []);
 
     const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
@@ -312,6 +397,72 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                             <i className={makeIconClass("plus", false)}></i>
                             <span className="text-sm">New Chat</span>
                         </button>
+                        <div className="border-t border-gray-600 my-1" />
+                        {copilotLoginState.status === "idle" && !copilotLoggedIn && (
+                            <button
+                                onClick={handleCopilotLogin}
+                                className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
+                            >
+                                <i className="fa-brands fa-github text-[12px]"></i>
+                                <span className="text-sm">Login to GitHub Copilot</span>
+                            </button>
+                        )}
+                        {copilotLoginState.status === "idle" && copilotLoggedIn && (
+                            <div className="w-full flex items-center justify-between px-3 pt-1 pb-1 text-left">
+                                <div className="flex items-center gap-2 text-green-400">
+                                    <i className="fa-brands fa-github text-[12px]"></i>
+                                    <span className="text-sm">Copilot Connected</span>
+                                </div>
+                                <button
+                                    onClick={handleCopilotLogout}
+                                    className="text-[11px] text-gray-500 hover:text-red-400 cursor-pointer transition-colors"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )}
+                        {copilotLoginState.status === "polling" && (
+                            <div className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-gray-400 text-left">
+                                <i className="fa fa-spinner fa-spin text-[12px]"></i>
+                                <span className="text-sm">Starting login...</span>
+                            </div>
+                        )}
+                        {copilotLoginState.status === "waiting" && (
+                            <div className="w-full flex flex-col gap-1 px-3 pt-1 pb-1 text-left">
+                                <div className="flex items-center gap-2 text-green-300">
+                                    <i className="fa fa-key text-[12px]"></i>
+                                    <span className="text-sm font-bold">{copilotLoginState.userCode}</span>
+                                </div>
+                                <div className="text-[11px] text-gray-400">
+                                    Code copied! Paste it on GitHub.
+                                </div>
+                                <div className="flex items-center justify-between text-gray-400">
+                                    <div className="flex items-center gap-2">
+                                        <i className="fa fa-spinner fa-spin text-[10px]"></i>
+                                        <span className="text-[11px]">Waiting for authorization...</span>
+                                    </div>
+                                    <button
+                                        onClick={handleCopilotLoginCancel}
+                                        className="text-[11px] text-red-400 hover:text-red-300 cursor-pointer transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {copilotLoginState.status === "complete" && (
+                            <div className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-green-400 text-left">
+                                <i className="fa fa-check text-[12px]"></i>
+                                <span className="text-sm">Logged in to GitHub Copilot!</span>
+                            </div>
+                        )}
+                        {copilotLoginState.status === "error" && (
+                            <div className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-red-400 text-left">
+                                <i className="fa fa-triangle-exclamation text-[12px]"></i>
+                                <span className="text-sm">{copilotLoginState.message}</span>
+                            </div>
+                        )}
+                        <div className="border-t border-gray-600 my-1" />
                         <button
                             onClick={handleConfigureClick}
                             className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"

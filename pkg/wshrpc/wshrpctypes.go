@@ -149,6 +149,12 @@ type WshRpcInterface interface {
 	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
 	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
 
+	// github copilot device flow
+	CopilotDeviceLoginStartCommand(ctx context.Context) (*CopilotDeviceLoginStartRtnData, error)
+	CopilotDeviceLoginPollCommand(ctx context.Context, data CopilotDeviceLoginPollData) (*CopilotDeviceLoginPollRtnData, error)
+	CopilotDeviceLoginStatusCommand(ctx context.Context) (*CopilotDeviceLoginStatusRtnData, error)
+	CopilotDeviceLogoutCommand(ctx context.Context) error
+
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
 
@@ -559,6 +565,27 @@ type CommandWaveAIGetToolDiffData struct {
 type CommandWaveAIGetToolDiffRtnData struct {
 	OriginalContents64 string `json:"originalcontents64"`
 	ModifiedContents64 string `json:"modifiedcontents64"`
+}
+
+type CopilotDeviceLoginStartRtnData struct {
+	UserCode        string `json:"usercode"`
+	VerificationURI string `json:"verificationuri"`
+	ExpiresIn       int    `json:"expiresin"`
+}
+
+type CopilotDeviceLoginPollData struct {
+	// No data needed — the server tracks the pending device flow internally
+}
+
+type CopilotDeviceLoginPollRtnData struct {
+	Status   string `json:"status"` // "pending", "complete", "expired", "error"
+	Error    string `json:"error,omitempty"`
+	ModeName string `json:"modename,omitempty"` // the AI mode name to switch to after successful login
+}
+
+type CopilotDeviceLoginStatusRtnData struct {
+	LoggedIn bool   `json:"loggedin"`
+	Error    string `json:"error,omitempty"`
 }
 
 type CommandCaptureBlockScreenshotData struct {
