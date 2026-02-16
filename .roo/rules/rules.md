@@ -75,17 +75,6 @@ The full API is defined in custom.d.ts as type ElectronApi.
 - **TypeScript Types**: TypeScript types are automatically generated from Go types. After modifying Go types in `pkg/wshrpc/wshrpctypes.go`, run `task generate` to update the TypeScript type definitions in `frontend/types/gotypes.d.ts`.
 - **Manual Edits**: Do not manually edit generated files like `frontend/types/gotypes.d.ts` or `frontend/app/store/wshclientapi.ts`. Instead, modify the source Go types and run `task generate`.
 
-### Development Documentation
-
-The `/aiprompts` directory contains comprehensive guides for common development tasks:
-
-- **config-system.md** - Complete guide for adding new configuration settings, including the hierarchical config system with global, connection, and block-level overrides
-- **contextmenu.md** - Instructions for adding context menu items and actions
-- **getsetconfigvar.md** - Reference for reading and writing configuration values programmatically
-- **view-prompt.md** - Architecture guide for implementing new view models and components
-
-These files provide step-by-step instructions, code examples, and best practices for extending Wave Terminal's functionality.
-
 ### Frontend Architecture
 
 - The application uses Jotai for state management.
