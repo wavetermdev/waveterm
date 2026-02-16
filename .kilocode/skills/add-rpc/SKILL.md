@@ -13,12 +13,12 @@ This guide covers how to add a new RPC command to the system.
 
 ## Key Files
 
-- [`pkg/wshrpc/wshrpctypes.go`](../../../pkg/wshrpc/wshrpctypes.go) - RPC interface and type definitions
-- [`pkg/wshrpc/wshserver/wshserver.go`](../../../pkg/wshrpc/wshserver/wshserver.go) - Main server implementation (most common)
-- [`emain/emain-wsh.ts`](../../../emain/emain-wsh.ts) - Electron main process implementation
-- [`frontend/app/store/tabrpcclient.ts`](../../../frontend/app/store/tabrpcclient.ts) - Frontend tab implementation
-- [`pkg/wshrpc/wshremote/wshremote.go`](../../../pkg/wshrpc/wshremote/wshremote.go) - Remote server implementation
-- [`frontend/app/view/term/term-wsh.tsx`](../../../frontend/app/view/term/term-wsh.tsx) - Terminal block implementation
+- `pkg/wshrpc/wshrpctypes.go` - RPC interface and type definitions
+- `pkg/wshrpc/wshserver/wshserver.go` - Main server implementation (most common)
+- `emain/emain-wsh.ts` - Electron main process implementation
+- `frontend/app/store/tabrpcclient.ts` - Frontend tab implementation
+- `pkg/wshrpc/wshremote/wshremote.go` - Remote server implementation
+- `frontend/app/view/term/term-wsh.tsx` - Terminal block implementation
 
 ## RPC Command Structure
 
@@ -34,7 +34,7 @@ RPC commands in Wave Terminal follow these conventions:
 
 ### Step 1: Define the Command in the Interface
 
-Add your command to the [`WshRpcInterface`](../../../pkg/wshrpc/wshrpctypes.go) in `pkg/wshrpc/wshrpctypes.go`:
+Add your command to the `WshRpcInterface` in `pkg/wshrpc/wshrpctypes.go`:
 
 ```go
 type WshRpcInterface interface {
@@ -79,14 +79,14 @@ type YourNewResponse struct {
 
 ### Step 3: Generate Bindings
 
-After modifying [`pkg/wshrpc/wshrpctypes.go`](../../../pkg/wshrpc/wshrpctypes.go), run code generation to create TypeScript bindings and Go helper code:
+After modifying `pkg/wshrpc/wshrpctypes.go`, run code generation to create TypeScript bindings and Go helper code:
 
 ```bash
 task generate
 ```
 
 This command will:
-- Generate TypeScript type definitions in [`frontend/types/gotypes.d.ts`](../../../frontend/types/gotypes.d.ts)
+- Generate TypeScript type definitions in `frontend/types/gotypes.d.ts`
 - Create RPC client bindings
 - Update routing code
 
@@ -98,7 +98,7 @@ Choose where to implement your command based on what it needs to do:
 
 #### A. Main Server Implementation (Most Common)
 
-Implement in [`pkg/wshrpc/wshserver/wshserver.go`](../../../pkg/wshrpc/wshserver/wshserver.go):
+Implement in `pkg/wshrpc/wshserver/wshserver.go`:
 
 ```go
 func (ws *WshServer) YourNewCommand(ctx context.Context, data wshrpc.CommandYourNewData) (*wshrpc.YourNewResponse, error) {
@@ -126,7 +126,7 @@ func (ws *WshServer) YourNewCommand(ctx context.Context, data wshrpc.CommandYour
 
 #### B. Electron Implementation
 
-Implement in [`emain/emain-wsh.ts`](../../../emain/emain-wsh.ts):
+Implement in `emain/emain-wsh.ts`:
 
 ```typescript
 async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<YourNewResponse> {
@@ -148,7 +148,7 @@ async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<Y
 
 #### C. Frontend Tab Implementation
 
-Implement in [`frontend/app/store/tabrpcclient.ts`](../../../frontend/app/store/tabrpcclient.ts):
+Implement in `frontend/app/store/tabrpcclient.ts`:
 
 ```typescript
 async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<YourNewResponse> {
@@ -173,7 +173,7 @@ async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<Y
 
 #### D. Remote Server Implementation
 
-Implement in [`pkg/wshrpc/wshremote/wshremote.go`](../../../pkg/wshrpc/wshremote/wshremote.go):
+Implement in `pkg/wshrpc/wshremote/wshremote.go`:
 
 ```go
 func (impl *ServerImpl) RemoteYourNewCommand(ctx context.Context, data wshrpc.CommandRemoteYourNewData) (*wshrpc.YourNewResponse, error) {
@@ -198,7 +198,7 @@ func (impl *ServerImpl) RemoteYourNewCommand(ctx context.Context, data wshrpc.Co
 
 #### E. Terminal Block Implementation
 
-Implement in [`frontend/app/view/term/term-wsh.tsx`](../../../frontend/app/view/term/term-wsh.tsx):
+Implement in `frontend/app/view/term/term-wsh.tsx`:
 
 ```typescript
 async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<YourNewResponse> {
@@ -225,7 +225,7 @@ async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<Y
 
 ### 1. Define Interface
 
-In [`pkg/wshrpc/wshrpctypes.go`](../../../pkg/wshrpc/wshrpctypes.go):
+In `pkg/wshrpc/wshrpctypes.go`:
 
 ```go
 type WshRpcInterface interface {
@@ -249,7 +249,7 @@ task generate
 
 ### 3. Implement in Main Server
 
-In [`pkg/wshrpc/wshserver/wshserver.go`](../../../pkg/wshrpc/wshserver/wshserver.go):
+In `pkg/wshrpc/wshserver/wshserver.go`:
 
 ```go
 func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
@@ -435,20 +435,19 @@ func (ws *WshServer) DoActionCommand(ctx context.Context, data wshrpc.CommandAct
 
 When adding a new RPC command:
 
-- [ ] Add method to [`WshRpcInterface`](../../../pkg/wshrpc/wshrpctypes.go) (must end with `Command`)
+- [ ] Add method to `WshRpcInterface` in `pkg/wshrpc/wshrpctypes.go` (must end with `Command`)
 - [ ] Define request/response types with JSON tags (if needed)
 - [ ] Run `task generate` to create bindings
 - [ ] Implement in appropriate location:
-  - [ ] [`wshserver.go`](../../../pkg/wshrpc/wshserver/wshserver.go) for main server (most common)
-  - [ ] [`emain-wsh.ts`](../../../emain/emain-wsh.ts) for Electron
-  - [ ] [`tabrpcclient.ts`](../../../frontend/app/store/tabrpcclient.ts) for frontend
-  - [ ] [`wshremote.go`](../../../pkg/wshrpc/wshremote/wshremote.go) for remote (prefix with `Remote`)
-  - [ ] [`term-wsh.tsx`](../../../frontend/app/view/term/term-wsh.tsx) for terminal
+  - [ ] `wshserver.go` for main server (most common)
+  - [ ] `emain-wsh.ts` for Electron
+  - [ ] `tabrpcclient.ts` for frontend
+  - [ ] `wshremote.go` for remote (prefix with `Remote`)
+  - [ ] `term-wsh.tsx` for terminal
 - [ ] Add input validation
 - [ ] Handle errors with context
 - [ ] Test the command end-to-end
 
 ## Related Documentation
 
-- **WPS Events**: [`.kilocode/skills/wps-events/SKILL.md`](../wps-events/SKILL.md) - Publishing events from RPC commands
-- **Configuration System**: [`aiprompts/config-system.md`](../../../aiprompts/config-system.md) - Config-related RPC patterns
+- **WPS Events**: See the `wps-events` skill - Publishing events from RPC commands

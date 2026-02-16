@@ -11,12 +11,12 @@ This guide explains how to add a new configuration setting to Wave Terminal's hi
 
 Wave Terminal uses a hierarchical configuration system with:
 
-1. **Go Struct Definitions** - Type-safe configuration structure in [`pkg/wconfig/settingsconfig.go`](../../../pkg/wconfig/settingsconfig.go)
-2. **JSON Schema** - Auto-generated validation schema in [`schema/settings.json`](../../../schema/settings.json)
-3. **Default Values** - Built-in defaults in [`pkg/wconfig/defaultconfig/settings.json`](../../../pkg/wconfig/defaultconfig/settings.json)
+1. **Go Struct Definitions** - Type-safe configuration structure in `pkg/wconfig/settingsconfig.go`
+2. **JSON Schema** - Auto-generated validation schema in `schema/settings.json`
+3. **Default Values** - Built-in defaults in `pkg/wconfig/defaultconfig/settings.json`
 4. **User Configuration** - User overrides in `~/.config/waveterm/settings.json`
-5. **Block Metadata** - Block-level overrides in [`pkg/waveobj/wtypemeta.go`](../../../pkg/waveobj/wtypemeta.go)
-6. **Documentation** - User-facing docs in [`docs/docs/config.mdx`](../../../docs/docs/config.mdx)
+5. **Block Metadata** - Block-level overrides in `pkg/waveobj/wtypemeta.go`
+6. **Documentation** - User-facing docs in `docs/docs/config.mdx`
 
 Settings cascade from defaults → user settings → connection config → block overrides.
 
@@ -24,7 +24,7 @@ Settings cascade from defaults → user settings → connection config → block
 
 ### Step 1: Add to Go Struct Definition
 
-Edit [`pkg/wconfig/settingsconfig.go`](../../../pkg/wconfig/settingsconfig.go) and add your new field to the `SettingsType` struct:
+Edit `pkg/wconfig/settingsconfig.go` and add your new field to the `SettingsType` struct:
 
 ```go
 type SettingsType struct {
@@ -68,7 +68,7 @@ type SettingsType struct {
 
 ### Step 1.5: Add to Block Metadata (Optional)
 
-If your setting should support block-level overrides, also add it to [`pkg/waveobj/wtypemeta.go`](../../../pkg/waveobj/wtypemeta.go):
+If your setting should support block-level overrides, also add it to `pkg/waveobj/wtypemeta.go`:
 
 ```go
 type MetaTSType struct {
@@ -94,7 +94,7 @@ type MetaTSType struct {
 
 ### Step 2: Set Default Value (Optional)
 
-If your setting should have a default value, add it to [`pkg/wconfig/defaultconfig/settings.json`](../../../pkg/wconfig/defaultconfig/settings.json):
+If your setting should have a default value, add it to `pkg/wconfig/defaultconfig/settings.json`:
 
 ```json
 {
@@ -118,7 +118,7 @@ If your setting should have a default value, add it to [`pkg/wconfig/defaultconf
 
 ### Step 3: Update Documentation
 
-Add your new setting to the configuration table in [`docs/docs/config.mdx`](../../../docs/docs/config.mdx):
+Add your new setting to the configuration table in `docs/docs/config.mdx`:
 
 ```markdown
 | Key Name            | Type     | Function                                  |
@@ -148,11 +148,11 @@ task generate
 **What this does:**
 
 - Runs `task build:schema` (automatically generates JSON schema from Go structs)
-- Generates TypeScript type definitions in [`frontend/types/gotypes.d.ts`](../../../frontend/types/gotypes.d.ts)
+- Generates TypeScript type definitions in `frontend/types/gotypes.d.ts`
 - Generates RPC client APIs
 - Generates metadata constants
 
-**Important:** The JSON schema in [`schema/settings.json`](../../../schema/settings.json) is **automatically generated** from the Go struct definitions - you don't need to edit it manually.
+**Important:** The JSON schema in `schema/settings.json` is **automatically generated** from the Go struct definitions - you don't need to edit it manually.
 
 ### Step 5: Use in Frontend Code
 
@@ -218,7 +218,7 @@ if fullConfig.Settings.MyIntSetting != nil {
 
 **Use case:** Add a setting to hide the AI button globally
 
-#### 1. Go Struct ([`pkg/wconfig/settingsconfig.go`](../../../pkg/wconfig/settingsconfig.go))
+#### 1. Go Struct (`pkg/wconfig/settingsconfig.go`)
 
 ```go
 type SettingsType struct {
@@ -227,7 +227,7 @@ type SettingsType struct {
 }
 ```
 
-#### 2. Default Value ([`pkg/wconfig/defaultconfig/settings.json`](../../../pkg/wconfig/defaultconfig/settings.json))
+#### 2. Default Value (`pkg/wconfig/defaultconfig/settings.json`)
 
 ```json
 {
@@ -235,7 +235,7 @@ type SettingsType struct {
 }
 ```
 
-#### 3. Documentation ([`docs/docs/config.mdx`](../../../docs/docs/config.mdx))
+#### 3. Documentation (`docs/docs/config.mdx`)
 
 ```markdown
 | app:hideaibutton <VersionBadge version="v0.14" /> | bool | Hide the AI button in the tab bar (defaults to false) |
@@ -254,11 +254,11 @@ import { getSettingsKeyAtom } from "@/store/global";
 
 const TabBar = () => {
     const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
-    
+
     if (hideAiButton) {
         return null; // Don't render AI button
     }
-    
+
     return <button>AI</button>;
 };
 ```
@@ -279,7 +279,7 @@ wsh setconfig app:hideaibutton=true
 
 **Use case:** Add a terminal bell sound setting that can be overridden per block
 
-#### 1. Go Struct ([`pkg/wconfig/settingsconfig.go`](../../../pkg/wconfig/settingsconfig.go))
+#### 1. Go Struct (`pkg/wconfig/settingsconfig.go`)
 
 ```go
 type SettingsType struct {
@@ -288,7 +288,7 @@ type SettingsType struct {
 }
 ```
 
-#### 2. Block Metadata ([`pkg/waveobj/wtypemeta.go`](../../../pkg/waveobj/wtypemeta.go))
+#### 2. Block Metadata (`pkg/waveobj/wtypemeta.go`)
 
 ```go
 type MetaTSType struct {
@@ -297,7 +297,7 @@ type MetaTSType struct {
 }
 ```
 
-#### 3. Default Value ([`pkg/wconfig/defaultconfig/settings.json`](../../../pkg/wconfig/defaultconfig/settings.json))
+#### 3. Default Value (`pkg/wconfig/defaultconfig/settings.json`)
 
 ```json
 {
@@ -305,7 +305,7 @@ type MetaTSType struct {
 }
 ```
 
-#### 4. Documentation ([`docs/docs/config.mdx`](../../../docs/docs/config.mdx))
+#### 4. Documentation (`docs/docs/config.mdx`)
 
 ```markdown
 | term:bellsound <VersionBadge version="v0.14" /> | string | Sound to play for terminal bell ("default", "none", or custom sound file path) |
@@ -326,12 +326,12 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     // Use override config for hierarchical resolution
     const bellSoundAtom = getOverrideConfigAtom(blockId, "term:bellsound");
     const bellSound = useAtomValue(bellSoundAtom) ?? "default";
-    
+
     const playBellSound = () => {
         if (bellSound === "none") return;
         // Play the bell sound
     };
-    
+
     return <div>Terminal with bell: {bellSound}</div>;
 };
 ```
@@ -406,6 +406,7 @@ await RpcApi.SetMetaCommand(TabRpcClient, {
 **Problem:** Component breaks if setting is undefined
 
 **Solution:** Always use `??` operator with fallback:
+
 ```typescript
 const value = useAtomValue(getSettingsKeyAtom("key")) ?? "default";
 ```
@@ -456,17 +457,15 @@ const value = useAtomValue(getSettingsKeyAtom("key")) ?? "default";
 
 When adding a new configuration setting:
 
-- [ ] Add field to `SettingsType` in [`pkg/wconfig/settingsconfig.go`](../../../pkg/wconfig/settingsconfig.go)
-- [ ] Add field to `MetaTSType` in [`pkg/waveobj/wtypemeta.go`](../../../pkg/waveobj/wtypemeta.go) (if block override needed)
-- [ ] Add default to [`pkg/wconfig/defaultconfig/settings.json`](../../../pkg/wconfig/defaultconfig/settings.json) (if needed)
-- [ ] Document in [`docs/docs/config.mdx`](../../../docs/docs/config.mdx)
+- [ ] Add field to `SettingsType` in `pkg/wconfig/settingsconfig.go`
+- [ ] Add field to `MetaTSType` in `pkg/waveobj/wtypemeta.go` (if block override needed)
+- [ ] Add default to `pkg/wconfig/defaultconfig/settings.json` (if needed)
+- [ ] Document in `docs/docs/config.mdx`
 - [ ] Run `task generate` to update TypeScript types
 - [ ] Use appropriate atom (`getOverrideConfigAtom` or `getSettingsKeyAtom`) in frontend
 
 ## Related Documentation
 
-- **Configuration System Overview**: [`aiprompts/config-system.md`](../../../aiprompts/config-system.md) - Comprehensive documentation
-- **Quick Adding Guide**: [`aiplans/new-config.md`](../../../aiplans/new-config.md) - Quick reference for adding settings
-- **User Documentation**: [`docs/docs/config.mdx`](../../../docs/docs/config.mdx) - User-facing configuration docs
-- **Type Definitions**: [`pkg/wconfig/settingsconfig.go`](../../../pkg/wconfig/settingsconfig.go) - Go struct definitions
-- **Metadata Types**: [`pkg/waveobj/wtypemeta.go`](../../../pkg/waveobj/wtypemeta.go) - Block metadata definitions
+- **User Documentation**: `docs/docs/config.mdx` - User-facing configuration docs
+- **Type Definitions**: `pkg/wconfig/settingsconfig.go` - Go struct definitions
+- **Metadata Types**: `pkg/waveobj/wtypemeta.go` - Block metadata definitions
