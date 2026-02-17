@@ -76,6 +76,12 @@ const (
 	DialSubCode_Other           = "other"
 )
 
+// Auth error subcodes for more granular classification
+const (
+	AuthSubCode_UnableToAuth    = "unable-to-auth"
+	AuthSubCode_HandshakeFailed = "handshake-failed"
+)
+
 var waveSshConfigUserSettingsInternal *ssh_config.UserSettings
 var configUserSettingsOnce = &sync.Once{}
 
@@ -149,10 +155,10 @@ func ClassifyConnError(err error) (string, string) {
 	}
 	errStr := err.Error()
 	if strings.Contains(errStr, "unable to authenticate") {
-		return ConnErrCode_AuthFailed, ""
+		return ConnErrCode_AuthFailed, AuthSubCode_UnableToAuth
 	}
 	if strings.Contains(errStr, "handshake failed") {
-		return ConnErrCode_AuthFailed, ""
+		return ConnErrCode_AuthFailed, AuthSubCode_HandshakeFailed
 	}
 	if strings.Contains(errStr, "connection refused") {
 		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
@@ -169,18 +175,18 @@ func ClassifyDialErrorSubCode(err error) string {
 	if err == nil {
 		return ""
 	}
-	
+
 	// Check for context cancellation first
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return DialSubCode_ContextCanceled
 	}
-	
+
 	// Check if it's a DNS error
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
 		return DialSubCode_DNS
 	}
-	
+
 	// Check if it's a network operation error
 	var opErr *net.OpError
 	if errors.As(err, &opErr) {
@@ -211,7 +217,7 @@ func ClassifyDialErrorSubCode(err error) string {
 			return DialSubCode_Timeout
 		}
 	}
-	
+
 	// Check error string for common patterns
 	errStr := err.Error()
 	if strings.Contains(errStr, "connection refused") {
@@ -235,7 +241,7 @@ func ClassifyDialErrorSubCode(err error) string {
 	if strings.Contains(errStr, "permission denied") {
 		return DialSubCode_PermDenied
 	}
-	
+
 	return DialSubCode_Other
 }
 
@@ -847,7 +853,7 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
-			subCode := DialSubCode_ProxyJump  // This is a proxy jump connection error
+			subCode := DialSubCode_ProxyJump // This is a proxy jump connection error
 			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
 			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, subCode, err)
 		}
