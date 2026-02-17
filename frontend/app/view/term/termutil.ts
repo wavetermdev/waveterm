@@ -4,6 +4,7 @@
 export const DefaultTermTheme = "default-dark";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import * as TermTypes from "@xterm/xterm";
 import base64 from "base64-js";
 import { colord } from "colord";
 
@@ -318,4 +319,45 @@ export async function extractAllClipboardData(e?: ClipboardEvent): Promise<Array
         }
         return results;
     }
+}
+
+/**
+ * Converts terminal buffer lines to text, properly handling wrapped lines.
+ * Wrapped lines (long lines split across multiple buffer rows) are concatenated
+ * without adding newlines between them, while preserving actual line breaks.
+ *
+ * @param buffer - The xterm.js buffer to extract lines from
+ * @param startIndex - Starting buffer index (inclusive, 0-based)
+ * @param endIndex - Ending buffer index (exclusive, 0-based)
+ * @returns Array of logical lines (with wrapped lines concatenated)
+ */
+export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number, endIndex: number): string[] {
+    const lines: string[] = [];
+    let currentLine = "";
+    let isFirstLine = true;
+
+    for (let i = startIndex; i < endIndex; i++) {
+        const line = buffer.getLine(i);
+        if (line) {
+            const lineText = line.translateToString(true);
+            // If this line is wrapped (continuation of previous line), concatenate without newline
+            if (line.isWrapped && !isFirstLine) {
+                currentLine += lineText;
+            } else {
+                // This is a new logical line
+                if (!isFirstLine) {
+                    lines.push(currentLine);
+                }
+                currentLine = lineText;
+                isFirstLine = false;
+            }
+        }
+    }
+
+    // Don't forget the last line
+    if (!isFirstLine) {
+        lines.push(currentLine);
+    }
+
+    return lines;
 }
