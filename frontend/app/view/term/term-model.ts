@@ -4,6 +4,7 @@
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
+import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -911,6 +912,36 @@ export class TermViewModel implements ViewModel {
             });
             fullMenu.push({ type: "separator" });
         }
+
+        fullMenu.push({
+            label: "Save Session As...",
+            click: () => {
+                if (this.termRef.current) {
+                    const content = this.termRef.current.getScrollbackContent();
+                    if (content) {
+                        fireAndForget(async () => {
+                            try {
+                                const success = await getApi().saveTextFile("session.log", content);
+                                if (!success) {
+                                    console.log("Save scrollback cancelled by user");
+                                }
+                            } catch (error) {
+                                console.error("Failed to save scrollback:", error);
+                                const errorMessage = error?.message || "An unknown error occurred";
+                                modalsModel.pushModal("MessageModal", {
+                                    children: `Failed to save session scrollback: ${errorMessage}`,
+                                });
+                            }
+                        });
+                    } else {
+                        modalsModel.pushModal("MessageModal", {
+                            children: "No scrollback content to save.",
+                        });
+                    }
+                }
+            },
+        });
+        fullMenu.push({ type: "separator" });
 
         const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {
             return {

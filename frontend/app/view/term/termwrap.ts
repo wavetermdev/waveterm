@@ -528,4 +528,41 @@ export class TermWrap {
             }, 30);
         }
     }
+
+    getScrollbackContent(): string {
+        if (!this.terminal) {
+            return "";
+        }
+        // Get the entire buffer including scrollback as plain text
+        const buffer = this.terminal.buffer.active;
+        const lines: string[] = [];
+        let currentLine = "";
+        let isFirstLine = true;
+        
+        // Get all lines including scrollback, handling wrapped lines
+        for (let i = 0; i < buffer.length; i++) {
+            const line = buffer.getLine(i);
+            if (line) {
+                const lineText = line.translateToString(true);
+                // If this line is wrapped (continuation of previous line), concatenate without newline
+                if (line.isWrapped && !isFirstLine) {
+                    currentLine += lineText;
+                } else {
+                    // This is a new logical line
+                    if (!isFirstLine) {
+                        lines.push(currentLine);
+                    }
+                    currentLine = lineText;
+                    isFirstLine = false;
+                }
+            }
+        }
+        
+        // Don't forget the last line
+        if (!isFirstLine) {
+            lines.push(currentLine);
+        }
+        
+        return lines.join("\n");
+    }
 }
