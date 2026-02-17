@@ -28,12 +28,12 @@ Wave also supports durable SSH sessions that survive network interruptions and r
 - Rich file preview system for remote files (markdown, images, video, PDFs, CSVs, directories)
 - Quick full-screen toggle for any block - expand terminals, editors, and previews for better visibility, then instantly return to multi-block view
 - AI chat widget with support for multiple models (OpenAI, Claude, Azure, Perplexity, Ollama)
-- Command Blocks for isolating and monitoring individual commands with auto-close options
+- Command Blocks for isolating and monitoring individual commands
 - One-click remote connections with full terminal and file system access
 - Secure secret storage using native system backends - store API keys and credentials locally, access them across SSH sessions
 - Rich customization including tab themes, terminal styles, and background images
 - Powerful `wsh` command system for managing your workspace from the CLI and sharing data between terminal sessions
-- Connected file management with `wsh file` - seamlessly copy and sync files between local, remote SSH hosts, Wave filesystem, and S3
+- Connected file management with `wsh file` - seamlessly copy and sync files between local and remote SSH hosts.
 
 ## Wave AI
 
