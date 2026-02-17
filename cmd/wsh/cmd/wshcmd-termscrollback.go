@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var termScrollbackCmd = &cobra.Command{
@@ -75,7 +76,7 @@ func termScrollbackRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	result, err := wshclient.TermGetScrollbackLinesCommand(RpcClient, scrollbackData, &wshrpc.RpcOpts{
-		Route:   fullORef.String(),
+		Route:   wshutil.MakeFeBlockRouteId(fullORef.OID),
 		Timeout: 5000,
 	})
 	if err != nil {
