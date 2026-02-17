@@ -20,6 +20,45 @@ import {
     PanelResizeHandle,
 } from "react-resizable-panels";
 
+const InnerContent = memo(({ tabId }: { tabId: string }) => {
+    const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
+    const innerContainerWidth = workspaceLayoutModel.getInnerContainerWidth();
+    const initialWidgetsPercentage = workspaceLayoutModel.getWidgetsPercentage(innerContainerWidth);
+    const innerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+
+    useEffect(() => {
+        if (innerPanelGroupRef.current) {
+            workspaceLayoutModel.registerInnerPanelGroupRef(innerPanelGroupRef.current);
+        }
+    }, []);
+
+    const widgetsMinSize = workspaceLayoutModel.getWidgetsMinPercentage(innerContainerWidth);
+    const widgetsMaxSize = workspaceLayoutModel.getWidgetsMaxPercentage(innerContainerWidth);
+
+    return (
+        <PanelGroup
+            direction="horizontal"
+            onLayout={workspaceLayoutModel.handleInnerPanelLayout}
+            ref={innerPanelGroupRef}
+        >
+            <Panel order={1} defaultSize={100 - initialWidgetsPercentage}>
+                <TabContent key={tabId} tabId={tabId} />
+            </Panel>
+            <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
+            <Panel
+                order={2}
+                defaultSize={initialWidgetsPercentage}
+                minSize={widgetsMinSize}
+                maxSize={widgetsMaxSize}
+            >
+                <Widgets />
+            </Panel>
+        </PanelGroup>
+    );
+});
+
+InnerContent.displayName = "InnerContent";
+
 const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
@@ -77,10 +116,7 @@ const WorkspaceElem = memo(() => {
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
-                                <div className="flex flex-row h-full">
-                                    <TabContent key={tabId} tabId={tabId} />
-                                    <Widgets />
-                                </div>
+                                <InnerContent tabId={tabId} />
                             )}
                         </Panel>
                     </PanelGroup>

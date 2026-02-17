@@ -20,6 +20,10 @@ const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
 const AIPANEL_MINWIDTH = 300;
 const AIPANEL_MAXWIDTHRATIO = 0.66;
 
+const WIDGETS_DEFAULTWIDTH = 48;
+const WIDGETS_MINWIDTH = 48;
+const WIDGETS_MAXWIDTH = 300;
+
 class WorkspaceLayoutModel {
     private static instance: WorkspaceLayoutModel | null = null;
 
@@ -27,10 +31,14 @@ class WorkspaceLayoutModel {
     panelGroupRef: ImperativePanelGroupHandle | null;
     panelContainerRef: HTMLDivElement | null;
     aiPanelWrapperRef: HTMLDivElement | null;
+    innerPanelGroupRef: ImperativePanelGroupHandle | null;
     inResize: boolean; // prevents recursive setLayout calls (setLayout triggers onLayout which calls setLayout)
+    inInnerResize: boolean;
     private aiPanelVisible: boolean;
     private aiPanelWidth: number | null;
+    private widgetsWidth: number | null;
     private debouncedPersistWidth: (width: number) => void;
+    private debouncedPersistWidgetsWidth: (width: number) => void;
     private initialized: boolean = false;
     private transitionTimeoutRef: NodeJS.Timeout | null = null;
     private focusTimeoutRef: NodeJS.Timeout | null = null;
@@ -41,13 +49,17 @@ class WorkspaceLayoutModel {
         this.panelGroupRef = null;
         this.panelContainerRef = null;
         this.aiPanelWrapperRef = null;
+        this.innerPanelGroupRef = null;
         this.inResize = false;
+        this.inInnerResize = false;
         this.aiPanelVisible = false;
         this.aiPanelWidth = null;
+        this.widgetsWidth = null;
         this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
         this.handlePanelLayout = this.handlePanelLayout.bind(this);
+        this.handleInnerPanelLayout = this.handleInnerPanelLayout.bind(this);
 
         this.debouncedPersistWidth = debounce((width: number) => {
             try {
@@ -57,6 +69,17 @@ class WorkspaceLayoutModel {
                 });
             } catch (e) {
                 console.warn("Failed to persist panel width:", e);
+            }
+        }, 300);
+
+        this.debouncedPersistWidgetsWidth = debounce((width: number) => {
+            try {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("tab", this.getTabId()),
+                    meta: { "widgets:width": width },
+                });
+            } catch (e) {
+                console.warn("Failed to persist widgets width:", e);
             }
         }, 300);
     }
@@ -75,6 +98,7 @@ class WorkspaceLayoutModel {
         try {
             const savedVisible = globalStore.get(this.getPanelOpenAtom());
             const savedWidth = globalStore.get(this.getPanelWidthAtom());
+            const savedWidgetsWidth = globalStore.get(this.getWidgetsWidthAtom());
 
             if (savedVisible != null) {
                 this.aiPanelVisible = savedVisible;
@@ -82,6 +106,9 @@ class WorkspaceLayoutModel {
             }
             if (savedWidth != null) {
                 this.aiPanelWidth = savedWidth;
+            }
+            if (savedWidgetsWidth != null) {
+                this.widgetsWidth = savedWidgetsWidth;
             }
         } catch (e) {
             console.warn("Failed to initialize from tab meta:", e);
@@ -102,6 +129,11 @@ class WorkspaceLayoutModel {
         return getOrefMetaKeyAtom(tabORef, "waveai:panelwidth");
     }
 
+    private getWidgetsWidthAtom(): jotai.Atom<number> {
+        const tabORef = WOS.makeORef("tab", this.getTabId());
+        return getOrefMetaKeyAtom(tabORef, "widgets:width");
+    }
+
     registerRefs(
         aiPanelRef: ImperativePanelHandle,
         panelGroupRef: ImperativePanelGroupHandle,
@@ -114,6 +146,11 @@ class WorkspaceLayoutModel {
         this.aiPanelWrapperRef = aiPanelWrapperRef;
         this.syncAIPanelRef();
         this.updateWrapperWidth();
+    }
+
+    registerInnerPanelGroupRef(ref: ImperativePanelGroupHandle): void {
+        this.innerPanelGroupRef = ref;
+        this.syncInnerPanelLayout();
     }
 
     updateWrapperWidth(): void {
@@ -160,6 +197,7 @@ class WorkspaceLayoutModel {
         this.panelGroupRef.setLayout(layout);
         this.inResize = false;
         this.updateWrapperWidth();
+        this.syncInnerPanelLayout();
     }
 
     handlePanelLayout(sizes: number[]): void {
@@ -296,6 +334,88 @@ class WorkspaceLayoutModel {
         }
         const clampedWidth = this.getClampedAIPanelWidth(width, windowWidth);
         this.setAIPanelWidth(clampedWidth);
+    }
+
+    getWidgetsWidth(): number {
+        this.initializeFromTabMeta();
+        if (this.widgetsWidth == null) {
+            this.widgetsWidth = WIDGETS_DEFAULTWIDTH;
+        }
+        return this.widgetsWidth;
+    }
+
+    setWidgetsWidth(width: number): void {
+        this.widgetsWidth = width;
+        this.debouncedPersistWidgetsWidth(width);
+    }
+
+    getClampedWidgetsWidth(width: number): number {
+        return Math.max(WIDGETS_MINWIDTH, Math.min(width, WIDGETS_MAXWIDTH));
+    }
+
+    getWidgetsPercentage(containerWidth: number): number {
+        if (containerWidth <= 0) {
+            return 5;
+        }
+        const widgetsWidth = this.getWidgetsWidth();
+        const clamped = this.getClampedWidgetsWidth(widgetsWidth);
+        return (clamped / containerWidth) * 100;
+    }
+
+    getWidgetsMinPercentage(containerWidth: number): number {
+        if (containerWidth <= 0) {
+            return 3;
+        }
+        return (WIDGETS_MINWIDTH / containerWidth) * 100;
+    }
+
+    getWidgetsMaxPercentage(containerWidth: number): number {
+        if (containerWidth <= 0) {
+            return 30;
+        }
+        return (WIDGETS_MAXWIDTH / containerWidth) * 100;
+    }
+
+    getInnerContainerWidth(): number {
+        // The inner panel group's container width is the main content panel width
+        // which is the window width minus the AI panel width (if visible)
+        const windowWidth = window.innerWidth;
+        if (this.getAIPanelVisible()) {
+            const aiWidth = this.getClampedAIPanelWidth(this.getAIPanelWidth(), windowWidth);
+            return windowWidth - aiWidth;
+        }
+        return windowWidth;
+    }
+
+    syncInnerPanelLayout(): void {
+        if (!this.innerPanelGroupRef) {
+            return;
+        }
+        const containerWidth = this.getInnerContainerWidth();
+        const widgetsPercentage = this.getWidgetsPercentage(containerWidth);
+        const mainPercentage = 100 - widgetsPercentage;
+        this.inInnerResize = true;
+        this.innerPanelGroupRef.setLayout([mainPercentage, widgetsPercentage]);
+        this.inInnerResize = false;
+    }
+
+    handleInnerPanelLayout(sizes: number[]): void {
+        if (this.inInnerResize) {
+            return;
+        }
+        if (!this.innerPanelGroupRef) {
+            return;
+        }
+        const containerWidth = this.getInnerContainerWidth();
+        const widgetsPixelWidth = (sizes[1] / 100) * containerWidth;
+        const clampedWidth = this.getClampedWidgetsWidth(widgetsPixelWidth);
+        this.setWidgetsWidth(clampedWidth);
+
+        const newWidgetsPercentage = (clampedWidth / containerWidth) * 100;
+        const mainPercentage = 100 - newWidgetsPercentage;
+        this.inInnerResize = true;
+        this.innerPanelGroupRef.setLayout([mainPercentage, newWidgetsPercentage]);
+        this.inInnerResize = false;
     }
 }
 

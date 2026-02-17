@@ -401,7 +401,7 @@ const Widgets = memo(() => {
         <>
             <div
                 ref={containerRef}
-                className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none"
+                className="flex flex-col w-full overflow-hidden py-1 select-none"
                 onContextMenu={handleWidgetsBarContextMenu}
             >
                 {mode === "supercompact" ? (
@@ -504,7 +504,7 @@ const Widgets = memo(() => {
 
             <div
                 ref={measurementRef}
-                className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
+                className="flex flex-col w-full py-1 select-none absolute -z-10 opacity-0 pointer-events-none"
             >
                 {widgets?.map((data, idx) => (
                     <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" />
