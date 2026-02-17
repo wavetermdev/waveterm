@@ -8,6 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     atoms,
     fetchWaveFile,
+    getApi,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
@@ -197,6 +198,31 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+
+        this.connectElem.addEventListener("dragover", (e: DragEvent) => {
+            e.preventDefault();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "copy";
+            }
+        });
+        this.connectElem.addEventListener("drop", (e: DragEvent) => {
+            e.preventDefault();
+            if (!e.dataTransfer || e.dataTransfer.files.length === 0) {
+                return;
+            }
+            const paths: string[] = [];
+            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                const file = e.dataTransfer.files[i];
+                const filePath = getApi().getPathForFile(file);
+                if (filePath) {
+                    const quoted = "'" + filePath.replace(/'/g, "'\\''") + "'";
+                    paths.push(quoted);
+                }
+            }
+            if (paths.length > 0) {
+                this.terminal.paste(paths.join(" "));
+            }
+        });
         this.handleResize();
         const pasteHandler = this.pasteHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteHandler, true);
