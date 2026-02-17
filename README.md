@@ -33,7 +33,7 @@ Wave also supports durable SSH sessions that survive network interruptions and r
 - Secure secret storage using native system backends - store API keys and credentials locally, access them across SSH sessions
 - Rich customization including tab themes, terminal styles, and background images
 - Powerful `wsh` command system for managing your workspace from the CLI and sharing data between terminal sessions
-- Connected file management with `wsh file` - seamlessly copy and sync files between local and remote SSH hosts.
+- Connected file management with `wsh file` - seamlessly copy and sync files between local and remote SSH hosts
 
 ## Wave AI
 
