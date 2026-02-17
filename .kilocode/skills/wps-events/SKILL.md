@@ -1,3 +1,8 @@
+---
+name: wps-events
+description: Guide for working with Wave Terminal's WPS (Wave PubSub) event system. Use when implementing new event types, publishing events, subscribing to events, or adding asynchronous communication between components.
+---
+
 # WPS Events Guide
 
 ## Overview
@@ -6,9 +11,9 @@ WPS (Wave PubSub) is Wave Terminal's publish-subscribe event system that enables
 
 ## Key Files
 
-- [`pkg/wps/wpstypes.go`](../pkg/wps/wpstypes.go) - Event type constants and data structures
-- [`pkg/wps/wps.go`](../pkg/wps/wps.go) - Broker implementation and core logic
-- [`pkg/wcore/wcore.go`](../pkg/wcore/wcore.go) - Example usage patterns
+- `pkg/wps/wpstypes.go` - Event type constants and data structures
+- `pkg/wps/wps.go` - Broker implementation and core logic
+- `pkg/wcore/wcore.go` - Example usage patterns
 
 ## Event Structure
 
@@ -28,7 +33,7 @@ type WaveEvent struct {
 
 ### Step 1: Define the Event Constant
 
-Add your event type constant to [`pkg/wps/wpstypes.go`](../pkg/wps/wpstypes.go:8-19):
+Add your event type constant to `pkg/wps/wpstypes.go`:
 
 ```go
 const (
@@ -58,7 +63,7 @@ type YourEventData struct {
 
 ### Step 3: Expose Type to Frontend (If Needed)
 
-If your event data type isn't already exposed via an RPC call, you need to add it to [`pkg/tsgen/tsgen.go`](../pkg/tsgen/tsgen.go:29-56) so TypeScript types are generated:
+If your event data type isn't already exposed via an RPC call, you need to add it to `pkg/tsgen/tsgen.go` so TypeScript types are generated:
 
 ```go
 // add extra types to generate here
@@ -76,7 +81,7 @@ Then run code generation:
 task generate
 ```
 
-This will update [`frontend/types/gotypes.d.ts`](../frontend/types/gotypes.d.ts) with TypeScript definitions for your type, ensuring type safety in the frontend when handling these events.
+This will update `frontend/types/gotypes.d.ts` with TypeScript definitions for your type, ensuring type safety in the frontend when handling these events.
 
 ## Publishing Events
 
@@ -142,7 +147,7 @@ This example shows how rate limit information is published when AI chat response
 
 ### 1. Define the Event Type
 
-In [`pkg/wps/wpstypes.go`](../pkg/wps/wpstypes.go:19):
+In `pkg/wps/wpstypes.go`:
 
 ```go
 const (
@@ -153,7 +158,7 @@ const (
 
 ### 2. Publish the Event
 
-In [`pkg/aiusechat/usechat.go`](../pkg/aiusechat/usechat.go:94-108):
+In `pkg/aiusechat/usechat.go`:
 
 ```go
 import "github.com/wavetermdev/waveterm/pkg/wps"
@@ -290,7 +295,14 @@ To debug event flow:
 3. Add logging in publish/subscribe methods
 4. Monitor WebSocket traffic in browser dev tools
 
-## Related Documentation
+## Quick Reference
 
-- [Configuration System](config-system.md) - Uses WPS events for config updates
-- [Wave AI Architecture](waveai-architecture.md) - AI-related events
+When adding a new event:
+
+- [ ] Add event constant to `pkg/wps/wpstypes.go`
+- [ ] Define event data structure (if needed)
+- [ ] Add data type to `pkg/tsgen/tsgen.go` for frontend use
+- [ ] Run `task generate` to update TypeScript types
+- [ ] Publish events using `wps.Broker.Publish()`
+- [ ] Use goroutines for non-blocking publish when appropriate
+- [ ] Subscribe to events in relevant components
