@@ -61,6 +61,21 @@ const (
 	ConnErrCode_Unknown        = "unknown"
 )
 
+// Dial error subcodes for more granular classification
+const (
+	DialSubCode_DNS             = "dns"
+	DialSubCode_Refused         = "refused"
+	DialSubCode_Timeout         = "timeout"
+	DialSubCode_ContextCanceled = "context-canceled"
+	DialSubCode_NoRoute         = "no-route"
+	DialSubCode_HostUnreach     = "host-unreachable"
+	DialSubCode_NetUnreach      = "net-unreachable"
+	DialSubCode_ConnReset       = "conn-reset"
+	DialSubCode_PermDenied      = "perm-denied"
+	DialSubCode_ProxyJump       = "proxy-jump"
+	DialSubCode_Other           = "other"
+)
+
 var waveSshConfigUserSettingsInternal *ssh_config.UserSettings
 var configUserSettingsOnce = &sync.Once{}
 
@@ -118,33 +133,110 @@ func SimpleMessageFromPossibleConnectionError(err error) string {
 	return err.Error()
 }
 
-func ClassifyConnError(err error) string {
+func ClassifyConnError(err error) (string, string) {
 	code := utilds.GetErrorCode(err)
+	subCode := utilds.GetErrorSubCode(err)
 	if code != "" {
-		return code
+		return code, subCode
 	}
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
-		return ConnErrCode_Dial
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
 	}
 	var opErr *net.OpError
 	if errors.As(err, &opErr) {
-		return ConnErrCode_Dial
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
 	}
 	errStr := err.Error()
 	if strings.Contains(errStr, "unable to authenticate") {
-		return ConnErrCode_AuthFailed
+		return ConnErrCode_AuthFailed, ""
 	}
 	if strings.Contains(errStr, "handshake failed") {
-		return ConnErrCode_AuthFailed
+		return ConnErrCode_AuthFailed, ""
 	}
 	if strings.Contains(errStr, "connection refused") {
-		return ConnErrCode_Dial
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
 	}
 	if strings.Contains(errStr, "timed out") || strings.Contains(errStr, "timeout") {
-		return ConnErrCode_Dial
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
 	}
-	return ConnErrCode_Unknown
+	return ConnErrCode_Unknown, ""
+}
+
+// ClassifyDialErrorSubCode provides more granular classification of dial errors
+// to help identify root causes (DNS, VPN, timeouts, etc.)
+func ClassifyDialErrorSubCode(err error) string {
+	if err == nil {
+		return ""
+	}
+	
+	// Check for context cancellation first
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return DialSubCode_ContextCanceled
+	}
+	
+	// Check if it's a DNS error
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return DialSubCode_DNS
+	}
+	
+	// Check if it's a network operation error
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		// Check the underlying error for more details
+		if opErr.Err != nil {
+			errStr := opErr.Err.Error()
+			if strings.Contains(errStr, "connection refused") {
+				return DialSubCode_Refused
+			}
+			if strings.Contains(errStr, "no route to host") {
+				return DialSubCode_NoRoute
+			}
+			if strings.Contains(errStr, "host is unreachable") || strings.Contains(errStr, "host unreachable") {
+				return DialSubCode_HostUnreach
+			}
+			if strings.Contains(errStr, "network is unreachable") || strings.Contains(errStr, "network unreachable") {
+				return DialSubCode_NetUnreach
+			}
+			if strings.Contains(errStr, "connection reset") {
+				return DialSubCode_ConnReset
+			}
+			if strings.Contains(errStr, "permission denied") {
+				return DialSubCode_PermDenied
+			}
+		}
+		// Generic timeout detection in OpError
+		if opErr.Timeout() {
+			return DialSubCode_Timeout
+		}
+	}
+	
+	// Check error string for common patterns
+	errStr := err.Error()
+	if strings.Contains(errStr, "connection refused") {
+		return DialSubCode_Refused
+	}
+	if strings.Contains(errStr, "timed out") || strings.Contains(errStr, "timeout") || strings.Contains(errStr, "i/o timeout") {
+		return DialSubCode_Timeout
+	}
+	if strings.Contains(errStr, "no route to host") {
+		return DialSubCode_NoRoute
+	}
+	if strings.Contains(errStr, "host is unreachable") || strings.Contains(errStr, "host unreachable") {
+		return DialSubCode_HostUnreach
+	}
+	if strings.Contains(errStr, "network is unreachable") || strings.Contains(errStr, "network unreachable") {
+		return DialSubCode_NetUnreach
+	}
+	if strings.Contains(errStr, "connection reset") {
+		return DialSubCode_ConnReset
+	}
+	if strings.Contains(errStr, "permission denied") {
+		return DialSubCode_PermDenied
+	}
+	
+	return DialSubCode_Other
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -747,15 +839,17 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
-			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
-			return nil, utilds.MakeCodedError(ConnErrCode_Dial, err)
+			subCode := ClassifyDialErrorSubCode(err)
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
+			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, subCode, err)
 		}
 	} else {
 		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
-			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
-			return nil, utilds.MakeCodedError(ConnErrCode_Dial, err)
+			subCode := DialSubCode_ProxyJump  // This is a proxy jump connection error
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
+			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, subCode, err)
 		}
 	}
 	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
