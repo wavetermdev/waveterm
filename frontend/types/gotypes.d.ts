@@ -1147,6 +1147,8 @@ declare global {
         "shell:version"?: string;
         "shell:uname"?: string;
         "shell:integration"?: boolean;
+        "shell:omz"?: boolean;
+        "shell:comp"?: string;
         "shell:inputempty"?: boolean;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
