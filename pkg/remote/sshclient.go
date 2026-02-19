@@ -52,6 +52,7 @@ const (
 	ConnErrCode_KnownHostsNone = "knownhosts-none"
 	ConnErrCode_KnownHostsFmt  = "knownhosts-format"
 	ConnErrCode_Dial           = "dial-error"
+	ConnErrCode_ProxyJumpDial  = "dial-proxy-jump"
 	ConnErrCode_HostKeyRevoked = "hostkey-revoked"
 	ConnErrCode_HostKeyChanged = "hostkey-changed"
 	ConnErrCode_HostKeyVerify  = "hostkey-verify"
@@ -853,9 +854,9 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
-			subCode := DialSubCode_ProxyJump // This is a proxy jump connection error
+			subCode := ClassifyDialErrorSubCode(err)
 			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
-			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, subCode, err)
+			return nil, utilds.MakeSubCodedError(ConnErrCode_ProxyJumpDial, subCode, err)
 		}
 	}
 	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
