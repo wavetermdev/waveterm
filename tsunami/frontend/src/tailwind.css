@@ -108,3 +108,12 @@ html, body {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.15) rgba(0, 0, 0, 0.1);
 }
+
+/* EditableDiv placeholder styling */
+[contenteditable][data-placeholder]:empty:before {
+    content: attr(data-placeholder);
+    color: var(--color-muted);
+    pointer-events: none;
+    position: absolute;
+}
+
