@@ -160,6 +160,13 @@ function uxCloseBlock(blockId: string) {
     const blockData = globalStore.get(blockAtom);
     const isAIFileDiff = blockData?.meta?.view === "aifilediff";
 
+    // If this is the last block, closing it will close the tab — route through simpleCloseStaticTab
+    // so the tab:confirmclose setting is respected.
+    if (getStaticTabBlockCount() === 1) {
+        simpleCloseStaticTab();
+        return;
+    }
+
     const layoutModel = getLayoutModelForStaticTab();
     const node = layoutModel.getNodeByBlockId(blockId);
     if (node) {
@@ -195,6 +202,13 @@ function genericClose() {
     }
     const blockCount = getStaticTabBlockCount();
     if (blockCount === 0) {
+        simpleCloseStaticTab();
+        return;
+    }
+
+    // If this is the last block, closing it will close the tab — route through simpleCloseStaticTab
+    // so the tab:confirmclose setting is respected.
+    if (blockCount === 1) {
         simpleCloseStaticTab();
         return;
     }
