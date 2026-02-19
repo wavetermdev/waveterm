@@ -34,7 +34,7 @@ import {
     handleOsc7Command,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
-import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
+import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -527,5 +527,14 @@ export class TermWrap {
                 this.pasteActive = false;
             }, 30);
         }
+    }
+
+    getScrollbackContent(): string {
+        if (!this.terminal) {
+            return "";
+        }
+        const buffer = this.terminal.buffer.active;
+        const lines = bufferLinesToText(buffer, 0, buffer.length);
+        return lines.join("\n");
     }
 }

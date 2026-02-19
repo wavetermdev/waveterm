@@ -792,6 +792,57 @@ wsh setvar -b client MYVAR=value
 
 Variables set with these commands persist across sessions and can be used to store configuration values, secrets, or any other string data that needs to be accessible across blocks or tabs.
 
+---
+
+## termscrollback
+
+Get the terminal scrollback from a terminal block. This is useful for capturing terminal output for processing or archiving.
+
+```sh
+wsh termscrollback [-b blockid] [flags]
+```
+
+By default, retrieves all lines from the current terminal block. You can specify line ranges or get only the output of the last command.
+
+Flags:
+
+- `-b, --block <blockid>` - specify target terminal block (default: current block)
+- `--start <line>` - starting line number (0 = beginning, default: 0)
+- `--end <line>` - ending line number (0 = all lines, default: 0)
+- `--lastcommand` - get output of last command (requires shell integration)
+- `-o, --output <file>` - write output to file instead of stdout
+
+Examples:
+
+```sh
+# Get all scrollback from current terminal
+wsh termscrollback
+
+# Get scrollback from a specific terminal block
+wsh termscrollback -b 2
+
+# Get only the last command's output
+wsh termscrollback --lastcommand
+
+# Get a specific line range (lines 100-200)
+wsh termscrollback --start 100 --end 200
+
+# Save scrollback to a file
+wsh termscrollback -o terminal-log.txt
+
+# Save last command output to a file
+wsh termscrollback --lastcommand -o last-output.txt
+
+# Process last command output with grep
+wsh termscrollback --lastcommand | grep "ERROR"
+```
+
+:::note
+The `--lastcommand` flag requires shell integration to be enabled. This feature allows you to capture just the output from the most recent command, which is particularly useful for scripting and automation.
+:::
+
+---
+
 ## wavepath
 
 The `wavepath` command lets you get the paths to various Wave Terminal directories and files, including configuration, data storage, and logs.

@@ -470,4 +470,27 @@ export function initIpcHandlers() {
     electron.ipcMain.on("do-refresh", (event) => {
         event.sender.reloadIgnoringCache();
     });
+
+    electron.ipcMain.handle("save-text-file", async (event, fileName: string, content: string) => {
+        const ww = focusedWaveWindow;
+        if (ww == null) {
+            return false;
+        }
+        const result = await electron.dialog.showSaveDialog(ww, {
+            title: "Save Scrollback",
+            defaultPath: fileName || "session.log",
+            filters: [{ name: "Text Files", extensions: ["txt", "log"] }],
+        });
+        if (result.canceled || !result.filePath) {
+            return false;
+        }
+        try {
+            await fs.promises.writeFile(result.filePath, content, "utf-8");
+            console.log("saved scrollback to", result.filePath);
+            return true;
+        } catch (err) {
+            console.error("error saving scrollback file", err);
+            return false;
+        }
+    });
 }
