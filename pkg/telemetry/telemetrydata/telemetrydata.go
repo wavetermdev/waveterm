@@ -126,9 +126,11 @@ type TEventProps struct {
 	WshCmd      string `json:"wsh:cmd,omitempty"`
 	WshHadError bool   `json:"wsh:haderror,omitempty"`
 
-	ConnType         string `json:"conn:conntype,omitempty"`
-	ConnWshErrorCode string `json:"conn:wsherrorcode,omitempty"`
-	ConnErrorCode    string `json:"conn:errorcode,omitempty"`
+	ConnType          string `json:"conn:conntype,omitempty"`
+	ConnWshErrorCode  string `json:"conn:wsherrorcode,omitempty"`
+	ConnErrorCode     string `json:"conn:errorcode,omitempty"`
+	ConnSubErrorCode  string `json:"conn:suberrorcode,omitempty"`
+	ConnContextError  bool   `json:"conn:contexterror,omitempty"`
 
 	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"durable\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`

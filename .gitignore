@@ -36,3 +36,5 @@ storybook-static/
 test-results.xml
 
 docsite/
+
+.kilo-format-temp-*
