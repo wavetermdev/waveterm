@@ -597,7 +597,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             .closeTab(ws.oid, tabId, confirmClose)
             .then((didClose) => {
                 if (didClose) {
-                    tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
+                    tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
                     deleteLayoutModelForTab(tabId);
                 }
             })

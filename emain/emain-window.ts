@@ -728,7 +728,7 @@ ipcMain.on("set-waveai-open", (event, isOpen: boolean) => {
     }
 });
 
-ipcMain.handle("close-tab", async (event, workspaceId, tabId, confirmClose) => {
+ipcMain.handle("close-tab", async (event, workspaceId: string, tabId: string, confirmClose: boolean) => {
     const ww = getWaveWindowByWorkspaceId(workspaceId);
     if (ww == null) {
         console.log(`close-tab: no window found for workspace ws=${workspaceId} tab=${tabId}`);
