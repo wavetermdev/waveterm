@@ -132,12 +132,13 @@ export class TermWshClient extends WshClient {
             if (termWrap.promptMarkers.length > 0) {
                 // The last marker is the current prompt, so we want the second-to-last for the previous command
                 // If there's only one marker, use it (edge case for first command)
-                const markerIndex = termWrap.promptMarkers.length > 1
-                    ? termWrap.promptMarkers.length - 2
-                    : termWrap.promptMarkers.length - 1;
+                const markerIndex =
+                    termWrap.promptMarkers.length > 1
+                        ? termWrap.promptMarkers.length - 2
+                        : termWrap.promptMarkers.length - 1;
                 const commandStartMarker = termWrap.promptMarkers[markerIndex];
                 startBufferIndex = commandStartMarker.line;
-                
+
                 // End at the last marker (current prompt) if there are multiple markers
                 if (termWrap.promptMarkers.length > 1) {
                     const currentPromptMarker = termWrap.promptMarkers[termWrap.promptMarkers.length - 1];
@@ -163,7 +164,7 @@ export class TermWshClient extends WshClient {
         }
 
         const startLine = Math.max(0, data.linestart);
-        const endLine = Math.min(totalLines, data.lineend);
+        const endLine = data.lineend === 0 ? totalLines : Math.min(totalLines, data.lineend);
 
         const startBufferIndex = totalLines - endLine;
         const endBufferIndex = totalLines - startLine;
