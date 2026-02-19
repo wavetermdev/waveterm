@@ -29,7 +29,7 @@ export type ShellIntegrationStatus = "ready" | "running-command";
 type Osc16162Command =
     | { command: "A"; data: {} }
     | { command: "C"; data: { cmd64?: string } }
-    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string; integration?: boolean } }
+    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string; integration?: boolean; omz?: boolean; comp?: string } }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} };
@@ -301,6 +301,12 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             }
             if (cmd.data.integration != null) {
                 rtInfo["shell:integration"] = cmd.data.integration;
+            }
+            if (cmd.data.omz != null) {
+                rtInfo["shell:omz"] = cmd.data.omz;
+            }
+            if (cmd.data.comp != null) {
+                rtInfo["shell:comp"] = cmd.data.comp;
             }
             break;
         case "D":
