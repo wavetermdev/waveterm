@@ -37,6 +37,7 @@ Wave AI now supports provider-based configuration which automatically applies se
 - **`google`** - Google AI (Gemini) [[see example](#google-ai-gemini)]
 - **`azure`** - Azure OpenAI Service (modern API) [[see example](#azure-openai-modern-api)]
 - **`azure-legacy`** - Azure OpenAI Service (legacy deployment API) [[see example](#azure-openai-legacy-deployment-api)]
+- **`github-copilot`** - GitHub Copilot (authenticates via device flow, auto-creates modes) [[see example](#github-copilot)]
 - **`custom`** - Custom API endpoint (fully manual configuration) [[see examples](#local-model-examples)]
 
 ### Supported API Types
@@ -46,6 +47,7 @@ Wave AI supports the following API types:
 - **`openai-chat`**: Uses the `/v1/chat/completions` endpoint (most common)
 - **`openai-responses`**: Uses the `/v1/responses` endpoint (modern API for GPT-5+ models)
 - **`google-gemini`**: Google's Gemini API format (automatically set when using `ai:provider: "google"`, not typically used directly)
+- **`github-copilot`**: GitHub Copilot API (automatically set when using `ai:provider: "github-copilot"`, not typically used directly)
 
 ## Global Wave AI Settings
 
@@ -336,6 +338,55 @@ The provider automatically constructs the full endpoint URL and sets the API ver
 For Azure Legacy provider, you must manually specify `ai:capabilities` based on your model's features.
 :::
 
+### GitHub Copilot
+
+[GitHub Copilot](https://github.com/features/copilot) is available to users with a GitHub Copilot subscription. Unlike other providers, Copilot uses **GitHub's device authorization flow** instead of an API key — no manual key configuration is needed.
+
+#### Quick Setup
+
+1. Open the AI mode dropdown in Wave
+2. Click **"Login to GitHub Copilot"**
+3. A device code is copied to your clipboard and GitHub opens in your browser
+4. Paste the code on GitHub and authorize Wave Terminal
+5. Copilot modes are automatically created for all models your subscription supports
+
+After login, copilot modes (e.g., `copilot/gpt-4o`, `copilot/gpt-4.1`, `copilot/claude-3.7-sonnet`) appear in the dropdown and in your `waveai.json`.
+
+#### How It Works
+
+Authentication is handled automatically:
+- Your GitHub token is stored securely in Wave's [secret store](./secrets.mdx) as `GITHUB_COPILOT_TOKEN`
+- Wave exchanges this for a short-lived Copilot API token on each request
+- Available models are discovered automatically from the Copilot API based on your subscription
+
+#### Auto-Generated Configuration
+
+After login, Wave creates mode entries like this in `waveai.json`:
+
+```json
+{
+  "copilot/gpt-4o": {
+    "display:name": "Copilot gpt-4o",
+    "display:order": 10,
+    "display:icon": "github",
+    "display:description": "GitHub Copilot (gpt-4o)",
+    "ai:provider": "github-copilot",
+    "ai:model": "gpt-4o",
+    "ai:capabilities": ["tools", "images"]
+  }
+}
+```
+
+You can customize these entries (change display names, order, etc.) just like any other mode.
+
+#### Logging Out
+
+To disconnect your GitHub Copilot account, click the **"Logout"** button next to "Copilot Connected" in the AI mode dropdown. This deletes the stored token. You can log in again at any time.
+
+:::note
+The available models depend on your Copilot subscription tier. Common models include `gpt-4o`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `o3-mini`, `claude-3.5-sonnet`, `claude-3.7-sonnet`, and `gemini-2.0-flash-001`.
+:::
+
 ## Using Secrets for API Keys
 
 Instead of storing API keys directly in the configuration, you should use Wave's secret store to keep your credentials secure. Secrets are stored encrypted using your system's native keychain.
@@ -473,7 +524,7 @@ If you get "model not found" errors:
 | `display:order` | No | Sort order in the selector (lower numbers first) |
 | `display:icon` | No | Icon identifier for the mode (can use any [FontAwesome icon](https://fontawesome.com/search), use the name without the "fa-" prefix).  Default is "sparkles" |
 | `display:description` | No | Full description of the mode |
-| `ai:provider` | No | Provider preset: `openai`, `openrouter`, `google`, `azure`, `azure-legacy`, `custom` |
+| `ai:provider` | No | Provider preset: `openai`, `openrouter`, `google`, `azure`, `azure-legacy`, `github-copilot`, `custom` |
 | `ai:apitype` | No | API type: `openai-chat`, `openai-responses`, or `google-gemini` (defaults to `openai-chat` if not specified) |
 | `ai:model` | No | Model identifier (required for most providers) |
 | `ai:thinkinglevel` | No | Thinking level: `low`, `medium`, or `high` |

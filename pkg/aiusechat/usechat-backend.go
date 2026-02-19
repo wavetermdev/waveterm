@@ -9,6 +9,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/gemini"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/githubcopilot"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openaichat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -60,6 +61,7 @@ var _ UseChatBackend = (*openaiResponsesBackend)(nil)
 var _ UseChatBackend = (*openaiCompletionsBackend)(nil)
 var _ UseChatBackend = (*anthropicBackend)(nil)
 var _ UseChatBackend = (*geminiBackend)(nil)
+var _ UseChatBackend = (*githubCopilotBackend)(nil)
 
 // GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
 func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
@@ -72,6 +74,8 @@ func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
 		return &anthropicBackend{}, nil
 	case uctypes.APIType_GoogleGemini:
 		return &geminiBackend{}, nil
+	case uctypes.APIType_GitHubCopilot:
+		return &githubCopilotBackend{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported API type: %s", apiType)
 	}
@@ -259,4 +263,46 @@ func (b *geminiBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, 
 
 func (b *geminiBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	return gemini.ConvertAIChatToUIChat(aiChat)
+}
+
+// githubCopilotBackend implements UseChatBackend for GitHub Copilot API
+// It wraps the OpenAI Chat Completions backend with Copilot-specific token exchange
+type githubCopilotBackend struct{}
+
+func (b *githubCopilotBackend) RunChatStep(
+	ctx context.Context,
+	sseHandler *sse.SSEHandlerCh,
+	chatOpts uctypes.WaveChatOpts,
+	cont *uctypes.WaveContinueResponse,
+) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, *uctypes.RateLimitInfo, error) {
+	stopReason, msgs, rateLimitInfo, err := githubcopilot.RunChatStep(ctx, sseHandler, chatOpts, cont)
+	var genMsgs []uctypes.GenAIMessage
+	for _, msg := range msgs {
+		genMsgs = append(genMsgs, msg)
+	}
+	return stopReason, genMsgs, rateLimitInfo, err
+}
+
+func (b *githubCopilotBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
+	return githubcopilot.UpdateToolUseData(chatId, toolCallId, toolUseData)
+}
+
+func (b *githubCopilotBackend) RemoveToolUseCall(chatId string, toolCallId string) error {
+	return githubcopilot.RemoveToolUseCall(chatId, toolCallId)
+}
+
+func (b *githubCopilotBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
+	return githubcopilot.ConvertToolResultsToNativeChatMessage(toolResults)
+}
+
+func (b *githubCopilotBackend) ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error) {
+	return githubcopilot.ConvertAIMessageToStoredChatMessage(message)
+}
+
+func (b *githubCopilotBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
+	return githubcopilot.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
+}
+
+func (b *githubCopilotBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
+	return githubcopilot.ConvertAIChatToUIChat(aiChat)
 }

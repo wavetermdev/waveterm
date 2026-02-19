@@ -20,9 +20,12 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/githubcopilot"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -61,6 +64,14 @@ import (
 )
 
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
+
+// pendingDeviceFlow tracks the in-progress GitHub Copilot device code flow
+var (
+	pendingDeviceFlowMu   sync.Mutex
+	pendingDeviceCode     string
+	pendingDeviceInterval int
+	pendingDeviceExpiry   int
+)
 
 type WshServer struct{}
 
@@ -1512,4 +1523,182 @@ func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId st
 
 func (ws *WshServer) BlockJobStatusCommand(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
 	return jobcontroller.GetBlockJobStatus(ctx, blockId)
+}
+
+// CopilotDeviceLoginStartCommand initiates the GitHub OAuth device code flow.
+// It returns the user code and verification URI for the user to complete in their browser.
+func (ws *WshServer) CopilotDeviceLoginStartCommand(ctx context.Context) (*wshrpc.CopilotDeviceLoginStartRtnData, error) {
+	dcResp, err := githubcopilot.RequestDeviceCode(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("starting device login: %w", err)
+	}
+
+	pendingDeviceFlowMu.Lock()
+	pendingDeviceCode = dcResp.DeviceCode
+	pendingDeviceInterval = dcResp.Interval
+	pendingDeviceExpiry = dcResp.ExpiresIn
+	pendingDeviceFlowMu.Unlock()
+
+	return &wshrpc.CopilotDeviceLoginStartRtnData{
+		UserCode:        dcResp.UserCode,
+		VerificationURI: dcResp.VerificationURI,
+		ExpiresIn:       dcResp.ExpiresIn,
+	}, nil
+}
+
+// CopilotDeviceLoginPollCommand polls for the user to complete authorization.
+// On success, it stores the GitHub token in the secret store.
+func (ws *WshServer) CopilotDeviceLoginPollCommand(ctx context.Context, data wshrpc.CopilotDeviceLoginPollData) (*wshrpc.CopilotDeviceLoginPollRtnData, error) {
+	pendingDeviceFlowMu.Lock()
+	deviceCode := pendingDeviceCode
+	interval := pendingDeviceInterval
+	expiresIn := pendingDeviceExpiry
+	pendingDeviceFlowMu.Unlock()
+
+	if deviceCode == "" {
+		return &wshrpc.CopilotDeviceLoginPollRtnData{
+			Status: "error",
+			Error:  "no pending device login, call CopilotDeviceLoginStart first",
+		}, nil
+	}
+
+	token, err := githubcopilot.PollForAccessToken(ctx, deviceCode, interval, expiresIn)
+	if err != nil {
+		// Clear pending state on terminal errors
+		pendingDeviceFlowMu.Lock()
+		pendingDeviceCode = ""
+		pendingDeviceFlowMu.Unlock()
+
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "expired") || strings.Contains(errMsg, "denied") {
+			return &wshrpc.CopilotDeviceLoginPollRtnData{
+				Status: "expired",
+				Error:  errMsg,
+			}, nil
+		}
+		return &wshrpc.CopilotDeviceLoginPollRtnData{
+			Status: "error",
+			Error:  errMsg,
+		}, nil
+	}
+
+	// Store the token
+	err = secretstore.SetSecret("GITHUB_COPILOT_TOKEN", token)
+	if err != nil {
+		return nil, fmt.Errorf("storing copilot token: %w", err)
+	}
+
+	// Ensure a copilot mode exists in waveai.json
+	modeName, err := ensureCopilotAIMode(token)
+	if err != nil {
+		log.Printf("warning: failed to ensure copilot AI mode: %v\n", err)
+	}
+
+	// Clear pending state
+	pendingDeviceFlowMu.Lock()
+	pendingDeviceCode = ""
+	pendingDeviceFlowMu.Unlock()
+
+	return &wshrpc.CopilotDeviceLoginPollRtnData{
+		Status:   "complete",
+		ModeName: modeName,
+	}, nil
+}
+
+// ensureCopilotAIMode creates copilot modes in waveai.json for each available model.
+// It queries the Copilot API to discover which models the user's subscription supports.
+// Returns the default mode name that should be selected.
+func ensureCopilotAIMode(githubToken string) (string, error) {
+	// Check if any copilot modes already exist
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	for name, cfg := range fullConfig.WaveAIModes {
+		if cfg.Provider == "github-copilot" {
+			return name, nil
+		}
+	}
+
+	// Discover available models from the Copilot API
+	models, err := githubcopilot.FetchAvailableModels(githubToken)
+	if err != nil {
+		log.Printf("githubcopilot: model discovery failed, using defaults: %v\n", err)
+		// Fall back to default models
+		for _, id := range githubcopilot.GetDefaultCopilotModels() {
+			models = append(models, githubcopilot.CopilotModelInfo{ID: id})
+		}
+	}
+
+	if len(models) == 0 {
+		// Absolute fallback
+		models = []githubcopilot.CopilotModelInfo{{ID: "gpt-4o"}}
+	}
+
+	// Read existing waveai.json
+	m, cerrs := wconfig.ReadWaveHomeConfigFile("waveai.json")
+	if len(cerrs) > 0 {
+		m = make(waveobj.MetaMapType)
+	}
+	if m == nil {
+		m = make(waveobj.MetaMapType)
+	}
+
+	defaultModeName := "copilot/" + models[0].ID
+
+	for i, model := range models {
+		modeName := "copilot/" + model.ID
+		if _, exists := m[modeName]; exists {
+			continue
+		}
+		displayName := "Copilot " + model.ID
+		modeConfig := map[string]interface{}{
+			"display:name":        displayName,
+			"display:order":       10 + i,
+			"display:icon":        "github",
+			"display:description": fmt.Sprintf("GitHub Copilot (%s)", model.ID),
+			"ai:provider":         "github-copilot",
+			"ai:model":            model.ID,
+			"ai:capabilities":     []string{"tools", "images"},
+		}
+		m[modeName] = modeConfig
+	}
+
+	err = wconfig.WriteWaveHomeConfigFile("waveai.json", m)
+	if err != nil {
+		return "", fmt.Errorf("writing waveai.json: %w", err)
+	}
+
+	log.Printf("githubcopilot: created %d copilot modes in waveai.json\n", len(models))
+	return defaultModeName, nil
+}
+
+// CopilotDeviceLoginStatusCommand checks whether there is a stored GitHub Copilot token.
+// If the user is logged in but no copilot modes exist yet, it auto-creates them.
+func (ws *WshServer) CopilotDeviceLoginStatusCommand(ctx context.Context) (*wshrpc.CopilotDeviceLoginStatusRtnData, error) {
+	token, exists, err := secretstore.GetSecret("GITHUB_COPILOT_TOKEN")
+	if err != nil {
+		return &wshrpc.CopilotDeviceLoginStatusRtnData{
+			LoggedIn: false,
+			Error:    err.Error(),
+		}, nil
+	}
+	if exists && token != "" {
+		// Ensure copilot modes exist in waveai.json (no-ops if they already do)
+		go func() {
+			if _, err := ensureCopilotAIMode(token); err != nil {
+				log.Printf("githubcopilot: failed to ensure copilot modes: %v\n", err)
+			}
+		}()
+	}
+	return &wshrpc.CopilotDeviceLoginStatusRtnData{
+		LoggedIn: exists,
+	}, nil
+}
+
+// CopilotDeviceLogoutCommand deletes the stored GitHub Copilot token.
+func (ws *WshServer) CopilotDeviceLogoutCommand(ctx context.Context) error {
+	err := secretstore.DeleteSecret("GITHUB_COPILOT_TOKEN")
+	if err != nil {
+		return fmt.Errorf("failed to delete copilot token: %w", err)
+	}
+	log.Printf("githubcopilot: logged out, token deleted\n")
+	return nil
 }

@@ -274,8 +274,8 @@ type AIModeConfigType struct {
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
-	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
-	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=azure,enum=azure-legacy,enum=github-copilot,enum=custom"`
+	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat,enum=github-copilot"`
 	Model              string   `json:"ai:model,omitempty"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
 	Verbosity          string   `json:"ai:verbosity,omitempty" jsonschema:"enum=low,enum=medium,enum=high,description=Text verbosity level (OpenAI Responses API only)"`

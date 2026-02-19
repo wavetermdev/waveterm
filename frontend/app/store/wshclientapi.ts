@@ -137,6 +137,26 @@ class RpcApiType {
         return client.wshRpcCall("controllerresync", data, opts);
     }
 
+    // command "copilotdeviceloginpoll" [call]
+    CopilotDeviceLoginPollCommand(client: WshClient, data: CopilotDeviceLoginPollData, opts?: RpcOpts): Promise<CopilotDeviceLoginPollRtnData> {
+        return client.wshRpcCall("copilotdeviceloginpoll", data, opts);
+    }
+
+    // command "copilotdeviceloginstart" [call]
+    CopilotDeviceLoginStartCommand(client: WshClient, opts?: RpcOpts): Promise<CopilotDeviceLoginStartRtnData> {
+        return client.wshRpcCall("copilotdeviceloginstart", null, opts);
+    }
+
+    // command "copilotdeviceloginstatus" [call]
+    CopilotDeviceLoginStatusCommand(client: WshClient, opts?: RpcOpts): Promise<CopilotDeviceLoginStatusRtnData> {
+        return client.wshRpcCall("copilotdeviceloginstatus", null, opts);
+    }
+
+    // command "copilotdevicelogout" [call]
+    CopilotDeviceLogoutCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("copilotdevicelogout", null, opts);
+    }
+
     // command "createblock" [call]
     CreateBlockCommand(client: WshClient, data: CommandCreateBlockData, opts?: RpcOpts): Promise<ORef> {
         return client.wshRpcCall("createblock", data, opts);

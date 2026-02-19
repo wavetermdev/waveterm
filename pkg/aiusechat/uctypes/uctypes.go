@@ -21,16 +21,18 @@ const (
 	APIType_OpenAIResponses   = "openai-responses"
 	APIType_OpenAIChat        = "openai-chat"
 	APIType_GoogleGemini      = "google-gemini"
+	APIType_GitHubCopilot     = "github-copilot"
 )
 
 const (
-	AIProvider_Wave        = "wave"
-	AIProvider_Google      = "google"
-	AIProvider_OpenRouter  = "openrouter"
-	AIProvider_OpenAI      = "openai"
-	AIProvider_Azure       = "azure"
-	AIProvider_AzureLegacy = "azure-legacy"
-	AIProvider_Custom      = "custom"
+	AIProvider_Wave           = "wave"
+	AIProvider_Google         = "google"
+	AIProvider_OpenRouter     = "openrouter"
+	AIProvider_OpenAI         = "openai"
+	AIProvider_Azure          = "azure"
+	AIProvider_AzureLegacy    = "azure-legacy"
+	AIProvider_GitHubCopilot  = "github-copilot"
+	AIProvider_Custom         = "custom"
 )
 
 type UseChatRequest struct {

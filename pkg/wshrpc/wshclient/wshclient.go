@@ -172,6 +172,30 @@ func ControllerResyncCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerRes
 	return err
 }
 
+// command "copilotdeviceloginpoll", wshserver.CopilotDeviceLoginPollCommand
+func CopilotDeviceLoginPollCommand(w *wshutil.WshRpc, data wshrpc.CopilotDeviceLoginPollData, opts *wshrpc.RpcOpts) (*wshrpc.CopilotDeviceLoginPollRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CopilotDeviceLoginPollRtnData](w, "copilotdeviceloginpoll", data, opts)
+	return resp, err
+}
+
+// command "copilotdeviceloginstart", wshserver.CopilotDeviceLoginStartCommand
+func CopilotDeviceLoginStartCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.CopilotDeviceLoginStartRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CopilotDeviceLoginStartRtnData](w, "copilotdeviceloginstart", nil, opts)
+	return resp, err
+}
+
+// command "copilotdeviceloginstatus", wshserver.CopilotDeviceLoginStatusCommand
+func CopilotDeviceLoginStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.CopilotDeviceLoginStatusRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CopilotDeviceLoginStatusRtnData](w, "copilotdeviceloginstatus", nil, opts)
+	return resp, err
+}
+
+// command "copilotdevicelogout", wshserver.CopilotDeviceLogoutCommand
+func CopilotDeviceLogoutCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "copilotdevicelogout", nil, opts)
+	return err
+}
+
 // command "createblock", wshserver.CreateBlockCommand
 func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, opts *wshrpc.RpcOpts) (waveobj.ORef, error) {
 	resp, err := sendRpcRequestCallHelper[waveobj.ORef](w, "createblock", data, opts)
