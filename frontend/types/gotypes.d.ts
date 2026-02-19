@@ -1308,6 +1308,7 @@ declare global {
         "markdown:fixedfontsize"?: number;
         "preview:showhiddenfiles"?: boolean;
         "tab:preset"?: string;
+        "tab:confirmclose"?: boolean;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
