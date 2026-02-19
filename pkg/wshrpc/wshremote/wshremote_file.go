@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -57,6 +58,17 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 	if err != nil {
 		return fmt.Errorf("cannot open dir %q: %w", path, err)
 	}
+	sort.Slice(innerFilesEntries, func(i, j int) bool {
+		iInfo, iErr := innerFilesEntries[i].Info()
+		jInfo, jErr := innerFilesEntries[j].Info()
+		if iErr != nil {
+			return false
+		}
+		if jErr != nil {
+			return true
+		}
+		return iInfo.ModTime().After(jInfo.ModTime())
+	})
 	if byteRange.All {
 		if len(innerFilesEntries) > wshrpc.MaxDirSize {
 			innerFilesEntries = innerFilesEntries[:wshrpc.MaxDirSize]
