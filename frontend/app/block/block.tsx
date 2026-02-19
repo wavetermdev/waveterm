@@ -18,8 +18,8 @@ import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
+import { counterInc } from "@/store/counters";
 import {
-    counterInc,
     getBlockComponentModel,
     registerBlockComponentModel,
     unregisterBlockComponentModel,
