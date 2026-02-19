@@ -5,6 +5,7 @@ import { Tooltip } from "@/app/element/tooltip";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
 import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
@@ -314,6 +315,7 @@ SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
 const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const workspace = useAtomValue(atoms.workspace);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
     const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
@@ -321,9 +323,14 @@ const Widgets = memo(() => {
 
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
     const widgetsMap = fullConfig?.widgets ?? {};
-    const filteredWidgets = hasCustomAIPresets
-        ? widgetsMap
-        : Object.fromEntries(Object.entries(widgetsMap).filter(([key]) => key !== "defwidget@ai"));
+    const filteredWidgets = Object.fromEntries(
+        Object.entries(widgetsMap).filter(([key, widget]) => {
+            if (!hasCustomAIPresets && key === "defwidget@ai") {
+                return false;
+            }
+            return shouldIncludeWidgetForWorkspace(widget, workspace?.oid);
+        })
+    );
     const widgets = sortByDisplayOrder(filteredWidgets);
 
     const [isAppsOpen, setIsAppsOpen] = useState(false);

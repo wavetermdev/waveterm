@@ -2075,6 +2075,7 @@ declare global {
         color?: string;
         label?: string;
         description?: string;
+        workspaces?: string[];
         magnified?: boolean;
         blockdef: BlockDef;
     };
