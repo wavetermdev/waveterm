@@ -80,8 +80,7 @@ func termScrollbackRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		Timeout: 5000,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error getting terminal scrollback: %v\n", err)
-		return err
+		return fmt.Errorf("error getting terminal scrollback: %w", err)
 	}
 
 	// Format the output
@@ -94,8 +93,7 @@ func termScrollbackRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if termScrollbackOutputFile != "" {
 		err = os.WriteFile(termScrollbackOutputFile, []byte(output), 0644)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error writing to file %s: %v\n", termScrollbackOutputFile, err)
-			return err
+			return fmt.Errorf("error writing to file %s: %w", termScrollbackOutputFile, err)
 		}
 		fmt.Printf("terminal scrollback written to %s (%d lines)\n", termScrollbackOutputFile, len(result.Lines))
 	} else {
