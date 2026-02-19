@@ -137,6 +137,9 @@ function simpleCloseStaticTab() {
             if (didClose) {
                 deleteLayoutModelForTab(tabId);
             }
+        })
+        .catch((e) => {
+            console.log("error closing tab", e);
         });
 }
 
