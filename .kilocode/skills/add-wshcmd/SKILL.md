@@ -342,7 +342,7 @@ if err != nil {
 
 Add your command to `docs/docs/wsh-reference.mdx`:
 
-```markdown
+````markdown
 ## mycommand
 
 Brief description of what the command does.
@@ -377,7 +377,7 @@ wsh mycommand -v --name "example" arg1 arg2
 Additional notes, tips, or warnings about the command.
 
 ---
-```
+````
 
 **Documentation Guidelines:**
 - Place in alphabetical order with other commands
@@ -454,7 +454,7 @@ func versionRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 #### Documentation
 
-```markdown
+````markdown
 ## version
 
 Print the current Wave Terminal version.
@@ -469,7 +469,7 @@ Examples:
 # Print version
 wsh version
 ```
-```
+````
 
 ### Example 2: Command with Flags and RPC
 
@@ -544,7 +544,7 @@ func setTitleRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 #### Documentation
 
-```markdown
+````markdown
 ## settitle
 
 Set the title for a block.
@@ -571,7 +571,7 @@ wsh settitle --icon "terminal" "Development Shell"
 # Set title for specific block
 wsh settitle -b 2 "Build Output"
 ```
-```
+````
 
 ### Example 3: Subcommands
 
@@ -645,7 +645,7 @@ func myGroupAddRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 #### Documentation
 
-```markdown
+````markdown
 ## mygroup
 
 Manage something with subcommands.
@@ -675,7 +675,7 @@ wsh mygroup list
 # Add an item
 wsh mygroup add "new-item"
 ```
-```
+````
 
 ## Common Patterns
 
