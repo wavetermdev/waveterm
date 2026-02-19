@@ -51,6 +51,12 @@
         "description": {
           "type": "string"
         },
+        "workspaces": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "magnified": {
           "type": "boolean"
         },
