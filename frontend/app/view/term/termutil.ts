@@ -364,5 +364,21 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
         lines.push(currentLine);
     }
 
+    // Trim trailing blank lines only when the requested range extends to the
+    // actual end of the buffer.  A terminal allocates a fixed number of rows
+    // (e.g. 80) but only the first few may contain real content; the rest are
+    // empty placeholder rows.  We strip those so callers don't receive a wall
+    // of empty strings.
+    //
+    // Crucially, if the caller requested a specific sub-range (e.g. lines
+    // 100-150) and lines 140-150 happen to be blank, those blanks are
+    // intentional and must NOT be removed.  We only trim when the range
+    // reaches the very end of the buffer.
+    if (clampedEnd >= buffer.length) {
+        while (lines.length > 0 && lines[lines.length - 1] === "") {
+            lines.pop();
+        }
+    }
+
     return lines;
 }
