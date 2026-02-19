@@ -160,6 +160,8 @@ type SettingsType struct {
 	ConnLocalHostnameDisplay *string `json:"conn:localhostdisplayname,omitempty"`
 
 	DebugClear               bool `json:"debug:*,omitempty"`
+	DebugWebCdp              bool `json:"debug:webcdp,omitempty"`
+	DebugWebCdpPort          *int `json:"debug:webcdpport,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
 	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
 

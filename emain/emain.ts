@@ -26,6 +26,7 @@ import {
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { configureWebCdpServer, setWebCdpBlockOps } from "./emain-cdp";
 import { initIpcHandlers } from "./emain-ipc";
 import { log } from "./emain-log";
 import { initMenuEventSubscriptions, makeAndSetAppMenu, makeDockTaskbar } from "./emain-menu";
@@ -404,6 +405,41 @@ async function appMain() {
         console.log("error initializing wshrpc", e);
     }
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+
+    // Web widget CDP server (Chrome-style /json endpoints), bound to 127.0.0.1 only.
+    // This is primarily used by automation clients (e.g. MCP tools) that expect /json/list discovery.
+    setWebCdpBlockOps({
+        createWebBlock: async (url: string) => {
+            const tabId =
+                focusedWaveWindow?.activeTabView?.waveTabId ?? getAllWaveWindows()?.[0]?.activeTabView?.waveTabId;
+            if (!tabId) {
+                throw new Error("no active tab available to create a web widget");
+            }
+            const oref = await RpcApi.CreateBlockCommand(
+                ElectronWshClient,
+                {
+                    tabid: tabId,
+                    blockdef: {
+                        meta: {
+                            view: "web",
+                            url,
+                        },
+                    },
+                    focused: true,
+                },
+                { timeout: 5000 }
+            );
+            return oref.oid;
+        },
+        deleteBlock: async (blockId: string) => {
+            await RpcApi.DeleteBlockCommand(ElectronWshClient, { blockid: blockId }, { timeout: 5000 });
+        },
+    });
+    await configureWebCdpServer({
+        enabled: !!fullConfig?.settings?.["debug:webcdp"],
+        port: fullConfig?.settings?.["debug:webcdpport"] ?? 9222,
+    });
+
     checkIfRunningUnderARM64Translation(fullConfig);
     if (fullConfig?.settings?.["app:confirmquit"] != null) {
         confirmQuit = fullConfig.settings["app:confirmquit"];
