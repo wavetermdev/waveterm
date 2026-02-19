@@ -336,7 +336,12 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
     let currentLine = "";
     let isFirstLine = true;
 
-    for (let i = startIndex; i < endIndex; i++) {
+    // Clamp indices to valid buffer range to avoid out-of-bounds access on the
+    // underlying circular buffer, which could return stale/wrong data.
+    const clampedStart = Math.max(0, Math.min(startIndex, buffer.length));
+    const clampedEnd = Math.max(0, Math.min(endIndex, buffer.length));
+
+    for (let i = clampedStart; i < clampedEnd; i++) {
         const line = buffer.getLine(i);
         if (line) {
             const lineText = line.translateToString(true);
