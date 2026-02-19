@@ -130,8 +130,14 @@ function getStaticTabBlockCount(): number {
 function simpleCloseStaticTab() {
     const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
-    getApi().closeTab(ws.oid, tabId);
-    deleteLayoutModelForTab(tabId);
+    const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
+    getApi()
+        .closeTab(ws.oid, tabId, confirmClose)
+        .then((didClose) => {
+            if (didClose) {
+                deleteLayoutModelForTab(tabId);
+            }
+        });
 }
 
 function uxCloseBlock(blockId: string) {

@@ -728,15 +728,25 @@ ipcMain.on("set-waveai-open", (event, isOpen: boolean) => {
     }
 });
 
-ipcMain.on("close-tab", async (event, workspaceId, tabId) => {
+ipcMain.handle("close-tab", async (event, workspaceId, tabId, confirmClose) => {
     const ww = getWaveWindowByWorkspaceId(workspaceId);
     if (ww == null) {
         console.log(`close-tab: no window found for workspace ws=${workspaceId} tab=${tabId}`);
-        return;
+        return false;
+    }
+    if (confirmClose) {
+        const choice = dialog.showMessageBoxSync(ww, {
+            type: "question",
+            buttons: ["Cancel", "Close Tab"],
+            title: "Confirm",
+            message: "Are you sure you want to close this tab?",
+        });
+        if (choice === 0) {
+            return false;
+        }
     }
     await ww.queueCloseTab(tabId);
-    event.returnValue = true;
-    return null;
+    return true;
 });
 
 ipcMain.on("switch-workspace", (event, workspaceId) => {

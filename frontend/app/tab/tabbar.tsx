@@ -592,9 +592,15 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         const ws = globalStore.get(atoms.workspace);
-        getApi().closeTab(ws.oid, tabId);
-        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
-        deleteLayoutModelForTab(tabId);
+        const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
+        getApi()
+            .closeTab(ws.oid, tabId, confirmClose)
+            .then((didClose) => {
+                if (didClose) {
+                    tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
+                    deleteLayoutModelForTab(tabId);
+                }
+            });
     };
 
     const handleTabLoaded = useCallback((tabId: string) => {

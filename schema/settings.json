@@ -194,6 +194,9 @@
         "tab:preset": {
           "type": "string"
         },
+        "tab:confirmclose": {
+          "type": "boolean"
+        },
         "widget:*": {
           "type": "boolean"
         },
