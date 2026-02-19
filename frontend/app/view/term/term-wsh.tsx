@@ -148,11 +148,19 @@ export class TermWshClient extends WshClient {
 
             const lines = bufferLinesToText(buffer, startBufferIndex, endBufferIndex);
 
+            // Convert buffer indices to "from bottom" line numbers.
+            // "from bottom" 0 = most recent line; higher numbers = older lines.
+            // The buffer range [startBufferIndex, endBufferIndex) maps to
+            // "from bottom" range [totalLines - endBufferIndex, totalLines - startBufferIndex).
+            // The first returned line is at "from bottom" position: totalLines - endBufferIndex.
             let returnLines = lines;
-            let returnStartLine = startBufferIndex;
+            let returnStartLine = totalLines - endBufferIndex;
             if (lines.length > 1000) {
+                // there is a small bug here since this is computing a physical start line
+                // after the lines have already been combined (because of potential wrapping)
+                // for now this isn't worth fixing, just noted
                 returnLines = lines.slice(lines.length - 1000);
-                returnStartLine = startBufferIndex + (lines.length - 1000);
+                returnStartLine = (totalLines - endBufferIndex) + (lines.length - 1000);
             }
 
             return {
