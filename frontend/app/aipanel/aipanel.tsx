@@ -253,6 +253,7 @@ const AIPanelComponentInner = memo(() => {
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
+    const focusFollowsCursorMode = jotai.useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = maybeUseTabModel();
@@ -509,6 +510,16 @@ const AIPanelComponentInner = memo(() => {
         [model]
     );
 
+    const handlePointerEnter = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            if (focusFollowsCursorMode !== "on") return;
+            if (event.pointerType === "touch" || event.buttons > 0) return;
+            if (isFocused) return;
+            model.focusInput();
+        },
+        [focusFollowsCursorMode, isFocused, model]
+    );
+
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
         const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
@@ -548,6 +559,7 @@ const AIPanelComponentInner = memo(() => {
                 borderBottomLeftRadius: 10,
             }}
             onFocusCapture={handleFocusCapture}
+            onPointerEnter={handlePointerEnter}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
