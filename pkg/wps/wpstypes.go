@@ -8,25 +8,25 @@ import (
 )
 
 const (
-	Event_BlockClose          = "blockclose"       // type: string
-	Event_ConnChange          = "connchange"       // type: wshrpc.ConnStatus
-	Event_SysInfo             = "sysinfo"          // type: wshrpc.TimeSeriesData
-	Event_ControllerStatus    = "controllerstatus" // type: *blockcontroller.BlockControllerRuntimeStatus
-	Event_BuilderStatus       = "builderstatus"    // type: wshrpc.BuilderStatusData
-	Event_BuilderOutput       = "builderoutput"    // type: map[string]any
-	Event_WaveObjUpdate       = "waveobj:update"   // type: waveobj.WaveObjUpdate
-	Event_BlockFile           = "blockfile"        // type: *WSFileEventData
-	Event_Config              = "config"           // type: wconfig.WatcherUpdate
-	Event_UserInput           = "userinput"        // type: *userinput.UserInputRequest
-	Event_RouteDown           = "route:down"
-	Event_RouteUp             = "route:up"
-	Event_WorkspaceUpdate     = "workspace:update"
-	Event_WaveAIRateLimit     = "waveai:ratelimit" // type: *uctypes.RateLimitInfo
-	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated"
-	Event_TsunamiUpdateMeta   = "tsunami:updatemeta" // type: wshrpc.AppMeta
-	Event_AIModeConfig        = "waveai:modeconfig"  // type: wconfig.AIModeConfigUpdate
-	Event_TabIndicator        = "tab:indicator"      // type: wshrpc.TabIndicatorEventData
-	Event_BlockJobStatus      = "block:jobstatus"    // type: BlockJobStatusData
+	Event_BlockClose          = "blockclose"           // type: string
+	Event_ConnChange          = "connchange"           // type: wshrpc.ConnStatus
+	Event_SysInfo             = "sysinfo"              // type: wshrpc.TimeSeriesData
+	Event_ControllerStatus    = "controllerstatus"     // type: *blockcontroller.BlockControllerRuntimeStatus
+	Event_BuilderStatus       = "builderstatus"        // type: wshrpc.BuilderStatusData
+	Event_BuilderOutput       = "builderoutput"        // type: map[string]any
+	Event_WaveObjUpdate       = "waveobj:update"       // type: waveobj.WaveObjUpdate
+	Event_BlockFile           = "blockfile"            // type: *WSFileEventData
+	Event_Config              = "config"               // type: wconfig.WatcherUpdate
+	Event_UserInput           = "userinput"            // type: *userinput.UserInputRequest
+	Event_RouteDown           = "route:down"           // type: none
+	Event_RouteUp             = "route:up"             // type: none
+	Event_WorkspaceUpdate     = "workspace:update"     // type: none
+	Event_WaveAIRateLimit     = "waveai:ratelimit"     // type: *uctypes.RateLimitInfo
+	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated" // type: none
+	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"   // type: wshrpc.AppMeta
+	Event_AIModeConfig        = "waveai:modeconfig"    // type: wconfig.AIModeConfigUpdate
+	Event_TabIndicator        = "tab:indicator"        // type: wshrpc.TabIndicatorEventData
+	Event_BlockJobStatus      = "block:jobstatus"      // type: BlockJobStatusData
 )
 
 var AllEvents []string = []string{

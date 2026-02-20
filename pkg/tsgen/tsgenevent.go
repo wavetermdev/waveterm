@@ -21,27 +21,34 @@ import (
 var waveEventRType = reflect.TypeOf(wps.WaveEvent{})
 
 var WaveEventDataTypes = map[string]reflect.Type{
-	wps.Event_BlockClose:        reflect.TypeOf(""),
-	wps.Event_ConnChange:        reflect.TypeOf(wshrpc.ConnStatus{}),
-	wps.Event_SysInfo:           reflect.TypeOf(wshrpc.TimeSeriesData{}),
-	wps.Event_ControllerStatus:  reflect.TypeOf((*blockcontroller.BlockControllerRuntimeStatus)(nil)),
-	wps.Event_BuilderStatus:     reflect.TypeOf(wshrpc.BuilderStatusData{}),
-	wps.Event_BuilderOutput:     reflect.TypeOf(map[string]any{}),
-	wps.Event_WaveObjUpdate:     reflect.TypeOf(waveobj.WaveObjUpdate{}),
-	wps.Event_BlockFile:         reflect.TypeOf((*wps.WSFileEventData)(nil)),
-	wps.Event_Config:            reflect.TypeOf(wconfig.WatcherUpdate{}),
-	wps.Event_UserInput:         reflect.TypeOf((*userinput.UserInputRequest)(nil)),
-	wps.Event_WaveAIRateLimit:   reflect.TypeOf((*uctypes.RateLimitInfo)(nil)),
-	wps.Event_TsunamiUpdateMeta: reflect.TypeOf(wshrpc.AppMeta{}),
-	wps.Event_AIModeConfig:      reflect.TypeOf(wconfig.AIModeConfigUpdate{}),
-	wps.Event_TabIndicator:      reflect.TypeOf(wshrpc.TabIndicatorEventData{}),
-	wps.Event_BlockJobStatus:    reflect.TypeOf(wshrpc.BlockJobStatusData{}),
+	wps.Event_BlockClose:          reflect.TypeOf(""),
+	wps.Event_ConnChange:          reflect.TypeOf(wshrpc.ConnStatus{}),
+	wps.Event_SysInfo:             reflect.TypeOf(wshrpc.TimeSeriesData{}),
+	wps.Event_ControllerStatus:    reflect.TypeOf((*blockcontroller.BlockControllerRuntimeStatus)(nil)),
+	wps.Event_BuilderStatus:       reflect.TypeOf(wshrpc.BuilderStatusData{}),
+	wps.Event_BuilderOutput:       reflect.TypeOf(map[string]any{}),
+	wps.Event_WaveObjUpdate:       reflect.TypeOf(waveobj.WaveObjUpdate{}),
+	wps.Event_BlockFile:           reflect.TypeOf((*wps.WSFileEventData)(nil)),
+	wps.Event_Config:              reflect.TypeOf(wconfig.WatcherUpdate{}),
+	wps.Event_UserInput:           reflect.TypeOf((*userinput.UserInputRequest)(nil)),
+	wps.Event_RouteDown:           nil,
+	wps.Event_RouteUp:             nil,
+	wps.Event_WorkspaceUpdate:     nil,
+	wps.Event_WaveAIRateLimit:     reflect.TypeOf((*uctypes.RateLimitInfo)(nil)),
+	wps.Event_WaveAppAppGoUpdated: nil,
+	wps.Event_TsunamiUpdateMeta:   reflect.TypeOf(wshrpc.AppMeta{}),
+	wps.Event_AIModeConfig:        reflect.TypeOf(wconfig.AIModeConfigUpdate{}),
+	wps.Event_TabIndicator:        reflect.TypeOf(wshrpc.TabIndicatorEventData{}),
+	wps.Event_BlockJobStatus:      reflect.TypeOf(wshrpc.BlockJobStatusData{}),
 }
 
 func getWaveEventDataTSType(eventName string, tsTypesMap map[reflect.Type]string) string {
-	rtype := WaveEventDataTypes[eventName]
-	if rtype == nil {
+	rtype, found := WaveEventDataTypes[eventName]
+	if !found {
 		return "any"
+	}
+	if rtype == nil {
+		return "null"
 	}
 	tsType, _ := TypeToTSType(rtype, tsTypesMap)
 	if tsType == "" {

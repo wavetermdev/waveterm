@@ -25,11 +25,11 @@ declare global {
         { event: "blockfile"; data?: WSFileEventData; } | 
         { event: "config"; data?: WatcherUpdate; } | 
         { event: "userinput"; data?: UserInputRequest; } | 
-        { event: "route:down"; data?: any; } | 
-        { event: "route:up"; data?: any; } | 
-        { event: "workspace:update"; data?: any; } | 
+        { event: "route:down"; data?: null; } | 
+        { event: "route:up"; data?: null; } | 
+        { event: "workspace:update"; data?: null; } | 
         { event: "waveai:ratelimit"; data?: RateLimitInfo; } | 
-        { event: "waveapp:appgoupdated"; data?: any; } | 
+        { event: "waveapp:appgoupdated"; data?: null; } | 
         { event: "tsunami:updatemeta"; data?: AppMeta; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "tab:indicator"; data?: TabIndicatorEventData; } | 
