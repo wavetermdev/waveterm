@@ -227,12 +227,11 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         focusElemRef.current?.focus({ preventScroll: true });
     }, [viewModel]);
 
-    const focusFollowsCursorEnabled =
-        focusFollowsCursorMode === "on" ||
-        (focusFollowsCursorMode === "term" && blockData?.meta?.view === "term");
-
     const focusFromPointerEnter = useCallback(
         (event: React.PointerEvent<HTMLDivElement>) => {
+            const focusFollowsCursorEnabled =
+                focusFollowsCursorMode === "on" ||
+                (focusFollowsCursorMode === "term" && blockData?.meta?.view === "term");
             if (!focusFollowsCursorEnabled || event.pointerType === "touch" || event.buttons > 0) {
                 return;
             }
@@ -248,7 +247,8 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             }
         },
         [
-            focusFollowsCursorEnabled,
+            focusFollowsCursorMode,
+            blockData?.meta?.view,
             modalOpen,
             disablePointerEvents,
             isResizing,
