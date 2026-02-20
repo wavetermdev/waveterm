@@ -46,7 +46,7 @@
         "@types/throttle-debounce": "^5",
         "@types/tinycolor2": "^1",
         "@types/ws": "^8",
-        "@vitejs/plugin-react-swc": "4.2.2",
+        "@vitejs/plugin-react-swc": "4.2.3",
         "@vitest/coverage-istanbul": "^3.0.9",
         "electron": "^40.4.1",
         "electron-builder": "^26.8",
