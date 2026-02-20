@@ -43,6 +43,7 @@ wsh editconfig
 | app:hideaibutton <VersionBadge version="v0.14" />                    | bool     | Set to true to hide the AI button in the tab bar (defaults to false)                                                                                                                                                                                          |
 | app:disablectrlshiftarrows <VersionBadge version="v0.14" />          | bool     | Set to true to disable Ctrl+Shift+Arrow keybindings for block navigation (defaults to false)                                                                                                                                                                  |
 | app:disablectrlshiftdisplay <VersionBadge version="v0.14" />         | bool     | Set to true to disable the Ctrl+Shift visual indicator display (defaults to false)                                                                                                                                                                            |
+| app:focusfollowscursor                                                | string   | Controls whether block focus follows cursor movement: `"off"` (default), `"on"` (all blocks), or `"term"` (terminal blocks only)                                                                                                                             |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -122,6 +123,7 @@ For reference, this is the current default configuration (v0.14.0):
     "app:hideaibutton": false,
     "app:disablectrlshiftarrows": false,
     "app:disablectrlshiftdisplay": false,
+    "app:focusfollowscursor": "off",
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,

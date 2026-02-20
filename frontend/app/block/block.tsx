@@ -151,7 +151,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const isResizing = useAtomValue(nodeModel.isResizing);
     const modalOpen = useAtomValue(atoms.modalOpen);
-    const focusFollowsCursorMode = useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "on";
+    const focusFollowsCursorMode = useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
     const noPadding = useAtomValueSafe(viewModel.noPadding);
 
