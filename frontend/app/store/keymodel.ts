@@ -585,7 +585,40 @@ function registerGlobalKeys() {
         switchBlockInDirection(NavigateDirection.Right);
         return true;
     });
+    // Vim-style aliases for block focus navigation.
+    globalKeyMap.set("Ctrl:Shift:h", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Left);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:j", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Down);
+        return true;
+    });
     globalKeyMap.set("Ctrl:Shift:k", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Up);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:l", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Right);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:x", () => {
         const blockId = getFocusedBlockId();
         if (blockId == null) {
             return true;
