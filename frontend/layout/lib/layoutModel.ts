@@ -1073,6 +1073,10 @@ export class LayoutModel {
                     const treeState = get(this.localTreeStateAtom);
                     return treeState.magnifiedNodeId === nodeid;
                 }),
+                anyMagnified: atom((get) => {
+                    const treeState = get(this.localTreeStateAtom);
+                    return treeState.magnifiedNodeId != null;
+                }),
                 isEphemeral: atom((get) => {
                     const ephemeralNode = get(this.ephemeralNode);
                     return ephemeralNode?.id === nodeid;

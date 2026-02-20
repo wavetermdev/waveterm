@@ -150,6 +150,8 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const isResizing = useAtomValue(nodeModel.isResizing);
+    const isMagnified = useAtomValue(nodeModel.isMagnified);
+    const anyMagnified = useAtomValue(nodeModel.anyMagnified);
     const modalOpen = useAtomValue(atoms.modalOpen);
     const focusFollowsCursorMode = useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
@@ -235,7 +237,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             if (!focusFollowsCursorEnabled || event.pointerType === "touch" || event.buttons > 0) {
                 return;
             }
-            if (modalOpen || disablePointerEvents || isResizing) {
+            if (modalOpen || disablePointerEvents || isResizing || (anyMagnified && !isMagnified)) {
                 return;
             }
             if (isFocused && focusedBlockId() === nodeModel.blockId) {
@@ -252,18 +254,23 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             modalOpen,
             disablePointerEvents,
             isResizing,
+            isMagnified,
+            anyMagnified,
             isFocused,
             nodeModel,
             setFocusTarget,
         ]
     );
 
-    const blockModel: BlockComponentModel2 = {
-        onClick: setBlockClickedTrue,
-        onPointerEnter: focusFromPointerEnter,
-        onFocusCapture: handleChildFocus,
-        blockRef: blockRef,
-    };
+    const blockModel = useMemo<BlockComponentModel2>(
+        () => ({
+            onClick: setBlockClickedTrue,
+            onPointerEnter: focusFromPointerEnter,
+            onFocusCapture: handleChildFocus,
+            blockRef: blockRef,
+        }),
+        [setBlockClickedTrue, focusFromPointerEnter, handleChildFocus, blockRef]
+    );
 
     return (
         <BlockFrame
