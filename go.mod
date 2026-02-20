@@ -36,7 +36,7 @@ require (
 	golang.org/x/sync v0.19.0
 	golang.org/x/sys v0.41.0
 	golang.org/x/term v0.40.0
-	google.golang.org/api v0.266.0
+	google.golang.org/api v0.267.0
 )
 
 require (
