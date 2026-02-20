@@ -8,26 +8,48 @@ import (
 )
 
 const (
-	Event_BlockClose          = "blockclose"
-	Event_ConnChange          = "connchange"
-	Event_SysInfo             = "sysinfo"
-	Event_ControllerStatus    = "controllerstatus"
-	Event_BuilderStatus       = "builderstatus"
-	Event_BuilderOutput       = "builderoutput"
-	Event_WaveObjUpdate       = "waveobj:update"
-	Event_BlockFile           = "blockfile"
-	Event_Config              = "config"
-	Event_UserInput           = "userinput"
+	Event_BlockClose          = "blockclose"       // type: string
+	Event_ConnChange          = "connchange"       // type: wshrpc.ConnStatus
+	Event_SysInfo             = "sysinfo"          // type: wshrpc.TimeSeriesData
+	Event_ControllerStatus    = "controllerstatus" // type: *blockcontroller.BlockControllerRuntimeStatus
+	Event_BuilderStatus       = "builderstatus"    // type: wshrpc.BuilderStatusData
+	Event_BuilderOutput       = "builderoutput"    // type: map[string]any
+	Event_WaveObjUpdate       = "waveobj:update"   // type: waveobj.WaveObjUpdate
+	Event_BlockFile           = "blockfile"        // type: *WSFileEventData
+	Event_Config              = "config"           // type: wconfig.WatcherUpdate
+	Event_UserInput           = "userinput"        // type: *userinput.UserInputRequest
 	Event_RouteDown           = "route:down"
 	Event_RouteUp             = "route:up"
 	Event_WorkspaceUpdate     = "workspace:update"
-	Event_WaveAIRateLimit     = "waveai:ratelimit"
+	Event_WaveAIRateLimit     = "waveai:ratelimit" // type: *uctypes.RateLimitInfo
 	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated"
-	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"
-	Event_AIModeConfig        = "waveai:modeconfig"
-	Event_TabIndicator        = "tab:indicator"
-	Event_BlockJobStatus      = "block:jobstatus" // type: BlockJobStatusData
+	Event_TsunamiUpdateMeta   = "tsunami:updatemeta" // type: wshrpc.AppMeta
+	Event_AIModeConfig        = "waveai:modeconfig"  // type: wconfig.AIModeConfigUpdate
+	Event_TabIndicator        = "tab:indicator"      // type: wshrpc.TabIndicatorEventData
+	Event_BlockJobStatus      = "block:jobstatus"    // type: BlockJobStatusData
 )
+
+var AllEvents []string = []string{
+	Event_BlockClose,
+	Event_ConnChange,
+	Event_SysInfo,
+	Event_ControllerStatus,
+	Event_BuilderStatus,
+	Event_BuilderOutput,
+	Event_WaveObjUpdate,
+	Event_BlockFile,
+	Event_Config,
+	Event_UserInput,
+	Event_RouteDown,
+	Event_RouteUp,
+	Event_WorkspaceUpdate,
+	Event_WaveAIRateLimit,
+	Event_WaveAppAppGoUpdated,
+	Event_TsunamiUpdateMeta,
+	Event_AIModeConfig,
+	Event_TabIndicator,
+	Event_BlockJobStatus,
+}
 
 type WaveEvent struct {
 	Event   string   `json:"event"`

@@ -1930,14 +1930,6 @@ declare global {
         total_tokens?: number;
     };
 
-    // wps.WaveEvent
-    type WaveEvent = {
-        event: string;
-        scopes?: string[];
-        sender?: string;
-        persist?: number;
-        data?: any;
-    };
 
     // filestore.WaveFile
     type WaveFile = {
