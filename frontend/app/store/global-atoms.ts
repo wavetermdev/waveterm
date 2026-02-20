@@ -3,7 +3,6 @@
 
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
-import { modalsModel } from "./modalmodel";
 import * as WOS from "./wos";
 
 let atoms!: GlobalAtomsType;
@@ -45,14 +44,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     } catch (e) {
         console.log("failed to initialize zoomFactorAtom", e);
-    }
-
-    try {
-        getApi().onMenuItemAbout(() => {
-            modalsModel.pushModal("AboutModal");
-        });
-    } catch (e) {
-        console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
     const workspaceAtom: Atom<Workspace> = atom((get) => {

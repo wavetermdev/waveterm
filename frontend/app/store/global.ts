@@ -49,6 +49,13 @@ function initGlobal(initOpts: GlobalInitOptions) {
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
+    try {
+        getApi().onMenuItemAbout(() => {
+            modalsModel.pushModal("AboutModal");
+        });
+    } catch (e) {
+        console.log("failed to initialize onMenuItemAbout handler", e);
+    }
 }
 
 function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
