@@ -286,6 +286,7 @@ type AIModeConfigType struct {
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
 	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
 	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
+	ProxyURL           string   `json:"ai:proxyurl,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
