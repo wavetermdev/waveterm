@@ -829,6 +829,7 @@ type WidgetConfigType struct {
 	Color         string           `json:"color,omitempty"`
 	Label         string           `json:"label,omitempty"`
 	Description   string           `json:"description,omitempty"`
+	Workspaces    []string         `json:"workspaces,omitempty"`
 	Magnified     bool             `json:"magnified,omitempty"`
 	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }
