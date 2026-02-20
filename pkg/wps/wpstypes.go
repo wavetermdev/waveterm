@@ -27,6 +27,7 @@ const (
 	Event_AIModeConfig        = "waveai:modeconfig"
 	Event_TabIndicator        = "tab:indicator"
 	Event_BlockJobStatus      = "block:jobstatus" // type: BlockJobStatusData
+	Event_Badge               = "badge"           // type: baseds.BadgeEvent
 )
 
 type WaveEvent struct {

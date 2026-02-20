@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 )
 
 type UpdatesRtnType = []WaveObjUpdate
@@ -187,12 +189,13 @@ func (*Workspace) GetOType() string {
 }
 
 type Tab struct {
-	OID         string      `json:"oid"`
-	Version     int         `json:"version"`
-	Name        string      `json:"name"`
-	LayoutState string      `json:"layoutstate"`
-	BlockIds    []string    `json:"blockids"`
-	Meta        MetaMapType `json:"meta"`
+	OID         string        `json:"oid"`
+	Version     int           `json:"version"`
+	Name        string        `json:"name"`
+	LayoutState string        `json:"layoutstate"`
+	BlockIds    []string      `json:"blockids"`
+	Meta        MetaMapType   `json:"meta"`
+	Badge       *baseds.Badge `json:"badge,omitempty"`
 }
 
 func (*Tab) GetOType() string {
@@ -292,6 +295,7 @@ type Block struct {
 	Meta        MetaMapType    `json:"meta"`
 	SubBlockIds []string       `json:"subblockids,omitempty"`
 	JobId       string         `json:"jobid,omitempty"` // if set, the block will render this jobid's pty output
+	Badge       *baseds.Badge  `json:"badge,omitempty"`
 }
 
 func (*Block) GetOType() string {
