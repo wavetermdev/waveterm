@@ -20,7 +20,9 @@ import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
 import {
+    atoms,
     getBlockComponentModel,
+    getSettingsKeyAtom,
     registerBlockComponentModel,
     unregisterBlockComponentModel,
 } from "@/store/global";
@@ -147,6 +149,11 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
+    const isResizing = useAtomValue(nodeModel.isResizing);
+    const isMagnified = useAtomValue(nodeModel.isMagnified);
+    const anyMagnified = useAtomValue(nodeModel.anyMagnified);
+    const modalOpen = useAtomValue(atoms.modalOpen);
+    const focusFollowsCursorMode = useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
     const noPadding = useAtomValueSafe(viewModel.noPadding);
 
@@ -220,13 +227,50 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             return;
         }
         focusElemRef.current?.focus({ preventScroll: true });
-    }, []);
+    }, [viewModel]);
 
-    const blockModel: BlockComponentModel2 = {
-        onClick: setBlockClickedTrue,
-        onFocusCapture: handleChildFocus,
-        blockRef: blockRef,
-    };
+    const focusFromPointerEnter = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            const focusFollowsCursorEnabled =
+                focusFollowsCursorMode === "on" ||
+                (focusFollowsCursorMode === "term" && blockData?.meta?.view === "term");
+            if (!focusFollowsCursorEnabled || event.pointerType === "touch" || event.buttons > 0) {
+                return;
+            }
+            if (modalOpen || disablePointerEvents || isResizing || (anyMagnified && !isMagnified)) {
+                return;
+            }
+            if (isFocused && focusedBlockId() === nodeModel.blockId) {
+                return;
+            }
+            setFocusTarget();
+            if (!isFocused) {
+                nodeModel.focusNode();
+            }
+        },
+        [
+            focusFollowsCursorMode,
+            blockData?.meta?.view,
+            modalOpen,
+            disablePointerEvents,
+            isResizing,
+            isMagnified,
+            anyMagnified,
+            isFocused,
+            nodeModel,
+            setFocusTarget,
+        ]
+    );
+
+    const blockModel = useMemo<BlockComponentModel2>(
+        () => ({
+            onClick: setBlockClickedTrue,
+            onPointerEnter: focusFromPointerEnter,
+            onFocusCapture: handleChildFocus,
+            blockRef: blockRef,
+        }),
+        [setBlockClickedTrue, focusFromPointerEnter, handleChildFocus, blockRef]
+    );
 
     return (
         <BlockFrame

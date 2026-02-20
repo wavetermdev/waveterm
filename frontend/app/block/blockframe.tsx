@@ -163,6 +163,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             })}
             data-blockid={nodeModel.blockId}
             onClick={blockModel?.onClick}
+            onPointerEnter={blockModel?.onPointerEnter}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
             style={

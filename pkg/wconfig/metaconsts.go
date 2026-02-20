@@ -16,6 +16,7 @@ const (
 	ConfigKey_AppHideAiButton                = "app:hideaibutton"
 	ConfigKey_AppDisableCtrlShiftArrows      = "app:disablectrlshiftarrows"
 	ConfigKey_AppDisableCtrlShiftDisplay     = "app:disablectrlshiftdisplay"
+	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
