@@ -332,31 +332,32 @@ export class TermWrap {
             return;
         }
 
-        // IME Composition Handling
-        // Block all data during composition - only send the final text after compositionend
-        // This prevents xterm.js from sending intermediate composition data (e.g., during compositionupdate)
-        if (this.isComposing) {
-            dlog("Blocked data during composition:", data);
-            return;
-        }
-
         if (this.pasteActive) {
             if (this.multiInputCallback) {
                 this.multiInputCallback(data);
             }
         }
 
-        // IME Deduplication (for Capslock input method switching)
-        // When switching input methods with Capslock during composition, some systems send the
-        // composed text twice. We allow the first send and block subsequent duplicates.
+        // IME handling: Check if this is confirmed text from a recent compositionend
+        // This must be checked BEFORE isComposing, because when implicitly confirming IME
+        // (e.g., typing next char), the event order is:
+        //   compositionend → compositionstart (new) → xterm onData
+        // By the time onData fires, a new composition has started (isComposing=true),
+        // but we still need to send the confirmed text from the previous composition.
+        //
+        // We also handle deduplication here: when switching input methods with Capslock
+        // during composition, some systems send the composed text twice. We allow the
+        // first send and block subsequent duplicates within the dedup window.
         const IMEDedupWindowMs = 50;
         const now = Date.now();
         const timeSinceCompositionEnd = now - this.lastCompositionEnd;
         if (timeSinceCompositionEnd < IMEDedupWindowMs && data === this.lastComposedText && this.lastComposedText) {
             if (!this.firstDataAfterCompositionSent) {
-                // First send after composition - allow it but mark as sent
+                // First send after composition - allow it even if isComposing is true
                 this.firstDataAfterCompositionSent = true;
                 dlog("First data after composition, allowing:", data);
+                this.sendDataHandler?.(data);
+                return;
             } else {
                 // Second send of the same data - this is a duplicate from Capslock switching, block it
                 dlog("Blocked duplicate IME data:", data);
@@ -364,6 +365,12 @@ export class TermWrap {
                 this.firstDataAfterCompositionSent = false;
                 return;
             }
+        }
+
+        // Block intermediate composition data (e.g., during compositionupdate)
+        if (this.isComposing) {
+            dlog("Blocked data during composition:", data);
+            return;
         }
 
         this.sendDataHandler?.(data);
