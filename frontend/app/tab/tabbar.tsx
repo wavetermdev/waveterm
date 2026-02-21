@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { Tooltip } from "@/app/element/tooltip";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
@@ -42,7 +43,7 @@ interface TabBarProps {
     workspace: Workspace;
 }
 
-const WaveAIButton = memo(() => {
+const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
 
@@ -56,14 +57,18 @@ const WaveAIButton = memo(() => {
     }
 
     return (
-        <div
-            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            onClick={onClick}
+        <Tooltip
+            content="Toggle Wave AI Panel"
+            placement="bottom"
+            hideOnClick
+            divClassName={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            divStyle={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            divOnClick={onClick}
+            divRef={divRef}
         >
             <i className="fa fa-sparkles" />
             <span className="font-bold ml-1 -top-px font-mono">AI</span>
-        </div>
+        </Tooltip>
     );
 });
 WaveAIButton.displayName = "WaveAIButton";
@@ -190,6 +195,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const draggerRightRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
+    const waveAIButtonRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
@@ -251,6 +257,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
+        const waveAIButtonWidth = waveAIButtonRef.current?.getBoundingClientRect().width ?? 0;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
@@ -259,7 +266,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             updateStatusLabelWidth +
             configErrorWidth +
             appMenuButtonWidth +
-            workspaceSwitcherWidth;
+            workspaceSwitcherWidth +
+            waveAIButtonWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -670,8 +678,16 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     <i className="fa fa-ellipsis" />
                 </div>
             )}
-            <WaveAIButton />
-            <WorkspaceSwitcher ref={workspaceSwitcherRef} />
+            <WaveAIButton divRef={waveAIButtonRef} />
+            <Tooltip
+                content="Workspace Switcher"
+                placement="bottom"
+                hideOnClick
+                divRef={workspaceSwitcherRef}
+                divClassName="flex items-center h-full"
+            >
+                <WorkspaceSwitcher />
+            </Tooltip>
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

@@ -12,7 +12,7 @@ import {
     useHover,
     useInteractions,
 } from "@floating-ui/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface TooltipProps {
     children: React.ReactNode;
@@ -24,6 +24,8 @@ interface TooltipProps {
     divClassName?: string;
     divStyle?: React.CSSProperties;
     divOnClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+    divRef?: React.RefObject<HTMLDivElement>;
+    hideOnClick?: boolean;
 }
 
 function TooltipInner({
@@ -35,9 +37,12 @@ function TooltipInner({
     divClassName,
     divStyle,
     divOnClick,
+    divRef,
+    hideOnClick = false,
 }: Omit<TooltipProps, "disable">) {
     const [isOpen, setIsOpen] = useState(forceOpen);
     const [isVisible, setIsVisible] = useState(false);
+    const [clickDisabled, setClickDisabled] = useState(false);
     const timeoutRef = useRef<number | null>(null);
     const prevForceOpenRef = useRef<boolean>(forceOpen);
 
@@ -106,17 +111,44 @@ function TooltipInner({
         };
     }, []);
 
-    const hover = useHover(context);
+    const hover = useHover(context, { enabled: !clickDisabled });
     const { getReferenceProps, getFloatingProps } = useInteractions([hover]);
+
+    const handleClick = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            if (hideOnClick) {
+                setIsVisible(false);
+                setIsOpen(false);
+                if (timeoutRef.current !== null) {
+                    window.clearTimeout(timeoutRef.current);
+                }
+                setClickDisabled(true);
+            }
+            divOnClick?.(e);
+        },
+        [hideOnClick, divOnClick]
+    );
+
+    const handlePointerEnter = useCallback(() => {
+        if (hideOnClick && clickDisabled) {
+            setClickDisabled(false);
+        }
+    }, [hideOnClick, clickDisabled]);
 
     return (
         <>
             <div
-                ref={refs.setReference}
+                ref={(node) => {
+                    refs.setReference(node);
+                    if (divRef) {
+                        (divRef as React.RefObject<HTMLDivElement>).current = node;
+                    }
+                }}
                 {...getReferenceProps()}
                 className={divClassName}
                 style={divStyle}
-                onClick={divOnClick}
+                onClick={handleClick}
+                onPointerEnter={handlePointerEnter}
             >
                 {children}
             </div>
@@ -152,10 +184,12 @@ export function Tooltip({
     divClassName,
     divStyle,
     divOnClick,
+    divRef,
+    hideOnClick = false,
 }: TooltipProps) {
     if (disable) {
         return (
-            <div className={divClassName} style={divStyle} onClick={divOnClick}>
+            <div ref={divRef} className={divClassName} style={divStyle} onClick={divOnClick}>
                 {children}
             </div>
         );
@@ -171,6 +205,8 @@ export function Tooltip({
             divClassName={divClassName}
             divStyle={divStyle}
             divOnClick={divOnClick}
+            divRef={divRef}
+            hideOnClick={hideOnClick}
         />
     );
 }
