@@ -13,7 +13,7 @@ declare global {
         scopes?: string[];
         sender?: string;
         persist?: number;
-        data?: any;
+        data?: unknown;
     } & (
         { event: "blockclose"; data?: string; } | 
         { event: "connchange"; data?: ConnStatus; } | 

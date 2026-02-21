@@ -79,7 +79,7 @@ func GenerateWaveEventTypes(tsTypesMap map[reflect.Type]string) string {
 	buf.WriteString("    scopes?: string[];\n")
 	buf.WriteString("    sender?: string;\n")
 	buf.WriteString("    persist?: number;\n")
-	buf.WriteString("    data?: any;\n")
+	buf.WriteString("    data?: unknown;\n")
 	buf.WriteString("} & (\n")
 	for idx, eventName := range wps.AllEvents {
 		if idx > 0 {
