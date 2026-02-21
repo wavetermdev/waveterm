@@ -10,7 +10,162 @@
           "type": "object"
         },
         "meta": {
-          "$ref": "#/$defs/MetaMapType"
+          "properties": {
+            "view": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "term",
+                    "preview",
+                    "web",
+                    "sysinfo",
+                    "launcher"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "file": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "controller": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "shell",
+                    "cmd"
+                  ]
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "cmd": {
+              "type": "string"
+            },
+            "cmd:interactive": {
+              "type": "boolean"
+            },
+            "cmd:login": {
+              "type": "boolean"
+            },
+            "cmd:persistent": {
+              "type": "boolean"
+            },
+            "cmd:runonstart": {
+              "type": "boolean"
+            },
+            "cmd:clearonstart": {
+              "type": "boolean"
+            },
+            "cmd:runonce": {
+              "type": "boolean"
+            },
+            "cmd:closeonexit": {
+              "type": "boolean"
+            },
+            "cmd:closeonexitforce": {
+              "type": "boolean"
+            },
+            "cmd:closeonexitdelay": {
+              "type": "number"
+            },
+            "cmd:nowsh": {
+              "type": "boolean"
+            },
+            "cmd:args": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "cmd:shell": {
+              "type": "boolean"
+            },
+            "cmd:allowconnchange": {
+              "type": "boolean"
+            },
+            "cmd:env": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "cmd:cwd": {
+              "type": "string"
+            },
+            "cmd:initscript": {
+              "type": "string"
+            },
+            "cmd:initscript.sh": {
+              "type": "string"
+            },
+            "cmd:initscript.bash": {
+              "type": "string"
+            },
+            "cmd:initscript.zsh": {
+              "type": "string"
+            },
+            "cmd:initscript.pwsh": {
+              "type": "string"
+            },
+            "cmd:initscript.fish": {
+              "type": "string"
+            },
+            "term:fontsize": {
+              "type": "integer"
+            },
+            "term:fontfamily": {
+              "type": "string"
+            },
+            "term:mode": {
+              "type": "string"
+            },
+            "term:theme": {
+              "type": "string"
+            },
+            "term:localshellpath": {
+              "type": "string"
+            },
+            "term:localshellopts": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "term:scrollback": {
+              "type": "integer"
+            },
+            "term:transparency": {
+              "type": "number"
+            },
+            "term:allowbracketedpaste": {
+              "type": "boolean"
+            },
+            "term:shiftenternewline": {
+              "type": "boolean"
+            },
+            "term:macoptionismeta": {
+              "type": "boolean"
+            },
+            "term:bellsound": {
+              "type": "boolean"
+            },
+            "term:bellindicator": {
+              "type": "boolean"
+            },
+            "term:durable": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true,
+          "type": "object"
         }
       },
       "additionalProperties": false,
@@ -26,9 +181,6 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
-    },
-    "MetaMapType": {
       "type": "object"
     },
     "WidgetConfigType": {
