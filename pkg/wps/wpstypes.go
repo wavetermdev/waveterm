@@ -7,6 +7,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
+// IMPORTANT: When adding a new event constant, you MUST also:
+//  1. Add a "// type: <TypeName>" comment (use "none" if no data is sent)
+//  2. Add the constant to AllEvents below
+//  3. Add an entry to WaveEventDataTypes in pkg/tsgen/tsgenevent.go
+//     - Use reflect.TypeOf(YourType{}) for value types
+//     - Use reflect.TypeOf((*YourType)(nil)) for pointer types
+//     - Use nil if no data is sent for the event
 const (
 	Event_BlockClose          = "blockclose"           // type: string
 	Event_ConnChange          = "connchange"           // type: wshrpc.ConnStatus
@@ -26,7 +33,7 @@ const (
 	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"   // type: wshrpc.AppMeta
 	Event_AIModeConfig        = "waveai:modeconfig"    // type: wconfig.AIModeConfigUpdate
 	Event_TabIndicator        = "tab:indicator"        // type: wshrpc.TabIndicatorEventData
-	Event_BlockJobStatus      = "block:jobstatus"      // type: BlockJobStatusData
+	Event_BlockJobStatus      = "block:jobstatus"      // type: wshrpc.BlockJobStatusData
 )
 
 var AllEvents []string = []string{
