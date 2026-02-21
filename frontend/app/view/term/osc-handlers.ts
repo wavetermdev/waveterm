@@ -324,6 +324,12 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
         case "R":
             globalStore.set(termWrap.shellIntegrationStatusAtom, null);
             if (terminal.buffer.active.type === "alternate") {
+                // Save scroll position before alternate buffer exit (only if user scrolled up)
+                const normalBuffer = terminal.buffer.normal;
+                const isAtBottom = normalBuffer.baseY >= normalBuffer.length - terminal.rows;
+                if (!isAtBottom) {
+                    termWrap.savedBaseY = normalBuffer.baseY;
+                }
                 terminal.write("\x1b[?1049l");
             }
             break;
