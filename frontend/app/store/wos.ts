@@ -3,7 +3,7 @@
 
 // WaveObjectStore
 
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { fireAndForget } from "@/util/util";
@@ -79,7 +79,7 @@ function debugLogBackendCall(methodName: string, durationStr: string, args: any[
 }
 
 function wpsSubscribeToObject(oref: string): () => void {
-    return waveEventSubscribe({
+    return waveEventSubscribeSingle({
         eventType: "waveobj:update",
         scope: oref,
         handler: (event) => {

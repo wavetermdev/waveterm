@@ -6,7 +6,7 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
@@ -330,12 +330,11 @@ export class TermViewModel implements ViewModel {
         initialShellProcStatus.then((rts) => {
             this.updateShellProcStatus(rts);
         });
-        this.shellProcStatusUnsubFn = waveEventSubscribe({
+        this.shellProcStatusUnsubFn = waveEventSubscribeSingle({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
-                let bcRTS: BlockControllerRuntimeStatus = event.data;
-                this.updateShellProcStatus(bcRTS);
+                this.updateShellProcStatus(event.data);
             },
         });
         this.shellProcStatus = jotai.atom((get) => {
@@ -364,7 +363,7 @@ export class TermViewModel implements ViewModel {
             .catch((error) => {
                 console.log("error getting initial block job status", error);
             });
-        this.blockJobStatusUnsubFn = waveEventSubscribe({
+        this.blockJobStatusUnsubFn = waveEventSubscribeSingle({
             eventType: "block:jobstatus",
             scope: `block:${blockId}`,
             handler: (event) => {

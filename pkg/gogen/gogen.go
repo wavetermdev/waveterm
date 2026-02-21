@@ -13,7 +13,7 @@ import (
 )
 
 func GenerateBoilerplate(buf *strings.Builder, pkgName string, imports []string) {
-	buf.WriteString("// Copyright 2025, Command Line Inc.\n")
+	buf.WriteString("// Copyright 2026, Command Line Inc.\n")
 	buf.WriteString("// SPDX-License-Identifier: Apache-2.0\n")
 	buf.WriteString("\n// Generated Code. DO NOT EDIT.\n\n")
 	buf.WriteString(fmt.Sprintf("package %s\n\n", pkgName))

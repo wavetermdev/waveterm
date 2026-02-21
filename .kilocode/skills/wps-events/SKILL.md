@@ -40,7 +40,7 @@ const (
     Event_BlockClose       = "blockclose"
     Event_ConnChange       = "connchange"
     // ... other events ...
-    Event_YourNewEvent     = "your:newevent"  // Use colon notation for namespacing
+    Event_YourNewEvent     = "your:newevent"  // type: YourEventData (or "none" if no data)
 )
 ```
 
@@ -49,8 +49,37 @@ const (
 - Use descriptive PascalCase for the constant name with `Event_` prefix
 - Use lowercase with colons for the string value (e.g., "namespace:eventname")
 - Group related events with the same namespace prefix
+- Always add a `// type: <TypeName>` comment; use `// type: none` if no data is sent
 
-### Step 2: Define Event Data Structure (Optional)
+### Step 2: Add to AllEvents
+
+Add your new constant to the `AllEvents` slice in `pkg/wps/wpstypes.go`:
+
+```go
+var AllEvents []string = []string{
+    // ... existing events ...
+    Event_YourNewEvent,
+}
+```
+
+### Step 3: Register in WaveEventDataTypes (REQUIRED)
+
+You **must** add an entry to `WaveEventDataTypes` in `pkg/tsgen/tsgenevent.go`. This drives TypeScript type generation for the event's `data` field:
+
+```go
+var WaveEventDataTypes = map[string]reflect.Type{
+    // ... existing entries ...
+    wps.Event_YourNewEvent: reflect.TypeOf(YourEventData{}),        // value type
+    // wps.Event_YourNewEvent: reflect.TypeOf((*YourEventData)(nil)), // pointer type
+    // wps.Event_YourNewEvent: nil,                                   // no data (type: none)
+}
+```
+
+- Use `reflect.TypeOf(YourType{})` for value types
+- Use `reflect.TypeOf((*YourType)(nil))` for pointer types
+- Use `nil` if no data is sent for the event
+
+### Step 4: Define Event Data Structure (Optional)
 
 If your event carries structured data, define a type for it:
 
@@ -61,7 +90,7 @@ type YourEventData struct {
 }
 ```
 
-### Step 3: Expose Type to Frontend (If Needed)
+### Step 5: Expose Type to Frontend (If Needed)
 
 If your event data type isn't already exposed via an RPC call, you need to add it to `pkg/tsgen/tsgen.go` so TypeScript types are generated:
 
@@ -299,9 +328,11 @@ To debug event flow:
 
 When adding a new event:
 
-- [ ] Add event constant to `pkg/wps/wpstypes.go`
+- [ ] Add event constant to [`pkg/wps/wpstypes.go`](pkg/wps/wpstypes.go) with a `// type: <TypeName>` comment (use `none` if no data)
+- [ ] Add the constant to `AllEvents` in [`pkg/wps/wpstypes.go`](pkg/wps/wpstypes.go)
+- [ ] **REQUIRED**: Add an entry to `WaveEventDataTypes` in [`pkg/tsgen/tsgenevent.go`](pkg/tsgen/tsgenevent.go) — use `nil` for events with no data
 - [ ] Define event data structure (if needed)
-- [ ] Add data type to `pkg/tsgen/tsgen.go` for frontend use
+- [ ] Add data type to `pkg/tsgen/tsgen.go` for frontend use (if not already exposed via RPC)
 - [ ] Run `task generate` to update TypeScript types
 - [ ] Publish events using `wps.Broker.Publish()`
 - [ ] Use goroutines for non-blocking publish when appropriate
