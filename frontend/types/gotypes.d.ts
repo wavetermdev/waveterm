@@ -1098,6 +1098,7 @@ declare global {
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:exitindicator"?: boolean;
         "term:durable"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
@@ -1290,6 +1291,7 @@ declare global {
         "term:macoptionismeta"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:exitindicator"?: boolean;
         "term:durable"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;

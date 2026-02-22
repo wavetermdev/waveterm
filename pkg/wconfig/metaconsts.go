@@ -54,6 +54,7 @@ const (
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
 	ConfigKey_TermBellSound                  = "term:bellsound"
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
+	ConfigKey_TermExitIndicator              = "term:exitindicator"
 	ConfigKey_TermDurable                    = "term:durable"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
