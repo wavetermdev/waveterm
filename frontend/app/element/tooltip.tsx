@@ -144,11 +144,9 @@ function TooltipInner({
                         divRef.current = node;
                     }
                 }}
-                {...getReferenceProps()}
+                {...getReferenceProps({ onClick: handleClick, onPointerEnter: handlePointerEnter })}
                 className={divClassName}
                 style={divStyle}
-                onClick={handleClick}
-                onPointerEnter={handlePointerEnter}
             >
                 {children}
             </div>
