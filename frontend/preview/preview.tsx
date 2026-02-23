@@ -41,7 +41,6 @@ function PreviewIndex() {
             <div className="flex flex-col items-center gap-3">
                 <Logo />
                 <h1 className="text-title font-semibold tracking-tight text-foreground">Wave Preview Server</h1>
-                <p className="text-secondary text-sm">Component development environment</p>
             </div>
 
             <div className="w-px h-8 bg-border" />
