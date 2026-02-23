@@ -141,7 +141,7 @@ function TooltipInner({
                 ref={(node) => {
                     refs.setReference(node);
                     if (divRef) {
-                        (divRef as React.RefObject<HTMLDivElement>).current = node;
+                        divRef.current = node;
                     }
                 }}
                 {...getReferenceProps()}
