@@ -58,6 +58,20 @@ tasks:
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
             WAVETERM_NOCONFIRMQUIT: "1"
 
+    preview:
+        desc: Run the standalone component preview server with HMR (no Electron, no backend).
+        dir: frontend/preview
+        cmd: npx vite
+        deps:
+            - npm:install
+
+    build:preview:
+        desc: Build the component preview server for static deployment.
+        dir: frontend/preview
+        cmd: npx vite build
+        deps:
+            - npm:install
+
     electron:winquickdev:
         desc: Run the Electron application via the Vite dev server (quick dev - Windows amd64 only, no generate, no wsh).
         cmd: npm run dev

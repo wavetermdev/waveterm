@@ -9,15 +9,17 @@ import { isDev } from "@/util/isdev";
 import { useState } from "react";
 import { getApi } from "../store/global";
 
-interface AboutModalProps {}
+interface AboutModalVProps {
+    versionString: string;
+    updaterChannel: string;
+    onClose: () => void;
+}
 
-const AboutModal = ({}: AboutModalProps) => {
+const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProps) => {
     const currentDate = new Date();
-    const [details] = useState(() => getApi().getAboutModalDetails());
-    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
 
     return (
-        <Modal className="pt-[34px] pb-[34px]" onClose={() => modalsModel.popModal()}>
+        <Modal className="pt-[34px] pb-[34px]" onClose={onClose}>
             <div className="flex flex-col gap-[26px] w-full">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
@@ -29,8 +31,7 @@ const AboutModal = ({}: AboutModalProps) => {
                     </div>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
-                    Client Version {details.version} ({isDev() ? "dev-" : ""}
-                    {details.buildTime})
+                    Client Version {versionString}
                     <br />
                     Update Channel: {updaterChannel}
                 </div>
@@ -68,6 +69,18 @@ const AboutModal = ({}: AboutModalProps) => {
     );
 };
 
+AboutModalV.displayName = "AboutModalV";
+
+interface AboutModalProps {}
+
+const AboutModal = ({}: AboutModalProps) => {
+    const [details] = useState(() => getApi().getAboutModalDetails());
+    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
+    const versionString = `${details.version} (${isDev() ? "dev-" : ""}${details.buildTime})`;
+
+    return <AboutModalV versionString={versionString} updaterChannel={updaterChannel} onClose={() => modalsModel.popModal()} />;
+};
+
 AboutModal.displayName = "AboutModal";
 
-export { AboutModal };
+export { AboutModal, AboutModalV };

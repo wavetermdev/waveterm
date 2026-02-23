@@ -266,3 +266,15 @@ declare interface VitePreloadErrorEvent extends Event {
 declare interface WindowEventMap {
     "vite:preloadError": VitePreloadErrorEvent;
 }
+
+// import.meta.glob — provided by Vite at build time
+interface ImportMeta {
+    glob<T = Record<string, unknown>>(
+        pattern: string | string[],
+        options?: { eager?: boolean; import?: string; query?: string | Record<string, string> }
+    ): Record<string, () => Promise<T>>;
+    glob<T = Record<string, unknown>>(
+        pattern: string | string[],
+        options: { eager: true; import?: string; query?: string | Record<string, string> }
+    ): Record<string, T>;
+}

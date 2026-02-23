@@ -1,0 +1,8 @@
+/* Copyright 2026, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
+
+/* Re-export the main tailwind setup, adding extra @source so Tailwind v4
+   scans the full frontend/app tree (the preview vite root is frontend/preview/,
+   so the automatic scan would otherwise miss frontend/app/**). */
+@import "../tailwindsetup.css";
+@source "../app";
