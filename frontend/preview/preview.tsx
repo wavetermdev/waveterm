@@ -65,7 +65,7 @@ function PreviewHeader({ previewName }: { previewName: string }) {
     return (
         <div
             className="fixed top-0 left-0 right-0 flex items-center gap-3 px-4 py-2 bg-panel border-b border-border"
-            style={{ zIndex: 99999 }}
+            style={{ zIndex: 100000 }}
         >
             <a
                 href="/"
