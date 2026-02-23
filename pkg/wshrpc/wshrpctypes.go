@@ -120,6 +120,9 @@ type WshRpcInterface interface {
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
+	WebCdpStartCommand(ctx context.Context, data CommandWebCdpStartData) (*CommandWebCdpStartRtnData, error)
+	WebCdpStopCommand(ctx context.Context, data CommandWebCdpStopData) error
+	WebCdpStatusCommand(ctx context.Context) ([]WebCdpStatusEntry, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 	FocusWindowCommand(ctx context.Context, windowId string) error
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
@@ -469,6 +472,41 @@ type CommandWebSelectorData struct {
 	TabId       string           `json:"tabid"`
 	Selector    string           `json:"selector"`
 	Opts        *WebSelectorOpts `json:"opts,omitempty"`
+}
+
+type CommandWebCdpStartData struct {
+	WorkspaceId   string `json:"workspaceid"`
+	BlockId       string `json:"blockid"`
+	TabId         string `json:"tabid"`
+	Port          int    `json:"port,omitempty"`          // 0 means choose an ephemeral port
+	IdleTimeoutMs int    `json:"idletimeoutms,omitempty"` // 0 disables idle shutdown
+}
+
+type CommandWebCdpStartRtnData struct {
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	WsUrl        string `json:"wsurl"`
+	InspectorUrl string `json:"inspectorurl"`
+	TargetId     string `json:"targetid"`
+}
+
+type CommandWebCdpStopData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+}
+
+type WebCdpStatusEntry struct {
+	Key          string `json:"key"`
+	WorkspaceId  string `json:"workspaceid"`
+	BlockId      string `json:"blockid"`
+	TabId        string `json:"tabid"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	WsUrl        string `json:"wsurl"`
+	InspectorUrl string `json:"inspectorurl"`
+	TargetId     string `json:"targetid"`
+	Controlled   bool   `json:"controlled"`
 }
 
 type BlockInfoData struct {
