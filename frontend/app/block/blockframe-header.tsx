@@ -57,7 +57,7 @@ function handleHeaderContextMenu(
             click: () => uxCloseBlock(blockId),
         }
     );
-    ContextMenuModel.showContextMenu(menu, e);
+    ContextMenuModel.getInstance().showContextMenu(menu, e);
 }
 
 type HeaderTextElemsProps = {

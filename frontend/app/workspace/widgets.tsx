@@ -401,7 +401,7 @@ const Widgets = memo(() => {
                 },
             },
         ];
-        ContextMenuModel.showContextMenu(menu, e);
+        ContextMenuModel.getInstance().showContextMenu(menu, e);
     };
 
     return (

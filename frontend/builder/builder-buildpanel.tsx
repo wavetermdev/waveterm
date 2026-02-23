@@ -31,7 +31,7 @@ function handleBuildPanelContextMenu(e: React.MouseEvent, selectedText: string):
             },
         },
     ];
-    ContextMenuModel.showContextMenu(menu, e);
+    ContextMenuModel.getInstance().showContextMenu(menu, e);
 }
 
 const BuilderBuildPanel = memo(() => {

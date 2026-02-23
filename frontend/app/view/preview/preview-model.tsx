@@ -209,7 +209,7 @@ export class PreviewModel implements ViewModel {
                             label: `Go to ${bookmark.label} (${bookmark.path})`,
                             click: () => this.goHistory(bookmark.path),
                         }));
-                        ContextMenuModel.showContextMenu(menuItems, e);
+                        ContextMenuModel.getInstance().showContextMenu(menuItems, e);
                     },
                 };
             }

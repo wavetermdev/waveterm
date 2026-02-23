@@ -130,7 +130,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
             },
         });
     }
-    ContextMenuModel.showContextMenu(menu, e);
+    ContextMenuModel.getInstance().showContextMenu(menu, e);
 }
 
 function AppSettingsUpdater() {
