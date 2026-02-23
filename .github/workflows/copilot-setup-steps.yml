@@ -60,4 +60,8 @@ jobs:
                   GIT_TERMINAL_PROMPT: "0"
 
             - name: Pre-fetch Go modules
-              run: go mod download
+              env:
+                  GOTOOLCHAIN: auto
+              run: |
+                  go version
+                  go mod download
