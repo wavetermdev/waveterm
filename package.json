@@ -25,7 +25,7 @@
         "build:prod": "electron-vite build --mode production",
         "coverage": "vitest run --coverage",
         "test": "vitest",
-        "postinstall": "electron-builder install-app-deps"
+        "postinstall": "node ./postinstall.cjs"
     },
     "devDependencies": {
         "@eslint/js": "^8.57.0",
