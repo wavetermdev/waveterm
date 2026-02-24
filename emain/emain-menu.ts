@@ -417,14 +417,9 @@ function convertMenuDefArrToMenu(
             role: menuDef.role as any,
             label: menuDef.label,
             type: menuDef.type,
-            click: (_, window) => {
+            click: () => {
                 menuState.hasClick = true;
-                const wc = getWindowWebContents(window) ?? webContents;
-                if (!wc) {
-                    console.error("invalid window for context menu click handler:", window);
-                    return;
-                }
-                wc.send("contextmenu-click", menuDef.id);
+                webContents.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
             enabled: menuDef.enabled,
