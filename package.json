@@ -51,7 +51,7 @@
         "electron": "^40.4.1",
         "electron-builder": "^26.8",
         "electron-vite": "^5.0",
-        "eslint": "^9.39",
+        "eslint": "^10.0",
         "eslint-config-prettier": "^10.1.8",
         "globals": "^17.3.0",
         "node-abi": "^4.26.0",
