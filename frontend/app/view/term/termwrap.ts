@@ -238,7 +238,6 @@ export class TermWrap {
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
-        this.toDispose.push(this.terminal.onKey(this.onKeyHandler.bind(this)));
         this.toDispose.push(
             this.terminal.onSelectionChange(
                 debounce(50, () => {
@@ -340,12 +339,6 @@ export class TermWrap {
             return;
         }
 
-        if (this.pasteActive) {
-            if (this.multiInputCallback) {
-                this.multiInputCallback(data);
-            }
-        }
-
         // IME Deduplication (for Capslock input method switching)
         // When switching input methods with Capslock during composition, some systems send the
         // composed text twice. We allow the first send and block subsequent duplicates.
@@ -367,12 +360,7 @@ export class TermWrap {
         }
 
         this.sendDataHandler?.(data);
-    }
-
-    onKeyHandler(data: { key: string; domEvent: KeyboardEvent }) {
-        if (this.multiInputCallback) {
-            this.multiInputCallback(data.key);
-        }
+        this.multiInputCallback?.(data);
     }
 
     addFocusListener(focusFn: () => void) {
