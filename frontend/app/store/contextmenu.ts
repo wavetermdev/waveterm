@@ -3,9 +3,16 @@
 
 import { atoms, getApi, globalStore } from "./global";
 
+type ShowContextMenuOpts = {
+    onSelect?: (item: ContextMenuItem) => void;
+    onCancel?: () => void;
+    onClose?: (item: ContextMenuItem | null) => void;
+};
+
 class ContextMenuModel {
     private static instance: ContextMenuModel;
-    handlers: Map<string, () => void> = new Map(); // id -> handler
+    handlers: Map<string, ContextMenuItem> = new Map(); // id -> item
+    activeOpts: ShowContextMenuOpts = null;
 
     private constructor() {
         getApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
@@ -18,11 +25,24 @@ class ContextMenuModel {
         return ContextMenuModel.instance;
     }
 
-    handleContextMenuClick(id: string): void {
-        const handler = this.handlers.get(id);
-        if (handler) {
-            handler();
+    handleContextMenuClick(id: string | null): void {
+        const opts = this.activeOpts;
+        this.activeOpts = null;
+        if (id == null) {
+            this.handlers.clear();
+            opts?.onCancel?.();
+            opts?.onClose?.(null);
+            return;
         }
+        const item = this.handlers.get(id);
+        this.handlers.clear();
+        if (item?.click) {
+            item.click();
+        }
+        if (item != null) {
+            opts?.onSelect?.(item);
+        }
+        opts?.onClose?.(item ?? null);
     }
 
     _convertAndRegisterMenu(menu: ContextMenuItem[]): ElectronContextMenuItem[] {
@@ -43,7 +63,7 @@ class ContextMenuModel {
                 electronItem.enabled = false;
             }
             if (item.click) {
-                this.handlers.set(electronItem.id, item.click);
+                this.handlers.set(electronItem.id, item);
             }
             if (item.submenu) {
                 electronItem.submenu = this._convertAndRegisterMenu(item.submenu);
@@ -53,9 +73,10 @@ class ContextMenuModel {
         return electronMenuItems;
     }
 
-    showContextMenu(menu: ContextMenuItem[], ev: React.MouseEvent<any>): void {
+    showContextMenu(menu: ContextMenuItem[], ev: React.MouseEvent<any>, opts?: ShowContextMenuOpts): void {
         ev.stopPropagation();
         this.handlers.clear();
+        this.activeOpts = opts;
         const electronMenuItems = this._convertAndRegisterMenu(menu);
         
         const workspace = globalStore.get(atoms.workspace);
