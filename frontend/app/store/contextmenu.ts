@@ -12,7 +12,7 @@ type ShowContextMenuOpts = {
 class ContextMenuModel {
     private static instance: ContextMenuModel;
     handlers: Map<string, ContextMenuItem> = new Map(); // id -> item
-    activeOpts: ShowContextMenuOpts = null;
+    activeOpts: ShowContextMenuOpts | null = null;
 
     private constructor() {
         getApi().onContextMenuClick(this.handleContextMenuClick.bind(this));

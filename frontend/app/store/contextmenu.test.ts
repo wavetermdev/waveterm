@@ -120,7 +120,11 @@ describe("ContextMenuModel", () => {
             order.push(`close:${item == null ? "null" : item.label}`);
         });
 
-        model.showContextMenu([{ label: "Open", click: vi.fn() }], { stopPropagation: vi.fn() } as any, { onCancel, onClose });
+        model.showContextMenu(
+            [{ label: "Open", click: vi.fn() }],
+            { stopPropagation: vi.fn() } as any,
+            { onCancel, onClose }
+        );
         contextMenuCallback(null);
 
         expect(order).toEqual(["cancel", "close:null"]);
