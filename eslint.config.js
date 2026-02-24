@@ -11,6 +11,14 @@ const tsconfigRootDir = path.dirname(fileURLToPath(new URL(import.meta.url)));
 
 export default [
     {
+        languageOptions: {
+            parserOptions: {
+                tsconfigRootDir,
+            },
+        },
+    },
+
+    {
         ignores: [
             "**/node_modules/**",
             "**/dist/**",
@@ -48,7 +56,7 @@ export default [
     },
 
     {
-        files: ["emain/emain.ts", "electron.vite.config.ts", "**/*.cjs", "eslint.config.js"],
+        files: ["emain/emain.ts", "electron.vite.config.ts", "**/*.cjs", "eslint.config.js", "docs/babel.config.js"],
         languageOptions: {
             globals: {
                 ...globals.node,
@@ -67,6 +75,7 @@ export default [
         rules: {
             "@typescript-eslint/no-unused-vars": "warn",
             "prefer-const": "warn",
+            "no-empty": "warn",
         },
     },
 

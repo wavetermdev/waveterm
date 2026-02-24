@@ -524,7 +524,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
 
 interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
-    msgWidths: Object;
+    msgWidths: object;
     model: WaveAiModel;
 }
 
@@ -769,7 +769,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         const block = pres[selectedBlockIdx];
         if (!block || !osRef.current?.osInstance()) return;
 
-        const { viewport, scrollOffsetElement } = osRef.current?.osInstance().elements();
+        const { viewport, scrollOffsetElement } = osRef.current.osInstance().elements();
         const chatWindowTop = scrollOffsetElement.scrollTop;
         const chatWindowHeight = chatWindowRef.current.clientHeight;
         const chatWindowBottom = chatWindowTop + chatWindowHeight;

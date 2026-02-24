@@ -71,14 +71,18 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
 
 AboutModalV.displayName = "AboutModalV";
 
-interface AboutModalProps {}
-
-const AboutModal = ({}: AboutModalProps) => {
+const AboutModal = () => {
     const [details] = useState(() => getApi().getAboutModalDetails());
     const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
     const versionString = `${details.version} (${isDev() ? "dev-" : ""}${details.buildTime})`;
 
-    return <AboutModalV versionString={versionString} updaterChannel={updaterChannel} onClose={() => modalsModel.popModal()} />;
+    return (
+        <AboutModalV
+            versionString={versionString}
+            updaterChannel={updaterChannel}
+            onClose={() => modalsModel.popModal()}
+        />
+    );
 };
 
 AboutModal.displayName = "AboutModal";
