@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-const { ipcRenderer } = require("electron");
+import { ipcRenderer } from "electron";
 
 document.addEventListener("contextmenu", (event) => {
     console.log("contextmenu event", event);
