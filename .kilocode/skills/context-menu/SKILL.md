@@ -40,7 +40,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 To display the context menu, call:
 
 ```ts
-ContextMenuModel.showContextMenu(menu, event);
+ContextMenuModel.getInstance().showContextMenu(menu, event);
 ```
 
 - **menu**: An array of `ContextMenuItem`.
@@ -75,7 +75,7 @@ const menu: ContextMenuItem[] = [
   },
 ];
 
-ContextMenuModel.showContextMenu(menu, e);
+ContextMenuModel.getInstance().showContextMenu(menu, e);
 ```
 
 ---
@@ -111,7 +111,7 @@ const menu: ContextMenuItem[] = [
   },
 ];
 
-ContextMenuModel.showContextMenu(menu, e);
+ContextMenuModel.getInstance().showContextMenu(menu, e);
 ```
 
 ---
@@ -143,7 +143,7 @@ Open a configuration file (e.g., `widgets.json`) in preview mode:
 - **Actions**: Use `click` for actions; use `submenu` for nested options.
 - **Separators**: Use `type: "separator"` to group items.
 - **Toggles**: Use `type: "checkbox"` or `"radio"` with the `checked` property.
-- **Displaying**: Use `ContextMenuModel.showContextMenu(menu, event)` to render the menu.
+- **Displaying**: Use `ContextMenuModel.getInstance().showContextMenu(menu, event)` to render the menu.
 
 ## Common Use Cases
 
