@@ -228,7 +228,7 @@ export class WaveBrowserWindow extends BaseWindow {
             this.finalizePositioning();
         }, 1000);
         this.on(
-            // @ts-expect-error
+            // @ts-expect-error -- "resize" event with debounce handler not in Electron type definitions
             "resize",
             debounce(400, (e) => this.mainResizeHandler(e))
         );
@@ -239,7 +239,7 @@ export class WaveBrowserWindow extends BaseWindow {
             this.activeTabView?.positionTabOnScreen(this.getContentBounds());
         });
         this.on(
-            // @ts-expect-error
+            // @ts-expect-error -- "move" event with debounce handler not in Electron type definitions
             "move",
             debounce(400, (e) => this.mainResizeHandler(e))
         );
@@ -271,7 +271,6 @@ export class WaveBrowserWindow extends BaseWindow {
             if (getGlobalIsRelaunching()) {
                 return;
             }
-            focusedWaveWindow = this;
             console.log("focus win", this.waveWindowId);
             fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
@@ -547,7 +546,7 @@ export class WaveBrowserWindow extends BaseWindow {
                             await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
                         }
                         break;
-                    case "closetab":
+                    case "closetab": {
                         tabId = entry.tabId;
                         const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
                         if (rtn == null) {
@@ -569,7 +568,8 @@ export class WaveBrowserWindow extends BaseWindow {
                         }
                         tabId = rtn.newactivetabid;
                         break;
-                    case "switchworkspace":
+                    }
+                    case "switchworkspace": {
                         const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, entry.workspaceId);
                         if (!newWs) {
                             return;
@@ -581,6 +581,7 @@ export class WaveBrowserWindow extends BaseWindow {
                         this.allLoadedTabViews = new Map();
                         tabId = newWs.activetabid;
                         break;
+                    }
                 }
                 if (tabId == null) {
                     return;

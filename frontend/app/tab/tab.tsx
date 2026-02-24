@@ -361,7 +361,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
                 menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
             }
             menu.push({ label: "Close Tab", click: () => onClose(null) });
-            ContextMenuModel.showContextMenu(menu, e);
+            ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         [handleRenameTab, id, onClose]
     );

@@ -3,11 +3,19 @@
 
 import { atoms, getApi, globalStore } from "./global";
 
-class ContextMenuModelType {
+class ContextMenuModel {
+    private static instance: ContextMenuModel;
     handlers: Map<string, () => void> = new Map(); // id -> handler
 
-    constructor() {
+    private constructor() {
         getApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
+    }
+
+    static getInstance(): ContextMenuModel {
+        if (ContextMenuModel.instance == null) {
+            ContextMenuModel.instance = new ContextMenuModel();
+        }
+        return ContextMenuModel.instance;
     }
 
     handleContextMenuClick(id: string): void {
@@ -63,6 +71,4 @@ class ContextMenuModelType {
     }
 }
 
-const ContextMenuModel = new ContextMenuModelType();
-
-export { ContextMenuModel, ContextMenuModelType };
+export { ContextMenuModel };

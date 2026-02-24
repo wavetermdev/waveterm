@@ -416,8 +416,7 @@ declare global {
     };
 
     // wshrpc.CommandJobStartStreamData
-    type CommandJobStartStreamData = {
-    };
+    type CommandJobStartStreamData = object;
 
     // wshrpc.CommandListAllAppFilesData
     type CommandListAllAppFilesData = {

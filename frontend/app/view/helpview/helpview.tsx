@@ -20,7 +20,7 @@ class HelpViewModel extends WebViewModel {
         super(blockId, nodeModel, tabModel);
         this.viewText = atom((get) => {
             // force a dependency on meta.url so we re-render the buttons when the url changes
-            get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
+            void (get(this.blockAtom)?.meta?.url || get(this.homepageUrl));
             return [
                 {
                     elemtype: "iconbutton",
@@ -73,6 +73,7 @@ class HelpViewModel extends WebViewModel {
         if (globalStore.get(this.domReady)) {
             curZoom = this.webviewRef.current?.getZoomFactor() || 1;
         }
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const model = this; // for the closure to work (this is getting unset)
         function makeZoomFactorMenuItem(label: string, factor: number): ContextMenuItem {
             return {

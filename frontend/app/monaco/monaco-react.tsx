@@ -22,15 +22,7 @@ type CodeEditorProps = {
     options: MonacoTypes.editor.IEditorOptions;
 };
 
-export function MonacoCodeEditor({
-    text,
-    readonly,
-    language,
-    onChange,
-    onMount,
-    path,
-    options,
-}: CodeEditorProps) {
+export function MonacoCodeEditor({ text, readonly, language, onChange, onMount, path, options }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
     const onUnmountRef = useRef<(() => void) | null>(null);
@@ -70,7 +62,6 @@ export function MonacoCodeEditor({
             editorRef.current = null;
         };
         // mount/unmount only
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -160,7 +151,6 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
             modifiedModel.dispose();
             diffRef.current = null;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {

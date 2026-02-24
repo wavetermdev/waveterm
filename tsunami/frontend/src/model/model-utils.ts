@@ -118,7 +118,7 @@ export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperat
     } else if (op === "addRef" && outputref) {
         refStore.set(outputref, resolvedParams[0]);
     } else if (typeof ctx[op as keyof CanvasRenderingContext2D] === "function") {
-        (ctx[op as keyof CanvasRenderingContext2D] as Function).apply(ctx, resolvedParams);
+        (ctx[op as keyof CanvasRenderingContext2D] as (...args: unknown[]) => unknown).apply(ctx, resolvedParams);
     } else if (op in ctx) {
         (ctx as any)[op] = resolvedParams[0];
     } else {

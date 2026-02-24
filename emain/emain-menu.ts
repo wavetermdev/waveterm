@@ -58,7 +58,7 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
             return unamePlatform == "darwin" ? `Command+Control+${i + 1}` : `Alt+Control+${i + 1}`;
         }
     }
-    workspaceList?.length &&
+    if (workspaceList?.length) {
         workspaceMenu.push(
             { type: "separator" },
             ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace, i) => {
@@ -71,6 +71,7 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
                 };
             })
         );
+    }
     return workspaceMenu;
 }
 

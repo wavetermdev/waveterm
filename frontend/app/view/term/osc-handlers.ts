@@ -1,17 +1,9 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import {
-    getApi,
-    getBlockMetaKeyAtom,
-    getBlockTermDurableAtom,
-    globalStore,
-    recordTEvent,
-    WOS,
-} from "@/store/global";
+import { getApi, getBlockMetaKeyAtom, getBlockTermDurableAtom, globalStore, recordTEvent, WOS } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/util/util";
 import debug from "debug";
@@ -27,12 +19,22 @@ const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace
 export type ShellIntegrationStatus = "ready" | "running-command";
 
 type Osc16162Command =
-    | { command: "A"; data: {} }
+    | { command: "A"; data: Record<string, never> }
     | { command: "C"; data: { cmd64?: string } }
-    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string; integration?: boolean; omz?: boolean; comp?: string } }
+    | {
+          command: "M";
+          data: {
+              shell?: string;
+              shellversion?: string;
+              uname?: string;
+              integration?: boolean;
+              omz?: boolean;
+              comp?: string;
+          };
+      }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
-    | { command: "R"; data: {} };
+    | { command: "R"; data: Record<string, never> };
 
 function checkCommandForTelemetry(decodedCmd: string) {
     if (!decodedCmd) {
@@ -271,7 +273,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
     const cmd: Osc16162Command = { command: commandStr, data: parsedData } as Osc16162Command;
     const rtInfo: ObjRTInfo = {};
     switch (cmd.command) {
-        case "A":
+        case "A": {
             rtInfo["shell:state"] = "ready";
             globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
             const marker = terminal.registerMarker(0);
@@ -286,6 +288,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
                 });
             }
             break;
+        }
         case "C":
             handleShellIntegrationCommandStart(termWrap, blockId, cmd, rtInfo);
             break;

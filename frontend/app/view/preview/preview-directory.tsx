@@ -419,7 +419,7 @@ function TableBody({
                     click: () => handleFileDelete(model, finfo.path, false, setErrorMsg),
                 }
             );
-            ContextMenuModel.showContextMenu(menu, e);
+            ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         [setRefreshVersion, conn]
     );
@@ -861,7 +861,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             ];
             addOpenMenuItems(menu, conn, finfo);
 
-            ContextMenuModel.showContextMenu(menu, e);
+            ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         [setRefreshVersion, conn, newFile, newDirectory, dirPath]
     );

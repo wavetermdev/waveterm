@@ -369,7 +369,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             e.preventDefault();
             e.stopPropagation();
             const menuItems = model.getContextMenuItems();
-            ContextMenuModel.showContextMenu(menuItems, e);
+            ContextMenuModel.getInstance().showContextMenu(menuItems, e);
         },
         [model]
     );

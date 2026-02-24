@@ -272,7 +272,7 @@ const BuilderAppPanel = memo(() => {
                     click: handleSwitchAppClick,
                 },
             ];
-            ContextMenuModel.showContextMenu(menu, e);
+            ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         [handleSwitchAppClick, handlePublishClick]
     );
