@@ -589,7 +589,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleAddTab = () => {
         createTab();
-        tabsWrapperRef.current.style.transition;
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
         updateScrollDebounced();
