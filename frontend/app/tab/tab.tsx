@@ -177,6 +177,70 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
 
 TabV.displayName = "TabV";
 
+function buildTabContextMenu(
+    id: string,
+    handleRenameTab: React.MouseEventHandler<HTMLDivElement>,
+    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void
+): ContextMenuItem[] {
+    const menu: ContextMenuItem[] = [];
+    const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+    if (currentIndicator) {
+        menu.push(
+            {
+                label: "Clear Tab Indicator",
+                click: () => setTabIndicator(id, null),
+            },
+            {
+                label: "Clear All Indicators",
+                click: () => clearAllTabIndicators(),
+            },
+            { type: "separator" }
+        );
+    }
+    menu.push(
+        { label: "Rename Tab", click: () => handleRenameTab(null) },
+        {
+            label: "Copy TabId",
+            click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
+        },
+        { type: "separator" }
+    );
+    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+    const bgPresets: string[] = [];
+    for (const key in fullConfig?.presets ?? {}) {
+        if (key.startsWith("bg@")) {
+            bgPresets.push(key);
+        }
+    }
+    bgPresets.sort((a, b) => {
+        const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
+        const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
+        return aOrder - bOrder;
+    });
+    if (bgPresets.length > 0) {
+        const submenu: ContextMenuItem[] = [];
+        const oref = makeORef("tab", id);
+        for (const presetName of bgPresets) {
+            const preset = fullConfig.presets[presetName];
+            if (preset == null) {
+                continue;
+            }
+            submenu.push({
+                label: preset["display:name"] ?? presetName,
+                click: () =>
+                    fireAndForget(async () => {
+                        await ObjectService.UpdateObjectMeta(oref, preset);
+                        RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                        recordTEvent("action:settabtheme");
+                    }),
+            });
+        }
+        menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
+    }
+    menu.push({ label: "Close Tab", click: () => onClose(null) });
+    return menu;
+}
+
 interface TabProps {
     id: string;
     active: boolean;
@@ -304,63 +368,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
 
     const handleContextMenu = useCallback(
         (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-            e.preventDefault();
-            let menu: ContextMenuItem[] = [];
-            const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
-            if (currentIndicator) {
-                menu.push(
-                    {
-                        label: "Clear Tab Indicator",
-                        click: () => setTabIndicator(id, null),
-                    },
-                    {
-                        label: "Clear All Indicators",
-                        click: () => clearAllTabIndicators(),
-                    },
-                    { type: "separator" }
-                );
-            }
-            menu.push(
-                { label: "Rename Tab", click: () => handleRenameTab(null) },
-                {
-                    label: "Copy TabId",
-                    click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
-                },
-                { type: "separator" }
-            );
-            const fullConfig = globalStore.get(atoms.fullConfigAtom);
-            const bgPresets: string[] = [];
-            for (const key in fullConfig?.presets ?? {}) {
-                if (key.startsWith("bg@")) {
-                    bgPresets.push(key);
-                }
-            }
-            bgPresets.sort((a, b) => {
-                const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
-                const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
-                return aOrder - bOrder;
-            });
-            if (bgPresets.length > 0) {
-                const submenu: ContextMenuItem[] = [];
-                const oref = makeORef("tab", id);
-                for (const presetName of bgPresets) {
-                    const preset = fullConfig.presets[presetName];
-                    if (preset == null) {
-                        continue;
-                    }
-                    submenu.push({
-                        label: preset["display:name"] ?? presetName,
-                        click: () =>
-                            fireAndForget(async () => {
-                                await ObjectService.UpdateObjectMeta(oref, preset);
-                                RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
-                                recordTEvent("action:settabtheme");
-                            }),
-                    });
-                }
-                menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
-            }
-            menu.push({ label: "Close Tab", click: () => onClose(null) });
+            const menu = buildTabContextMenu(id, handleRenameTab, onClose);
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         [handleRenameTab, id, onClose]
