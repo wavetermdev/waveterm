@@ -33,14 +33,6 @@ body {
     background-color: transparent;
 }
 
-a.plain-link {
-    color: var(--secondary-text-color);
-    
-    &:hover {
-        text-decoration: underline;
-    }
-}
-
 *::-webkit-scrollbar {
     width: 4px;
     height: 4px;

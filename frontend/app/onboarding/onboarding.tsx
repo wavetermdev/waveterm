@@ -133,7 +133,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 Anonymous usage data helps us improve features you use.
                                 <br />
                                 <a
-                                    className="plain-link"
+                                    className="text-secondary! hover:underline!"
                                     target="_blank"
                                     href="https://waveterm.dev/privacy"
                                     rel="noopener"
