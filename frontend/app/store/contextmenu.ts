@@ -28,21 +28,16 @@ class ContextMenuModel {
     handleContextMenuClick(id: string | null): void {
         const opts = this.activeOpts;
         this.activeOpts = null;
-        if (id == null) {
-            this.handlers.clear();
+        const item = id != null ? this.handlers.get(id) : null;
+        this.handlers.clear();
+        if (item == null) {
             opts?.onCancel?.();
             opts?.onClose?.(null);
             return;
         }
-        const item = this.handlers.get(id);
-        this.handlers.clear();
-        if (item?.click) {
-            item.click();
-        }
-        if (item != null) {
-            opts?.onSelect?.(item);
-        }
-        opts?.onClose?.(item ?? null);
+        item.click?.();
+        opts?.onSelect?.(item);
+        opts?.onClose?.(item);
     }
 
     _convertAndRegisterMenu(menu: ContextMenuItem[]): ElectronContextMenuItem[] {
