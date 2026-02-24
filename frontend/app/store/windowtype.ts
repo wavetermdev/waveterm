@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // waveWindowType is set once at startup and never changes.
-let waveWindowType: "tab" | "builder" = "tab";
+let waveWindowType: "tab" | "builder" | "preview" = "tab";
 
-function getWaveWindowType(): "tab" | "builder" {
+function getWaveWindowType(): "tab" | "builder" | "preview" {
     return waveWindowType;
 }
 
@@ -16,8 +16,12 @@ function isTabWindow(): boolean {
     return waveWindowType === "tab";
 }
 
-function setWaveWindowType(windowType: "tab" | "builder") {
+function isPreviewWindow(): boolean {
+    return waveWindowType === "preview";
+}
+
+function setWaveWindowType(windowType: "tab" | "builder" | "preview") {
     waveWindowType = windowType;
 }
 
-export { getWaveWindowType, isBuilderWindow, isTabWindow, setWaveWindowType };
+export { getWaveWindowType, isBuilderWindow, isPreviewWindow, isTabWindow, setWaveWindowType };

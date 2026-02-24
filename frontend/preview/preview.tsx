@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { setWaveWindowType } from "@/app/store/windowtype";
 import React, { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -113,5 +114,10 @@ function PreviewApp() {
     return <PreviewIndex />;
 }
 
-const root = createRoot(document.getElementById("main")!);
-root.render(<PreviewApp />);
+function initPreview() {
+    setWaveWindowType("preview");
+    const root = createRoot(document.getElementById("main")!);
+    root.render(<PreviewApp />);
+}
+
+initPreview();
