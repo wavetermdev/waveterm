@@ -80,7 +80,7 @@ export default [
     },
 
     {
-        files: ["frontend/app/store/services.ts"], // or your generated dir
+        files: ["frontend/app/store/services.ts"],
         rules: {
             "prefer-rest-params": "off",
         },
