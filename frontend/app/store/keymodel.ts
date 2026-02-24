@@ -29,6 +29,7 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
+import { isBuilderWindow, isTabWindow } from "./windowtype";
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -322,7 +323,7 @@ function globalRefocusWithTimeout(timeoutVal: number) {
 }
 
 function globalRefocus() {
-    if (globalStore.get(atoms.waveWindowType) == "builder") {
+    if (isBuilderWindow()) {
         return;
     }
 
@@ -449,7 +450,7 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
             return true;
         }
     }
-    if (globalStore.get(atoms.waveWindowType) == "tab") {
+    if (isTabWindow()) {
         const layoutModel = getLayoutModelForStaticTab();
         const focusedNode = globalStore.get(layoutModel.focusedNode);
         const blockId = focusedNode?.data?.blockId;

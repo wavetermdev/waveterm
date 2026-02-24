@@ -7,9 +7,8 @@ import type * as rxjs from "rxjs";
 
 declare global {
     type GlobalAtomsType = {
-        builderId: jotai.PrimitiveAtom<string>; // readonly (for builder mode)
+        builderId: jotai.Atom<string>; // readonly (for builder mode)
         builderAppId: jotai.PrimitiveAtom<string>; // app being edited in builder mode
-        waveWindowType: jotai.Atom<"tab" | "builder">; // derived from builderId
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket

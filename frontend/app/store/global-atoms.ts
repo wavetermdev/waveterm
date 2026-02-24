@@ -1,8 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
+import { setWaveWindowType } from "./windowtype";
 import * as WOS from "./wos";
 
 let atoms!: GlobalAtomsType;
@@ -15,10 +16,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
     const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
-    const waveWindowTypeAtom = atom((get) => {
-        const builderId = get(builderIdAtom);
-        return builderId != null ? "builder" : "tab";
-    }) as Atom<"tab" | "builder">;
+    setWaveWindowType(initOpts.builderId != null ? "builder" : "tab");
     const uiContextAtom = atom((get) => {
         const uiContext: UIContext = {
             windowid: initOpts.windowId,
@@ -128,7 +126,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // initialized in wave.ts (will not be null inside of application)
         builderId: builderIdAtom,
         builderAppId: builderAppIdAtom,
-        waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
         workspace: workspaceAtom,
         fullConfigAtom,

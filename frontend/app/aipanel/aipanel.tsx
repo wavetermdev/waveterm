@@ -6,6 +6,7 @@ import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import { isBuilderWindow } from "@/app/store/windowtype";
 import { maybeUseTabModel } from "@/app/store/tab-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
@@ -269,14 +270,13 @@ const AIPanelComponentInner = memo(() => {
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
                 const msg = model.getAndClearMessage();
-                const windowType = globalStore.get(atoms.waveWindowType);
                 const body: any = {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
                     aimode: globalStore.get(model.currentAIMode),
                 };
-                if (windowType === "builder") {
+                if (isBuilderWindow()) {
                     body.builderid = globalStore.get(atoms.builderId);
                     body.builderappid = globalStore.get(atoms.builderAppId);
                 } else {
