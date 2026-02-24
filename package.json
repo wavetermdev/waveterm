@@ -28,7 +28,7 @@
         "postinstall": "node ./postinstall.cjs"
     },
     "devDependencies": {
-        "@eslint/js": "^8.57.0",
+        "@eslint/js": "^9.39",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@tailwindcss/vite": "^4.1.18",
         "@types/color": "^4.2.0",
@@ -51,7 +51,7 @@
         "electron": "^40.4.1",
         "electron-builder": "^26.8",
         "electron-vite": "^5.0",
-        "eslint": "^8.57.0",
+        "eslint": "^9.39",
         "eslint-config-prettier": "^10.1.8",
         "node-abi": "^4.26.0",
         "postcss": "^8.5.6",
@@ -65,7 +65,7 @@
         "tslib": "^2.8.1",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.54.0",
+        "typescript-eslint": "^8.56",
         "vite": "^6.4.1",
         "vite-plugin-image-optimizer": "^2.0.3",
         "vite-plugin-svgr": "^4.5.0",
