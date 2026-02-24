@@ -25,8 +25,6 @@ declare global {
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
-        notifications: jotai.PrimitiveAtom<NotificationType[]>;
-        notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
@@ -405,27 +403,6 @@ declare global {
     type MarkdownResolveOpts = {
         connName: string;
         baseDir: string;
-    };
-
-    export type NotificationActionType = {
-        label: string;
-        actionKey: string;
-        rightIcon?: string;
-        color?: "green" | "grey";
-        disabled?: boolean;
-    };
-
-    export type NotificationType = {
-        id?: string;
-        icon: string;
-        title: string;
-        message: string;
-        timestamp: string;
-        expiration?: number;
-        hidden?: boolean;
-        actions?: NotificationActionType[];
-        persistent?: boolean;
-        type?: "error" | "update" | "info" | "warning";
     };
 
     interface AbstractWshClient {

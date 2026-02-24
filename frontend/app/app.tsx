@@ -13,7 +13,6 @@ import {
     getSettingsPrefixAtom,
     getTabIndicatorAtom,
     globalStore,
-    isDev,
 } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
@@ -29,7 +28,6 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
-import { NotificationBubbles } from "./notification/notificationbubbles";
 
 import "./app.scss";
 
@@ -267,7 +265,6 @@ const AppInner = () => {
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
-            {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );
 };

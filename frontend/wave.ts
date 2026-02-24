@@ -26,8 +26,6 @@ import {
     initGlobalWaveEventSubs,
     loadConnStatus,
     loadTabIndicators,
-    pushNotification,
-    removeNotificationById,
     subscribeToConnEvents,
 } from "@/store/global";
 import { activeTabIdAtom } from "@/store/tab-model";
@@ -49,8 +47,6 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
 (window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
-(window as any).pushNotification = pushNotification;
-(window as any).removeNotificationById = removeNotificationById;
 (window as any).modalsModel = modalsModel;
 
 function updateZoomFactor(zoomFactor: number) {

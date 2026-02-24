@@ -736,35 +736,6 @@ function clearAllTabIndicators() {
     }
 }
 
-function addOrUpdateNotification(notif: NotificationType) {
-    globalStore.set(atoms.notifications, (prevNotifications) => {
-        // Remove any existing notification with the same ID
-        const notificationsWithoutThisId = prevNotifications.filter((n) => n.id !== notif.id);
-        // Add the new notification
-        return [...notificationsWithoutThisId, notif];
-    });
-}
-
-function pushNotification(notif: NotificationType) {
-    if (!notif.id && notif.persistent) {
-        return;
-    }
-    notif.id = notif.id ?? crypto.randomUUID();
-    addOrUpdateNotification(notif);
-}
-
-function removeNotificationById(id: string) {
-    globalStore.set(atoms.notifications, (prev) => {
-        return prev.filter((notif) => notif.id !== id);
-    });
-}
-
-function removeNotification(id: string) {
-    globalStore.set(atoms.notifications, (prev) => {
-        return prev.filter((notif) => notif.id !== id);
-    });
-}
-
 function createTab() {
     getApi().createTab();
 }
@@ -815,13 +786,10 @@ export {
     loadConnStatus,
     loadTabIndicators,
     openLink,
-    pushNotification,
     readAtom,
     recordTEvent,
     refocusNode,
     registerBlockComponentModel,
-    removeNotification,
-    removeNotificationById,
     replaceBlock,
     setActiveTab,
     setNodeFocus,
