@@ -119,7 +119,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         const connStatuses = Array.from(connStatusMap.values()).map((atom) => get(atom));
         return connStatuses;
     });
-    const flashErrorsAtom = atom<FlashErrorType[]>([]);
     const notificationsAtom = atom<NotificationType[]>([]);
     const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
@@ -144,7 +143,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         documentHasFocus: documentHasFocusAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
-        flashErrors: flashErrorsAtom,
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,

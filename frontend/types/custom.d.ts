@@ -25,7 +25,6 @@ declare global {
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
-        flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
@@ -406,14 +405,6 @@ declare global {
     type MarkdownResolveOpts = {
         connName: string;
         baseDir: string;
-    };
-
-    type FlashErrorType = {
-        id: string;
-        icon: string;
-        title: string;
-        message: string;
-        expiration: number;
     };
 
     export type NotificationActionType = {

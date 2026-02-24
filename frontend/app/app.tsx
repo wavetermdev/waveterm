@@ -14,7 +14,6 @@ import {
     getTabIndicatorAtom,
     globalStore,
     isDev,
-    removeFlashError,
 } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
@@ -25,7 +24,7 @@ import clsx from "clsx";
 import debug from "debug";
 import { Provider, useAtomValue } from "jotai";
 import "overlayscrollbars/overlayscrollbars.css";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
@@ -237,78 +236,6 @@ const TabIndicatorAutoClearing = () => {
     return null;
 };
 
-const FlashError = () => {
-    const flashErrors = useAtomValue(atoms.flashErrors);
-    const [hoveredId, setHoveredId] = useState<string>(null);
-    const [ticker, setTicker] = useState<number>(0);
-
-    useEffect(() => {
-        if (flashErrors.length == 0 || hoveredId != null) {
-            return;
-        }
-        const now = Date.now();
-        for (let ferr of flashErrors) {
-            if (ferr.expiration == null || ferr.expiration < now) {
-                removeFlashError(ferr.id);
-            }
-        }
-        setTimeout(() => setTicker(ticker + 1), 1000);
-    }, [flashErrors, ticker, hoveredId]);
-
-    if (flashErrors.length == 0) {
-        return null;
-    }
-
-    function copyError(id: string) {
-        const ferr = flashErrors.find((f) => f.id === id);
-        if (ferr == null) {
-            return;
-        }
-        let text = "";
-        if (ferr.title != null) {
-            text += ferr.title;
-        }
-        if (ferr.message != null) {
-            if (text.length > 0) {
-                text += "\n";
-            }
-            text += ferr.message;
-        }
-        navigator.clipboard.writeText(text);
-    }
-
-    function convertNewlinesToBreaks(text) {
-        return text.split("\n").map((part, index) => (
-            <Fragment key={index}>
-                {part}
-                <br />
-            </Fragment>
-        ));
-    }
-
-    return (
-        <div className="flash-error-container">
-            {flashErrors.map((err, idx) => (
-                <div
-                    key={idx}
-                    className={clsx("flash-error", { hovered: hoveredId === err.id })}
-                    onClick={() => copyError(err.id)}
-                    onMouseEnter={() => setHoveredId(err.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    title="Click to Copy Error Message"
-                >
-                    <div className="flash-error-scroll">
-                        {err.title != null ? <div className="flash-error-title">{err.title}</div> : null}
-                        {err.message != null ? (
-                            <div className="flash-error-message">{convertNewlinesToBreaks(err.message)}</div>
-                        ) : null}
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-};
-
 const AppInner = () => {
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const client = useAtomValue(ClientModel.getInstance().clientAtom);
@@ -340,7 +267,6 @@ const AppInner = () => {
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
-            <FlashError />
             {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );
