@@ -89,6 +89,7 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
     nodeModel: BlockNodeModel; // this can be null
+    hoveredLinkUri: string | null = null;
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -132,21 +133,31 @@ export class TermWrap {
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
-            new WebLinksAddon((e, uri) => {
-                e.preventDefault();
-                switch (PLATFORM) {
-                    case PlatformMacOS:
-                        if (e.metaKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
-                    default:
-                        if (e.ctrlKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
+            new WebLinksAddon(
+                (e, uri) => {
+                    e.preventDefault();
+                    switch (PLATFORM) {
+                        case PlatformMacOS:
+                            if (e.metaKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                        default:
+                            if (e.ctrlKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                    }
+                },
+                {
+                    hover: (_e, uri) => {
+                        this.hoveredLinkUri = uri;
+                    },
+                    leave: () => {
+                        this.hoveredLinkUri = null;
+                    },
                 }
-            })
+            )
         );
         if (WebGLSupported && waveOptions.useWebGl) {
             const webglAddon = new WebglAddon();

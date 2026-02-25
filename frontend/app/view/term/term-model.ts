@@ -782,28 +782,25 @@ export class TermViewModel implements ViewModel {
                 },
             });
 
-            let selectionURL: URL = null;
-            if (selection) {
-                try {
-                    const trimmedSelection = selection.trim();
-                    const url = new URL(trimmedSelection);
-                    if (url.protocol.startsWith("http")) {
-                        selectionURL = url;
-                    }
-                } catch (e) {
-                    // not a valid URL
-                }
-            }
+            menu.push({ type: "separator" });
+        }
 
-            if (selectionURL) {
-                menu.push({ type: "separator" });
+        const hoveredLinkUri = this.termRef.current?.hoveredLinkUri;
+        if (hoveredLinkUri) {
+            let hoveredURL: URL = null;
+            try {
+                hoveredURL = new URL(hoveredLinkUri);
+            } catch (e) {
+                // not a valid URL
+            }
+            if (hoveredURL) {
                 menu.push({
-                    label: "Open URL (" + selectionURL.hostname + ")",
+                    label: "Open URL (" + hoveredURL.hostname + ")",
                     click: () => {
                         createBlock({
                             meta: {
                                 view: "web",
-                                url: selectionURL.toString(),
+                                url: hoveredURL.toString(),
                             },
                         });
                     },
@@ -811,11 +808,11 @@ export class TermViewModel implements ViewModel {
                 menu.push({
                     label: "Open URL in External Browser",
                     click: () => {
-                        getApi().openExternal(selectionURL.toString());
+                        getApi().openExternal(hoveredURL.toString());
                     },
                 });
+                menu.push({ type: "separator" });
             }
-            menu.push({ type: "separator" });
         }
 
         menu.push({
