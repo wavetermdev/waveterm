@@ -11,7 +11,7 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
   - Use string constants for status values, packet types, and other string-based enumerations.
   - in Go code, prefer using Printf() vs Println()
   - use "Make" as opposed to "New" for struct initialization func names
-  - in general const decls go at the top fo the file (before types and functions)
+  - in general const decls go at the top of the file (before types and functions)
   - NEVER run `go build` (especially in weird sub-package directories). we can tell if everything compiles by seeing there are no problems/errors.
 - **Synchronization**:
   - Always prefer to use the `lock.Lock(); defer lock.Unlock()` pattern for synchronization if possible
@@ -93,6 +93,7 @@ The full API is defined in custom.d.ts as type ElectronApi.
 - **CRITICAL** - useAtomValue and useAtom are React HOOKS. They cannot be used inline in JSX code, they must appear at the top of a component in the hooks area of the react code.
 - for simple functions, we prefer `if (!cond) { return }; functionality;` pattern overn `if (cond) { functionality }` because it produces less indentation and is easier to follow.
 - It is now 2026, so if you write new files, or update files use 2026 for the copyright year
+- React.MutableRefObject is deprecated, just use React.RefObject now (in React 19 RefObject is always mutable)
 
 ### Strict Comment Rules
 
