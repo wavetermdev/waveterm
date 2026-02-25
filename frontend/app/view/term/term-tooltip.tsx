@@ -55,7 +55,7 @@ export const TermTooltip = React.memo(function TermTooltip({ mousePos, content }
             <div
                 ref={refs.setFloating}
                 style={floatingStyles}
-                className="bg-zinc-800/70  rounded-md px-2 py-1 text-xs text-secondary shadow-xl z-50 pointer-events-none select-none"
+                className="bg-zinc-800/70 rounded-md px-2 py-1 text-xs text-secondary shadow-xl z-50 pointer-events-none select-none"
             >
                 {content}
             </div>
@@ -64,6 +64,14 @@ export const TermTooltip = React.memo(function TermTooltip({ mousePos, content }
 });
 
 // ── wired-up sub-component ───────────────────────────────────────────────────
+
+function clearTimeoutRef(ref: React.RefObject<number | null>) {
+    if (ref.current == null) {
+        return;
+    }
+    window.clearTimeout(ref.current);
+    ref.current = null;
+}
 
 const HoverDelayMs = 600;
 const MaxHoverTimeMs = 2200;
@@ -87,26 +95,16 @@ export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }:
     const timeoutRef = React.useRef<number | null>(null);
     const maxTimeoutRef = React.useRef<number | null>(null);
 
-    const clearMaxTimeout = () => {
-        if (maxTimeoutRef.current != null) {
-            window.clearTimeout(maxTimeoutRef.current);
-            maxTimeoutRef.current = null;
-        }
-    };
-
     React.useEffect(() => {
         if (termWrap == null) {
             return;
         }
 
         termWrap.onLinkHover = (uri: string | null, mouseX: number, mouseY: number) => {
-            if (timeoutRef.current != null) {
-                window.clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
-            }
+            clearTimeoutRef(timeoutRef);
 
             if (uri == null) {
-                clearMaxTimeout();
+                clearTimeoutRef(maxTimeoutRef);
                 setMousePos(null);
                 return;
             }
@@ -116,7 +114,7 @@ export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }:
                 timeoutRef.current = null;
                 setMousePos({ x: mouseX, y: mouseY });
                 // Auto-dismiss after MaxHoverTimeMs so the tooltip doesn't linger forever.
-                clearMaxTimeout();
+                clearTimeoutRef(maxTimeoutRef);
                 maxTimeoutRef.current = window.setTimeout(() => {
                     maxTimeoutRef.current = null;
                     setMousePos(null);
@@ -126,11 +124,8 @@ export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }:
 
         return () => {
             termWrap.onLinkHover = null;
-            if (timeoutRef.current != null) {
-                window.clearTimeout(timeoutRef.current);
-                timeoutRef.current = null;
-            }
-            clearMaxTimeout();
+            clearTimeoutRef(timeoutRef);
+            clearTimeoutRef(maxTimeoutRef);
             setMousePos(null);
         };
     }, [termWrap]);

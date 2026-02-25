@@ -795,7 +795,7 @@ export class TermViewModel implements ViewModel {
             }
             if (hoveredURL) {
                 menu.push({
-                    label: "Open URL (" + hoveredURL.hostname + ")",
+                    label: hoveredURL.hostname ? "Open URL (" + hoveredURL.hostname + ")" : "Open URL",
                     click: () => {
                         createBlock({
                             meta: {
