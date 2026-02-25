@@ -32,6 +32,7 @@ type WshRpcRemoteFileInterface interface {
 	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
+	RemoteFileMultiInfoCommand(ctx context.Context, data CommandRemoteFileMultiInfoData) (map[string]FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
@@ -131,6 +132,11 @@ type CommandRemoteStreamFileData struct {
 type CommandRemoteListEntriesData struct {
 	Path string        `json:"path"`
 	Opts *FileListOpts `json:"opts,omitempty"`
+}
+
+type CommandRemoteFileMultiInfoData struct {
+	Cwd   string   `json:"cwd"`
+	Paths []string `json:"paths"`
 }
 
 type CommandRemoteListEntriesRtnData struct {

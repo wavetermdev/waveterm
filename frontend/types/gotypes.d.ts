@@ -477,6 +477,12 @@ declare global {
         jobid: string;
     };
 
+    // wshrpc.CommandRemoteFileMultiInfoData
+    type CommandRemoteFileMultiInfoData = {
+        cwd: string;
+        paths: string[];
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
