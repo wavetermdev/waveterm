@@ -362,29 +362,13 @@ export class TermWrap {
             return;
         }
 
-        // IME Composition Handling
-        // Block all data during composition - only send the final text after compositionend
-        // This prevents xterm.js from sending intermediate composition data (e.g., during compositionupdate)
+        // IME fix: suppress isComposing=true events unless they immediately follow
+        // a compositionend (within 20ms). This handles CapsLock input method switching
+        // where the composition buffer gets flushed as a spurious isComposing=true event
         if (this.isComposing) {
-            dlog("Blocked data during composition:", data);
-            return;
-        }
-
-        // IME Deduplication (for Capslock input method switching)
-        // When switching input methods with Capslock during composition, some systems send the
-        // composed text twice. We allow the first send and block subsequent duplicates.
-        const now = Date.now();
-        const timeSinceCompositionEnd = now - this.lastCompositionEnd;
-        if (timeSinceCompositionEnd < IMEDedupWindowMs && data === this.lastComposedText && this.lastComposedText) {
-            if (!this.firstDataAfterCompositionSent) {
-                // First send after composition - allow it but mark as sent
-                this.firstDataAfterCompositionSent = true;
-                dlog("First data after composition, allowing:", data);
-            } else {
-                // Second send of the same data - this is a duplicate from Capslock switching, block it
-                dlog("Blocked duplicate IME data:", data);
-                this.lastComposedText = ""; // Clear to allow same text to be typed again later
-                this.firstDataAfterCompositionSent = false;
+            const timeSinceCompositionEnd = Date.now() - this.lastCompositionEnd;
+            if (timeSinceCompositionEnd > IMEDedupWindowMs) {
+                dlog("Suppressed IME data (composing, not near compositionend):", data);
                 return;
             }
         }
