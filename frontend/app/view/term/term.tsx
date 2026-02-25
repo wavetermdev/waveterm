@@ -1,8 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block, SubBlock } from "@/app/block/block";
+import { SubBlock } from "@/app/block/block";
 import type { BlockNodeModel } from "@/app/block/blocktypes";
+import { NullErrorBoundary } from "@/app/element/errorboundary";
 import { Search, useSearch } from "@/app/element/search";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { useTabModel } from "@/app/store/tab-model";
@@ -394,7 +395,9 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                     onPointerOver={onScrollbarHideObserver}
                 />
             </div>
-            <TermLinkTooltip termWrap={termWrapInst} />
+            <NullErrorBoundary debugName="TermLinkTooltip">
+                <TermLinkTooltip termWrap={termWrapInst} />
+            </NullErrorBoundary>
             <Search {...searchProps} />
         </div>
     );
