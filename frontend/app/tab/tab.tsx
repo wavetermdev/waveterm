@@ -40,7 +40,21 @@ interface TabVProps {
 }
 
 const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
-    const { tabId, tabName, active, isBeforeActive, isDragging, tabWidth, isNew, indicator, onClick, onClose, onDragStart, onContextMenu, onRename } = props;
+    const {
+        tabId,
+        tabName,
+        active,
+        isBeforeActive,
+        isDragging,
+        tabWidth,
+        isNew,
+        indicator,
+        onClick,
+        onClose,
+        onDragStart,
+        onContextMenu,
+        onRename,
+    } = props;
     const [originalName, setOriginalName] = useState(tabName);
     const [isEditable, setIsEditable] = useState(false);
 
@@ -368,6 +382,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
 
     const handleContextMenu = useCallback(
         (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+            e.preventDefault();
             const menu = buildTabContextMenu(id, handleRenameTab, onClose);
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
