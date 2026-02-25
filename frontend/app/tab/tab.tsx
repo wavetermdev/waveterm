@@ -111,7 +111,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
 
     // Expose startRename to external callers (e.g. context menu in TabInner)
     if (renameRef != null) {
-        (renameRef as React.MutableRefObject<(() => void) | null>).current = startRename;
+        renameRef.current = startRename;
     }
 
     const handleBlur = () => {
