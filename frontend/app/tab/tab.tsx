@@ -242,7 +242,7 @@ function buildTabContextMenu(
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const bgPresets: string[] = [];
     for (const key in fullConfig?.presets ?? {}) {
-        if (key.startsWith("bg@")) {
+        if (key.startsWith("bg@") && fullConfig.presets[key] != null) {
             bgPresets.push(key);
         }
     }
@@ -255,10 +255,8 @@ function buildTabContextMenu(
         const submenu: ContextMenuItem[] = [];
         const oref = makeORef("tab", id);
         for (const presetName of bgPresets) {
+            // preset cannot be null (filtered above)
             const preset = fullConfig.presets[presetName];
-            if (preset == null) {
-                continue;
-            }
             submenu.push({
                 label: preset["display:name"] ?? presetName,
                 click: () =>
