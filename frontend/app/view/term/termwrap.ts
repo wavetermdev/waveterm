@@ -94,8 +94,6 @@ export class TermWrap {
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
 
     // IME composition state tracking
-    // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
-    // xterm.js sends data during compositionupdate AND after compositionend, causing duplicates
     isComposing: boolean = false;
     composingData: string = "";
     lastCompositionEnd: number = 0;
@@ -207,7 +205,10 @@ export class TermWrap {
             })
         );
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-            if (e.isComposing || !waveOptions.keydownHandler) {
+            if (e.isComposing && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                return true;
+            }
+            if (!waveOptions.keydownHandler) {
                 return true;
             }
             return waveOptions.keydownHandler(e);
