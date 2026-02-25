@@ -20,7 +20,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
-import { computeTheme } from "./termutil";
+import { computeTheme, normalizeCursorStyle } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
@@ -275,6 +275,8 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         }
         const termAllowBPM = globalStore.get(model.termBPMAtom) ?? true;
         const termMacOptionIsMeta = globalStore.get(termMacOptionIsMetaAtom) ?? false;
+        const termCursorStyle = normalizeCursorStyle(globalStore.get(getOverrideConfigAtom(blockId, "term:cursor")));
+        const termCursorBlink = globalStore.get(getOverrideConfigAtom(blockId, "term:cursorblink")) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             tabModel.tabId,
@@ -292,6 +294,8 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
                 ignoreBracketedPasteMode: !termAllowBPM,
                 macOptionIsMeta: termMacOptionIsMeta,
+                cursorStyle: termCursorStyle,
+                cursorBlink: termCursorBlink,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),

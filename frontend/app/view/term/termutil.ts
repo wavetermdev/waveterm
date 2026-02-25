@@ -10,6 +10,13 @@ import { colord } from "colord";
 
 export type GenClipboardItem = { text?: string; image?: Blob };
 
+export function normalizeCursorStyle(cursorStyle: string): TermTypes.Terminal["options"]["cursorStyle"] {
+    if (cursorStyle === "underline" || cursorStyle === "bar") {
+        return cursorStyle;
+    }
+    return "block";
+}
+
 function applyTransparencyToColor(hexColor: string, transparency: number): string {
     const alpha = 1 - transparency; // transparency is already 0-1
     return colord(hexColor).alpha(alpha).toHex();

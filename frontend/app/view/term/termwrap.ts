@@ -34,7 +34,7 @@ import {
     handleOsc7Command,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
-import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData } from "./termutil";
+import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -124,8 +124,6 @@ export class TermWrap {
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.terminal = new Terminal(options);
-        this.setCursorStyle(globalStore.get(getOverrideConfigAtom(this.blockId, "term:cursor")));
-        this.setCursorBlink(globalStore.get(getOverrideConfigAtom(this.blockId, "term:cursorblink")) ?? false);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
         this.serializeAddon = new SerializeAddon();
@@ -214,11 +212,7 @@ export class TermWrap {
     }
 
     setCursorStyle(cursorStyle: string) {
-        if (cursorStyle === "underline" || cursorStyle === "bar") {
-            this.terminal.options.cursorStyle = cursorStyle;
-            return;
-        }
-        this.terminal.options.cursorStyle = "block";
+        this.terminal.options.cursorStyle = normalizeCursorStyle(cursorStyle);
     }
 
     setCursorBlink(cursorBlink: boolean) {
