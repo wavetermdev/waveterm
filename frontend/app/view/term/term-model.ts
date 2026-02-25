@@ -1033,6 +1033,91 @@ export class TermViewModel implements ViewModel {
                 });
             },
         });
+        const overrideCursor = blockData?.meta?.["term:cursor"] as string | null | undefined;
+        const overrideCursorBlink = blockData?.meta?.["term:cursorblink"] as boolean | null | undefined;
+        const isCursorDefault = overrideCursor == null && overrideCursorBlink == null;
+        // normalize for comparison: null/undefined/"block" all mean "block"
+        const effectiveCursor = overrideCursor === "underline" || overrideCursor === "bar" ? overrideCursor : "block";
+        const effectiveCursorBlink = overrideCursorBlink === true;
+        const cursorSubMenu: ContextMenuItem[] = [
+            {
+                label: "Default",
+                type: "checkbox",
+                checked: isCursorDefault,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": null, "term:cursorblink": null },
+                    });
+                },
+            },
+            {
+                label: "Block",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "block" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "block", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Block (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "block" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "block", "term:cursorblink": true },
+                    });
+                },
+            },
+            {
+                label: "Bar",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "bar" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "bar", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Bar (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "bar" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "bar", "term:cursorblink": true },
+                    });
+                },
+            },
+            {
+                label: "Underline",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "underline" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "underline", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Underline (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "underline" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "underline", "term:cursorblink": true },
+                    });
+                },
+            },
+        ];
         fullMenu.push({
             label: "Themes",
             submenu: submenu,
@@ -1040,6 +1125,10 @@ export class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Font Size",
             submenu: fontSizeSubMenu,
+        });
+        fullMenu.push({
+            label: "Cursor",
+            submenu: cursorSubMenu,
         });
         fullMenu.push({
             label: "Transparency",

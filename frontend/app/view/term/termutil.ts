@@ -41,7 +41,7 @@ export function computeTheme(
             themeCopy.selectionBackground = applyTransparencyToColor(themeCopy.selectionBackground, termTransparency);
         }
     }
-    let bgcolor = themeCopy.background;
+    const bgcolor = themeCopy.background;
     themeCopy.background = "#00000000";
     return [themeCopy, bgcolor];
 }
