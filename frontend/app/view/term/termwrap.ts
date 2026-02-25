@@ -90,6 +90,7 @@ export class TermWrap {
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
+    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -150,11 +151,13 @@ export class TermWrap {
                     }
                 },
                 {
-                    hover: (_e, uri) => {
+                    hover: (e, uri) => {
                         this.hoveredLinkUri = uri;
+                        this.onLinkHover?.(uri, e.clientX, e.clientY);
                     },
                     leave: () => {
                         this.hoveredLinkUri = null;
+                        this.onLinkHover?.(null, 0, 0);
                     },
                 }
             )

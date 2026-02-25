@@ -18,6 +18,7 @@ import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
+import { TermLinkTooltip } from "./term-tooltip";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
 import { computeTheme } from "./termutil";
@@ -167,6 +168,7 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
 const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
+    const [termWrapInst, setTermWrapInst] = React.useState<TermWrap | null>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const termSettingsAtom = getSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
@@ -302,6 +304,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         );
         (window as any).term = termWrap;
         model.termRef.current = termWrap;
+        setTermWrapInst(termWrap);
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });
@@ -319,6 +322,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         return () => {
             termWrap.dispose();
             rszObs.disconnect();
+            setTermWrapInst(null);
         };
     }, [blockId, termSettings, termFontSize, connFontFamily]);
 
@@ -390,6 +394,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                     onPointerOver={onScrollbarHideObserver}
                 />
             </div>
+            <TermLinkTooltip termWrap={termWrapInst} />
             <Search {...searchProps} />
         </div>
     );
