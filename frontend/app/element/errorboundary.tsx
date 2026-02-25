@@ -13,7 +13,7 @@ export class ErrorBoundary extends React.Component<
     }
 
     componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        console.log("ErrorBoundary caught an error:", error, errorInfo);
+        console.error("ErrorBoundary caught an error:", error, errorInfo);
         this.setState({ error: error });
     }
 
@@ -46,7 +46,7 @@ export class NullErrorBoundary extends React.Component<
     }
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
-        console.log(`${this.props.debugName ?? "NullErrorBoundary"} error boundary caught error`, error, info);
+        console.error(`${this.props.debugName ?? "NullErrorBoundary"} error boundary caught error`, error, info);
     }
 
     render() {
