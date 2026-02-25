@@ -101,10 +101,13 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         }, 50);
     }, [selectEditableText]);
 
-    const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = (event) => {
-        event?.stopPropagation();
-        startRename();
-    };
+    const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = useCallback(
+        (event) => {
+            event?.stopPropagation();
+            startRename();
+        },
+        [startRename]
+    );
 
     // Expose startRename to external callers (e.g. context menu in TabInner)
     if (renameRef != null) {
