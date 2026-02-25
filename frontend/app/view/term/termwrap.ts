@@ -42,6 +42,7 @@ const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
+const IMEDedupWindowMs = 20;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -205,7 +206,12 @@ export class TermWrap {
                 return true;
             })
         );
-        this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
+        this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+            if (e.isComposing || !waveOptions.keydownHandler) {
+                return true;
+            }
+            return waveOptions.keydownHandler(e);
+        });
         this.connectElem = connectElem;
         this.mainFileSubject = null;
         this.heldData = [];
@@ -236,6 +242,9 @@ export class TermWrap {
     resetCompositionState() {
         this.isComposing = false;
         this.composingData = "";
+        this.lastComposedText = "";
+        this.lastCompositionEnd = 0;
+        this.firstDataAfterCompositionSent = false;
     }
 
     private handleCompositionStart = (e: CompositionEvent) => {
@@ -364,7 +373,6 @@ export class TermWrap {
         // IME Deduplication (for Capslock input method switching)
         // When switching input methods with Capslock during composition, some systems send the
         // composed text twice. We allow the first send and block subsequent duplicates.
-        const IMEDedupWindowMs = 50;
         const now = Date.now();
         const timeSinceCompositionEnd = now - this.lastCompositionEnd;
         if (timeSinceCompositionEnd < IMEDedupWindowMs && data === this.lastComposedText && this.lastComposedText) {
