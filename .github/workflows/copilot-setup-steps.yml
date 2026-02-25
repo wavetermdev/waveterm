@@ -7,9 +7,9 @@ on:
     pull_request:
         paths: [.github/workflows/copilot-setup-steps.yml]
 
-env:
-    GO_VERSION: "1.25.6"
-    NODE_VERSION: 22
+# Note: global env vars are NOT used here — they are not reliable in all
+# GitHub Actions contexts (e.g. Copilot setup steps). Values are inlined
+# directly into each step that needs them.
 
 jobs:
     copilot-setup-steps:
@@ -23,12 +23,12 @@ jobs:
             # Go + Node versions match your helper
             - uses: actions/setup-go@v6
               with:
-                  go-version: ${{ env.GO_VERSION }}
+                  go-version: "1.25.6"
                   cache-dependency-path: go.sum
 
             - uses: actions/setup-node@v6
               with:
-                  node-version: ${{ env.NODE_VERSION }}
+                  node-version: 22
                   cache: npm
                   cache-dependency-path: package-lock.json
 
