@@ -99,6 +99,8 @@ type SettingsType struct {
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
+	TermCursor              string   `json:"term:cursor,omitempty"`
+	TermCursorBlink         *bool    `json:"term:cursorblink,omitempty"`
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`

@@ -1094,6 +1094,8 @@ declare global {
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
+        "term:cursor"?: string;
+        "term:cursorblink"?: boolean;
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
@@ -1287,6 +1289,8 @@ declare global {
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
+        "term:cursor"?: string;
+        "term:cursorblink"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
         "term:durable"?: boolean;

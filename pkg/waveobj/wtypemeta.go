@@ -120,6 +120,8 @@ type MetaTSType struct {
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
+	TermCursor              string   `json:"term:cursor,omitempty"`
+	TermCursorBlink         *bool    `json:"term:cursorblink,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`

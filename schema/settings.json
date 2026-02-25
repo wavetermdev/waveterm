@@ -139,6 +139,12 @@
         "term:macoptionismeta": {
           "type": "boolean"
         },
+        "term:cursor": {
+          "type": "string"
+        },
+        "term:cursorblink": {
+          "type": "boolean"
+        },
         "term:bellsound": {
           "type": "boolean"
         },

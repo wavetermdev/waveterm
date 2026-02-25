@@ -124,6 +124,8 @@ export class TermWrap {
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.terminal = new Terminal(options);
+        this.setCursorStyle(globalStore.get(getOverrideConfigAtom(this.blockId, "term:cursor")));
+        this.setCursorBlink(globalStore.get(getOverrideConfigAtom(this.blockId, "term:cursorblink")) ?? false);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
         this.serializeAddon = new SerializeAddon();
@@ -209,6 +211,18 @@ export class TermWrap {
 
     getZoneId(): string {
         return this.blockId;
+    }
+
+    setCursorStyle(cursorStyle: string) {
+        if (cursorStyle === "underline" || cursorStyle === "bar") {
+            this.terminal.options.cursorStyle = cursorStyle;
+            return;
+        }
+        this.terminal.options.cursorStyle = "block";
+    }
+
+    setCursorBlink(cursorBlink: boolean) {
+        this.terminal.options.cursorBlink = cursorBlink ?? false;
     }
 
     resetCompositionState() {

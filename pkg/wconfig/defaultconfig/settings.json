@@ -30,6 +30,8 @@
     "telemetry:enabled": true,
     "term:bellsound": false,
     "term:bellindicator": false,
+    "term:cursor": "block",
+    "term:cursorblink": false,
     "term:copyonselect": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,

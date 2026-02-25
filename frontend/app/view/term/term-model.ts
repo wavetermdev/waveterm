@@ -77,6 +77,8 @@ export class TermViewModel implements ViewModel {
     blockJobStatusVersionTs: number;
     blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
+    termCursorUnsubFn: () => void;
+    termCursorBlinkUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
     termDurableStatus: jotai.Atom<BlockJobStatusData | null>;
@@ -376,6 +378,18 @@ export class TermViewModel implements ViewModel {
                 this.termRef.current.terminal.options.ignoreBracketedPasteMode = !allowBPM;
             }
         });
+        const termCursorAtom = getOverrideConfigAtom(blockId, "term:cursor");
+        this.termCursorUnsubFn = globalStore.sub(termCursorAtom, () => {
+            if (this.termRef.current?.terminal) {
+                this.termRef.current.setCursorStyle(globalStore.get(termCursorAtom));
+            }
+        });
+        const termCursorBlinkAtom = getOverrideConfigAtom(blockId, "term:cursorblink");
+        this.termCursorBlinkUnsubFn = globalStore.sub(termCursorBlinkAtom, () => {
+            if (this.termRef.current?.terminal) {
+                this.termRef.current.setCursorBlink(globalStore.get(termCursorBlinkAtom) ?? false);
+            }
+        });
     }
 
     getShellIntegrationIconButton(get: jotai.Getter): IconButtonDecl | null {
@@ -521,6 +535,8 @@ export class TermViewModel implements ViewModel {
         this.shellProcStatusUnsubFn?.();
         this.blockJobStatusUnsubFn?.();
         this.termBPMUnsubFn?.();
+        this.termCursorUnsubFn?.();
+        this.termCursorBlinkUnsubFn?.();
     }
 
     giveFocus(): boolean {

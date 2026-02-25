@@ -116,6 +116,8 @@ const (
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
 	MetaKey_TermMacOptionIsMeta              = "term:macoptionismeta"
+	MetaKey_TermCursor                       = "term:cursor"
+	MetaKey_TermCursorBlink                  = "term:cursorblink"
 	MetaKey_TermConnDebug                    = "term:conndebug"
 	MetaKey_TermBellSound                    = "term:bellsound"
 	MetaKey_TermBellIndicator                = "term:bellindicator"

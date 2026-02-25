@@ -52,6 +52,8 @@ const (
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
+	ConfigKey_TermCursor                     = "term:cursor"
+	ConfigKey_TermCursorBlink                = "term:cursorblink"
 	ConfigKey_TermBellSound                  = "term:bellsound"
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
 	ConfigKey_TermDurable                    = "term:durable"
