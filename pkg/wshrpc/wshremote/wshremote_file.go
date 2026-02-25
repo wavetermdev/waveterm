@@ -524,13 +524,26 @@ func (impl *ServerImpl) RemoteFileMultiInfoCommand(ctx context.Context, data wsh
 	cwd = filepath.Clean(wavebase.ExpandHomeDirSafe(cwd))
 	rtn := make(map[string]wshrpc.FileInfo, len(data.Paths))
 	for _, path := range data.Paths {
+		if _, found := rtn[path]; found {
+			continue
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		cleanedPath := wavebase.ExpandHomeDirSafe(path)
 		if !filepath.IsAbs(cleanedPath) {
 			cleanedPath = filepath.Join(cwd, cleanedPath)
 		}
 		fileInfo, err := impl.fileInfoInternal(cleanedPath, false)
 		if err != nil {
-			return nil, err
+			rtn[path] = wshrpc.FileInfo{
+				Path:          wavebase.ReplaceHomeDir(cleanedPath),
+				Dir:           computeDirPart(cleanedPath),
+				Name:          filepath.Base(cleanedPath),
+				StatError:     err.Error(),
+				SupportsMkdir: true,
+			}
+			continue
 		}
 		rtn[path] = *fileInfo
 	}

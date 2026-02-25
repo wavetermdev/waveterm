@@ -882,6 +882,7 @@ declare global {
         path: string;
         dir?: string;
         name?: string;
+        staterror?: string;
         notfound?: boolean;
         opts?: FileOpts;
         size?: number;
