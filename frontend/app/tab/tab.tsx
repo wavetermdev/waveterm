@@ -83,6 +83,9 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         editableRef.current.focus();
         const range = document.createRange();
         const selection = window.getSelection();
+        if (!selection) {
+            return;
+        }
         range.selectNodeContents(editableRef.current);
         selection.removeAllRanges();
         selection.addRange(range);
@@ -97,6 +100,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
     };
 
     const handleBlur = () => {
+        if (!editableRef.current) return;
         let newText = editableRef.current.innerText.trim();
         newText = newText || originalName;
         editableRef.current.innerText = newText;
@@ -110,6 +114,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
             selectEditableText();
             return;
         }
+        if (!editableRef.current) return;
         const curLen = Array.from(editableRef.current.innerText).length;
         if (event.key === "Enter") {
             event.preventDefault();
@@ -304,6 +309,9 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         editableRef.current.focus();
         const range = document.createRange();
         const selection = window.getSelection();
+        if (!selection) {
+            return;
+        }
         range.selectNodeContents(editableRef.current);
         selection.removeAllRanges();
         selection.addRange(range);
@@ -318,6 +326,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     };
 
     const handleBlur = () => {
+        if (!editableRef.current) return;
         let newText = editableRef.current.innerText.trim();
         newText = newText || originalName;
         editableRef.current.innerText = newText;
@@ -332,6 +341,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             selectEditableText();
             return;
         }
+        if (!editableRef.current) return;
         // this counts glyphs, not characters
         const curLen = Array.from(editableRef.current.innerText).length;
         if (event.key === "Enter") {
