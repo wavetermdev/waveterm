@@ -32,6 +32,7 @@ type WshRpcRemoteFileInterface interface {
 	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
+	RemoteFileMultiInfoCommand(ctx context.Context, data CommandRemoteFileMultiInfoData) (map[string]FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
@@ -56,6 +57,7 @@ type FileInfo struct {
 	Path          string      `json:"path"`          // cleaned path (may have "~")
 	Dir           string      `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
 	Name          string      `json:"name,omitempty"`
+	StatError     string      `json:"staterror,omitempty"`
 	NotFound      bool        `json:"notfound,omitempty"`
 	Opts          *FileOpts   `json:"opts,omitempty"`
 	Size          int64       `json:"size,omitempty"`
@@ -131,6 +133,11 @@ type CommandRemoteStreamFileData struct {
 type CommandRemoteListEntriesData struct {
 	Path string        `json:"path"`
 	Opts *FileListOpts `json:"opts,omitempty"`
+}
+
+type CommandRemoteFileMultiInfoData struct {
+	Cwd   string   `json:"cwd"`
+	Paths []string `json:"paths"`
 }
 
 type CommandRemoteListEntriesRtnData struct {

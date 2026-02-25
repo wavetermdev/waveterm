@@ -23,39 +23,53 @@ import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
 
-interface TabProps {
-    id: string;
+interface TabVProps {
+    tabId: string;
+    tabName: string;
     active: boolean;
-    isFirst: boolean;
     isBeforeActive: boolean;
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
-    onSelect: () => void;
+    indicator?: TabIndicator | null;
+    onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-    onLoaded: () => void;
+    onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void;
+    onRename: (newName: string) => void;
+    /** Optional ref that TabV populates with a startRename() function for external callers */
+    renameRef?: React.RefObject<(() => void) | null>;
 }
 
-const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
-    const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
-    const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
-    const [originalName, setOriginalName] = useState("");
+const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
+    const {
+        tabId,
+        tabName,
+        active,
+        isBeforeActive,
+        isDragging,
+        tabWidth,
+        isNew,
+        indicator,
+        onClick,
+        onClose,
+        onDragStart,
+        onContextMenu,
+        onRename,
+        renameRef,
+    } = props;
+    const [originalName, setOriginalName] = useState(tabName);
     const [isEditable, setIsEditable] = useState(false);
-    const indicator = useAtomValue(getTabIndicatorAtom(id));
 
     const editableRef = useRef<HTMLDivElement>(null);
     const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
-    const loadedRef = useRef(false);
     const tabRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
     useEffect(() => {
-        if (tabData?.name) {
-            setOriginalName(tabData.name);
-        }
-    }, [tabData]);
+        setOriginalName(tabName);
+    }, [tabName]);
 
     useEffect(() => {
         return () => {
@@ -72,26 +86,41 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         editableRef.current.focus();
         const range = document.createRange();
         const selection = window.getSelection();
+        if (!selection) {
+            return;
+        }
         range.selectNodeContents(editableRef.current);
         selection.removeAllRanges();
         selection.addRange(range);
     }, []);
 
-    const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = (event) => {
-        event?.stopPropagation();
+    const startRename = useCallback(() => {
         setIsEditable(true);
         editableTimeoutRef.current = setTimeout(() => {
             selectEditableText();
         }, 50);
-    };
+    }, [selectEditableText]);
+
+    const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = useCallback(
+        (event) => {
+            event?.stopPropagation();
+            startRename();
+        },
+        [startRename]
+    );
+
+    // Expose startRename to external callers (e.g. context menu in TabInner)
+    if (renameRef != null) {
+        renameRef.current = startRename;
+    }
 
     const handleBlur = () => {
+        if (!editableRef.current) return;
         let newText = editableRef.current.innerText.trim();
         newText = newText || originalName;
         editableRef.current.innerText = newText;
         setIsEditable(false);
-        fireAndForget(() => ObjectService.UpdateTabName(id, newText));
-        setTimeout(() => refocusNode(null), 10);
+        onRename(newText);
     };
 
     const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
@@ -100,7 +129,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             selectEditableText();
             return;
         }
-        // this counts glyphs, not characters
+        if (!editableRef.current) return;
         const curLen = Array.from(editableRef.current.innerText).length;
         if (event.key === "Enter") {
             event.preventDefault();
@@ -121,13 +150,6 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     };
 
     useEffect(() => {
-        if (!loadedRef.current) {
-            onLoaded();
-            loadedRef.current = true;
-        }
-    }, [onLoaded]);
-
-    useEffect(() => {
         if (tabRef.current && isNew) {
             const initialWidth = `${(tabWidth / 3) * 2}px`;
             tabRef.current.style.setProperty("--initial-tab-width", initialWidth);
@@ -135,82 +157,9 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         }
     }, [isNew, tabWidth]);
 
-    // Prevent drag from being triggered on mousedown
     const handleMouseDownOnClose = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         event.stopPropagation();
     };
-
-    const handleTabClick = () => {
-        const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
-        if (currentIndicator?.clearonfocus) {
-            clearTabIndicatorFromFocus(id);
-        }
-        onSelect();
-    };
-
-    const handleContextMenu = useCallback(
-        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-            e.preventDefault();
-            let menu: ContextMenuItem[] = [];
-            const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
-            if (currentIndicator) {
-                menu.push(
-                    {
-                        label: "Clear Tab Indicator",
-                        click: () => setTabIndicator(id, null),
-                    },
-                    {
-                        label: "Clear All Indicators",
-                        click: () => clearAllTabIndicators(),
-                    },
-                    { type: "separator" }
-                );
-            }
-            menu.push(
-                { label: "Rename Tab", click: () => handleRenameTab(null) },
-                {
-                    label: "Copy TabId",
-                    click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
-                },
-                { type: "separator" }
-            );
-            const fullConfig = globalStore.get(atoms.fullConfigAtom);
-            const bgPresets: string[] = [];
-            for (const key in fullConfig?.presets ?? {}) {
-                if (key.startsWith("bg@")) {
-                    bgPresets.push(key);
-                }
-            }
-            bgPresets.sort((a, b) => {
-                const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
-                const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
-                return aOrder - bOrder;
-            });
-            if (bgPresets.length > 0) {
-                const submenu: ContextMenuItem[] = [];
-                const oref = makeORef("tab", id);
-                for (const presetName of bgPresets) {
-                    const preset = fullConfig.presets[presetName];
-                    if (preset == null) {
-                        continue;
-                    }
-                    submenu.push({
-                        label: preset["display:name"] ?? presetName,
-                        click: () =>
-                            fireAndForget(async () => {
-                                await ObjectService.UpdateObjectMeta(oref, preset);
-                                RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
-                                recordTEvent("action:settabtheme");
-                            }),
-                    });
-                }
-                menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
-            }
-            menu.push({ label: "Close Tab", click: () => onClose(null) });
-            ContextMenuModel.getInstance().showContextMenu(menu, e);
-        },
-        [handleRenameTab, id, onClose]
-    );
 
     return (
         <div
@@ -222,9 +171,9 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
                 "new-tab": isNew,
             })}
             onMouseDown={onDragStart}
-            onClick={handleTabClick}
-            onContextMenu={handleContextMenu}
-            data-tab-id={id}
+            onClick={onClick}
+            onContextMenu={onContextMenu}
+            data-tab-id={tabId}
         >
             <div className="tab-inner">
                 <div
@@ -236,7 +185,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
                     onKeyDown={handleKeyDown}
                     suppressContentEditableWarning={true}
                 >
-                    {tabData?.name}
+                    {tabName}
                 </div>
                 {indicator && (
                     <div
@@ -259,7 +208,146 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         </div>
     );
 });
+
+TabV.displayName = "TabV";
+
+function buildTabContextMenu(
+    id: string,
+    renameRef: React.RefObject<(() => void) | null>,
+    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void
+): ContextMenuItem[] {
+    const menu: ContextMenuItem[] = [];
+    const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+    if (currentIndicator) {
+        menu.push(
+            {
+                label: "Clear Tab Indicator",
+                click: () => setTabIndicator(id, null),
+            },
+            {
+                label: "Clear All Indicators",
+                click: () => clearAllTabIndicators(),
+            },
+            { type: "separator" }
+        );
+    }
+    menu.push(
+        { label: "Rename Tab", click: () => renameRef.current?.() },
+        {
+            label: "Copy TabId",
+            click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
+        },
+        { type: "separator" }
+    );
+    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+    const bgPresets: string[] = [];
+    for (const key in fullConfig?.presets ?? {}) {
+        if (key.startsWith("bg@") && fullConfig.presets[key] != null) {
+            bgPresets.push(key);
+        }
+    }
+    bgPresets.sort((a, b) => {
+        const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
+        const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
+        return aOrder - bOrder;
+    });
+    if (bgPresets.length > 0) {
+        const submenu: ContextMenuItem[] = [];
+        const oref = makeORef("tab", id);
+        for (const presetName of bgPresets) {
+            // preset cannot be null (filtered above)
+            const preset = fullConfig.presets[presetName];
+            submenu.push({
+                label: preset["display:name"] ?? presetName,
+                click: () =>
+                    fireAndForget(async () => {
+                        await ObjectService.UpdateObjectMeta(oref, preset);
+                        RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                        recordTEvent("action:settabtheme");
+                    }),
+            });
+        }
+        menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
+    }
+    menu.push({ label: "Close Tab", click: () => onClose(null) });
+    return menu;
+}
+
+interface TabProps {
+    id: string;
+    active: boolean;
+    isFirst: boolean;
+    isBeforeActive: boolean;
+    isDragging: boolean;
+    tabWidth: number;
+    isNew: boolean;
+    onSelect: () => void;
+    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
+    onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+    onLoaded: () => void;
+}
+
+const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
+    const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
+    const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
+    const indicator = useAtomValue(getTabIndicatorAtom(id));
+
+    const loadedRef = useRef(false);
+    const renameRef = useRef<(() => void) | null>(null);
+
+    useEffect(() => {
+        if (!loadedRef.current) {
+            onLoaded();
+            loadedRef.current = true;
+        }
+    }, [onLoaded]);
+
+    const handleTabClick = () => {
+        const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
+        if (currentIndicator?.clearonfocus) {
+            clearTabIndicatorFromFocus(id);
+        }
+        onSelect();
+    };
+
+    const handleContextMenu = useCallback(
+        (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+            e.preventDefault();
+            const menu = buildTabContextMenu(id, renameRef, onClose);
+            ContextMenuModel.getInstance().showContextMenu(menu, e);
+        },
+        [id, onClose]
+    );
+
+    const handleRename = useCallback(
+        (newName: string) => {
+            fireAndForget(() => ObjectService.UpdateTabName(id, newName));
+            setTimeout(() => refocusNode(null), 10);
+        },
+        [id]
+    );
+
+    return (
+        <TabV
+            ref={ref}
+            tabId={id}
+            tabName={tabData?.name ?? ""}
+            active={active}
+            isBeforeActive={isBeforeActive}
+            isDragging={isDragging}
+            tabWidth={tabWidth}
+            isNew={isNew}
+            indicator={indicator}
+            onClick={handleTabClick}
+            onClose={onClose}
+            onDragStart={onDragStart}
+            onContextMenu={handleContextMenu}
+            onRename={handleRename}
+            renameRef={renameRef}
+        />
+    );
+});
 const Tab = memo(TabInner);
 Tab.displayName = "Tab";
 
-export { Tab };
+export { Tab, TabV };

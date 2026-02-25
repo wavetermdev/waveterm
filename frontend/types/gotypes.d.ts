@@ -477,6 +477,12 @@ declare global {
         jobid: string;
     };
 
+    // wshrpc.CommandRemoteFileMultiInfoData
+    type CommandRemoteFileMultiInfoData = {
+        cwd: string;
+        paths: string[];
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -876,6 +882,7 @@ declare global {
         path: string;
         dir?: string;
         name?: string;
+        staterror?: string;
         notfound?: boolean;
         opts?: FileOpts;
         size?: number;
@@ -1094,6 +1101,8 @@ declare global {
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
+        "term:cursor"?: string;
+        "term:cursorblink"?: boolean;
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
@@ -1287,6 +1296,8 @@ declare global {
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
         "term:macoptionismeta"?: boolean;
+        "term:cursor"?: string;
+        "term:cursorblink"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
         "term:durable"?: boolean;

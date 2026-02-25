@@ -73,7 +73,13 @@ export default [
 
     {
         rules: {
-            "@typescript-eslint/no-unused-vars": "warn",
+            "@typescript-eslint/no-unused-vars": [
+                "warn",
+                {
+                    argsIgnorePattern: "^_$",
+                    varsIgnorePattern: "^_$",
+                },
+            ],
             "prefer-const": "warn",
             "no-empty": "warn",
         },

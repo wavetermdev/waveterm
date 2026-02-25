@@ -408,7 +408,8 @@ function getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId: string): ele
 
 function convertMenuDefArrToMenu(
     webContents: electron.WebContents,
-    menuDefArr: ElectronContextMenuItem[]
+    menuDefArr: ElectronContextMenuItem[],
+    menuState: { hasClick: boolean }
 ): electron.Menu {
     const menuItems: electron.MenuItem[] = [];
     for (const menuDef of menuDefArr) {
@@ -416,19 +417,15 @@ function convertMenuDefArrToMenu(
             role: menuDef.role as any,
             label: menuDef.label,
             type: menuDef.type,
-            click: (_, window) => {
-                const wc = getWindowWebContents(window) ?? webContents;
-                if (!wc) {
-                    console.error("invalid window for context menu click handler:", window);
-                    return;
-                }
-                wc.send("contextmenu-click", menuDef.id);
+            click: () => {
+                menuState.hasClick = true;
+                webContents.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
             enabled: menuDef.enabled,
         };
         if (menuDef.submenu != null) {
-            menuItemTemplate.submenu = convertMenuDefArrToMenu(webContents, menuDef.submenu);
+            menuItemTemplate.submenu = convertMenuDefArrToMenu(webContents, menuDef.submenu, menuState);
         }
         const menuItem = new electron.MenuItem(menuItemTemplate);
         menuItems.push(menuItem);
@@ -439,19 +436,27 @@ function convertMenuDefArrToMenu(
 electron.ipcMain.on(
     "contextmenu-show",
     (event, workspaceOrBuilderId: string, menuDefArr: ElectronContextMenuItem[]) => {
+        const webContents = getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId);
+        if (!webContents) {
+            console.error("invalid window for context menu:", workspaceOrBuilderId);
+            event.returnValue = true;
+            return;
+        }
         if (menuDefArr.length === 0) {
+            webContents.send("contextmenu-click", null);
             event.returnValue = true;
             return;
         }
         fireAndForget(async () => {
-            const webContents = getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId);
-            if (!webContents) {
-                console.error("invalid window for context menu:", workspaceOrBuilderId);
-                return;
-            }
-
-            const menu = convertMenuDefArrToMenu(webContents, menuDefArr);
-            menu.popup();
+            const menuState = { hasClick: false };
+            const menu = convertMenuDefArrToMenu(webContents, menuDefArr, menuState);
+            menu.popup({
+                callback: () => {
+                    if (!menuState.hasClick) {
+                        webContents.send("contextmenu-click", null);
+                    }
+                },
+            });
         });
         event.returnValue = true;
     }

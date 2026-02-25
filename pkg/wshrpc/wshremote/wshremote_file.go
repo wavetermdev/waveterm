@@ -516,6 +516,40 @@ func (impl *ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) 
 	return impl.fileInfoInternal(path, true)
 }
 
+func (impl *ServerImpl) RemoteFileMultiInfoCommand(ctx context.Context, data wshrpc.CommandRemoteFileMultiInfoData) (map[string]wshrpc.FileInfo, error) {
+	cwd := data.Cwd
+	if cwd == "" {
+		cwd = "~"
+	}
+	cwd = filepath.Clean(wavebase.ExpandHomeDirSafe(cwd))
+	rtn := make(map[string]wshrpc.FileInfo, len(data.Paths))
+	for _, path := range data.Paths {
+		if _, found := rtn[path]; found {
+			continue
+		}
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		cleanedPath := wavebase.ExpandHomeDirSafe(path)
+		if !filepath.IsAbs(cleanedPath) {
+			cleanedPath = filepath.Join(cwd, cleanedPath)
+		}
+		fileInfo, err := impl.fileInfoInternal(cleanedPath, false)
+		if err != nil {
+			rtn[path] = wshrpc.FileInfo{
+				Path:          wavebase.ReplaceHomeDir(cleanedPath),
+				Dir:           computeDirPart(cleanedPath),
+				Name:          filepath.Base(cleanedPath),
+				StatError:     err.Error(),
+				SupportsMkdir: true,
+			}
+			continue
+		}
+		rtn[path] = *fileInfo
+	}
+	return rtn, nil
+}
+
 func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string) error {
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	if _, err := os.Stat(cleanedPath); err == nil {

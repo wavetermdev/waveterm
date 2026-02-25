@@ -3,6 +3,7 @@
 
 import Logo from "@/app/asset/logo.svg";
 import { setWaveWindowType } from "@/app/store/windowtype";
+import { loadFonts } from "@/util/fontutil";
 import React, { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -46,17 +47,19 @@ function PreviewIndex() {
 
             <div className="w-px h-8 bg-border" />
 
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-3 max-w-[1200px] w-full px-4">
                 <p className="text-muted text-xs mb-1">Available previews:</p>
-                {Object.keys(previews).map((name) => (
-                    <a
-                        key={name}
-                        href={`?preview=${name}`}
-                        className="font-mono text-accent bg-accentbg px-3 py-1.5 rounded text-sm hover:opacity-80 transition-opacity"
-                    >
-                        {name}
-                    </a>
-                ))}
+                <div className="flex flex-wrap gap-2.5 justify-center">
+                    {Object.keys(previews).map((name) => (
+                        <a
+                            key={name}
+                            href={`?preview=${name}`}
+                            className="w-[220px] font-mono bg-accentbg px-3 py-1.5 rounded text-sm hover:bg-accent/80 transition-colors overflow-hidden text-ellipsis whitespace-nowrap block text-foreground!"
+                        >
+                            {name}
+                        </a>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -116,6 +119,7 @@ function PreviewApp() {
 
 function initPreview() {
     setWaveWindowType("preview");
+    loadFonts();
     const root = createRoot(document.getElementById("main")!);
     root.render(<PreviewApp />);
 }

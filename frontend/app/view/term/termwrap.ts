@@ -34,7 +34,7 @@ import {
     handleOsc7Command,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
-import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData } from "./termutil";
+import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -89,6 +89,8 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
     nodeModel: BlockNodeModel; // this can be null
+    hoveredLinkUri: string | null = null;
+    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -132,21 +134,33 @@ export class TermWrap {
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
-            new WebLinksAddon((e, uri) => {
-                e.preventDefault();
-                switch (PLATFORM) {
-                    case PlatformMacOS:
-                        if (e.metaKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
-                    default:
-                        if (e.ctrlKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
+            new WebLinksAddon(
+                (e, uri) => {
+                    e.preventDefault();
+                    switch (PLATFORM) {
+                        case PlatformMacOS:
+                            if (e.metaKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                        default:
+                            if (e.ctrlKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                    }
+                },
+                {
+                    hover: (e, uri) => {
+                        this.hoveredLinkUri = uri;
+                        this.onLinkHover?.(uri, e.clientX, e.clientY);
+                    },
+                    leave: () => {
+                        this.hoveredLinkUri = null;
+                        this.onLinkHover?.(null, 0, 0);
+                    },
                 }
-            })
+            )
         );
         if (WebGLSupported && waveOptions.useWebGl) {
             const webglAddon = new WebglAddon();
@@ -209,6 +223,14 @@ export class TermWrap {
 
     getZoneId(): string {
         return this.blockId;
+    }
+
+    setCursorStyle(cursorStyle: string) {
+        this.terminal.options.cursorStyle = normalizeCursorStyle(cursorStyle);
+    }
+
+    setCursorBlink(cursorBlink: boolean) {
+        this.terminal.options.cursorBlink = cursorBlink ?? false;
     }
 
     resetCompositionState() {

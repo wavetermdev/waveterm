@@ -572,6 +572,11 @@ class RpcApiType {
         return client.wshRpcCall("remotefilemove", data, opts);
     }
 
+    // command "remotefilemultiinfo" [call]
+    RemoteFileMultiInfoCommand(client: WshClient, data: CommandRemoteFileMultiInfoData, opts?: RpcOpts): Promise<{[key: string]: FileInfo}> {
+        return client.wshRpcCall("remotefilemultiinfo", data, opts);
+    }
+
     // command "remotefiletouch" [call]
     RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiletouch", data, opts);

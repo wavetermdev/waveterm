@@ -11,7 +11,7 @@ import {
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { getConnStatusAtom, recordTEvent, WOS } from "@/app/store/global";
+import { recordTEvent, refocusNode, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -141,7 +141,10 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
             <OptMagnifyButton
                 key="unmagnify"
                 magnified={magnified}
-                toggleMagnify={nodeModel.toggleMagnify}
+                toggleMagnify={() => {
+                    nodeModel.toggleMagnify();
+                    setTimeout(() => refocusNode(blockId), 50);
+                }}
                 disabled={magnifyDisabled}
             />
         );
@@ -218,7 +221,13 @@ const BlockFrame_Header = ({
                 />
             )}
             {useTermHeader && termConfigedDurable != null && (
-                <DurableSessionFlyover key="durable-status" blockId={nodeModel.blockId} viewModel={viewModel} placement="bottom" divClassName="iconbutton disabled text-[13px] ml-[-4px]" />
+                <DurableSessionFlyover
+                    key="durable-status"
+                    blockId={nodeModel.blockId}
+                    viewModel={viewModel}
+                    placement="bottom"
+                    divClassName="iconbutton disabled text-[13px] ml-[-4px]"
+                />
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />
             <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} />

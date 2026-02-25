@@ -77,6 +77,8 @@ export class TermViewModel implements ViewModel {
     blockJobStatusVersionTs: number;
     blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
+    termCursorUnsubFn: () => void;
+    termCursorBlinkUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
     termDurableStatus: jotai.Atom<BlockJobStatusData | null>;
@@ -376,6 +378,18 @@ export class TermViewModel implements ViewModel {
                 this.termRef.current.terminal.options.ignoreBracketedPasteMode = !allowBPM;
             }
         });
+        const termCursorAtom = getOverrideConfigAtom(blockId, "term:cursor");
+        this.termCursorUnsubFn = globalStore.sub(termCursorAtom, () => {
+            if (this.termRef.current?.terminal) {
+                this.termRef.current.setCursorStyle(globalStore.get(termCursorAtom));
+            }
+        });
+        const termCursorBlinkAtom = getOverrideConfigAtom(blockId, "term:cursorblink");
+        this.termCursorBlinkUnsubFn = globalStore.sub(termCursorBlinkAtom, () => {
+            if (this.termRef.current?.terminal) {
+                this.termRef.current.setCursorBlink(globalStore.get(termCursorBlinkAtom) ?? false);
+            }
+        });
     }
 
     getShellIntegrationIconButton(get: jotai.Getter): IconButtonDecl | null {
@@ -521,6 +535,8 @@ export class TermViewModel implements ViewModel {
         this.shellProcStatusUnsubFn?.();
         this.blockJobStatusUnsubFn?.();
         this.termBPMUnsubFn?.();
+        this.termCursorUnsubFn?.();
+        this.termCursorBlinkUnsubFn?.();
     }
 
     giveFocus(): boolean {
@@ -782,28 +798,25 @@ export class TermViewModel implements ViewModel {
                 },
             });
 
-            let selectionURL: URL = null;
-            if (selection) {
-                try {
-                    const trimmedSelection = selection.trim();
-                    const url = new URL(trimmedSelection);
-                    if (url.protocol.startsWith("http")) {
-                        selectionURL = url;
-                    }
-                } catch (e) {
-                    // not a valid URL
-                }
-            }
+            menu.push({ type: "separator" });
+        }
 
-            if (selectionURL) {
-                menu.push({ type: "separator" });
+        const hoveredLinkUri = this.termRef.current?.hoveredLinkUri;
+        if (hoveredLinkUri) {
+            let hoveredURL: URL = null;
+            try {
+                hoveredURL = new URL(hoveredLinkUri);
+            } catch (e) {
+                // not a valid URL
+            }
+            if (hoveredURL) {
                 menu.push({
-                    label: "Open URL (" + selectionURL.hostname + ")",
+                    label: hoveredURL.hostname ? "Open URL (" + hoveredURL.hostname + ")" : "Open URL",
                     click: () => {
                         createBlock({
                             meta: {
                                 view: "web",
-                                url: selectionURL.toString(),
+                                url: hoveredURL.toString(),
                             },
                         });
                     },
@@ -811,11 +824,11 @@ export class TermViewModel implements ViewModel {
                 menu.push({
                     label: "Open URL in External Browser",
                     click: () => {
-                        getApi().openExternal(selectionURL.toString());
+                        getApi().openExternal(hoveredURL.toString());
                     },
                 });
+                menu.push({ type: "separator" });
             }
-            menu.push({ type: "separator" });
         }
 
         menu.push({
@@ -1017,6 +1030,91 @@ export class TermViewModel implements ViewModel {
                 });
             },
         });
+        const overrideCursor = blockData?.meta?.["term:cursor"] as string | null | undefined;
+        const overrideCursorBlink = blockData?.meta?.["term:cursorblink"] as boolean | null | undefined;
+        const isCursorDefault = overrideCursor == null && overrideCursorBlink == null;
+        // normalize for comparison: null/undefined/"block" all mean "block"
+        const effectiveCursor = overrideCursor === "underline" || overrideCursor === "bar" ? overrideCursor : "block";
+        const effectiveCursorBlink = overrideCursorBlink === true;
+        const cursorSubMenu: ContextMenuItem[] = [
+            {
+                label: "Default",
+                type: "checkbox",
+                checked: isCursorDefault,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": null, "term:cursorblink": null },
+                    });
+                },
+            },
+            {
+                label: "Block",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "block" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "block", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Block (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "block" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "block", "term:cursorblink": true },
+                    });
+                },
+            },
+            {
+                label: "Bar",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "bar" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "bar", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Bar (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "bar" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "bar", "term:cursorblink": true },
+                    });
+                },
+            },
+            {
+                label: "Underline",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "underline" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "underline", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Underline (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "underline" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "underline", "term:cursorblink": true },
+                    });
+                },
+            },
+        ];
         fullMenu.push({
             label: "Themes",
             submenu: submenu,
@@ -1024,6 +1122,10 @@ export class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Font Size",
             submenu: fontSizeSubMenu,
+        });
+        fullMenu.push({
+            label: "Cursor",
+            submenu: cursorSubMenu,
         });
         fullMenu.push({
             label: "Transparency",

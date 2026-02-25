@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -195,6 +197,30 @@ func getTabPresetMeta() (waveobj.MetaMapType, error) {
 	return presetMeta, nil
 }
 
+var tabNameRe = regexp.MustCompile(`^T(\d+)$`)
+
+// getNextTabName returns the next auto-generated tab name (e.g. "T3") given a
+// slice of existing tab names. It filters to names matching T[N] where N is a
+// positive integer, finds the maximum N, and returns T[max+1]. If no matching
+// names exist it returns "T1".
+func getNextTabName(tabNames []string) string {
+	maxNum := 0
+	for _, name := range tabNames {
+		m := tabNameRe.FindStringSubmatch(name)
+		if m == nil {
+			continue
+		}
+		n, err := strconv.Atoi(m[1])
+		if err != nil || n <= 0 {
+			continue
+		}
+		if n > maxNum {
+			maxNum = n
+		}
+	}
+	return "T" + strconv.Itoa(maxNum+1)
+}
+
 // returns tabid
 func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, isInitialLaunch bool) (string, error) {
 	if tabName == "" {
@@ -202,7 +228,15 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		if err != nil {
 			return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 		}
-		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
+		tabNames := make([]string, 0, len(ws.TabIds))
+		for _, tabId := range ws.TabIds {
+			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+			if err != nil || tab == nil {
+				continue
+			}
+			tabNames = append(tabNames, tab.Name)
+		}
+		tabName = getNextTabName(tabNames)
 	}
 
 	tab, err := createTabObj(ctx, workspaceId, tabName, nil)
