@@ -376,13 +376,13 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
 
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef} onContextMenu={handleContextMenu}>
-            {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
+            {termBg && <div key="term-bg" className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
             <TermStickers config={stickerConfig} />
             <TermToolbarVDomNode key="vdom-toolbar" blockId={blockId} model={model} />
             <TermVDomNode key="vdom" blockId={blockId} model={model} />
-            <div key="conntectElem" className="term-connectelem" ref={connectElemRef} />
+            <div key="connect-elem" className="term-connectelem" ref={connectElemRef} />
             <NullErrorBoundary debugName="TermLinkTooltip">
                 <TermLinkTooltip termWrap={termWrapInst} />
             </NullErrorBoundary>
