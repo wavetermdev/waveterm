@@ -18,7 +18,10 @@ const FILE_PATH_REGEX =
 
 // File extensions we recognize for bare relative paths (the ones without ./ prefix)
 const KNOWN_EXTENSIONS =
-    /\.(ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|c|cpp|h|hpp|css|scss|less|html|json|yaml|yml|toml|md|txt|sh|bash|zsh|fish|lua|zig|swift|kt|scala|ex|exs|erl|hrl|vue|svelte|astro|sql|graphql|gql|proto|Makefile|Dockerfile|conf|cfg|ini|env|xml|csv|log)$/;
+    /\.(ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|c|cpp|h|hpp|css|scss|less|html|json|yaml|yml|toml|md|txt|sh|bash|zsh|fish|lua|zig|swift|kt|scala|ex|exs|erl|hrl|vue|svelte|astro|sql|graphql|gql|proto|conf|cfg|ini|env|xml|csv|log)$/;
+
+// Well-known filenames without extensions (these need exact basename match, not dot-prefix)
+const KNOWN_FILENAMES = /(^|\/)(Makefile|Dockerfile|Rakefile|Gemfile|Justfile|Vagrantfile|Procfile|Brewfile)$/;
 
 function getLineText(terminal: Terminal, lineNumber: number): string {
     const buffer = terminal.buffer.active;
@@ -97,8 +100,8 @@ export class FilePathLinkProvider implements ILinkProvider {
             const fullMatch = match[0];
             const pathPart = match[1];
 
-            // For bare relative paths (group 5), require a known file extension
-            if (match[5] && !KNOWN_EXTENSIONS.test(match[5])) {
+            // For bare relative paths (group 5), require a known file extension or filename
+            if (match[5] && !KNOWN_EXTENSIONS.test(match[5]) && !KNOWN_FILENAMES.test(match[5])) {
                 continue;
             }
 
