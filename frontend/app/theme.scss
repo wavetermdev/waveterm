@@ -14,8 +14,9 @@
     --accent-color: rgb(88, 193, 66);
     --panel-bg-color: rgba(31, 33, 31, 0.5);
     --highlight-bg-color: rgba(255, 255, 255, 0.2);
-    --markdown-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji";
+    --markdown-font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji";
     --markdown-font-size: 14px;
     --markdown-fixed-font-size: 12px;
     --error-color: rgb(229, 77, 46);
@@ -66,7 +67,6 @@
     --zindex-layout-ephemeral-node: 9;
     --zindex-block-mask-inner: 10;
     --zindex-app-background: -1;
-
     // z-indexes in xterm.css
     // xterm-helpers: 5
     // xterm-helper-textarea: -5
@@ -76,7 +76,6 @@
     // xterm-decoration-top-layer: 7
     // xterm-decoration-overview-ruler: 8
     // xterm-decoration-top: 2
-    --zindex-xterm-viewport-overlay: 5; // Viewport contains the scrollbar
 
     // modal colors
     --modal-bg-color: #232323;
