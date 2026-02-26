@@ -22,6 +22,7 @@ const (
 	OpenAIChatEndpoint             = "https://api.openai.com/v1/chat/completions"
 	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
 	NanoGPTChatEndpoint            = "https://nano-gpt.com/api/v1/chat/completions"
+	GroqChatEndpoint               = "https://api.groq.com/openai/v1/chat/completions"
 	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
 	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
 	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
@@ -32,6 +33,7 @@ const (
 	OpenAIAPITokenSecretName      = "OPENAI_KEY"
 	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
 	NanoGPTAPITokenSecretName     = "NANOGPT_KEY"
+	GroqAPITokenSecretName        = "GROQ_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
 )
@@ -110,6 +112,17 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = NanoGPTAPITokenSecretName
+		}
+	}
+	if config.Provider == uctypes.AIProvider_Groq {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = GroqChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = GroqAPITokenSecretName
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {

@@ -26,6 +26,7 @@ const (
 const (
 	AIProvider_Wave        = "wave"
 	AIProvider_Google      = "google"
+	AIProvider_Groq        = "groq"
 	AIProvider_OpenRouter  = "openrouter"
 	AIProvider_NanoGPT     = "nanogpt"
 	AIProvider_OpenAI      = "openai"
