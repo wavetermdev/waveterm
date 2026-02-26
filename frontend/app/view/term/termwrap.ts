@@ -104,6 +104,9 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+    lastAtBottomTime: number = Date.now();
+    lastScrollAtBottom: boolean = true;
+    cachedAtBottomForResize: boolean | null = null;
 
     constructor(
         tabId: string,
@@ -226,6 +229,19 @@ export class TermWrap {
                 this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
+        const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
+        if (viewportElem) {
+            const scrollHandler = () => {
+                const atBottom = viewportElem.scrollTop + viewportElem.clientHeight >= viewportElem.scrollHeight - 20;
+                this.setAtBottom(atBottom);
+            };
+            viewportElem.addEventListener("scroll", scrollHandler);
+            this.toDispose.push({
+                dispose: () => {
+                    viewportElem.removeEventListener("scroll", scrollHandler);
+                },
+            });
+        }
     }
 
     getZoneId(): string {
@@ -465,9 +481,30 @@ export class TermWrap {
         }
     }
 
+    setAtBottom(atBottom: boolean) {
+        if (this.lastScrollAtBottom && !atBottom) {
+            this.lastAtBottomTime = Date.now();
+        }
+        this.lastScrollAtBottom = atBottom;
+        if (atBottom) {
+            this.lastAtBottomTime = Date.now();
+        }
+    }
+
+    wasRecentlyAtBottom(): boolean {
+        if (this.lastScrollAtBottom) {
+            return true;
+        }
+        return Date.now() - this.lastAtBottomTime <= 1000;
+    }
+
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
+        const atBottom = this.cachedAtBottomForResize ?? this.wasRecentlyAtBottom();
+        if (!atBottom) {
+            this.cachedAtBottomForResize = null;
+        }
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
@@ -477,6 +514,13 @@ export class TermWrap {
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
+        }
+        if (atBottom) {
+            setTimeout(() => {
+                this.cachedAtBottomForResize = null;
+                this.terminal.scrollToBottom();
+                this.setAtBottom(true);
+            }, 20);
         }
     }
 
