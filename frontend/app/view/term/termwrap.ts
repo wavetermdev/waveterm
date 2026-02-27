@@ -106,12 +106,18 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+
+    // for scrollToBottom support during a resize
     lastAtBottomTime: number = Date.now();
     lastScrollAtBottom: boolean = true;
     cachedAtBottomForResize: boolean | null = null;
     viewportScrollTop: number = 0;
+
+    // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
+
+    // for repaint transaction scrolling behavior
     lastClearScrollbackTs: number = 0;
     lastMode2026SetTs: number = 0;
     lastMode2026ResetTs: number = 0;
