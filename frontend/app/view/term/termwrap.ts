@@ -112,6 +112,7 @@ export class TermWrap {
     viewportScrollTop: number = 0;
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
+    lastClearScrollbackTs: number = 0;
 
     constructor(
         tabId: string,
@@ -192,6 +193,14 @@ export class TermWrap {
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
             return handleOsc16162Command(data, this.blockId, this.loaded, this);
         });
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {
+                if (params[0] === 3) {
+                    this.lastClearScrollbackTs = Date.now();
+                }
+                return false;
+            })
+        );
         this.toDispose.push(
             this.terminal.onBell(() => {
                 if (!this.loaded) {
@@ -559,6 +568,7 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+            console.log("[termwrap] resize", `${oldRows}x${oldCols}`, "->", `${this.terminal.rows}x${this.terminal.cols}`, "atBottom:", atBottom);
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
@@ -568,6 +578,7 @@ export class TermWrap {
         }
         if (atBottom) {
             setTimeout(() => {
+                console.log("[termwrap] resize scroll-to-bottom");
                 this.cachedAtBottomForResize = null;
                 this.terminal.scrollToBottom();
                 this.setAtBottom(true);
