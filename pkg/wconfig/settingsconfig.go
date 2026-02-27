@@ -14,7 +14,9 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -24,6 +26,8 @@ import (
 const SettingsFile = "settings.json"
 const ConnectionsFile = "connections.json"
 const ProfilesFile = "profiles.json"
+
+var configWriteLock sync.Mutex
 
 const AnySchema = `
 {
@@ -502,13 +506,16 @@ func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError
 }
 
 func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
+	configWriteLock.Lock()
+	defer configWriteLock.Unlock()
+
 	configDirAbsPath := wavebase.GetWaveConfigDir()
 	fullFileName := filepath.Join(configDirAbsPath, fileName)
 	barr, err := jsonMarshalConfigInOrder(m)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(fullFileName, barr, 0644)
+	return fileutil.AtomicWriteFile(fullFileName, barr, 0644)
 }
 
 // simple merge that overwrites
