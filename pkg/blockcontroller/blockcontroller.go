@@ -41,7 +41,7 @@ const (
 )
 
 const (
-	DefaultTermMaxFileSize = 256 * 1024
+	DefaultTermMaxFileSize = 2 * 1024 * 1024
 	DefaultHtmlMaxFileSize = 256 * 1024
 	MaxInitScriptSize      = 50 * 1024
 )
