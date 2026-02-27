@@ -32,7 +32,8 @@ var ValidEventNames = map[string]bool{
 
 	"wsh:run": true,
 
-	"debug:panic": true,
+	"debug:panic":          true,
+	"debug:termscrolltop":  true,
 
 	"conn:connect":      true,
 	"conn:connecterror": true,
@@ -115,7 +116,10 @@ type TEventProps struct {
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
 	ActionType      string `json:"action:type,omitempty"`
 
-	PanicType string `json:"debug:panictype,omitempty"`
+	PanicType          string `json:"debug:panictype,omitempty"`
+	DebugScrollPx      int    `json:"debug:scrollpx,omitempty"`
+	DebugScrollFromBot bool   `json:"debug:scrollfrombot,omitempty"`
+	DebugTermCmd       string `json:"debug:termcmd,omitempty"`
 
 	BlockView       string `json:"block:view,omitempty"`
 	BlockController string `json:"block:controller,omitempty"`

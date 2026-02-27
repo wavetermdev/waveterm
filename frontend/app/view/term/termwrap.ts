@@ -11,7 +11,9 @@ import {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
+    isDev,
     openLink,
+    recordTEvent,
     setTabIndicator,
     WOS,
 } from "@/store/global";
@@ -107,6 +109,9 @@ export class TermWrap {
     lastAtBottomTime: number = Date.now();
     lastScrollAtBottom: boolean = true;
     cachedAtBottomForResize: boolean | null = null;
+    viewportScrollTop: number = 0;
+    recentWrites: { idx: number; data: string; ts: number }[] = [];
+    recentWritesCounter: number = 0;
 
     constructor(
         tabId: string,
@@ -231,9 +236,14 @@ export class TermWrap {
         });
         const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
         if (viewportElem) {
-            const scrollHandler = () => {
-                const atBottom = viewportElem.scrollTop + viewportElem.clientHeight >= viewportElem.scrollHeight - 20;
-                this.setAtBottom(atBottom);
+            const scrollHandler = (e: any) => {
+                const scrolledUp = viewportElem.scrollTop < this.viewportScrollTop;
+                const stack = new Error().stack ?? "";
+                const frameCount = stack.split("\n").length - 1;
+                if (frameCount > 3) {
+                    console.trace("[termwrap]", "scroll-up", viewportElem.scrollTop, e);
+                }
+                this.handleViewportScroll(viewportElem);
             };
             viewportElem.addEventListener("scroll", scrollHandler);
             this.toDispose.push({
@@ -416,6 +426,13 @@ export class TermWrap {
     }
 
     doTerminalWrite(data: string | Uint8Array, setPtyOffset?: number): Promise<void> {
+        if (isDev() && this.loaded) {
+            const dataStr = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
+            this.recentWrites.push({ idx: this.recentWritesCounter++, ts: Date.now(), data: dataStr });
+            if (this.recentWrites.length > 50) {
+                this.recentWrites.shift();
+            }
+        }
         let resolve: () => void = null;
         let prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
@@ -496,6 +513,40 @@ export class TermWrap {
             return true;
         }
         return Date.now() - this.lastAtBottomTime <= 1000;
+    }
+
+    handleViewportScroll(viewportElem: HTMLElement) {
+        const { scrollTop, scrollHeight, clientHeight } = viewportElem;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - 20;
+        this.setAtBottom(atBottom);
+        const hasScrollback = scrollHeight > clientHeight + 20;
+        const delta = this.viewportScrollTop - scrollTop;
+        const wasNearBottom = this.viewportScrollTop >= scrollHeight - clientHeight - 100;
+        const shouldSendTelemetry = scrollTop === 0 && hasScrollback && delta >= 1000;
+        if ((isDev() && delta >= 500) || shouldSendTelemetry) {
+            const lastCmd = globalStore.get(this.lastCommandAtom) ?? "";
+            let termCmd = "";
+            if (/^claude\b/.test(lastCmd)) {
+                termCmd = "claude";
+            } else if (/^opencode\b/.test(lastCmd)) {
+                termCmd = "opencode";
+            }
+            if (isDev() && delta >= 500) {
+                console.log(
+                    `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${wasNearBottom} termCmd=${termCmd || "(none)"} sendTelemetry=${shouldSendTelemetry}`
+                );
+                console.log("[termwrap] recentWrites (last 50):", this.recentWrites);
+                console.trace("[termwrap] large-scroll callstack");
+            }
+            if (shouldSendTelemetry) {
+                recordTEvent("debug:termscrolltop", {
+                    "debug:scrollpx": Math.round(delta),
+                    "debug:scrollfrombot": wasNearBottom,
+                    "debug:termcmd": termCmd || undefined,
+                });
+            }
+        }
+        this.viewportScrollTop = scrollTop;
     }
 
     handleResize() {
