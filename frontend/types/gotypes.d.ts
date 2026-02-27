@@ -1469,9 +1469,6 @@ declare global {
         "action:initiator"?: "keyboard" | "mouse";
         "action:type"?: string;
         "debug:panictype"?: string;
-        "debug:scrollpx"?: number;
-        "debug:scrollfrombot"?: boolean;
-        "debug:termcmd"?: string;
         "block:view"?: string;
         "block:controller"?: string;
         "ai:backendtype"?: string;

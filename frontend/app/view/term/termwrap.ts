@@ -13,7 +13,6 @@ import {
     globalStore,
     isDev,
     openLink,
-    recordTEvent,
     setTabIndicator,
     WOS,
 } from "@/store/global";
@@ -561,34 +560,13 @@ export class TermWrap {
 
     handleViewportScroll(viewportElem: HTMLElement) {
         const { scrollTop, scrollHeight, clientHeight } = viewportElem;
-        const atBottom = scrollTop + clientHeight >= scrollHeight - 20;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - clientHeight * 0.5;
         this.setAtBottom(atBottom);
-        const hasScrollback = scrollHeight > clientHeight + 20;
         const delta = this.viewportScrollTop - scrollTop;
-        const wasNearBottom = this.viewportScrollTop >= scrollHeight - clientHeight - 100;
-        const shouldSendTelemetry = scrollTop === 0 && hasScrollback && delta >= 1000;
-        if ((isDev() && delta >= 500) || shouldSendTelemetry) {
-            const lastCmd = globalStore.get(this.lastCommandAtom) ?? "";
-            let termCmd = "";
-            if (/^claude\b/.test(lastCmd)) {
-                termCmd = "claude";
-            } else if (/^opencode\b/.test(lastCmd)) {
-                termCmd = "opencode";
-            }
-            if (isDev() && delta >= 500) {
-                console.log(
-                    `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${wasNearBottom} termCmd=${termCmd || "(none)"} sendTelemetry=${shouldSendTelemetry}`
-                );
-                console.log("[termwrap] recentWrites (last 50):", this.recentWrites);
-                console.trace("[termwrap] large-scroll callstack");
-            }
-            if (shouldSendTelemetry) {
-                recordTEvent("debug:termscrolltop", {
-                    "debug:scrollpx": Math.round(delta),
-                    "debug:scrollfrombot": wasNearBottom,
-                    "debug:termcmd": termCmd || undefined,
-                });
-            }
+        if (isDev() && delta >= 500) {
+            console.log(
+                `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${atBottom}`
+            );
         }
         this.viewportScrollTop = scrollTop;
     }

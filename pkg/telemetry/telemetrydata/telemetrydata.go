@@ -32,8 +32,7 @@ var ValidEventNames = map[string]bool{
 
 	"wsh:run": true,
 
-	"debug:panic":          true,
-	"debug:termscrolltop":  true,
+	"debug:panic": true,
 
 	"conn:connect":      true,
 	"conn:connecterror": true,
@@ -116,10 +115,7 @@ type TEventProps struct {
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
 	ActionType      string `json:"action:type,omitempty"`
 
-	PanicType          string `json:"debug:panictype,omitempty"`
-	DebugScrollPx      int    `json:"debug:scrollpx,omitempty"`
-	DebugScrollFromBot bool   `json:"debug:scrollfrombot,omitempty"`
-	DebugTermCmd       string `json:"debug:termcmd,omitempty"`
+	PanicType string `json:"debug:panictype,omitempty"`
 
 	BlockView       string `json:"block:view,omitempty"`
 	BlockController string `json:"block:controller,omitempty"`
@@ -130,11 +126,11 @@ type TEventProps struct {
 	WshCmd      string `json:"wsh:cmd,omitempty"`
 	WshHadError bool   `json:"wsh:haderror,omitempty"`
 
-	ConnType          string `json:"conn:conntype,omitempty"`
-	ConnWshErrorCode  string `json:"conn:wsherrorcode,omitempty"`
-	ConnErrorCode     string `json:"conn:errorcode,omitempty"`
-	ConnSubErrorCode  string `json:"conn:suberrorcode,omitempty"`
-	ConnContextError  bool   `json:"conn:contexterror,omitempty"`
+	ConnType         string `json:"conn:conntype,omitempty"`
+	ConnWshErrorCode string `json:"conn:wsherrorcode,omitempty"`
+	ConnErrorCode    string `json:"conn:errorcode,omitempty"`
+	ConnSubErrorCode string `json:"conn:suberrorcode,omitempty"`
+	ConnContextError bool   `json:"conn:contexterror,omitempty"`
 
 	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"durable\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`
