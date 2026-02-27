@@ -826,7 +826,7 @@ func (ws *WshServer) DebugTermCommand(ctx context.Context, data wshrpc.CommandDe
 	if readSize > dataLength {
 		readSize = dataLength
 	}
-	readOffset := dataLength - readSize
+	readOffset := waveFile.Size - readSize
 	readOffset, readData, err := filestore.WFS.ReadAt(ctx, data.BlockId, wavebase.BlockFile_Term, readOffset, readSize)
 	if err != nil {
 		return nil, fmt.Errorf("error reading term file: %w", err)

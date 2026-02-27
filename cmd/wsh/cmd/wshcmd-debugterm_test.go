@@ -20,11 +20,11 @@ func TestFormatDebugTermDecode(t *testing.T) {
 	output := formatDebugTermDecode(data)
 	expected := []string{
 		`TXT "abc"`,
-		`CSI "\x1b[31m"`,
+		`CSI m 31`,
 		`TXT "red"`,
-		`CSI "\x1b[0m"`,
+		`CSI m 0`,
 		`BEL`,
-		`OSC "\x1b]0;title\a"`,
+		`OSC 0 "title"`,
 		`CTL 0x00`,
 	}
 	for _, line := range expected {
@@ -42,9 +42,9 @@ func TestParseDebugTermStdinData(t *testing.T) {
 	output := formatDebugTermDecode(data)
 	expected := []string{
 		`TXT "abc"`,
-		`CSI "\x1b[31m"`,
+		`CSI m 31`,
 		`TXT "red"`,
-		`CSI "\x1b[0m"`,
+		`CSI m 0`,
 	}
 	for _, line := range expected {
 		if !strings.Contains(output, line) {
@@ -53,9 +53,32 @@ func TestParseDebugTermStdinData(t *testing.T) {
 	}
 }
 
-func TestParseDebugTermStdinDataInvalid(t *testing.T) {
-	_, err := parseDebugTermStdinData([]byte(`{"not":"array"}`))
-	if err == nil {
-		t.Fatalf("expected error for invalid stdin json")
+func TestParseDebugTermStdinDataStructs(t *testing.T) {
+	data, err := parseDebugTermStdinData([]byte(`[{"data":"abc"},{"data":"\u001b[31mred"},{"data":"\u001b[0m"}]`))
+	if err != nil {
+		t.Fatalf("parseDebugTermStdinData() error: %v", err)
+	}
+	output := formatDebugTermDecode(data)
+	expected := []string{
+		`TXT "abc"`,
+		`CSI m 31`,
+		`TXT "red"`,
+		`CSI m 0`,
+	}
+	for _, line := range expected {
+		if !strings.Contains(output, line) {
+			t.Fatalf("missing decode line %q in output %q", line, output)
+		}
+	}
+}
+
+func TestParseDebugTermStdinDataRaw(t *testing.T) {
+	raw := []byte("hello\x1b[31mworld")
+	data, err := parseDebugTermStdinData(raw)
+	if err != nil {
+		t.Fatalf("parseDebugTermStdinData() error: %v", err)
+	}
+	if string(data) != string(raw) {
+		t.Fatalf("expected raw passthrough, got %q", data)
 	}
 }
