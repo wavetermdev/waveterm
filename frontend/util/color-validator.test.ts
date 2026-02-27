@@ -36,7 +36,7 @@ describe("validateCssColor", () => {
     });
 
     it("throws for invalid CSS colors", () => {
-        expect(() => validateCssColor(":not-a-color:" as any)).toThrow("Invalid CSS color");
+        expect(() => validateCssColor(":not-a-color:")).toThrow("Invalid CSS color");
         expect(() => validateCssColor("#12")).toThrow("Invalid CSS color");
         expect(() => validateCssColor("rgb(255, 0)")).toThrow("Invalid CSS color");
     });
