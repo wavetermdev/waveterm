@@ -45,6 +45,7 @@ const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
 const IMEDedupWindowMs = 20;
+const MaxRepaintTransactionMs = 2000;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -113,6 +114,10 @@ export class TermWrap {
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
     lastClearScrollbackTs: number = 0;
+    lastMode2026SetTs: number = 0;
+    lastMode2026ResetTs: number = 0;
+    inSyncTransaction: boolean = false;
+    inRepaintTransaction: boolean = false;
 
     constructor(
         tabId: string,
@@ -197,6 +202,36 @@ export class TermWrap {
             this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {
                 if (params[0] === 3) {
                     this.lastClearScrollbackTs = Date.now();
+                    if (this.inSyncTransaction) {
+                        console.log("[termwrap] repaint transaction starting");
+                        this.inRepaintTransaction = true;
+                    }
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params) => {
+                if (params[0] === 2026) {
+                    this.lastMode2026SetTs = Date.now();
+                    this.inSyncTransaction = true;
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
+                if (params[0] === 2026) {
+                    this.lastMode2026ResetTs = Date.now();
+                    this.inSyncTransaction = false;
+                    const wasRepaint = this.inRepaintTransaction;
+                    this.inRepaintTransaction = false;
+                    if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
+                        setTimeout(() => {
+                            console.log("[termwrap] repaint transaction complete, scrolling to bottom");
+                            this.terminal.scrollToBottom();
+                        }, 20);
+                    }
                 }
                 return false;
             })
@@ -568,7 +603,14 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            console.log("[termwrap] resize", `${oldRows}x${oldCols}`, "->", `${this.terminal.rows}x${this.terminal.cols}`, "atBottom:", atBottom);
+            console.log(
+                "[termwrap] resize",
+                `${oldRows}x${oldCols}`,
+                "->",
+                `${this.terminal.rows}x${this.terminal.cols}`,
+                "atBottom:",
+                atBottom
+            );
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
