@@ -27,6 +27,7 @@ var debugTermCmd = &cobra.Command{
 	Use:                   "debugterm",
 	Short:                 "inspect recent terminal output bytes",
 	RunE:                  debugTermRun,
+	PreRunE:               debugTermPreRun,
 	DisableFlagsInUseLine: true,
 	Hidden:                true,
 }
@@ -46,9 +47,9 @@ func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("debugterm", rtnErr == nil)
 	}()
-	mode := strings.ToLower(debugTermMode)
-	if mode != DebugTermModeHex && mode != DebugTermModeDecode && mode != DebugTermModeStdin {
-		return fmt.Errorf("invalid mode %q (expected %q, %q, or %q)", debugTermMode, DebugTermModeHex, DebugTermModeDecode, DebugTermModeStdin)
+	mode, err := getDebugTermMode()
+	if err != nil {
+		return err
 	}
 	if mode == DebugTermModeStdin {
 		stdinData, err := io.ReadAll(WrappedStdin)
@@ -64,10 +65,6 @@ func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	if debugTermSize <= 0 {
 		return fmt.Errorf("size must be greater than 0")
-	}
-	err := preRunSetupRpcClient(cmd, args)
-	if err != nil {
-		return err
 	}
 	fullORef, err := resolveBlockArg()
 	if err != nil {
@@ -92,6 +89,25 @@ func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	WriteStdout("%s", output)
 	return nil
+}
+
+func debugTermPreRun(cmd *cobra.Command, args []string) error {
+	mode, err := getDebugTermMode()
+	if err != nil {
+		return err
+	}
+	if mode == DebugTermModeStdin {
+		return nil
+	}
+	return preRunSetupRpcClient(cmd, args)
+}
+
+func getDebugTermMode() (string, error) {
+	mode := strings.ToLower(debugTermMode)
+	if mode != DebugTermModeHex && mode != DebugTermModeDecode && mode != DebugTermModeStdin {
+		return "", fmt.Errorf("invalid mode %q (expected %q, %q, or %q)", debugTermMode, DebugTermModeHex, DebugTermModeDecode, DebugTermModeStdin)
+	}
+	return mode, nil
 }
 
 func parseDebugTermStdinData(data []byte) ([]byte, error) {
