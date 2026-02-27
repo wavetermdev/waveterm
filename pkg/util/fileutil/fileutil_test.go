@@ -22,7 +22,7 @@ func TestAtomicWriteFile(t *testing.T) {
 	if string(data) != `{"key":"value"}` {
 		t.Fatalf("unexpected file contents: %q", string(data))
 	}
-	if _, err := os.Stat(fileName + ".tmp"); !os.IsNotExist(err) {
+	if _, err := os.Stat(fileName + TempFileSuffix); !os.IsNotExist(err) {
 		t.Fatalf("temporary file should not exist, stat err: %v", err)
 	}
 }
@@ -39,7 +39,7 @@ func TestAtomicWriteFileRenameErrorCleansTempFile(t *testing.T) {
 	if err == nil {
 		t.Fatalf("AtomicWriteFile expected error")
 	}
-	if _, statErr := os.Stat(fileName + ".tmp"); !os.IsNotExist(statErr) {
+	if _, statErr := os.Stat(fileName + TempFileSuffix); !os.IsNotExist(statErr) {
 		t.Fatalf("temporary file should be removed on rename error, stat err: %v", statErr)
 	}
 }

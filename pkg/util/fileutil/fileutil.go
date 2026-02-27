@@ -144,13 +144,17 @@ func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
 }
 
 func AtomicWriteFile(fileName string, data []byte, perm os.FileMode) error {
-	tmpFileName := fileName + ".tmp"
+	tmpFileName := fileName + TempFileSuffix
 	if err := os.WriteFile(tmpFileName, data, perm); err != nil {
-		_ = os.Remove(tmpFileName)
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to write temp file %q: %w (also failed to remove temp file: %v)", tmpFileName, err, removeErr)
+		}
 		return err
 	}
 	if err := os.Rename(tmpFileName, fileName); err != nil {
-		_ = os.Remove(tmpFileName)
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to rename temp file %q to %q: %w (also failed to remove temp file: %v)", tmpFileName, fileName, err, removeErr)
+		}
 		return err
 	}
 	return nil
@@ -206,6 +210,7 @@ func IsInitScriptPath(input string) bool {
 }
 
 const (
+	TempFileSuffix  = ".tmp"
 	MaxEditFileSize = 5 * 1024 * 1024 // 5MB
 )
 
