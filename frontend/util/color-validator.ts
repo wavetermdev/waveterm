@@ -1,3 +1,6 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 const HexColorRegex = /^#([\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i;
 const FunctionalColorRegex = /^([a-z-]+)\(/i;
 const NamedColorRegex = /^[a-z]+$/i;
