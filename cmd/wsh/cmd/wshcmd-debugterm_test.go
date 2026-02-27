@@ -72,6 +72,22 @@ func TestParseDebugTermStdinDataStructs(t *testing.T) {
 	}
 }
 
+func TestFormatDebugTermDecodeCursorForward(t *testing.T) {
+	// CSI C sequences collapse into adjacent text; all consecutive text+CSI-C runs merge into one TXT line.
+	// The run is split into separate TXT lines at CR/LF run boundaries; // NC appears on the last line.
+	data := []byte("hi\x1b[1Cworld\x1b[3Cfoo\r\nbar")
+	output := formatDebugTermDecode(data)
+	expected := []string{
+		`TXT "hi world   foo\r\n"`,
+		`TXT "bar" // 4C`,
+	}
+	for _, line := range expected {
+		if !strings.Contains(output, line) {
+			t.Fatalf("missing decode line %q in output:\n%s", line, output)
+		}
+	}
+}
+
 func TestParseDebugTermStdinDataRaw(t *testing.T) {
 	raw := []byte("hello\x1b[31mworld")
 	data, err := parseDebugTermStdinData(raw)

@@ -168,15 +168,81 @@ func formatDebugTermHex(data []byte) string {
 	return hex.Dump(data)
 }
 
+func parseCursorForwardN(seq []byte) (int, bool) {
+	if len(seq) < 3 || seq[len(seq)-1] != 'C' {
+		return 0, false
+	}
+	params := string(seq[2 : len(seq)-1])
+	if params == "" {
+		return 1, true
+	}
+	n, err := strconv.Atoi(params)
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+// splitOnCRLFRuns splits s at the end of each run of \r and \n characters.
+// Each segment includes its trailing CR/LF run. The last segment may have no such run.
+func splitOnCRLFRuns(s string) []string {
+	var result []string
+	for len(s) > 0 {
+		// find start of next CR/LF run
+		i := 0
+		for i < len(s) && s[i] != '\r' && s[i] != '\n' {
+			i++
+		}
+		if i == len(s) {
+			break
+		}
+		// consume the CR/LF run
+		j := i
+		for j < len(s) && (s[j] == '\r' || s[j] == '\n') {
+			j++
+		}
+		result = append(result, s[:j])
+		s = s[j:]
+	}
+	if len(s) > 0 {
+		result = append(result, s)
+	}
+	return result
+}
+
 func formatDebugTermDecode(data []byte) string {
 	if len(data) == 0 {
 		return ""
 	}
 	lines := make([]string, 0)
+	// textBuf accumulates text across CSI-C (cursor forward) sequences so consecutive
+	// "word CSI-C word" runs collapse into a single TXT line. The // NC annotation goes
+	// on the last segment only.
+	textBuf := ""
+	totalCSpaces := 0
+	flushText := func() {
+		if textBuf == "" && totalCSpaces == 0 {
+			return
+		}
+		segs := splitOnCRLFRuns(textBuf)
+		if len(segs) == 0 {
+			segs = []string{textBuf}
+		}
+		for i, seg := range segs {
+			if i == len(segs)-1 && totalCSpaces > 0 {
+				lines = append(lines, fmt.Sprintf("TXT %s // %dC", strconv.Quote(seg), totalCSpaces))
+			} else {
+				lines = append(lines, "TXT "+strconv.Quote(seg))
+			}
+		}
+		textBuf = ""
+		totalCSpaces = 0
+	}
 	for i := 0; i < len(data); {
 		b := data[i]
 		if b == 0x1b {
 			if i+1 >= len(data) {
+				flushText()
 				lines = append(lines, "ESC")
 				i++
 				continue
@@ -185,25 +251,36 @@ func formatDebugTermDecode(data []byte) string {
 			switch next {
 			case '[':
 				seq, end := consumeDebugTermCSI(data, i)
-				lines = append(lines, formatDebugTermCSILine(seq))
+				if n, ok := parseCursorForwardN(seq); ok {
+					textBuf += strings.Repeat(" ", n)
+					totalCSpaces += n
+				} else {
+					flushText()
+					lines = append(lines, formatDebugTermCSILine(seq))
+				}
 				i = end
 			case ']':
+				flushText()
 				seq, end := consumeDebugTermOSC(data, i)
 				lines = append(lines, formatDebugTermOSCLine(seq))
 				i = end
 			case 'P':
+				flushText()
 				seq, end := consumeDebugTermST(data, i)
 				lines = append(lines, "DCS "+strconv.QuoteToASCII(string(seq)))
 				i = end
 			case '^':
+				flushText()
 				seq, end := consumeDebugTermST(data, i)
 				lines = append(lines, "PM "+strconv.QuoteToASCII(string(seq)))
 				i = end
 			case '_':
+				flushText()
 				seq, end := consumeDebugTermST(data, i)
 				lines = append(lines, "APC "+strconv.QuoteToASCII(string(seq)))
 				i = end
 			default:
+				flushText()
 				seq := data[i : i+2]
 				lines = append(lines, "ESC "+strconv.QuoteToASCII(string(seq)))
 				i += 2
@@ -211,19 +288,22 @@ func formatDebugTermDecode(data []byte) string {
 			continue
 		}
 		if b == 0x07 {
+			flushText()
 			lines = append(lines, "BEL")
 			i++
 			continue
 		}
 		start, end := consumeDebugTermText(data, i)
 		if end > start {
-			lines = append(lines, "TXT "+strconv.Quote(string(data[start:end])))
+			textBuf += string(data[start:end])
 			i = end
 			continue
 		}
+		flushText()
 		lines = append(lines, fmt.Sprintf("CTL 0x%02x", b))
 		i++
 	}
+	flushText()
 	return strings.Join(lines, "\n") + "\n"
 }
 
