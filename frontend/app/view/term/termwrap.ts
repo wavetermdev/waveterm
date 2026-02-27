@@ -280,12 +280,6 @@ export class TermWrap {
         const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
         if (viewportElem) {
             const scrollHandler = (e: any) => {
-                const scrolledUp = viewportElem.scrollTop < this.viewportScrollTop;
-                const stack = new Error().stack ?? "";
-                const frameCount = stack.split("\n").length - 1;
-                if (frameCount > 3) {
-                    console.trace("[termwrap]", "scroll-up", viewportElem.scrollTop, e);
-                }
                 this.handleViewportScroll(viewportElem);
             };
             viewportElem.addEventListener("scroll", scrollHandler);
