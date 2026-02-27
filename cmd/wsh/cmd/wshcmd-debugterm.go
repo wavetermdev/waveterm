@@ -6,7 +6,9 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
@@ -18,13 +20,13 @@ import (
 const (
 	DebugTermModeHex    = "hex"
 	DebugTermModeDecode = "decode"
+	DebugTermModeStdin  = "stdin"
 )
 
 var debugTermCmd = &cobra.Command{
 	Use:                   "debugterm",
 	Short:                 "inspect recent terminal output bytes",
 	RunE:                  debugTermRun,
-	PreRunE:               preRunSetupRpcClient,
 	DisableFlagsInUseLine: true,
 	Hidden:                true,
 }
@@ -37,19 +39,35 @@ var (
 func init() {
 	rootCmd.AddCommand(debugTermCmd)
 	debugTermCmd.Flags().Int64Var(&debugTermSize, "size", 1000, "number of terminal bytes to read")
-	debugTermCmd.Flags().StringVar(&debugTermMode, "mode", DebugTermModeHex, "output mode: hex or decode")
+	debugTermCmd.Flags().StringVar(&debugTermMode, "mode", DebugTermModeHex, "output mode: hex, decode, or stdin")
 }
 
 func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("debugterm", rtnErr == nil)
 	}()
+	mode := strings.ToLower(debugTermMode)
+	if mode != DebugTermModeHex && mode != DebugTermModeDecode && mode != DebugTermModeStdin {
+		return fmt.Errorf("invalid mode %q (expected %q, %q, or %q)", debugTermMode, DebugTermModeHex, DebugTermModeDecode, DebugTermModeStdin)
+	}
+	if mode == DebugTermModeStdin {
+		stdinData, err := io.ReadAll(WrappedStdin)
+		if err != nil {
+			return fmt.Errorf("reading stdin: %w", err)
+		}
+		termData, err := parseDebugTermStdinData(stdinData)
+		if err != nil {
+			return err
+		}
+		WriteStdout("%s", formatDebugTermDecode(termData))
+		return nil
+	}
 	if debugTermSize <= 0 {
 		return fmt.Errorf("size must be greater than 0")
 	}
-	mode := strings.ToLower(debugTermMode)
-	if mode != DebugTermModeHex && mode != DebugTermModeDecode {
-		return fmt.Errorf("invalid mode %q (expected %q or %q)", debugTermMode, DebugTermModeHex, DebugTermModeDecode)
+	err := preRunSetupRpcClient(cmd, args)
+	if err != nil {
+		return err
 	}
 	fullORef, err := resolveBlockArg()
 	if err != nil {
@@ -74,6 +92,15 @@ func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	WriteStdout("%s", output)
 	return nil
+}
+
+func parseDebugTermStdinData(data []byte) ([]byte, error) {
+	var arr []string
+	err := json.Unmarshal(data, &arr)
+	if err != nil {
+		return nil, fmt.Errorf("stdin mode expects a JSON array of strings: %w", err)
+	}
+	return []byte(strings.Join(arr, "")), nil
 }
 
 func formatDebugTermHex(data []byte) string {

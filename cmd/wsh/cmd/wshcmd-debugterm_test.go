@@ -33,3 +33,29 @@ func TestFormatDebugTermDecode(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDebugTermStdinData(t *testing.T) {
+	data, err := parseDebugTermStdinData([]byte(`["abc","\u001b[31mred","\u001b[0m"]`))
+	if err != nil {
+		t.Fatalf("parseDebugTermStdinData() error: %v", err)
+	}
+	output := formatDebugTermDecode(data)
+	expected := []string{
+		`TXT "abc"`,
+		`CSI "\x1b[31m"`,
+		`TXT "red"`,
+		`CSI "\x1b[0m"`,
+	}
+	for _, line := range expected {
+		if !strings.Contains(output, line) {
+			t.Fatalf("missing decode line %q in output %q", line, output)
+		}
+	}
+}
+
+func TestParseDebugTermStdinDataInvalid(t *testing.T) {
+	_, err := parseDebugTermStdinData([]byte(`{"not":"array"}`))
+	if err == nil {
+		t.Fatalf("expected error for invalid stdin json")
+	}
+}
