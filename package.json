@@ -47,7 +47,7 @@
         "@types/tinycolor2": "^1",
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "4.2.3",
-        "@vitest/coverage-istanbul": "^3.0.9",
+        "@vitest/coverage-istanbul": "^4.0.18",
         "electron": "^40.4.1",
         "electron-builder": "^26.8",
         "electron-vite": "^5.0",
