@@ -807,6 +807,36 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	}, nil
 }
 
+func (ws *WshServer) DebugTermCommand(ctx context.Context, data wshrpc.CommandDebugTermData) (*wshrpc.CommandDebugTermRtnData, error) {
+	if data.BlockId == "" {
+		return nil, fmt.Errorf("blockid is required")
+	}
+	if data.Size <= 0 {
+		return nil, fmt.Errorf("size must be greater than 0")
+	}
+	waveFile, err := filestore.WFS.Stat(ctx, data.BlockId, wavebase.BlockFile_Term)
+	if err == fs.ErrNotExist {
+		return &wshrpc.CommandDebugTermRtnData{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error statting term file: %w", err)
+	}
+	readSize := data.Size
+	dataLength := waveFile.DataLength()
+	if readSize > dataLength {
+		readSize = dataLength
+	}
+	readOffset := waveFile.Size - readSize
+	readOffset, readData, err := filestore.WFS.ReadAt(ctx, data.BlockId, wavebase.BlockFile_Term, readOffset, readSize)
+	if err != nil {
+		return nil, fmt.Errorf("error reading term file: %w", err)
+	}
+	return &wshrpc.CommandDebugTermRtnData{
+		Offset: readOffset,
+		Data64: base64.StdEncoding.EncodeToString(readData),
+	}, nil
+}
+
 func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
 	return &wshrpc.WaveInfoData{
 		Version:   wavebase.WaveVersion,

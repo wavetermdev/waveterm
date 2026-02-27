@@ -74,6 +74,7 @@ type WshRpcInterface interface {
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
 	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	DebugTermCommand(ctx context.Context, data CommandDebugTermData) (*CommandDebugTermRtnData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
@@ -577,6 +578,16 @@ type CommandVarResponseData struct {
 	Key    string `json:"key"`
 	Val    string `json:"val"`
 	Exists bool   `json:"exists"`
+}
+
+type CommandDebugTermData struct {
+	BlockId string `json:"blockid"`
+	Size    int64  `json:"size"`
+}
+
+type CommandDebugTermRtnData struct {
+	Offset int64  `json:"offset"`
+	Data64 string `json:"data64"`
 }
 
 type PathCommandData struct {

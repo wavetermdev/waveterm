@@ -184,6 +184,12 @@ func CreateSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateSubBlockD
 	return resp, err
 }
 
+// command "debugterm", wshserver.DebugTermCommand
+func DebugTermCommand(w *wshutil.WshRpc, data wshrpc.CommandDebugTermData, opts *wshrpc.RpcOpts) (*wshrpc.CommandDebugTermRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandDebugTermRtnData](w, "debugterm", data, opts)
+	return resp, err
+}
+
 // command "deleteappfile", wshserver.DeleteAppFileCommand
 func DeleteAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteAppFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "deleteappfile", data, opts)
