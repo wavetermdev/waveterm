@@ -3,16 +3,10 @@ const FunctionalColorRegex = /^([a-z-]+)\(/i;
 const NamedColorRegex = /^[a-z]+$/i;
 
 function isValidCssColor(color: string): boolean {
-    if (typeof CSS != "undefined" && typeof CSS.supports == "function") {
-        return CSS.supports("color", color);
-    }
-    if (typeof document == "undefined") {
+    if (typeof CSS == "undefined" || typeof CSS.supports != "function") {
         return false;
     }
-    const temp = document.createElement("div");
-    temp.style.color = "";
-    temp.style.color = color;
-    return temp.style.color != "";
+    return CSS.supports("color", color);
 }
 
 function getCssColorType(color: string): string {
