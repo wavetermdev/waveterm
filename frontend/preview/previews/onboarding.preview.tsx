@@ -2,19 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import {
-    FilesPage,
-    MagnifyBlocksPage,
-    WaveAIPage,
-} from "@/app/onboarding/onboarding-features";
-import { ViewLogoCommand, ViewShortcutsCommand } from "@/app/onboarding/onboarding-command";
 import { DurableSessionPage } from "@/app/onboarding/onboarding-durable";
+import { FilesPage, MagnifyBlocksPage, WaveAIPage } from "@/app/onboarding/onboarding-features";
 import { UpgradeOnboardingVersions } from "@/app/onboarding/onboarding-upgrade-patch";
-import { isMacOS } from "@/util/platformutil";
 
 function OnboardingFeaturesV() {
     const noop = () => {};
-    const isMac = isMacOS();
     return (
         <div className="flex flex-col w-full gap-8">
             <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
@@ -27,14 +20,7 @@ function OnboardingFeaturesV() {
                 <MagnifyBlocksPage onNext={noop} onSkip={noop} onPrev={noop} />
             </div>
             <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <FilesPage
-                    onFinish={noop}
-                    onPrev={noop}
-                    commandRenderers={[
-                        (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
-                        (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
-                    ]}
-                />
+                <FilesPage onFinish={noop} onPrev={noop} />
             </div>
         </div>
     );
@@ -44,7 +30,10 @@ function UpgradeOnboardingPatchV() {
     return (
         <div className="flex flex-col gap-6 w-full max-w-[900px]">
             {UpgradeOnboardingVersions.map((version) => (
-                <div key={version.version} className="w-[650px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
+                <div
+                    key={version.version}
+                    className="w-[650px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel"
+                >
                     <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
                     <div className="flex flex-col w-full h-full relative z-10">
                         <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
