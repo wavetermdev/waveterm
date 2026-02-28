@@ -19,7 +19,7 @@ import { FakeLayout } from "./onboarding-layout";
 
 type FeaturePageName = "waveai" | "durable" | "magnify" | "files";
 
-const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
+export const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
     const isMac = isMacOS();
     const shortcutKey = isMac ? "⌘-Shift-A" : "Alt-Shift-A";
     const [fireClicked, setFireClicked] = useState(false);
@@ -106,7 +106,7 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
     );
 };
 
-const MagnifyBlocksPage = ({
+export const MagnifyBlocksPage = ({
     onNext,
     onSkip,
     onPrev,
@@ -172,24 +172,11 @@ const MagnifyBlocksPage = ({
     );
 };
 
-const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
-    const [fireClicked, setFireClicked] = useState(false);
+export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
     const isMac = isMacOS();
+    const [fireClicked, setFireClicked] = useState(false);
     const [commandIndex, setCommandIndex] = useState(0);
     const [key, setKey] = useState(0);
-
-    const handleFireClick = () => {
-        setFireClicked(!fireClicked);
-        if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "wsh",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
-            });
-        }
-    };
 
     const commands = [
         (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
@@ -204,6 +191,43 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
         }, 2500);
     };
 
+    const handleFireClick = () => {
+        setFireClicked(!fireClicked);
+        if (!fireClicked) {
+            RpcApi.RecordTEventCommand(TabRpcClient, {
+                event: "onboarding:fire",
+                props: {
+                    "onboarding:feature": "wsh",
+                    "onboarding:version": CurrentOnboardingVersion,
+                },
+            });
+        }
+    };
+
+    return (
+        <FilesPageContent
+            onFinish={onFinish}
+            onPrev={onPrev}
+            fireClicked={fireClicked}
+            onFireClick={handleFireClick}
+            rightPanel={commands[commandIndex](handleCommandComplete)}
+        />
+    );
+};
+
+export const FilesPageContent = ({
+    onFinish,
+    onPrev,
+    fireClicked,
+    onFireClick,
+    rightPanel,
+}: {
+    onFinish: () => void;
+    onPrev?: () => void;
+    fireClicked: boolean;
+    onFireClick: () => void;
+    rightPanel: React.ReactNode;
+}) => {
     return (
         <div className="flex flex-col h-full">
             <header className="flex items-center gap-4 mb-6 w-full unselectable flex-shrink-0">
@@ -252,103 +276,14 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
                                 and edit files wherever they are.
                             </p>
 
-                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
+                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={onFireClick} />
                         </div>
                     </div>
                 </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
-                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    {commands[commandIndex](handleCommandComplete)}
-                </div>
+                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">{rightPanel}</div>
             </div>
             <OnboardingFooter currentStep={4} totalSteps={4} onNext={onFinish} onPrev={onPrev} />
-        </div>
-    );
-};
-
-const FilesPageV = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
-    const [fireClicked, setFireClicked] = useState(false);
-
-    const handleFireClick = () => {
-        setFireClicked(!fireClicked);
-    };
-
-    return (
-        <div className="flex flex-col h-full">
-            <header className="flex items-center gap-4 mb-6 w-full unselectable flex-shrink-0">
-                <div>
-                    <Logo />
-                </div>
-                <div className="text-[25px] font-normal text-foreground">Viewing/Editing Files</div>
-            </header>
-            <div className="flex-1 flex flex-row gap-0 min-h-0">
-                <div className="flex-1 flex flex-col items-center justify-center gap-8 pr-6 unselectable">
-                    <div className="flex flex-col items-start gap-6 max-w-md">
-                        <div className="flex flex-col items-start gap-4 text-secondary">
-                            <p>
-                                Wave can preview markdown, images, and video files on both local <i>and remote</i>{" "}
-                                machines.
-                            </p>
-                            <div className="flex items-start gap-3 w-full">
-                                <i className="fa fa-eye text-accent text-lg mt-1 flex-shrink-0" />
-                                <div>
-                                    <p className="mb-2">
-                                        Use{" "}
-                                        <span className="font-mono font-semibold text-foreground">wsh view [filename]</span>{" "}
-                                        to preview files in Wave&apos;s graphical viewer
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3 w-full">
-                                <i className="fa fa-pen-to-square text-accent text-lg mt-1 flex-shrink-0" />
-                                <div>
-                                    <p className="mb-2">
-                                        Use{" "}
-                                        <span className="font-mono font-semibold text-foreground">wsh edit [filename]</span>{" "}
-                                        to open config files or code files in Wave&apos;s graphical editor
-                                    </p>
-                                </div>
-                            </div>
-                            <p>
-                                These commands work seamlessly on both local and remote machines, making it easy to view
-                                and edit files wherever they are.
-                            </p>
-                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
-                        </div>
-                    </div>
-                </div>
-                <div className="w-[2px] bg-border flex-shrink-0"></div>
-                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    <div className="w-full h-[400px] bg-background rounded border border-border/50 p-4 flex flex-col gap-4">
-                        <div className="flex items-center gap-2 font-mono text-sm text-foreground/80">
-                            <span className="text-accent">&gt;</span>
-                            <span>wsh view keyboard-shortcuts.md</span>
-                        </div>
-                        <div className="w-full h-full bg-background rounded border-2 border-border/50"></div>
-                    </div>
-                </div>
-            </div>
-            <OnboardingFooter currentStep={4} totalSteps={4} onNext={onFinish} onPrev={onPrev} />
-        </div>
-    );
-};
-
-export const OnboardingFeaturesV = () => {
-    const noop = () => {};
-    return (
-        <div className="flex flex-col w-full gap-8">
-            <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <WaveAIPage onNext={noop} onSkip={noop} />
-            </div>
-            <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <DurableSessionPage onNext={noop} onSkip={noop} onPrev={noop} />
-            </div>
-            <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <MagnifyBlocksPage onNext={noop} onSkip={noop} onPrev={noop} />
-            </div>
-            <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <FilesPageV onFinish={noop} onPrev={noop} />
-            </div>
         </div>
     );
 };
