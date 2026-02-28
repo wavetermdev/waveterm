@@ -3,17 +3,18 @@
 
 import Logo from "@/app/asset/logo.svg";
 import {
-    FilesPageContent,
+    FilesPage,
     MagnifyBlocksPage,
     WaveAIPage,
 } from "@/app/onboarding/onboarding-features";
+import { ViewLogoCommand, ViewShortcutsCommand } from "@/app/onboarding/onboarding-command";
 import { DurableSessionPage } from "@/app/onboarding/onboarding-durable";
 import { UpgradeOnboardingVersions } from "@/app/onboarding/onboarding-upgrade-patch";
-import { useState } from "react";
+import { isMacOS } from "@/util/platformutil";
 
 function OnboardingFeaturesV() {
     const noop = () => {};
-    const [fireClicked, setFireClicked] = useState(false);
+    const isMac = isMacOS();
     return (
         <div className="flex flex-col w-full gap-8">
             <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
@@ -26,20 +27,13 @@ function OnboardingFeaturesV() {
                 <MagnifyBlocksPage onNext={noop} onSkip={noop} onPrev={noop} />
             </div>
             <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <FilesPageContent
+                <FilesPage
                     onFinish={noop}
                     onPrev={noop}
-                    fireClicked={fireClicked}
-                    onFireClick={() => setFireClicked(!fireClicked)}
-                    rightPanel={
-                        <div className="w-full h-[400px] bg-background rounded border border-border/50 p-4 flex flex-col gap-4">
-                            <div className="flex items-center gap-2 font-mono text-sm text-foreground/80">
-                                <span className="text-accent">&gt;</span>
-                                <span>wsh view keyboard-shortcuts.md</span>
-                            </div>
-                            <div className="w-full h-full bg-background rounded border-2 border-border/50"></div>
-                        </div>
-                    }
+                    commandRenderers={[
+                        (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
+                        (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
+                    ]}
                 />
             </div>
         </div>

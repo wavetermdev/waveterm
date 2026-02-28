@@ -18,6 +18,7 @@ import { OnboardingFooter } from "./onboarding-features-footer";
 import { FakeLayout } from "./onboarding-layout";
 
 type FeaturePageName = "waveai" | "durable" | "magnify" | "files";
+type FilesPageCommandRenderer = (onComplete: () => void) => React.ReactNode;
 
 export const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
     const isMac = isMacOS();
@@ -172,17 +173,27 @@ export const MagnifyBlocksPage = ({
     );
 };
 
-export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
+export const FilesPage = ({
+    onFinish,
+    onPrev,
+    commandRenderers,
+}: {
+    onFinish: () => void;
+    onPrev?: () => void;
+    commandRenderers?: FilesPageCommandRenderer[];
+}) => {
     const [fireClicked, setFireClicked] = useState(false);
     const isMac = isMacOS();
     const [commandIndex, setCommandIndex] = useState(0);
     const [key, setKey] = useState(0);
 
-    const commands = [
-        (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
-        (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
-        (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
-    ];
+    const commands =
+        commandRenderers ??
+        [
+            (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
+            (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
+            (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
+        ];
 
     const handleCommandComplete = () => {
         setTimeout(() => {
