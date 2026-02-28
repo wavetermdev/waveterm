@@ -66,6 +66,27 @@ const versions: VersionConfig[] = [
     },
 ];
 
+const UpgradeOnboardingPatchV = () => {
+    return (
+        <div className="flex flex-col gap-6 w-full max-w-[900px]">
+            {versions.map((version) => (
+                <div key={version.version} className="w-[650px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
+                    <div className="flex flex-col w-full h-full relative z-10">
+                        <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
+                            <div className="flex justify-center">
+                                <Logo />
+                            </div>
+                            <div className="text-center text-[25px] font-normal text-foreground">Wave {version.version} Update</div>
+                        </header>
+                        <div className="flex-1">{version.content()}</div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const UpgradeOnboardingPatch = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
@@ -191,4 +212,4 @@ const UpgradeOnboardingPatch = () => {
 
 UpgradeOnboardingPatch.displayName = "UpgradeOnboardingPatch";
 
-export { UpgradeOnboardingPatch };
+export { UpgradeOnboardingPatch, UpgradeOnboardingPatchV };
