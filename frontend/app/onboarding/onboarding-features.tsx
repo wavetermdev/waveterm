@@ -173,8 +173,8 @@ export const MagnifyBlocksPage = ({
 };
 
 export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
-    const isMac = isMacOS();
     const [fireClicked, setFireClicked] = useState(false);
+    const isMac = isMacOS();
     const [commandIndex, setCommandIndex] = useState(0);
     const [key, setKey] = useState(0);
 
