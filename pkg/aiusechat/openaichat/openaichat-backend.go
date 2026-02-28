@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -20,6 +21,22 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
+
+func makeHTTPClient(proxyURL string) (*http.Client, error) {
+	client := &http.Client{}
+	if proxyURL == "" {
+		return client, nil
+	}
+
+	pURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy URL: %w", err)
+	}
+	client.Transport = &http.Transport{
+		Proxy: http.ProxyURL(pURL),
+	}
+	return client, nil
+}
 
 // RunChatStep executes a chat step using the chat completions API
 func RunChatStep(
@@ -60,7 +77,10 @@ func RunChatStep(
 		return nil, nil, nil, err
 	}
 
-	client := &http.Client{}
+	client, err := makeHTTPClient(chatOpts.Config.ProxyURL)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("request failed: %w", err)

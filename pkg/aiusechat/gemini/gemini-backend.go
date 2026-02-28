@@ -54,6 +54,24 @@ func appendPartToLastUserMessage(contents []GeminiContent, text string) {
 	}
 }
 
+func makeHTTPClient(proxyURL string) (*http.Client, error) {
+	httpClient := &http.Client{
+		Timeout: 0, // rely on ctx; streaming can be long
+	}
+	if proxyURL == "" {
+		return httpClient, nil
+	}
+
+	pURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy URL: %w", err)
+	}
+	httpClient.Transport = &http.Transport{
+		Proxy: http.ProxyURL(pURL),
+	}
+	return httpClient, nil
+}
+
 // buildGeminiHTTPRequest creates an HTTP request for the Gemini API
 func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
@@ -231,8 +249,9 @@ func RunGeminiChatStep(
 		return nil, nil, nil, err
 	}
 
-	httpClient := &http.Client{
-		Timeout: 0, // rely on ctx; streaming can be long
+	httpClient, err := makeHTTPClient(chatOpts.Config.ProxyURL)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	resp, err := httpClient.Do(req)
