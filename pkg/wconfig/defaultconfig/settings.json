@@ -21,7 +21,7 @@
     "window:maxtabcachesize": 10,
     "window:nativetitlebar": true,
     "window:magnifiedblockopacity": 0.6,
-    "window:magnifiedblocksize": 0.9,
+    "window:magnifiedblocksize": 0.95,
     "window:magnifiedblockblurprimarypx": 10,
     "window:fullscreenonlaunch": false,
     "window:magnifiedblockblursecondarypx": 2,

@@ -95,7 +95,6 @@ func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "resolved block %s\n", fullORef)
 	rtn, err := wshclient.DebugTermCommand(RpcClient, wshrpc.CommandDebugTermData{
 		BlockId: fullORef.OID,
 		Size:    debugTermSize,
@@ -103,7 +102,6 @@ func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if err != nil {
 		return fmt.Errorf("reading terminal output: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "got rtn: %#v\n", rtn)
 	termData, err := base64.StdEncoding.DecodeString(rtn.Data64)
 	if err != nil {
 		return fmt.Errorf("decoding terminal output: %w", err)
