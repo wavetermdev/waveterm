@@ -68,13 +68,20 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
         onReorderTabs?.(nextTabs.map((tab) => tab.id));
     };
 
+    const getDropLineClass = (index: number) =>
+        cn(
+            "h-0 border-t-2",
+            dragTabId != null && dropIndex === index ? "border-accent/80" : "border-transparent",
+            index > 0 && index < orderedTabs.length && "my-px"
+        );
+
     return (
         <div
             className={cn("flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden border-r border-border bg-panel", className)}
             style={{ width: barWidth }}
         >
             <div
-                className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1"
+                className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1"
                 onDragOver={(event) => {
                     event.preventDefault();
                     if (event.target === event.currentTarget) {
@@ -89,9 +96,9 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                     clearDragState();
                 }}
             >
-                {dropIndex === 0 && <div className="h-0 border-t-2 border-accent/80" />}
+                <div className={getDropLineClass(0)} />
                 {orderedTabs.map((tab, index) => (
-                    <div key={tab.id} className="flex flex-col gap-1">
+                    <div key={tab.id} className="flex flex-col">
                         <VTab
                             tab={tab}
                             active={tab.id === activeTabId}
@@ -121,7 +128,7 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                             }}
                             onDragEnd={clearDragState}
                         />
-                        {dropIndex === index + 1 && <div className="h-0 border-t-2 border-accent/80" />}
+                        <div className={getDropLineClass(index + 1)} />
                     </div>
                 ))}
             </div>
