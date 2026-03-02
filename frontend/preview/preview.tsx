@@ -120,6 +120,7 @@ function PreviewApp() {
 
 function initPreview() {
     setWaveWindowType("preview");
+    // Preview mode has no connected backend client object, but onboarding previews read clientAtom.
     ClientModel.getInstance().initialize(null);
     loadFonts();
     const root = createRoot(document.getElementById("main")!);
