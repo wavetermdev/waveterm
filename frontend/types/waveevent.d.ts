@@ -6,7 +6,7 @@
 declare global {
 
     // wps.WaveEvent
-    type WaveEventName = "blockclose" | "connchange" | "sysinfo" | "controllerstatus" | "builderstatus" | "builderoutput" | "waveobj:update" | "blockfile" | "config" | "userinput" | "route:down" | "route:up" | "workspace:update" | "waveai:ratelimit" | "waveapp:appgoupdated" | "tsunami:updatemeta" | "waveai:modeconfig" | "tab:indicator" | "block:jobstatus";
+    type WaveEventName = "blockclose" | "connchange" | "sysinfo" | "controllerstatus" | "builderstatus" | "builderoutput" | "waveobj:update" | "blockfile" | "config" | "userinput" | "route:down" | "route:up" | "workspace:update" | "waveai:ratelimit" | "waveapp:appgoupdated" | "tsunami:updatemeta" | "waveai:modeconfig" | "tab:indicator" | "block:jobstatus" | "badge";
 
     type WaveEvent = {
         event: WaveEventName;
@@ -33,7 +33,8 @@ declare global {
         { event: "tsunami:updatemeta"; data?: AppMeta; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "tab:indicator"; data?: TabIndicatorEventData; } | 
-        { event: "block:jobstatus"; data?: BlockJobStatusData; }
+        { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
+        { event: "badge"; data?: BadgeEvent; }
     );
 
 }

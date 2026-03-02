@@ -25,6 +25,7 @@ declare global {
         "ai:thinkinglevel"?: string;
         "ai:verbosity"?: string;
         "ai:endpoint"?: string;
+        "ai:proxyurl"?: string;
         "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
@@ -107,6 +108,21 @@ declare global {
         iconcolor: string;
     };
 
+    // baseds.Badge
+    type Badge = {
+        icon: string;
+        color?: string;
+        priority: number;
+    };
+
+    // baseds.BadgeEvent
+    type BadgeEvent = {
+        oref: string;
+        persistent?: boolean;
+        clear?: boolean;
+        badge?: Badge;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -114,6 +130,7 @@ declare global {
         stickers?: StickerType[];
         subblockids?: string[];
         jobid?: string;
+        badge?: Badge;
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -1559,6 +1576,7 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
+        badge?: Badge;
     };
 
     // wshrpc.TabIndicator
