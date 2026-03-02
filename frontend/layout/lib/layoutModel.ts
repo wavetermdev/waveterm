@@ -822,7 +822,7 @@ export class LayoutModel {
             return resizeAction?.resizeOperations.find((op) => op.nodeId === node.id)?.size ?? node.size;
         }
 
-        const additionalProps: LayoutNodeAdditionalProps = additionalPropsMap.hasOwnProperty(node.id)
+        const additionalProps: LayoutNodeAdditionalProps = node.id in additionalPropsMap
             ? additionalPropsMap[node.id]
             : { treeKey: "0" };
 
@@ -939,7 +939,7 @@ export class LayoutModel {
             this.magnifiedNodeId = undefined;
 
             // Unset the transform for the sole leaf.
-            if (addlProps.hasOwnProperty(lastLeafId)) addlProps[lastLeafId].transform = undefined;
+            if (lastLeafId in addlProps) addlProps[lastLeafId].transform = undefined;
         }
     }
 
@@ -1072,6 +1072,10 @@ export class LayoutModel {
                 isMagnified: atom((get) => {
                     const treeState = get(this.localTreeStateAtom);
                     return treeState.magnifiedNodeId === nodeid;
+                }),
+                anyMagnified: atom((get) => {
+                    const treeState = get(this.localTreeStateAtom);
+                    return treeState.magnifiedNodeId != null;
                 }),
                 isEphemeral: atom((get) => {
                     const ephemeralNode = get(this.ephemeralNode);
@@ -1504,7 +1508,7 @@ export class LayoutModel {
     getNodeAdditionalPropertiesAtom(nodeId: string): Atom<LayoutNodeAdditionalProps> {
         return atom((get) => {
             const addlProps = get(this.additionalProps);
-            if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
+            if (nodeId in addlProps) return addlProps[nodeId];
         });
     }
 
@@ -1515,7 +1519,7 @@ export class LayoutModel {
      */
     getNodeAdditionalPropertiesById(nodeId: string): LayoutNodeAdditionalProps {
         const addlProps = this.getter(this.additionalProps);
-        if (addlProps.hasOwnProperty(nodeId)) return addlProps[nodeId];
+        if (nodeId in addlProps) return addlProps[nodeId];
     }
 
     /**

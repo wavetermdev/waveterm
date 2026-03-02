@@ -59,8 +59,7 @@
         min-height: 0;
         overflow: hidden;
         line-height: 1;
-        margin: 5px;
-        margin-left: 4px;
+        margin: 5px 1px 5px 4px;
     }
 
     .term-htmlelem {
@@ -126,30 +125,12 @@
         }
     }
 
-    // The 18px width is the width of the scrollbar plus the margin
-    .term-scrollbar-show-observer {
-        z-index: calc(var(--zindex-xterm-viewport-overlay) - 1);
-        position: absolute;
-        top: 0;
-        right: 0;
-        height: 100%;
-        width: 18px;
-    }
-
-    .term-scrollbar-hide-observer {
-        z-index: calc(var(--zindex-xterm-viewport-overlay) + 1);
-        display: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 100%;
-        width: calc(100% - 18px);
-    }
-
     .terminal {
+        width: 100%;
+
         .xterm-viewport {
             &::-webkit-scrollbar {
-                width: 6px;
+                width: 6px; /* this needs to match fitAddon.scrollbarWidth in termwrap.ts */
                 height: 6px;
             }
 
@@ -158,24 +139,23 @@
             }
 
             &::-webkit-scrollbar-thumb {
-                display: none;
-                background-color: var(--scrollbar-thumb-color);
+                background-color: transparent;
                 border-radius: 4px;
                 margin: 0 1px 0 1px;
 
                 &:hover {
-                    background-color: var(--scrollbar-thumb-hover-color);
+                    background-color: var(--scrollbar-thumb-hover-color) !important;
                 }
 
                 &:active {
-                    background-color: var(--scrollbar-thumb-active-color);
+                    background-color: var(--scrollbar-thumb-active-color) !important;
                 }
             }
         }
 
         &:hover {
             .xterm-viewport::-webkit-scrollbar-thumb {
-                display: block;
+                background-color: var(--scrollbar-thumb-color);
             }
         }
     }

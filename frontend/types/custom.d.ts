@@ -7,9 +7,8 @@ import type * as rxjs from "rxjs";
 
 declare global {
     type GlobalAtomsType = {
-        builderId: jotai.PrimitiveAtom<string>; // readonly (for builder mode)
+        builderId: jotai.Atom<string>; // readonly (for builder mode)
         builderAppId: jotai.PrimitiveAtom<string>; // app being edited in builder mode
-        waveWindowType: jotai.Atom<"tab" | "builder">; // derived from builderId
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
@@ -25,9 +24,6 @@ declare global {
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
-        flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
-        notifications: jotai.PrimitiveAtom<NotificationType[]>;
-        notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
@@ -96,7 +92,7 @@ declare global {
         showWorkspaceAppMenu: (workspaceId: string) => void; // workspace-appmenu-show
         showBuilderAppMenu: (builderId: string) => void; // builder-appmenu-show
         showContextMenu: (workspaceId: string, menu: ElectronContextMenuItem[]) => void; // contextmenu-show
-        onContextMenuClick: (callback: (id: string) => void) => void; // contextmenu-click
+        onContextMenuClick: (callback: (id: string | null) => void) => void; // contextmenu-click
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
         downloadFile: (path: string) => void; // download
@@ -406,35 +402,6 @@ declare global {
     type MarkdownResolveOpts = {
         connName: string;
         baseDir: string;
-    };
-
-    type FlashErrorType = {
-        id: string;
-        icon: string;
-        title: string;
-        message: string;
-        expiration: number;
-    };
-
-    export type NotificationActionType = {
-        label: string;
-        actionKey: string;
-        rightIcon?: string;
-        color?: "green" | "grey";
-        disabled?: boolean;
-    };
-
-    export type NotificationType = {
-        id?: string;
-        icon: string;
-        title: string;
-        message: string;
-        timestamp: string;
-        expiration?: number;
-        hidden?: boolean;
-        actions?: NotificationActionType[];
-        persistent?: boolean;
-        type?: "error" | "update" | "info" | "warning";
     };
 
     interface AbstractWshClient {

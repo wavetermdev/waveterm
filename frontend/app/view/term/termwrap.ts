@@ -11,6 +11,7 @@ import {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
+    isDev,
     openLink,
     setTabIndicator,
     WOS,
@@ -34,7 +35,7 @@ import {
     handleOsc7Command,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
-import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData } from "./termutil";
+import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -42,6 +43,8 @@ const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
+const IMEDedupWindowMs = 20;
+const MaxRepaintTransactionMs = 2000;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -89,10 +92,10 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
     nodeModel: BlockNodeModel; // this can be null
+    hoveredLinkUri: string | null = null;
+    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
 
     // IME composition state tracking
-    // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
-    // xterm.js sends data during compositionupdate AND after compositionend, causing duplicates
     isComposing: boolean = false;
     composingData: string = "";
     lastCompositionEnd: number = 0;
@@ -103,6 +106,23 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+
+    // for scrollToBottom support during a resize
+    lastAtBottomTime: number = Date.now();
+    lastScrollAtBottom: boolean = true;
+    cachedAtBottomForResize: boolean | null = null;
+    viewportScrollTop: number = 0;
+
+    // dev only (for debugging)
+    recentWrites: { idx: number; data: string; ts: number }[] = [];
+    recentWritesCounter: number = 0;
+
+    // for repaint transaction scrolling behavior
+    lastClearScrollbackTs: number = 0;
+    lastMode2026SetTs: number = 0;
+    lastMode2026ResetTs: number = 0;
+    inSyncTransaction: boolean = false;
+    inRepaintTransaction: boolean = false;
 
     constructor(
         tabId: string,
@@ -125,28 +145,40 @@ export class TermWrap {
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
-        this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
+        this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
-            new WebLinksAddon((e, uri) => {
-                e.preventDefault();
-                switch (PLATFORM) {
-                    case PlatformMacOS:
-                        if (e.metaKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
-                    default:
-                        if (e.ctrlKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
+            new WebLinksAddon(
+                (e, uri) => {
+                    e.preventDefault();
+                    switch (PLATFORM) {
+                        case PlatformMacOS:
+                            if (e.metaKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                        default:
+                            if (e.ctrlKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                    }
+                },
+                {
+                    hover: (e, uri) => {
+                        this.hoveredLinkUri = uri;
+                        this.onLinkHover?.(uri, e.clientX, e.clientY);
+                    },
+                    leave: () => {
+                        this.hoveredLinkUri = null;
+                        this.onLinkHover?.(null, 0, 0);
+                    },
                 }
-            })
+            )
         );
         if (WebGLSupported && waveOptions.useWebGl) {
             const webglAddon = new WebglAddon();
@@ -172,6 +204,44 @@ export class TermWrap {
             return handleOsc16162Command(data, this.blockId, this.loaded, this);
         });
         this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {
+                if (params[0] === 3) {
+                    this.lastClearScrollbackTs = Date.now();
+                    if (this.inSyncTransaction) {
+                        console.log("[termwrap] repaint transaction starting");
+                        this.inRepaintTransaction = true;
+                    }
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params) => {
+                if (params[0] === 2026) {
+                    this.lastMode2026SetTs = Date.now();
+                    this.inSyncTransaction = true;
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
+                if (params[0] === 2026) {
+                    this.lastMode2026ResetTs = Date.now();
+                    this.inSyncTransaction = false;
+                    const wasRepaint = this.inRepaintTransaction;
+                    this.inRepaintTransaction = false;
+                    if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
+                        setTimeout(() => {
+                            console.log("[termwrap] repaint transaction complete, scrolling to bottom");
+                            this.terminal.scrollToBottom();
+                        }, 20);
+                    }
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
             this.terminal.onBell(() => {
                 if (!this.loaded) {
                     return true;
@@ -191,7 +261,15 @@ export class TermWrap {
                 return true;
             })
         );
-        this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
+        this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+            if (e.isComposing && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                return true;
+            }
+            if (!waveOptions.keydownHandler) {
+                return true;
+            }
+            return waveOptions.keydownHandler(e);
+        });
         this.connectElem = connectElem;
         this.mainFileSubject = null;
         this.heldData = [];
@@ -205,15 +283,38 @@ export class TermWrap {
                 this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
+        const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
+        if (viewportElem) {
+            const scrollHandler = (e: any) => {
+                this.handleViewportScroll(viewportElem);
+            };
+            viewportElem.addEventListener("scroll", scrollHandler);
+            this.toDispose.push({
+                dispose: () => {
+                    viewportElem.removeEventListener("scroll", scrollHandler);
+                },
+            });
+        }
     }
 
     getZoneId(): string {
         return this.blockId;
     }
 
+    setCursorStyle(cursorStyle: string) {
+        this.terminal.options.cursorStyle = normalizeCursorStyle(cursorStyle);
+    }
+
+    setCursorBlink(cursorBlink: boolean) {
+        this.terminal.options.cursorBlink = cursorBlink ?? false;
+    }
+
     resetCompositionState() {
         this.isComposing = false;
         this.composingData = "";
+        this.lastComposedText = "";
+        this.lastCompositionEnd = 0;
+        this.firstDataAfterCompositionSent = false;
     }
 
     private handleCompositionStart = (e: CompositionEvent) => {
@@ -238,7 +339,6 @@ export class TermWrap {
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
-        this.toDispose.push(this.terminal.onKey(this.onKeyHandler.bind(this)));
         this.toDispose.push(
             this.terminal.onSelectionChange(
                 debounce(50, () => {
@@ -332,47 +432,19 @@ export class TermWrap {
             return;
         }
 
-        // IME Composition Handling
-        // Block all data during composition - only send the final text after compositionend
-        // This prevents xterm.js from sending intermediate composition data (e.g., during compositionupdate)
+        // IME fix: suppress isComposing=true events unless they immediately follow
+        // a compositionend (within 20ms). This handles CapsLock input method switching
+        // where the composition buffer gets flushed as a spurious isComposing=true event
         if (this.isComposing) {
-            dlog("Blocked data during composition:", data);
-            return;
-        }
-
-        if (this.pasteActive) {
-            if (this.multiInputCallback) {
-                this.multiInputCallback(data);
-            }
-        }
-
-        // IME Deduplication (for Capslock input method switching)
-        // When switching input methods with Capslock during composition, some systems send the
-        // composed text twice. We allow the first send and block subsequent duplicates.
-        const IMEDedupWindowMs = 50;
-        const now = Date.now();
-        const timeSinceCompositionEnd = now - this.lastCompositionEnd;
-        if (timeSinceCompositionEnd < IMEDedupWindowMs && data === this.lastComposedText && this.lastComposedText) {
-            if (!this.firstDataAfterCompositionSent) {
-                // First send after composition - allow it but mark as sent
-                this.firstDataAfterCompositionSent = true;
-                dlog("First data after composition, allowing:", data);
-            } else {
-                // Second send of the same data - this is a duplicate from Capslock switching, block it
-                dlog("Blocked duplicate IME data:", data);
-                this.lastComposedText = ""; // Clear to allow same text to be typed again later
-                this.firstDataAfterCompositionSent = false;
+            const timeSinceCompositionEnd = Date.now() - this.lastCompositionEnd;
+            if (timeSinceCompositionEnd > IMEDedupWindowMs) {
+                dlog("Suppressed IME data (composing, not near compositionend):", data);
                 return;
             }
         }
 
         this.sendDataHandler?.(data);
-    }
-
-    onKeyHandler(data: { key: string; domEvent: KeyboardEvent }) {
-        if (this.multiInputCallback) {
-            this.multiInputCallback(data.key);
-        }
+        this.multiInputCallback?.(data);
     }
 
     addFocusListener(focusFn: () => void) {
@@ -397,6 +469,13 @@ export class TermWrap {
     }
 
     doTerminalWrite(data: string | Uint8Array, setPtyOffset?: number): Promise<void> {
+        if (isDev() && this.loaded) {
+            const dataStr = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
+            this.recentWrites.push({ idx: this.recentWritesCounter++, ts: Date.now(), data: dataStr });
+            if (this.recentWrites.length > 50) {
+                this.recentWrites.shift();
+            }
+        }
         let resolve: () => void = null;
         let prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
@@ -462,18 +541,68 @@ export class TermWrap {
         }
     }
 
+    setAtBottom(atBottom: boolean) {
+        if (this.lastScrollAtBottom && !atBottom) {
+            this.lastAtBottomTime = Date.now();
+        }
+        this.lastScrollAtBottom = atBottom;
+        if (atBottom) {
+            this.lastAtBottomTime = Date.now();
+        }
+    }
+
+    wasRecentlyAtBottom(): boolean {
+        if (this.lastScrollAtBottom) {
+            return true;
+        }
+        return Date.now() - this.lastAtBottomTime <= 1000;
+    }
+
+    handleViewportScroll(viewportElem: HTMLElement) {
+        const { scrollTop, scrollHeight, clientHeight } = viewportElem;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - clientHeight * 0.5;
+        this.setAtBottom(atBottom);
+        const delta = this.viewportScrollTop - scrollTop;
+        if (isDev() && delta >= 500) {
+            console.log(
+                `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${atBottom}`
+            );
+        }
+        this.viewportScrollTop = scrollTop;
+    }
+
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
+        const atBottom = this.cachedAtBottomForResize ?? this.wasRecentlyAtBottom();
+        if (!atBottom) {
+            this.cachedAtBottomForResize = null;
+        }
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+            console.log(
+                "[termwrap] resize",
+                `${oldRows}x${oldCols}`,
+                "->",
+                `${this.terminal.rows}x${this.terminal.cols}`,
+                "atBottom:",
+                atBottom
+            );
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
+        }
+        if (atBottom) {
+            setTimeout(() => {
+                console.log("[termwrap] resize scroll-to-bottom");
+                this.cachedAtBottomForResize = null;
+                this.terminal.scrollToBottom();
+                this.setAtBottom(true);
+            }, 20);
         }
     }
 

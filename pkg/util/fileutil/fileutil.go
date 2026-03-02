@@ -14,10 +14,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 func FixPath(path string) (string, error) {
@@ -145,13 +143,21 @@ func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
 	return ""
 }
 
-func AddMimeTypeToFileInfo(path string, fileInfo *wshrpc.FileInfo) {
-	if fileInfo == nil {
-		return
+func AtomicWriteFile(fileName string, data []byte, perm os.FileMode) error {
+	tmpFileName := fileName + TempFileSuffix
+	if err := os.WriteFile(tmpFileName, data, perm); err != nil {
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to write temp file %q: %w (also failed to remove temp file: %v)", tmpFileName, err, removeErr)
+		}
+		return err
 	}
-	if fileInfo.MimeType == "" {
-		fileInfo.MimeType = DetectMimeType(path, ToFsFileInfo(fileInfo), false)
+	if err := os.Rename(tmpFileName, fileName); err != nil {
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to rename temp file %q to %q: %w (also failed to remove temp file: %v)", tmpFileName, fileName, err, removeErr)
+		}
+		return err
 	}
+	return nil
 }
 
 var (
@@ -203,56 +209,8 @@ func IsInitScriptPath(input string) bool {
 	return true
 }
 
-type FsFileInfo struct {
-	NameInternal    string
-	ModeInternal    os.FileMode
-	SizeInternal    int64
-	ModTimeInternal int64
-	IsDirInternal   bool
-}
-
-func (f FsFileInfo) Name() string {
-	return f.NameInternal
-}
-
-func (f FsFileInfo) Size() int64 {
-	return f.SizeInternal
-}
-
-func (f FsFileInfo) Mode() os.FileMode {
-	return f.ModeInternal
-}
-
-func (f FsFileInfo) ModTime() time.Time {
-	return time.Unix(0, f.ModTimeInternal)
-}
-
-func (f FsFileInfo) IsDir() bool {
-	return f.IsDirInternal
-}
-
-func (f FsFileInfo) Sys() interface{} {
-	return nil
-}
-
-var _ fs.FileInfo = FsFileInfo{}
-
-// ToFsFileInfo converts wshrpc.FileInfo to FsFileInfo.
-// It panics if fi is nil.
-func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
-	if fi == nil {
-		panic("ToFsFileInfo: nil FileInfo")
-	}
-	return FsFileInfo{
-		NameInternal:    fi.Name,
-		ModeInternal:    fi.Mode,
-		SizeInternal:    fi.Size,
-		ModTimeInternal: fi.ModTime,
-		IsDirInternal:   fi.IsDir,
-	}
-}
-
 const (
+	TempFileSuffix  = ".tmp"
 	MaxEditFileSize = 5 * 1024 * 1024 // 5MB
 )
 

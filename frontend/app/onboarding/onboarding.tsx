@@ -74,7 +74,8 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                             <a
                                 target="_blank"
                                 href="https://github.com/wavetermdev/waveterm?ref=install"
-                                rel={"noopener"}
+                                rel="noopener"
+                                className="text-accent"
                             >
                                 <i className="text-[32px] text-white/50 fa-brands fa-github"></i>
                             </a>
@@ -87,7 +88,8 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 <a
                                     target="_blank"
                                     href="https://github.com/wavetermdev/waveterm?ref=install"
-                                    rel={"noopener"}
+                                    rel="noopener"
+                                    className="text-accent"
                                 >
                                     Github&nbsp;(wavetermdev/waveterm)
                                 </a>
@@ -96,7 +98,12 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                     </div>
                     <div className="flex w-full items-center gap-[18px]">
                         <div>
-                            <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel={"noopener"}>
+                            <a
+                                target="_blank"
+                                href="https://discord.gg/XfvZ334gwU"
+                                rel="noopener"
+                                className="text-accent"
+                            >
                                 <i className="text-[25px] text-white/50 fa-solid fa-people-group"></i>
                             </a>
                         </div>
@@ -106,7 +113,12 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 Get help, submit feature requests, report bugs, or just chat with fellow terminal
                                 enthusiasts.
                                 <br />
-                                <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel={"noopener"}>
+                                <a
+                                    target="_blank"
+                                    href="https://discord.gg/XfvZ334gwU"
+                                    rel="noopener"
+                                    className="text-accent"
+                                >
                                     Join the Wave&nbsp;Discord&nbsp;Channel
                                 </a>
                             </div>
@@ -121,7 +133,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 Anonymous usage data helps us improve features you use.
                                 <br />
                                 <a
-                                    className="plain-link"
+                                    className="text-secondary! hover:underline!"
                                     target="_blank"
                                     href="https://waveterm.dev/privacy"
                                     rel="noopener"

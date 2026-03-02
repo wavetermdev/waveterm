@@ -300,7 +300,7 @@ const BuilderFilesTab = memo(() => {
             },
         ];
 
-        ContextMenuModel.showContextMenu(menu, e);
+        ContextMenuModel.getInstance().showContextMenu(menu, e);
     };
 
     return (

@@ -11,7 +11,7 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
   - Use string constants for status values, packet types, and other string-based enumerations.
   - in Go code, prefer using Printf() vs Println()
   - use "Make" as opposed to "New" for struct initialization func names
-  - in general const decls go at the top fo the file (before types and functions)
+  - in general const decls go at the top of the file (before types and functions)
   - NEVER run `go build` (especially in weird sub-package directories). we can tell if everything compiles by seeing there are no problems/errors.
 - **Synchronization**:
   - Always prefer to use the `lock.Lock(); defer lock.Unlock()` pattern for synchronization if possible
@@ -62,10 +62,10 @@ For normal "server" RPCs (where a frontend client is calling the main server) yo
 
 From within the FE to get the electron API (e.g. the preload functions):
 
-```
+```ts
 import { getApi } from "@/store/global";
 
-getApi().getIsDev()
+getApi().getIsDev();
 ```
 
 The full API is defined in custom.d.ts as type ElectronApi.
@@ -90,8 +90,9 @@ The full API is defined in custom.d.ts as type ElectronApi.
 - With React hooks, always complete all hook calls at the top level before any conditional returns (including jotai hook calls useAtom and useAtomValue); when a user explicitly tells you a function handles null inputs, trust them and stop trying to "protect" it with unnecessary checks or workarounds.
 - **Match response length to question complexity** - For simple, direct questions in Ask mode (especially those that can be answered in 1-2 sentences), provide equally brief answers. Save detailed explanations for complex topics or when explicitly requested.
 - **CRITICAL** - useAtomValue and useAtom are React HOOKS. They cannot be used inline in JSX code, they must appear at the top of a component in the hooks area of the react code.
-- for simple functions, we prefer `if (!cond) { return }; functionality;` pattern overn `if (cond) { functionality }` because it produces less indentation and is easier to follow.
-- It is now 2026, so if you write new files use 2026 for the copyright year
+- for simple functions, we prefer `if (!cond) { return }; functionality;` pattern over `if (cond) { functionality }` because it produces less indentation and is easier to follow.
+- It is now 2026, so if you write new files, or update files use 2026 for the copyright year
+- React.MutableRefObject is deprecated, just use React.RefObject now (in React 19 RefObject is always mutable)
 
 ### Strict Comment Rules
 
@@ -119,41 +120,46 @@ The full API is defined in custom.d.ts as type ElectronApi.
 - **Simple atoms:** define as **field initializers**.
 - **Atoms that depend on values/other atoms:** create in the **constructor**.
 - Models **never use React hooks**; they use `globalStore.get/set`.
-- It’s fine to call model methods from **event handlers** or **`useEffect`**.
+- It's fine to call model methods from **event handlers** or **`useEffect`**.
+- Models use the **singleton pattern** with a `private static instance` field, a `private constructor`, and a `static getInstance()` method.
+- The constructor is `private`; callers always use `getInstance()`.
 
 ```ts
 // model/MyModel.ts
-import { atom, type PrimitiveAtom } from "jotai";
+import * as jotai from "jotai";
 import { globalStore } from "@/app/store/jotaiStore";
 
 export class MyModel {
+  private static instance: MyModel | null = null;
+
   // simple atoms (field init)
-  statusAtom = atom<"idle" | "running" | "error">("idle");
-  outputAtom = atom("");
+  statusAtom = jotai.atom<"idle" | "running" | "error">("idle");
+  outputAtom = jotai.atom("");
 
   // ctor-built atoms (need types)
-  lengthAtom!: PrimitiveAtom<number>; // read-only derived via atom(get=>...)
-  thresholdedAtom!: PrimitiveAtom<boolean>;
+  lengthAtom!: jotai.Atom<number>;
+  thresholdedAtom!: jotai.Atom<boolean>;
 
-  constructor(initialThreshold = 20) {
-    this.lengthAtom = atom((get) => get(this.outputAtom).length);
-    this.thresholdedAtom = atom((get) => get(this.lengthAtom) > initialThreshold);
+  private constructor(initialThreshold = 20) {
+    this.lengthAtom = jotai.atom((get) => get(this.outputAtom).length);
+    this.thresholdedAtom = jotai.atom((get) => get(this.lengthAtom) > initialThreshold);
+  }
+
+  static getInstance(): MyModel {
+    if (!MyModel.instance) {
+      MyModel.instance = new MyModel();
+    }
+    return MyModel.instance;
+  }
+
+  static resetInstance(): void {
+    MyModel.instance = null;
   }
 
   async doWork() {
     globalStore.set(this.statusAtom, "running");
-    try {
-      for await (const chunk of this.stream()) {
-        globalStore.set(this.outputAtom, (prev) => prev + chunk);
-      }
-      globalStore.set(this.statusAtom, "idle");
-    } catch {
-      globalStore.set(this.statusAtom, "error");
-    }
-  }
-
-  private async *stream() {
-    /* ... */
+    // ... do work ...
+    globalStore.set(this.statusAtom, "idle");
   }
 }
 ```
@@ -162,12 +168,12 @@ export class MyModel {
 // component usage (events & effects OK)
 import { useAtomValue } from "jotai";
 
-function Panel({ model }: { model: MyModel }) {
+function Panel() {
+  const model = MyModel.getInstance();
   const status = useAtomValue(model.statusAtom);
   const isBig = useAtomValue(model.thresholdedAtom);
 
   const onClick = () => model.doWork();
-  // useEffect(() => { model.doWork() }, [model])
 
   return (
     <div>
@@ -177,7 +183,8 @@ function Panel({ model }: { model: MyModel }) {
 }
 ```
 
-**Remember:** atoms on the model, simple-as-fields, ctor for dependent/derived, updates via `globalStore.set/get`.
+**Remember:** singleton pattern with `getInstance()`, `private constructor`, atoms on the model, simple-as-fields, ctor for dependent/derived, updates via `globalStore.set/get`.
+**Note** Older models may not use the singleton pattern
 
 ### Tool Use
 

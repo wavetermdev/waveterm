@@ -6,6 +6,7 @@ import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import { isBuilderWindow } from "@/app/store/windowtype";
 import { maybeUseTabModel } from "@/app/store/tab-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
@@ -253,6 +254,7 @@ const AIPanelComponentInner = memo(() => {
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
+    const focusFollowsCursorMode = jotai.useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = maybeUseTabModel();
@@ -268,14 +270,13 @@ const AIPanelComponentInner = memo(() => {
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
                 const msg = model.getAndClearMessage();
-                const windowType = globalStore.get(atoms.waveWindowType);
                 const body: any = {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
                     aimode: globalStore.get(model.currentAIMode),
                 };
-                if (windowType === "builder") {
+                if (isBuilderWindow()) {
                     body.builderid = globalStore.get(atoms.builderId);
                     body.builderappid = globalStore.get(atoms.builderAppId);
                 } else {
@@ -509,6 +510,16 @@ const AIPanelComponentInner = memo(() => {
         [model]
     );
 
+    const handlePointerEnter = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            if (focusFollowsCursorMode !== "on") return;
+            if (event.pointerType === "touch" || event.buttons > 0) return;
+            if (isFocused) return;
+            model.focusInput();
+        },
+        [focusFollowsCursorMode, isFocused, model]
+    );
+
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
         const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
@@ -548,6 +559,7 @@ const AIPanelComponentInner = memo(() => {
                 borderBottomLeftRadius: 10,
             }}
             onFocusCapture={handleFocusCapture}
+            onPointerEnter={handlePointerEnter}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}

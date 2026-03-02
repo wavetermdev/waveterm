@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -116,6 +116,8 @@ const (
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
 	MetaKey_TermMacOptionIsMeta              = "term:macoptionismeta"
+	MetaKey_TermCursor                       = "term:cursor"
+	MetaKey_TermCursorBlink                  = "term:cursorblink"
 	MetaKey_TermConnDebug                    = "term:conndebug"
 	MetaKey_TermBellSound                    = "term:bellsound"
 	MetaKey_TermBellIndicator                = "term:bellindicator"

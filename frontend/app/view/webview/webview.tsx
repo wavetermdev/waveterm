@@ -594,21 +594,20 @@ export class WebViewModel implements ViewModel {
         if (globalStore.get(this.domReady)) {
             curZoom = this.webviewRef.current?.getZoomFactor() || 1;
         }
-        const model = this; // for the closure to work (this is getting unset)
-        function makeZoomFactorMenuItem(label: string, factor: number): ContextMenuItem {
+        const makeZoomFactorMenuItem = (label: string, factor: number): ContextMenuItem => {
             return {
                 label: label,
                 type: "checkbox",
                 click: () => {
-                    model.setZoomFactor(factor);
+                    this.setZoomFactor(factor);
                 },
                 checked: curZoom == factor,
             };
-        }
+        };
         zoomSubMenu.push({
             label: "Reset",
             click: () => {
-                model.setZoomFactor(null);
+                this.setZoomFactor(null);
             },
         });
         zoomSubMenu.push(makeZoomFactorMenuItem("25%", 0.25));
@@ -1064,7 +1063,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
                 data-blockid={model.blockId}
                 data-webcontentsid={webContentsId} // needed for emain
                 preload={getWebviewPreloadUrl()}
-                // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
+                // @ts-expect-error This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
                 allowpopups="true"
                 partition={webPartition}
                 useragent={userAgent}

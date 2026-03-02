@@ -13,7 +13,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
@@ -48,7 +48,7 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
     };
 }
 
-const PlotTypes: Object = {
+const PlotTypes: object = {
     CPU: function (dataItem: DataItem): Array<string> {
         return ["cpu"];
     },
@@ -80,8 +80,8 @@ for (let i = 0; i < 32; i++) {
     DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`Core ${i}`);
 }
 
-function convertWaveEventToDataItem(event: WaveEvent): DataItem {
-    const eventData: TimeSeriesData = event.data;
+function convertWaveEventToDataItem(event: Extract<WaveEvent, { event: "sysinfo" }>): DataItem {
+    const eventData = event.data;
     if (eventData == null || eventData.ts == null || eventData.values == null) {
         return null;
     }
@@ -360,7 +360,7 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
         }
     }, [connStatus.status, connName]);
     React.useEffect(() => {
-        const unsubFn = waveEventSubscribe({
+        const unsubFn = waveEventSubscribeSingle({
             eventType: "sysinfo",
             scope: connName,
             handler: (event) => {
@@ -547,20 +547,22 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
                     "grid-cols-2": cols2,
                 })}
             >
-                {plotData && plotData.length > 0 && yvals.map((yval, idx) => {
-                    return (
-                        <SingleLinePlot
-                            key={`plot-${model.blockId}-${yval}`}
-                            plotData={plotData}
-                            yval={yval}
-                            yvalMeta={plotMeta.get(yval)}
-                            blockId={model.blockId}
-                            defaultColor={"var(--accent-color)"}
-                            title={title}
-                            targetLen={targetLen}
-                        />
-                    );
-                })}
+                {plotData &&
+                    plotData.length > 0 &&
+                    yvals.map((yval, idx) => {
+                        return (
+                            <SingleLinePlot
+                                key={`plot-${model.blockId}-${yval}`}
+                                plotData={plotData}
+                                yval={yval}
+                                yvalMeta={plotMeta.get(yval)}
+                                blockId={model.blockId}
+                                defaultColor={"var(--accent-color)"}
+                                title={title}
+                                targetLen={targetLen}
+                            />
+                        );
+                    })}
             </div>
         </OverlayScrollbarsComponent>
     );

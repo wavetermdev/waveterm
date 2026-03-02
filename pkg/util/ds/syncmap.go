@@ -62,3 +62,14 @@ func (sm *SyncMap[T]) TestAndSet(key string, newValue T, testFn func(T, bool) bo
 	}
 	return false
 }
+
+func (sm *SyncMap[T]) GetOrCreate(key string, createFn func() T) T {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	if v, ok := sm.m[key]; ok {
+		return v
+	}
+	v := createFn()
+	sm.m[key] = v
+	return v
+}

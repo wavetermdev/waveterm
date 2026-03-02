@@ -5,7 +5,7 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
 import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -161,10 +161,10 @@ export class VDomModel {
         if (curBackendRoute) {
             this.queueUpdate(true);
         }
-        this.routeGoneUnsub = waveEventSubscribe({
+        this.routeGoneUnsub = waveEventSubscribeSingle({
             eventType: "route:down",
             scope: curBackendRoute,
-            handler: (event: WaveEvent) => {
+            handler: (_event) => {
                 this.disposed = true;
                 const shouldPersist = globalStore.get(this.persist);
                 if (!shouldPersist) {

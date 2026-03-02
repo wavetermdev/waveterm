@@ -163,6 +163,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             })}
             data-blockid={nodeModel.blockId}
             onClick={blockModel?.onClick}
+            onPointerEnter={blockModel?.onPointerEnter}
             onFocusCapture={blockModel?.onFocusCapture}
             ref={blockModel?.blockRef}
             style={
@@ -171,8 +172,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
                 } as React.CSSProperties
             }
-            // @ts-ignore: inert does exist in the DOM, just not in react
-            inert={preview ? "1" : undefined} //
+            inert={preview || undefined}
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null || !manageConnection ? null : (

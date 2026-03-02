@@ -35,6 +35,7 @@ Wave AI now supports provider-based configuration which automatically applies se
 - **`openai`** - OpenAI API (automatically configures endpoint and secret name) [[see example](#openai)]
 - **`openrouter`** - OpenRouter API (automatically configures endpoint and secret name) [[see example](#openrouter)]
 - **`nanogpt`** - NanoGPT API (automatically configures endpoint and secret name) [[see example](#nanogpt)]
+- **`groq`** - Groq API (automatically configures endpoint and secret name) [[see example](#groq)]
 - **`google`** - Google AI (Gemini) [[see example](#google-ai-gemini)]
 - **`azure`** - Azure OpenAI Service (modern API) [[see example](#azure-openai-modern-api)]
 - **`azure-legacy`** - Azure OpenAI Service (legacy deployment API) [[see example](#azure-openai-legacy-deployment-api)]
@@ -295,6 +296,29 @@ NanoGPT is a proxy service that provides access to multiple AI models. You must 
 For vision-capable models like `openai/gpt-5`, add `"images"` to capabilities.
 :::
 
+### Groq
+
+[Groq](https://groq.com) provides fast inference for open models through an OpenAI-compatible API. Using the `groq` provider simplifies configuration:
+
+```json
+{
+  "groq-kimi-k2": {
+    "display:name": "Groq - Kimi K2",
+    "ai:provider": "groq",
+    "ai:model": "moonshotai/kimi-k2-instruct"
+  }
+}
+```
+
+The provider automatically sets:
+- `ai:endpoint` to `https://api.groq.com/openai/v1/chat/completions`
+- `ai:apitype` to `openai-chat`
+- `ai:apitokensecretname` to `GROQ_KEY` (store your Groq API key with this name)
+
+:::note
+For Groq, you must manually specify `ai:capabilities` based on your model's features.
+:::
+
 ### Google AI (Gemini)
 
 [Google AI](https://ai.google.dev) provides the Gemini family of models. Using the `google` provider simplifies configuration:
@@ -508,7 +532,7 @@ If you get "model not found" errors:
 | `display:order` | No | Sort order in the selector (lower numbers first) |
 | `display:icon` | No | Icon identifier for the mode (can use any [FontAwesome icon](https://fontawesome.com/search), use the name without the "fa-" prefix).  Default is "sparkles" |
 | `display:description` | No | Full description of the mode |
-| `ai:provider` | No | Provider preset: `openai`, `openrouter`, `google`, `azure`, `azure-legacy`, `custom` |
+| `ai:provider` | No | Provider preset: `openai`, `openrouter`, `nanogpt`, `groq`, `google`, `azure`, `azure-legacy`, `custom` |
 | `ai:apitype` | No | API type: `openai-chat`, `openai-responses`, or `google-gemini` (defaults to `openai-chat` if not specified) |
 | `ai:model` | No | Model identifier (required for most providers) |
 | `ai:thinkinglevel` | No | Thinking level: `low`, `medium`, or `high` |
@@ -532,7 +556,7 @@ The `ai:capabilities` field specifies what features the AI mode supports:
 
 **Provider-specific behavior:**
 - **OpenAI and Google providers**: Capabilities are automatically configured based on the model. You don't need to specify them.
-- **OpenRouter, Azure, Azure-Legacy, and Custom providers**: You must manually specify capabilities based on your model's features.
+- **OpenRouter, NanoGPT, Groq, Azure, Azure-Legacy, and Custom providers**: You must manually specify capabilities based on your model's features.
 
 :::warning
 If you don't include `"tools"` in the `ai:capabilities` array, the AI model will not be able to interact with your Wave terminal widgets, read/write files, or execute commands. Most AI modes should include `"tools"` for the best Wave experience.

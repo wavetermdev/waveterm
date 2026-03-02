@@ -1,0 +1,39 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package aiusechat
+
+import (
+	"testing"
+
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
+)
+
+func TestApplyProviderDefaultsGroq(t *testing.T) {
+	config := wconfig.AIModeConfigType{
+		Provider: uctypes.AIProvider_Groq,
+	}
+	applyProviderDefaults(&config)
+	if config.APIType != uctypes.APIType_OpenAIChat {
+		t.Fatalf("expected API type %q, got %q", uctypes.APIType_OpenAIChat, config.APIType)
+	}
+	if config.Endpoint != GroqChatEndpoint {
+		t.Fatalf("expected endpoint %q, got %q", GroqChatEndpoint, config.Endpoint)
+	}
+	if config.APITokenSecretName != GroqAPITokenSecretName {
+		t.Fatalf("expected API token secret name %q, got %q", GroqAPITokenSecretName, config.APITokenSecretName)
+	}
+}
+
+func TestApplyProviderDefaultsKeepsProxyURL(t *testing.T) {
+	config := wconfig.AIModeConfigType{
+		Provider: uctypes.AIProvider_OpenAI,
+		Model:    "gpt-5-mini",
+		ProxyURL: "http://localhost:8080",
+	}
+	applyProviderDefaults(&config)
+	if config.ProxyURL != "http://localhost:8080" {
+		t.Fatalf("expected proxy URL to be preserved, got %q", config.ProxyURL)
+	}
+}

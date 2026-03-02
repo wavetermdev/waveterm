@@ -123,6 +123,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 		Verbosity:     verbosity,
 		AIMode:        aiMode,
 		Endpoint:      baseUrl,
+		ProxyURL:      config.ProxyURL,
 		Capabilities:  config.Capabilities,
 		WaveAIPremium: config.WaveAIPremium,
 	}

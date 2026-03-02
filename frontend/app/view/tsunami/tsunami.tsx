@@ -4,7 +4,7 @@
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi, globalStore, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
@@ -37,12 +37,11 @@ class TsunamiViewModel extends WebViewModel {
         initialShellProcStatus.then((rts) => {
             this.updateShellProcStatus(rts);
         });
-        this.shellProcStatusUnsubFn = waveEventSubscribe({
+        this.shellProcStatusUnsubFn = waveEventSubscribeSingle({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
-                let bcRTS: BlockControllerRuntimeStatus = event.data;
-                this.updateShellProcStatus(bcRTS);
+                this.updateShellProcStatus(event.data);
             },
         });
 
@@ -69,12 +68,11 @@ class TsunamiViewModel extends WebViewModel {
                 globalStore.set(this.appMeta, rtInfo["tsunami:appmeta"]);
             }
         });
-        this.appMetaUnsubFn = waveEventSubscribe({
+        this.appMetaUnsubFn = waveEventSubscribeSingle({
             eventType: "tsunami:updatemeta",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
-                const meta: AppMeta = event.data;
-                globalStore.set(this.appMeta, meta);
+                globalStore.set(this.appMeta, event.data);
             },
         });
     }

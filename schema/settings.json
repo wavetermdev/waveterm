@@ -35,6 +35,14 @@
         "app:disablectrlshiftdisplay": {
           "type": "boolean"
         },
+        "app:focusfollowscursor": {
+          "type": "string",
+          "enum": [
+            "off",
+            "on",
+            "term"
+          ]
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },
@@ -129,6 +137,12 @@
           "type": "boolean"
         },
         "term:macoptionismeta": {
+          "type": "boolean"
+        },
+        "term:cursor": {
+          "type": "string"
+        },
+        "term:cursorblink": {
           "type": "boolean"
         },
         "term:bellsound": {

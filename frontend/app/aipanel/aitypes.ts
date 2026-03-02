@@ -32,8 +32,8 @@ type WaveUIDataTypes = {
     };
 };
 
-export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;
-export type WaveUIMessagePart = UIMessagePart<WaveUIDataTypes, {}>;
+export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, any>;
+export type WaveUIMessagePart = UIMessagePart<WaveUIDataTypes, any>;
 
 export type UseChatSetMessagesType = (
     messages: WaveUIMessage[] | ((messages: WaveUIMessage[]) => WaveUIMessage[])

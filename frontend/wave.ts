@@ -17,19 +17,15 @@ import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
+import { countersClear, countersPrint } from "@/store/counters";
 import {
     atoms,
-    countersClear,
-    countersPrint,
     getApi,
     globalStore,
     initGlobal,
     initGlobalWaveEventSubs,
     loadConnStatus,
     loadTabIndicators,
-    pushFlashError,
-    pushNotification,
-    removeNotificationById,
     subscribeToConnEvents,
 } from "@/store/global";
 import { activeTabIdAtom } from "@/store/tab-model";
@@ -51,9 +47,6 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
 (window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
-(window as any).pushFlashError = pushFlashError;
-(window as any).pushNotification = pushNotification;
-(window as any).removeNotificationById = removeNotificationById;
 (window as any).modalsModel = modalsModel;
 
 function updateZoomFactor(zoomFactor: number) {

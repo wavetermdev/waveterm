@@ -14,7 +14,9 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -24,6 +26,8 @@ import (
 const SettingsFile = "settings.json"
 const ConnectionsFile = "connections.json"
 const ProfilesFile = "profiles.json"
+
+var configWriteLock sync.Mutex
 
 const AnySchema = `
 {
@@ -63,6 +67,7 @@ type SettingsType struct {
 	AppHideAiButton               bool   `json:"app:hideaibutton,omitempty"`
 	AppDisableCtrlShiftArrows     bool   `json:"app:disablectrlshiftarrows,omitempty"`
 	AppDisableCtrlShiftDisplay    bool   `json:"app:disablectrlshiftdisplay,omitempty"`
+	AppFocusFollowsCursor         string `json:"app:focusfollowscursor,omitempty" jsonschema:"enum=off,enum=on,enum=term"`
 
 	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
 
@@ -98,6 +103,8 @@ type SettingsType struct {
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
+	TermCursor              string   `json:"term:cursor,omitempty"`
+	TermCursorBlink         *bool    `json:"term:cursorblink,omitempty"`
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
@@ -275,12 +282,13 @@ type AIModeConfigType struct {
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
-	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=nanogpt,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=groq,enum=openrouter,enum=nanogpt,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
 	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
 	Model              string   `json:"ai:model,omitempty"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
 	Verbosity          string   `json:"ai:verbosity,omitempty" jsonschema:"enum=low,enum=medium,enum=high,description=Text verbosity level (OpenAI Responses API only)"`
 	Endpoint           string   `json:"ai:endpoint,omitempty"`
+	ProxyURL           string   `json:"ai:proxyurl,omitempty"`
 	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
@@ -499,13 +507,16 @@ func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError
 }
 
 func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
+	configWriteLock.Lock()
+	defer configWriteLock.Unlock()
+
 	configDirAbsPath := wavebase.GetWaveConfigDir()
 	fullFileName := filepath.Join(configDirAbsPath, fileName)
 	barr, err := jsonMarshalConfigInOrder(m)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(fullFileName, barr, 0644)
+	return fileutil.AtomicWriteFile(fullFileName, barr, 0644)
 }
 
 // simple merge that overwrites
@@ -829,6 +840,7 @@ type WidgetConfigType struct {
 	Color         string           `json:"color,omitempty"`
 	Label         string           `json:"label,omitempty"`
 	Description   string           `json:"description,omitempty"`
+	Workspaces    []string         `json:"workspaces,omitempty"`
 	Magnified     bool             `json:"magnified,omitempty"`
 	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }

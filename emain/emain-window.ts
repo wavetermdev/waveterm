@@ -16,11 +16,13 @@ import {
     setWasInFg,
 } from "./emain-activity";
 import { log } from "./emain-log";
-import { getElectronAppBasePath, unamePlatform } from "./emain-platform";
+import { getElectronAppBasePath, isDev, unamePlatform } from "./emain-platform";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
+
+const DevInitTimeoutMs = 5000;
 
 export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
@@ -228,7 +230,7 @@ export class WaveBrowserWindow extends BaseWindow {
             this.finalizePositioning();
         }, 1000);
         this.on(
-            // @ts-expect-error
+            // @ts-expect-error -- "resize" event with debounce handler not in Electron type definitions
             "resize",
             debounce(400, (e) => this.mainResizeHandler(e))
         );
@@ -239,7 +241,7 @@ export class WaveBrowserWindow extends BaseWindow {
             this.activeTabView?.positionTabOnScreen(this.getContentBounds());
         });
         this.on(
-            // @ts-expect-error
+            // @ts-expect-error -- "move" event with debounce handler not in Electron type definitions
             "move",
             debounce(400, (e) => this.mainResizeHandler(e))
         );
@@ -271,7 +273,6 @@ export class WaveBrowserWindow extends BaseWindow {
             if (getGlobalIsRelaunching()) {
                 return;
             }
-            focusedWaveWindow = this;
             console.log("focus win", this.waveWindowId);
             fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
@@ -390,7 +391,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     private async initializeTab(tabView: WaveTabView, primaryStartupTab: boolean) {
         const clientId = await getClientId();
-        await tabView.initPromise;
+        await this.awaitWithDevTimeout(tabView.initPromise, "initPromise", tabView.waveTabId);
         this.contentView.addChildView(tabView);
         const initOpts: WaveInitOpts = {
             tabId: tabView.waveTabId,
@@ -411,8 +412,34 @@ export class WaveBrowserWindow extends BaseWindow {
             primaryStartupTab ? "(primary startup)" : ""
         );
         tabView.webContents.send("wave-init", initOpts);
-        await tabView.waveReadyPromise;
+        await this.awaitWithDevTimeout(tabView.waveReadyPromise, "waveReadyPromise", tabView.waveTabId);
         console.log("wave-ready init time", Date.now() - startTime + "ms");
+    }
+
+    private async awaitWithDevTimeout<T>(promise: Promise<T>, name: string, tabId: string): Promise<T> {
+        if (!isDev) {
+            return promise;
+        }
+        let timeoutHandle: ReturnType<typeof setTimeout> = null;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+                console.log(
+                    `[dev] ${name} timed out after ${DevInitTimeoutMs}ms for tab ${tabId}, showing window for devtools`
+                );
+                if (!this.isDestroyed() && !this.isVisible()) {
+                    this.show();
+                }
+                if (this.activeTabView?.webContents && !this.activeTabView.webContents.isDevToolsOpened()) {
+                    this.activeTabView.webContents.openDevTools();
+                }
+                reject(new Error(`[dev] ${name} timed out after ${DevInitTimeoutMs}ms`));
+            }, DevInitTimeoutMs);
+        });
+        try {
+            return await Promise.race([promise, timeoutPromise]);
+        } finally {
+            clearTimeout(timeoutHandle);
+        }
     }
 
     private async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean, primaryStartupTab = false) {
@@ -547,7 +574,7 @@ export class WaveBrowserWindow extends BaseWindow {
                             await WorkspaceService.SetActiveTab(this.workspaceId, tabId);
                         }
                         break;
-                    case "closetab":
+                    case "closetab": {
                         tabId = entry.tabId;
                         const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
                         if (rtn == null) {
@@ -569,7 +596,8 @@ export class WaveBrowserWindow extends BaseWindow {
                         }
                         tabId = rtn.newactivetabid;
                         break;
-                    case "switchworkspace":
+                    }
+                    case "switchworkspace": {
                         const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, entry.workspaceId);
                         if (!newWs) {
                             return;
@@ -581,6 +609,7 @@ export class WaveBrowserWindow extends BaseWindow {
                         this.allLoadedTabViews = new Map();
                         tabId = newWs.activetabid;
                         break;
+                    }
                 }
                 if (tabId == null) {
                     return;

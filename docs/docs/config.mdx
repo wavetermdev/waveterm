@@ -41,8 +41,9 @@ wsh editconfig
 | app:ctrlvpaste                       | bool     | On Windows/Linux, when null (default) uses Control+V on Windows only. Set to true to force Control+V on all non-macOS platforms, false to disable the accelerator. macOS always uses Command+V regardless of this setting                                     |
 | app:confirmquit <VersionBadge version="v0.14" />                     | bool     | Set to false to disable the quit confirmation dialog when closing Wave Terminal (defaults to true, requires app restart)                                                                                                                                      |
 | app:hideaibutton <VersionBadge version="v0.14" />                    | bool     | Set to true to hide the AI button in the tab bar (defaults to false)                                                                                                                                                                                          |
-| app:disablectrlshiftarrows <VersionBadge version="v0.14" />          | bool     | Set to true to disable Ctrl+Shift+Arrow keybindings for block navigation (defaults to false)                                                                                                                                                                  |
+| app:disablectrlshiftarrows <VersionBadge version="v0.14" />          | bool     | Set to true to disable Ctrl+Shift block-navigation keybindings (`Arrow` and `h/j/k/l`) (defaults to false)                                                                                                                                                    |
 | app:disablectrlshiftdisplay <VersionBadge version="v0.14" />         | bool     | Set to true to disable the Ctrl+Shift visual indicator display (defaults to false)                                                                                                                                                                            |
+| app:focusfollowscursor <VersionBadge version="v0.14" />              | string   | Controls whether block focus follows cursor movement: `"off"` (default), `"on"` (all blocks), or `"term"` (terminal blocks only)                                                                                                                             |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -68,6 +69,8 @@ wsh editconfig
 | term:allowbracketedpaste             | bool     | allow bracketed paste mode in terminal (default false)                                                                                                                                                                                                        |
 | term:shiftenternewline               | bool     | when enabled, Shift+Enter sends escape sequence + newline (\u001b\n) instead of carriage return, useful for claude code and similar AI coding tools (default false)                                                                                         |
 | term:macoptionismeta                 | bool     | on macOS, treat the Option key as Meta key for terminal keybindings (default false)                                                                                                                                                                          |
+| term:cursor <VersionBadge version="v0.14" />                        | string   | terminal cursor style. valid values are `block` (default), `underline`, and `bar`                                                                                                                                                                            |
+| term:cursorblink <VersionBadge version="v0.14" />                   | bool     | when enabled, terminal cursor blinks (default false)                                                                                                                                                                                                          |
 | term:bellsound <VersionBadge version="v0.14" />                      | bool     | when enabled, plays the system beep sound when the terminal bell (BEL character) is received (default false)                                                                                                                                                  |
 | term:bellindicator <VersionBadge version="v0.14" />                  | bool     | when enabled, shows a visual indicator in the tab when the terminal bell is received (default false)                                                                                                                                                           |
 | term:durable <VersionBadge version="v0.14" />                        | bool     | makes remote terminal sessions durable across network disconnects (defaults to false)                                                                                                                                                                           |
@@ -122,6 +125,7 @@ For reference, this is the current default configuration (v0.14.0):
     "app:hideaibutton": false,
     "app:disablectrlshiftarrows": false,
     "app:disablectrlshiftdisplay": false,
+    "app:focusfollowscursor": "off",
     "autoupdate:enabled": true,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
@@ -143,6 +147,8 @@ For reference, this is the current default configuration (v0.14.0):
     "telemetry:enabled": true,
     "term:bellsound": false,
     "term:bellindicator": false,
+    "term:cursor": "block",
+    "term:cursorblink": false,
     "term:copyonselect": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,

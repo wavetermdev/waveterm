@@ -14,21 +14,18 @@ interface PlatformContextProps {
 export const PlatformContext = createContext<PlatformContextProps | undefined>(undefined);
 
 function getOS(): Platform {
-    var platform = window.navigator.platform,
-        macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"],
-        windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"],
-        iosPlatforms = ["iPhone", "iPad", "iPod"],
-        os: Platform = null;
+    const platform = window.navigator.platform;
+    const macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"];
+    const windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"];
+    const iosPlatforms = ["iPhone", "iPad", "iPod"];
 
-    if (macosPlatforms.indexOf(platform) !== -1 || iosPlatforms.indexOf(platform) !== -1) {
-        os = "mac";
-    } else if (windowsPlatforms.indexOf(platform) !== -1) {
-        os = "windows";
+    if (macosPlatforms.includes(platform) || iosPlatforms.includes(platform)) {
+        return "mac";
+    } else if (windowsPlatforms.includes(platform)) {
+        return "windows";
     } else {
-        os = "linux";
+        return "linux";
     }
-
-    return os;
 }
 
 const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {

@@ -165,7 +165,7 @@ function SuggestionControlNoData({ children }: { children?: React.ReactNode }) {
     );
 }
 
-interface SuggestionControlInnerProps extends Omit<SuggestionControlProps, "isOpen"> {}
+type SuggestionControlInnerProps = Omit<SuggestionControlProps, "isOpen">;
 
 function SuggestionControlInner({
     anchorRef,
