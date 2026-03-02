@@ -25,3 +25,15 @@ func TestApplyProviderDefaultsGroq(t *testing.T) {
 		t.Fatalf("expected API token secret name %q, got %q", GroqAPITokenSecretName, config.APITokenSecretName)
 	}
 }
+
+func TestApplyProviderDefaultsKeepsProxyURL(t *testing.T) {
+	config := wconfig.AIModeConfigType{
+		Provider: uctypes.AIProvider_OpenAI,
+		Model:    "gpt-5-mini",
+		ProxyURL: "http://localhost:8080",
+	}
+	applyProviderDefaults(&config)
+	if config.ProxyURL != "http://localhost:8080" {
+		t.Fatalf("expected proxy URL to be preserved, got %q", config.ProxyURL)
+	}
+}

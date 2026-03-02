@@ -60,6 +60,9 @@
         "ai:endpoint": {
           "type": "string"
         },
+        "ai:proxyurl": {
+          "type": "string"
+        },
         "ai:azureapiversion": {
           "type": "string"
         },

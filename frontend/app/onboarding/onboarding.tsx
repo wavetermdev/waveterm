@@ -6,7 +6,7 @@ import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { ClientModel } from "@/app/store/client-model";
-import { atoms } from "@/app/store/global";
+import { useSettingsKeyAtom } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -29,13 +29,13 @@ type PageName = "init" | "notelemetrystar" | "features";
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({ isCompact }: { isCompact: boolean }) => {
-    const settings = useAtomValue(atoms.settingsAtom);
+    const telemetrySetting = useSettingsKeyAtom("telemetry:enabled");
     const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
-    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
+    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!telemetrySetting);
     const setPageName = useSetAtom(pageNameAtom);
 
     const acceptTos = () => {
-        if (!clientData.tosagreed) {
+        if (!clientData?.tosagreed) {
             fireAndForget(services.ClientService.AgreeTos);
         }
         if (telemetryEnabled) {
@@ -310,4 +310,4 @@ const NewInstallOnboardingModal = () => {
 
 NewInstallOnboardingModal.displayName = "NewInstallOnboardingModal";
 
-export { NewInstallOnboardingModal };
+export { InitPage, NewInstallOnboardingModal, NoTelemetryStarPage };

@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
 var testCmd = &cobra.Command{
@@ -20,5 +21,10 @@ func init() {
 }
 
 func runTestCmd(cmd *cobra.Command, args []string) error {
+	rtn, err := wshclient.TestMultiArgCommand(RpcClient, "testarg", 42, true, nil)
+	if err != nil {
+		return err
+	}
+	WriteStdout("%s\n", rtn)
 	return nil
 }

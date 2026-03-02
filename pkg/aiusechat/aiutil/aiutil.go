@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -183,6 +185,24 @@ func JsonEncodeRequestBody(reqBody any) (bytes.Buffer, error) {
 		return buf, err
 	}
 	return buf, nil
+}
+
+func MakeHTTPClient(proxyURL string) (*http.Client, error) {
+	client := &http.Client{
+		Timeout: 0, // rely on ctx; streaming can be long
+	}
+	if proxyURL == "" {
+		return client, nil
+	}
+
+	pURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid proxy URL: %w", err)
+	}
+	client.Transport = &http.Transport{
+		Proxy: http.ProxyURL(pURL),
+	}
+	return client, nil
 }
 
 func IsOpenAIReasoningModel(model string) bool {
