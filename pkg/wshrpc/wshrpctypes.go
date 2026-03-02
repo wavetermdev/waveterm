@@ -73,6 +73,7 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
+	TestMultiArgCommand(ctx context.Context, arg1 string, arg2 int, arg3 bool) (string, error)
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
@@ -899,13 +900,13 @@ type BlockJobStatusData struct {
 }
 
 type FocusedBlockData struct {
-	BlockId                     string               `json:"blockid"`
-	ViewType                    string               `json:"viewtype"`
-	Controller                  string               `json:"controller"`
-	ConnName                    string               `json:"connname"`
-	BlockMeta                   waveobj.MetaMapType  `json:"blockmeta"`
-	TermJobStatus               *BlockJobStatusData  `json:"termjobstatus,omitempty"`
-	ConnStatus                  *ConnStatus          `json:"connstatus,omitempty"`
-	TermShellIntegrationStatus  string               `json:"termshellintegrationstatus,omitempty"`
-	TermLastCommand             string               `json:"termlastcommand,omitempty"`
+	BlockId                    string              `json:"blockid"`
+	ViewType                   string              `json:"viewtype"`
+	Controller                 string              `json:"controller"`
+	ConnName                   string              `json:"connname"`
+	BlockMeta                  waveobj.MetaMapType `json:"blockmeta"`
+	TermJobStatus              *BlockJobStatusData `json:"termjobstatus,omitempty"`
+	ConnStatus                 *ConnStatus         `json:"connstatus,omitempty"`
+	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
+	TermLastCommand            string              `json:"termlastcommand,omitempty"`
 }

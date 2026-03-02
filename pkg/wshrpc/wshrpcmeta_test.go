@@ -38,3 +38,16 @@ func TestGenerateWshCommandDecl_MultiArgs(t *testing.T) {
 		t.Fatalf("expected helper to return two command data types")
 	}
 }
+
+func TestGenerateWshCommandDeclMap_TestMultiArgCommand(t *testing.T) {
+	decl := GenerateWshCommandDeclMap()["testmultiarg"]
+	if decl == nil {
+		t.Fatalf("expected testmultiarg command declaration")
+	}
+	if decl.MethodName != "TestMultiArgCommand" {
+		t.Fatalf("expected TestMultiArgCommand method name, got %q", decl.MethodName)
+	}
+	if len(decl.GetCommandDataTypes()) != 3 {
+		t.Fatalf("expected 3 command args, got %d", len(decl.GetCommandDataTypes()))
+	}
+}

@@ -81,6 +81,16 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 	return nil
 }
 
+func (ws *WshServer) TestMultiArgCommand(ctx context.Context, arg1 string, arg2 int, arg3 bool) (string, error) {
+	defer func() {
+		panichandler.PanicHandler("TestMultiArgCommand", recover())
+	}()
+	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
+	rtn := fmt.Sprintf("src:%s arg1:%q arg2:%d arg3:%t", rpcSource, arg1, arg2, arg3)
+	log.Printf("TESTMULTI %s\n", rtn)
+	return rtn, nil
+}
+
 // for testing
 func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
 	log.Printf("MESSAGE: %s\n", data.Message)

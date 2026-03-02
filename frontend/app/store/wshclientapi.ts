@@ -757,6 +757,11 @@ class RpcApiType {
         return client.wshRpcCall("test", data, opts);
     }
 
+    // command "testmultiarg" [call]
+    TestMultiArgCommand(client: WshClient, arg1: string, arg2: number, arg3: boolean, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("testmultiarg", { args: [arg1, arg2, arg3] }, opts);
+    }
+
     // command "vdomasyncinitiation" [call]
     VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("vdomasyncinitiation", data, opts);
