@@ -9,13 +9,14 @@ import { ClientModel } from "@/app/store/client-model";
 import { atoms } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
+import { isPreviewWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
-import { fireAndForget } from "@/util/util";
-import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { fireAndForget, NullAtom } from "@/util/util";
+import { atom, Atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -29,13 +30,14 @@ type PageName = "init" | "notelemetrystar" | "features";
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({ isCompact }: { isCompact: boolean }) => {
-    const settings = useAtomValue(atoms.settingsAtom);
-    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
-    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
+    const previewWindow = isPreviewWindow();
+    const settings = useAtomValue((previewWindow ? NullAtom : atoms.settingsAtom) as Atom<any>);
+    const clientData = useAtomValue((previewWindow ? NullAtom : ClientModel.getInstance().clientAtom) as Atom<any>);
+    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings?.["telemetry:enabled"]);
     const setPageName = useSetAtom(pageNameAtom);
 
     const acceptTos = () => {
-        if (!clientData.tosagreed) {
+        if (!clientData?.tosagreed) {
             fireAndForget(services.ClientService.AgreeTos);
         }
         if (telemetryEnabled) {
@@ -310,4 +312,4 @@ const NewInstallOnboardingModal = () => {
 
 NewInstallOnboardingModal.displayName = "NewInstallOnboardingModal";
 
-export { NewInstallOnboardingModal };
+export { InitPage, NewInstallOnboardingModal, NoTelemetryStarPage };

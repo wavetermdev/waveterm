@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { InitPage, NoTelemetryStarPage } from "@/app/onboarding/onboarding";
 import { DurableSessionPage } from "@/app/onboarding/onboarding-durable";
 import { FilesPage, MagnifyBlocksPage, WaveAIPage } from "@/app/onboarding/onboarding-features";
 import { UpgradeOnboardingVersions } from "@/app/onboarding/onboarding-upgrade-patch";
@@ -10,6 +11,12 @@ function OnboardingFeaturesV() {
     const noop = () => {};
     return (
         <div className="flex flex-col w-full gap-8">
+            <div className="w-[560px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
+                <InitPage isCompact={false} />
+            </div>
+            <div className="w-[560px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
+                <NoTelemetryStarPage isCompact={false} />
+            </div>
             <div className="w-[800px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
                 <WaveAIPage onNext={noop} onSkip={noop} />
             </div>
