@@ -44,7 +44,7 @@ export function VTab({
             onDrop={onDrop}
             onDragEnd={onDragEnd}
             className={cn(
-                "group flex h-9 w-full cursor-pointer items-center gap-2 rounded-md border pl-2 pr-1 text-sm transition-colors select-none",
+                "group relative flex h-9 w-full cursor-pointer items-center rounded-md border pl-2 pr-1 text-sm transition-colors select-none",
                 "whitespace-nowrap",
                 active
                     ? "border-accent/40 bg-accent/20 text-primary"
@@ -55,16 +55,23 @@ export function VTab({
             )}
         >
             {tab.indicator && (
-                <span className="shrink-0 text-xs" style={{ color: tab.indicator.color || "#fbbf24" }}>
+                <span className="mr-1 shrink-0 text-xs" style={{ color: tab.indicator.color || "#fbbf24" }}>
                     <i className={makeIconClass(tab.indicator.icon, true, { defaultIcon: "bell" })} />
                 </span>
             )}
-            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{tab.name}</span>
+            <span
+                className={cn(
+                    "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap transition-[padding-right]",
+                    onClose && !isReordering && "group-hover:pr-6"
+                )}
+            >
+                {tab.name}
+            </span>
             {onClose && (
                 <button
                     type="button"
                     className={cn(
-                        "shrink-0 -mr-1 cursor-pointer p-1 text-secondary transition",
+                        "absolute top-1/2 right-0 shrink-0 -translate-y-1/2 cursor-pointer p-1 text-secondary transition",
                         isReordering ? "opacity-0" : "opacity-0 group-hover:opacity-100 hover:text-primary"
                     )}
                     onClick={(event) => {
