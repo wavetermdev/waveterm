@@ -12,7 +12,7 @@ function OnboardingFeaturesV() {
     return (
         <div className="flex flex-col w-full gap-8">
             <div className="w-[560px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-                <InitPage isCompact={false} />
+                <InitPage isCompact={false} telemetryUpdateFn={async () => {}} />
             </div>
             <div className="w-[560px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
                 <NoTelemetryStarPage isCompact={false} />

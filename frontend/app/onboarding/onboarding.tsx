@@ -28,7 +28,13 @@ type PageName = "init" | "notelemetrystar" | "features";
 
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
-const InitPage = ({ isCompact }: { isCompact: boolean }) => {
+const InitPage = ({
+    isCompact,
+    telemetryUpdateFn,
+}: {
+    isCompact: boolean;
+    telemetryUpdateFn: (value: boolean) => Promise<void>;
+}) => {
     const telemetrySetting = useSettingsKeyAtom("telemetry:enabled");
     const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!telemetrySetting);
@@ -46,7 +52,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
 
     const setTelemetry = (value: boolean) => {
         fireAndForget(() =>
-            services.ClientService.TelemetryUpdate(value).then(() => {
+            telemetryUpdateFn(value).then(() => {
                 setTelemetryEnabled(value);
             })
         );
@@ -284,7 +290,7 @@ const NewInstallOnboardingModal = () => {
     let pageComp: React.JSX.Element = null;
     switch (pageName) {
         case "init":
-            pageComp = <InitPage isCompact={isCompact} />;
+            pageComp = <InitPage isCompact={isCompact} telemetryUpdateFn={services.ClientService.TelemetryUpdate} />;
             break;
         case "notelemetrystar":
             pageComp = <NoTelemetryStarPage isCompact={isCompact} />;
