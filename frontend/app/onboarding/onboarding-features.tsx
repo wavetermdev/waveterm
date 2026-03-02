@@ -177,18 +177,6 @@ export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?:
     const isMac = isMacOS();
     const [commandIndex, setCommandIndex] = useState(0);
 
-    const commands = [
-        (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
-        (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
-        (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
-    ];
-
-    const handleCommandComplete = () => {
-        setTimeout(() => {
-            setCommandIndex((prev) => (prev + 1) % commands.length);
-        }, 2500);
-    };
-
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
         if (!fireClicked) {
@@ -200,6 +188,18 @@ export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?:
                 },
             });
         }
+    };
+
+    const commands = [
+        (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
+        (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
+        (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
+    ];
+
+    const handleCommandComplete = () => {
+        setTimeout(() => {
+            setCommandIndex((prev) => (prev + 1) % commands.length);
+        }, 2500);
     };
 
     return (
