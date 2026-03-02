@@ -13,6 +13,7 @@ interface VTabBarProps {
     className?: string;
     onSelectTab?: (tabId: string) => void;
     onCloseTab?: (tabId: string) => void;
+    onRenameTab?: (tabId: string, newName: string) => void;
     onReorderTabs?: (tabIds: string[]) => void;
 }
 
@@ -29,7 +30,7 @@ function clampWidth(width?: number): number {
     return width;
 }
 
-export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCloseTab, onReorderTabs }: VTabBarProps) {
+export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCloseTab, onRenameTab, onReorderTabs }: VTabBarProps) {
     const [orderedTabs, setOrderedTabs] = useState<VTabItem[]>(tabs);
     const [dragTabId, setDragTabId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -81,7 +82,7 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
             style={{ width: barWidth }}
         >
             <div
-                className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1"
+                className="flex min-h-0 flex-1 flex-col overflow-y-auto"
                 onDragOver={(event) => {
                     event.preventDefault();
                     if (event.target === event.currentTarget) {
@@ -106,6 +107,7 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                             isReordering={dragTabId != null}
                             onSelect={() => onSelectTab?.(tab.id)}
                             onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
+                            onRename={onRenameTab ? (newName) => onRenameTab(tab.id, newName) : undefined}
                             onDragStart={(event) => {
                                 dragSourceRef.current = tab.id;
                                 event.dataTransfer.effectAllowed = "move";
