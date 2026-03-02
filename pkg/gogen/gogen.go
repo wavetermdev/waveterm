@@ -107,10 +107,7 @@ func GenMethod_ResponseStream(buf *strings.Builder, methodDecl *wshrpc.WshRpcMet
 }
 
 func getWshMethodDataParamsAndExpr(methodDecl *wshrpc.WshRpcMethodDecl) (string, string) {
-	dataTypes := methodDecl.CommandDataTypes
-	if len(dataTypes) == 0 && methodDecl.CommandDataType != nil {
-		dataTypes = []reflect.Type{methodDecl.CommandDataType}
-	}
+	dataTypes := methodDecl.GetCommandDataTypes()
 	if len(dataTypes) == 0 {
 		return "", "nil"
 	}

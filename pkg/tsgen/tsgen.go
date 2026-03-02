@@ -497,10 +497,7 @@ func generateWshClientApiMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsType
 }
 
 func getTsWshMethodDataParamsAndExpr(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMap map[reflect.Type]string) (string, string) {
-	dataTypes := methodDecl.CommandDataTypes
-	if len(dataTypes) == 0 && methodDecl.CommandDataType != nil {
-		dataTypes = []reflect.Type{methodDecl.CommandDataType}
-	}
+	dataTypes := methodDecl.GetCommandDataTypes()
 	if len(dataTypes) == 0 {
 		return "", "null"
 	}

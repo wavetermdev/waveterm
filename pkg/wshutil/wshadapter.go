@@ -100,10 +100,7 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 		implMethod := reflect.ValueOf(impl).MethodByName(rmethod.Name)
 		var callParams []reflect.Value
 		callParams = append(callParams, reflect.ValueOf(handler.Context()))
-		commandDataTypes := methodDecl.CommandDataTypes
-		if len(commandDataTypes) == 0 && methodDecl.CommandDataType != nil {
-			commandDataTypes = []reflect.Type{methodDecl.CommandDataType}
-		}
+		commandDataTypes := methodDecl.GetCommandDataTypes()
 		if len(commandDataTypes) == 1 {
 			cmdData, err := recodeCommandData(cmd, handler.GetCommandRawData(), commandDataTypes[0])
 			if err != nil {
@@ -117,7 +114,11 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 				handler.SendResponseError(err)
 				return true
 			}
-			multiArg := multiArgAny.(wshrpc.MultiArg)
+			multiArg, ok := multiArgAny.(wshrpc.MultiArg)
+			if !ok {
+				handler.SendResponseError(fmt.Errorf("command %q invalid multi arg payload", cmd))
+				return true
+			}
 			if len(multiArg.Args) != len(commandDataTypes) {
 				handler.SendResponseError(fmt.Errorf("command %q expected %d args, got %d", cmd, len(commandDataTypes), len(multiArg.Args)))
 				return true

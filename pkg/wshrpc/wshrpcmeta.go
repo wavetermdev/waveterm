@@ -20,6 +20,16 @@ type WshRpcMethodDecl struct {
 	DefaultResponseDataType reflect.Type
 }
 
+func (decl *WshRpcMethodDecl) GetCommandDataTypes() []reflect.Type {
+	if len(decl.CommandDataTypes) > 0 {
+		return decl.CommandDataTypes
+	}
+	if decl.CommandDataType != nil {
+		return []reflect.Type{decl.CommandDataType}
+	}
+	return nil
+}
+
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var wshRpcInterfaceRType = reflect.TypeOf((*WshRpcInterface)(nil)).Elem()
 

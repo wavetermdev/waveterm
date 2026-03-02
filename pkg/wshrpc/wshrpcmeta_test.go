@@ -34,4 +34,7 @@ func TestGenerateWshCommandDecl_MultiArgs(t *testing.T) {
 	if decl.CommandDataType == nil || decl.CommandDataType.Kind() != reflect.String {
 		t.Fatalf("expected legacy single data type to remain first arg type, got %v", decl.CommandDataType)
 	}
+	if len(decl.GetCommandDataTypes()) != 2 {
+		t.Fatalf("expected helper to return two command data types")
+	}
 }
