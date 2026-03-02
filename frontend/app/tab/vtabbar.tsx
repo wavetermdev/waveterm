@@ -31,9 +31,9 @@ function clampWidth(width?: number): number {
 
 export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCloseTab, onReorderTabs }: VTabBarProps) {
     const [orderedTabs, setOrderedTabs] = useState<VTabItem[]>(tabs);
-    const [dragTabId, setDragTabId] = useState<string>(null);
-    const [dropTargetTabId, setDropTargetTabId] = useState<string>(null);
-    const dragSourceRef = useRef<string>(null);
+    const [dragTabId, setDragTabId] = useState<string | null>(null);
+    const [dropIndex, setDropIndex] = useState<number | null>(null);
+    const dragSourceRef = useRef<string | null>(null);
 
     useEffect(() => {
         setOrderedTabs(tabs);
@@ -44,22 +44,26 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
     const clearDragState = () => {
         dragSourceRef.current = null;
         setDragTabId(null);
-        setDropTargetTabId(null);
+        setDropIndex(null);
     };
 
-    const reorder = (targetTabId: string) => {
+    const reorder = (targetIndex: number) => {
         const sourceTabId = dragSourceRef.current;
-        if (sourceTabId == null || sourceTabId === targetTabId) {
+        if (sourceTabId == null) {
             return;
         }
         const sourceIndex = orderedTabs.findIndex((tab) => tab.id === sourceTabId);
-        const targetIndex = orderedTabs.findIndex((tab) => tab.id === targetTabId);
-        if (sourceIndex === -1 || targetIndex === -1) {
+        if (sourceIndex === -1) {
+            return;
+        }
+        const boundedTargetIndex = Math.max(0, Math.min(targetIndex, orderedTabs.length));
+        const adjustedTargetIndex = sourceIndex < boundedTargetIndex ? boundedTargetIndex - 1 : boundedTargetIndex;
+        if (sourceIndex === adjustedTargetIndex) {
             return;
         }
         const nextTabs = [...orderedTabs];
         const [movedTab] = nextTabs.splice(sourceIndex, 1);
-        nextTabs.splice(targetIndex, 0, movedTab);
+        nextTabs.splice(adjustedTargetIndex, 0, movedTab);
         setOrderedTabs(nextTabs);
         onReorderTabs?.(nextTabs.map((tab) => tab.id));
     };
@@ -69,33 +73,56 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
             className={cn("flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden border-r border-border bg-panel", className)}
             style={{ width: barWidth }}
         >
-            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1">
-                {orderedTabs.map((tab) => (
-                    <VTab
-                        key={tab.id}
-                        tab={tab}
-                        active={tab.id === activeTabId}
-                        isDragging={dragTabId === tab.id}
-                        isDropTarget={dropTargetTabId === tab.id && dragTabId !== tab.id}
-                        onSelect={() => onSelectTab?.(tab.id)}
-                        onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
-                        onDragStart={(event) => {
-                            dragSourceRef.current = tab.id;
-                            event.dataTransfer.effectAllowed = "move";
-                            event.dataTransfer.setData("text/plain", tab.id);
-                            setDragTabId(tab.id);
-                        }}
-                        onDragOver={(event) => {
-                            event.preventDefault();
-                            setDropTargetTabId(tab.id);
-                        }}
-                        onDrop={(event) => {
-                            event.preventDefault();
-                            reorder(tab.id);
-                            clearDragState();
-                        }}
-                        onDragEnd={clearDragState}
-                    />
+            <div
+                className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-1"
+                onDragOver={(event) => {
+                    event.preventDefault();
+                    if (event.target === event.currentTarget) {
+                        setDropIndex(orderedTabs.length);
+                    }
+                }}
+                onDrop={(event) => {
+                    event.preventDefault();
+                    if (dropIndex != null) {
+                        reorder(dropIndex);
+                    }
+                    clearDragState();
+                }}
+            >
+                {dropIndex === 0 && <div className="h-0 border-t-2 border-accent/80" />}
+                {orderedTabs.map((tab, index) => (
+                    <div key={tab.id} className="flex flex-col gap-1">
+                        <VTab
+                            tab={tab}
+                            active={tab.id === activeTabId}
+                            isDragging={dragTabId === tab.id}
+                            isReordering={dragTabId != null}
+                            onSelect={() => onSelectTab?.(tab.id)}
+                            onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
+                            onDragStart={(event) => {
+                                dragSourceRef.current = tab.id;
+                                event.dataTransfer.effectAllowed = "move";
+                                event.dataTransfer.setData("text/plain", tab.id);
+                                setDragTabId(tab.id);
+                                setDropIndex(index);
+                            }}
+                            onDragOver={(event) => {
+                                event.preventDefault();
+                                const rect = event.currentTarget.getBoundingClientRect();
+                                const insertBefore = event.clientY < rect.top + rect.height / 2;
+                                setDropIndex(insertBefore ? index : index + 1);
+                            }}
+                            onDrop={(event) => {
+                                event.preventDefault();
+                                if (dropIndex != null) {
+                                    reorder(dropIndex);
+                                }
+                                clearDragState();
+                            }}
+                            onDragEnd={clearDragState}
+                        />
+                        {dropIndex === index + 1 && <div className="h-0 border-t-2 border-accent/80" />}
+                    </div>
                 ))}
             </div>
         </div>

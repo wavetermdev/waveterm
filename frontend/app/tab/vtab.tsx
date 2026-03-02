@@ -4,22 +4,17 @@
 import { makeIconClass } from "@/util/util";
 import { cn } from "@/util/util";
 
-export interface VTabIndicator {
-    icon: string;
-    color?: string;
-}
-
 export interface VTabItem {
     id: string;
     name: string;
-    indicator?: VTabIndicator | null;
+    indicator?: TabIndicator | null;
 }
 
 interface VTabProps {
     tab: VTabItem;
     active: boolean;
     isDragging: boolean;
-    isDropTarget: boolean;
+    isReordering: boolean;
     onSelect: () => void;
     onClose?: () => void;
     onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
@@ -32,7 +27,7 @@ export function VTab({
     tab,
     active,
     isDragging,
-    isDropTarget,
+    isReordering,
     onSelect,
     onClose,
     onDragStart,
@@ -53,9 +48,10 @@ export function VTab({
                 "whitespace-nowrap",
                 active
                     ? "border-accent/40 bg-accent/20 text-primary"
-                    : "border-transparent bg-transparent text-secondary hover:border-border hover:bg-hover",
-                isDragging && "opacity-50",
-                isDropTarget && "border-accent/70"
+                    : isReordering
+                      ? "border-transparent bg-transparent text-secondary"
+                      : "border-transparent bg-transparent text-secondary hover:border-border hover:bg-hover",
+                isDragging && "opacity-50"
             )}
             title={tab.name}
         >
@@ -68,7 +64,10 @@ export function VTab({
             {onClose && (
                 <button
                     type="button"
-                    className="shrink-0 cursor-pointer rounded p-1 text-secondary opacity-0 transition group-hover:opacity-100 hover:bg-hoverbg hover:text-primary"
+                    className={cn(
+                        "shrink-0 cursor-pointer rounded p-1 text-secondary transition",
+                        isReordering ? "opacity-0" : "opacity-0 group-hover:opacity-100 hover:bg-hoverbg hover:text-primary"
+                    )}
                     onClick={(event) => {
                         event.stopPropagation();
                         onClose();
