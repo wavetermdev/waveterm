@@ -3,10 +3,14 @@
 
 package gemini
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
+)
 
 func TestMakeHTTPClientProxy(t *testing.T) {
-	client, err := makeHTTPClient("http://localhost:8080")
+	client, err := aiutil.MakeHTTPClient("http://localhost:8080")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -16,7 +20,7 @@ func TestMakeHTTPClientProxy(t *testing.T) {
 }
 
 func TestMakeHTTPClientInvalidProxy(t *testing.T) {
-	_, err := makeHTTPClient("://bad-url")
+	_, err := aiutil.MakeHTTPClient("://bad-url")
 	if err == nil {
 		t.Fatalf("expected invalid proxy URL error")
 	}

@@ -12,12 +12,12 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -454,18 +454,9 @@ func RunAnthropicChatStep(
 		return nil, nil, nil, err
 	}
 
-	httpClient := &http.Client{
-		Timeout: 0, // rely on ctx; streaming can be long
-	}
-	// Proxy support
-	if chatOpts.Config.ProxyURL != "" {
-		pURL, perr := url.Parse(chatOpts.Config.ProxyURL)
-		if perr != nil {
-			return nil, nil, nil, fmt.Errorf("invalid proxy URL: %w", perr)
-		}
-		httpClient.Transport = &http.Transport{
-			Proxy: http.ProxyURL(pURL),
-		}
+	httpClient, err := aiutil.MakeHTTPClient(chatOpts.Config.ProxyURL)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	resp, err := httpClient.Do(req)
