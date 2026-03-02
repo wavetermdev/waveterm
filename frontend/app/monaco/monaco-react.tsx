@@ -56,6 +56,7 @@ export function MonacoCodeEditor({ text, readonly, language, onChange, onMount, 
         return () => {
             sub.dispose();
             if (onUnmountRef.current) onUnmountRef.current();
+            editor.setModel(null);
             editor.dispose();
             model.dispose();
             console.log("[monaco] dispose model");
@@ -146,6 +147,7 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
         diff.setModel({ original: originalModel, modified: modifiedModel });
 
         return () => {
+            diff.setModel(null);
             diff.dispose();
             originalModel.dispose();
             modifiedModel.dispose();
