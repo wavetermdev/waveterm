@@ -59,6 +59,7 @@ declare global {
         environment: "electron" | "renderer";
         primaryTabStartup?: boolean;
         builderId?: string;
+        isPreview?: boolean;
     };
 
     type WaveInitOpts = {
