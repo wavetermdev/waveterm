@@ -176,7 +176,6 @@ export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?:
     const [fireClicked, setFireClicked] = useState(false);
     const isMac = isMacOS();
     const [commandIndex, setCommandIndex] = useState(0);
-    const [key, setKey] = useState(0);
 
     const commands = [
         (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
@@ -187,7 +186,6 @@ export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?:
     const handleCommandComplete = () => {
         setTimeout(() => {
             setCommandIndex((prev) => (prev + 1) % commands.length);
-            setKey((prev) => prev + 1);
         }, 2500);
     };
 
@@ -204,30 +202,6 @@ export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?:
         }
     };
 
-    return (
-        <FilesPageContent
-            onFinish={onFinish}
-            onPrev={onPrev}
-            fireClicked={fireClicked}
-            onFireClick={handleFireClick}
-            rightPanel={commands[commandIndex](handleCommandComplete)}
-        />
-    );
-};
-
-export const FilesPageContent = ({
-    onFinish,
-    onPrev,
-    fireClicked,
-    onFireClick,
-    rightPanel,
-}: {
-    onFinish: () => void;
-    onPrev?: () => void;
-    fireClicked: boolean;
-    onFireClick: () => void;
-    rightPanel: React.ReactNode;
-}) => {
     return (
         <div className="flex flex-col h-full">
             <header className="flex items-center gap-4 mb-6 w-full unselectable flex-shrink-0">
@@ -276,12 +250,14 @@ export const FilesPageContent = ({
                                 and edit files wherever they are.
                             </p>
 
-                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={onFireClick} />
+                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
                         </div>
                     </div>
                 </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
-                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">{rightPanel}</div>
+                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
+                    {commands[commandIndex](handleCommandComplete)}
+                </div>
             </div>
             <OnboardingFooter currentStep={4} totalSteps={4} onNext={onFinish} onPrev={onPrev} />
         </div>
