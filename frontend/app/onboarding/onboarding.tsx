@@ -6,17 +6,16 @@ import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { ClientModel } from "@/app/store/client-model";
-import { atoms } from "@/app/store/global";
+import { useSettingsKeyAtom } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
-import { isPreviewWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
-import { fireAndForget, NullAtom } from "@/util/util";
-import { atom, Atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { fireAndForget } from "@/util/util";
+import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -30,10 +29,9 @@ type PageName = "init" | "notelemetrystar" | "features";
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({ isCompact }: { isCompact: boolean }) => {
-    const previewWindow = isPreviewWindow();
-    const settings = useAtomValue((previewWindow ? NullAtom : atoms.settingsAtom) as Atom<any>);
-    const clientData = useAtomValue((previewWindow ? NullAtom : ClientModel.getInstance().clientAtom) as Atom<any>);
-    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings?.["telemetry:enabled"]);
+    const telemetrySetting = useSettingsKeyAtom("telemetry:enabled");
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
+    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!telemetrySetting);
     const setPageName = useSetAtom(pageNameAtom);
 
     const acceptTos = () => {
