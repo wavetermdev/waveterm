@@ -93,7 +93,7 @@ function PreviewApp() {
             return (
                 <>
                     <PreviewHeader previewName={previewName} />
-                    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col items-center justify-center">
+                    <div className="h-screen overflow-y-auto bg-background text-foreground font-sans flex flex-col items-center pt-12 pb-8">
                         <Suspense fallback={null}>
                             <PreviewComponent />
                         </Suspense>

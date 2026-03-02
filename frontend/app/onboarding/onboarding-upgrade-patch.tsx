@@ -29,7 +29,7 @@ interface VersionConfig {
     nextText?: string;
 }
 
-const versions: VersionConfig[] = [
+export const UpgradeOnboardingVersions: VersionConfig[] = [
     {
         version: "v0.12.1",
         content: () => <UpgradeOnboardingModal_v0_12_1_Content />,
@@ -69,11 +69,11 @@ const versions: VersionConfig[] = [
 const UpgradeOnboardingPatch = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
-    const [currentIndex, setCurrentIndex] = useState<number>(versions.length - 1);
+    const [currentIndex, setCurrentIndex] = useState<number>(UpgradeOnboardingVersions.length - 1);
 
-    const currentVersion = versions[currentIndex];
+    const currentVersion = UpgradeOnboardingVersions[currentIndex];
     const hasPrev = currentIndex > 0;
-    const hasNext = currentIndex < versions.length - 1;
+    const hasNext = currentIndex < UpgradeOnboardingVersions.length - 1;
 
     const updateModalHeight = () => {
         const windowHeight = window.innerHeight;
