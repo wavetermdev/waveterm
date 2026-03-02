@@ -464,16 +464,12 @@ func generateWshClientApiMethod_ResponseStream(methodDecl *wshrpc.WshRpcMethodDe
 	if methodDecl.DefaultResponseDataType != nil {
 		respType, _ = TypeToTSType(methodDecl.DefaultResponseDataType, tsTypesMap)
 	}
-	dataName := "null"
-	if methodDecl.CommandDataType != nil {
-		dataName = "data"
-	}
+	methodSigDataParams, dataName := getTsWshMethodDataParamsAndExpr(methodDecl, tsTypesMap)
 	genRespType := fmt.Sprintf("AsyncGenerator<%s, void, boolean>", respType)
-	if methodDecl.CommandDataType != nil {
-		cmdDataTsName, _ := TypeToTSType(methodDecl.CommandDataType, tsTypesMap)
-		sb.WriteString(fmt.Sprintf("	%s(client: WshClient, data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, cmdDataTsName, genRespType))
-	} else {
+	if methodSigDataParams == "" {
 		sb.WriteString(fmt.Sprintf("	%s(client: WshClient, opts?: RpcOpts): %s {\n", methodDecl.MethodName, genRespType))
+	} else {
+		sb.WriteString(fmt.Sprintf("	%s(client: WshClient, %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodSigDataParams, genRespType))
 	}
 	sb.WriteString(fmt.Sprintf("        return client.wshRpcStream(%q, %s, opts);\n", methodDecl.Command, dataName))
 	sb.WriteString("    }\n")
@@ -488,20 +484,43 @@ func generateWshClientApiMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsType
 		rtnTypeName, _ := TypeToTSType(methodDecl.DefaultResponseDataType, tsTypesMap)
 		rtnType = fmt.Sprintf("Promise<%s>", rtnTypeName)
 	}
-	dataName := "null"
-	if methodDecl.CommandDataType != nil {
-		dataName = "data"
-	}
-	if methodDecl.CommandDataType != nil {
-		cmdDataTsName, _ := TypeToTSType(methodDecl.CommandDataType, tsTypesMap)
-		sb.WriteString(fmt.Sprintf("    %s(client: WshClient, data: %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, cmdDataTsName, rtnType))
-	} else {
+	methodSigDataParams, dataName := getTsWshMethodDataParamsAndExpr(methodDecl, tsTypesMap)
+	if methodSigDataParams == "" {
 		sb.WriteString(fmt.Sprintf("    %s(client: WshClient, opts?: RpcOpts): %s {\n", methodDecl.MethodName, rtnType))
+	} else {
+		sb.WriteString(fmt.Sprintf("    %s(client: WshClient, %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodSigDataParams, rtnType))
 	}
 	methodBody := fmt.Sprintf("        return client.wshRpcCall(%q, %s, opts);\n", methodDecl.Command, dataName)
 	sb.WriteString(methodBody)
 	sb.WriteString("    }\n")
 	return sb.String()
+}
+
+func getTsWshMethodDataParamsAndExpr(methodDecl *wshrpc.WshRpcMethodDecl, tsTypesMap map[reflect.Type]string) (string, string) {
+	dataTypes := methodDecl.CommandDataTypes
+	if len(dataTypes) == 0 && methodDecl.CommandDataType != nil {
+		dataTypes = []reflect.Type{methodDecl.CommandDataType}
+	}
+	if len(dataTypes) == 0 {
+		return "", "null"
+	}
+	if len(dataTypes) == 1 {
+		cmdDataTsName, _ := TypeToTSType(dataTypes[0], tsTypesMap)
+		return fmt.Sprintf("data: %s", cmdDataTsName), "data"
+	}
+	var methodParamBuilder strings.Builder
+	var argBuilder strings.Builder
+	for idx, dataType := range dataTypes {
+		if idx > 0 {
+			methodParamBuilder.WriteString(", ")
+			argBuilder.WriteString(", ")
+		}
+		argName := fmt.Sprintf("arg%d", idx+1)
+		cmdDataTsName, _ := TypeToTSType(dataType, tsTypesMap)
+		methodParamBuilder.WriteString(fmt.Sprintf("%s: %s", argName, cmdDataTsName))
+		argBuilder.WriteString(argName)
+	}
+	return methodParamBuilder.String(), fmt.Sprintf("{ args: [%s] }", argBuilder.String())
 }
 
 func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {

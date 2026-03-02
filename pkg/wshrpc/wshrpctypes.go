@@ -23,10 +23,14 @@ type RespOrErrorUnion[T any] struct {
 	Error    error
 }
 
+type MultiArg struct {
+	Args []any `json:"args"`
+}
+
 // Instructions for adding a new RPC call
 // * methods must end with Command
 // * methods must take context as their first parameter
-// * methods may take up to one parameter, and may return either just an error, or one return value plus an error
+// * methods may take additional typed parameters, and may return either just an error, or one return value plus an error
 // * after modifying WshRpcInterface, run `task generate` to regnerate bindings
 
 type WshRpcInterface interface {
