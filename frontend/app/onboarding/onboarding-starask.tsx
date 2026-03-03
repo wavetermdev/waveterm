@@ -3,7 +3,6 @@
 
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
-import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { ClientModel } from "@/app/store/client-model";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -105,15 +104,3 @@ export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
     );
 }
 
-type StarAskModalInnerProps = StarAskPageProps;
-
-export function StarAskModalInner(props: StarAskModalInnerProps) {
-    return (
-        <div className="w-[500px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel">
-            <OnboardingGradientBg />
-            <div className="relative z-10 flex flex-col w-full h-full">
-                <StarAskPage {...props} />
-            </div>
-        </div>
-    );
-}

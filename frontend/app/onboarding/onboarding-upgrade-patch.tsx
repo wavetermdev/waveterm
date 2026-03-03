@@ -5,7 +5,7 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion, OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
-import { StarAskModalInner } from "@/app/onboarding/onboarding-starask";
+import { StarAskPage } from "@/app/onboarding/onboarding-starask";
 import { ClientModel } from "@/app/store/client-model";
 import { globalStore } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
@@ -209,8 +209,14 @@ const UpgradeOnboardingPatch = () => {
 
     if (showStarAsk) {
         return (
-            <FlexiModal className={`rounded-[10px] relative overflow-hidden`} ref={modalRef}>
-                <StarAskModalInner onClose={doClose} page="upgrade" />
+            <FlexiModal
+                className="w-[500px] rounded-[10px] !p-[30px] relative overflow-hidden bg-panel"
+                ref={modalRef}
+            >
+                <OnboardingGradientBg />
+                <div className="relative z-10 flex flex-col w-full h-full">
+                    <StarAskPage onClose={doClose} page="upgrade" />
+                </div>
             </FlexiModal>
         );
     }
