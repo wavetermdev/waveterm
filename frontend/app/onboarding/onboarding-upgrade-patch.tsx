@@ -21,12 +21,69 @@ import { UpgradeOnboardingModal_v0_12_3_Content } from "./onboarding-upgrade-v01
 import { UpgradeOnboardingModal_v0_13_0_Content } from "./onboarding-upgrade-v0130";
 import { UpgradeOnboardingModal_v0_13_1_Content } from "./onboarding-upgrade-v0131";
 import { UpgradeOnboardingModal_v0_14_0_Content } from "./onboarding-upgrade-v0140";
+import { UpgradeOnboardingModal_v0_14_1_Content } from "./onboarding-upgrade-v0141";
 
 interface VersionConfig {
     version: string;
     content: () => React.ReactNode;
     prevText?: string;
     nextText?: string;
+}
+
+interface UpgradeOnboardingFooterProps {
+    hasPrev: boolean;
+    hasNext: boolean;
+    prevText?: string;
+    nextText?: string;
+    onPrev?: () => void;
+    onNext?: () => void;
+    onClose: () => void;
+}
+
+export function UpgradeOnboardingFooter({
+    hasPrev,
+    hasNext,
+    prevText,
+    nextText,
+    onPrev,
+    onNext,
+    onClose,
+}: UpgradeOnboardingFooterProps) {
+    return (
+        <footer className="unselectable flex-shrink-0 mt-4">
+            <div className="flex flex-row items-center justify-between w-full">
+                <div className="flex-1 flex justify-start">
+                    {hasPrev && (
+                        <div className="text-sm text-secondary">
+                            <button
+                                onClick={onPrev}
+                                className="cursor-pointer hover:text-foreground transition-colors"
+                            >
+                                &lt; {prevText}
+                            </button>
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm">
+                    <Button className="font-[600]" onClick={onClose}>
+                        Continue
+                    </Button>
+                </div>
+                <div className="flex-1 flex justify-end">
+                    {hasNext && (
+                        <div className="text-sm text-secondary">
+                            <button
+                                onClick={onNext}
+                                className="cursor-pointer hover:text-foreground transition-colors"
+                            >
+                                {nextText} &gt;
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </footer>
+    );
 }
 
 export const UpgradeOnboardingVersions: VersionConfig[] = [
@@ -63,6 +120,12 @@ export const UpgradeOnboardingVersions: VersionConfig[] = [
         version: "v0.14.0",
         content: () => <UpgradeOnboardingModal_v0_14_0_Content />,
         prevText: "Prev (v0.13.1)",
+        nextText: "Next (v0.14.1)",
+    },
+    {
+        version: "v0.14.1",
+        content: () => <UpgradeOnboardingModal_v0_14_1_Content />,
+        prevText: "Prev (v0.14.0)",
     },
 ];
 
@@ -150,39 +213,15 @@ const UpgradeOnboardingPatch = () => {
                     >
                         {currentVersion.content()}
                     </OverlayScrollbarsComponent>
-                    <footer className="unselectable flex-shrink-0 mt-4">
-                        <div className="flex flex-row items-center justify-between w-full">
-                            <div className="flex-1 flex justify-start">
-                                {hasPrev && (
-                                    <div className="text-sm text-secondary">
-                                        <button
-                                            onClick={handlePrev}
-                                            className="cursor-pointer hover:text-foreground transition-colors"
-                                        >
-                                            &lt; {currentVersion.prevText}
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm">
-                                <Button className="font-[600]" onClick={handleClose}>
-                                    Continue
-                                </Button>
-                            </div>
-                            <div className="flex-1 flex justify-end">
-                                {hasNext && (
-                                    <div className="text-sm text-secondary">
-                                        <button
-                                            onClick={handleNext}
-                                            className="cursor-pointer hover:text-foreground transition-colors"
-                                        >
-                                            {currentVersion.nextText} &gt;
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </footer>
+                    <UpgradeOnboardingFooter
+                        hasPrev={hasPrev}
+                        hasNext={hasNext}
+                        prevText={currentVersion.prevText}
+                        nextText={currentVersion.nextText}
+                        onPrev={handlePrev}
+                        onNext={handleNext}
+                        onClose={handleClose}
+                    />
                 </div>
             </div>
         </FlexiModal>

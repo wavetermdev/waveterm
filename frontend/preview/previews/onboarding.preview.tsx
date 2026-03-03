@@ -5,7 +5,10 @@ import Logo from "@/app/asset/logo.svg";
 import { InitPage, NoTelemetryStarPage } from "@/app/onboarding/onboarding";
 import { DurableSessionPage } from "@/app/onboarding/onboarding-durable";
 import { FilesPage, MagnifyBlocksPage, WaveAIPage } from "@/app/onboarding/onboarding-features";
-import { UpgradeOnboardingVersions } from "@/app/onboarding/onboarding-upgrade-patch";
+import {
+    UpgradeOnboardingFooter,
+    UpgradeOnboardingVersions,
+} from "@/app/onboarding/onboarding-upgrade-patch";
 
 function OnboardingFeaturesV() {
     const noop = () => {};
@@ -34,27 +37,41 @@ function OnboardingFeaturesV() {
 }
 
 function UpgradeOnboardingPatchV() {
+    const noop = () => {};
     return (
         <div className="flex flex-col gap-6 w-full max-w-[900px]">
-            {UpgradeOnboardingVersions.map((version) => (
-                <div
-                    key={version.version}
-                    className="w-[650px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel"
-                >
-                    <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
-                    <div className="flex flex-col w-full h-full relative z-10">
-                        <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
-                            <div className="flex justify-center">
-                                <Logo />
-                            </div>
-                            <div className="text-center text-[25px] font-normal text-foreground">
-                                Wave {version.version} Update
-                            </div>
-                        </header>
-                        <div className="flex-1">{version.content()}</div>
+            {UpgradeOnboardingVersions.map((version, idx) => {
+                const hasPrev = idx > 0;
+                const hasNext = idx < UpgradeOnboardingVersions.length - 1;
+                return (
+                    <div
+                        key={version.version}
+                        className="w-[650px] rounded-[10px] p-[30px] relative overflow-hidden bg-panel"
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
+                        <div className="flex flex-col w-full h-full relative z-10">
+                            <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
+                                <div className="flex justify-center">
+                                    <Logo />
+                                </div>
+                                <div className="text-center text-[25px] font-normal text-foreground">
+                                    Wave {version.version} Update
+                                </div>
+                            </header>
+                            <div className="flex-1">{version.content()}</div>
+                            <UpgradeOnboardingFooter
+                                hasPrev={hasPrev}
+                                hasNext={hasNext}
+                                prevText={version.prevText}
+                                nextText={version.nextText}
+                                onPrev={noop}
+                                onNext={noop}
+                                onClose={noop}
+                            />
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
