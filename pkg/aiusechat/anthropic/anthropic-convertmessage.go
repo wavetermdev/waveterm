@@ -848,7 +848,11 @@ func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) 
 			if block.Type != "tool_use" || block.ID != toolCallId {
 				continue
 			}
-			argsBytes, err := json.Marshal(block.Input)
+			argsInput := block.Input
+			if argsInput == nil {
+				argsInput = map[string]interface{}{}
+			}
+			argsBytes, err := json.Marshal(argsInput)
 			if err != nil {
 				continue
 			}
