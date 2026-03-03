@@ -2,14 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { InitPage, NoTelemetryStarPage } from "@/app/onboarding/onboarding";
+import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { DurableSessionPage } from "@/app/onboarding/onboarding-durable";
 import { FilesPage, MagnifyBlocksPage, WaveAIPage } from "@/app/onboarding/onboarding-features";
-import {
-    UpgradeOnboardingFooter,
-    UpgradeOnboardingVersions,
-} from "@/app/onboarding/onboarding-upgrade-patch";
+import { UpgradeMinorWelcomePage } from "@/app/onboarding/onboarding-upgrade-minor";
+import { UpgradeOnboardingFooter, UpgradeOnboardingVersions } from "@/app/onboarding/onboarding-upgrade-patch";
 
 function OnboardingModalWrapper({ width, children }: { width: string; children: React.ReactNode }) {
     return (
@@ -80,11 +78,22 @@ function UpgradeOnboardingPatchV() {
     );
 }
 
+function UpgradeOnboardingMinorV() {
+    const noop = () => {};
+    return (
+        <OnboardingModalWrapper width="w-[600px]">
+            <UpgradeMinorWelcomePage onStarClick={noop} onAlreadyStarred={noop} onMaybeLater={noop} />
+        </OnboardingModalWrapper>
+    );
+}
+
 export function OnboardingPreview() {
     return (
         <div className="w-full max-w-[1300px] py-10 px-4 flex flex-col gap-8">
             <div className="text-sm font-mono text-muted">Onboarding features</div>
             <OnboardingFeaturesV />
+            <div className="text-sm font-mono text-muted mt-6">Onboarding minor upgrade</div>
+            <UpgradeOnboardingMinorV />
             <div className="text-sm font-mono text-muted mt-6">Onboarding patch updates</div>
             <UpgradeOnboardingPatchV />
         </div>
