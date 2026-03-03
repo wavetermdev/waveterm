@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { ClientModel } from "@/app/store/client-model";
 import { setWaveWindowType } from "@/app/store/windowtype";
 import { loadFonts } from "@/util/fontutil";
 import React, { lazy, Suspense } from "react";
@@ -93,7 +94,7 @@ function PreviewApp() {
             return (
                 <>
                     <PreviewHeader previewName={previewName} />
-                    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col items-center justify-center">
+                    <div className="h-screen overflow-y-auto bg-background text-foreground font-sans flex flex-col items-center pt-12 pb-8">
                         <Suspense fallback={null}>
                             <PreviewComponent />
                         </Suspense>
@@ -119,6 +120,8 @@ function PreviewApp() {
 
 function initPreview() {
     setWaveWindowType("preview");
+    // Preview mode has no connected backend client object, but onboarding previews read clientAtom.
+    ClientModel.getInstance().initialize(null);
     loadFonts();
     const root = createRoot(document.getElementById("main")!);
     root.render(<PreviewApp />);

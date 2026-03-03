@@ -23,10 +23,14 @@ type RespOrErrorUnion[T any] struct {
 	Error    error
 }
 
+type MultiArg struct {
+	Args []any `json:"args"`
+}
+
 // Instructions for adding a new RPC call
 // * methods must end with Command
 // * methods must take context as their first parameter
-// * methods may take up to one parameter, and may return either just an error, or one return value plus an error
+// * methods may take additional typed parameters, and may return either just an error, or one return value plus an error
 // * after modifying WshRpcInterface, run `task generate` to regnerate bindings
 
 type WshRpcInterface interface {
@@ -69,11 +73,13 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
+	TestMultiArgCommand(ctx context.Context, arg1 string, arg2 int, arg3 bool) (string, error)
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
 	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	DebugTermCommand(ctx context.Context, data CommandDebugTermData) (*CommandDebugTermRtnData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
@@ -579,6 +585,16 @@ type CommandVarResponseData struct {
 	Exists bool   `json:"exists"`
 }
 
+type CommandDebugTermData struct {
+	BlockId string `json:"blockid"`
+	Size    int64  `json:"size"`
+}
+
+type CommandDebugTermRtnData struct {
+	Offset int64  `json:"offset"`
+	Data64 string `json:"data64"`
+}
+
 type PathCommandData struct {
 	PathType     string `json:"pathtype"`
 	Open         bool   `json:"open"`
@@ -884,13 +900,13 @@ type BlockJobStatusData struct {
 }
 
 type FocusedBlockData struct {
-	BlockId                     string               `json:"blockid"`
-	ViewType                    string               `json:"viewtype"`
-	Controller                  string               `json:"controller"`
-	ConnName                    string               `json:"connname"`
-	BlockMeta                   waveobj.MetaMapType  `json:"blockmeta"`
-	TermJobStatus               *BlockJobStatusData  `json:"termjobstatus,omitempty"`
-	ConnStatus                  *ConnStatus          `json:"connstatus,omitempty"`
-	TermShellIntegrationStatus  string               `json:"termshellintegrationstatus,omitempty"`
-	TermLastCommand             string               `json:"termlastcommand,omitempty"`
+	BlockId                    string              `json:"blockid"`
+	ViewType                   string              `json:"viewtype"`
+	Controller                 string              `json:"controller"`
+	ConnName                   string              `json:"connname"`
+	BlockMeta                  waveobj.MetaMapType `json:"blockmeta"`
+	TermJobStatus              *BlockJobStatusData `json:"termjobstatus,omitempty"`
+	ConnStatus                 *ConnStatus         `json:"connstatus,omitempty"`
+	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
+	TermLastCommand            string              `json:"termlastcommand,omitempty"`
 }

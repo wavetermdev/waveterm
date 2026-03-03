@@ -189,29 +189,6 @@ const (
 	ApprovalCanceled      = "canceled"
 )
 
-type AIModeConfig struct {
-	Mode               string   `json:"mode"`
-	DisplayName        string   `json:"display:name"`
-	DisplayOrder       float64  `json:"display:order,omitempty"`
-	DisplayIcon        string   `json:"display:icon"`
-	Provider           string   `json:"provider,omitempty"`
-	APIType            string   `json:"apitype"`
-	Model              string   `json:"model"`
-	ThinkingLevel      string   `json:"thinkinglevel"`
-	BaseURL            string   `json:"baseurl,omitempty"`
-	WaveAICloud        bool     `json:"waveaicloud,omitempty"`
-	APIVersion         string   `json:"apiversion,omitempty"`
-	APIToken           string   `json:"apitoken,omitempty"`
-	APITokenSecretName string   `json:"apitokensecretname,omitempty"`
-	Premium            bool     `json:"premium"`
-	Description        string   `json:"description"`
-	Capabilities       []string `json:"capabilities,omitempty"`
-}
-
-func (c *AIModeConfig) HasCapability(cap string) bool {
-	return slices.Contains(c.Capabilities, cap)
-}
-
 // when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
 type UIMessageDataToolUse struct {
 	ToolCallId          string `json:"toolcallid"`

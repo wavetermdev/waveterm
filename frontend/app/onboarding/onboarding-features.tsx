@@ -19,7 +19,7 @@ import { FakeLayout } from "./onboarding-layout";
 
 type FeaturePageName = "waveai" | "durable" | "magnify" | "files";
 
-const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
+export const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
     const isMac = isMacOS();
     const shortcutKey = isMac ? "⌘-Shift-A" : "Alt-Shift-A";
     const [fireClicked, setFireClicked] = useState(false);
@@ -106,7 +106,7 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
     );
 };
 
-const MagnifyBlocksPage = ({
+export const MagnifyBlocksPage = ({
     onNext,
     onSkip,
     onPrev,
@@ -149,13 +149,13 @@ const MagnifyBlocksPage = ({
                             better view.
                         </p>
                         <p>Use the magnify feature to work with complex outputs and large files more efficiently.</p>
-                        <p>
+                        <div>
                             You can also magnify a block by clicking on the{" "}
                             <span className="inline-block align-middle [&_svg_path]:!fill-foreground">
                                 <MagnifyIcon enabled={false} />
                             </span>{" "}
                             icon in the block header.
-                        </p>
+                        </div>
                         <p>
                             A quick {shortcutKey}-M to magnify and another {shortcutKey}-M to unmagnify
                         </p>
@@ -172,11 +172,10 @@ const MagnifyBlocksPage = ({
     );
 };
 
-const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
+export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => void }) => {
     const [fireClicked, setFireClicked] = useState(false);
     const isMac = isMacOS();
     const [commandIndex, setCommandIndex] = useState(0);
-    const [key, setKey] = useState(0);
 
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
@@ -200,7 +199,6 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
     const handleCommandComplete = () => {
         setTimeout(() => {
             setCommandIndex((prev) => (prev + 1) % commands.length);
-            setKey((prev) => prev + 1);
         }, 2500);
     };
 

@@ -44,7 +44,7 @@
         "@types/react-dom": "^18.3.0",
         "eslint": "^9.39",
         "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin-mdx": "^3.6.2",
+        "eslint-plugin-mdx": "^3.7.0",
         "prettier": "^3.8.1",
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",

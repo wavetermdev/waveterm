@@ -16,11 +16,13 @@ import {
     setWasInFg,
 } from "./emain-activity";
 import { log } from "./emain-log";
-import { getElectronAppBasePath, unamePlatform } from "./emain-platform";
+import { getElectronAppBasePath, isDev, unamePlatform } from "./emain-platform";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
+
+const DevInitTimeoutMs = 5000;
 
 export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
@@ -389,7 +391,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     private async initializeTab(tabView: WaveTabView, primaryStartupTab: boolean) {
         const clientId = await getClientId();
-        await tabView.initPromise;
+        await this.awaitWithDevTimeout(tabView.initPromise, "initPromise", tabView.waveTabId);
         this.contentView.addChildView(tabView);
         const initOpts: WaveInitOpts = {
             tabId: tabView.waveTabId,
@@ -410,8 +412,34 @@ export class WaveBrowserWindow extends BaseWindow {
             primaryStartupTab ? "(primary startup)" : ""
         );
         tabView.webContents.send("wave-init", initOpts);
-        await tabView.waveReadyPromise;
+        await this.awaitWithDevTimeout(tabView.waveReadyPromise, "waveReadyPromise", tabView.waveTabId);
         console.log("wave-ready init time", Date.now() - startTime + "ms");
+    }
+
+    private async awaitWithDevTimeout<T>(promise: Promise<T>, name: string, tabId: string): Promise<T> {
+        if (!isDev) {
+            return promise;
+        }
+        let timeoutHandle: ReturnType<typeof setTimeout> = null;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+                console.log(
+                    `[dev] ${name} timed out after ${DevInitTimeoutMs}ms for tab ${tabId}, showing window for devtools`
+                );
+                if (!this.isDestroyed() && !this.isVisible()) {
+                    this.show();
+                }
+                if (this.activeTabView?.webContents && !this.activeTabView.webContents.isDevToolsOpened()) {
+                    this.activeTabView.webContents.openDevTools();
+                }
+                reject(new Error(`[dev] ${name} timed out after ${DevInitTimeoutMs}ms`));
+            }, DevInitTimeoutMs);
+        });
+        try {
+            return await Promise.race([promise, timeoutPromise]);
+        } finally {
+            clearTimeout(timeoutHandle);
+        }
     }
 
     private async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean, primaryStartupTab = false) {

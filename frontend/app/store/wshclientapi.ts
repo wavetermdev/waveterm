@@ -147,6 +147,11 @@ class RpcApiType {
         return client.wshRpcCall("createsubblock", data, opts);
     }
 
+    // command "debugterm" [call]
+    DebugTermCommand(client: WshClient, data: CommandDebugTermData, opts?: RpcOpts): Promise<CommandDebugTermRtnData> {
+        return client.wshRpcCall("debugterm", data, opts);
+    }
+
     // command "deleteappfile" [call]
     DeleteAppFileCommand(client: WshClient, data: CommandDeleteAppFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deleteappfile", data, opts);
@@ -750,6 +755,11 @@ class RpcApiType {
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("test", data, opts);
+    }
+
+    // command "testmultiarg" [call]
+    TestMultiArgCommand(client: WshClient, arg1: string, arg2: number, arg3: boolean, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("testmultiarg", { args: [arg1, arg2, arg3] }, opts);
     }
 
     // command "vdomasyncinitiation" [call]

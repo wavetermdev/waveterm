@@ -419,7 +419,6 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     }
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
-        console.log("lastHandledEvent return false");
         return false;
     }
     lastHandledEvent = nativeEvent;
