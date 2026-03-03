@@ -4,14 +4,69 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
+import { ClientModel } from "@/app/store/client-model";
+import * as WOS from "@/app/store/wos";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 
 type StarAskPageProps = {
-    onStarClick: () => void;
-    onAlreadyStarred: () => void;
-    onMaybeLater: () => void;
+    onClose: () => void;
+    page?: string;
 };
 
-export function StarAskPage({ onStarClick, onAlreadyStarred, onMaybeLater }: StarAskPageProps) {
+export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
+    const handleStarClick = async () => {
+        RpcApi.RecordTEventCommand(
+            TabRpcClient,
+            {
+                event: "onboarding:githubstar",
+                props: { "onboarding:githubstar": "star", "onboarding:page": page },
+            },
+            { noresponse: true }
+        );
+        const clientId = ClientModel.getInstance().clientId;
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:githubstar": true },
+        });
+        window.open(`https://github.com/wavetermdev/waveterm?ref=${page}`, "_blank");
+        onClose();
+    };
+
+    const handleAlreadyStarred = async () => {
+        RpcApi.RecordTEventCommand(
+            TabRpcClient,
+            {
+                event: "onboarding:githubstar",
+                props: { "onboarding:githubstar": "already", "onboarding:page": page },
+            },
+            { noresponse: true }
+        );
+        const clientId = ClientModel.getInstance().clientId;
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:githubstar": true },
+        });
+        onClose();
+    };
+
+    const handleMaybeLater = async () => {
+        RpcApi.RecordTEventCommand(
+            TabRpcClient,
+            {
+                event: "onboarding:githubstar",
+                props: { "onboarding:githubstar": "later", "onboarding:page": page },
+            },
+            { noresponse: true }
+        );
+        const clientId = ClientModel.getInstance().clientId;
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:githubstar": false },
+        });
+        onClose();
+    };
+
     return (
         <div className="flex flex-col h-full">
             <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
@@ -35,13 +90,13 @@ export function StarAskPage({ onStarClick, onAlreadyStarred, onMaybeLater }: Sta
             </div>
             <footer className="unselectable flex-shrink-0 mt-6">
                 <div className="flex flex-row items-center justify-center gap-2.5 [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button]:!h-[37px]">
-                    <Button className="outlined grey font-[600]" onClick={onAlreadyStarred}>
+                    <Button className="outlined grey font-[600]" onClick={handleAlreadyStarred}>
                         🙏 Already Starred
                     </Button>
-                    <Button className="outlined green font-[600]" onClick={onStarClick}>
+                    <Button className="outlined green font-[600]" onClick={handleStarClick}>
                         ⭐ Star Now
                     </Button>
-                    <Button className="outlined grey font-[600]" onClick={onMaybeLater}>
+                    <Button className="outlined grey font-[600]" onClick={handleMaybeLater}>
                         Maybe Later
                     </Button>
                 </div>

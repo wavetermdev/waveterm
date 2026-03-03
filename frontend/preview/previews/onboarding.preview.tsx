@@ -92,7 +92,7 @@ function StarAskV() {
     const noop = () => {};
     return (
         <OnboardingModalWrapper width="w-[500px]">
-            <StarAskPage onStarClick={noop} onAlreadyStarred={noop} onMaybeLater={noop} />
+            <StarAskPage onClose={noop} />
         </OnboardingModalWrapper>
     );
 }

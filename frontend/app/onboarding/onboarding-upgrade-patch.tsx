@@ -5,6 +5,7 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion, OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
+import { StarAskModalInner } from "@/app/onboarding/onboarding-starask";
 import { ClientModel } from "@/app/store/client-model";
 import { globalStore } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
@@ -12,6 +13,7 @@ import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useAtomValue } from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -133,6 +135,9 @@ const UpgradeOnboardingPatch = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
     const [currentIndex, setCurrentIndex] = useState<number>(UpgradeOnboardingVersions.length - 1);
+    const [showStarAsk, setShowStarAsk] = useState<boolean>(false);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
+    const alreadyStarred = clientData?.meta?.["onboarding:githubstar"] === true;
 
     const currentVersion = UpgradeOnboardingVersions[currentIndex];
     const hasPrev = currentIndex > 0;
@@ -168,16 +173,24 @@ const UpgradeOnboardingPatch = () => {
         };
     }, []);
 
+    const doClose = () => {
+        globalStore.set(modalsModel.upgradeOnboardingOpen, false);
+        setTimeout(() => {
+            globalRefocus();
+        }, 10);
+    };
+
     const handleClose = () => {
         const clientId = ClientModel.getInstance().clientId;
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:lastversion": CurrentOnboardingVersion },
         });
-        globalStore.set(modalsModel.upgradeOnboardingOpen, false);
-        setTimeout(() => {
-            globalRefocus();
-        }, 10);
+        if (alreadyStarred) {
+            doClose();
+        } else {
+            setShowStarAsk(true);
+        }
     };
 
     const paddingClass = isCompact ? "!py-3 !px-[30px]" : "!p-[30px]";
@@ -193,6 +206,14 @@ const UpgradeOnboardingPatch = () => {
             setCurrentIndex(currentIndex + 1);
         }
     };
+
+    if (showStarAsk) {
+        return (
+            <FlexiModal className={`rounded-[10px] relative overflow-hidden`} ref={modalRef}>
+                <StarAskModalInner onClose={doClose} page="upgrade" />
+            </FlexiModal>
+        );
+    }
 
     return (
         <FlexiModal className={`w-[650px] rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
