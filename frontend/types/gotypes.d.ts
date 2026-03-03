@@ -1442,6 +1442,8 @@ declare global {
         "client:buildtime"?: string;
         "client:osrelease"?: string;
         "client:isdev"?: boolean;
+        "client:packagetype"?: string;
+        "client:macos"?: string;
         "cohort:month"?: string;
         "cohort:isoweek"?: string;
         "autoupdate:channel"?: string;
@@ -1540,6 +1542,8 @@ declare global {
         "client:buildtime"?: string;
         "client:osrelease"?: string;
         "client:isdev"?: boolean;
+        "client:packagetype"?: string;
+        "client:macos"?: string;
         "cohort:month"?: string;
         "cohort:isoweek"?: string;
         "autoupdate:channel"?: string;

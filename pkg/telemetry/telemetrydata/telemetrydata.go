@@ -76,6 +76,8 @@ type TEventUserProps struct {
 	ClientBuildTime      string `json:"client:buildtime,omitempty"`
 	ClientOSRelease      string `json:"client:osrelease,omitempty"`
 	ClientIsDev          bool   `json:"client:isdev,omitempty"`
+	ClientPackageType    string `json:"client:packagetype,omitempty"`
+	ClientMacOSVersion   string `json:"client:macos,omitempty"`
 
 	CohortMonth   string `json:"cohort:month,omitempty"`
 	CohortISOWeek string `json:"cohort:isoweek,omitempty"`
