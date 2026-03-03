@@ -25,49 +25,53 @@ const (
 	LayoutActionDataType_CleanupOrphaned = "cleanuporphaned"
 )
 
-type PortableLayout []struct {
-	IndexArr []int             `json:"indexarr"`
-	Size     *uint             `json:"size,omitempty"`
-	BlockDef *waveobj.BlockDef `json:"blockdef"`
-	Focused  bool              `json:"focused"`
-}
-
-func GetStarterLayout() PortableLayout {
-	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
+func GetStarterTabDef() waveobj.TabDef {
+	return waveobj.TabDef{
+		Blocks: []waveobj.TabBlockDef{
+			{
+				LayoutPos: []int{0},
+				Meta: waveobj.MetaMapType{
+					waveobj.MetaKey_View:       "term",
+					waveobj.MetaKey_Controller: "shell",
+				},
+				Focused: true,
 			},
-		}, Focused: true},
-		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "sysinfo",
+			{
+				LayoutPos: []int{1},
+				Meta: waveobj.MetaMapType{
+					waveobj.MetaKey_View: "sysinfo",
+				},
 			},
-		}},
-		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  "https://github.com/wavetermdev/waveterm",
+			{
+				LayoutPos: []int{1, 1},
+				Meta: waveobj.MetaMapType{
+					waveobj.MetaKey_View: "web",
+					waveobj.MetaKey_Url:  "https://github.com/wavetermdev/waveterm",
+				},
 			},
-		}},
-		{IndexArr: []int{1, 2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: "~",
+			{
+				LayoutPos: []int{1, 2},
+				Meta: waveobj.MetaMapType{
+					waveobj.MetaKey_View: "preview",
+					waveobj.MetaKey_File: "~",
+				},
 			},
-		}},
+		},
 	}
 }
 
-func GetNewTabLayout() PortableLayout {
-	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
+func GetNewTabDef() waveobj.TabDef {
+	return waveobj.TabDef{
+		Blocks: []waveobj.TabBlockDef{
+			{
+				LayoutPos: []int{0},
+				Meta: waveobj.MetaMapType{
+					waveobj.MetaKey_View:       "term",
+					waveobj.MetaKey_Controller: "shell",
+				},
+				Focused: true,
 			},
-		}, Focused: true},
+		},
 	}
 }
 
@@ -113,13 +117,14 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 	return QueueLayoutAction(ctx, layoutStateId, actions...)
 }
 
-func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
+func ApplyPortableLayout(ctx context.Context, tabId string, layout []waveobj.TabBlockDef, recordTelemetry bool) error {
 	actions := make([]waveobj.LayoutActionData, len(layout)+1)
 	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
-		blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
+		blockDef := layoutAction.AsBlockDef()
+		blockData, err := CreateBlockWithTelemetry(ctx, tabId, &blockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
 		if err != nil {
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}
@@ -127,7 +132,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 		actions[i+1] = waveobj.LayoutActionData{
 			ActionType: LayoutActionDataType_InsertAtIndex,
 			BlockId:    blockData.OID,
-			IndexArr:   &layoutAction.IndexArr,
+			IndexArr:   &layoutAction.LayoutPos,
 			NodeSize:   layoutAction.Size,
 			Focused:    layoutAction.Focused,
 		}
@@ -168,8 +173,8 @@ func BootstrapStarterLayout(ctx context.Context) error {
 
 	tabId := workspace.ActiveTabId
 
-	starterLayout := GetStarterLayout()
-	err = ApplyPortableLayout(ctx, tabId, starterLayout, false)
+	starterLayout := GetStarterTabDef()
+	err = ApplyPortableLayout(ctx, tabId, starterLayout.Blocks, false)
 	if err != nil {
 		return fmt.Errorf("error applying starter layout: %w", err)
 	}

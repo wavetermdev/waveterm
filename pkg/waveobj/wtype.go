@@ -245,6 +245,24 @@ type FileDef struct {
 	Meta    map[string]any `json:"meta,omitempty"`
 }
 
+type TabDef struct {
+	Name   string        `json:"tab:name,omitempty"`
+	Theme  string        `json:"tab:theme,omitempty"`
+	Blocks []TabBlockDef `json:"blocks"`
+}
+
+type TabBlockDef struct {
+	LayoutPos []int               `json:"indexarr,omitempty"`
+	Size      *uint               `json:"size,omitempty"`
+	Focused   bool                `json:"focused"`
+	Files     map[string]*FileDef `json:"files,omitempty"`
+	Meta      MetaMapType         `json:"meta,omitempty"`
+}
+
+func (tbd TabBlockDef) AsBlockDef() BlockDef {
+	return BlockDef{Files: tbd.Files, Meta: tbd.Meta}
+}
+
 type BlockDef struct {
 	Files map[string]*FileDef `json:"files,omitempty"`
 	Meta  MetaMapType         `json:"meta,omitempty"`
