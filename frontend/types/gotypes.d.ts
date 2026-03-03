@@ -25,6 +25,7 @@ declare global {
         "ai:thinkinglevel"?: string;
         "ai:verbosity"?: string;
         "ai:endpoint"?: string;
+        "ai:proxyurl"?: string;
         "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
@@ -1483,6 +1484,7 @@ declare global {
         "onboarding:feature"?: "waveai" | "durable" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
+        "onboarding:page"?: string;
         "display:height"?: number;
         "display:width"?: number;
         "display:dpr"?: number;

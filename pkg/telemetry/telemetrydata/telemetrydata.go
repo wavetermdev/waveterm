@@ -135,6 +135,7 @@ type TEventProps struct {
 	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"durable\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`
 	OnboardingGithubStar string `json:"onboarding:githubstar,omitempty" tstype:"\"already\" | \"star\" | \"later\""`
+	OnboardingPage       string `json:"onboarding:page,omitempty"`
 
 	DisplayHeight int         `json:"display:height,omitempty"`
 	DisplayWidth  int         `json:"display:width,omitempty"`

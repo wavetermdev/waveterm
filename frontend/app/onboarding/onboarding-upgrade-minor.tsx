@@ -50,19 +50,17 @@ const UpgradeMinorWelcomePage = ({ onStarClick, onAlreadyStarred, onMaybeLater }
                         </div>
                         <div className="text-secondary leading-relaxed max-w-[600px] text-left">
                             <p className="mb-4">
-                                Wave AI is your terminal assistant with full context. It can read your terminal
-                                output, analyze widgets, read and write files, and help you solve
-                                problems&nbsp;faster.
+                                Wave AI is your terminal assistant with full context. It can read your terminal output,
+                                analyze widgets, read and write files, and help you solve problems&nbsp;faster.
                             </p>
                             <p className="mb-4">
                                 <span className="font-semibold text-foreground">New in v0.13:</span> Wave AI now
-                                supports local models and bring-your-own-key! Use Ollama, LM Studio, vLLM,
-                                OpenRouter, or any OpenAI-compatible provider.
+                                supports local models and bring-your-own-key! Use Ollama, LM Studio, vLLM, OpenRouter,
+                                or any OpenAI-compatible provider.
                             </p>
                             <p className="mb-4">
                                 <span className="font-semibold text-foreground">New in v0.14:</span> Durable SSH
-                                sessions survive network drops, laptop sleep, and restarts — all without tmux or
-                                screen.
+                                sessions survive network drops, laptop sleep, and restarts — all without tmux or screen.
                             </p>
                         </div>
                     </div>
@@ -137,7 +135,7 @@ const UpgradeOnboardingMinor = () => {
             TabRpcClient,
             {
                 event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "star" },
+                props: { "onboarding:githubstar": "star", "onboarding:page": "minorupgrade" },
             },
             { noresponse: true }
         );
@@ -155,7 +153,7 @@ const UpgradeOnboardingMinor = () => {
             TabRpcClient,
             {
                 event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "already" },
+                props: { "onboarding:githubstar": "already", "onboarding:page": "minorupgrade" },
             },
             { noresponse: true }
         );
@@ -172,7 +170,7 @@ const UpgradeOnboardingMinor = () => {
             TabRpcClient,
             {
                 event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "later" },
+                props: { "onboarding:githubstar": "later", "onboarding:page": "minorupgrade" },
             },
             { noresponse: true }
         );
