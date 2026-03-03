@@ -32,6 +32,7 @@
         "ai:apitype": {
           "type": "string",
           "enum": [
+            "anthropic-messages",
             "google-gemini",
             "openai-responses",
             "openai-chat"
