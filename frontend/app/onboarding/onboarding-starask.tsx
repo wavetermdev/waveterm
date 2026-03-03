@@ -49,6 +49,18 @@ export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
         onClose();
     };
 
+    const handleRepoLinkClick = () => {
+        RpcApi.RecordTEventCommand(
+            TabRpcClient,
+            {
+                event: "action:link",
+                props: { "action:type": "githubrepo", "onboarding:page": page },
+            },
+            { noresponse: true }
+        );
+        window.open("https://github.com/wavetermdev/waveterm", "_blank");
+    };
+
     const handleMaybeLater = async () => {
         RpcApi.RecordTEventCommand(
             TabRpcClient,
@@ -72,18 +84,22 @@ export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
                 <div className="flex justify-center">
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Support Wave on GitHub ⭐</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Support open-source. Star Wave. ⭐</div>
             </header>
             <div className="flex-1 flex flex-col items-center justify-center gap-5 unselectable">
                 <div className="flex flex-col items-center gap-4 max-w-[460px] text-center">
-                    <div className="text-foreground text-base font-medium">Thanks for being an early Wave adopter!</div>
                     <div className="text-secondary text-sm leading-relaxed">
-                        A GitHub star shows your support for Wave (and open-source) and helps us reach more developers.
-                        It takes just one click and means a lot to the team.
+                        Wave is free, open-source, and open-model. Stars help us stay visible against closed
+                        alternatives. One click makes a difference.
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-secondary text-sm mt-1">
-                        <i className="fa-brands fa-github text-foreground text-lg" />
-                        <span className="text-foreground font-mono text-sm">wavetermdev/waveterm</span>
+                    <div
+                        className="group flex items-center justify-center gap-2 text-secondary text-sm mt-1 cursor-pointer transition-colors"
+                        onClick={handleRepoLinkClick}
+                    >
+                        <i className="fa-brands fa-github text-foreground text-lg group-hover:text-accent transition-colors" />
+                        <span className="text-foreground font-mono text-sm group-hover:text-accent group-hover:underline transition-colors">
+                            wavetermdev/waveterm
+                        </span>
                     </div>
                 </div>
             </div>

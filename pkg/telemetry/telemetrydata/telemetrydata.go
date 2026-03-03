@@ -29,6 +29,7 @@ var ValidEventNames = map[string]bool{
 	"action:other":       true,
 	"action:term":        true,
 	"action:termdurable": true,
+	"action:link":        true,
 
 	"wsh:run": true,
 
