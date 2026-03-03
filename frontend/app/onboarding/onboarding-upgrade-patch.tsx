@@ -4,7 +4,7 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
-import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
+import { CurrentOnboardingVersion, OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { ClientModel } from "@/app/store/client-model";
 import { globalStore } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
@@ -196,7 +196,7 @@ const UpgradeOnboardingPatch = () => {
 
     return (
         <FlexiModal className={`w-[650px] rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
-            <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
+            <OnboardingGradientBg />
             <div className="flex flex-col w-full h-full relative z-10">
                 <div className="flex flex-col h-full">
                     <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">

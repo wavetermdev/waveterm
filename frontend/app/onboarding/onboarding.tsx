@@ -1,10 +1,11 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
+import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { ClientModel } from "@/app/store/client-model";
 import { useSettingsKeyAtom } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
@@ -302,7 +303,7 @@ const NewInstallOnboardingModal = () => {
 
     return (
         <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
-            <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
+            <OnboardingGradientBg />
             <div className="flex flex-col w-full h-full relative z-10">{pageComp}</div>
         </FlexiModal>
     );
