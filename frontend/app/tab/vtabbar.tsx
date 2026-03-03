@@ -35,7 +35,9 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
     const [dragTabId, setDragTabId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
     const [dropLineTop, setDropLineTop] = useState<number | null>(null);
+    const [hoverResetVersion, setHoverResetVersion] = useState(0);
     const dragSourceRef = useRef<string | null>(null);
+    const didResetHoverForDragRef = useRef(false);
 
     useEffect(() => {
         setOrderedTabs(tabs);
@@ -44,6 +46,10 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
     const barWidth = useMemo(() => clampWidth(width), [width]);
 
     const clearDragState = () => {
+        if (dragSourceRef.current != null && !didResetHoverForDragRef.current) {
+            didResetHoverForDragRef.current = true;
+            setHoverResetVersion((version) => version + 1);
+        }
         dragSourceRef.current = null;
         setDragTabId(null);
         setDropIndex(null);
@@ -95,7 +101,7 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
             >
                 {orderedTabs.map((tab, index) => (
                     <VTab
-                        key={tab.id}
+                        key={`${tab.id}:${hoverResetVersion}`}
                         tab={tab}
                         active={tab.id === activeTabId}
                         isDragging={dragTabId === tab.id}
@@ -104,6 +110,7 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                         onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
                         onRename={onRenameTab ? (newName) => onRenameTab(tab.id, newName) : undefined}
                         onDragStart={(event) => {
+                            didResetHoverForDragRef.current = false;
                             dragSourceRef.current = tab.id;
                             event.dataTransfer.effectAllowed = "move";
                             event.dataTransfer.setData("text/plain", tab.id);
