@@ -29,6 +29,7 @@ var ValidEventNames = map[string]bool{
 	"action:other":       true,
 	"action:term":        true,
 	"action:termdurable": true,
+	"action:link":        true,
 
 	"wsh:run": true,
 
@@ -135,6 +136,7 @@ type TEventProps struct {
 	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"durable\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`
 	OnboardingGithubStar string `json:"onboarding:githubstar,omitempty" tstype:"\"already\" | \"star\" | \"later\""`
+	OnboardingPage       string `json:"onboarding:page,omitempty"`
 
 	DisplayHeight int         `json:"display:height,omitempty"`
 	DisplayWidth  int         `json:"display:width,omitempty"`
