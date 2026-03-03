@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
@@ -95,8 +96,9 @@ type anthropicMessageContentBlock struct {
 	Name  string      `json:"name,omitempty"`
 	Input interface{} `json:"input,omitempty"`
 
-	ToolUseDisplayName      string `json:"toolusedisplayname,omitempty"`      // internal field (cannot marshal to API, must be stripped)
-	ToolUseShortDescription string `json:"tooluseshortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	ToolUseDisplayName      string                        `json:"toolusedisplayname,omitempty"`      // internal field (cannot marshal to API, must be stripped)
+	ToolUseShortDescription string                        `json:"tooluseshortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	ToolUseData             *uctypes.UIMessageDataToolUse `json:"toolusedata,omitempty"`             // internal field (cannot marshal to API, must be stripped)
 
 	// Tool result content
 	ToolUseID string      `json:"tool_use_id,omitempty"`
@@ -154,6 +156,7 @@ func (b *anthropicMessageContentBlock) Clean() *anthropicMessageContentBlock {
 	rtn.SourcePreviewUrl = ""
 	rtn.ToolUseDisplayName = ""
 	rtn.ToolUseShortDescription = ""
+	rtn.ToolUseData = nil
 	if rtn.Source != nil {
 		rtn.Source = rtn.Source.Clean()
 	}
@@ -298,6 +301,7 @@ type streamingState struct {
 	stepStarted   bool
 	rtnMessage    *anthropicChatMessage
 	usage         *anthropicUsageType
+	chatOpts      uctypes.WaveChatOpts
 }
 
 func (p *partialJSON) Write(s string) {
@@ -328,6 +332,20 @@ func (p *partialJSON) FinalObject() (json.RawMessage, error) {
 	default:
 		return nil, fmt.Errorf("tool input is not an object")
 	}
+}
+
+// sanitizeHostnameInError removes the Wave cloud hostname from error messages
+func sanitizeHostnameInError(err error) error {
+	if err == nil {
+		return nil
+	}
+	errStr := err.Error()
+	parsedURL, parseErr := url.Parse(uctypes.DefaultAIEndpoint)
+	if parseErr == nil && parsedURL.Host != "" && strings.Contains(errStr, parsedURL.Host) {
+		errStr = strings.ReplaceAll(errStr, uctypes.DefaultAIEndpoint, "AI service")
+		errStr = strings.ReplaceAll(errStr, parsedURL.Host, "host")
+	}
+	return fmt.Errorf("%s", errStr)
 }
 
 // makeThinkingOpts creates thinking options based on level and max tokens
@@ -373,13 +391,13 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 	// Try to parse as Anthropic error format first
 	var eresp anthropicHTTPErrorResponse
 	if err := json.Unmarshal(slurp, &eresp); err == nil && eresp.Error.Message != "" {
-		return fmt.Errorf("anthropic %s: %s", resp.Status, eresp.Error.Message)
+		return sanitizeHostnameInError(fmt.Errorf("anthropic %s: %s", resp.Status, eresp.Error.Message))
 	}
 
 	// Try to parse as proxy error format
 	var proxyErr uctypes.ProxyErrorResponse
 	if err := json.Unmarshal(slurp, &proxyErr); err == nil && !proxyErr.Success && proxyErr.Error != "" {
-		return fmt.Errorf("anthropic %s: %s", resp.Status, proxyErr.Error)
+		return sanitizeHostnameInError(fmt.Errorf("anthropic %s: %s", resp.Status, proxyErr.Error))
 	}
 
 	// Fall back to truncated raw response
@@ -387,7 +405,7 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 	if msg == "" {
 		msg = "unknown error"
 	}
-	return fmt.Errorf("anthropic %s: %s", resp.Status, msg)
+	return sanitizeHostnameInError(fmt.Errorf("anthropic %s: %s", resp.Status, msg))
 }
 
 func RunAnthropicChatStep(
@@ -426,7 +444,7 @@ func RunAnthropicChatStep(
 
 	// Validate continuation if provided
 	if cont != nil {
-		if chatOpts.Config.Model != cont.Model {
+		if !uctypes.AreModelsCompatible(chat.APIType, chatOpts.Config.Model, cont.Model) {
 			return nil, nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", chatOpts.Config.Model, cont.Model)
 		}
 	}
@@ -461,7 +479,7 @@ func RunAnthropicChatStep(
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, sanitizeHostnameInError(err)
 	}
 	defer resp.Body.Close()
 
@@ -499,7 +517,7 @@ func RunAnthropicChatStep(
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
-	stopReason, rtnMessage := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	stopReason, rtnMessage := handleAnthropicStreamingResp(ctx, sse, decoder, cont, chatOpts)
 	return stopReason, rtnMessage, rateLimitInfo, nil
 }
 
@@ -509,6 +527,7 @@ func handleAnthropicStreamingResp(
 	sse *sse.SSEHandlerCh,
 	decoder *eventsource.Decoder,
 	cont *uctypes.WaveContinueResponse,
+	chatOpts uctypes.WaveChatOpts,
 ) (*uctypes.WaveStopReason, *anthropicChatMessage) {
 	// Per-response state
 	state := &streamingState{
@@ -518,6 +537,7 @@ func handleAnthropicStreamingResp(
 			Role:      "assistant",
 			Content:   []anthropicMessageContentBlock{},
 		},
+		chatOpts: chatOpts,
 	}
 
 	var rtnStopReason *uctypes.WaveStopReason
@@ -558,6 +578,13 @@ func handleAnthropicStreamingResp(
 				// Normal end of stream
 				break
 			}
+			if sse.Err() != nil {
+				return &uctypes.WaveStopReason{
+					Kind:      uctypes.StopKindCanceled,
+					ErrorType: "client_disconnect",
+					ErrorText: "client disconnected",
+				}, extractPartialTextFromState(state)
+			}
 			// transport error mid-stream
 			_ = sse.AiMsgError(err.Error())
 			return &uctypes.WaveStopReason{
@@ -587,6 +614,28 @@ func handleAnthropicStreamingResp(
 	return rtnStopReason, state.rtnMessage
 }
 
+func extractPartialTextFromState(state *streamingState) *anthropicChatMessage {
+	var content []anthropicMessageContentBlock
+	for _, block := range state.rtnMessage.Content {
+		if block.Type == "text" && block.Text != "" {
+			content = append(content, block)
+		}
+	}
+	for _, st := range state.blockMap {
+		if st.kind == blockText && st.contentBlock != nil && st.contentBlock.Text != "" {
+			content = append(content, *st.contentBlock)
+		}
+	}
+	if len(content) == 0 {
+		return nil
+	}
+	return &anthropicChatMessage{
+		MessageId: uuid.New().String(),
+		Role:      "assistant",
+		Content:   content,
+	}
+}
+
 // handleAnthropicEvent processes one SSE event block. It may emit SSE parts
 // and/or return a StopReason when the stream is complete.
 //
@@ -601,6 +650,13 @@ func handleAnthropicEvent(
 	state *streamingState,
 	cont *uctypes.WaveContinueResponse,
 ) (stopFromDelta *string, final *uctypes.WaveStopReason) {
+	if err := sse.Err(); err != nil {
+		return nil, &uctypes.WaveStopReason{
+			Kind:      uctypes.StopKindCanceled,
+			ErrorType: "client_disconnect",
+			ErrorText: "client disconnected",
+		}
+	}
 	eventName := event.Event()
 	data := event.Data()
 	switch eventName {
@@ -732,6 +788,7 @@ func handleAnthropicEvent(
 			if st.kind == blockToolUse {
 				st.accumJSON.Write(ev.Delta.PartialJSON)
 				_ = sse.AiMsgToolInputDelta(st.toolCallID, ev.Delta.PartialJSON)
+				aiutil.SendToolProgress(st.toolCallID, st.toolName, st.accumJSON.Bytes(), state.chatOpts, sse, true)
 			}
 		case "signature_delta":
 			// Accumulate signature for thinking blocks
@@ -784,6 +841,7 @@ func handleAnthropicEvent(
 				}
 			}
 			_ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
+			aiutil.SendToolProgress(st.toolCallID, st.toolName, raw, state.chatOpts, sse, false)
 			state.toolCalls = append(state.toolCalls, uctypes.WaveToolCall{
 				ID:    st.toolCallID,
 				Name:  st.toolName,
@@ -798,6 +856,7 @@ func handleAnthropicEvent(
 			}
 			state.rtnMessage.Content = append(state.rtnMessage.Content, toolUseBlock)
 		}
+		delete(state.blockMap, *ev.Index)
 		return nil, nil
 
 	case "message_delta":
@@ -868,7 +927,7 @@ func handleAnthropicEvent(
 		}
 
 	default:
-		log.Printf("unknown anthropic event type: %s", eventName)
+		logutil.DevPrintf("unknown anthropic event type: %s", eventName)
 		return nil, nil
 	}
 }

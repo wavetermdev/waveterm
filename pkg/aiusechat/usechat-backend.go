@@ -186,15 +186,18 @@ func (b *anthropicBackend) RunChatStep(
 	cont *uctypes.WaveContinueResponse,
 ) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, *uctypes.RateLimitInfo, error) {
 	stopReason, msg, rateLimitInfo, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+	if msg == nil {
+		return stopReason, nil, rateLimitInfo, err
+	}
 	return stopReason, []uctypes.GenAIMessage{msg}, rateLimitInfo, err
 }
 
 func (b *anthropicBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
-	return fmt.Errorf("UpdateToolUseData not implemented for anthropic backend")
+	return anthropic.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
 func (b *anthropicBackend) RemoveToolUseCall(chatId string, toolCallId string) error {
-	return fmt.Errorf("RemoveToolUseCall not implemented for anthropic backend")
+	return anthropic.RemoveToolUseCall(chatId, toolCallId)
 }
 
 func (b *anthropicBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
@@ -210,7 +213,7 @@ func (b *anthropicBackend) ConvertAIMessageToNativeChatMessage(message uctypes.A
 }
 
 func (b *anthropicBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
-	return nil
+	return anthropic.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
 }
 
 func (b *anthropicBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
