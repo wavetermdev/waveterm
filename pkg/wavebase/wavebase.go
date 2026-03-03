@@ -359,6 +359,8 @@ func ClientPackageType() string {
 var macOSVersionOnce = &sync.Once{}
 var cachedMacOSVersion string
 
+var macOSVersionRegex = regexp.MustCompile(`^(\d+\.\d+(?:\.\d+)?)`)
+
 func internalMacOSVersion() string {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
@@ -367,7 +369,7 @@ func internalMacOSVersion() string {
 		return ""
 	}
 	versionStr := strings.TrimSpace(string(out))
-	m := releaseRegex.FindStringSubmatch(versionStr)
+	m := macOSVersionRegex.FindStringSubmatch(versionStr)
 	if len(m) < 2 {
 		return ""
 	}
