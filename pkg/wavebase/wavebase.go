@@ -346,6 +346,46 @@ func ClientArch() string {
 	return fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
+func ClientPackageType() string {
+	if os.Getenv("SNAP") != "" {
+		return "snap"
+	}
+	if os.Getenv("APPIMAGE") != "" {
+		return "appimage"
+	}
+	return ""
+}
+
+var macOSVersionOnce = &sync.Once{}
+var cachedMacOSVersion string
+
+var macOSVersionRegex = regexp.MustCompile(`^(\d+\.\d+(?:\.\d+)?)`)
+
+func internalMacOSVersion() string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	out, err := exec.CommandContext(ctx, "sw_vers", "-productVersion").Output()
+	if err != nil {
+		return ""
+	}
+	versionStr := strings.TrimSpace(string(out))
+	m := macOSVersionRegex.FindStringSubmatch(versionStr)
+	if len(m) < 2 {
+		return ""
+	}
+	return m[1]
+}
+
+func ClientMacOSVersion() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+	macOSVersionOnce.Do(func() {
+		cachedMacOSVersion = internalMacOSVersion()
+	})
+	return cachedMacOSVersion
+}
+
 var releaseRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)`)
 var osReleaseOnce = &sync.Once{}
 var osRelease string
