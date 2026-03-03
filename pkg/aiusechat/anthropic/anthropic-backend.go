@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -621,7 +622,15 @@ func extractPartialTextFromState(state *streamingState) *anthropicChatMessage {
 			content = append(content, block)
 		}
 	}
-	for _, st := range state.blockMap {
+	var partialIdx []int
+	for idx, st := range state.blockMap {
+		if st.kind == blockText && st.contentBlock != nil && st.contentBlock.Text != "" {
+			partialIdx = append(partialIdx, idx)
+		}
+	}
+	sort.Ints(partialIdx)
+	for _, idx := range partialIdx {
+		st := state.blockMap[idx]
 		if st.kind == blockText && st.contentBlock != nil && st.contentBlock.Text != "" {
 			content = append(content, *st.contentBlock)
 		}
@@ -630,9 +639,10 @@ func extractPartialTextFromState(state *streamingState) *anthropicChatMessage {
 		return nil
 	}
 	return &anthropicChatMessage{
-		MessageId: uuid.New().String(),
+		MessageId: state.rtnMessage.MessageId,
 		Role:      "assistant",
 		Content:   content,
+		Usage:     state.rtnMessage.Usage,
 	}
 }
 
@@ -856,6 +866,8 @@ func handleAnthropicEvent(
 			}
 			state.rtnMessage.Content = append(state.rtnMessage.Content, toolUseBlock)
 		}
+		// extractPartialTextFromState reads blockMap for still-in-flight content, so remove completed blocks
+		// once they have been appended to rtnMessage.Content to avoid duplicate text on disconnect.
 		delete(state.blockMap, *ev.Index)
 		return nil, nil
 
