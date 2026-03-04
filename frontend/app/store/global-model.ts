@@ -8,12 +8,12 @@ import { atom, Atom } from "jotai";
 
 class GlobalModel {
     private static instance: GlobalModel;
-    private static readonly IsActiveThrottleMs = 5000;
+    static readonly IsActiveThrottleMs = 5000;
 
     windowId: string;
     builderId: string;
     platform: NodeJS.Platform;
-    private lastSetIsActiveTs = 0;
+    lastSetIsActiveTs = 0;
 
     windowDataAtom!: Atom<WaveWindow>;
     workspaceAtom!: Atom<Workspace>;
