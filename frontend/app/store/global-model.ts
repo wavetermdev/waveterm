@@ -4,6 +4,7 @@
 import * as WOS from "@/app/store/wos";
 import { ClientModel } from "@/app/store/client-model";
 import { getApi } from "@/store/global";
+import * as util from "@/util/util";
 import { atom, Atom } from "jotai";
 
 class GlobalModel {
@@ -51,17 +52,19 @@ class GlobalModel {
         });
     }
 
-    async setIsActive(): Promise<void> {
+    setIsActive(): void {
         const now = Date.now();
         if (now - this.lastSetIsActiveTs < GlobalModel.IsActiveThrottleMs) {
             return;
         }
         this.lastSetIsActiveTs = now;
-        try {
-            await getApi().setIsActive();
-        } catch (e) {
-            console.log("setIsActive error", e);
-        }
+        util.fireAndForget(async () => {
+            try {
+                await getApi().setIsActive();
+            } catch (e) {
+                console.log("setIsActive error", e);
+            }
+        });
     }
 }
 
