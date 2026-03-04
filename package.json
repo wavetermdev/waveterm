@@ -81,6 +81,7 @@
         "@table-nav/core": "^0.0.7",
         "@table-nav/react": "^0.0.7",
         "@tanstack/react-table": "^8.21.3",
+        "@tanstack/react-virtual": "^3.13.19",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/addon-search": "^0.15.0",
         "@xterm/addon-serialize": "^0.13.0",
