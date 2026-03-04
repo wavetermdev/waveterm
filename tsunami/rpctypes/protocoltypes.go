@@ -206,3 +206,19 @@ type ModalResult struct {
 	ModalId string `json:"modalid"` // ID of the modal
 	Confirm bool   `json:"confirm"` // true = confirmed/ok, false = cancelled
 }
+
+type TermSize struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
+}
+
+type TermInputPacket struct {
+	Id       string    `json:"id"`
+	TermSize *TermSize `json:"termsize,omitempty"`
+	Data64   string    `json:"data64,omitempty"`
+}
+
+type TermWritePacket struct {
+	Id     string `json:"id"`
+	Data64 string `json:"data64"`
+}

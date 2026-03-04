@@ -4,6 +4,7 @@
 import debug from "debug";
 import * as jotai from "jotai";
 
+import { TermWriteEventName } from "@/element/tsunamiterm";
 import { arrayBufferToBase64 } from "@/util/base64";
 import { getOrCreateClientId } from "@/util/clientid";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
@@ -233,6 +234,15 @@ export class TsunamiModel {
                 getDefaultStore().set(this.currentModal, config);
             } catch (e) {
                 console.error("Failed to parse modal config:", e);
+            }
+        });
+
+        this.serverEventSource.addEventListener("termwrite", (event: MessageEvent) => {
+            try {
+                const detail = JSON.parse(event.data);
+                window.dispatchEvent(new CustomEvent(TermWriteEventName, { detail }));
+            } catch (e) {
+                console.error("Failed to parse termwrite event:", e);
             }
         });
 

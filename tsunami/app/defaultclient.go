@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
+	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
@@ -62,6 +63,17 @@ func RegisterAppInitFn(fn func() error) {
 // background process), this function gives the frontend a "nudge" to update.
 func SendAsyncInitiation() error {
 	return engine.GetDefaultClient().SendAsyncInitiation()
+}
+
+type TermSize = rpctypes.TermSize
+type TermInputPacket = rpctypes.TermInputPacket
+
+func SetTermInputHandler(handler func(input TermInputPacket)) {
+	engine.GetDefaultClient().SetTermInputHandler(handler)
+}
+
+func TermWrite(id string, data64 string) error {
+	return engine.GetDefaultClient().SendTermWrite(id, data64)
 }
 
 func ConfigAtom[T any](name string, defaultValue T, meta *AtomMeta) Atom[T] {

@@ -72,6 +72,7 @@ type ClientImpl struct {
 	SSEChannels        map[string]chan ssEvent // map of connectionId to SSE channel
 	SSEChannelsLock    *sync.Mutex
 	GlobalEventHandler func(event vdom.VDomEvent)
+	TermInputHandler   func(input rpctypes.TermInputPacket)
 	UrlHandlerMux      *http.ServeMux
 	AppInitFn          func() error
 	AssetsFS           fs.FS
@@ -155,6 +156,12 @@ func (c *ClientImpl) doShutdown(reason string) {
 
 func (c *ClientImpl) SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	c.GlobalEventHandler = handler
+}
+
+func (c *ClientImpl) SetTermInputHandler(handler func(input rpctypes.TermInputPacket)) {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	c.TermInputHandler = handler
 }
 
 func (c *ClientImpl) getFaviconPath() string {
@@ -302,6 +309,28 @@ func (c *ClientImpl) SendSSEvent(event ssEvent) error {
 
 func (c *ClientImpl) SendAsyncInitiation() error {
 	return c.SendSSEvent(ssEvent{Event: "asyncinitiation", Data: nil})
+}
+
+func (c *ClientImpl) SendTermWrite(id string, data64 string) error {
+	payload := rpctypes.TermWritePacket{
+		Id:     id,
+		Data64: data64,
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return c.SendSSEvent(ssEvent{Event: "termwrite", Data: data})
+}
+
+func (c *ClientImpl) HandleTermInput(input rpctypes.TermInputPacket) {
+	c.Lock.Lock()
+	handler := c.TermInputHandler
+	c.Lock.Unlock()
+	if handler == nil {
+		return
+	}
+	handler(input)
 }
 
 func makeNullRendered() *rpctypes.RenderedElem {
