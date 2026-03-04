@@ -104,6 +104,14 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 - [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 - [Contribution guidelines](CONTRIBUTING.md#before-you-start)
 
+### Sponsoring Wave ❤️
+
+If Wave Terminal is useful to you or your company, consider sponsoring development.
+
+Sponsorship helps support the time spent building and maintaining the project.
+
+- https://github.com/sponsors/wavetermdev
+
 ## License
 
 Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
