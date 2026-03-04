@@ -6,7 +6,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
-import { atoms, createBlock, isDev } from "@/store/global";
+import { atoms, createBlock, getApi, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     FloatingPortal,
@@ -111,6 +111,10 @@ const AppsFloatingWindow = memo(
 
         const dismiss = useDismiss(context);
         const { getFloatingProps } = useInteractions([dismiss]);
+        const handleOpenBuilder = useCallback(() => {
+            getApi().openBuilder(null);
+            onClose();
+        }, [onClose]);
 
         useEffect(() => {
             if (!isOpen) return;
@@ -197,6 +201,13 @@ const AppsFloatingWindow = memo(
                             })}
                         </div>
                     )}
+                    <button
+                        type="button"
+                        className="mt-3 -mx-4 -mb-4 px-4 py-2 border-t border-border rounded-b-lg text-xs text-secondary text-left hover:bg-hoverbg hover:text-white transition-colors cursor-pointer"
+                        onClick={handleOpenBuilder}
+                    >
+                        + Build/Edit Apps
+                    </button>
                 </div>
             </FloatingPortal>
         );
