@@ -57,7 +57,11 @@ class GlobalModel {
             return;
         }
         this.lastSetIsActiveTs = now;
-        await getApi().setIsActive();
+        try {
+            await getApi().setIsActive();
+        } catch (e) {
+            console.log("setIsActive error", e);
+        }
     }
 }
 
