@@ -58,10 +58,11 @@ func (m *anthropicChatMessage) GetUsage() *uctypes.AIUsage {
 	}
 
 	return &uctypes.AIUsage{
-		APIType:      uctypes.APIType_AnthropicMessages,
-		Model:        m.Usage.Model,
-		InputTokens:  m.Usage.InputTokens,
-		OutputTokens: m.Usage.OutputTokens,
+		APIType:              uctypes.APIType_AnthropicMessages,
+		Model:                m.Usage.Model,
+		InputTokens:          m.Usage.InputTokens,
+		OutputTokens:         m.Usage.OutputTokens,
+		NativeWebSearchCount: m.Usage.NativeWebSearchCount,
 	}
 }
 
@@ -181,8 +182,13 @@ type anthropicStreamRequest struct {
 	Stream     bool                           `json:"stream"`
 	System     []anthropicMessageContentBlock `json:"system,omitempty"`
 	ToolChoice any                            `json:"tool_choice,omitempty"`
-	Tools      []uctypes.ToolDefinition       `json:"tools,omitempty"`
+	Tools      []any                          `json:"tools,omitempty"` // *uctypes.ToolDefinition or *anthropicWebSearchTool
 	Thinking   *anthropicThinkingOpts         `json:"thinking,omitempty"`
+}
+
+type anthropicWebSearchTool struct {
+	Type string `json:"type"` // "web_search_20250305"
+	Name string `json:"name"` // "web_search"
 }
 
 type anthropicCacheControl struct {
@@ -232,8 +238,9 @@ type anthropicUsageType struct {
 	CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
 	CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
 
-	// internal field for Wave use (not sent to API)
-	Model string `json:"model,omitempty"`
+	// internal fields for Wave use (not sent to API)
+	Model                string `json:"model,omitempty"`
+	NativeWebSearchCount int    `json:"nativewebsearchcount,omitempty"`
 
 	// for reference, but we dont keep thsese up to date or track them
 	CacheCreation *anthropicCacheCreationType `json:"cache_creation,omitempty"`  // breakdown of cached tokens by TTL
@@ -294,15 +301,16 @@ type partialJSON struct {
 }
 
 type streamingState struct {
-	blockMap      map[int]*blockState
-	toolCalls     []uctypes.WaveToolCall
-	stopFromDelta string
-	msgID         string
-	model         string
-	stepStarted   bool
-	rtnMessage    *anthropicChatMessage
-	usage         *anthropicUsageType
-	chatOpts      uctypes.WaveChatOpts
+	blockMap        map[int]*blockState
+	toolCalls       []uctypes.WaveToolCall
+	stopFromDelta   string
+	msgID           string
+	model           string
+	stepStarted     bool
+	rtnMessage      *anthropicChatMessage
+	usage           *anthropicUsageType
+	chatOpts        uctypes.WaveChatOpts
+	webSearchCount  int
 }
 
 func (p *partialJSON) Write(s string) {
@@ -547,8 +555,10 @@ func handleAnthropicStreamingResp(
 	defer func() {
 		// Set usage in the returned message
 		if state.usage != nil {
-			// Set model in usage for internal use
 			state.usage.Model = state.model
+			if state.webSearchCount > 0 {
+				state.usage.NativeWebSearchCount = state.webSearchCount
+			}
 			state.rtnMessage.Usage = state.usage
 		}
 
@@ -759,6 +769,10 @@ func handleAnthropicEvent(
 			}
 			state.blockMap[idx] = st
 			_ = sse.AiMsgToolInputStart(tcID, tName)
+		case "server_tool_use":
+			if ev.ContentBlock.Name == "web_search" {
+				state.webSearchCount++
+			}
 		default:
 			// ignore other block types gracefully per Anthropic guidance :contentReference[oaicite:18]{index=18}
 		}

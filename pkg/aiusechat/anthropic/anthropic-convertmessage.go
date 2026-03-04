@@ -122,16 +122,16 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		reqBody.System = systemBlocks
 	}
 
-	if len(chatOpts.Tools) > 0 {
-		cleanedTools := make([]uctypes.ToolDefinition, len(chatOpts.Tools))
-		for i, tool := range chatOpts.Tools {
-			cleanedTools[i] = *tool.Clean()
-		}
-		reqBody.Tools = cleanedTools
+	for _, tool := range chatOpts.Tools {
+		cleanedTool := tool.Clean()
+		reqBody.Tools = append(reqBody.Tools, cleanedTool)
 	}
 	for _, tool := range chatOpts.TabTools {
-		cleanedTool := *tool.Clean()
+		cleanedTool := tool.Clean()
 		reqBody.Tools = append(reqBody.Tools, cleanedTool)
+	}
+	if chatOpts.AllowNativeWebSearch {
+		reqBody.Tools = append(reqBody.Tools, &anthropicWebSearchTool{Type: "web_search_20250305", Name: "web_search"})
 	}
 
 	// Enable extended thinking based on level
@@ -139,13 +139,15 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 
 	// pretty print json of anthropicMsgs
 	if jsonStr, err := utilfn.MarshalIndentNoHTMLString(convertedMsgs, "", "  "); err == nil {
-		logutil.DevPrintf("system-prompt: %v\n", chatOpts.SystemPrompt)
 		var toolNames []string
 		for _, tool := range chatOpts.Tools {
 			toolNames = append(toolNames, tool.Name)
 		}
 		for _, tool := range chatOpts.TabTools {
 			toolNames = append(toolNames, tool.Name)
+		}
+		if chatOpts.AllowNativeWebSearch {
+			toolNames = append(toolNames, "web_search[server]")
 		}
 		logutil.DevPrintf("tools: %s\n", strings.Join(toolNames, ", "))
 		logutil.DevPrintf("anthropicMsgs JSON:\n%s", jsonStr)
