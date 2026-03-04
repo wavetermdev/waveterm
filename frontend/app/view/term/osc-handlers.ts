@@ -3,7 +3,15 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getApi, getBlockMetaKeyAtom, getBlockTermDurableAtom, globalStore, recordTEvent, WOS } from "@/store/global";
+import {
+    getApi,
+    getBlockMetaKeyAtom,
+    getBlockTermDurableAtom,
+    getOverrideConfigAtom,
+    globalStore,
+    recordTEvent,
+    WOS,
+} from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/util/util";
 import debug from "debug";
@@ -114,8 +122,9 @@ export function handleOsc52Command(data: string, blockId: string, loaded: boolea
     if (!loaded) {
         return true;
     }
+    const osc52Mode = globalStore.get(getOverrideConfigAtom(blockId, "term:osc52")) ?? "focus";
     const isBlockFocused = termWrap.nodeModel ? globalStore.get(termWrap.nodeModel.isFocused) : false;
-    if (!document.hasFocus() || !isBlockFocused) {
+    if (!document.hasFocus() || (osc52Mode !== "always" && !isBlockFocused)) {
         console.log("OSC 52: rejected, window or block not focused");
         return true;
     }

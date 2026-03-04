@@ -1119,6 +1119,7 @@ declare global {
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:osc52"?: string;
         "term:durable"?: boolean;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
@@ -1313,6 +1314,7 @@ declare global {
         "term:cursorblink"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:osc52"?: string;
         "term:durable"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
