@@ -200,12 +200,16 @@ function AppFocusHandler() {
 const AppKeyHandlers = () => {
     useEffect(() => {
         const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
+        const staticMouseDownHandler = (e: MouseEvent) => {
+            keyboardMouseDownHandler(e);
+            void GlobalModel.getInstance().setIsActive();
+        };
         document.addEventListener("keydown", staticKeyDownHandler);
-        document.addEventListener("mousedown", keyboardMouseDownHandler);
+        document.addEventListener("mousedown", staticMouseDownHandler);
 
         return () => {
             document.removeEventListener("keydown", staticKeyDownHandler);
-            document.removeEventListener("mousedown", keyboardMouseDownHandler);
+            document.removeEventListener("mousedown", staticMouseDownHandler);
         };
     }, []);
     return null;
