@@ -68,4 +68,40 @@ describe("handleOsc52Command", () => {
 
         expect(mockWriteText).toHaveBeenCalledWith("Hello");
     });
+
+    it("allows write when term:osc52 is always and window is unfocused", async () => {
+        Object.defineProperty(globalThis, "document", {
+            configurable: true,
+            value: { hasFocus: () => false },
+        });
+        mockGet.mockImplementation((atom: { key?: string } | undefined) => {
+            if (atom?.key === "term:osc52") {
+                return "always";
+            }
+            return false;
+        });
+
+        handleOsc52Command("c;SGVsbG8=", "block-1", true, { nodeModel: { isFocused: {} } } as any);
+        await Promise.resolve();
+
+        expect(mockWriteText).toHaveBeenCalledWith("Hello");
+    });
+
+    it("defaults term:osc52 to always when unset", async () => {
+        Object.defineProperty(globalThis, "document", {
+            configurable: true,
+            value: { hasFocus: () => false },
+        });
+        mockGet.mockImplementation((atom: { key?: string } | undefined) => {
+            if (atom?.key === "term:osc52") {
+                return undefined;
+            }
+            return false;
+        });
+
+        handleOsc52Command("c;SGVsbG8=", "block-1", true, { nodeModel: { isFocused: {} } } as any);
+        await Promise.resolve();
+
+        expect(mockWriteText).toHaveBeenCalledWith("Hello");
+    });
 });

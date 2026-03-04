@@ -122,11 +122,13 @@ export function handleOsc52Command(data: string, blockId: string, loaded: boolea
     if (!loaded) {
         return true;
     }
-    const osc52Mode = globalStore.get(getOverrideConfigAtom(blockId, "term:osc52")) ?? "focus";
-    const isBlockFocused = termWrap.nodeModel ? globalStore.get(termWrap.nodeModel.isFocused) : false;
-    if (!document.hasFocus() || (osc52Mode !== "always" && !isBlockFocused)) {
-        console.log("OSC 52: rejected, window or block not focused");
-        return true;
+    const osc52Mode = globalStore.get(getOverrideConfigAtom(blockId, "term:osc52")) ?? "always";
+    if (osc52Mode === "focus") {
+        const isBlockFocused = termWrap.nodeModel ? globalStore.get(termWrap.nodeModel.isFocused) : false;
+        if (!document.hasFocus() || !isBlockFocused) {
+            console.log("OSC 52: rejected, window or block not focused");
+            return true;
+        }
     }
     if (!data || data.length === 0) {
         console.log("OSC 52: empty data received");
