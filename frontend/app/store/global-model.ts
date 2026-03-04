@@ -58,13 +58,7 @@ class GlobalModel {
             return;
         }
         this.lastSetIsActiveTs = now;
-        util.fireAndForget(async () => {
-            try {
-                await getApi().setIsActive();
-            } catch (e) {
-                console.log("setIsActive error", e);
-            }
-        });
+        util.fireAndForget(() => getApi().setIsActive());
     }
 }
 
