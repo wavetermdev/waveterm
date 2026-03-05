@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -13,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var badgeCmd = &cobra.Command{
@@ -29,6 +31,7 @@ var (
 	badgeClear      bool
 	badgePersistent bool
 	badgeBeep       bool
+	badgePid        int
 )
 
 func init() {
@@ -38,12 +41,17 @@ func init() {
 	badgeCmd.Flags().BoolVar(&badgeClear, "clear", false, "clear the badge")
 	badgeCmd.Flags().BoolVar(&badgePersistent, "persistent", false, "make badge persistent (survives restarts)")
 	badgeCmd.Flags().BoolVar(&badgeBeep, "beep", false, "play system bell sound")
+	badgeCmd.Flags().IntVar(&badgePid, "pid", 0, "watch a pid and automatically clear the badge when it exits")
 }
 
 func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("badge", rtnErr == nil)
 	}()
+
+	if badgePid > 0 && runtime.GOOS == "windows" {
+		return fmt.Errorf("--pid flag is not supported on Windows")
+	}
 
 	oref, err := resolveBlockArg()
 	if err != nil {
@@ -91,6 +99,23 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		err = wshclient.ElectronSystemBellCommand(RpcClient, &wshrpc.RpcOpts{Route: "electron"})
 		if err != nil {
 			return fmt.Errorf("playing system bell: %v", err)
+		}
+	}
+
+	if badgePid > 0 && eventData.Badge != nil {
+		conn := RpcContext.Conn
+		if conn == "" {
+			conn = wshrpc.LocalConnName
+		}
+		connRoute := wshutil.MakeConnectionRouteId(conn)
+		watchData := wshrpc.CommandBadgeWatchPidData{
+			Pid:     badgePid,
+			ORef:    *oref,
+			BadgeId: eventData.Badge.BadgeId,
+		}
+		err = wshclient.BadgeWatchPidCommand(RpcClient, watchData, &wshrpc.RpcOpts{Route: connRoute})
+		if err != nil {
+			return fmt.Errorf("watching pid: %v", err)
 		}
 	}
 
