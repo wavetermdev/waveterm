@@ -103,7 +103,6 @@ type VDomRef = {
     type: "ref";
     refid: string;
     trackposition?: boolean;
-    position?: VDomRefPosition;
     hascurrent?: boolean;
 };
 
