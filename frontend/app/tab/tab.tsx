@@ -23,7 +23,7 @@ interface TabVProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
-    indicator?: Badge | null;
+    badge?: Badge | null;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -42,7 +42,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         isDragging,
         tabWidth,
         isNew,
-        indicator,
+        badge,
         onClick,
         onClose,
         onDragStart,
@@ -179,13 +179,13 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                 >
                     {tabName}
                 </div>
-                {indicator && (
+                {badge && (
                     <div
                         className="tab-indicator pointer-events-none"
-                        style={{ color: indicator.color || "#fbbf24" }}
+                        style={{ color: badge.color || "#fbbf24" }}
                         title="Activity notification"
                     >
-                        <i className={makeIconClass(indicator.icon, true, { defaultIcon: "bell" })} />
+                        <i className={makeIconClass(badge.icon, true, { defaultIcon: "circle-small" })} />
                     </div>
                 )}
                 <Button
@@ -288,7 +288,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
     const badges = useAtomValue(getTabBadgeAtom(id));
-    const indicator = badges?.[0] ?? null;
+    const badge = badges?.[0] ?? null;
 
     const loadedRef = useRef(false);
     const renameRef = useRef<(() => void) | null>(null);
@@ -331,7 +331,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             isDragging={isDragging}
             tabWidth={tabWidth}
             isNew={isNew}
-            indicator={indicator}
+            badge={badge}
             onClick={handleTabClick}
             onClose={onClose}
             onDragStart={onDragStart}

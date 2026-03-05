@@ -68,7 +68,7 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if badgeClear {
 		eventData.Clear = true
 	} else {
-		icon := "bell"
+		icon := "circle-small"
 		if len(args) > 0 {
 			icon = args[0]
 		}

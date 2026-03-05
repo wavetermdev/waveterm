@@ -1,7 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { clearTransientBadgeForTab, clearTransientBadgesForBlock, getBlockBadgeAtom, getTransientBadgeAtom } from "@/app/store/badge";
+import {
+    clearTransientBadgeForTab,
+    clearTransientBadgesForBlock,
+    getBlockBadgeAtom,
+    getTransientBadgeAtom,
+} from "@/app/store/badge";
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
@@ -98,7 +103,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     if (!canPaste && !canCopy && !canCut && !clipboardURL) {
         return;
     }
-    let menu: ContextMenuItem[] = [];
+    const menu: ContextMenuItem[] = [];
     if (canCut) {
         menu.push({ label: "Cut", role: "cut" });
     }
