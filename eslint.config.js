@@ -76,8 +76,8 @@ export default [
             "@typescript-eslint/no-unused-vars": [
                 "warn",
                 {
-                    argsIgnorePattern: "^_$",
-                    varsIgnorePattern: "^_$",
+                    argsIgnorePattern: "^_[a-zA-Z0-9_]*$",
+                    varsIgnorePattern: "^_[a-zA-Z0-9_]*$",
                 },
             ],
             "prefer-const": "warn",
