@@ -99,10 +99,13 @@ func handleBadgeEvent(event *wps.WaveEvent) {
 		log.Printf("badge store: received badge event with empty oref\n")
 		return
 	}
-
 	oref, err := waveobj.ParseORef(data.ORef)
 	if err != nil {
 		log.Printf("badge store: error parsing oref %q: %v\n", data.ORef, err)
+		return
+	}
+	if oref.OType != waveobj.OType_Block && oref.OType != waveobj.OType_Tab {
+		log.Printf("badge store: can only handle block/tab orefs")
 		return
 	}
 

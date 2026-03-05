@@ -1,0 +1,103 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+)
+
+var badgeCmd = &cobra.Command{
+	Use:     "badge [icon]",
+	Short:   "set or clear a block badge",
+	Args:    cobra.MaximumNArgs(1),
+	RunE:    badgeRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+var (
+	badgeColor      string
+	badgePriority   float64
+	badgeClear      bool
+	badgePersistent bool
+	badgeBeep       bool
+)
+
+func init() {
+	rootCmd.AddCommand(badgeCmd)
+	badgeCmd.Flags().StringVar(&badgeColor, "color", "", "badge color")
+	badgeCmd.Flags().Float64Var(&badgePriority, "priority", 0, "badge priority")
+	badgeCmd.Flags().BoolVar(&badgeClear, "clear", false, "clear the badge")
+	badgeCmd.Flags().BoolVar(&badgePersistent, "persistent", false, "make badge persistent (survives restarts)")
+	badgeCmd.Flags().BoolVar(&badgeBeep, "beep", false, "play system bell sound")
+}
+
+func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("badge", rtnErr == nil)
+	}()
+
+	oref, err := resolveBlockArg()
+	if err != nil {
+		return fmt.Errorf("resolving block: %v", err)
+	}
+	if oref.OType != waveobj.OType_Block && oref.OType != waveobj.OType_Tab {
+		return fmt.Errorf("badge oref must be a block or tab (got %q)", oref.OType)
+	}
+
+	var eventData baseds.BadgeEvent
+	eventData.ORef = oref.String()
+	eventData.Persistent = badgePersistent
+
+	if badgeClear {
+		eventData.Clear = true
+	} else {
+		icon := "bell"
+		if len(args) > 0 {
+			icon = args[0]
+		}
+		badgeId, err := uuid.NewV7()
+		if err != nil {
+			return fmt.Errorf("generating badge id: %v", err)
+		}
+		eventData.Badge = &baseds.Badge{
+			BadgeId:  badgeId.String(),
+			Icon:     icon,
+			Color:    badgeColor,
+			Priority: badgePriority,
+		}
+	}
+
+	event := wps.WaveEvent{
+		Event:  wps.Event_Badge,
+		Scopes: []string{oref.String()},
+		Data:   eventData,
+	}
+
+	err = wshclient.EventPublishCommand(RpcClient, event, &wshrpc.RpcOpts{NoResponse: true})
+	if err != nil {
+		return fmt.Errorf("publishing badge event: %v", err)
+	}
+
+	if badgeBeep {
+		err = wshclient.ElectronSystemBellCommand(RpcClient, &wshrpc.RpcOpts{Route: "electron"})
+		if err != nil {
+			return fmt.Errorf("playing system bell: %v", err)
+		}
+	}
+
+	if badgeClear {
+		fmt.Printf("badge cleared\n")
+	} else {
+		fmt.Printf("badge set\n")
+	}
+	return nil
+}
