@@ -6,7 +6,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
-import { atoms, createBlock, isDev } from "@/store/global";
+import { atoms, createBlock, getApi, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     FloatingPortal,
@@ -111,6 +111,10 @@ const AppsFloatingWindow = memo(
 
         const dismiss = useDismiss(context);
         const { getFloatingProps } = useInteractions([dismiss]);
+        const handleOpenBuilder = useCallback(() => {
+            getApi().openBuilder(null);
+            onClose();
+        }, [onClose]);
 
         useEffect(() => {
             if (!isOpen) return;
@@ -148,55 +152,65 @@ const AppsFloatingWindow = memo(
                     ref={refs.setFloating}
                     style={floatingStyles}
                     {...getFloatingProps()}
-                    className="bg-modalbg border border-border rounded-lg shadow-xl p-4 z-50"
+                    className="bg-modalbg border border-border rounded-lg shadow-xl z-50 overflow-hidden"
                 >
-                    {loading ? (
-                        <div className="flex items-center justify-center p-8">
-                            <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
-                        </div>
-                    ) : apps.length === 0 ? (
-                        <div className="text-muted text-sm p-4 text-center">No local apps found</div>
-                    ) : (
-                        <div
-                            className="grid gap-3"
-                            style={{
-                                gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-                                maxWidth: `${gridSize * 80}px`,
-                            }}
-                        >
-                            {apps.map((app) => {
-                                const appMeta = app.manifest?.appmeta;
-                                const displayName = app.appid.replace(/^local\//, "");
-                                const icon = appMeta?.icon || "cube";
-                                const iconColor = appMeta?.iconcolor || "white";
+                    <div className="p-4">
+                        {loading ? (
+                            <div className="flex items-center justify-center p-8">
+                                <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
+                            </div>
+                        ) : apps.length === 0 ? (
+                            <div className="text-muted text-sm p-4 text-center">No local apps found</div>
+                        ) : (
+                            <div
+                                className="grid gap-3"
+                                style={{
+                                    gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                                    maxWidth: `${gridSize * 80}px`,
+                                }}
+                            >
+                                {apps.map((app) => {
+                                    const appMeta = app.manifest?.appmeta;
+                                    const displayName = app.appid.replace(/^local\//, "");
+                                    const icon = appMeta?.icon || "cube";
+                                    const iconColor = appMeta?.iconcolor || "white";
 
-                                return (
-                                    <div
-                                        key={app.appid}
-                                        className="flex flex-col items-center justify-center p-2 rounded hover:bg-hoverbg cursor-pointer transition-colors"
-                                        onClick={() => {
-                                            const blockDef: BlockDef = {
-                                                meta: {
-                                                    view: "tsunami",
-                                                    controller: "tsunami",
-                                                    "tsunami:appid": app.appid,
-                                                },
-                                            };
-                                            createBlock(blockDef);
-                                            onClose();
-                                        }}
-                                    >
-                                        <div style={{ color: iconColor }} className="text-3xl mb-1">
-                                            <i className={makeIconClass(icon, false)}></i>
+                                    return (
+                                        <div
+                                            key={app.appid}
+                                            className="flex flex-col items-center justify-center p-2 rounded hover:bg-hoverbg cursor-pointer transition-colors"
+                                            onClick={() => {
+                                                const blockDef: BlockDef = {
+                                                    meta: {
+                                                        view: "tsunami",
+                                                        controller: "tsunami",
+                                                        "tsunami:appid": app.appid,
+                                                    },
+                                                };
+                                                createBlock(blockDef);
+                                                onClose();
+                                            }}
+                                        >
+                                            <div style={{ color: iconColor }} className="text-3xl mb-1">
+                                                <i className={makeIconClass(icon, false)}></i>
+                                            </div>
+                                            <div className="text-xxs text-center text-secondary break-words w-full px-1">
+                                                {displayName}
+                                            </div>
                                         </div>
-                                        <div className="text-xxs text-center text-secondary break-words w-full px-1">
-                                            {displayName}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        className="w-full px-4 py-2 border-t border-border text-xs text-secondary text-center hover:bg-hoverbg hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-2"
+                        onClick={handleOpenBuilder}
+                    >
+                        <i className="fa fa-solid fa-hammer"></i>
+                        Build/Edit Apps
+                    </button>
                 </div>
             </FloatingPortal>
         );
