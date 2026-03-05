@@ -107,6 +107,14 @@ function clearTransientBadgesForBlock(blockId: string) {
     }
 }
 
+function clearTransientBadgeForTab(tabId: string) {
+    const oref = WOS.makeORef("tab", tabId);
+    const transientAtom = TransientBadgeMap.get(oref);
+    if (transientAtom != null && globalStore.get(transientAtom) != null) {
+        clearBadgeInternal(oref, false);
+    }
+}
+
 function clearAllBadges(persistent: boolean) {
     const eventData: WaveEvent = {
         event: "badge",
@@ -227,6 +235,9 @@ function getPersistentBadgeAtom(oref: string): PrimitiveAtom<Badge> {
 }
 
 function getTransientBadgeAtom(oref: string): PrimitiveAtom<Badge> {
+    if (oref == null) {
+        return NullAtom as PrimitiveAtom<Badge>;
+    }
     let rtn = TransientBadgeMap.get(oref);
     if (rtn == null) {
         rtn = atom(null) as PrimitiveAtom<Badge>;
@@ -322,6 +333,7 @@ export {
     clearBadgeById,
     clearBadgesForTab,
     clearTabIndicatorFromFocus,
+    clearTransientBadgeForTab,
     clearTransientBadgesForBlock,
     getBlockBadgeAtom,
     getPersistentBadgeAtom,

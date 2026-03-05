@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { clearTransientBadgesForBlock, getBlockBadgeAtom } from "@/app/store/badge";
+import { clearTransientBadgeForTab, clearTransientBadgesForBlock, getBlockBadgeAtom, getTransientBadgeAtom } from "@/app/store/badge";
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
@@ -211,23 +211,42 @@ const AppKeyHandlers = () => {
 };
 
 const BadgeAutoClearing = () => {
+    const tabId = useAtomValue(atoms.staticTabId);
+    const documentHasFocus = useAtomValue(atoms.documentHasFocus);
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = useAtomValue(layoutModel.focusedNode);
     const focusedBlockId = focusedNode?.data?.blockId;
     const badge = useAtomValue(getBlockBadgeAtom(focusedBlockId));
+    const tabTransientBadge = useAtomValue(getTransientBadgeAtom(tabId != null ? `tab:${tabId}` : null));
 
     useEffect(() => {
-        if (!focusedBlockId || !badge) {
+        if (!focusedBlockId || !badge || !documentHasFocus) {
             return;
         }
         const timeoutId = setTimeout(() => {
+            if (!document.hasFocus()) {
+                return;
+            }
             const currentFocusedNode = globalStore.get(layoutModel.focusedNode);
             if (currentFocusedNode?.data?.blockId === focusedBlockId) {
                 clearTransientBadgesForBlock(focusedBlockId);
             }
         }, 3000);
         return () => clearTimeout(timeoutId);
-    }, [focusedBlockId, badge]);
+    }, [focusedBlockId, badge, documentHasFocus]);
+
+    useEffect(() => {
+        if (!tabId || !tabTransientBadge || !documentHasFocus) {
+            return;
+        }
+        const timeoutId = setTimeout(() => {
+            if (!document.hasFocus()) {
+                return;
+            }
+            clearTransientBadgeForTab(tabId);
+        }, 3000);
+        return () => clearTimeout(timeoutId);
+    }, [tabId, tabTransientBadge, documentHasFocus]);
 
     return null;
 };
