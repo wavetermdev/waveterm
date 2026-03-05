@@ -24,7 +24,7 @@ import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-p
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
-import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
+import { createNewWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -130,11 +130,16 @@ function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInS
     });
 }
 
-function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string, readStream: Readable) {
+function saveImageFileWithNativeDialog(
+    sender: electron.WebContents,
+    defaultFileName: string,
+    mimeType: string,
+    readStream: Readable
+) {
     if (defaultFileName == null || defaultFileName == "") {
         defaultFileName = "image";
     }
-    const ww = focusedWaveWindow;
+    const ww = electron.BrowserWindow.fromWebContents(sender);
     if (ww == null) {
         return;
     }
@@ -213,7 +218,12 @@ export function initIpcHandlers() {
                     const resultP = getUrlInSession(event.sender.session, payload.src);
                     resultP
                         .then((result) => {
-                            saveImageFileWithNativeDialog(result.fileName, result.mimeType, result.stream);
+                            saveImageFileWithNativeDialog(
+                                event.sender.hostWebContents,
+                                result.fileName,
+                                result.mimeType,
+                                result.stream
+                            );
                         })
                         .catch((e) => {
                             console.log("error getting image", e);
@@ -477,7 +487,7 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("save-text-file", async (event, fileName: string, content: string) => {
-        const ww = electron.BrowserWindow.fromWebContents(event.sender) ?? focusedWaveWindow;
+        const ww = electron.BrowserWindow.fromWebContents(event.sender);
         if (ww == null) {
             return false;
         }
