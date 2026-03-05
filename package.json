@@ -82,6 +82,7 @@
         "@table-nav/react": "^0.0.7",
         "@tanstack/react-table": "^8.21.3",
         "@tanstack/react-virtual": "^3.13.19",
+        "@types/uuid": "^10.0.0",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/addon-search": "^0.15.0",
         "@xterm/addon-serialize": "^0.13.0",
@@ -141,6 +142,7 @@
         "tinycolor2": "^1.6.0",
         "unist-util-visit": "^5.1.0",
         "use-device-pixel-ratio": "^1.1.2",
+        "uuid": "^13.0.0",
         "winston": "^3.19.0",
         "ws": "^8.19.0",
         "yaml": "^2.7.1"

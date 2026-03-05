@@ -14,6 +14,7 @@ type RpcInputChType struct {
 }
 
 type Badge struct {
+	BadgeId  string  `json:"badgeid"`
 	Icon     string  `json:"icon"`
 	Color    string  `json:"color,omitempty"`
 	Priority float64 `json:"priority"`

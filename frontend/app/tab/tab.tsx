@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+    clearAllBadges,
     clearAllTabIndicators,
+    clearBadgesForTab,
     clearTabIndicatorFromFocus,
     getTabIndicatorAtom,
     setTabIndicator,
@@ -219,11 +221,18 @@ function buildTabContextMenu(
         menu.push(
             {
                 label: "Clear Tab Indicator",
-                click: () => setTabIndicator(id, null),
+                click: () => {
+                    setTabIndicator(id, null);
+                    clearBadgesForTab(id);
+                },
             },
             {
                 label: "Clear All Indicators",
-                click: () => clearAllTabIndicators(),
+                click: () => {
+                    clearAllTabIndicators();
+                    clearAllBadges(true);
+                    clearAllBadges(false);
+                },
             },
             { type: "separator" }
         );

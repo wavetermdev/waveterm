@@ -110,6 +110,7 @@ declare global {
 
     // baseds.Badge
     type Badge = {
+        badgeid: string;
         icon: string;
         color?: string;
         priority: number;
