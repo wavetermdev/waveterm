@@ -24,10 +24,14 @@ type RespOrErrorUnion[T any] struct {
 	Error    error
 }
 
+type MultiArg struct {
+	Args []any `json:"args"`
+}
+
 // Instructions for adding a new RPC call
 // * methods must end with Command
 // * methods must take context as their first parameter
-// * methods may take up to one parameter, and may return either just an error, or one return value plus an error
+// * methods may take additional typed parameters, and may return either just an error, or one return value plus an error
 // * after modifying WshRpcInterface, run `task generate` to regnerate bindings
 
 type WshRpcInterface interface {
@@ -70,6 +74,7 @@ type WshRpcInterface interface {
 	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
+	TestMultiArgCommand(ctx context.Context, arg1 string, arg2 int, arg3 bool) (string, error)
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
@@ -897,13 +902,13 @@ type BlockJobStatusData struct {
 }
 
 type FocusedBlockData struct {
-	BlockId                     string               `json:"blockid"`
-	ViewType                    string               `json:"viewtype"`
-	Controller                  string               `json:"controller"`
-	ConnName                    string               `json:"connname"`
-	BlockMeta                   waveobj.MetaMapType  `json:"blockmeta"`
-	TermJobStatus               *BlockJobStatusData  `json:"termjobstatus,omitempty"`
-	ConnStatus                  *ConnStatus          `json:"connstatus,omitempty"`
-	TermShellIntegrationStatus  string               `json:"termshellintegrationstatus,omitempty"`
-	TermLastCommand             string               `json:"termlastcommand,omitempty"`
+	BlockId                    string              `json:"blockid"`
+	ViewType                   string              `json:"viewtype"`
+	Controller                 string              `json:"controller"`
+	ConnName                   string              `json:"connname"`
+	BlockMeta                  waveobj.MetaMapType `json:"blockmeta"`
+	TermJobStatus              *BlockJobStatusData `json:"termjobstatus,omitempty"`
+	ConnStatus                 *ConnStatus         `json:"connstatus,omitempty"`
+	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
+	TermLastCommand            string              `json:"termlastcommand,omitempty"`
 }

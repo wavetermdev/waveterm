@@ -343,6 +343,8 @@ func startupActivityUpdate(firstLaunch bool) {
 			ClientArch:          wavebase.ClientArch(),
 			ClientOSRelease:     wavebase.UnameKernelRelease(),
 			ClientIsDev:         wavebase.IsDevMode(),
+			ClientPackageType:   wavebase.ClientPackageType(),
+			ClientMacOSVersion:  wavebase.ClientMacOSVersion(),
 			AutoUpdateChannel:   autoUpdateChannel,
 			AutoUpdateEnabled:   autoUpdateEnabled,
 			LocalShellType:      shellType,

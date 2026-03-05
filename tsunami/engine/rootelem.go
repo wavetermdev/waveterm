@@ -443,9 +443,11 @@ func (r *RootElem) UpdateRef(updateRef rpctypes.VDomRefUpdate) {
 	if !ok {
 		return
 	}
-	ref.HasCurrent = updateRef.HasCurrent
+	ref.HasCurrent.Store(updateRef.HasCurrent)
 	ref.Position = updateRef.Position
-	r.addRenderWork(waveId)
+	if updateRef.TermSize != nil {
+		ref.TermSize = updateRef.TermSize
+	}
 }
 
 func (r *RootElem) QueueRefOp(op vdom.VDomRefOperation) {

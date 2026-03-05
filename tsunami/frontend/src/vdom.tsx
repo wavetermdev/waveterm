@@ -7,8 +7,9 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { twMerge } from "tailwind-merge";
 
-import { AlertModal, ConfirmModal } from "@/element/modals";
 import { Markdown } from "@/element/markdown";
+import { AlertModal, ConfirmModal } from "@/element/modals";
+import { TsunamiTerm } from "@/element/tsunamiterm";
 import { getTextChildren } from "@/model/model-utils";
 import type { TsunamiModel } from "@/model/tsunami-model";
 import { RechartsTag } from "@/recharts/recharts";
@@ -30,6 +31,7 @@ type VDomReactTagType = (props: { elem: VDomElem; model: TsunamiModel }) => Reac
 
 const WaveTagMap: Record<string, VDomReactTagType> = {
     "wave:markdown": WaveMarkdown,
+    "wave:term": WaveTerm,
 };
 
 const AllowedSimpleTags: { [tagName: string]: boolean } = {
@@ -276,6 +278,46 @@ function WaveMarkdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) 
     return (
         <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
     );
+}
+
+async function sendTermInputEvent(event: VDomEvent) {
+    const response = await fetch("/api/terminput", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(event),
+    });
+    if (!response.ok) {
+        throw new Error(`terminal input request failed: ${response.status} ${response.statusText}`);
+    }
+}
+
+function WaveTerm({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
+    const props = useVDom(model, elem);
+    const hasOnData = props.onData != null;
+    const onData = React.useCallback(
+        (data: string | null, termsize: VDomTermSize | null) => {
+            const terminput: VDomTermInputData = {};
+            if (data != null) {
+                terminput.data = data;
+            }
+            if (termsize != null) {
+                terminput.termsize = termsize;
+            }
+            const event: VDomEvent = {
+                waveid: elem.waveid,
+                eventtype: "onData",
+                terminput: terminput,
+            };
+            sendTermInputEvent(event).catch((error) => {
+                console.error("Failed to send terminal input:", error);
+            });
+        },
+        [elem.waveid]
+    );
+    const termProps = { ...props, onData: hasOnData ? onData : undefined };
+    return <TsunamiTerm {...termProps} />;
 }
 
 function StyleTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {

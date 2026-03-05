@@ -31,6 +31,38 @@ func UseVDomRef() *vdom.VDomRef {
 	return refVal
 }
 
+// TermRef wraps a VDomRef and implements io.Writer by forwarding writes to the terminal.
+type TermRef struct {
+	*vdom.VDomRef
+}
+
+// Write implements io.Writer by sending data to the terminal via TermWrite.
+func (tr *TermRef) Write(p []byte) (n int, err error) {
+	if tr.VDomRef == nil || !tr.VDomRef.HasCurrent.Load() {
+		return 0, fmt.Errorf("TermRef not current")
+	}
+	err = TermWrite(tr.VDomRef, string(p))
+	if err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
+// TermSize returns the current terminal size, or nil if not yet set.
+func (tr *TermRef) TermSize() *vdom.VDomTermSize {
+	if tr.VDomRef == nil {
+		return nil
+	}
+	return tr.VDomRef.TermSize
+}
+
+// UseTermRef returns a TermRef that can be passed as a ref to "wave:term" elements
+// and also implements io.Writer for writing directly to the terminal.
+func UseTermRef() *TermRef {
+	ref := UseVDomRef()
+	return &TermRef{VDomRef: ref}
+}
+
 // UseRef is the tsunami analog to React's useRef hook.
 // It provides a mutable ref object that persists across re-renders.
 // Unlike UseVDomRef, this is not tied to DOM elements but holds arbitrary values.
