@@ -5,9 +5,10 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom } from "jotai";
-import { TabIndicatorMap } from "./global-atoms";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
+
+const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 
 function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
     let rtn = TabIndicatorMap.get(tabId);

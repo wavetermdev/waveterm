@@ -6,7 +6,7 @@ import { useState } from "react";
 
 const InitialTabs: VTabItem[] = [
     { id: "vtab-1", name: "Terminal" },
-    { id: "vtab-2", name: "Build Logs", indicator: { icon: "bell", color: "#f59e0b" } },
+    { id: "vtab-2", name: "Build Logs", indicator: { icon: "bell", color: "#f59e0b", priority: 1 } },
     { id: "vtab-3", name: "Deploy" },
     { id: "vtab-4", name: "Wave AI" },
     { id: "vtab-5", name: "A Very Long Tab Name To Show Truncation" },
