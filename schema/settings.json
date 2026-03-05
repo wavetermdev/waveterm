@@ -151,6 +151,13 @@
         "term:bellindicator": {
           "type": "boolean"
         },
+        "term:osc52": {
+          "type": "string",
+          "enum": [
+            "focus",
+            "always"
+          ]
+        },
         "term:durable": {
           "type": "boolean"
         },
