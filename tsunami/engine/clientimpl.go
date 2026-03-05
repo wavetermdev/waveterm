@@ -5,6 +5,7 @@ package engine
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -311,16 +312,16 @@ func (c *ClientImpl) SendAsyncInitiation() error {
 	return c.SendSSEvent(ssEvent{Event: "asyncinitiation", Data: nil})
 }
 
-func (c *ClientImpl) SendTermWrite(id string, data64 string) error {
+func (c *ClientImpl) SendTermWrite(refId string, data string) error {
 	payload := rpctypes.TermWritePacket{
-		Id:     id,
-		Data64: data64,
+		RefId:  refId,
+		Data64: base64.StdEncoding.EncodeToString([]byte(data)),
 	}
-	data, err := json.Marshal(payload)
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	return c.SendSSEvent(ssEvent{Event: "termwrite", Data: data})
+	return c.SendSSEvent(ssEvent{Event: "termwrite", Data: jsonData})
 }
 
 func (c *ClientImpl) HandleTermInput(input rpctypes.TermInputPacket) {

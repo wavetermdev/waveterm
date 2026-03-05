@@ -72,8 +72,11 @@ func SetTermInputHandler(handler func(input TermInputPacket)) {
 	engine.GetDefaultClient().SetTermInputHandler(handler)
 }
 
-func TermWrite(id string, data64 string) error {
-	return engine.GetDefaultClient().SendTermWrite(id, data64)
+func TermWrite(ref *vdom.VDomRef, data string) error {
+	if ref == nil || !ref.HasCurrent.Load() {
+		return nil
+	}
+	return engine.GetDefaultClient().SendTermWrite(ref.RefId, data)
 }
 
 func ConfigAtom[T any](name string, defaultValue T, meta *AtomMeta) Atom[T] {

@@ -219,6 +219,6 @@ type TermInputPacket struct {
 }
 
 type TermWritePacket struct {
-	Id     string `json:"id"`
+	RefId  string `json:"refid"`
 	Data64 string `json:"data64"`
 }

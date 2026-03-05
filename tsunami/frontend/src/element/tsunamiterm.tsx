@@ -5,8 +5,6 @@ import * as React from "react";
 
 import { base64ToArray, stringToBase64 } from "@/util/base64";
 
-const TermWriteEventName = "tsunami:termwrite";
-
 type TermSize = {
     rows: number;
     cols: number;
@@ -18,9 +16,9 @@ type TermInputPayload = {
     data64?: string;
 };
 
-type TermWritePayload = {
-    id: string;
-    data64: string;
+export type TsunamiTermElem = HTMLDivElement & {
+    __termWrite: (data64: string) => void;
+    __termFocus: () => void;
 };
 
 async function sendTermInput(payload: TermInputPayload) {
@@ -41,13 +39,28 @@ const TsunamiTerm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
     ref
 ) {
     const { id, ...outerProps } = props;
-    const outerRef = React.useRef<HTMLDivElement>(null);
+    const outerRef = React.useRef<TsunamiTermElem>(null);
     const termRef = React.useRef<HTMLDivElement>(null);
     const terminalRef = React.useRef<Terminal | null>(null);
 
     const setOuterRef = React.useCallback(
-        (elem: HTMLDivElement) => {
+        (elem: TsunamiTermElem) => {
             outerRef.current = elem;
+            if (elem != null) {
+                elem.__termWrite = (data64: string) => {
+                    if (data64 == null || data64 === "") {
+                        return;
+                    }
+                    try {
+                        terminalRef.current?.write(base64ToArray(data64));
+                    } catch (error) {
+                        console.error("Failed to write to terminal:", error);
+                    }
+                };
+                elem.__termFocus = () => {
+                    terminalRef.current?.focus();
+                };
+            }
             if (typeof ref === "function") {
                 ref(elem);
                 return;
@@ -114,29 +127,27 @@ const TsunamiTerm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
         };
     }, [id]);
 
-    React.useEffect(() => {
-        const handleTermWrite = (event: Event) => {
-            const detail = (event as CustomEvent<TermWritePayload>).detail;
-            if (detail == null || detail.id !== id || detail.data64 == null || detail.data64 === "") {
-                return;
-            }
-            try {
-                terminalRef.current?.write(base64ToArray(detail.data64));
-            } catch (error) {
-                console.error("Failed to process term write event:", error);
-            }
-        };
-        window.addEventListener(TermWriteEventName, handleTermWrite);
-        return () => {
-            window.removeEventListener(TermWriteEventName, handleTermWrite);
-        };
-    }, [id]);
+    const handleFocus = React.useCallback(
+        (e: React.FocusEvent<HTMLDivElement>) => {
+            terminalRef.current?.focus();
+            outerProps.onFocus?.(e);
+        },
+        [outerProps.onFocus]
+    );
+
+    const handleBlur = React.useCallback(
+        (e: React.FocusEvent<HTMLDivElement>) => {
+            terminalRef.current?.blur();
+            outerProps.onBlur?.(e);
+        },
+        [outerProps.onBlur]
+    );
 
     return (
-        <div {...outerProps} id={id} ref={setOuterRef}>
+        <div {...outerProps} id={id} ref={setOuterRef as React.RefCallback<HTMLDivElement>} onFocus={handleFocus} onBlur={handleBlur}>
             <div ref={termRef} className="w-full h-full" />
         </div>
     );
 });
 
-export { TermWriteEventName, TsunamiTerm };
+export { TsunamiTerm };
