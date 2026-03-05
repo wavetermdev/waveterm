@@ -122,6 +122,7 @@ declare global {
         persistent?: boolean;
         clear?: boolean;
         clearall?: boolean;
+        clearbyid?: string;
         badge?: Badge;
     };
 

@@ -106,34 +106,49 @@ func handleBadgeEvent(event *wps.WaveEvent) {
 		return
 	}
 
-	setBadge(oref, data.Badge, data.Persistent, data.Clear)
+	setBadge(oref, data)
 }
 
 // setBadge updates the appropriate in-memory map and, when persistent, writes
 // through to the DB and fires a WaveObjUpdate event so the frontend stays in sync.
-func setBadge(oref waveobj.ORef, badge *baseds.Badge, persistent bool, clear bool) {
+func setBadge(oref waveobj.ORef, data baseds.BadgeEvent) {
 	globalBadgeStore.lock.Lock()
 	defer globalBadgeStore.lock.Unlock()
 
 	orefStr := oref.String()
 
-	if persistent {
-		if clear || badge == nil {
+	shouldClear := data.Clear
+	if data.ClearById != "" {
+		m := globalBadgeStore.transient
+		if data.Persistent {
+			m = globalBadgeStore.persistent
+		}
+		existing, ok := m[orefStr]
+		if !ok || existing.BadgeId != data.ClearById {
+			return
+		}
+		shouldClear = true
+	} else if !data.Clear {
+		shouldClear = data.Badge == nil
+	}
+
+	if data.Persistent {
+		if shouldClear {
 			delete(globalBadgeStore.persistent, orefStr)
 			log.Printf("badge store: persistent badge cleared: oref=%s\n", orefStr)
 			go persistBadge(oref, nil)
 		} else {
-			globalBadgeStore.persistent[orefStr] = *badge
-			log.Printf("badge store: persistent badge set: oref=%s badge=%+v\n", orefStr, *badge)
-			go persistBadge(oref, badge)
+			globalBadgeStore.persistent[orefStr] = *data.Badge
+			log.Printf("badge store: persistent badge set: oref=%s badge=%+v\n", orefStr, *data.Badge)
+			go persistBadge(oref, data.Badge)
 		}
 	} else {
-		if clear || badge == nil {
+		if shouldClear {
 			delete(globalBadgeStore.transient, orefStr)
 			log.Printf("badge store: transient badge cleared: oref=%s\n", orefStr)
 		} else {
-			globalBadgeStore.transient[orefStr] = *badge
-			log.Printf("badge store: transient badge set: oref=%s badge=%+v\n", orefStr, *badge)
+			globalBadgeStore.transient[orefStr] = *data.Badge
+			log.Printf("badge store: transient badge set: oref=%s badge=%+v\n", orefStr, *data.Badge)
 		}
 	}
 }

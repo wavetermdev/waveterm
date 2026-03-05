@@ -258,6 +258,20 @@ function setBadge(blockId: string, badge: Omit<Badge, "badgeid"> & { badgeid?: s
     fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
 }
 
+function clearBadgeById(blockId: string, badgeId: string, persistent: boolean) {
+    const oref = WOS.makeORef("block", blockId);
+    const eventData: WaveEvent = {
+        event: "badge",
+        scopes: [oref],
+        data: {
+            oref: oref,
+            persistent: persistent,
+            clearbyid: badgeId,
+        } as BadgeEvent,
+    };
+    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+}
+
 function setupBadgesSubscription() {
     waveEventSubscribeSingle({
         eventType: "badge",
@@ -273,13 +287,17 @@ function setupBadgesSubscription() {
             if (data?.oref == null) {
                 return;
             }
-            if (data.persistent) {
-                const curAtom = getPersistentBadgeAtom(data.oref);
-                globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
-            } else {
-                const curAtom = getTransientBadgeAtom(data.oref);
-                globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
+            const curAtom = data.persistent
+                ? getPersistentBadgeAtom(data.oref)
+                : getTransientBadgeAtom(data.oref);
+            if (data.clearbyid) {
+                const existing = globalStore.get(curAtom);
+                if (existing?.badgeid === data.clearbyid) {
+                    globalStore.set(curAtom, null);
+                }
+                return;
             }
+            globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
         },
     });
 }
@@ -287,6 +305,7 @@ function setupBadgesSubscription() {
 export {
     clearAllBadges,
     clearAllTabIndicators,
+    clearBadgeById,
     clearBadgesForTab,
     clearTabIndicatorFromFocus,
     getBlockBadgeAtom,
