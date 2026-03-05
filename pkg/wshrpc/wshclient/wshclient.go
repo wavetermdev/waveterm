@@ -65,6 +65,12 @@ func AuthenticateTokenVerifyCommand(w *wshutil.WshRpc, data wshrpc.CommandAuthen
 	return resp, err
 }
 
+// command "badgewatchpid", wshserver.BadgeWatchPidCommand
+func BadgeWatchPidCommand(w *wshutil.WshRpc, data wshrpc.CommandBadgeWatchPidData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "badgewatchpid", data, opts)
+	return err
+}
+
 // command "blockinfo", wshserver.BlockInfoCommand
 func BlockInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.BlockInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.BlockInfoData](w, "blockinfo", data, opts)

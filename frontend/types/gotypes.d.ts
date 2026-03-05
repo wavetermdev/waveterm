@@ -240,6 +240,13 @@ declare global {
         token: string;
     };
 
+    // wshrpc.CommandBadgeWatchPidData
+    type CommandBadgeWatchPidData = {
+        pid: number;
+        oref: ORef;
+        badgeid: string;
+    };
+
     // wshrpc.CommandBlockInputData
     type CommandBlockInputData = {
         blockid: string;

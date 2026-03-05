@@ -125,6 +125,7 @@ type WshRpcInterface interface {
 	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) (*CommandRemoteReconnectToJobManagerRtnData, error)
 	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
 	RemoteTerminateJobManagerCommand(ctx context.Context, data CommandRemoteTerminateJobManagerData) error
+	BadgeWatchPidCommand(ctx context.Context, data CommandBadgeWatchPidData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -887,6 +888,12 @@ type TabIndicator struct {
 type TabIndicatorEventData struct {
 	TabId     string        `json:"tabid"`
 	Indicator *TabIndicator `json:"indicator"`
+}
+
+type CommandBadgeWatchPidData struct {
+	Pid     int          `json:"pid"`
+	ORef    waveobj.ORef `json:"oref"`
+	BadgeId string       `json:"badgeid"`
 }
 
 type BlockJobStatusData struct {

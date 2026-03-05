@@ -47,6 +47,11 @@ class RpcApiType {
         return client.wshRpcCall("authenticatetokenverify", data, opts);
     }
 
+    // command "badgewatchpid" [call]
+    BadgeWatchPidCommand(client: WshClient, data: CommandBadgeWatchPidData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("badgewatchpid", data, opts);
+    }
+
     // command "blockinfo" [call]
     BlockInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockInfoData> {
         return client.wshRpcCall("blockinfo", data, opts);
