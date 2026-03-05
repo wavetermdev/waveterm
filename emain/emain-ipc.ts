@@ -477,7 +477,7 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("save-text-file", async (event, fileName: string, content: string) => {
-        const ww = focusedWaveWindow;
+        const ww = electron.BrowserWindow.fromWebContents(event.sender) ?? focusedWaveWindow;
         if (ww == null) {
             return false;
         }
