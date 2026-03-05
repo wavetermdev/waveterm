@@ -1,14 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-    clearAllBadges,
-    clearAllTabIndicators,
-    clearBadgesForTab,
-    clearTabIndicatorFromFocus,
-    getTabIndicatorAtom,
-    setTabIndicator,
-} from "@/app/store/badge";
+import { clearAllBadges, clearBadgesForTab, getTabBadgeAtom } from "@/app/store/badge";
 import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -30,7 +23,7 @@ interface TabVProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
-    indicator?: TabIndicator | null;
+    indicator?: Badge | null;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -216,20 +209,18 @@ function buildTabContextMenu(
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void
 ): ContextMenuItem[] {
     const menu: ContextMenuItem[] = [];
-    const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
-    if (currentIndicator) {
+    const currentBadges = globalStore.get(getTabBadgeAtom(id));
+    if (currentBadges?.length > 0) {
         menu.push(
             {
-                label: "Clear Tab Indicator",
+                label: "Clear Tab Badges",
                 click: () => {
-                    setTabIndicator(id, null);
                     clearBadgesForTab(id);
                 },
             },
             {
-                label: "Clear All Indicators",
+                label: "Clear All Badges",
                 click: () => {
-                    clearAllTabIndicators();
                     clearAllBadges(true);
                     clearAllBadges(false);
                 },
@@ -296,7 +287,8 @@ interface TabProps {
 const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
-    const indicator = useAtomValue(getTabIndicatorAtom(id));
+    const badges = useAtomValue(getTabBadgeAtom(id));
+    const indicator = badges?.[0] ?? null;
 
     const loadedRef = useRef(false);
     const renameRef = useRef<(() => void) | null>(null);
@@ -309,10 +301,6 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     }, [onLoaded]);
 
     const handleTabClick = () => {
-        const currentIndicator = globalStore.get(getTabIndicatorAtom(id));
-        if (currentIndicator?.clearonfocus) {
-            clearTabIndicatorFromFocus(id);
-        }
         onSelect();
     };
 

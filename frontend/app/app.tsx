@@ -1,11 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { clearTabIndicatorFromFocus, getTabIndicatorAtom } from "@/app/store/badge";
+import { clearTransientBadgesForBlock, getBlockBadgeAtom } from "@/app/store/badge";
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, globalStore } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
@@ -209,25 +210,24 @@ const AppKeyHandlers = () => {
     return null;
 };
 
-const TabIndicatorAutoClearing = () => {
-    const tabId = useAtomValue(atoms.staticTabId);
-    const indicator = useAtomValue(getTabIndicatorAtom(tabId));
-    const documentHasFocus = useAtomValue(atoms.documentHasFocus);
+const BadgeAutoClearing = () => {
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedNode = useAtomValue(layoutModel.focusedNode);
+    const focusedBlockId = focusedNode?.data?.blockId;
+    const badge = useAtomValue(getBlockBadgeAtom(focusedBlockId));
 
     useEffect(() => {
-        if (!indicator || !documentHasFocus || !indicator.clearonfocus) {
+        if (!focusedBlockId || !badge) {
             return;
         }
-
         const timeoutId = setTimeout(() => {
-            const currentIndicator = globalStore.get(getTabIndicatorAtom(tabId));
-            if (globalStore.get(atoms.documentHasFocus) && currentIndicator?.clearonfocus) {
-                clearTabIndicatorFromFocus(tabId);
+            const currentFocusedNode = globalStore.get(layoutModel.focusedNode);
+            if (currentFocusedNode?.data?.blockId === focusedBlockId) {
+                clearTransientBadgesForBlock(focusedBlockId);
             }
         }, 3000);
-
         return () => clearTimeout(timeoutId);
-    }, [tabId, indicator, documentHasFocus]);
+    }, [focusedBlockId, badge]);
 
     return null;
 };
@@ -259,7 +259,7 @@ const AppInner = () => {
             <AppKeyHandlers />
             <AppFocusHandler />
             <AppSettingsUpdater />
-            <TabIndicatorAutoClearing />
+            <BadgeAutoClearing />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>

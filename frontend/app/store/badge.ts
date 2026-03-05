@@ -3,7 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { fireAndForget } from "@/util/util";
+import { fireAndForget, NullAtom } from "@/util/util";
 import { v7 as uuidv7, version as uuidVersion } from "uuid";
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
@@ -99,6 +99,14 @@ function clearBadgeInternal(oref: string, persistent: boolean) {
     fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
 }
 
+function clearTransientBadgesForBlock(blockId: string) {
+    const oref = WOS.makeORef("block", blockId);
+    const transientAtom = TransientBadgeMap.get(oref);
+    if (transientAtom != null && globalStore.get(transientAtom) != null) {
+        clearBadgeInternal(oref, false);
+    }
+}
+
 function clearAllBadges(persistent: boolean) {
     const eventData: WaveEvent = {
         event: "badge",
@@ -150,6 +158,9 @@ function setupTabIndicatorSubscription() {
 }
 
 function getBlockBadgeAtom(blockId: string): Atom<Badge> {
+    if (blockId == null) {
+        return NullAtom as Atom<Badge>;
+    }
     let rtn = BlockBadgeAtomCache.get(blockId);
     if (rtn != null) {
         return rtn;
@@ -176,6 +187,9 @@ function getBlockBadgeAtom(blockId: string): Atom<Badge> {
 }
 
 function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
+    if (tabId == null) {
+        return NullAtom as Atom<Badge[]>;
+    }
     let rtn = TabBadgeAtomCache.get(tabId);
     if (rtn != null) {
         return rtn;
@@ -308,6 +322,7 @@ export {
     clearBadgeById,
     clearBadgesForTab,
     clearTabIndicatorFromFocus,
+    clearTransientBadgesForBlock,
     getBlockBadgeAtom,
     getPersistentBadgeAtom,
     getTabBadgeAtom,
