@@ -445,6 +445,9 @@ func (r *RootElem) UpdateRef(updateRef rpctypes.VDomRefUpdate) {
 	}
 	ref.HasCurrent.Store(updateRef.HasCurrent)
 	ref.Position = updateRef.Position
+	if updateRef.TermSize != nil {
+		ref.TermSize = updateRef.TermSize
+	}
 }
 
 func (r *RootElem) QueueRefOp(op vdom.VDomRefOperation) {

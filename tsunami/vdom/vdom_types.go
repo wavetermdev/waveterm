@@ -43,6 +43,7 @@ type VDomRef struct {
 	TrackPosition bool             `json:"trackposition,omitempty"`
 	Position      *VDomRefPosition `json:"-"`
 	HasCurrent    atomic.Bool      `json:"-"`
+	TermSize      *VDomTermSize    `json:"-"`
 }
 
 func (r *VDomRef) MarshalJSON() ([]byte, error) {

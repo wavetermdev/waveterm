@@ -338,6 +338,12 @@ export class TsunamiModel {
                         boundingclientrect: ref.elem.getBoundingClientRect(),
                     };
                 }
+                if (isTsunamiTermElem(ref.elem)) {
+                    const termsize = ref.elem.__termSize();
+                    if (termsize != null) {
+                        ru.termsize = termsize;
+                    }
+                }
                 updates.push(ru);
                 ref.updated = false;
             }

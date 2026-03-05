@@ -48,6 +48,14 @@ func (tr *TermRef) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// TermSize returns the current terminal size, or nil if not yet set.
+func (tr *TermRef) TermSize() *vdom.VDomTermSize {
+	if tr.VDomRef == nil {
+		return nil
+	}
+	return tr.VDomRef.TermSize
+}
+
 // UseTermRef returns a TermRef that can be passed as a ref to "wave:term" elements
 // and also implements io.Writer for writing directly to the terminal.
 func UseTermRef() *TermRef {

@@ -166,6 +166,7 @@ type VDomRefUpdate struct {
 	RefId      string                `json:"refid"`
 	HasCurrent bool                  `json:"hascurrent"`
 	Position   *vdom.VDomRefPosition `json:"position,omitempty"`
+	TermSize   *vdom.VDomTermSize    `json:"termsize,omitempty"`
 }
 
 type VDomBackendOpts struct {

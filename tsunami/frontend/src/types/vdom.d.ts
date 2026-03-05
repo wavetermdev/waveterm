@@ -142,6 +142,7 @@ type VDomRefUpdate = {
     refid: string;
     hascurrent: boolean;
     position?: VDomRefPosition;
+    termsize?: VDomTermSize;
 };
 
 // rpctypes.VDomRenderContext
