@@ -6,6 +6,34 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.14.1 &mdash; Mar 3, 2026
+
+Wave v0.14.1 fixes several high-impact terminal bugs (Claude Code scrolling, IME input) and adds new config options: focus-follows-cursor, cursor style customization, workspace-scoped widgets, and vim-style block navigation.
+
+**Terminal Improvements:**
+
+- **Claude Code Scroll Fix** - Fixed a long-standing bug that caused terminal windows to jump to the top unexpectedly, affecting many Claude Code users
+- **IME Fix** - Fixed Korean/CJK input where characters were lost or stuck in composition and only committed on Space
+- **Scroll Position Preserved on Resize** - Terminal now stays scrolled to the bottom across resizes when it was already at the bottom
+- **Better Link Handling** - Terminal URLs now have improved context menus and tooltips for easier navigation
+- **Terminal Scrollback Save** - New context menu item and `wsh` command to save terminal scrollback to a file
+
+**New Features:**
+
+- **Focus Follows Cursor** - New `app:focusfollowscursor` setting (off/on/term) for hover-based block focus
+- **Terminal Cursor Style & Blink** - New settings for cursor style (block/bar/underline) and blink, configurable per-block
+- **Tab Close Confirmation** - New `tab:confirmclose` setting to prompt before closing a tab
+- **Workspace-Scoped Widgets** - New optional `workspaces` field in `widgets.json` to show/hide widgets per-workspace
+- **Vim-Style Block Navigation** - Added Ctrl+Shift+H/J/K/L to navigate between blocks
+- **New AI Providers** - Added Groq and NanoGPT as built-in AI provider presets
+
+**Other Changes:**
+
+- Fixed intermittant bugs with connection switching in terminal blocks
+- Widgets.json schema improvements for better editor validation
+- Package updates and dependency upgrades
+- Internal code cleanup and refactoring
+
 ### v0.14.0 &mdash; Feb 10, 2026
 
 **Durable SSH Sessions and Enhanced Connection Monitoring**

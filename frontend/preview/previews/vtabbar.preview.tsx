@@ -50,6 +50,11 @@ export function VTabBarPreview() {
                     width={width}
                     onSelectTab={setActiveTabId}
                     onCloseTab={handleCloseTab}
+                    onRenameTab={(tabId, newName) => {
+                        setTabs((prevTabs) =>
+                            prevTabs.map((tab) => (tab.id === tabId ? { ...tab, name: newName } : tab))
+                        );
+                    }}
                     onReorderTabs={(tabIds) => {
                         setTabs((prevTabs) => {
                             const tabById = new Map(prevTabs.map((tab) => [tab.id, tab]));

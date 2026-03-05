@@ -17,6 +17,7 @@ import {
     incrementTermCommandsRemote,
     incrementTermCommandsRun,
     incrementTermCommandsWsl,
+    setWasActive,
 } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
@@ -315,6 +316,10 @@ export function initIpcHandlers() {
         event.returnValue = null;
         const tabView = getWaveTabViewByWebContentsId(event.sender.id);
         tabView?.setKeyboardChordMode(true);
+    });
+
+    electron.ipcMain.handle("set-is-active", () => {
+        setWasActive(true);
     });
 
     const fac = new FastAverageColor();

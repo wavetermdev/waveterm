@@ -13,6 +13,7 @@ interface VTabBarProps {
     className?: string;
     onSelectTab?: (tabId: string) => void;
     onCloseTab?: (tabId: string) => void;
+    onRenameTab?: (tabId: string, newName: string) => void;
     onReorderTabs?: (tabIds: string[]) => void;
 }
 
@@ -29,11 +30,14 @@ function clampWidth(width?: number): number {
     return width;
 }
 
-export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCloseTab, onReorderTabs }: VTabBarProps) {
+export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCloseTab, onRenameTab, onReorderTabs }: VTabBarProps) {
     const [orderedTabs, setOrderedTabs] = useState<VTabItem[]>(tabs);
     const [dragTabId, setDragTabId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
+    const [dropLineTop, setDropLineTop] = useState<number | null>(null);
+    const [hoverResetVersion, setHoverResetVersion] = useState(0);
     const dragSourceRef = useRef<string | null>(null);
+    const didResetHoverForDragRef = useRef(false);
 
     useEffect(() => {
         setOrderedTabs(tabs);
@@ -42,9 +46,14 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
     const barWidth = useMemo(() => clampWidth(width), [width]);
 
     const clearDragState = () => {
+        if (dragSourceRef.current != null && !didResetHoverForDragRef.current) {
+            didResetHoverForDragRef.current = true;
+            setHoverResetVersion((version) => version + 1);
+        }
         dragSourceRef.current = null;
         setDragTabId(null);
         setDropIndex(null);
+        setDropLineTop(null);
     };
 
     const reorder = (targetIndex: number) => {
@@ -68,24 +77,18 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
         onReorderTabs?.(nextTabs.map((tab) => tab.id));
     };
 
-    const getDropLineClass = (index: number) =>
-        cn(
-            "h-0 border-t-2",
-            dragTabId != null && dropIndex === index ? "border-accent/80" : "border-transparent",
-            index > 0 && index < orderedTabs.length && "my-px"
-        );
-
     return (
         <div
             className={cn("flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden border-r border-border bg-panel", className)}
             style={{ width: barWidth }}
         >
             <div
-                className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1"
+                className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
                 onDragOver={(event) => {
                     event.preventDefault();
                     if (event.target === event.currentTarget) {
                         setDropIndex(orderedTabs.length);
+                        setDropLineTop(event.currentTarget.scrollHeight);
                     }
                 }}
                 onDrop={(event) => {
@@ -96,41 +99,54 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                     clearDragState();
                 }}
             >
-                <div className={getDropLineClass(0)} />
                 {orderedTabs.map((tab, index) => (
-                    <div key={tab.id} className="flex flex-col">
-                        <VTab
-                            tab={tab}
-                            active={tab.id === activeTabId}
-                            isDragging={dragTabId === tab.id}
-                            isReordering={dragTabId != null}
-                            onSelect={() => onSelectTab?.(tab.id)}
-                            onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
-                            onDragStart={(event) => {
-                                dragSourceRef.current = tab.id;
-                                event.dataTransfer.effectAllowed = "move";
-                                event.dataTransfer.setData("text/plain", tab.id);
-                                setDragTabId(tab.id);
-                                setDropIndex(index);
-                            }}
-                            onDragOver={(event) => {
-                                event.preventDefault();
-                                const rect = event.currentTarget.getBoundingClientRect();
-                                const insertBefore = event.clientY < rect.top + rect.height / 2;
-                                setDropIndex(insertBefore ? index : index + 1);
-                            }}
-                            onDrop={(event) => {
-                                event.preventDefault();
-                                if (dropIndex != null) {
-                                    reorder(dropIndex);
-                                }
-                                clearDragState();
-                            }}
-                            onDragEnd={clearDragState}
-                        />
-                        <div className={getDropLineClass(index + 1)} />
-                    </div>
+                    <VTab
+                        key={`${tab.id}:${hoverResetVersion}`}
+                        tab={tab}
+                        active={tab.id === activeTabId}
+                        isDragging={dragTabId === tab.id}
+                        isReordering={dragTabId != null}
+                        onSelect={() => onSelectTab?.(tab.id)}
+                        onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
+                        onRename={onRenameTab ? (newName) => onRenameTab(tab.id, newName) : undefined}
+                        onDragStart={(event) => {
+                            didResetHoverForDragRef.current = false;
+                            dragSourceRef.current = tab.id;
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", tab.id);
+                            setDragTabId(tab.id);
+                            setDropIndex(index);
+                            setDropLineTop(event.currentTarget.offsetTop);
+                        }}
+                        onDragOver={(event) => {
+                            event.preventDefault();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            const relativeY = event.clientY - rect.top;
+                            const midpoint = event.currentTarget.offsetHeight / 2;
+                            const insertBefore = relativeY < midpoint;
+                            setDropIndex(insertBefore ? index : index + 1);
+                            setDropLineTop(
+                                insertBefore
+                                    ? event.currentTarget.offsetTop
+                                    : event.currentTarget.offsetTop + event.currentTarget.offsetHeight
+                            );
+                        }}
+                        onDrop={(event) => {
+                            event.preventDefault();
+                            if (dropIndex != null) {
+                                reorder(dropIndex);
+                            }
+                            clearDragState();
+                        }}
+                        onDragEnd={clearDragState}
+                    />
                 ))}
+                {dragTabId != null && dropIndex != null && dropLineTop != null && (
+                    <div
+                        className="pointer-events-none absolute left-0 right-0 border-t-2 border-accent/80"
+                        style={{ top: dropLineTop, transform: "translateY(-1px)" }}
+                    />
+                )}
             </div>
         </div>
     );
