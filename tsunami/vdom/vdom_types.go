@@ -100,6 +100,16 @@ type VDomRefPosition struct {
 	BoundingClientRect DomRect `json:"boundingclientrect"`
 }
 
+type VDomTermInputData struct {
+	TermSize *VDomTermSize `json:"termsize,omitempty"`
+	Data     string        `json:"data,omitempty"`
+}
+
+type VDomTermSize struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
+}
+
 type VDomEvent struct {
 	WaveId          string             `json:"waveid"`
 	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
@@ -112,6 +122,7 @@ type VDomEvent struct {
 	KeyData         *VDomKeyboardEvent `json:"keydata,omitempty"`       // set for onKeyDown events
 	MouseData       *VDomPointerData   `json:"mousedata,omitempty"`     // set for onClick, onMouseDown, onMouseUp, onDoubleClick events
 	FormData        *VDomFormData      `json:"formdata,omitempty"`      // set for onSubmit events on forms
+	TermInput       *VDomTermInputData `json:"terminput,omitempty"`     // set for onData events on wave:term elements
 }
 
 type VDomKeyboardEvent struct {

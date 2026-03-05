@@ -3,45 +3,24 @@ import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import * as React from "react";
 
-import { base64ToArray, stringToBase64 } from "@/util/base64";
-
-type TermSize = {
-    rows: number;
-    cols: number;
-};
-
-type TermInputPayload = {
-    id: string;
-    termsize?: TermSize;
-    data64?: string;
-};
+import { base64ToArray } from "@/util/base64";
 
 export type TsunamiTermElem = HTMLDivElement & {
     __termWrite: (data64: string) => void;
     __termFocus: () => void;
 };
 
-async function sendTermInput(payload: TermInputPayload) {
-    const response = await fetch("/api/terminput", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-        throw new Error(`terminal input request failed: ${response.status} ${response.statusText}`);
-    }
-}
+type TsunamiTermProps = React.HTMLAttributes<HTMLDivElement> & {
+    onData?: (data: string | null, termsize: VDomTermSize | null) => void;
+};
 
-const TsunamiTerm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(function TsunamiTerm(
-    props,
-    ref
-) {
-    const { id, ...outerProps } = props;
+const TsunamiTerm = React.forwardRef<HTMLDivElement, TsunamiTermProps>(function TsunamiTerm(props, ref) {
+    const { onData, ...outerProps } = props;
     const outerRef = React.useRef<TsunamiTermElem>(null);
     const termRef = React.useRef<HTMLDivElement>(null);
     const terminalRef = React.useRef<Terminal | null>(null);
+    const onDataRef = React.useRef(onData);
+    onDataRef.current = onData;
 
     const setOuterRef = React.useCallback(
         (elem: TsunamiTermElem) => {
@@ -86,29 +65,16 @@ const TsunamiTerm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
         terminalRef.current = terminal;
 
         const onDataDisposable = terminal.onData((data) => {
-            if (id == null || id === "") {
+            if (onDataRef.current == null) {
                 return;
             }
-            sendTermInput({
-                id,
-                data64: stringToBase64(data),
-            }).catch((error) => {
-                console.error("Failed to send terminal input:", error);
-            });
+            onDataRef.current(data, null);
         });
         const onResizeDisposable = terminal.onResize((size) => {
-            if (id == null || id === "") {
+            if (onDataRef.current == null) {
                 return;
             }
-            sendTermInput({
-                id,
-                termsize: {
-                    rows: size.rows,
-                    cols: size.cols,
-                },
-            }).catch((error) => {
-                console.error("Failed to send terminal resize:", error);
-            });
+            onDataRef.current(null, { rows: size.rows, cols: size.cols });
         });
 
         const resizeObserver = new ResizeObserver(() => {
@@ -125,7 +91,7 @@ const TsunamiTerm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
             terminal.dispose();
             terminalRef.current = null;
         };
-    }, [id]);
+    }, []);
 
     const handleFocus = React.useCallback(
         (e: React.FocusEvent<HTMLDivElement>) => {
@@ -144,7 +110,12 @@ const TsunamiTerm = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
     );
 
     return (
-        <div {...outerProps} id={id} ref={setOuterRef as React.RefCallback<HTMLDivElement>} onFocus={handleFocus} onBlur={handleBlur}>
+        <div
+            {...outerProps}
+            ref={setOuterRef as React.RefCallback<HTMLDivElement>}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+        >
             <div ref={termRef} className="w-full h-full" />
         </div>
     );

@@ -18,6 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 const SSEKeepAliveDuration = 5 * time.Second
@@ -414,17 +415,24 @@ func (h *httpHandlers) handleTermInput(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var input rpctypes.TermInputPacket
-	if err := json.Unmarshal(body, &input); err != nil {
+	var event vdom.VDomEvent
+	if err := json.Unmarshal(body, &event); err != nil {
 		http.Error(w, fmt.Sprintf("failed to parse JSON: %v", err), http.StatusBadRequest)
 		return
 	}
-	if strings.TrimSpace(input.Id) == "" {
-		http.Error(w, "id is required", http.StatusBadRequest)
+	if strings.TrimSpace(event.WaveId) == "" {
+		http.Error(w, "waveid is required", http.StatusBadRequest)
+		return
+	}
+	if event.TermInput == nil {
+		http.Error(w, "terminput is required", http.StatusBadRequest)
 		return
 	}
 
-	h.Client.HandleTermInput(input)
+	h.renderLock.Lock()
+	h.Client.Root.Event(event, h.Client.GlobalEventHandler)
+	h.renderLock.Unlock()
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
