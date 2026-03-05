@@ -3,7 +3,7 @@
 
 import { App } from "@/app/app";
 import { loadMonaco } from "@/app/monaco/monaco-env";
-import { loadTabIndicators } from "@/app/store/badge";
+import { loadBadges, loadTabIndicators } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
@@ -161,6 +161,7 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
     await loadTabIndicators();
+    await loadBadges();
     initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
 

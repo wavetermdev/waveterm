@@ -4,12 +4,14 @@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget } from "@/util/util";
-import { atom, PrimitiveAtom } from "jotai";
+import { atom, Atom, PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 import { waveEventSubscribeSingle } from "./wps";
 
 const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
+const PersistentBadgeMap = new Map<string, PrimitiveAtom<Badge>>();
+const TransientBadgeMap = new Map<string, PrimitiveAtom<Badge>>();
 
 function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
     let rtn = TabIndicatorMap.get(tabId);
@@ -101,11 +103,88 @@ function setupTabIndicatorSubscription() {
     });
 }
 
+function getBadgeAtom(oref: string): Atom<Badge> {
+    const persistentAtom = getPersistentBadgeAtom(oref);
+    const transientAtom = getTransientBadgeAtom(oref);
+    return atom((get) => {
+        const persistent = get(persistentAtom);
+        const transient = get(transientAtom);
+        if (persistent == null) {
+            return transient;
+        }
+        if (transient == null) {
+            return persistent;
+        }
+        return transient.priority >= persistent.priority ? transient : persistent;
+    });
+}
+
+function getPersistentBadgeAtom(oref: string): PrimitiveAtom<Badge> {
+    let rtn = PersistentBadgeMap.get(oref);
+    if (rtn == null) {
+        rtn = atom(null) as PrimitiveAtom<Badge>;
+        PersistentBadgeMap.set(oref, rtn);
+    }
+    return rtn;
+}
+
+function getTransientBadgeAtom(oref: string): PrimitiveAtom<Badge> {
+    let rtn = TransientBadgeMap.get(oref);
+    if (rtn == null) {
+        rtn = atom(null) as PrimitiveAtom<Badge>;
+        TransientBadgeMap.set(oref, rtn);
+    }
+    return rtn;
+}
+
+async function loadBadges() {
+    const badges = await RpcApi.GetAllBadgesCommand(TabRpcClient);
+    if (badges == null) {
+        return;
+    }
+    for (const badgeEvent of badges) {
+        if (badgeEvent.oref == null) {
+            continue;
+        }
+        if (badgeEvent.persistent) {
+            const curAtom = getPersistentBadgeAtom(badgeEvent.oref);
+            globalStore.set(curAtom, badgeEvent.badge ?? null);
+        } else {
+            const curAtom = getTransientBadgeAtom(badgeEvent.oref);
+            globalStore.set(curAtom, badgeEvent.badge ?? null);
+        }
+    }
+}
+
+function setupBadgesSubscription() {
+    waveEventSubscribeSingle({
+        eventType: "badge",
+        handler: (event) => {
+            const data = event.data;
+            if (data?.oref == null) {
+                return;
+            }
+            if (data.persistent) {
+                const curAtom = getPersistentBadgeAtom(data.oref);
+                globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
+            } else {
+                const curAtom = getTransientBadgeAtom(data.oref);
+                globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
+            }
+        },
+    });
+}
+
 export {
     clearAllTabIndicators,
     clearTabIndicatorFromFocus,
+    getBadgeAtom,
+    getPersistentBadgeAtom,
     getTabIndicatorAtom,
+    getTransientBadgeAtom,
+    loadBadges,
     loadTabIndicators,
     setTabIndicator,
+    setupBadgesSubscription,
     setupTabIndicatorSubscription,
 };
