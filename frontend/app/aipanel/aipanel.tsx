@@ -306,7 +306,7 @@ const AIPanelComponentInner = memo(() => {
     };
 
     useEffect(() => {
-        globalStore.set(model.isAIStreaming, status == "streaming");
+        globalStore.set(model.isAIStreaming, status === "streaming" || status === "submitted");
     }, [status]);
 
     useEffect(() => {
