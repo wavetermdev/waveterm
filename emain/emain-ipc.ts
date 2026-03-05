@@ -141,6 +141,7 @@ function saveImageFileWithNativeDialog(
     }
     const ww = electron.BrowserWindow.fromWebContents(sender);
     if (ww == null) {
+        readStream.destroy();
         return;
     }
     const mimeToExtension: { [key: string]: string } = {
@@ -169,6 +170,7 @@ function saveImageFileWithNativeDialog(
         })
         .then((file) => {
             if (file.canceled) {
+                readStream.destroy();
                 return;
             }
             const writeStream = fs.createWriteStream(file.filePath);
