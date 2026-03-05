@@ -7,6 +7,7 @@ import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
+import { waveEventSubscribeSingle } from "./wps";
 
 const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 
@@ -91,11 +92,20 @@ async function loadTabIndicators() {
     }
 }
 
+function setupTabIndicatorSubscription() {
+    waveEventSubscribeSingle({
+        eventType: "tab:indicator",
+        handler: (event) => {
+            setTabIndicatorInternal(event.data.tabid, event.data.indicator);
+        },
+    });
+}
+
 export {
     clearAllTabIndicators,
     clearTabIndicatorFromFocus,
     getTabIndicatorAtom,
     loadTabIndicators,
     setTabIndicator,
-    setTabIndicatorInternal,
+    setupTabIndicatorSubscription,
 };

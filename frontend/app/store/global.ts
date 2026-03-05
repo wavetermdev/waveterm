@@ -28,7 +28,7 @@ import {
     NullAtom,
 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
-import { setTabIndicatorInternal } from "./badge";
+import { setupTabIndicatorSubscription } from "./badge";
 import { atoms, blockComponentModelMap, ConnStatusMapAtom, initGlobalAtoms, orefAtomCache } from "./global-atoms";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -37,11 +37,9 @@ import { isPreviewWindow } from "./windowtype";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribeSingle } from "./wps";
 
-let globalEnvironment: "electron" | "renderer";
 let globalPrimaryTabStartup: boolean = false;
 
 function initGlobal(initOpts: GlobalInitOptions) {
-    globalEnvironment = initOpts.environment;
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
@@ -99,12 +97,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             globalStore.set(atoms.waveAIRateLimitInfoAtom, event.data);
         },
     });
-    waveEventSubscribeSingle({
-        eventType: "tab:indicator",
-        handler: (event) => {
-            setTabIndicatorInternal(event.data.tabid, event.data.indicator);
-        },
-    });
+    setupTabIndicatorSubscription();
 }
 
 const blockCache = new Map<string, Map<string, any>>();
@@ -131,8 +124,8 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let blockAtom = WOS.getWaveObjectAtom(WOS.makeORef("block", blockId));
-        let blockData = get(blockAtom);
+        const blockAtom = WOS.getWaveObjectAtom(WOS.makeORef("block", blockId));
+        const blockData = get(blockAtom);
         return blockData?.meta?.[key];
     });
     blockCache.set(metaAtomName, metaAtom);
@@ -151,8 +144,8 @@ function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Ato
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let objAtom = WOS.getWaveObjectAtom(oref);
-        let objData = get(objAtom);
+        const objAtom = WOS.getWaveObjectAtom(oref);
+        const objData = get(objAtom);
         return objData?.meta?.[key];
     });
     orefCache.set(metaAtomName, metaAtom);
@@ -165,14 +158,14 @@ function useOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Met
 
 function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
     if (isPreviewWindow()) return NullAtom as Atom<ConnKeywords[T]>;
-    let connCache = getSingleConnAtomCache(connName);
+    const connCache = getSingleConnAtomCache(connName);
     const keyAtomName = "#conn-" + key;
     let keyAtom = connCache.get(keyAtomName);
     if (keyAtom != null) {
         return keyAtom;
     }
     keyAtom = atom((get) => {
-        let fullConfig = get(atoms.fullConfigAtom);
+        const fullConfig = get(atoms.fullConfigAtom);
         return fullConfig.connections?.[connName]?.[key];
     });
     connCache.set(keyAtomName, keyAtom);
@@ -612,7 +605,7 @@ function subscribeToConnEvents() {
                     return;
                 }
                 console.log("connstatus update", connStatus);
-                let curAtom = getConnStatusAtom(connStatus.connection);
+                const curAtom = getConnStatusAtom(connStatus.connection);
                 globalStore.set(curAtom, connStatus);
             } catch (e) {
                 console.log("connchange error", e);
