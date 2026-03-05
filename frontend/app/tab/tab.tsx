@@ -2,15 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-    atoms,
     clearAllTabIndicators,
     clearTabIndicatorFromFocus,
     getTabIndicatorAtom,
-    globalStore,
-    recordTEvent,
-    refocusNode,
     setTabIndicator,
-} from "@/app/store/global";
+} from "@/app/store/badge";
+import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";

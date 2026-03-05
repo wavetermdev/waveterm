@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
+import { setTabIndicator } from "@/app/store/badge";
 import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -13,7 +14,6 @@ import {
     globalStore,
     isDev,
     openLink,
-    setTabIndicator,
     WOS,
 } from "@/store/global";
 import * as services from "@/store/services";

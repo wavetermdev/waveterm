@@ -3,6 +3,7 @@
 
 import { App } from "@/app/app";
 import { loadMonaco } from "@/app/monaco/monaco-env";
+import { loadTabIndicators } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
@@ -25,7 +26,6 @@ import {
     initGlobal,
     initGlobalWaveEventSubs,
     loadConnStatus,
-    loadTabIndicators,
     subscribeToConnEvents,
 } from "@/store/global";
 import { activeTabIdAtom } from "@/store/tab-model";

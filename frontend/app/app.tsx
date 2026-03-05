@@ -1,19 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { clearTabIndicatorFromFocus, getTabIndicatorAtom } from "@/app/store/badge";
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import {
-    atoms,
-    clearTabIndicatorFromFocus,
-    createBlock,
-    getSettingsPrefixAtom,
-    getTabIndicatorAtom,
-    globalStore,
-} from "@/store/global";
+import { atoms, createBlock, getSettingsPrefixAtom, globalStore } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";

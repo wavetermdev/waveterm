@@ -27,19 +27,13 @@ import {
     isWslConnName,
     NullAtom,
 } from "@/util/util";
-import { isPreviewWindow } from "./windowtype";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
-import {
-    atoms,
-    blockComponentModelMap,
-    ConnStatusMapAtom,
-    initGlobalAtoms,
-    orefAtomCache,
-    TabIndicatorMap,
-} from "./global-atoms";
+import { setTabIndicatorInternal } from "./badge";
+import { atoms, blockComponentModelMap, ConnStatusMapAtom, initGlobalAtoms, orefAtomCache } from "./global-atoms";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
 import { ClientService, ObjectService } from "./services";
+import { isPreviewWindow } from "./windowtype";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribeSingle } from "./wps";
 
@@ -608,17 +602,6 @@ async function loadConnStatus() {
     }
 }
 
-async function loadTabIndicators() {
-    const tabIndicators = await RpcApi.GetAllTabIndicatorsCommand(TabRpcClient);
-    if (tabIndicators == null) {
-        return;
-    }
-    for (const [tabId, indicator] of Object.entries(tabIndicators)) {
-        const curAtom = getTabIndicatorAtom(tabId);
-        globalStore.set(curAtom, indicator);
-    }
-}
-
 function subscribeToConnEvents() {
     waveEventSubscribeSingle({
         eventType: "connchange",
@@ -672,76 +655,6 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     return rtn;
 }
 
-function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
-    let rtn = TabIndicatorMap.get(tabId);
-    if (rtn == null) {
-        rtn = atom(null) as PrimitiveAtom<TabIndicator>;
-        TabIndicatorMap.set(tabId, rtn);
-    }
-    return rtn;
-}
-
-function setTabIndicatorInternal(tabId: string, indicator: TabIndicator) {
-    if (indicator == null) {
-        const indicatorAtom = getTabIndicatorAtom(tabId);
-        globalStore.set(indicatorAtom, null);
-        return;
-    }
-    const indicatorAtom = getTabIndicatorAtom(tabId);
-    const currentIndicator = globalStore.get(indicatorAtom);
-    if (currentIndicator == null) {
-        globalStore.set(indicatorAtom, indicator);
-        return;
-    }
-    if (indicator.priority >= currentIndicator.priority) {
-        if (indicator.clearonfocus && !currentIndicator.clearonfocus) {
-            indicator.persistentindicator = currentIndicator;
-        }
-        globalStore.set(indicatorAtom, indicator);
-    }
-}
-
-function setTabIndicator(tabId: string, indicator: TabIndicator) {
-    setTabIndicatorInternal(tabId, indicator);
-
-    const eventData: WaveEvent = {
-        event: "tab:indicator",
-        scopes: [WOS.makeORef("tab", tabId)],
-        data: {
-            tabid: tabId,
-            indicator: indicator,
-        },
-    };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
-}
-
-function clearTabIndicatorFromFocus(tabId: string) {
-    const indicatorAtom = getTabIndicatorAtom(tabId);
-    const currentIndicator = globalStore.get(indicatorAtom);
-    if (currentIndicator == null) {
-        return;
-    }
-    const persistentIndicator = currentIndicator.persistentindicator;
-    const eventData: WaveEvent = {
-        event: "tab:indicator",
-        scopes: [WOS.makeORef("tab", tabId)],
-        data: {
-            tabid: tabId,
-            indicator: persistentIndicator ?? null,
-        } as TabIndicatorEventData,
-    };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
-}
-
-function clearAllTabIndicators() {
-    for (const [tabId, indicatorAtom] of TabIndicatorMap.entries()) {
-        const indicator = globalStore.get(indicatorAtom);
-        if (indicator != null) {
-            setTabIndicator(tabId, null);
-        }
-    }
-}
-
 function createTab() {
     getApi().createTab();
 }
@@ -758,12 +671,8 @@ function recordTEvent(event: string, props?: TEventProps) {
     RpcApi.RecordTEventCommand(TabRpcClient, { event, props }, { noresponse: true });
 }
 
-export { ConnStatusMapAtom, getAtoms, initGlobalAtoms, orefAtomCache, TabIndicatorMap, blockComponentModelMap } from "./global-atoms";
-
 export {
     atoms,
-    clearAllTabIndicators,
-    clearTabIndicatorFromFocus,
     createBlock,
     createBlockSplitHorizontally,
     createBlockSplitVertically,
@@ -783,7 +692,6 @@ export {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
-    getTabIndicatorAtom,
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
@@ -791,7 +699,6 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
-    loadTabIndicators,
     openLink,
     readAtom,
     recordTEvent,
@@ -801,7 +708,6 @@ export {
     setActiveTab,
     setNodeFocus,
     setPlatform,
-    setTabIndicator,
     subscribeToConnEvents,
     unregisterBlockComponentModel,
     useBlockAtom,
