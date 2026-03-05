@@ -121,6 +121,7 @@ declare global {
         oref: string;
         persistent?: boolean;
         clear?: boolean;
+        clearall?: boolean;
         badge?: Badge;
     };
 

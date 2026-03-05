@@ -100,12 +100,16 @@ function clearBadgeInternal(oref: string, persistent: boolean) {
 }
 
 function clearAllBadges(persistent: boolean) {
-    const map = persistent ? PersistentBadgeMap : TransientBadgeMap;
-    for (const oref of map.keys()) {
-        if (globalStore.get(map.get(oref)) != null) {
-            clearBadgeInternal(oref, persistent);
-        }
-    }
+    const eventData: WaveEvent = {
+        event: "badge",
+        scopes: [],
+        data: {
+            oref: "",
+            persistent: persistent,
+            clearall: true,
+        } as BadgeEvent,
+    };
+    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
 }
 
 function clearBadgesForTab(tabId: string) {
@@ -259,6 +263,13 @@ function setupBadgesSubscription() {
         eventType: "badge",
         handler: (event) => {
             const data = event.data;
+            if (data?.clearall) {
+                const map = data.persistent ? PersistentBadgeMap : TransientBadgeMap;
+                for (const atom of map.values()) {
+                    globalStore.set(atom, null);
+                }
+                return;
+            }
             if (data?.oref == null) {
                 return;
             }

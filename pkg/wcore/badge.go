@@ -91,6 +91,10 @@ func handleBadgeEvent(event *wps.WaveEvent) {
 		log.Printf("badge store: error unmarshaling BadgeEvent: %v\n", err)
 		return
 	}
+	if data.ClearAll {
+		clearAllBadges(data.Persistent)
+		return
+	}
 	if data.ORef == "" {
 		log.Printf("badge store: received badge event with empty oref\n")
 		return
@@ -134,6 +138,32 @@ func setBadge(oref waveobj.ORef, badge *baseds.Badge, persistent bool, clear boo
 	}
 }
 
+// clearAllBadges removes all badges from the given map (persistent or transient).
+// For persistent badges it also clears the DB records.
+func clearAllBadges(persistent bool) {
+	globalBadgeStore.lock.Lock()
+	defer globalBadgeStore.lock.Unlock()
+
+	if persistent {
+		orefs := make([]string, 0, len(globalBadgeStore.persistent))
+		for orefStr := range globalBadgeStore.persistent {
+			orefs = append(orefs, orefStr)
+		}
+		for _, orefStr := range orefs {
+			delete(globalBadgeStore.persistent, orefStr)
+			oref, err := waveobj.ParseORef(orefStr)
+			if err == nil {
+				persistBadge(oref, nil)
+			}
+		}
+		log.Printf("badge store: cleared all %d persistent badges\n", len(orefs))
+	} else {
+		count := len(globalBadgeStore.transient)
+		globalBadgeStore.transient = make(map[string]baseds.Badge)
+		log.Printf("badge store: cleared all %d transient badges\n", count)
+	}
+}
+
 // persistBadge writes the badge (or nil to clear) to the appropriate DB object.
 func persistBadge(oref waveobj.ORef, badge *baseds.Badge) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
@@ -141,7 +171,7 @@ func persistBadge(oref waveobj.ORef, badge *baseds.Badge) {
 
 	switch oref.OType {
 	case waveobj.OType_Tab:
-		err := wstore.DBUpdateFn[*waveobj.Tab](ctx, oref.OID, func(tab *waveobj.Tab) {
+		err := wstore.DBUpdateFn(ctx, oref.OID, func(tab *waveobj.Tab) {
 			tab.Badge = badge
 		})
 		if err != nil {
@@ -152,7 +182,7 @@ func persistBadge(oref waveobj.ORef, badge *baseds.Badge) {
 		SendWaveObjUpdate(oref)
 
 	case waveobj.OType_Block:
-		err := wstore.DBUpdateFn[*waveobj.Block](ctx, oref.OID, func(block *waveobj.Block) {
+		err := wstore.DBUpdateFn(ctx, oref.OID, func(block *waveobj.Block) {
 			block.Badge = badge
 		})
 		if err != nil {
