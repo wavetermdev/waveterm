@@ -25,12 +25,11 @@ var tabIndicatorCmd = &cobra.Command{
 }
 
 var (
-	tabIndicatorTabId      string
-	tabIndicatorColor      string
-	tabIndicatorPriority   float64
-	tabIndicatorClear      bool
-	tabIndicatorPersistent bool
-	tabIndicatorBeep       bool
+	tabIndicatorTabId    string
+	tabIndicatorColor    string
+	tabIndicatorPriority float64
+	tabIndicatorClear    bool
+	tabIndicatorBeep     bool
 )
 
 func init() {
@@ -39,7 +38,6 @@ func init() {
 	tabIndicatorCmd.Flags().StringVar(&tabIndicatorColor, "color", "", "indicator color")
 	tabIndicatorCmd.Flags().Float64Var(&tabIndicatorPriority, "priority", 10, "indicator priority")
 	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorClear, "clear", false, "clear the indicator")
-	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorPersistent, "persistent", false, "make indicator persistent (don't clear on focus)")
 	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorBeep, "beep", false, "play system bell sound")
 }
 
@@ -62,7 +60,6 @@ func tabIndicatorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	var eventData baseds.BadgeEvent
 	eventData.ORef = oref.String()
-	eventData.Persistent = tabIndicatorPersistent
 
 	if tabIndicatorClear {
 		eventData.Clear = true

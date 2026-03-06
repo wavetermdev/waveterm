@@ -22,10 +22,9 @@ type Badge struct {
 }
 
 type BadgeEvent struct {
-	ORef       string `json:"oref"`
-	Persistent bool   `json:"persistent,omitempty"`
-	Clear      bool   `json:"clear,omitempty"`
-	ClearAll   bool   `json:"clearall,omitempty"`
-	ClearById  string `json:"clearbyid,omitempty"`
-	Badge      *Badge `json:"badge,omitempty"`
+	ORef      string `json:"oref"`
+	Clear     bool   `json:"clear,omitempty"`
+	ClearAll  bool   `json:"clearall,omitempty"`
+	ClearById string `json:"clearbyid,omitempty"`
+	Badge     *Badge `json:"badge,omitempty"`
 }

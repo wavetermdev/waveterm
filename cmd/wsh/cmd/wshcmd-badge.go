@@ -26,12 +26,11 @@ var badgeCmd = &cobra.Command{
 }
 
 var (
-	badgeColor      string
-	badgePriority   float64
-	badgeClear      bool
-	badgePersistent bool
-	badgeBeep       bool
-	badgePid        int
+	badgeColor    string
+	badgePriority float64
+	badgeClear    bool
+	badgeBeep     bool
+	badgePid      int
 )
 
 func init() {
@@ -39,9 +38,8 @@ func init() {
 	badgeCmd.Flags().StringVar(&badgeColor, "color", "", "badge color")
 	badgeCmd.Flags().Float64Var(&badgePriority, "priority", 10, "badge priority")
 	badgeCmd.Flags().BoolVar(&badgeClear, "clear", false, "clear the badge")
-	badgeCmd.Flags().BoolVar(&badgePersistent, "persistent", false, "make badge persistent (survives restarts, default priority 5)")
 	badgeCmd.Flags().BoolVar(&badgeBeep, "beep", false, "play system bell sound")
-	badgeCmd.Flags().IntVar(&badgePid, "pid", 0, "watch a pid and automatically clear the badge when it exits (sets persistent, default priority 5)")
+	badgeCmd.Flags().IntVar(&badgePid, "pid", 0, "watch a pid and automatically clear the badge when it exits (default priority 5)")
 }
 
 func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -52,10 +50,7 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if badgePid > 0 && runtime.GOOS == "windows" {
 		return fmt.Errorf("--pid flag is not supported on Windows")
 	}
-	if badgePid > 0 {
-		badgePersistent = true
-	}
-	if badgePersistent && !cmd.Flags().Changed("priority") {
+	if badgePid > 0 && !cmd.Flags().Changed("priority") {
 		badgePriority = 5
 	}
 
@@ -69,7 +64,6 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	var eventData baseds.BadgeEvent
 	eventData.ORef = oref.String()
-	eventData.Persistent = badgePersistent
 
 	if badgeClear {
 		eventData.Clear = true

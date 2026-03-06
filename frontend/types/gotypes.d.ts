@@ -120,7 +120,6 @@ declare global {
     // baseds.BadgeEvent
     type BadgeEvent = {
         oref: string;
-        persistent?: boolean;
         clear?: boolean;
         clearall?: boolean;
         clearbyid?: string;
@@ -134,7 +133,6 @@ declare global {
         stickers?: StickerType[];
         subblockids?: string[];
         jobid?: string;
-        badge?: Badge;
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -1595,7 +1593,6 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
-        badge?: Badge;
     };
 
     // waveobj.TermSize
