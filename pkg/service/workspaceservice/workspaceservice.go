@@ -197,6 +197,7 @@ func (svc *WorkspaceService) SetActiveTab(workspaceId string, tabId string) (wav
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}
+	wcore.SendActiveTabUpdate(ctx, workspaceId, tabId)
 	// check all blocks in tab and start controllers (if necessary)
 	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
 	if err != nil {
