@@ -37,7 +37,7 @@ func init() {
 	rootCmd.AddCommand(tabIndicatorCmd)
 	tabIndicatorCmd.Flags().StringVar(&tabIndicatorTabId, "tabid", "", "tab id (defaults to WAVETERM_TABID)")
 	tabIndicatorCmd.Flags().StringVar(&tabIndicatorColor, "color", "", "indicator color")
-	tabIndicatorCmd.Flags().Float64Var(&tabIndicatorPriority, "priority", 0, "indicator priority")
+	tabIndicatorCmd.Flags().Float64Var(&tabIndicatorPriority, "priority", 10, "indicator priority")
 	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorClear, "clear", false, "clear the indicator")
 	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorPersistent, "persistent", false, "make indicator persistent (don't clear on focus)")
 	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorBeep, "beep", false, "play system bell sound")

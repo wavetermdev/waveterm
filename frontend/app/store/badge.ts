@@ -4,15 +4,15 @@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget, NullAtom } from "@/util/util";
-import { v7 as uuidv7, version as uuidVersion } from "uuid";
 import { atom, Atom, PrimitiveAtom } from "jotai";
+import { v7 as uuidv7, version as uuidVersion } from "uuid";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 import { waveEventSubscribeSingle } from "./wps";
 
 const PersistentBadgeMap = new Map<string, PrimitiveAtom<Badge>>();
 const TransientBadgeMap = new Map<string, PrimitiveAtom<Badge>>();
-const BlockBadgeAtomCache = new Map<string, Atom<Badge>>();
+const CombinedBadgeMap = new Map<string, Atom<Badge>>();
 const TabBadgeAtomCache = new Map<string, Atom<Badge[]>>();
 
 function clearBadgeInternal(oref: string, persistent: boolean) {
@@ -74,15 +74,11 @@ function clearBadgesForTab(tabId: string) {
     }
 }
 
-function getBlockBadgeAtom(blockId: string): Atom<Badge> {
-    if (blockId == null) {
-        return NullAtom as Atom<Badge>;
-    }
-    let rtn = BlockBadgeAtomCache.get(blockId);
+function getCombinedBadgeAtom(oref: string): Atom<Badge> {
+    let rtn = CombinedBadgeMap.get(oref);
     if (rtn != null) {
         return rtn;
     }
-    const oref = WOS.makeORef("block", blockId);
     const persistentAtom = getPersistentBadgeAtom(oref);
     const transientAtom = getTransientBadgeAtom(oref);
     rtn = atom((get) => {
@@ -99,8 +95,16 @@ function getBlockBadgeAtom(blockId: string): Atom<Badge> {
         }
         return transient.badgeid >= persistent.badgeid ? transient : persistent;
     });
-    BlockBadgeAtomCache.set(blockId, rtn);
+    CombinedBadgeMap.set(oref, rtn);
     return rtn;
+}
+
+function getBlockBadgeAtom(blockId: string): Atom<Badge> {
+    if (blockId == null) {
+        return NullAtom as Atom<Badge>;
+    }
+    const oref = WOS.makeORef("block", blockId);
+    return getCombinedBadgeAtom(oref);
 }
 
 function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
@@ -111,16 +115,22 @@ function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
     if (rtn != null) {
         return rtn;
     }
-    const tabAtom = atom((get) => WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabId), get));
+    const tabOref = WOS.makeORef("tab", tabId);
+    const tabTransientAtom = getTransientBadgeAtom(tabOref);
+    const tabAtom = atom((get) => WOS.getObjectValue<Tab>(tabOref, get));
     rtn = atom((get) => {
         const tab = get(tabAtom);
         const blockIds = tab?.blockids ?? [];
         const badges: Badge[] = [];
         for (const blockId of blockIds) {
-            const badge = get(getBlockBadgeAtom(blockId));
+            const badge = get(getCombinedBadgeAtom(WOS.makeORef("block", blockId)));
             if (badge != null) {
                 badges.push(badge);
             }
+        }
+        const tabBadge = get(tabTransientAtom);
+        if (tabBadge != null) {
+            badges.push(tabBadge);
         }
         badges.sort((a, b) => {
             if (a.priority !== b.priority) {
@@ -221,9 +231,7 @@ function setupBadgesSubscription() {
             if (data?.oref == null) {
                 return;
             }
-            const curAtom = data.persistent
-                ? getPersistentBadgeAtom(data.oref)
-                : getTransientBadgeAtom(data.oref);
+            const curAtom = data.persistent ? getPersistentBadgeAtom(data.oref) : getTransientBadgeAtom(data.oref);
             if (data.clearbyid) {
                 const existing = globalStore.get(curAtom);
                 if (existing?.badgeid === data.clearbyid) {

@@ -12,21 +12,59 @@ interface PreviewTabEntry {
     tabName: string;
     active: boolean;
     isBeforeActive: boolean;
+    badges?: Badge[] | null;
 }
 
 const tabDefs: PreviewTabEntry[] = [
     { tabId: "preview-tab-1", tabName: "Terminal", active: false, isBeforeActive: true },
-    { tabId: "preview-tab-2", tabName: "My Tab", active: true, isBeforeActive: false },
+    {
+        tabId: "preview-tab-2",
+        tabName: "My Tab",
+        active: true,
+        isBeforeActive: false,
+        badges: [
+            { badgeid: "b2", icon: "circle-check", color: "#4ade80", priority: 3 },
+            { badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 },
+            { badgeid: "b1", icon: "circle-small", color: "red", priority: 1 },
+        ],
+    },
+    {
+        tabId: "preview-tab-2b",
+        tabName: "My Tab 2",
+        active: false,
+        isBeforeActive: false,
+        badges: [
+            { badgeid: "b2", icon: "bell", color: "#4ade80", priority: 3 },
+            { badgeid: "b1", icon: "circle-small", color: "red", priority: 1 },
+        ],
+    },
     { tabId: "preview-tab-3", tabName: "T3", active: false, isBeforeActive: false },
+    {
+        tabId: "preview-tab-4",
+        tabName: "1 Badge",
+        active: false,
+        isBeforeActive: false,
+        badges: [{ badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 }],
+    },
+    {
+        tabId: "preview-tab-5",
+        tabName: "3 Badges",
+        active: false,
+        isBeforeActive: false,
+        badges: [
+            { badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 },
+            { badgeid: "b2", icon: "circle-check", color: "#4ade80", priority: 3 },
+            { badgeid: "b3", icon: "triangle-exclamation", color: "#f87171", priority: 2 },
+            { badgeid: "b4", icon: "bell", color: "#f87171", priority: 2 },
+        ],
+    },
 ];
 
 export function TabPreview() {
     const [tabNames, setTabNames] = useState<Record<string, string>>(
         Object.fromEntries(tabDefs.map((t) => [t.tabId, t.tabName]))
     );
-    const [activeTabId, setActiveTabId] = useState<string>(
-        tabDefs.find((t) => t.active)?.tabId ?? tabDefs[0].tabId
-    );
+    const [activeTabId, setActiveTabId] = useState<string>(tabDefs.find((t) => t.active)?.tabId ?? tabDefs[0].tabId);
     const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     // The real tabbar imperatively sets opacity: 1 and transform after calculating
@@ -48,28 +86,28 @@ export function TabPreview() {
                 const isActive = tab.tabId === activeTabId;
                 const isBeforeActive = index === activeIndex - 1;
                 return (
-                <TabV
-                    key={tab.tabId}
-                    ref={(el) => {
-                        tabRefs.current[tab.tabId] = el;
-                    }}
-                    tabId={tab.tabId}
-                    tabName={tabNames[tab.tabId]}
-                    active={isActive}
-                    isBeforeActive={isBeforeActive}
-                    isDragging={false}
-                    tabWidth={TAB_WIDTH}
-                    isNew={false}
-                    badge={null}
-                    onClick={() => setActiveTabId(tab.tabId)}
-                    onClose={() => console.log("close", tab.tabId)}
-                    onDragStart={() => {}}
-                    onContextMenu={() => {}}
-                    onRename={(newName) => {
-                        console.log("rename", tab.tabId, newName);
-                        setTabNames((prev) => ({ ...prev, [tab.tabId]: newName }));
-                    }}
-                />
+                    <TabV
+                        key={tab.tabId}
+                        ref={(el) => {
+                            tabRefs.current[tab.tabId] = el;
+                        }}
+                        tabId={tab.tabId}
+                        tabName={tabNames[tab.tabId]}
+                        active={isActive}
+                        isBeforeActive={isBeforeActive}
+                        isDragging={false}
+                        tabWidth={TAB_WIDTH}
+                        isNew={false}
+                        badges={tab.badges ?? null}
+                        onClick={() => setActiveTabId(tab.tabId)}
+                        onClose={() => console.log("close", tab.tabId)}
+                        onDragStart={() => {}}
+                        onContextMenu={() => {}}
+                        onRename={(newName) => {
+                            console.log("rename", tab.tabId, newName);
+                            setTabNames((prev) => ({ ...prev, [tab.tabId]: newName }));
+                        }}
+                    />
                 );
             })}
         </div>

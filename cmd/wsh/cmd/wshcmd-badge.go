@@ -37,11 +37,11 @@ var (
 func init() {
 	rootCmd.AddCommand(badgeCmd)
 	badgeCmd.Flags().StringVar(&badgeColor, "color", "", "badge color")
-	badgeCmd.Flags().Float64Var(&badgePriority, "priority", 0, "badge priority")
+	badgeCmd.Flags().Float64Var(&badgePriority, "priority", 10, "badge priority")
 	badgeCmd.Flags().BoolVar(&badgeClear, "clear", false, "clear the badge")
-	badgeCmd.Flags().BoolVar(&badgePersistent, "persistent", false, "make badge persistent (survives restarts)")
+	badgeCmd.Flags().BoolVar(&badgePersistent, "persistent", false, "make badge persistent (survives restarts, default priority 5)")
 	badgeCmd.Flags().BoolVar(&badgeBeep, "beep", false, "play system bell sound")
-	badgeCmd.Flags().IntVar(&badgePid, "pid", 0, "watch a pid and automatically clear the badge when it exits")
+	badgeCmd.Flags().IntVar(&badgePid, "pid", 0, "watch a pid and automatically clear the badge when it exits (sets persistent, default priority 5)")
 }
 
 func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -51,6 +51,12 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	if badgePid > 0 && runtime.GOOS == "windows" {
 		return fmt.Errorf("--pid flag is not supported on Windows")
+	}
+	if badgePid > 0 {
+		badgePersistent = true
+	}
+	if badgePersistent && !cmd.Flags().Changed("priority") {
+		badgePriority = 5
 	}
 
 	oref, err := resolveBlockArg()
@@ -77,10 +83,11 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			return fmt.Errorf("generating badge id: %v", err)
 		}
 		eventData.Badge = &baseds.Badge{
-			BadgeId:  badgeId.String(),
-			Icon:     icon,
-			Color:    badgeColor,
-			Priority: badgePriority,
+			BadgeId:   badgeId.String(),
+			Icon:      icon,
+			Color:     badgeColor,
+			Priority:  badgePriority,
+			PidLinked: badgePid > 0,
 		}
 	}
 

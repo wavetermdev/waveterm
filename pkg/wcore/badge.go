@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wcore
@@ -50,10 +50,15 @@ func InitBadgeStore() error {
 		return fmt.Errorf("badge store: error loading tabs from DB: %w", err)
 	}
 	for _, tab := range tabs {
-		if tab.Badge != nil {
-			oref := waveobj.MakeORef(waveobj.OType_Tab, tab.OID).String()
-			globalBadgeStore.persistent[oref] = *tab.Badge
+		if tab.Badge == nil {
+			continue
 		}
+		oref := waveobj.MakeORef(waveobj.OType_Tab, tab.OID)
+		if tab.Badge.PidLinked {
+			persistBadge(oref, nil)
+			continue
+		}
+		globalBadgeStore.persistent[oref.String()] = *tab.Badge
 	}
 
 	// Load persisted badges from all blocks.
@@ -62,10 +67,15 @@ func InitBadgeStore() error {
 		return fmt.Errorf("badge store: error loading blocks from DB: %w", err)
 	}
 	for _, block := range blocks {
-		if block.Badge != nil {
-			oref := waveobj.MakeORef(waveobj.OType_Block, block.OID).String()
-			globalBadgeStore.persistent[oref] = *block.Badge
+		if block.Badge == nil {
+			continue
 		}
+		oref := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+		if block.Badge.PidLinked {
+			persistBadge(oref, nil)
+			continue
+		}
+		globalBadgeStore.persistent[oref.String()] = *block.Badge
 	}
 
 	log.Printf("badge store: loaded %d persisted badges\n", len(globalBadgeStore.persistent))
@@ -197,7 +207,9 @@ func persistBadge(oref waveobj.ORef, badge *baseds.Badge) {
 			return
 		}
 		log.Printf("badge store: persisted badge for tab %s\n", oref.OID)
-		SendWaveObjUpdate(oref)
+
+		// NOTE: we are not going to send wave updates for this, since badges are tracked via their own events
+		// SendWaveObjUpdate(oref)
 
 	case waveobj.OType_Block:
 		err := wstore.DBUpdateFn(ctx, oref.OID, func(block *waveobj.Block) {
@@ -208,7 +220,9 @@ func persistBadge(oref waveobj.ORef, badge *baseds.Badge) {
 			return
 		}
 		log.Printf("badge store: persisted badge for block %s\n", oref.OID)
-		SendWaveObjUpdate(oref)
+
+		// NOTE: we are not going to send wave updates for this, since badges are tracked via their own events
+		// SendWaveObjUpdate(oref)
 
 	default:
 		log.Printf("badge store: unsupported oref type for persistence: %s\n", oref.OType)

@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -23,7 +23,7 @@ import clsx from "clsx";
 import debug from "debug";
 import { Provider, useAtomValue } from "jotai";
 import "overlayscrollbars/overlayscrollbars.css";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
@@ -223,11 +223,21 @@ const BadgeAutoClearing = () => {
     const focusedBlockId = focusedNode?.data?.blockId;
     const badge = useAtomValue(getBlockBadgeAtom(focusedBlockId));
     const tabTransientBadge = useAtomValue(getTransientBadgeAtom(tabId != null ? `tab:${tabId}` : null));
+    const prevFocusedBlockIdRef = useRef<string>(null);
+    const prevDocHasFocusRef = useRef<boolean>(false);
+    const prevTabDocHasFocusRef = useRef<boolean>(false);
 
     useEffect(() => {
         if (!focusedBlockId || !badge || !documentHasFocus) {
+            prevFocusedBlockIdRef.current = focusedBlockId;
+            prevDocHasFocusRef.current = documentHasFocus;
             return;
         }
+        const focusSwitched =
+            prevFocusedBlockIdRef.current !== focusedBlockId || prevDocHasFocusRef.current !== documentHasFocus;
+        prevFocusedBlockIdRef.current = focusedBlockId;
+        prevDocHasFocusRef.current = documentHasFocus;
+        const delay = focusSwitched ? 1000 : 3000;
         const timeoutId = setTimeout(() => {
             if (!document.hasFocus()) {
                 return;
@@ -236,20 +246,24 @@ const BadgeAutoClearing = () => {
             if (currentFocusedNode?.data?.blockId === focusedBlockId) {
                 clearTransientBadgesForBlock(focusedBlockId);
             }
-        }, 3000);
+        }, delay);
         return () => clearTimeout(timeoutId);
     }, [focusedBlockId, badge, documentHasFocus]);
 
     useEffect(() => {
         if (!tabId || !tabTransientBadge || !documentHasFocus) {
+            prevTabDocHasFocusRef.current = documentHasFocus;
             return;
         }
+        const focusSwitched = prevTabDocHasFocusRef.current !== documentHasFocus;
+        prevTabDocHasFocusRef.current = documentHasFocus;
+        const delay = focusSwitched ? 1000 : 3000;
         const timeoutId = setTimeout(() => {
             if (!document.hasFocus()) {
                 return;
             }
             clearTransientBadgeForTab(tabId);
-        }, 3000);
+        }, delay);
         return () => clearTimeout(timeoutId);
     }, [tabId, tabTransientBadge, documentHasFocus]);
 

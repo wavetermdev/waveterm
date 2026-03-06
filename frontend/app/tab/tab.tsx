@@ -1,7 +1,7 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { clearAllBadges, clearBadgesForTab, getTabBadgeAtom } from "@/app/store/badge";
+import { getTabBadgeAtom } from "@/app/store/badge";
 import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -23,7 +23,7 @@ interface TabVProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
-    badge?: Badge | null;
+    badges?: Badge[] | null;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -31,6 +31,37 @@ interface TabVProps {
     onRename: (newName: string) => void;
     /** Optional ref that TabV populates with a startRename() function for external callers */
     renameRef?: React.RefObject<(() => void) | null>;
+}
+
+interface TabBadgesProps {
+    badges?: Badge[] | null;
+}
+
+function TabBadges({ badges }: TabBadgesProps) {
+    if (!badges?.[0]) {
+        return null;
+    }
+    const firstBadge = badges[0];
+    const extraBadges = badges.slice(1, 3);
+    return (
+        <div className="tab-indicator pointer-events-none flex items-center">
+            <i
+                className={makeIconClass(firstBadge.icon, true, { defaultIcon: "circle-small" }) + " text-[12px]"}
+                style={{ color: firstBadge.color || "#fbbf24" }}
+            />
+            {extraBadges.length > 0 && (
+                <div className="flex flex-col items-center justify-center gap-[2px] ml-[2px]">
+                    {extraBadges.map((badge, idx) => (
+                        <div
+                            key={idx}
+                            className="w-[4px] h-[4px] rounded-full"
+                            style={{ backgroundColor: badge.color || "#fbbf24" }}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
 const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
@@ -42,7 +73,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         isDragging,
         tabWidth,
         isNew,
-        badge,
+        badges,
         onClick,
         onClose,
         onDragStart,
@@ -179,11 +210,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                 >
                     {tabName}
                 </div>
-                {badge && (
-                    <div className="tab-indicator pointer-events-none" style={{ color: badge.color || "#fbbf24" }}>
-                        <i className={makeIconClass(badge.icon, true, { defaultIcon: "circle-small" })} />
-                    </div>
-                )}
+                <TabBadges badges={badges} />
                 <Button
                     className="ghost grey close"
                     onClick={onClose}
@@ -205,25 +232,6 @@ function buildTabContextMenu(
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void
 ): ContextMenuItem[] {
     const menu: ContextMenuItem[] = [];
-    const currentBadges = globalStore.get(getTabBadgeAtom(id));
-    if (currentBadges?.length > 0) {
-        menu.push(
-            {
-                label: "Clear Tab Badges",
-                click: () => {
-                    clearBadgesForTab(id);
-                },
-            },
-            {
-                label: "Clear All Badges",
-                click: () => {
-                    clearAllBadges(true);
-                    clearAllBadges(false);
-                },
-            },
-            { type: "separator" }
-        );
-    }
     menu.push(
         { label: "Rename Tab", click: () => renameRef.current?.() },
         {
@@ -284,7 +292,6 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
     const badges = useAtomValue(getTabBadgeAtom(id));
-    const badge = badges?.[0] ?? null;
 
     const loadedRef = useRef(false);
     const renameRef = useRef<(() => void) | null>(null);
@@ -327,7 +334,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             isDragging={isDragging}
             tabWidth={tabWidth}
             isNew={isNew}
-            badge={badge}
+            badges={badges}
             onClick={handleTabClick}
             onClose={onClose}
             onDragStart={onDragStart}
