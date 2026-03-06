@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-    clearTransientBadgeForTab,
-    clearTransientBadgesForBlock,
+    clearBadgesForBlockOnFocus,
+    clearBadgesForTabOnFocus,
+    getBadgeAtom,
     getBlockBadgeAtom,
-    getTransientBadgeAtom,
 } from "@/app/store/badge";
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
@@ -222,7 +222,7 @@ const BadgeAutoClearing = () => {
     const focusedNode = useAtomValue(layoutModel.focusedNode);
     const focusedBlockId = focusedNode?.data?.blockId;
     const badge = useAtomValue(getBlockBadgeAtom(focusedBlockId));
-    const tabTransientBadge = useAtomValue(getTransientBadgeAtom(tabId != null ? `tab:${tabId}` : null));
+    const tabTransientBadge = useAtomValue(getBadgeAtom(tabId != null ? `tab:${tabId}` : null));
     const prevFocusedBlockIdRef = useRef<string>(null);
     const prevDocHasFocusRef = useRef<boolean>(false);
     const prevTabDocHasFocusRef = useRef<boolean>(false);
@@ -244,7 +244,7 @@ const BadgeAutoClearing = () => {
             }
             const currentFocusedNode = globalStore.get(layoutModel.focusedNode);
             if (currentFocusedNode?.data?.blockId === focusedBlockId) {
-                clearTransientBadgesForBlock(focusedBlockId);
+                clearBadgesForBlockOnFocus(focusedBlockId);
             }
         }, delay);
         return () => clearTimeout(timeoutId);
@@ -262,7 +262,7 @@ const BadgeAutoClearing = () => {
             if (!document.hasFocus()) {
                 return;
             }
-            clearTransientBadgeForTab(tabId);
+            clearBadgesForTabOnFocus(tabId);
         }, delay);
         return () => clearTimeout(timeoutId);
     }, [tabId, tabTransientBadge, documentHasFocus]);
