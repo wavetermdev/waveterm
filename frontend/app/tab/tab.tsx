@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getTabBadgeAtom } from "@/app/store/badge";
+import { getTabBadgeAtom, sortBadgesForTab } from "@/app/store/badge";
 import { atoms, getOrefMetaKeyAtom, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -11,7 +11,8 @@ import { validateCssColor } from "@/util/color-validator";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { v7 as uuidv7 } from "uuid";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
@@ -37,14 +38,24 @@ interface TabVProps {
 
 interface TabBadgesProps {
     badges?: Badge[] | null;
+    flagColor?: string | null;
 }
 
-function TabBadges({ badges }: TabBadgesProps) {
-    if (!badges?.[0]) {
+function TabBadges({ badges, flagColor }: TabBadgesProps) {
+    const flagBadgeId = useMemo(() => uuidv7(), []);
+    const allBadges = useMemo(() => {
+        const base = badges ?? [];
+        if (!flagColor) {
+            return base;
+        }
+        const flagBadge: Badge = { icon: "flag", color: flagColor, priority: 0, badgeid: flagBadgeId };
+        return sortBadgesForTab([...base, flagBadge]);
+    }, [badges, flagColor, flagBadgeId]);
+    if (!allBadges[0]) {
         return null;
     }
-    const firstBadge = badges[0];
-    const extraBadges = badges.slice(1, 3);
+    const firstBadge = allBadges[0];
+    const extraBadges = allBadges.slice(1, 3);
     return (
         <div className="tab-indicator pointer-events-none flex items-center">
             <i
@@ -202,12 +213,6 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
             data-tab-id={tabId}
         >
             <div className="tab-inner">
-                {flagColor && (
-                    <div
-                        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-b-[6px]"
-                        style={{ height: "3px", backgroundColor: flagColor, opacity: active ? 1 : 0.6 }}
-                    />
-                )}
                 <div
                     ref={editableRef}
                     className={clsx("name", { focused: isEditable })}
@@ -219,7 +224,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                 >
                     {tabName}
                 </div>
-                <TabBadges badges={badges} />
+                <TabBadges badges={badges} flagColor={flagColor} />
                 <Button
                     className="ghost grey close"
                     onClick={onClose}
@@ -266,15 +271,13 @@ function buildTabContextMenu(
             label: "None",
             type: "checkbox",
             checked: currentFlagColor == null,
-            click: () =>
-                fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": null })),
+            click: () => fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": null })),
         },
         ...FlagColors.map((fc) => ({
             label: fc.label,
             type: "checkbox" as const,
             checked: currentFlagColor === fc.value,
-            click: () =>
-                fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": fc.value })),
+            click: () => fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": fc.value })),
         })),
     ];
     menu.push({ label: "Flag Tab", type: "submenu", submenu: flagSubmenu }, { type: "separator" });

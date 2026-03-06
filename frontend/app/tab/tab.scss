@@ -4,7 +4,7 @@
 .tab {
     position: absolute;
     width: 130px;
-    height: calc(100% - 1px);
+    height: calc(100% - 3px);
     padding: 0 0 0 0;
     box-sizing: border-box;
     font-weight: bold;
@@ -45,7 +45,8 @@
         }
 
         .name {
-            color: var(--main-text-color);
+            color: rgba(255, 255, 255, 1);
+            font-weight: 600;
         }
 
         & + .tab::after,

@@ -61,13 +61,12 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
             content="Toggle Wave AI Panel"
             placement="bottom"
             hideOnClick
-            divClassName={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            divClassName={`flex h-[22px] px-3.5 justify-end mb-1 items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
             divStyle={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             divOnClick={onClick}
             divRef={divRef}
         >
             <i className="fa fa-sparkles" />
-            <span className="font-bold ml-1 -top-px font-mono">AI</span>
         </Tooltip>
     );
 });
@@ -645,7 +644,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }
 
     // Calculate window drag right width
-    let windowDragRightWidth = 6;
+    let windowDragRightWidth = 12;
     if (isWindows()) {
         if (zoomFactor > 0) {
             windowDragRightWidth = 139 / zoomFactor;
@@ -683,7 +682,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 placement="bottom"
                 hideOnClick
                 divRef={workspaceSwitcherRef}
-                divClassName="flex items-center h-full"
+                divClassName="flex items-center"
             >
                 <WorkspaceSwitcher />
             </Tooltip>

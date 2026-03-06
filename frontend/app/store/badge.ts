@@ -113,13 +113,7 @@ function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
         if (tabBadge != null) {
             badges.push(tabBadge);
         }
-        badges.sort((a, b) => {
-            if (a.priority !== b.priority) {
-                return b.priority - a.priority;
-            }
-            return b.badgeid < a.badgeid ? -1 : b.badgeid > a.badgeid ? 1 : 0;
-        });
-        return badges;
+        return sortBadgesForTab(badges);
     });
     TabBadgeAtomCache.set(tabId, rtn);
     return rtn;
@@ -197,6 +191,24 @@ function setupBadgesSubscription() {
     });
 }
 
+function sortBadges(badges: Badge[]): Badge[] {
+    return [...badges].sort((a, b) => {
+        if (a.priority !== b.priority) {
+            return b.priority - a.priority;
+        }
+        return b.badgeid < a.badgeid ? -1 : b.badgeid > a.badgeid ? 1 : 0;
+    });
+}
+
+function sortBadgesForTab(badges: Badge[]): Badge[] {
+    return [...badges].sort((a, b) => {
+        if (a.priority !== b.priority) {
+            return b.priority - a.priority;
+        }
+        return a.badgeid < b.badgeid ? -1 : a.badgeid > b.badgeid ? 1 : 0;
+    });
+}
+
 export {
     clearAllBadges,
     clearBadgeById,
@@ -209,4 +221,6 @@ export {
     loadBadges,
     setBadge,
     setupBadgesSubscription,
+    sortBadges,
+    sortBadgesForTab,
 };

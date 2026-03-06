@@ -237,7 +237,7 @@ const BadgeAutoClearing = () => {
             prevFocusedBlockIdRef.current !== focusedBlockId || prevDocHasFocusRef.current !== documentHasFocus;
         prevFocusedBlockIdRef.current = focusedBlockId;
         prevDocHasFocusRef.current = documentHasFocus;
-        const delay = focusSwitched ? 1000 : 3000;
+        const delay = focusSwitched ? 500 : 3000;
         const timeoutId = setTimeout(() => {
             if (!document.hasFocus()) {
                 return;
@@ -257,7 +257,7 @@ const BadgeAutoClearing = () => {
         }
         const focusSwitched = prevTabDocHasFocusRef.current !== documentHasFocus;
         prevTabDocHasFocusRef.current = documentHasFocus;
-        const delay = focusSwitched ? 1000 : 3000;
+        const delay = focusSwitched ? 500 : 3000;
         const timeoutId = setTimeout(() => {
             if (!document.hasFocus()) {
                 return;
