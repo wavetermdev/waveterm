@@ -12,16 +12,30 @@ const MinZoomLevel = 0.4;
 const MaxZoomLevel = 2.6;
 const ZoomDelta = 0.2;
 
+function broadcastZoomFactorChanged(newZoomFactor: number): void {
+    for (const wc of electron.webContents.getAllWebContents()) {
+        if (wc.isDestroyed()) {
+            continue;
+        }
+        wc.send("zoom-factor-change", newZoomFactor);
+    }
+}
+
 export function increaseZoomLevel(webContents: electron.WebContents): void {
     const newZoom = Math.min(MaxZoomLevel, webContents.getZoomFactor() + ZoomDelta);
     webContents.setZoomFactor(newZoom);
-    webContents.send("zoom-factor-change", newZoom);
+    broadcastZoomFactorChanged(newZoom);
 }
 
 export function decreaseZoomLevel(webContents: electron.WebContents): void {
     const newZoom = Math.max(MinZoomLevel, webContents.getZoomFactor() - ZoomDelta);
     webContents.setZoomFactor(newZoom);
-    webContents.send("zoom-factor-change", newZoom);
+    broadcastZoomFactorChanged(newZoom);
+}
+
+export function resetZoomLevel(webContents: electron.WebContents): void {
+    webContents.setZoomFactor(1);
+    broadcastZoomFactorChanged(1);
 }
 
 export function getElectronExecPath(): string {
