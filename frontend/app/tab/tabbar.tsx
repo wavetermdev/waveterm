@@ -622,9 +622,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         });
     }, []);
 
-    const isBeforeActive = (tabId: string) => {
-        return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
-    };
+    const activeTabIndex = tabIds.indexOf(activeTabId);
 
     function onEllipsisClick() {
         getApi().showWorkspaceAppMenu(workspace.oid);
@@ -689,18 +687,19 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
+                        const isActive = activeTabId === tabId;
+                        const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
                         return (
                             <Tab
                                 key={tabId}
                                 ref={tabRefs.current[index]}
                                 id={tabId}
-                                isFirst={index === 0}
+                                showDivider={showDivider}
                                 onSelect={() => handleSelectTab(tabId)}
-                                active={activeTabId === tabId}
+                                active={isActive}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
-                                isBeforeActive={isBeforeActive(tabId)}
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}

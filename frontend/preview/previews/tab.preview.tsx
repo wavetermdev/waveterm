@@ -11,18 +11,16 @@ interface PreviewTabEntry {
     tabId: string;
     tabName: string;
     active: boolean;
-    isBeforeActive: boolean;
     badges?: Badge[] | null;
     flagColor?: string | null;
 }
 
 const tabDefs: PreviewTabEntry[] = [
-    { tabId: "preview-tab-1", tabName: "Terminal", active: false, isBeforeActive: true },
+    { tabId: "preview-tab-1", tabName: "Terminal", active: false },
     {
         tabId: "preview-tab-2",
         tabName: "My Tab",
         active: true,
-        isBeforeActive: false,
         badges: [
             { badgeid: "b2", icon: "circle-check", color: "#4ade80", priority: 3 },
             { badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 },
@@ -33,18 +31,16 @@ const tabDefs: PreviewTabEntry[] = [
         tabId: "preview-tab-2b",
         tabName: "My Tab 2",
         active: false,
-        isBeforeActive: false,
         badges: [
             { badgeid: "b2", icon: "bell", color: "#4ade80", priority: 3 },
             { badgeid: "b1", icon: "circle-small", color: "red", priority: 1 },
         ],
     },
-    { tabId: "preview-tab-3", tabName: "T3", active: false, isBeforeActive: false, flagColor: "#4ade80" },
+    { tabId: "preview-tab-3", tabName: "T3", active: false, flagColor: "#4ade80" },
     {
         tabId: "preview-tab-4",
         tabName: "1 Badge",
         active: false,
-        isBeforeActive: false,
         badges: [{ badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 }],
         flagColor: "#fbbf24",
     },
@@ -52,7 +48,6 @@ const tabDefs: PreviewTabEntry[] = [
         tabId: "preview-tab-5",
         tabName: "3 Badges",
         active: false,
-        isBeforeActive: false,
         badges: [
             { badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 },
             { badgeid: "b2", icon: "circle-check", color: "#4ade80", priority: 3 },
@@ -86,7 +81,7 @@ export function TabPreview() {
             {tabDefs.map((tab, index) => {
                 const activeIndex = tabDefs.findIndex((t) => t.tabId === activeTabId);
                 const isActive = tab.tabId === activeTabId;
-                const isBeforeActive = index === activeIndex - 1;
+                const showDivider = index !== 0 && !isActive && index !== activeIndex + 1;
                 return (
                     <TabV
                         key={tab.tabId}
@@ -96,7 +91,7 @@ export function TabPreview() {
                         tabId={tab.tabId}
                         tabName={tabNames[tab.tabId]}
                         active={isActive}
-                        isBeforeActive={isBeforeActive}
+                        showDivider={showDivider}
                         isDragging={false}
                         tabWidth={TAB_WIDTH}
                         isNew={false}

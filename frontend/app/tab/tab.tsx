@@ -21,7 +21,7 @@ interface TabVProps {
     tabId: string;
     tabName: string;
     active: boolean;
-    isBeforeActive: boolean;
+    showDivider: boolean;
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
@@ -82,7 +82,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         tabId,
         tabName,
         active,
-        isBeforeActive,
+        showDivider,
         isDragging,
         tabWidth,
         isNew,
@@ -204,7 +204,6 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
             className={clsx("tab", {
                 active,
                 dragging: isDragging,
-                "before-active": isBeforeActive,
                 "new-tab": isNew,
             })}
             onMouseDown={onDragStart}
@@ -212,6 +211,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
             onContextMenu={onContextMenu}
             data-tab-id={tabId}
         >
+            {showDivider && <div className="tab-divider" />}
             <div className="tab-inner">
                 <div
                     ref={editableRef}
@@ -318,8 +318,7 @@ function buildTabContextMenu(
 interface TabProps {
     id: string;
     active: boolean;
-    isFirst: boolean;
-    isBeforeActive: boolean;
+    showDivider: boolean;
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
@@ -330,7 +329,7 @@ interface TabProps {
 }
 
 const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
-    const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
+    const { id, active, showDivider, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
     const badges = useAtomValue(getTabBadgeAtom(id));
 
@@ -382,7 +381,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             tabId={id}
             tabName={tabData?.name ?? ""}
             active={active}
-            isBeforeActive={isBeforeActive}
+            showDivider={showDivider}
             isDragging={isDragging}
             tabWidth={tabWidth}
             isNew={isNew}

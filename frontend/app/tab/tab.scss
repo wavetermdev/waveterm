@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 .tab {
@@ -14,13 +14,12 @@
     align-items: center;
     justify-content: center;
 
-    &::after {
-        content: "";
+    .tab-divider {
         position: absolute;
         left: 0;
         width: 1px;
         height: 14px;
-        border-right: 1px solid rgb(from var(--main-text-color) r g b / 0.2);
+        background: rgb(from var(--main-text-color) r g b / 0.2);
     }
 
     .tab-inner {
@@ -48,15 +47,6 @@
             color: rgba(255, 255, 255, 1);
             font-weight: 600;
         }
-
-        & + .tab::after,
-        &::after {
-            content: none;
-        }
-    }
-
-    &:first-child::after {
-        content: none;
     }
 
     .name {
@@ -104,11 +94,17 @@
 }
 
 // Only apply hover effects when not in nohover mode. This prevents the previously-hovered tab from remaining hovered while a tab view is not mounted.
+body:not(.nohover) .tab:hover + .tab,
+body:not(.nohover) .tab.dragging + .tab {
+    .tab-divider {
+        display: none;
+    }
+}
+
 body:not(.nohover) .tab:hover,
 body:not(.nohover) .tab.dragging {
-    & + .tab::after,
-    &::after {
-        content: none;
+    .tab-divider {
+        display: none;
     }
 
     .tab-inner {
