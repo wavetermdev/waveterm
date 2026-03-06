@@ -114,6 +114,7 @@ declare global {
         icon: string;
         color?: string;
         priority: number;
+        pidlinked?: boolean;
     };
 
     // baseds.BadgeEvent
@@ -1115,6 +1116,7 @@ declare global {
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
         "sysinfo:type"?: string;
+        "tab:flagcolor"?: string;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;

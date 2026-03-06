@@ -13,6 +13,7 @@ interface PreviewTabEntry {
     active: boolean;
     isBeforeActive: boolean;
     badges?: Badge[] | null;
+    flagColor?: string | null;
 }
 
 const tabDefs: PreviewTabEntry[] = [
@@ -38,13 +39,14 @@ const tabDefs: PreviewTabEntry[] = [
             { badgeid: "b1", icon: "circle-small", color: "red", priority: 1 },
         ],
     },
-    { tabId: "preview-tab-3", tabName: "T3", active: false, isBeforeActive: false },
+    { tabId: "preview-tab-3", tabName: "T3", active: false, isBeforeActive: false, flagColor: "#4ade80" },
     {
         tabId: "preview-tab-4",
         tabName: "1 Badge",
         active: false,
         isBeforeActive: false,
         badges: [{ badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 }],
+        flagColor: "#fbbf24",
     },
     {
         tabId: "preview-tab-5",
@@ -99,6 +101,7 @@ export function TabPreview() {
                         tabWidth={TAB_WIDTH}
                         isNew={false}
                         badges={tab.badges ?? null}
+                        flagColor={tab.flagColor ?? null}
                         onClick={() => setActiveTabId(tab.tabId)}
                         onClose={() => console.log("close", tab.tabId)}
                         onDragStart={() => {}}

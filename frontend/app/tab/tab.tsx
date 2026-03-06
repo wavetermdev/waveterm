@@ -7,6 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
+import { validateCssColor } from "@/util/color-validator";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
@@ -24,6 +25,7 @@ interface TabVProps {
     tabWidth: number;
     isNew: boolean;
     badges?: Badge[] | null;
+    flagColor?: string | null;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -74,6 +76,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         tabWidth,
         isNew,
         badges,
+        flagColor,
         onClick,
         onClose,
         onDragStart,
@@ -199,6 +202,12 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
             data-tab-id={tabId}
         >
             <div className="tab-inner">
+                {flagColor && (
+                    <div
+                        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-b-[6px]"
+                        style={{ height: "3px", backgroundColor: flagColor, opacity: active ? 1 : 0.6 }}
+                    />
+                )}
                 <div
                     ref={editableRef}
                     className={clsx("name", { focused: isEditable })}
@@ -293,6 +302,17 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
     const badges = useAtomValue(getTabBadgeAtom(id));
 
+    const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
+    let flagColor: string | null = null;
+    if (rawFlagColor) {
+        try {
+            validateCssColor(rawFlagColor);
+            flagColor = rawFlagColor;
+        } catch {
+            flagColor = null;
+        }
+    }
+
     const loadedRef = useRef(false);
     const renameRef = useRef<(() => void) | null>(null);
 
@@ -335,6 +355,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             tabWidth={tabWidth}
             isNew={isNew}
             badges={badges}
+            flagColor={flagColor}
             onClick={handleTabClick}
             onClose={onClose}
             onDragStart={onDragStart}
