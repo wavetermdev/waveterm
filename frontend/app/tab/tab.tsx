@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getTabBadgeAtom } from "@/app/store/badge";
-import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
+import { atoms, getOrefMetaKeyAtom, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
@@ -235,6 +235,16 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
 
 TabV.displayName = "TabV";
 
+const FlagColors: { label: string; value: string }[] = [
+    { label: "Green", value: "#58C142" },
+    { label: "Teal", value: "#00FFDB" },
+    { label: "Blue", value: "#429DFF" },
+    { label: "Purple", value: "#BF55EC" },
+    { label: "Red", value: "#FF453A" },
+    { label: "Orange", value: "#FF9500" },
+    { label: "Yellow", value: "#FFE900" },
+];
+
 function buildTabContextMenu(
     id: string,
     renameRef: React.RefObject<(() => void) | null>,
@@ -249,6 +259,25 @@ function buildTabContextMenu(
         },
         { type: "separator" }
     );
+    const tabORef = makeORef("tab", id);
+    const currentFlagColor = globalStore.get(getOrefMetaKeyAtom(tabORef, "tab:flagcolor")) ?? null;
+    const flagSubmenu: ContextMenuItem[] = [
+        {
+            label: "None",
+            type: "checkbox",
+            checked: currentFlagColor == null,
+            click: () =>
+                fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": null })),
+        },
+        ...FlagColors.map((fc) => ({
+            label: fc.label,
+            type: "checkbox" as const,
+            checked: currentFlagColor === fc.value,
+            click: () =>
+                fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": fc.value })),
+        })),
+    ];
+    menu.push({ label: "Flag Tab", type: "submenu", submenu: flagSubmenu }, { type: "separator" });
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const bgPresets: string[] = [];
     for (const key in fullConfig?.presets ?? {}) {
