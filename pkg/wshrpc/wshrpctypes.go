@@ -94,7 +94,6 @@ type WshRpcInterface interface {
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
-	GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*TabIndicator, error)
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions
@@ -875,19 +874,6 @@ type WaveFileInfo struct {
 	Size      int64    `json:"size"`
 	ModTs     int64    `json:"modts"`
 	Meta      FileMeta `json:"meta"`
-}
-
-type TabIndicator struct {
-	Icon                string        `json:"icon"`
-	Color               string        `json:"color,omitempty"`
-	Priority            float64       `json:"priority"`
-	ClearOnFocus        bool          `json:"clearonfocus,omitempty"`
-	PersistentIndicator *TabIndicator `json:"persistentindicator,omitempty"`
-}
-
-type TabIndicatorEventData struct {
-	TabId     string        `json:"tabid"`
-	Indicator *TabIndicator `json:"indicator"`
 }
 
 type CommandBadgeWatchPidData struct {

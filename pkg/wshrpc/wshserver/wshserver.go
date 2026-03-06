@@ -1448,10 +1448,6 @@ func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.
 	return tab, nil
 }
 
-func (ws *WshServer) GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*wshrpc.TabIndicator, error) {
-	return wcore.GetAllTabIndicators(), nil
-}
-
 func (ws *WshServer) GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error) {
 	return wcore.GetAllBadges(), nil
 }

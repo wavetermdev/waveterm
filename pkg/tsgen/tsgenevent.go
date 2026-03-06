@@ -39,7 +39,6 @@ var WaveEventDataTypes = map[string]reflect.Type{
 	wps.Event_WaveAppAppGoUpdated: nil,
 	wps.Event_TsunamiUpdateMeta:   reflect.TypeOf(wshrpc.AppMeta{}),
 	wps.Event_AIModeConfig:        reflect.TypeOf(wconfig.AIModeConfigUpdate{}),
-	wps.Event_TabIndicator:        reflect.TypeOf(wshrpc.TabIndicatorEventData{}),
 	wps.Event_BlockJobStatus:      reflect.TypeOf(wshrpc.BlockJobStatusData{}),
 	wps.Event_Badge:               reflect.TypeOf(baseds.BadgeEvent{}),
 }
@@ -68,12 +67,9 @@ func GenerateWaveEventTypes(tsTypesMap map[reflect.Type]string) string {
 
 	var buf bytes.Buffer
 	buf.WriteString("// wps.WaveEvent\n")
-	buf.WriteString("type WaveEventName = ")
-	for idx, eventName := range wps.AllEvents {
-		if idx > 0 {
-			buf.WriteString(" | ")
-		}
-		buf.WriteString(strconv.Quote(eventName))
+	buf.WriteString("type WaveEventName =\n")
+	for _, eventName := range wps.AllEvents {
+		buf.WriteString(fmt.Sprintf("    | %s\n", strconv.Quote(eventName)))
 	}
 	buf.WriteString(";\n\n")
 	buf.WriteString("type WaveEvent = {\n")

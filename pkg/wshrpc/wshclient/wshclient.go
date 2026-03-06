@@ -399,12 +399,6 @@ func GetAllBadgesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]baseds.Badg
 	return resp, err
 }
 
-// command "getalltabindicators", wshserver.GetAllTabIndicatorsCommand
-func GetAllTabIndicatorsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (map[string]*wshrpc.TabIndicator, error) {
-	resp, err := sendRpcRequestCallHelper[map[string]*wshrpc.TabIndicator](w, "getalltabindicators", nil, opts)
-	return resp, err
-}
-
 // command "getallvars", wshserver.GetAllVarsCommand
 func GetAllVarsCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) ([]wshrpc.CommandVarResponseData, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.CommandVarResponseData](w, "getallvars", data, opts)

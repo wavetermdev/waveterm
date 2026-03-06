@@ -327,11 +327,6 @@ class RpcApiType {
         return client.wshRpcCall("getallbadges", null, opts);
     }
 
-    // command "getalltabindicators" [call]
-    GetAllTabIndicatorsCommand(client: WshClient, opts?: RpcOpts): Promise<{[key: string]: TabIndicator}> {
-        return client.wshRpcCall("getalltabindicators", null, opts);
-    }
-
     // command "getallvars" [call]
     GetAllVarsCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<CommandVarResponseData[]> {
         return client.wshRpcCall("getallvars", data, opts);

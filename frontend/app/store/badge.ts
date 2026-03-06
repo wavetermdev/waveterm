@@ -10,81 +10,10 @@ import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 import { waveEventSubscribeSingle } from "./wps";
 
-const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 const PersistentBadgeMap = new Map<string, PrimitiveAtom<Badge>>();
 const TransientBadgeMap = new Map<string, PrimitiveAtom<Badge>>();
 const BlockBadgeAtomCache = new Map<string, Atom<Badge>>();
 const TabBadgeAtomCache = new Map<string, Atom<Badge[]>>();
-
-function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
-    let rtn = TabIndicatorMap.get(tabId);
-    if (rtn == null) {
-        rtn = atom(null) as PrimitiveAtom<TabIndicator>;
-        TabIndicatorMap.set(tabId, rtn);
-    }
-    return rtn;
-}
-
-function setTabIndicatorInternal(tabId: string, indicator: TabIndicator) {
-    if (indicator == null) {
-        const indicatorAtom = getTabIndicatorAtom(tabId);
-        globalStore.set(indicatorAtom, null);
-        return;
-    }
-    const indicatorAtom = getTabIndicatorAtom(tabId);
-    const currentIndicator = globalStore.get(indicatorAtom);
-    if (currentIndicator == null) {
-        globalStore.set(indicatorAtom, indicator);
-        return;
-    }
-    if (indicator.priority >= currentIndicator.priority) {
-        if (indicator.clearonfocus && !currentIndicator.clearonfocus) {
-            indicator.persistentindicator = currentIndicator;
-        }
-        globalStore.set(indicatorAtom, indicator);
-    }
-}
-
-function setTabIndicator(tabId: string, indicator: TabIndicator) {
-    setTabIndicatorInternal(tabId, indicator);
-
-    const eventData: WaveEvent = {
-        event: "tab:indicator",
-        scopes: [WOS.makeORef("tab", tabId)],
-        data: {
-            tabid: tabId,
-            indicator: indicator,
-        },
-    };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
-}
-
-function clearTabIndicatorFromFocus(tabId: string) {
-    const indicatorAtom = getTabIndicatorAtom(tabId);
-    const currentIndicator = globalStore.get(indicatorAtom);
-    if (currentIndicator == null) {
-        return;
-    }
-    const persistentIndicator = currentIndicator.persistentindicator;
-    const eventData: WaveEvent = {
-        event: "tab:indicator",
-        scopes: [WOS.makeORef("tab", tabId)],
-        data: {
-            tabid: tabId,
-            indicator: persistentIndicator ?? null,
-        } as TabIndicatorEventData,
-    };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
-}
-
-function clearAllTabIndicators() {
-    for (const [tabId, indicatorAtom] of TabIndicatorMap.entries()) {
-        const indicator = globalStore.get(indicatorAtom);
-        if (indicator != null) {
-            setTabIndicator(tabId, null);
-        }
-    }
-}
 
 function clearBadgeInternal(oref: string, persistent: boolean) {
     const eventData: WaveEvent = {
@@ -143,26 +72,6 @@ function clearBadgesForTab(tabId: string) {
             clearBadgeInternal(oref, false);
         }
     }
-}
-
-async function loadTabIndicators() {
-    const tabIndicators = await RpcApi.GetAllTabIndicatorsCommand(TabRpcClient);
-    if (tabIndicators == null) {
-        return;
-    }
-    for (const [tabId, indicator] of Object.entries(tabIndicators)) {
-        const curAtom = getTabIndicatorAtom(tabId);
-        globalStore.set(curAtom, indicator);
-    }
-}
-
-function setupTabIndicatorSubscription() {
-    waveEventSubscribeSingle({
-        eventType: "tab:indicator",
-        handler: (event) => {
-            setTabIndicatorInternal(event.data.tabid, event.data.indicator);
-        },
-    });
 }
 
 function getBlockBadgeAtom(blockId: string): Atom<Badge> {
@@ -329,21 +238,15 @@ function setupBadgesSubscription() {
 
 export {
     clearAllBadges,
-    clearAllTabIndicators,
     clearBadgeById,
     clearBadgesForTab,
-    clearTabIndicatorFromFocus,
     clearTransientBadgeForTab,
     clearTransientBadgesForBlock,
     getBlockBadgeAtom,
     getPersistentBadgeAtom,
     getTabBadgeAtom,
-    getTabIndicatorAtom,
     getTransientBadgeAtom,
     loadBadges,
-    loadTabIndicators,
     setBadge,
-    setTabIndicator,
     setupBadgesSubscription,
-    setupTabIndicatorSubscription,
 };

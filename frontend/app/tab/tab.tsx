@@ -180,11 +180,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                     {tabName}
                 </div>
                 {badge && (
-                    <div
-                        className="tab-indicator pointer-events-none"
-                        style={{ color: badge.color || "#fbbf24" }}
-                        title="Activity notification"
-                    >
+                    <div className="tab-indicator pointer-events-none" style={{ color: badge.color || "#fbbf24" }}>
                         <i className={makeIconClass(badge.icon, true, { defaultIcon: "circle-small" })} />
                     </div>
                 )}

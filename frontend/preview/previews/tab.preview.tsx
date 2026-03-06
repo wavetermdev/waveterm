@@ -60,7 +60,7 @@ export function TabPreview() {
                     isDragging={false}
                     tabWidth={TAB_WIDTH}
                     isNew={false}
-                    indicator={null}
+                    badge={null}
                     onClick={() => setActiveTabId(tab.tabId)}
                     onClose={() => console.log("close", tab.tabId)}
                     onDragStart={() => {}}

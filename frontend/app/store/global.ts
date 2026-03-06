@@ -28,7 +28,7 @@ import {
     NullAtom,
 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
-import { setupBadgesSubscription, setupTabIndicatorSubscription } from "./badge";
+import { setupBadgesSubscription } from "./badge";
 import { atoms, blockComponentModelMap, ConnStatusMapAtom, initGlobalAtoms, orefAtomCache } from "./global-atoms";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -97,7 +97,6 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             globalStore.set(atoms.waveAIRateLimitInfoAtom, event.data);
         },
     });
-    setupTabIndicatorSubscription();
     setupBadgesSubscription();
 }
 

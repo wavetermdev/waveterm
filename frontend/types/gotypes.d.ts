@@ -1596,21 +1596,6 @@ declare global {
         badge?: Badge;
     };
 
-    // wshrpc.TabIndicator
-    type TabIndicator = {
-        icon: string;
-        color?: string;
-        priority: number;
-        clearonfocus?: boolean;
-        persistentindicator?: TabIndicator;
-    };
-
-    // wshrpc.TabIndicatorEventData
-    type TabIndicatorEventData = {
-        tabid: string;
-        indicator: TabIndicator;
-    };
-
     // waveobj.TermSize
     type TermSize = {
         rows: number;
