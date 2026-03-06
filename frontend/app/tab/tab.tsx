@@ -57,7 +57,7 @@ function TabBadges({ badges, flagColor }: TabBadgesProps) {
     const firstBadge = allBadges[0];
     const extraBadges = allBadges.slice(1, 3);
     return (
-        <div className="tab-indicator pointer-events-none flex items-center">
+        <div className="pointer-events-none absolute left-[4px] top-1/2 z-[3] flex h-[20px] w-[20px] -translate-y-1/2 items-center justify-center px-[2px] py-[1px]">
             <i
                 className={makeIconClass(firstBadge.icon, true, { defaultIcon: "circle-small" }) + " text-[12px]"}
                 style={{ color: firstBadge.color || "#fbbf24" }}
