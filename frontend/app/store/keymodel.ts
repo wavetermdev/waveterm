@@ -15,6 +15,7 @@ import {
     getFocusedBlockId,
     getSettingsKeyAtom,
     globalStore,
+    isDev,
     recordTEvent,
     refocusNode,
     replaceBlock,
@@ -182,7 +183,7 @@ function uxCloseBlock(blockId: string) {
 function genericClose() {
     const focusType = FocusManager.getInstance().getFocusType();
     if (focusType === "waveai") {
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
+        WorkspaceLayoutModel.getInstance().closePanel();
         return;
     }
 
@@ -720,10 +721,15 @@ function registerGlobalKeys() {
         return false;
     });
     globalKeyMap.set("Cmd:Shift:a", () => {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+        WorkspaceLayoutModel.getInstance().togglePanel("waveai");
         return true;
     });
+    if (isDev()) {
+        globalKeyMap.set("Cmd:Shift:e", () => {
+            WorkspaceLayoutModel.getInstance().togglePanel("fileexplorer", { nofocus: true });
+            return true;
+        });
+    }
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");

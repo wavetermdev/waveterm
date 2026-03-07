@@ -49,6 +49,7 @@ export interface TreeViewVisibleRow {
     isDirectory?: boolean;
     isExpanded?: boolean;
     hasChildren?: boolean;
+    isLoading?: boolean;
     icon?: string;
     node?: TreeNodeData;
 }
@@ -57,6 +58,7 @@ export interface TreeViewProps {
     rootIds: string[];
     initialNodes: Record<string, TreeNodeData>;
     fetchDir?: (id: string, limit: number) => Promise<FetchDirResult>;
+    initialExpandedIds?: string[];
     maxDirEntries?: number;
     rowHeight?: number;
     indentWidth?: number;
@@ -66,6 +68,7 @@ export interface TreeViewProps {
     width?: number | string;
     height?: number | string;
     className?: string;
+    expandDirectoriesOnClick?: boolean;
     onOpenFile?: (id: string, node: TreeNodeData) => void;
     onSelectionChange?: (id: string, node: TreeNodeData) => void;
 }
@@ -119,7 +122,9 @@ export function buildVisibleRows(
             return;
         }
         const childIds = node.childrenIds ?? [];
-        const hasChildren = node.isDirectory && (childIds.length > 0 || node.childrenStatus !== "loaded");
+        const status = node.childrenStatus ?? "unloaded";
+        const isLoading = status === "loading";
+        const hasChildren = node.isDirectory && (childIds.length > 0 || status !== "loaded");
         const isExpanded = expandedIds.has(id);
         rows.push({
             id,
@@ -130,21 +135,14 @@ export function buildVisibleRows(
             isDirectory: node.isDirectory,
             isExpanded,
             hasChildren,
+            isLoading,
             icon: node.icon,
             node,
         });
         if (!isExpanded || !node.isDirectory) {
             return;
         }
-        const status = node.childrenStatus ?? "unloaded";
         if (status === "loading") {
-            rows.push({
-                id: `${id}::__loading`,
-                parentId: id,
-                depth: depth + 1,
-                kind: "loading",
-                label: "Loading…",
-            });
             return;
         }
         if (status === "error") {
@@ -208,6 +206,7 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
         rootIds,
         initialNodes,
         fetchDir,
+        initialExpandedIds = [],
         maxDirEntries = 500,
         rowHeight = DefaultRowHeight,
         indentWidth = DefaultIndentWidth,
@@ -217,6 +216,7 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
         width = "100%",
         height = 360,
         className,
+        expandDirectoriesOnClick = false,
         onOpenFile,
         onSelectionChange,
     } = props;
@@ -226,9 +226,10 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                 Object.entries(initialNodes).map(([id, node]) => [id, { ...node, childrenStatus: node.childrenStatus ?? "unloaded" }])
             )
     );
-    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(initialExpandedIds));
     const [selectedId, setSelectedId] = useState<string>(rootIds[0]);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const loadingIdsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         setNodesById(
@@ -243,6 +244,10 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
             )
         );
     }, [initialNodes]);
+
+    useEffect(() => {
+        setExpandedIds(new Set(initialExpandedIds));
+    }, [initialExpandedIds]);
 
     const visibleRows = useMemo(() => buildVisibleRows(nodesById, rootIds, expandedIds), [nodesById, rootIds, expandedIds]);
     const idToIndex = useMemo(
@@ -287,9 +292,10 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
             return;
         }
         const status = currentNode.childrenStatus ?? "unloaded";
-        if (status !== "unloaded") {
+        if (status !== "unloaded" || loadingIdsRef.current.has(id)) {
             return;
         }
+        loadingIdsRef.current.add(id);
         setNodesById((prev) => {
             const next = new Map(prev);
             next.set(id, { ...currentNode, childrenStatus: "loading" });
@@ -331,6 +337,8 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                 });
                 return next;
             });
+        } finally {
+            loadingIdsRef.current.delete(id);
         }
     };
 
@@ -354,6 +362,19 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
         });
         scrollToId(id);
     };
+
+    useEffect(() => {
+        expandedIds.forEach((id) => {
+            const node = nodesById.get(id);
+            if (node == null || !node.isDirectory) {
+                return;
+            }
+            const status = node.childrenStatus ?? "unloaded";
+            if (status === "unloaded") {
+                void loadChildren(id);
+            }
+        });
+    }, [expandedIds, nodesById]);
 
     const selectVisibleNodeAt = (index: number) => {
         if (index < 0 || index >= visibleRows.length) {
@@ -455,7 +476,15 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                                     height: rowHeight,
                                     transform: `translateY(${virtualRow.start}px)`,
                                 }}
-                                onClick={() => row.kind === "node" && commitSelection(row.id)}
+                                onClick={() => {
+                                    if (row.kind !== "node") {
+                                        return;
+                                    }
+                                    commitSelection(row.id);
+                                    if (expandDirectoriesOnClick && row.isDirectory) {
+                                        toggleExpand(row.id);
+                                    }
+                                }}
                                 onDoubleClick={() => {
                                     if (row.kind !== "node") {
                                         return;
@@ -473,9 +502,13 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                                     className="flex items-center"
                                     style={{ paddingLeft: row.depth * indentWidth, width: ChevronWidth + row.depth * indentWidth }}
                                 >
-                                    {row.kind === "node" && row.isDirectory && row.hasChildren ? (
+                                    {row.kind === "node" && row.isDirectory && row.isLoading ? (
+                                        <span className="inline-flex h-4 w-4 items-center justify-center">
+                                            <i className="fa-sharp fa-solid fa-spinner fa-spin text-[11px] text-muted" />
+                                        </span>
+                                    ) : row.kind === "node" && row.isDirectory && row.hasChildren ? (
                                         <button
-                                            className="h-4 w-4 rounded text-muted hover:text-foreground cursor-pointer"
+                                            className="flex h-4 w-4 items-center justify-center rounded text-muted hover:text-foreground cursor-pointer"
                                             onClick={(event: MouseEvent<HTMLButtonElement>) => {
                                                 event.stopPropagation();
                                                 toggleExpand(row.id);
