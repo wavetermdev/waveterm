@@ -22,6 +22,13 @@ func setFieldValue(fieldValue reflect.Value, value any) {
 		return
 	}
 
+	if fieldValue.Kind() == reflect.Pointer {
+		ptrValue := reflect.New(fieldValue.Type().Elem())
+		setFieldValue(ptrValue.Elem(), value)
+		fieldValue.Set(ptrValue)
+		return
+	}
+
 	if valueStr, ok := value.(string); ok && fieldValue.Kind() == reflect.String {
 		fieldValue.SetString(valueStr)
 		return
