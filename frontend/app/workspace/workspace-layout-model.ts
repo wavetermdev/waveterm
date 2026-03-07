@@ -247,8 +247,13 @@ class WorkspaceLayoutModel {
         }
         const wasVisible = this.aiPanelVisible;
         this.aiPanelVisible = visible;
-        if (visible && !wasVisible && this.getActivePanel() === "waveai") {
-            recordTEvent("action:openwaveai");
+        if (visible && !wasVisible) {
+            if (this.getActivePanel() === "waveai") {
+                recordTEvent("action:openwaveai");
+            }
+            if (this.getActivePanel() === "fileexplorer") {
+                recordTEvent("action:openfileexplorer");
+            }
         }
         globalStore.set(this.panelVisibleAtom, visible);
         getApi().setWaveAIOpen(visible);

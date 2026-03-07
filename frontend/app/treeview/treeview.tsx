@@ -233,6 +233,7 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(initialExpandedIds));
     const [selectedId, setSelectedId] = useState<string>(rootIds[0]);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const loadingIdsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         setNodesById(
@@ -295,9 +296,10 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
             return;
         }
         const status = currentNode.childrenStatus ?? "unloaded";
-        if (status !== "unloaded") {
+        if (status !== "unloaded" || loadingIdsRef.current.has(id)) {
             return;
         }
+        loadingIdsRef.current.add(id);
         setNodesById((prev) => {
             const next = new Map(prev);
             next.set(id, { ...currentNode, childrenStatus: "loading" });
@@ -339,6 +341,8 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                 });
                 return next;
             });
+        } finally {
+            loadingIdsRef.current.delete(id);
         }
     };
 

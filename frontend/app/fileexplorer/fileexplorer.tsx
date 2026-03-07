@@ -19,7 +19,11 @@ const FileExplorerRootNode: TreeNodeData = {
 };
 
 export function fileInfoToTreeNodeData(fileInfo: FileInfo, parentId: string): TreeNodeData {
-    const nodeId = fileInfo.path ?? `${parentId}/${fileInfo.name ?? "unknown"}`;
+    const nodeId =
+        fileInfo.path ??
+        [parentId, fileInfo.name ?? "", fileInfo.dir ?? "", fileInfo.isdir ? "dir" : "file", fileInfo.staterror ?? ""].join(
+            "::"
+        );
     return {
         id: nodeId,
         parentId,
