@@ -125,23 +125,22 @@ Reports the current state of the command line input buffer.
 **Data Type:**
 ```typescript
 {
-  inputempty?: boolean;  // Whether the command line buffer is empty
+  buffer64: string;  // Base64-encoded command line buffer contents
+  cursor: number;    // ZLE cursor position within the decoded buffer
 }
 ```
 
-**When:** Sent during ZLE (Zsh Line Editor) hooks when buffer state changes
-- `zle-line-init` - When line editor is initialized
-- `zle-line-pre-redraw` - Before line is redrawn
+**When:** Sent in response to Wave writing `^_Wr` (`\x1fWr`) into the PTY while ZLE is active
 
-**Purpose:** Allows Wave Terminal to track the state of the command line input. Currently reports whether the buffer is empty, but may be extended to include additional input state information in the future.
+**Purpose:** Allows Wave Terminal to synchronize the full command line buffer and cursor position in a single round trip.
 
 **Example:**
 ```bash
-# When buffer is empty
-I;{"inputempty":true}
+# Empty buffer at cursor 0
+I;{"buffer64":"","cursor":0}
 
-# When buffer has content
-I;{"inputempty":false}
+# Buffer contains "echo hello" and cursor is after "echo"
+I;{"buffer64":"ZWNobyBoZWxsbw==","cursor":4}
 ```
 
 ### R - Reset Alternate Buffer
@@ -178,12 +177,12 @@ Here's the typical sequence during shell interaction:
    → A (prompt start)
    
 3. User types command and presses Enter
-   → I;{"inputempty":false} (input no longer empty - sent as user types)
+   → Wave writes `^_Wr`
+   → I;{"buffer64":"...","cursor":...} (full ZLE readback)
    → C;{"cmd64":"..."} (command about to execute)
    
 4. Command runs and completes
    → D;{"exitcode":<status>} (exit status)
-   → I;{"inputempty":true} (input empty again)
    → A (next prompt start)
    
 5. Repeat from step 3...
@@ -193,7 +192,7 @@ Here's the typical sequence during shell interaction:
 
 - Shell integration is **disabled** when running inside tmux or screen (`TMUX`, `STY` environment variables, or `tmux*`/`screen*` TERM values)
 - Commands are base64-encoded in the C sequence to safely handle special characters, newlines, and control characters
-- The I (input empty) command is only sent when the state changes (not on every keystroke)
+- The I command is produced by a ZLE widget bound to `^_Wr` and returns the exact `BUFFER` contents plus `CURSOR`
 - The M (metadata) command is only sent once during the first precmd
 - The D (exit status) command is skipped during the first precmd (no previous command to report)
 

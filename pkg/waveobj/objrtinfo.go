@@ -15,7 +15,8 @@ type ObjRTInfo struct {
 	ShellIntegration     bool   `json:"shell:integration,omitempty"`
 	ShellOmz             bool   `json:"shell:omz,omitempty"`
 	ShellComp            string `json:"shell:comp,omitempty"`
-	ShellInputEmpty      bool   `json:"shell:inputempty,omitempty"`
+	ShellInputBuffer64   *string `json:"shell:inputbuffer64,omitempty"`
+	ShellInputCursor     *int    `json:"shell:inputcursor,omitempty"`
 	ShellLastCmd         string `json:"shell:lastcmd,omitempty"`
 	ShellLastCmdExitCode int    `json:"shell:lastcmdexitcode,omitempty"`
 

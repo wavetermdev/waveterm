@@ -41,7 +41,7 @@ type Osc16162Command =
           };
       }
     | { command: "D"; data: { exitcode?: number } }
-    | { command: "I"; data: { inputempty?: boolean } }
+    | { command: "I"; data: { buffer64?: string; cursor?: number } }
     | { command: "R"; data: Record<string, never> };
 
 function checkCommandForTelemetry(decodedCmd: string) {
@@ -86,7 +86,11 @@ function handleShellIntegrationCommandStart(
     rtInfo: ObjRTInfo // this is passed by reference and modified inside of this function
 ): void {
     rtInfo["shell:state"] = "running-command";
+    rtInfo["shell:inputbuffer64"] = null;
+    rtInfo["shell:inputcursor"] = null;
     globalStore.set(termWrap.shellIntegrationStatusAtom, "running-command");
+    globalStore.set(termWrap.shellInputBufferAtom, null);
+    globalStore.set(termWrap.shellInputCursorAtom, null);
     const connName = globalStore.get(getBlockMetaKeyAtom(blockId, "connection")) ?? "";
     const isRemote = isSshConnName(connName);
     const isWsl = isWslConnName(connName);
@@ -114,6 +118,28 @@ function handleShellIntegrationCommandStart(
         globalStore.set(termWrap.lastCommandAtom, null);
     }
     rtInfo["shell:lastcmdexitcode"] = null;
+}
+
+function handleShellIntegrationInputReadback(
+    termWrap: TermWrap,
+    cmd: { command: "I"; data: { buffer64?: string; cursor?: number } },
+    rtInfo: ObjRTInfo
+): void {
+    const { buffer64, cursor } = cmd.data;
+    if (buffer64 == null || typeof cursor != "number" || !isFinite(cursor)) {
+        return;
+    }
+    let decodedBuffer: string;
+    try {
+        decodedBuffer = base64ToString(buffer64);
+    } catch (e) {
+        console.error("Error decoding shell input buffer64:", e);
+        return;
+    }
+    rtInfo["shell:inputbuffer64"] = buffer64;
+    rtInfo["shell:inputcursor"] = cursor;
+    globalStore.set(termWrap.shellInputBufferAtom, decodedBuffer);
+    globalStore.set(termWrap.shellInputCursorAtom, cursor);
 }
 
 // for xterm OSC handlers, we return true always because we "own" the OSC number.
@@ -331,12 +357,12 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             }
             break;
         case "I":
-            if (cmd.data.inputempty != null) {
-                rtInfo["shell:inputempty"] = cmd.data.inputempty;
-            }
+            handleShellIntegrationInputReadback(termWrap, cmd, rtInfo);
             break;
         case "R":
             globalStore.set(termWrap.shellIntegrationStatusAtom, null);
+            globalStore.set(termWrap.shellInputBufferAtom, null);
+            globalStore.set(termWrap.shellInputCursorAtom, null);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
