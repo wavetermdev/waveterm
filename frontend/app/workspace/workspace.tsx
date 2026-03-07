@@ -3,13 +3,14 @@
 
 import { AIPanel } from "@/app/aipanel/aipanel";
 import { ErrorBoundary } from "@/app/element/errorboundary";
+import { FileExplorerPanel } from "@/app/fileexplorer/fileexplorer";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { atoms, getApi } from "@/store/global";
+import { atoms, getApi, isDev } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import {
@@ -24,6 +25,7 @@ const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
+    const activePanel = useAtomValue(workspaceLayoutModel.activePanelAtom);
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
@@ -69,7 +71,8 @@ const WorkspaceElem = memo(() => {
                             className="overflow-hidden"
                         >
                             <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                {tabId !== "" && <AIPanel />}
+                                {tabId !== "" &&
+                                    (isDev() && activePanel === "fileexplorer" ? <FileExplorerPanel /> : <AIPanel />)}
                             </div>
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />

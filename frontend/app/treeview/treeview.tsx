@@ -57,6 +57,7 @@ export interface TreeViewProps {
     rootIds: string[];
     initialNodes: Record<string, TreeNodeData>;
     fetchDir?: (id: string, limit: number) => Promise<FetchDirResult>;
+    initialExpandedIds?: string[];
     maxDirEntries?: number;
     rowHeight?: number;
     indentWidth?: number;
@@ -66,6 +67,7 @@ export interface TreeViewProps {
     width?: number | string;
     height?: number | string;
     className?: string;
+    expandDirectoriesOnClick?: boolean;
     onOpenFile?: (id: string, node: TreeNodeData) => void;
     onSelectionChange?: (id: string, node: TreeNodeData) => void;
 }
@@ -208,6 +210,7 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
         rootIds,
         initialNodes,
         fetchDir,
+        initialExpandedIds = [],
         maxDirEntries = 500,
         rowHeight = DefaultRowHeight,
         indentWidth = DefaultIndentWidth,
@@ -217,6 +220,7 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
         width = "100%",
         height = 360,
         className,
+        expandDirectoriesOnClick = false,
         onOpenFile,
         onSelectionChange,
     } = props;
@@ -226,7 +230,7 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                 Object.entries(initialNodes).map(([id, node]) => [id, { ...node, childrenStatus: node.childrenStatus ?? "unloaded" }])
             )
     );
-    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(initialExpandedIds));
     const [selectedId, setSelectedId] = useState<string>(rootIds[0]);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -243,6 +247,10 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
             )
         );
     }, [initialNodes]);
+
+    useEffect(() => {
+        setExpandedIds(new Set(initialExpandedIds));
+    }, [initialExpandedIds]);
 
     const visibleRows = useMemo(() => buildVisibleRows(nodesById, rootIds, expandedIds), [nodesById, rootIds, expandedIds]);
     const idToIndex = useMemo(
@@ -355,6 +363,19 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
         scrollToId(id);
     };
 
+    useEffect(() => {
+        expandedIds.forEach((id) => {
+            const node = nodesById.get(id);
+            if (node == null || !node.isDirectory) {
+                return;
+            }
+            const status = node.childrenStatus ?? "unloaded";
+            if (status === "unloaded") {
+                void loadChildren(id);
+            }
+        });
+    }, [expandedIds, nodesById]);
+
     const selectVisibleNodeAt = (index: number) => {
         if (index < 0 || index >= visibleRows.length) {
             return;
@@ -455,7 +476,15 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                                     height: rowHeight,
                                     transform: `translateY(${virtualRow.start}px)`,
                                 }}
-                                onClick={() => row.kind === "node" && commitSelection(row.id)}
+                                onClick={() => {
+                                    if (row.kind !== "node") {
+                                        return;
+                                    }
+                                    commitSelection(row.id);
+                                    if (expandDirectoriesOnClick && row.isDirectory) {
+                                        toggleExpand(row.id);
+                                    }
+                                }}
                                 onDoubleClick={() => {
                                     if (row.kind !== "node") {
                                         return;

@@ -15,6 +15,7 @@ import {
     getFocusedBlockId,
     getSettingsKeyAtom,
     globalStore,
+    isDev,
     recordTEvent,
     refocusNode,
     replaceBlock,
@@ -720,10 +721,29 @@ function registerGlobalKeys() {
         return false;
     });
     globalKeyMap.set("Cmd:Shift:a", () => {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+        const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
+        const currentVisible = workspaceLayoutModel.getAIPanelVisible();
+        const activePanel = workspaceLayoutModel.getActivePanel();
+        if (currentVisible && activePanel === "waveai") {
+            workspaceLayoutModel.setAIPanelVisible(false);
+            return true;
+        }
+        workspaceLayoutModel.setAIPanelVisible(true);
         return true;
     });
+    if (isDev()) {
+        globalKeyMap.set("Cmd:Shift:e", () => {
+            const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
+            const currentVisible = workspaceLayoutModel.getAIPanelVisible();
+            const activePanel = workspaceLayoutModel.getActivePanel();
+            if (currentVisible && activePanel === "fileexplorer") {
+                workspaceLayoutModel.setFileExplorerPanelVisible(false);
+                return true;
+            }
+            workspaceLayoutModel.setFileExplorerPanelVisible(true);
+            return true;
+        });
+    }
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");

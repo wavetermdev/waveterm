@@ -7,7 +7,7 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { atoms, getApi, getOrefMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
+import { atoms, getApi, getOrefMetaKeyAtom, isDev, recordTEvent, refocusNode } from "@/store/global";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
@@ -19,6 +19,7 @@ const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
 const AIPANEL_MINWIDTH = 300;
 const AIPANEL_MAXWIDTHRATIO = 0.66;
+type SidePanelView = "waveai" | "fileexplorer";
 
 class WorkspaceLayoutModel {
     private static instance: WorkspaceLayoutModel | null = null;
@@ -30,11 +31,13 @@ class WorkspaceLayoutModel {
     inResize: boolean; // prevents recursive setLayout calls (setLayout triggers onLayout which calls setLayout)
     private aiPanelVisible: boolean;
     private aiPanelWidth: number | null;
+    activePanel: SidePanelView;
     private debouncedPersistWidth: (width: number) => void;
     private initialized: boolean = false;
     private transitionTimeoutRef: NodeJS.Timeout | null = null;
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
+    activePanelAtom: jotai.PrimitiveAtom<SidePanelView>;
 
     private constructor() {
         this.aiPanelRef = null;
@@ -44,7 +47,9 @@ class WorkspaceLayoutModel {
         this.inResize = false;
         this.aiPanelVisible = false;
         this.aiPanelWidth = null;
+        this.activePanel = "waveai";
         this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
+        this.activePanelAtom = jotai.atom(this.activePanel);
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
         this.handlePanelLayout = this.handlePanelLayout.bind(this);
@@ -220,14 +225,29 @@ class WorkspaceLayoutModel {
         return this.aiPanelVisible;
     }
 
-    setAIPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
+    getActivePanel(): SidePanelView {
+        if (!isDev()) {
+            return "waveai";
+        }
+        return this.activePanel;
+    }
+
+    setActivePanel(panel: SidePanelView): void {
+        if (!isDev() && panel !== "waveai") {
+            return;
+        }
+        this.activePanel = panel;
+        globalStore.set(this.activePanelAtom, panel);
+    }
+
+    private applyPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
         if (this.focusTimeoutRef != null) {
             clearTimeout(this.focusTimeoutRef);
             this.focusTimeoutRef = null;
         }
         const wasVisible = this.aiPanelVisible;
         this.aiPanelVisible = visible;
-        if (visible && !wasVisible) {
+        if (visible && !wasVisible && this.getActivePanel() === "waveai") {
             recordTEvent("action:openwaveai");
         }
         globalStore.set(this.panelVisibleAtom, visible);
@@ -239,14 +259,17 @@ class WorkspaceLayoutModel {
         this.enableTransitions(250);
         this.syncAIPanelRef();
 
-        if (visible) {
+        if (visible && this.getActivePanel() === "waveai") {
             if (!opts?.nofocus) {
                 this.focusTimeoutRef = setTimeout(() => {
                     WaveAIModel.getInstance().focusInput();
                     this.focusTimeoutRef = null;
                 }, 350);
             }
-        } else {
+            return;
+        }
+
+        if (!visible) {
             const layoutModel = getLayoutModelForStaticTab();
             const focusedNode = globalStore.get(layoutModel.focusedNode);
             if (focusedNode == null) {
@@ -258,6 +281,21 @@ class WorkspaceLayoutModel {
                 refocusNode(blockId);
             }
         }
+    }
+
+    setAIPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
+        if (visible) {
+            this.setActivePanel("waveai");
+        }
+        this.applyPanelVisible(visible, opts);
+    }
+
+    setFileExplorerPanelVisible(visible: boolean): void {
+        if (!isDev()) {
+            return;
+        }
+        this.setActivePanel("fileexplorer");
+        this.applyPanelVisible(visible, { nofocus: true });
     }
 
     getAIPanelWidth(): number {
