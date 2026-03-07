@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
@@ -20,7 +20,11 @@ import {
 } from "@floating-ui/react";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
+
+type WidgetMode = "normal" | "compact" | "supercompact";
+type CreateWidgetBlockFn = (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => void | Promise<void>;
+type LoadWidgetAppsFn = () => Promise<AppInfo[]>;
 
 function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
     if (wmap == null) {
@@ -33,50 +37,108 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
     return wlist;
 }
 
+function getWidgetsMode(containerHeight: number, normalHeight: number, widgetCount: number): WidgetMode {
+    const gracePeriod = 10;
+
+    if (normalHeight <= containerHeight - gracePeriod) {
+        return "normal";
+    }
+
+    const minHeightPerWidget = 32;
+    const requiredHeight = widgetCount * minHeightPerWidget;
+    if (requiredHeight > containerHeight) {
+        return "supercompact";
+    }
+
+    return "compact";
+}
+
 async function handleWidgetSelect(widget: WidgetConfigType) {
     const blockDef = widget.blockdef;
     createBlock(blockDef, widget.magnified);
 }
 
-const Widget = memo(({ widget, mode }: { widget: WidgetConfigType; mode: "normal" | "compact" | "supercompact" }) => {
-    const [isTruncated, setIsTruncated] = useState(false);
-    const labelRef = useRef<HTMLDivElement>(null);
+const WidgetV = memo(
+    ({
+        widget,
+        mode,
+        isTruncated,
+        onClick,
+        labelRef,
+    }: {
+        widget: WidgetConfigType;
+        mode: WidgetMode;
+        isTruncated: boolean;
+        onClick: () => void;
+        labelRef?: RefObject<HTMLDivElement>;
+    }) => {
+        const shouldDisableTooltip = mode !== "normal" ? false : !isTruncated;
 
-    useEffect(() => {
-        if (mode === "normal" && labelRef.current) {
-            const element = labelRef.current;
-            setIsTruncated(element.scrollWidth > element.clientWidth);
-        }
-    }, [mode, widget.label]);
-
-    const shouldDisableTooltip = mode !== "normal" ? false : !isTruncated;
-
-    return (
-        <Tooltip
-            content={widget.description || widget.label}
-            placement="left"
-            disable={shouldDisableTooltip}
-            divClassName={clsx(
-                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
-                mode === "supercompact" ? "text-sm" : "text-lg",
-                widget["display:hidden"] && "hidden"
-            )}
-            divOnClick={() => handleWidgetSelect(widget)}
-        >
-            <div style={{ color: widget.color }}>
-                <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
-            </div>
-            {mode === "normal" && !isBlank(widget.label) ? (
-                <div
-                    ref={labelRef}
-                    className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
-                >
-                    {widget.label}
+        return (
+            <Tooltip
+                content={widget.description || widget.label}
+                placement="left"
+                disable={shouldDisableTooltip}
+                divClassName={clsx(
+                    "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
+                    mode === "supercompact" ? "text-sm" : "text-lg",
+                    widget["display:hidden"] && "hidden"
+                )}
+                divOnClick={onClick}
+            >
+                <div style={{ color: widget.color }}>
+                    <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
                 </div>
-            ) : null}
-        </Tooltip>
-    );
-});
+                {mode === "normal" && !isBlank(widget.label) ? (
+                    <div
+                        ref={labelRef}
+                        className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
+                    >
+                        {widget.label}
+                    </div>
+                ) : null}
+            </Tooltip>
+        );
+    }
+);
+
+WidgetV.displayName = "WidgetV";
+
+const Widget = memo(
+    ({
+        widget,
+        mode,
+        onSelectWidget,
+    }: {
+        widget: WidgetConfigType;
+        mode: WidgetMode;
+        onSelectWidget?: (widget: WidgetConfigType) => void;
+    }) => {
+        const [isTruncated, setIsTruncated] = useState(false);
+        const labelRef = useRef<HTMLDivElement>(null);
+
+        useEffect(() => {
+            if (mode === "normal" && labelRef.current) {
+                const element = labelRef.current;
+                setIsTruncated(element.scrollWidth > element.clientWidth);
+            }
+        }, [mode, widget.label]);
+
+        const handleClick = () => {
+            if (onSelectWidget != null) {
+                onSelectWidget(widget);
+                return;
+            }
+            void handleWidgetSelect(widget);
+        };
+
+        return (
+            <WidgetV widget={widget} mode={mode} isTruncated={isTruncated} onClick={handleClick} labelRef={labelRef} />
+        );
+    }
+);
+
+Widget.displayName = "Widget";
 
 function calculateGridSize(appCount: number): number {
     if (appCount <= 4) return 2;
@@ -91,10 +153,16 @@ const AppsFloatingWindow = memo(
         isOpen,
         onClose,
         referenceElement,
+        loadApps,
+        onCreateBlock,
+        onOpenBuilder,
     }: {
         isOpen: boolean;
         onClose: () => void;
         referenceElement: HTMLElement;
+        loadApps?: LoadWidgetAppsFn;
+        onCreateBlock?: CreateWidgetBlockFn;
+        onOpenBuilder?: () => void;
     }) => {
         const [apps, setApps] = useState<AppInfo[]>([]);
         const [loading, setLoading] = useState(true);
@@ -113,9 +181,13 @@ const AppsFloatingWindow = memo(
         const dismiss = useDismiss(context);
         const { getFloatingProps } = useInteractions([dismiss]);
         const handleOpenBuilder = useCallback(() => {
-            getApi().openBuilder(null);
+            if (onOpenBuilder != null) {
+                onOpenBuilder();
+            } else {
+                getApi().openBuilder(null);
+            }
             onClose();
-        }, [onClose]);
+        }, [onClose, onOpenBuilder]);
 
         useEffect(() => {
             if (!isOpen) return;
@@ -123,15 +195,19 @@ const AppsFloatingWindow = memo(
             const fetchApps = async () => {
                 setLoading(true);
                 try {
-                    const allApps = await RpcApi.ListAllAppsCommand(TabRpcClient);
-                    const localApps = allApps
-                        .filter((app) => !app.appid.startsWith("draft/"))
-                        .sort((a, b) => {
-                            const aName = a.appid.replace(/^local\//, "");
-                            const bName = b.appid.replace(/^local\//, "");
-                            return aName.localeCompare(bName);
-                        });
-                    setApps(localApps);
+                    const allApps =
+                        loadApps != null
+                            ? await loadApps()
+                            : await RpcApi.ListAllAppsCommand(TabRpcClient).then((apps) =>
+                                  apps
+                                      .filter((app) => !app.appid.startsWith("draft/"))
+                                      .sort((a, b) => {
+                                          const aName = a.appid.replace(/^local\//, "");
+                                          const bName = b.appid.replace(/^local\//, "");
+                                          return aName.localeCompare(bName);
+                                      })
+                              );
+                    setApps(allApps);
                 } catch (error) {
                     console.error("Failed to fetch apps:", error);
                     setApps([]);
@@ -140,8 +216,8 @@ const AppsFloatingWindow = memo(
                 }
             };
 
-            fetchApps();
-        }, [isOpen]);
+            void fetchApps();
+        }, [isOpen, loadApps]);
 
         if (!isOpen) return null;
 
@@ -188,7 +264,11 @@ const AppsFloatingWindow = memo(
                                                         "tsunami:appid": app.appid,
                                                     },
                                                 };
-                                                createBlock(blockDef);
+                                                if (onCreateBlock != null) {
+                                                    onCreateBlock(blockDef);
+                                                } else {
+                                                    void createBlock(blockDef);
+                                                }
                                                 onClose();
                                             }}
                                         >
@@ -223,10 +303,12 @@ const SettingsFloatingWindow = memo(
         isOpen,
         onClose,
         referenceElement,
+        onCreateBlock,
     }: {
         isOpen: boolean;
         onClose: () => void;
         referenceElement: HTMLElement;
+        onCreateBlock?: CreateWidgetBlockFn;
     }) => {
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
@@ -244,46 +326,55 @@ const SettingsFloatingWindow = memo(
 
         if (!isOpen) return null;
 
+        const makeCreateBlockHandler = (blockDef: BlockDef, magnified = false, ephemeral = false) => () => {
+            if (onCreateBlock != null) {
+                onCreateBlock(blockDef, magnified, ephemeral);
+            } else {
+                void createBlock(blockDef, magnified, ephemeral);
+            }
+            onClose();
+        };
+
         const menuItems = [
             {
                 icon: "gear",
                 label: "Settings",
-                onClick: () => {
-                    const blockDef: BlockDef = {
+                onClick: makeCreateBlockHandler(
+                    {
                         meta: {
                             view: "waveconfig",
                         },
-                    };
-                    createBlock(blockDef, false, true);
-                    onClose();
-                },
+                    },
+                    false,
+                    true
+                ),
             },
             {
                 icon: "lightbulb",
                 label: "Tips",
-                onClick: () => {
-                    const blockDef: BlockDef = {
+                onClick: makeCreateBlockHandler(
+                    {
                         meta: {
                             view: "tips",
                         },
-                    };
-                    createBlock(blockDef, true, true);
-                    onClose();
-                },
+                    },
+                    true,
+                    true
+                ),
             },
             {
                 icon: "lock",
                 label: "Secrets",
-                onClick: () => {
-                    const blockDef: BlockDef = {
+                onClick: makeCreateBlockHandler(
+                    {
                         meta: {
                             view: "waveconfig",
                             file: "secrets",
                         },
-                    };
-                    createBlock(blockDef, false, true);
-                    onClose();
-                },
+                    },
+                    false,
+                    true
+                ),
             },
             {
                 icon: "book-open",
@@ -296,15 +387,11 @@ const SettingsFloatingWindow = memo(
             {
                 icon: "circle-question",
                 label: "Help",
-                onClick: () => {
-                    const blockDef: BlockDef = {
-                        meta: {
-                            view: "help",
-                        },
-                    };
-                    createBlock(blockDef);
-                    onClose();
-                },
+                onClick: makeCreateBlockHandler({
+                    meta: {
+                        view: "help",
+                    },
+                }),
             },
         ];
 
@@ -336,11 +423,214 @@ const SettingsFloatingWindow = memo(
 
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
+type WidgetsVProps = {
+    mode: WidgetMode;
+    widgets: WidgetConfigType[];
+    showAppsButton: boolean;
+    showDevIndicator: boolean;
+    isAppsOpen: boolean;
+    isSettingsOpen: boolean;
+    containerRef: RefObject<HTMLDivElement>;
+    measurementRef: RefObject<HTMLDivElement>;
+    appsButtonRef: RefObject<HTMLDivElement>;
+    settingsButtonRef: RefObject<HTMLDivElement>;
+    onToggleApps: () => void;
+    onToggleSettings: () => void;
+    onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
+    onSelectWidget?: (widget: WidgetConfigType) => void;
+    loadApps?: LoadWidgetAppsFn;
+    onCreateBlock?: CreateWidgetBlockFn;
+    onOpenBuilder?: () => void;
+    onCloseApps: () => void;
+    onCloseSettings: () => void;
+    containerClassName?: string;
+};
+
+const WidgetsV = memo(
+    ({
+        mode,
+        widgets,
+        showAppsButton,
+        showDevIndicator,
+        isAppsOpen,
+        isSettingsOpen,
+        containerRef,
+        measurementRef,
+        appsButtonRef,
+        settingsButtonRef,
+        onToggleApps,
+        onToggleSettings,
+        onContextMenu,
+        onSelectWidget,
+        loadApps,
+        onCreateBlock,
+        onOpenBuilder,
+        onCloseApps,
+        onCloseSettings,
+        containerClassName,
+    }: WidgetsVProps) => {
+        return (
+            <>
+                <div
+                    ref={containerRef}
+                    className={clsx("flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none", containerClassName)}
+                    onContextMenu={onContextMenu}
+                >
+                    {mode === "supercompact" ? (
+                        <>
+                            <div className="grid grid-cols-2 gap-0 w-full">
+                                {widgets?.map((data, idx) => (
+                                    <Widget
+                                        key={`widget-${idx}`}
+                                        widget={data}
+                                        mode={mode}
+                                        onSelectWidget={onSelectWidget}
+                                    />
+                                ))}
+                            </div>
+                            <div className="flex-grow" />
+                            <div className="grid grid-cols-2 gap-0 w-full">
+                                {showAppsButton ? (
+                                    <div
+                                        ref={appsButtonRef}
+                                        className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                        onClick={onToggleApps}
+                                    >
+                                        <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                            <div>
+                                                <i className={makeIconClass("cube", true)}></i>
+                                            </div>
+                                        </Tooltip>
+                                    </div>
+                                ) : null}
+                                <div
+                                    ref={settingsButtonRef}
+                                    className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                    onClick={onToggleSettings}
+                                >
+                                    <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
+                                        <div>
+                                            <i className={makeIconClass("gear", true)}></i>
+                                        </div>
+                                    </Tooltip>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {widgets?.map((data, idx) => (
+                                <Widget key={`widget-${idx}`} widget={data} mode={mode} onSelectWidget={onSelectWidget} />
+                            ))}
+                            <div className="flex-grow" />
+                            {showAppsButton ? (
+                                <div
+                                    ref={appsButtonRef}
+                                    className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                    onClick={onToggleApps}
+                                >
+                                    <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                        <div className="flex flex-col items-center w-full">
+                                            <div>
+                                                <i className={makeIconClass("cube", true)}></i>
+                                            </div>
+                                            {mode === "normal" && (
+                                                <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                                    apps
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Tooltip>
+                                </div>
+                            ) : null}
+                            <div
+                                ref={settingsButtonRef}
+                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                onClick={onToggleSettings}
+                            >
+                                <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
+                                    <div>
+                                        <i className={makeIconClass("gear", true)}></i>
+                                    </div>
+                                </Tooltip>
+                            </div>
+                        </>
+                    )}
+                    {showDevIndicator ? (
+                        <div
+                            className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                            title="Running Wave Dev Build"
+                        >
+                            <i className="fa fa-brands fa-dev fa-fw" />
+                        </div>
+                    ) : null}
+                </div>
+                {showAppsButton && appsButtonRef.current && (
+                    <AppsFloatingWindow
+                        isOpen={isAppsOpen}
+                        onClose={onCloseApps}
+                        referenceElement={appsButtonRef.current}
+                        loadApps={loadApps}
+                        onCreateBlock={onCreateBlock}
+                        onOpenBuilder={onOpenBuilder}
+                    />
+                )}
+                {settingsButtonRef.current && (
+                    <SettingsFloatingWindow
+                        isOpen={isSettingsOpen}
+                        onClose={onCloseSettings}
+                        referenceElement={settingsButtonRef.current}
+                        onCreateBlock={onCreateBlock}
+                    />
+                )}
+
+                <div
+                    ref={measurementRef}
+                    className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
+                >
+                    {widgets?.map((data, idx) => (
+                        <Widget
+                            key={`measurement-widget-${idx}`}
+                            widget={data}
+                            mode="normal"
+                            onSelectWidget={onSelectWidget}
+                        />
+                    ))}
+                    <div className="flex-grow" />
+                    <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                        <div>
+                            <i className={makeIconClass("gear", true)}></i>
+                        </div>
+                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center">settings</div>
+                    </div>
+                    {showAppsButton ? (
+                        <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                            <div>
+                                <i className={makeIconClass("cube", true)}></i>
+                            </div>
+                            <div className="text-xxs mt-0.5 w-full px-0.5 text-center">apps</div>
+                        </div>
+                    ) : null}
+                    {showDevIndicator ? (
+                        <div
+                            className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                            title="Running Wave Dev Build"
+                        >
+                            <i className="fa fa-brands fa-dev fa-fw" />
+                        </div>
+                    ) : null}
+                </div>
+            </>
+        );
+    }
+);
+
+WidgetsV.displayName = "WidgetsV";
+
 const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const workspace = useAtomValue(atoms.workspace);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
-    const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
+    const [mode, setMode] = useState<WidgetMode>("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
 
@@ -366,22 +656,8 @@ const Widgets = memo(() => {
 
         const containerHeight = containerRef.current.clientHeight;
         const normalHeight = measurementRef.current.scrollHeight;
-        const gracePeriod = 10;
-
-        let newMode: "normal" | "compact" | "supercompact" = "normal";
-
-        if (normalHeight > containerHeight - gracePeriod) {
-            newMode = "compact";
-
-            // Calculate total widget count for supercompact check
-            const totalWidgets = (widgets?.length || 0) + 1;
-            const minHeightPerWidget = 32;
-            const requiredHeight = totalWidgets * minHeightPerWidget;
-
-            if (requiredHeight > containerHeight) {
-                newMode = "supercompact";
-            }
-        }
+        const totalWidgets = (widgets?.length || 0) + 1;
+        const newMode = getWidgetsMode(containerHeight, normalHeight, totalWidgets);
 
         if (newMode !== mode) {
             setMode(newMode);
@@ -406,7 +682,7 @@ const Widgets = memo(() => {
         checkModeNeeded();
     }, [widgets, checkModeNeeded]);
 
-    const handleWidgetsBarContextMenu = (e: React.MouseEvent) => {
+    const handleWidgetsBarContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         const menu: ContextMenuItem[] = [
             {
@@ -425,146 +701,27 @@ const Widgets = memo(() => {
             },
         ];
         ContextMenuModel.getInstance().showContextMenu(menu, e);
-    };
+    }, []);
 
     return (
-        <>
-            <div
-                ref={containerRef}
-                className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none"
-                onContextMenu={handleWidgetsBarContextMenu}
-            >
-                {mode === "supercompact" ? (
-                    <>
-                        <div className="grid grid-cols-2 gap-0 w-full">
-                            {widgets?.map((data, idx) => (
-                                <Widget key={`widget-${idx}`} widget={data} mode={mode} />
-                            ))}
-                        </div>
-                        <div className="flex-grow" />
-                        <div className="grid grid-cols-2 gap-0 w-full">
-                            {isDev() || featureWaveAppBuilder ? (
-                                <div
-                                    ref={appsButtonRef}
-                                    className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                    onClick={() => setIsAppsOpen(!isAppsOpen)}
-                                >
-                                    <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
-                                        <div>
-                                            <i className={makeIconClass("cube", true)}></i>
-                                        </div>
-                                    </Tooltip>
-                                </div>
-                            ) : null}
-                            <div
-                                ref={settingsButtonRef}
-                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                            >
-                                <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
-                                    <div>
-                                        <i className={makeIconClass("gear", true)}></i>
-                                    </div>
-                                </Tooltip>
-                            </div>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        {widgets?.map((data, idx) => (
-                            <Widget key={`widget-${idx}`} widget={data} mode={mode} />
-                        ))}
-                        <div className="flex-grow" />
-                        {isDev() || featureWaveAppBuilder ? (
-                            <div
-                                ref={appsButtonRef}
-                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                onClick={() => setIsAppsOpen(!isAppsOpen)}
-                            >
-                                <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
-                                    <div className="flex flex-col items-center w-full">
-                                        <div>
-                                            <i className={makeIconClass("cube", true)}></i>
-                                        </div>
-                                        {mode === "normal" && (
-                                            <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                                apps
-                                            </div>
-                                        )}
-                                    </div>
-                                </Tooltip>
-                            </div>
-                        ) : null}
-                        <div
-                            ref={settingsButtonRef}
-                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        >
-                            <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
-                                <div>
-                                    <i className={makeIconClass("gear", true)}></i>
-                                </div>
-                            </Tooltip>
-                        </div>
-                    </>
-                )}
-                {isDev() ? (
-                    <div
-                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running Wave Dev Build"
-                    >
-                        <i className="fa fa-brands fa-dev fa-fw" />
-                    </div>
-                ) : null}
-            </div>
-            {(isDev() || featureWaveAppBuilder) && appsButtonRef.current && (
-                <AppsFloatingWindow
-                    isOpen={isAppsOpen}
-                    onClose={() => setIsAppsOpen(false)}
-                    referenceElement={appsButtonRef.current}
-                />
-            )}
-            {settingsButtonRef.current && (
-                <SettingsFloatingWindow
-                    isOpen={isSettingsOpen}
-                    onClose={() => setIsSettingsOpen(false)}
-                    referenceElement={settingsButtonRef.current}
-                />
-            )}
-
-            <div
-                ref={measurementRef}
-                className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
-            >
-                {widgets?.map((data, idx) => (
-                    <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" />
-                ))}
-                <div className="flex-grow" />
-                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                    <div>
-                        <i className={makeIconClass("gear", true)}></i>
-                    </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">settings</div>
-                </div>
-                {isDev() ? (
-                    <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
-                        <div>
-                            <i className={makeIconClass("cube", true)}></i>
-                        </div>
-                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center">apps</div>
-                    </div>
-                ) : null}
-                {isDev() ? (
-                    <div
-                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running Wave Dev Build"
-                    >
-                        <i className="fa fa-brands fa-dev fa-fw" />
-                    </div>
-                ) : null}
-            </div>
-        </>
+        <WidgetsV
+            mode={mode}
+            widgets={widgets}
+            showAppsButton={isDev() || featureWaveAppBuilder}
+            showDevIndicator={isDev()}
+            isAppsOpen={isAppsOpen}
+            isSettingsOpen={isSettingsOpen}
+            containerRef={containerRef}
+            measurementRef={measurementRef}
+            appsButtonRef={appsButtonRef}
+            settingsButtonRef={settingsButtonRef}
+            onToggleApps={() => setIsAppsOpen(!isAppsOpen)}
+            onToggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
+            onContextMenu={handleWidgetsBarContextMenu}
+            onCloseApps={() => setIsAppsOpen(false)}
+            onCloseSettings={() => setIsSettingsOpen(false)}
+        />
     );
 });
 
-export { Widgets };
+export { getWidgetsMode, WidgetV, Widgets, WidgetsV };
