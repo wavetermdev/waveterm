@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import { ClientModel } from "@/app/store/client-model";
-import { setWaveWindowType } from "@/app/store/windowtype";
+import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
+import { GlobalModel } from "@/app/store/global-model";
+import { globalStore } from "@/app/store/jotaiStore";
 import { loadFonts } from "@/util/fontutil";
 import React, { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import { installPreviewElectronApi } from "./preview-electron-api";
 
 import "../app/app.scss";
 
@@ -118,10 +120,23 @@ function PreviewApp() {
     return <PreviewIndex />;
 }
 
+const PreviewTabId = crypto.randomUUID();
+const PreviewWindowId = crypto.randomUUID();
+const PreviewClientId = crypto.randomUUID();
+
 function initPreview() {
-    setWaveWindowType("preview");
-    // Preview mode has no connected backend client object, but onboarding previews read clientAtom.
-    ClientModel.getInstance().initialize(null);
+    installPreviewElectronApi();
+    const initOpts = {
+        tabId: PreviewTabId,
+        windowId: PreviewWindowId,
+        clientId: PreviewClientId,
+        environment: "renderer",
+        platform: "darwin",
+        isPreview: true,
+    } as GlobalInitOptions;
+    initGlobalAtoms(initOpts);
+    globalStore.set(getAtoms().fullConfigAtom, {} as FullConfigType);
+    GlobalModel.getInstance().initialize(initOpts);
     loadFonts();
     const root = createRoot(document.getElementById("main")!);
     root.render(<PreviewApp />);
