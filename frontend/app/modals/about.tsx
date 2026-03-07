@@ -1,13 +1,16 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { modalsModel } from "@/app/store/modalmodel";
-import { Modal } from "./modal";
-
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isDev } from "@/util/isdev";
-import { useState } from "react";
+import { fireAndForget } from "@/util/util";
+import { useEffect, useState } from "react";
 import { getApi } from "../store/global";
+import { Modal } from "./modal";
 
 interface AboutModalVProps {
     versionString: string;
@@ -19,13 +22,14 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
     const currentDate = new Date();
 
     return (
-        <Modal className="pt-[34px] pb-[34px]" onClose={onClose}>
-            <div className="flex flex-col gap-[26px] w-full">
+        <Modal className="pt-[34px] pb-[34px] overflow-hidden w-[450px]" onClose={onClose}>
+            <OnboardingGradientBg />
+            <div className="flex flex-col gap-[26px] w-full relative z-10">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
                     <div className="text-[25px]">Wave Terminal</div>
                     <div className="leading-5">
-                        Open-Source AI-Native Terminal
+                        Open-Source AI-Integrated Terminal
                         <br />
                         Built for Seamless Workflows
                     </div>
@@ -35,20 +39,20 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                     <br />
                     Update Channel: {updaterChannel}
                 </div>
-                <div className="flex items-start gap-[10px] self-stretch w-full text-center">
+                <div className="grid grid-cols-2 gap-[10px] self-stretch w-full">
                     <a
                         href="https://github.com/wavetermdev/waveterm?ref=about"
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-brands fa-github mr-2"></i>Github
+                        <i className="fa-brands fa-github mr-2"></i>GitHub
                     </a>
                     <a
                         href="https://www.waveterm.dev/?ref=about"
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
                         <i className="fa-sharp fa-light fa-globe mr-2"></i>Website
                     </a>
@@ -56,9 +60,17 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-heart mr-2"></i>Acknowledgements
+                        <i className="fa-sharp fa-light fa-book mr-2"></i>Open Source
+                    </a>
+                    <a
+                        href="https://github.com/sponsors/wavetermdev"
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                    >
+                        <i className="fa-sharp fa-light fa-heart mr-2"></i>Sponsor
                     </a>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
@@ -75,6 +87,16 @@ const AboutModal = () => {
     const [details] = useState(() => getApi().getAboutModalDetails());
     const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
     const versionString = `${details.version} (${isDev() ? "dev-" : ""}${details.buildTime})`;
+
+    useEffect(() => {
+        fireAndForget(async () => {
+            RpcApi.RecordTEventCommand(
+                TabRpcClient,
+                { event: "action:other", props: { "action:type": "about" } },
+                { noresponse: true }
+            );
+        });
+    }, []);
 
     return (
         <AboutModalV

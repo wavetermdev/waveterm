@@ -273,6 +273,7 @@ export class WaveBrowserWindow extends BaseWindow {
             if (getGlobalIsRelaunching()) {
                 return;
             }
+            focusedWaveWindow = this; // eslint-disable-line @typescript-eslint/no-this-alias
             console.log("focus win", this.waveWindowId);
             fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
