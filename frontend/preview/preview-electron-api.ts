@@ -58,6 +58,7 @@ const previewElectronApi: ElectronApi = {
     setBuilderWindowAppId: (_appId: string) => {},
     doRefresh: () => {},
     saveTextFile: (_fileName: string, _content: string) => Promise.resolve(false),
+    setIsActive: () => Promise.resolve(),
 };
 
 function installPreviewElectronApi() {
