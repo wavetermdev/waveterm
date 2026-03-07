@@ -7,6 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
 import { atoms, createBlock, getApi, isDev } from "@/store/global";
+import { modalsModel } from "@/store/modalmodel";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     FloatingPortal,
@@ -281,6 +282,14 @@ const SettingsFloatingWindow = memo(
                         },
                     };
                     createBlock(blockDef, false, true);
+                    onClose();
+                },
+            },
+            {
+                icon: "book-open",
+                label: "Release Notes",
+                onClick: () => {
+                    modalsModel.pushModal("UpgradeOnboardingPatch", { isReleaseNotes: true });
                     onClose();
                 },
             },
