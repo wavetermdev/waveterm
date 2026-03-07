@@ -113,6 +113,7 @@ _waveterm_si_preexec() {
 _waveterm_si_inputreadback() {
   _waveterm_si_blocked && return
   local buffer64 cursor
+  # base64 may wrap lines on some platforms, so strip newlines before embedding JSON
   buffer64=$(printf '%s' "$BUFFER" | base64 2>/dev/null | tr -d '\n\r')
   cursor=$CURSOR
   zle -I

@@ -125,20 +125,21 @@ function handleShellIntegrationInputReadback(
     cmd: { command: "I"; data: { buffer64?: string; cursor?: number } },
     rtInfo: ObjRTInfo
 ): void {
-    if (cmd.data.buffer64 == null || cmd.data.cursor == null) {
+    const { buffer64, cursor } = cmd.data;
+    if (buffer64 == null || typeof cursor != "number" || !isFinite(cursor)) {
         return;
     }
     let decodedBuffer: string;
     try {
-        decodedBuffer = base64ToString(cmd.data.buffer64);
+        decodedBuffer = base64ToString(buffer64);
     } catch (e) {
         console.error("Error decoding shell input buffer64:", e);
         return;
     }
-    rtInfo["shell:inputbuffer64"] = cmd.data.buffer64;
-    rtInfo["shell:inputcursor"] = cmd.data.cursor;
+    rtInfo["shell:inputbuffer64"] = buffer64;
+    rtInfo["shell:inputcursor"] = cursor;
     globalStore.set(termWrap.shellInputBufferAtom, decodedBuffer);
-    globalStore.set(termWrap.shellInputCursorAtom, cmd.data.cursor);
+    globalStore.set(termWrap.shellInputCursorAtom, cursor);
 }
 
 // for xterm OSC handlers, we return true always because we "own" the OSC number.
@@ -311,11 +312,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
     switch (cmd.command) {
         case "A": {
             rtInfo["shell:state"] = "ready";
-            rtInfo["shell:inputbuffer64"] = "";
-            rtInfo["shell:inputcursor"] = 0;
             globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
-            globalStore.set(termWrap.shellInputBufferAtom, "");
-            globalStore.set(termWrap.shellInputCursorAtom, 0);
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
