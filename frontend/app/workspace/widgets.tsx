@@ -19,7 +19,7 @@ import {
 } from "@floating-ui/react";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 
 type WidgetMode = "normal" | "compact" | "supercompact";
 type CreateWidgetBlockFn = (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => void | Promise<void>;
@@ -36,39 +36,41 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
     return wlist;
 }
 
-export function getWidgetsMode(containerHeight: number, normalHeight: number, widgetCount: number): WidgetMode {
+function getWidgetsMode(containerHeight: number, normalHeight: number, widgetCount: number): WidgetMode {
     const gracePeriod = 10;
+
     if (normalHeight <= containerHeight - gracePeriod) {
         return "normal";
     }
+
     const minHeightPerWidget = 32;
     const requiredHeight = widgetCount * minHeightPerWidget;
     if (requiredHeight > containerHeight) {
         return "supercompact";
     }
+
     return "compact";
 }
 
-const Widget = memo(
+async function handleWidgetSelect(widget: WidgetConfigType) {
+    const blockDef = widget.blockdef;
+    createBlock(blockDef, widget.magnified);
+}
+
+const WidgetV = memo(
     ({
         widget,
         mode,
-        onSelectWidget,
+        isTruncated,
+        onClick,
+        labelRef,
     }: {
         widget: WidgetConfigType;
         mode: WidgetMode;
-        onSelectWidget: (widget: WidgetConfigType) => void;
+        isTruncated: boolean;
+        onClick: () => void;
+        labelRef?: RefObject<HTMLDivElement>;
     }) => {
-        const [isTruncated, setIsTruncated] = useState(false);
-        const labelRef = useRef<HTMLDivElement>(null);
-
-        useEffect(() => {
-            if (mode === "normal" && labelRef.current) {
-                const element = labelRef.current;
-                setIsTruncated(element.scrollWidth > element.clientWidth);
-            }
-        }, [mode, widget.label]);
-
         const shouldDisableTooltip = mode !== "normal" ? false : !isTruncated;
 
         return (
@@ -81,7 +83,7 @@ const Widget = memo(
                     mode === "supercompact" ? "text-sm" : "text-lg",
                     widget["display:hidden"] && "hidden"
                 )}
-                divOnClick={() => onSelectWidget(widget)}
+                divOnClick={onClick}
             >
                 <div style={{ color: widget.color }}>
                     <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
@@ -98,6 +100,44 @@ const Widget = memo(
         );
     }
 );
+
+WidgetV.displayName = "WidgetV";
+
+const Widget = memo(
+    ({
+        widget,
+        mode,
+        onSelectWidget,
+    }: {
+        widget: WidgetConfigType;
+        mode: WidgetMode;
+        onSelectWidget?: (widget: WidgetConfigType) => void;
+    }) => {
+        const [isTruncated, setIsTruncated] = useState(false);
+        const labelRef = useRef<HTMLDivElement>(null);
+
+        useEffect(() => {
+            if (mode === "normal" && labelRef.current) {
+                const element = labelRef.current;
+                setIsTruncated(element.scrollWidth > element.clientWidth);
+            }
+        }, [mode, widget.label]);
+
+        const handleClick = () => {
+            if (onSelectWidget != null) {
+                onSelectWidget(widget);
+                return;
+            }
+            void handleWidgetSelect(widget);
+        };
+
+        return (
+            <WidgetV widget={widget} mode={mode} isTruncated={isTruncated} onClick={handleClick} labelRef={labelRef} />
+        );
+    }
+);
+
+Widget.displayName = "Widget";
 
 function calculateGridSize(appCount: number): number {
     if (appCount <= 4) return 2;
@@ -119,9 +159,9 @@ const AppsFloatingWindow = memo(
         isOpen: boolean;
         onClose: () => void;
         referenceElement: HTMLElement;
-        loadApps: LoadWidgetAppsFn;
-        onCreateBlock: CreateWidgetBlockFn;
-        onOpenBuilder: () => void;
+        loadApps?: LoadWidgetAppsFn;
+        onCreateBlock?: CreateWidgetBlockFn;
+        onOpenBuilder?: () => void;
     }) => {
         const [apps, setApps] = useState<AppInfo[]>([]);
         const [loading, setLoading] = useState(true);
@@ -140,7 +180,11 @@ const AppsFloatingWindow = memo(
         const dismiss = useDismiss(context);
         const { getFloatingProps } = useInteractions([dismiss]);
         const handleOpenBuilder = useCallback(() => {
-            onOpenBuilder();
+            if (onOpenBuilder != null) {
+                onOpenBuilder();
+            } else {
+                getApi().openBuilder(null);
+            }
             onClose();
         }, [onClose, onOpenBuilder]);
 
@@ -150,7 +194,19 @@ const AppsFloatingWindow = memo(
             const fetchApps = async () => {
                 setLoading(true);
                 try {
-                    setApps(await loadApps());
+                    const allApps =
+                        loadApps != null
+                            ? await loadApps()
+                            : await RpcApi.ListAllAppsCommand(TabRpcClient).then((apps) =>
+                                  apps
+                                      .filter((app) => !app.appid.startsWith("draft/"))
+                                      .sort((a, b) => {
+                                          const aName = a.appid.replace(/^local\//, "");
+                                          const bName = b.appid.replace(/^local\//, "");
+                                          return aName.localeCompare(bName);
+                                      })
+                              );
+                    setApps(allApps);
                 } catch (error) {
                     console.error("Failed to fetch apps:", error);
                     setApps([]);
@@ -159,7 +215,7 @@ const AppsFloatingWindow = memo(
                 }
             };
 
-            fetchApps();
+            void fetchApps();
         }, [isOpen, loadApps]);
 
         if (!isOpen) return null;
@@ -207,7 +263,11 @@ const AppsFloatingWindow = memo(
                                                         "tsunami:appid": app.appid,
                                                     },
                                                 };
-                                                onCreateBlock(blockDef);
+                                                if (onCreateBlock != null) {
+                                                    onCreateBlock(blockDef);
+                                                } else {
+                                                    void createBlock(blockDef);
+                                                }
                                                 onClose();
                                             }}
                                         >
@@ -247,7 +307,7 @@ const SettingsFloatingWindow = memo(
         isOpen: boolean;
         onClose: () => void;
         referenceElement: HTMLElement;
-        onCreateBlock: CreateWidgetBlockFn;
+        onCreateBlock?: CreateWidgetBlockFn;
     }) => {
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
@@ -265,59 +325,64 @@ const SettingsFloatingWindow = memo(
 
         if (!isOpen) return null;
 
+        const makeCreateBlockHandler = (blockDef: BlockDef, magnified = false, ephemeral = false) => () => {
+            if (onCreateBlock != null) {
+                onCreateBlock(blockDef, magnified, ephemeral);
+            } else {
+                void createBlock(blockDef, magnified, ephemeral);
+            }
+            onClose();
+        };
+
         const menuItems = [
             {
                 icon: "gear",
                 label: "Settings",
-                onClick: () => {
-                    const blockDef: BlockDef = {
+                onClick: makeCreateBlockHandler(
+                    {
                         meta: {
                             view: "waveconfig",
                         },
-                    };
-                    onCreateBlock(blockDef, false, true);
-                    onClose();
-                },
+                    },
+                    false,
+                    true
+                ),
             },
             {
                 icon: "lightbulb",
                 label: "Tips",
-                onClick: () => {
-                    const blockDef: BlockDef = {
+                onClick: makeCreateBlockHandler(
+                    {
                         meta: {
                             view: "tips",
                         },
-                    };
-                    onCreateBlock(blockDef, true, true);
-                    onClose();
-                },
+                    },
+                    true,
+                    true
+                ),
             },
             {
                 icon: "lock",
                 label: "Secrets",
-                onClick: () => {
-                    const blockDef: BlockDef = {
+                onClick: makeCreateBlockHandler(
+                    {
                         meta: {
                             view: "waveconfig",
                             file: "secrets",
                         },
-                    };
-                    onCreateBlock(blockDef, false, true);
-                    onClose();
-                },
+                    },
+                    false,
+                    true
+                ),
             },
             {
                 icon: "circle-question",
                 label: "Help",
-                onClick: () => {
-                    const blockDef: BlockDef = {
-                        meta: {
-                            view: "help",
-                        },
-                    };
-                    onCreateBlock(blockDef);
-                    onClose();
-                },
+                onClick: makeCreateBlockHandler({
+                    meta: {
+                        view: "help",
+                    },
+                }),
             },
         ];
 
@@ -350,81 +415,56 @@ const SettingsFloatingWindow = memo(
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
 type WidgetsVProps = {
+    mode: WidgetMode;
     widgets: WidgetConfigType[];
     showAppsButton: boolean;
-    showDevIndicator?: boolean;
-    loadApps: LoadWidgetAppsFn;
-    onCreateBlock: CreateWidgetBlockFn;
-    onOpenBuilder: () => void;
-    onContextMenu?: (e: React.MouseEvent<HTMLDivElement>) => void;
-    rootClassName?: string;
-    className?: string;
+    showDevIndicator: boolean;
+    isAppsOpen: boolean;
+    isSettingsOpen: boolean;
+    containerRef: RefObject<HTMLDivElement>;
+    measurementRef: RefObject<HTMLDivElement>;
+    appsButtonRef: RefObject<HTMLDivElement>;
+    settingsButtonRef: RefObject<HTMLDivElement>;
+    onToggleApps: () => void;
+    onToggleSettings: () => void;
+    onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
+    onSelectWidget?: (widget: WidgetConfigType) => void;
+    loadApps?: LoadWidgetAppsFn;
+    onCreateBlock?: CreateWidgetBlockFn;
+    onOpenBuilder?: () => void;
+    onCloseApps: () => void;
+    onCloseSettings: () => void;
+    containerClassName?: string;
 };
 
 const WidgetsV = memo(
     ({
+        mode,
         widgets,
         showAppsButton,
-        showDevIndicator = false,
+        showDevIndicator,
+        isAppsOpen,
+        isSettingsOpen,
+        containerRef,
+        measurementRef,
+        appsButtonRef,
+        settingsButtonRef,
+        onToggleApps,
+        onToggleSettings,
+        onContextMenu,
+        onSelectWidget,
         loadApps,
         onCreateBlock,
         onOpenBuilder,
-        onContextMenu,
-        rootClassName,
-        className,
+        onCloseApps,
+        onCloseSettings,
+        containerClassName,
     }: WidgetsVProps) => {
-        const [mode, setMode] = useState<WidgetMode>("normal");
-        const containerRef = useRef<HTMLDivElement>(null);
-        const measurementRef = useRef<HTMLDivElement>(null);
-
-        const [isAppsOpen, setIsAppsOpen] = useState(false);
-        const appsButtonRef = useRef<HTMLDivElement>(null);
-        const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-        const settingsButtonRef = useRef<HTMLDivElement>(null);
-        const totalWidgetButtons = widgets.length + 1 + (showAppsButton ? 1 : 0) + (showDevIndicator ? 1 : 0);
-
-        const handleWidgetSelect = useCallback(
-            (widget: WidgetConfigType) => {
-                onCreateBlock(widget.blockdef, widget.magnified);
-            },
-            [onCreateBlock]
-        );
-
-        const checkModeNeeded = useCallback(() => {
-            if (!containerRef.current || !measurementRef.current) return;
-
-            const containerHeight = containerRef.current.clientHeight;
-            const normalHeight = measurementRef.current.scrollHeight;
-            const newMode = getWidgetsMode(containerHeight, normalHeight, totalWidgetButtons);
-
-            if (newMode !== mode) {
-                setMode(newMode);
-            }
-        }, [mode, totalWidgetButtons]);
-
-        useEffect(() => {
-            const resizeObserver = new ResizeObserver(() => {
-                checkModeNeeded();
-            });
-
-            if (containerRef.current) {
-                resizeObserver.observe(containerRef.current);
-            }
-
-            return () => {
-                resizeObserver.disconnect();
-            };
-        }, [checkModeNeeded]);
-
-        useEffect(() => {
-            checkModeNeeded();
-        }, [widgets, checkModeNeeded]);
-
         return (
-            <div className={clsx("relative", rootClassName)}>
+            <>
                 <div
                     ref={containerRef}
-                    className={clsx("flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none", className)}
+                    className={clsx("flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none", containerClassName)}
                     onContextMenu={onContextMenu}
                 >
                     {mode === "supercompact" ? (
@@ -435,7 +475,7 @@ const WidgetsV = memo(
                                         key={`widget-${idx}`}
                                         widget={data}
                                         mode={mode}
-                                        onSelectWidget={handleWidgetSelect}
+                                        onSelectWidget={onSelectWidget}
                                     />
                                 ))}
                             </div>
@@ -445,7 +485,7 @@ const WidgetsV = memo(
                                     <div
                                         ref={appsButtonRef}
                                         className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                        onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                        onClick={onToggleApps}
                                     >
                                         <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
                                             <div>
@@ -457,7 +497,7 @@ const WidgetsV = memo(
                                 <div
                                     ref={settingsButtonRef}
                                     className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                                    onClick={onToggleSettings}
                                 >
                                     <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
                                         <div>
@@ -470,19 +510,14 @@ const WidgetsV = memo(
                     ) : (
                         <>
                             {widgets?.map((data, idx) => (
-                                <Widget
-                                    key={`widget-${idx}`}
-                                    widget={data}
-                                    mode={mode}
-                                    onSelectWidget={handleWidgetSelect}
-                                />
+                                <Widget key={`widget-${idx}`} widget={data} mode={mode} onSelectWidget={onSelectWidget} />
                             ))}
                             <div className="flex-grow" />
                             {showAppsButton ? (
                                 <div
                                     ref={appsButtonRef}
                                     className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                    onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                    onClick={onToggleApps}
                                 >
                                     <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
                                         <div className="flex flex-col items-center w-full">
@@ -501,7 +536,7 @@ const WidgetsV = memo(
                             <div
                                 ref={settingsButtonRef}
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                                onClick={onToggleSettings}
                             >
                                 <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
                                     <div>
@@ -523,7 +558,7 @@ const WidgetsV = memo(
                 {showAppsButton && appsButtonRef.current && (
                     <AppsFloatingWindow
                         isOpen={isAppsOpen}
-                        onClose={() => setIsAppsOpen(false)}
+                        onClose={onCloseApps}
                         referenceElement={appsButtonRef.current}
                         loadApps={loadApps}
                         onCreateBlock={onCreateBlock}
@@ -533,7 +568,7 @@ const WidgetsV = memo(
                 {settingsButtonRef.current && (
                     <SettingsFloatingWindow
                         isOpen={isSettingsOpen}
-                        onClose={() => setIsSettingsOpen(false)}
+                        onClose={onCloseSettings}
                         referenceElement={settingsButtonRef.current}
                         onCreateBlock={onCreateBlock}
                     />
@@ -548,7 +583,7 @@ const WidgetsV = memo(
                             key={`measurement-widget-${idx}`}
                             widget={data}
                             mode="normal"
-                            onSelectWidget={handleWidgetSelect}
+                            onSelectWidget={onSelectWidget}
                         />
                     ))}
                     <div className="flex-grow" />
@@ -575,7 +610,7 @@ const WidgetsV = memo(
                         </div>
                     ) : null}
                 </div>
-            </div>
+            </>
         );
     }
 );
@@ -586,6 +621,9 @@ const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const workspace = useAtomValue(atoms.workspace);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
+    const [mode, setMode] = useState<WidgetMode>("normal");
+    const containerRef = useRef<HTMLDivElement>(null);
+    const measurementRef = useRef<HTMLDivElement>(null);
 
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
     const widgetsMap = fullConfig?.widgets ?? {};
@@ -598,20 +636,44 @@ const Widgets = memo(() => {
         })
     );
     const widgets = sortByDisplayOrder(filteredWidgets);
-    const showAppsButton = isDev() || featureWaveAppBuilder;
 
-    const loadApps = useCallback(async () => {
-        const allApps = await RpcApi.ListAllAppsCommand(TabRpcClient);
-        return allApps
-            .filter((app) => !app.appid.startsWith("draft/"))
-            .sort((a, b) => {
-                const aName = a.appid.replace(/^local\//, "");
-                const bName = b.appid.replace(/^local\//, "");
-                return aName.localeCompare(bName);
-            });
-    }, []);
+    const [isAppsOpen, setIsAppsOpen] = useState(false);
+    const appsButtonRef = useRef<HTMLDivElement>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const settingsButtonRef = useRef<HTMLDivElement>(null);
 
-    const handleWidgetsBarContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const checkModeNeeded = useCallback(() => {
+        if (!containerRef.current || !measurementRef.current) return;
+
+        const containerHeight = containerRef.current.clientHeight;
+        const normalHeight = measurementRef.current.scrollHeight;
+        const totalWidgets = (widgets?.length || 0) + 1;
+        const newMode = getWidgetsMode(containerHeight, normalHeight, totalWidgets);
+
+        if (newMode !== mode) {
+            setMode(newMode);
+        }
+    }, [mode, widgets]);
+
+    useEffect(() => {
+        const resizeObserver = new ResizeObserver(() => {
+            checkModeNeeded();
+        });
+
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [checkModeNeeded]);
+
+    useEffect(() => {
+        checkModeNeeded();
+    }, [widgets, checkModeNeeded]);
+
+    const handleWidgetsBarContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
         const menu: ContextMenuItem[] = [
             {
@@ -634,15 +696,23 @@ const Widgets = memo(() => {
 
     return (
         <WidgetsV
+            mode={mode}
             widgets={widgets}
-            showAppsButton={showAppsButton}
+            showAppsButton={isDev() || featureWaveAppBuilder}
             showDevIndicator={isDev()}
-            loadApps={loadApps}
-            onCreateBlock={createBlock}
-            onOpenBuilder={() => getApi().openBuilder(null)}
+            isAppsOpen={isAppsOpen}
+            isSettingsOpen={isSettingsOpen}
+            containerRef={containerRef}
+            measurementRef={measurementRef}
+            appsButtonRef={appsButtonRef}
+            settingsButtonRef={settingsButtonRef}
+            onToggleApps={() => setIsAppsOpen(!isAppsOpen)}
+            onToggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
             onContextMenu={handleWidgetsBarContextMenu}
+            onCloseApps={() => setIsAppsOpen(false)}
+            onCloseSettings={() => setIsSettingsOpen(false)}
         />
     );
 });
 
-export { Widgets, WidgetsV };
+export { getWidgetsMode, WidgetV, Widgets, WidgetsV };

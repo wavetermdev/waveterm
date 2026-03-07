@@ -1,8 +1,8 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WidgetsV } from "@/app/workspace/widgets";
-import { useCallback, useState } from "react";
+import { WidgetsV, getWidgetsMode } from "@/app/workspace/widgets";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PreviewWidgets: WidgetConfigType[] = [
     {
@@ -96,6 +96,13 @@ const PreviewModes: Array<{ title: string; height: number }> = [
 
 function WidgetsPreviewMode({ title, height }: { title: string; height: number }) {
     const [events, setEvents] = useState<string[]>([]);
+    const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
+    const [isAppsOpen, setIsAppsOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const measurementRef = useRef<HTMLDivElement>(null);
+    const appsButtonRef = useRef<HTMLDivElement>(null);
+    const settingsButtonRef = useRef<HTMLDivElement>(null);
 
     const pushEvent = useCallback((message: string) => {
         setEvents((prev) => [message, ...prev].slice(0, 6));
@@ -115,6 +122,39 @@ function WidgetsPreviewMode({ title, height }: { title: string; height: number }
         pushEvent("openBuilder()");
     }, [pushEvent]);
 
+    const checkModeNeeded = useCallback(() => {
+        if (!containerRef.current || !measurementRef.current) {
+            return;
+        }
+
+        const newMode = getWidgetsMode(
+            containerRef.current.clientHeight,
+            measurementRef.current.scrollHeight,
+            PreviewWidgets.length + 2
+        );
+        if (newMode !== mode) {
+            setMode(newMode);
+        }
+    }, [mode]);
+
+    useEffect(() => {
+        const resizeObserver = new ResizeObserver(() => {
+            checkModeNeeded();
+        });
+
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [checkModeNeeded]);
+
+    useEffect(() => {
+        checkModeNeeded();
+    }, [checkModeNeeded]);
+
     return (
         <div className="min-w-[280px] flex-1 rounded-lg border border-border bg-panel p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -124,13 +164,24 @@ function WidgetsPreviewMode({ title, height }: { title: string; height: number }
             <div className="flex items-start gap-4">
                 <div className="relative shrink-0 overflow-visible rounded-md border border-border bg-background px-1" style={{ height }}>
                     <WidgetsV
+                        mode={mode}
                         widgets={PreviewWidgets}
                         showAppsButton={true}
+                        showDevIndicator={false}
+                        isAppsOpen={isAppsOpen}
+                        isSettingsOpen={isSettingsOpen}
+                        containerRef={containerRef}
+                        measurementRef={measurementRef}
+                        appsButtonRef={appsButtonRef}
+                        settingsButtonRef={settingsButtonRef}
+                        onToggleApps={() => setIsAppsOpen(!isAppsOpen)}
+                        onToggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
+                        onCloseApps={() => setIsAppsOpen(false)}
+                        onCloseSettings={() => setIsSettingsOpen(false)}
                         loadApps={loadApps}
                         onCreateBlock={handleCreateBlock}
                         onOpenBuilder={handleOpenBuilder}
-                        rootClassName="h-full"
-                        className="h-full"
+                        containerClassName="h-full"
                     />
                 </div>
                 <div className="min-w-0 flex-1">
