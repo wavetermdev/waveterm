@@ -4,7 +4,7 @@
 const previewElectronApi: ElectronApi = {
     getAuthKey: () => "",
     getIsDev: () => false,
-    getCursorPoint: () => ({ x: 0, y: 0 } as Electron.Point),
+    getCursorPoint: () => ({ x: 0, y: 0 }) as Electron.Point,
     getPlatform: () => "darwin",
     getEnv: (_varName: string) => "",
     getUserName: () => "",
@@ -13,7 +13,7 @@ const previewElectronApi: ElectronApi = {
     getConfigDir: () => "",
     getHomeDir: () => "",
     getWebviewPreload: () => "",
-    getAboutModalDetails: () => ({} as AboutModalDetails),
+    getAboutModalDetails: () => ({}) as AboutModalDetails,
     getZoomFactor: () => 1.0,
     showWorkspaceAppMenu: (_workspaceId: string) => {},
     showBuilderAppMenu: (_builderId: string) => {},
@@ -58,6 +58,7 @@ const previewElectronApi: ElectronApi = {
     setBuilderWindowAppId: (_appId: string) => {},
     doRefresh: () => {},
     saveTextFile: (_fileName: string, _content: string) => Promise.resolve(false),
+    setIsActive: async () => {},
 };
 
 function installPreviewElectronApi() {
