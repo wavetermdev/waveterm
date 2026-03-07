@@ -7,7 +7,7 @@
     "productName": "Wave",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.14.1",
+    "version": "0.14.2-beta.0",
     "homepage": "https://waveterm.dev",
     "build": {
         "appId": "dev.commandline.waveterm"
@@ -53,9 +53,9 @@
         "electron-vite": "^5.0",
         "eslint": "^9.39",
         "eslint-config-prettier": "^10.1.8",
-        "globals": "^17.3.0",
+        "globals": "^17.4.0",
         "node-abi": "^4.26.0",
-        "postcss": "^8.5.6",
+        "postcss": "^8.5.8",
         "prettier": "^3.8.1",
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",

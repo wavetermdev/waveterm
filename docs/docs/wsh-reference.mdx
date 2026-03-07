@@ -23,6 +23,7 @@ You can open a preview block with the contents of any file or directory by runni
 
 ```sh
 wsh view [path]
+wsh view -m [path]           # opens in magnified block
 ```
 
 You can use this command to easily preview images, markdown files, and directories. For code/text files this will open
@@ -34,9 +35,29 @@ a codeedit block which you can use to quickly edit the file using Wave's embedde
 
 ```sh
 wsh edit [path]
+wsh edit -m [path]           # opens in magnified block
 ```
 
-This will open up codeedit for the specified file. This is useful for quickly editing files on a local or remote machine in our graphical editor. This command will wait until the file is closed before exiting (unlike `view`) so you can set your `$EDITOR` to `wsh editor` for a seamless experience. You can combine this with a `-m` flag to open the editor in magnified mode.
+This will open up a codeedit block for the specified file. This is useful for quickly editing files on a local or remote machine in Wave's graphical editor. This command returns immediately after opening the block. 
+
+For `$EDITOR` integration (e.g. with `git commit`), see [`wsh editor`](#editor) which blocks until the editor is closed.
+
+---
+
+## editor
+
+```sh
+wsh editor [path]
+wsh editor -m [path]         # opens in magnified block
+```
+
+This opens a codeedit block for the specified file and **blocks until the editor is closed**. This is useful for setting your `$EDITOR` environment variable so that CLI tools (e.g. `git commit`, `crontab -e`) open files in Wave's graphical editor:
+
+```sh
+export EDITOR="wsh editor"
+```
+
+The file must already exist. Use `-m` to open the editor in magnified mode.
 
 ---
 

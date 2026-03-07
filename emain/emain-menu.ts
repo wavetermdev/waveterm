@@ -9,7 +9,7 @@ import { focusedBuilderWindow, getBuilderWindowById } from "./emain-builder";
 import { openBuilderWindow } from "./emain-ipc";
 import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
-import { decreaseZoomLevel, increaseZoomLevel } from "./emain-util";
+import { decreaseZoomLevel, increaseZoomLevel, resetZoomLevel } from "./emain-util";
 import {
     createNewWaveWindow,
     createWorkspace,
@@ -238,8 +238,7 @@ function makeViewMenu(
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
                 if (wc) {
-                    wc.setZoomFactor(1);
-                    wc.send("zoom-factor-change", 1);
+                    resetZoomLevel(wc);
                 }
             },
         },

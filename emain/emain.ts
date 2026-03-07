@@ -384,6 +384,10 @@ async function appMain() {
         electronApp.quit();
         return;
     }
+    electronApp.on("second-instance", (_event, argv, workingDirectory) => {
+        console.log("second-instance event, argv:", argv, "workingDirectory:", workingDirectory);
+        fireAndForget(createNewWaveWindow);
+    });
     try {
         await runWaveSrv(handleWSEvent);
     } catch (e) {

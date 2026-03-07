@@ -15,6 +15,7 @@ import {
     handleCtrlShiftFocus,
     handleCtrlShiftState,
     increaseZoomLevel,
+    resetZoomLevel,
     shFrameNavHandler,
     shNavHandler,
 } from "./emain-util";
@@ -48,8 +49,7 @@ function handleWindowsMenuAccelerators(
     }
 
     if (checkKeyPressed(waveEvent, "Ctrl:0")) {
-        tabView.webContents.setZoomFactor(1);
-        tabView.webContents.send("zoom-factor-change", 1);
+        resetZoomLevel(tabView.webContents);
         return true;
     }
 
@@ -164,9 +164,6 @@ export class WaveTabView extends WebContentsView {
             wcIdToWaveTabMap.delete(this.webContents.id);
             removeWaveTabView(this.waveTabId);
             this.isDestroyed = true;
-        });
-        this.webContents.on("zoom-changed", (_event, zoomDirection) => {
-            this.webContents.send("zoom-factor-change", this.webContents.getZoomFactor());
         });
         this.setBackgroundColor(computeBgColor(fullConfig));
     }
@@ -338,9 +335,6 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
                 return;
             }
         }
-    });
-    tabView.webContents.on("zoom-changed", (e) => {
-        tabView.webContents.send("zoom-changed");
     });
     tabView.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
