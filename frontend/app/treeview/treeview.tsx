@@ -49,6 +49,7 @@ export interface TreeViewVisibleRow {
     isDirectory?: boolean;
     isExpanded?: boolean;
     hasChildren?: boolean;
+    isLoading?: boolean;
     icon?: string;
     node?: TreeNodeData;
 }
@@ -121,7 +122,9 @@ export function buildVisibleRows(
             return;
         }
         const childIds = node.childrenIds ?? [];
-        const hasChildren = node.isDirectory && (childIds.length > 0 || node.childrenStatus !== "loaded");
+        const status = node.childrenStatus ?? "unloaded";
+        const isLoading = status === "loading";
+        const hasChildren = node.isDirectory && (childIds.length > 0 || status !== "loaded");
         const isExpanded = expandedIds.has(id);
         rows.push({
             id,
@@ -132,21 +135,14 @@ export function buildVisibleRows(
             isDirectory: node.isDirectory,
             isExpanded,
             hasChildren,
+            isLoading,
             icon: node.icon,
             node,
         });
         if (!isExpanded || !node.isDirectory) {
             return;
         }
-        const status = node.childrenStatus ?? "unloaded";
         if (status === "loading") {
-            rows.push({
-                id: `${id}::__loading`,
-                parentId: id,
-                depth: depth + 1,
-                kind: "loading",
-                label: "Loading…",
-            });
             return;
         }
         if (status === "error") {
@@ -506,9 +502,13 @@ export const TreeView = forwardRef<TreeViewRef, TreeViewProps>((props, ref) => {
                                     className="flex items-center"
                                     style={{ paddingLeft: row.depth * indentWidth, width: ChevronWidth + row.depth * indentWidth }}
                                 >
-                                    {row.kind === "node" && row.isDirectory && row.hasChildren ? (
+                                    {row.kind === "node" && row.isDirectory && row.isLoading ? (
+                                        <span className="inline-flex h-4 w-4 items-center justify-center">
+                                            <i className="fa-sharp fa-solid fa-spinner fa-spin text-[11px] text-muted" />
+                                        </span>
+                                    ) : row.kind === "node" && row.isDirectory && row.hasChildren ? (
                                         <button
-                                            className="h-4 w-4 rounded text-muted hover:text-foreground cursor-pointer"
+                                            className="flex h-4 w-4 items-center justify-center rounded text-muted hover:text-foreground cursor-pointer"
                                             onClick={(event: MouseEvent<HTMLButtonElement>) => {
                                                 event.stopPropagation();
                                                 toggleExpand(row.id);

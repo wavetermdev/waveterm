@@ -25,7 +25,7 @@ describe("treeview visible rows", () => {
         expect(rows.map((row) => row.id)).toEqual(["root", "b", "c", "a"]);
     });
 
-    it("renders loading and capped synthetic rows", () => {
+    it("renders loading state on node row and capped synthetic rows", () => {
         const nodes = makeNodes([
             { id: "root", isDirectory: true, childrenStatus: "loading" },
             {
@@ -38,7 +38,8 @@ describe("treeview visible rows", () => {
             { id: "f1", parentId: "dir", isDirectory: false, label: "one.txt" },
         ]);
         const loadingRows = buildVisibleRows(nodes, ["root"], new Set(["root"]));
-        expect(loadingRows.map((row) => row.kind)).toEqual(["node", "loading"]);
+        expect(loadingRows.map((row) => row.kind)).toEqual(["node"]);
+        expect(loadingRows[0].isLoading).toBe(true);
 
         const cappedRows = buildVisibleRows(nodes, ["dir"], new Set(["dir"]));
         expect(cappedRows.map((row) => row.kind)).toEqual(["node", "node", "capped"]);

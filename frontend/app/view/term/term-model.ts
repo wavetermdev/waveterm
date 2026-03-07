@@ -285,7 +285,7 @@ export class TermViewModel implements ViewModel {
             const isCmd = get(this.isCmdController);
             const rtn: IconButtonDecl[] = [];
 
-            const isAIPanelOpen = get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+            const isAIPanelOpen = get(WorkspaceLayoutModel.getInstance().activePanelAtom) === "waveai";
             if (isAIPanelOpen) {
                 const shellIntegrationButton = this.getShellIntegrationIconButton(get);
                 if (shellIntegrationButton) {

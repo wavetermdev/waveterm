@@ -1,10 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TreeNodeData, TreeView } from "@/app/treeview/treeview";
 import { isDev } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { TreeNodeData, TreeView } from "@/app/treeview/treeview";
 import { cn, makeConnRoute } from "@/util/util";
 import { memo, useCallback, useMemo, useState } from "react";
 
@@ -21,9 +21,13 @@ const FileExplorerRootNode: TreeNodeData = {
 export function fileInfoToTreeNodeData(fileInfo: FileInfo, parentId: string): TreeNodeData {
     const nodeId =
         fileInfo.path ??
-        [parentId, fileInfo.name ?? "", fileInfo.dir ?? "", fileInfo.isdir ? "dir" : "file", fileInfo.staterror ?? ""].join(
-            "::"
-        );
+        [
+            parentId,
+            fileInfo.name ?? "",
+            fileInfo.dir ?? "",
+            fileInfo.isdir ? "dir" : "file",
+            fileInfo.staterror ?? "",
+        ].join("::");
     return {
         id: nodeId,
         parentId,
@@ -65,7 +69,7 @@ const FileExplorerPanel = memo(() => {
         <div className="flex h-full min-h-0 flex-col bg-panel">
             <div className="border-b border-border px-4 py-3">
                 <div className="text-sm font-semibold text-foreground">File Explorer</div>
-                <div className="mt-1 text-xs text-muted">local • {selectedPath}</div>
+                <div className="mt-1 overflow-hidden whitespace-nowrap text-ellipsis text-xs text-muted">local • {selectedPath}</div>
             </div>
             <div className="min-h-0 flex-1">
                 <TreeView

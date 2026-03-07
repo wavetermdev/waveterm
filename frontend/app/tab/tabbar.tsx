@@ -44,12 +44,11 @@ interface TabBarProps {
 }
 
 const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
-    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().activePanelAtom) === "waveai";
     const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
 
     const onClick = () => {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+        WorkspaceLayoutModel.getInstance().togglePanel("waveai");
     };
 
     if (hideAiButton) {

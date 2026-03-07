@@ -183,7 +183,7 @@ function uxCloseBlock(blockId: string) {
 function genericClose() {
     const focusType = FocusManager.getInstance().getFocusType();
     if (focusType === "waveai") {
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
+        WorkspaceLayoutModel.getInstance().closePanel();
         return;
     }
 
@@ -721,26 +721,12 @@ function registerGlobalKeys() {
         return false;
     });
     globalKeyMap.set("Cmd:Shift:a", () => {
-        const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
-        const currentVisible = workspaceLayoutModel.getAIPanelVisible();
-        const activePanel = workspaceLayoutModel.getActivePanel();
-        if (currentVisible && activePanel === "waveai") {
-            workspaceLayoutModel.setAIPanelVisible(false);
-            return true;
-        }
-        workspaceLayoutModel.setAIPanelVisible(true);
+        WorkspaceLayoutModel.getInstance().togglePanel("waveai");
         return true;
     });
     if (isDev()) {
         globalKeyMap.set("Cmd:Shift:e", () => {
-            const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
-            const currentVisible = workspaceLayoutModel.getAIPanelVisible();
-            const activePanel = workspaceLayoutModel.getActivePanel();
-            if (currentVisible && activePanel === "fileexplorer") {
-                workspaceLayoutModel.setFileExplorerPanelVisible(false);
-                return true;
-            }
-            workspaceLayoutModel.setFileExplorerPanelVisible(true);
+            WorkspaceLayoutModel.getInstance().togglePanel("fileexplorer", { nofocus: true });
             return true;
         });
     }

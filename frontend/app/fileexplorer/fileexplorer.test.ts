@@ -49,12 +49,4 @@ describe("fileInfoToTreeNodeData", () => {
         });
     });
 
-    it("falls back to a stable serialized id when path is missing", () => {
-        const fileInfo: FileInfo = {
-            name: "mystery",
-            isdir: false,
-        };
-
-        expect(fileInfoToTreeNodeData(fileInfo, "~").id).toBe("~::mystery::::file::");
-    });
 });

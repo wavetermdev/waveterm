@@ -29,15 +29,12 @@ class WorkspaceLayoutModel {
     panelContainerRef: HTMLDivElement | null;
     aiPanelWrapperRef: HTMLDivElement | null;
     inResize: boolean; // prevents recursive setLayout calls (setLayout triggers onLayout which calls setLayout)
-    private aiPanelVisible: boolean;
     private aiPanelWidth: number | null;
-    activePanel: SidePanelView;
     private debouncedPersistWidth: (width: number) => void;
     private initialized: boolean = false;
     private transitionTimeoutRef: NodeJS.Timeout | null = null;
     private focusTimeoutRef: NodeJS.Timeout | null = null;
-    panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
-    activePanelAtom: jotai.PrimitiveAtom<SidePanelView>;
+    activePanelAtom: jotai.PrimitiveAtom<SidePanelView | null>;
 
     private constructor() {
         this.aiPanelRef = null;
@@ -45,11 +42,8 @@ class WorkspaceLayoutModel {
         this.panelContainerRef = null;
         this.aiPanelWrapperRef = null;
         this.inResize = false;
-        this.aiPanelVisible = false;
         this.aiPanelWidth = null;
-        this.activePanel = "waveai";
-        this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
-        this.activePanelAtom = jotai.atom(this.activePanel);
+        this.activePanelAtom = jotai.atom(null) as jotai.PrimitiveAtom<SidePanelView | null>;
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
         this.handlePanelLayout = this.handlePanelLayout.bind(this);
@@ -81,9 +75,8 @@ class WorkspaceLayoutModel {
             const savedVisible = globalStore.get(this.getPanelOpenAtom());
             const savedWidth = globalStore.get(this.getPanelWidthAtom());
 
-            if (savedVisible != null) {
-                this.aiPanelVisible = savedVisible;
-                globalStore.set(this.panelVisibleAtom, savedVisible);
+            if (savedVisible != null && savedVisible) {
+                globalStore.set(this.activePanelAtom, "waveai");
             }
             if (savedWidth != null) {
                 this.aiPanelWidth = savedWidth;
@@ -222,85 +215,97 @@ class WorkspaceLayoutModel {
 
     getAIPanelVisible(): boolean {
         this.initializeFromTabMeta();
-        return this.aiPanelVisible;
+        return globalStore.get(this.activePanelAtom) != null;
     }
 
-    getActivePanel(): SidePanelView {
-        if (!isDev()) {
-            return "waveai";
-        }
-        return this.activePanel;
+    getActivePanel(): SidePanelView | null {
+        return globalStore.get(this.activePanelAtom);
     }
 
-    setActivePanel(panel: SidePanelView): void {
+    openPanel(panel: SidePanelView, opts?: { nofocus?: boolean }): void {
         if (!isDev() && panel !== "waveai") {
             return;
         }
-        this.activePanel = panel;
-        globalStore.set(this.activePanelAtom, panel);
-    }
-
-    private applyPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
         if (this.focusTimeoutRef != null) {
             clearTimeout(this.focusTimeoutRef);
             this.focusTimeoutRef = null;
         }
-        const wasVisible = this.aiPanelVisible;
-        this.aiPanelVisible = visible;
-        if (visible && !wasVisible) {
-            if (this.getActivePanel() === "waveai") {
+        const wasVisible = globalStore.get(this.activePanelAtom) != null;
+        globalStore.set(this.activePanelAtom, panel);
+        if (!wasVisible) {
+            if (panel === "waveai") {
                 recordTEvent("action:openwaveai");
-            }
-            if (this.getActivePanel() === "fileexplorer") {
+            } else if (panel === "fileexplorer") {
                 recordTEvent("action:openfileexplorer");
             }
         }
-        globalStore.set(this.panelVisibleAtom, visible);
-        getApi().setWaveAIOpen(visible);
+        getApi().setWaveAIOpen(true);
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", this.getTabId()),
-            meta: { "waveai:panelopen": visible },
+            meta: { "waveai:panelopen": true },
         });
         this.enableTransitions(250);
         this.syncAIPanelRef();
 
-        if (visible && this.getActivePanel() === "waveai") {
-            if (!opts?.nofocus) {
-                this.focusTimeoutRef = setTimeout(() => {
-                    WaveAIModel.getInstance().focusInput();
-                    this.focusTimeoutRef = null;
-                }, 350);
-            }
+        if (panel === "waveai" && !opts?.nofocus) {
+            this.focusTimeoutRef = setTimeout(() => {
+                WaveAIModel.getInstance().focusInput();
+                this.focusTimeoutRef = null;
+            }, 350);
+        }
+    }
+
+    closePanel(): void {
+        if (this.focusTimeoutRef != null) {
+            clearTimeout(this.focusTimeoutRef);
+            this.focusTimeoutRef = null;
+        }
+        globalStore.set(this.activePanelAtom, null);
+        getApi().setWaveAIOpen(false);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("tab", this.getTabId()),
+            meta: { "waveai:panelopen": false },
+        });
+        this.enableTransitions(250);
+        this.syncAIPanelRef();
+
+        const layoutModel = getLayoutModelForStaticTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        if (focusedNode == null) {
+            layoutModel.focusFirstNode();
             return;
         }
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null) {
+            refocusNode(blockId);
+        }
+    }
 
-        if (!visible) {
-            const layoutModel = getLayoutModelForStaticTab();
-            const focusedNode = globalStore.get(layoutModel.focusedNode);
-            if (focusedNode == null) {
-                layoutModel.focusFirstNode();
-                return;
-            }
-            const blockId = focusedNode?.data?.blockId;
-            if (blockId != null) {
-                refocusNode(blockId);
-            }
+    togglePanel(panel: SidePanelView, opts?: { nofocus?: boolean }): void {
+        if (this.getActivePanel() === panel) {
+            this.closePanel();
+        } else {
+            this.openPanel(panel, opts);
         }
     }
 
     setAIPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
         if (visible) {
-            this.setActivePanel("waveai");
+            this.openPanel("waveai", opts);
+        } else {
+            this.closePanel();
         }
-        this.applyPanelVisible(visible, opts);
     }
 
     setFileExplorerPanelVisible(visible: boolean): void {
         if (!isDev()) {
             return;
         }
-        this.setActivePanel("fileexplorer");
-        this.applyPanelVisible(visible, { nofocus: true });
+        if (visible) {
+            this.openPanel("fileexplorer", { nofocus: true });
+        } else {
+            this.closePanel();
+        }
     }
 
     getAIPanelWidth(): number {

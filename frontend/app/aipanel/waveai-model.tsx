@@ -112,7 +112,7 @@ export class WaveAIModel {
             if (this.inBuilder) {
                 return true;
             }
-            return get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+            return get(WorkspaceLayoutModel.getInstance().activePanelAtom) === "waveai";
         });
 
         this.defaultModeAtom = jotai.atom((get) => {
