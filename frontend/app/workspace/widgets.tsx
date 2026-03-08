@@ -441,7 +441,7 @@ const Widgets = memo(() => {
         <>
             <div
                 ref={containerRef}
-                className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none shink-0"
+                className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none shrink-0"
                 onContextMenu={handleWidgetsBarContextMenu}
             >
                 {mode === "supercompact" ? (
