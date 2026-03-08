@@ -1,7 +1,12 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package vdom
+
+import (
+	"encoding/json"
+	"sync/atomic"
+)
 
 const TextTag = "#text"
 const WaveTextTag = "wave:text"
@@ -36,8 +41,42 @@ type VDomRef struct {
 	Type          string           `json:"type" tstype:"\"ref\""`
 	RefId         string           `json:"refid"`
 	TrackPosition bool             `json:"trackposition,omitempty"`
-	Position      *VDomRefPosition `json:"position,omitempty"`
-	HasCurrent    bool             `json:"hascurrent,omitempty"`
+	Position      *VDomRefPosition `json:"-"`
+	HasCurrent    atomic.Bool      `json:"-"`
+	TermSize      *VDomTermSize    `json:"-"`
+}
+
+func (r *VDomRef) MarshalJSON() ([]byte, error) {
+	type vdomRefAlias struct {
+		Type          string           `json:"type"`
+		RefId         string           `json:"refid"`
+		TrackPosition bool             `json:"trackposition,omitempty"`
+		HasCurrent    bool             `json:"hascurrent,omitempty"`
+	}
+	return json.Marshal(vdomRefAlias{
+		Type:          r.Type,
+		RefId:         r.RefId,
+		TrackPosition: r.TrackPosition,
+		HasCurrent:    r.HasCurrent.Load(),
+	})
+}
+
+func (r *VDomRef) UnmarshalJSON(data []byte) error {
+	type vdomRefAlias struct {
+		Type          string           `json:"type"`
+		RefId         string           `json:"refid"`
+		TrackPosition bool             `json:"trackposition,omitempty"`
+		HasCurrent    bool             `json:"hascurrent,omitempty"`
+	}
+	var alias vdomRefAlias
+	if err := json.Unmarshal(data, &alias); err != nil {
+		return err
+	}
+	r.Type = alias.Type
+	r.RefId = alias.RefId
+	r.TrackPosition = alias.TrackPosition
+	r.HasCurrent.Store(alias.HasCurrent)
+	return nil
 }
 
 type VDomSimpleRef[T any] struct {
@@ -62,18 +101,29 @@ type VDomRefPosition struct {
 	BoundingClientRect DomRect `json:"boundingclientrect"`
 }
 
+type VDomTermInputData struct {
+	TermSize *VDomTermSize `json:"termsize,omitempty"`
+	Data     string        `json:"data,omitempty"`
+}
+
+type VDomTermSize struct {
+	Rows int `json:"rows"`
+	Cols int `json:"cols"`
+}
+
 type VDomEvent struct {
 	WaveId          string             `json:"waveid"`
 	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
 	GlobalEventType string             `json:"globaleventtype,omitempty"`
-	TargetValue     string             `json:"targetvalue,omitempty"` // set for onChange events on input/textarea/select
+	TargetValue     string             `json:"targetvalue,omitempty"`   // set for onChange events on input/textarea/select
 	TargetChecked   bool               `json:"targetchecked,omitempty"` // set for onChange events on checkbox/radio inputs
-	TargetName      string             `json:"targetname,omitempty"` // target element's name attribute
-	TargetId        string             `json:"targetid,omitempty"` // target element's id attribute
-	TargetFiles     []VDomFileData     `json:"targetfiles,omitempty"` // set for onChange events on file inputs
-	KeyData         *VDomKeyboardEvent `json:"keydata,omitempty"` // set for onKeyDown events
-	MouseData       *VDomPointerData   `json:"mousedata,omitempty"` // set for onClick, onMouseDown, onMouseUp, onDoubleClick events
-	FormData        *VDomFormData      `json:"formdata,omitempty"` // set for onSubmit events on forms
+	TargetName      string             `json:"targetname,omitempty"`    // target element's name attribute
+	TargetId        string             `json:"targetid,omitempty"`      // target element's id attribute
+	TargetFiles     []VDomFileData     `json:"targetfiles,omitempty"`   // set for onChange events on file inputs
+	KeyData         *VDomKeyboardEvent `json:"keydata,omitempty"`       // set for onKeyDown events
+	MouseData       *VDomPointerData   `json:"mousedata,omitempty"`     // set for onClick, onMouseDown, onMouseUp, onDoubleClick events
+	FormData        *VDomFormData      `json:"formdata,omitempty"`      // set for onSubmit events on forms
+	TermInput       *VDomTermInputData `json:"terminput,omitempty"`     // set for onData events on wave:term elements
 }
 
 type VDomKeyboardEvent struct {
@@ -115,13 +165,13 @@ type VDomPointerData struct {
 }
 
 type VDomFormData struct {
-	Action   string                     `json:"action,omitempty"`
-	Method   string                     `json:"method"`
-	Enctype  string                     `json:"enctype"`
-	FormId   string                     `json:"formid,omitempty"`
-	FormName string                     `json:"formname,omitempty"`
-	Fields   map[string][]string        `json:"fields"`
-	Files    map[string][]VDomFileData  `json:"files"`
+	Action   string                    `json:"action,omitempty"`
+	Method   string                    `json:"method"`
+	Enctype  string                    `json:"enctype"`
+	FormId   string                    `json:"formid,omitempty"`
+	FormName string                    `json:"formname,omitempty"`
+	Fields   map[string][]string       `json:"fields"`
+	Files    map[string][]VDomFileData `json:"files"`
 }
 
 func (f *VDomFormData) GetField(fieldName string) string {

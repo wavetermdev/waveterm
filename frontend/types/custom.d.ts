@@ -59,6 +59,7 @@ declare global {
         environment: "electron" | "renderer";
         primaryTabStartup?: boolean;
         builderId?: string;
+        isPreview?: boolean;
     };
 
     type WaveInitOpts = {
@@ -132,6 +133,7 @@ declare global {
         setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
         doRefresh: () => void; // do-refresh
         saveTextFile: (fileName: string, content: string) => Promise<boolean>; // save-text-file
+        setIsActive: () => Promise<void>; // set-is-active
     };
 
     type ElectronContextMenuItem = {

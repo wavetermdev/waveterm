@@ -471,6 +471,7 @@ func generateWshClientApiMethod_ResponseStream(methodDecl *wshrpc.WshRpcMethodDe
 	} else {
 		sb.WriteString(fmt.Sprintf("	%s(client: WshClient, %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodSigDataParams, genRespType))
 	}
+	sb.WriteString(fmt.Sprintf("        if (mockClient) return mockClient.mockWshRpcStream(client, %q, %s, opts);\n", methodDecl.Command, dataName))
 	sb.WriteString(fmt.Sprintf("        return client.wshRpcStream(%q, %s, opts);\n", methodDecl.Command, dataName))
 	sb.WriteString("    }\n")
 	return sb.String()
@@ -490,8 +491,8 @@ func generateWshClientApiMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsType
 	} else {
 		sb.WriteString(fmt.Sprintf("    %s(client: WshClient, %s, opts?: RpcOpts): %s {\n", methodDecl.MethodName, methodSigDataParams, rtnType))
 	}
-	methodBody := fmt.Sprintf("        return client.wshRpcCall(%q, %s, opts);\n", methodDecl.Command, dataName)
-	sb.WriteString(methodBody)
+	sb.WriteString(fmt.Sprintf("        if (mockClient) return mockClient.mockWshRpcCall(client, %q, %s, opts);\n", methodDecl.Command, dataName))
+	sb.WriteString(fmt.Sprintf("        return client.wshRpcCall(%q, %s, opts);\n", methodDecl.Command, dataName))
 	sb.WriteString("    }\n")
 	return sb.String()
 }

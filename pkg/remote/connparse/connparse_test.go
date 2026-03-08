@@ -81,8 +81,9 @@ func TestParseURI_WSHRemoteShorthand(t *testing.T) {
 	if c.Path != expected {
 		t.Fatalf("expected path to be \"%q\", got \"%q\"", expected, c.Path)
 	}
-	if c.Host != "conn" {
-		t.Fatalf("expected host to be empty, got \"%q\"", c.Host)
+	expected = "conn"
+	if c.Host != expected {
+		t.Fatalf("expected host to be \"%q\", got \"%q\"", expected, c.Host)
 	}
 	expected = "wsh"
 	if c.Scheme != expected {

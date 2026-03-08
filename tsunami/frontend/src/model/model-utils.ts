@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { TsunamiTermElem } from "@/element/tsunamiterm";
+
 const TextTag = "#text";
 
 // TODO support binding
@@ -77,6 +79,22 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
             update.vdom = elemMap.get(update.vdomwaveid);
         }
     });
+}
+
+export function isTsunamiTermElem(elem: HTMLElement): elem is TsunamiTermElem {
+    return elem != null && typeof (elem as TsunamiTermElem).__termWrite === "function";
+}
+
+export function applyTermOp(elem: TsunamiTermElem, termOp: VDomRefOperation) {
+    const { op, params } = termOp;
+    if (op === "termwrite") {
+        const data64 = params?.[0];
+        if (typeof data64 === "string" && data64 !== "") {
+            elem.__termWrite(data64);
+        }
+    } else if (op === "focus") {
+        elem.__termFocus();
+    }
 }
 
 export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperation, refStore: Map<string, any>) {
