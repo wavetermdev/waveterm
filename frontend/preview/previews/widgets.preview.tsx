@@ -1,11 +1,11 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveEnvContext } from "@/app/waveenv/waveenv";
+import { useWaveEnv, WaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import { Widgets } from "@/app/workspace/widgets";
 import { atom, useAtom } from "jotai";
 import { useRef } from "react";
-import { makeMockWaveEnv } from "../mock/mockwaveenv";
+import { makeMockRpc } from "../mock/mockwaveenv";
 
 const workspaceAtom = atom<Workspace>(null as Workspace);
 const resizableHeightAtom = atom(250);
@@ -80,13 +80,10 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
 
 const fullConfigAtom = atom<FullConfigType>({ settings: {}, widgets: mockWidgets } as unknown as FullConfigType);
 
-function makeWidgetsEnv(isDev: boolean, hasCustomAIPresets: boolean, apps?: AppInfo[]) {
-    const baseEnv = makeMockWaveEnv();
-    if (apps != null) {
-        baseEnv.rpc.ListAllAppsCommand = (_client: any) => Promise.resolve(apps);
-    }
+function makeWidgetsEnv(baseEnv: WaveEnv, isDev: boolean, hasCustomAIPresets: boolean, apps?: AppInfo[]) {
     return {
         ...baseEnv,
+        rpc: makeMockRpc({ ListAllAppsCommand: () => Promise.resolve(apps ?? []) }),
         isDev: () => isDev,
         atoms: {
             ...baseEnv.atoms,
@@ -110,7 +107,8 @@ function WidgetsScenario({
     height?: number;
     apps?: AppInfo[];
 }) {
-    const envRef = useRef(makeWidgetsEnv(isDev, hasCustomAIPresets, apps));
+    const baseEnv = useWaveEnv();
+    const envRef = useRef(makeWidgetsEnv(baseEnv, isDev, hasCustomAIPresets, apps));
 
     return (
         <div className="flex flex-col gap-2">
@@ -132,7 +130,8 @@ function WidgetsScenario({
 
 function WidgetsResizable() {
     const [height, setHeight] = useAtom(resizableHeightAtom);
-    const envRef = useRef(makeWidgetsEnv(true, true, mockApps));
+    const baseEnv = useWaveEnv();
+    const envRef = useRef(makeWidgetsEnv(baseEnv, true, true, mockApps));
 
     return (
         <div className="flex flex-col gap-2 items-start">

@@ -54,24 +54,46 @@ function makeMockGlobalAtoms(ids?: MockIds): GlobalAtomsType {
     };
 }
 
-const mockRpcApi = new RpcApiType();
+type RpcOverrides = {
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
+};
 
-mockRpcApi.setMockRpcClient({
-    mockWshRpcCall(_client, command, data, _opts) {
-        console.log("[mock rpc call]", command, data);
-        return Promise.resolve(null);
-    },
-    async *mockWshRpcStream(_client, command, data, _opts) {
-        console.log("[mock rpc stream]", command, data);
-        yield null;
-    },
-});
+export function makeMockRpc(overrides?: RpcOverrides): RpcApiType {
+    const dispatchMap = new Map<string, (...args: any[]) => any>();
+    if (overrides) {
+        for (const key of Object.keys(overrides) as (keyof RpcOverrides)[]) {
+            const cmdName = key.slice(0, -"Command".length).toLowerCase();
+            dispatchMap.set(cmdName, overrides[key] as (...args: any[]) => any);
+        }
+    }
+    const rpc = new RpcApiType();
+    rpc.setMockRpcClient({
+        mockWshRpcCall(_client, command, data, _opts) {
+            const fn = dispatchMap.get(command);
+            if (fn) {
+                return fn(_client, data, _opts);
+            }
+            console.log("[mock rpc call]", command, data);
+            return Promise.resolve(null);
+        },
+        async *mockWshRpcStream(_client, command, data, _opts) {
+            const fn = dispatchMap.get(command);
+            if (fn) {
+                yield* fn(_client, data, _opts);
+                return;
+            }
+            console.log("[mock rpc stream]", command, data);
+            yield null;
+        },
+    });
+    return rpc;
+}
 
-export function makeMockWaveEnv(overrides?: Partial<SettingsType>, ids?: MockIds): WaveEnv {
+export function makeMockWaveEnv(ids?: MockIds): WaveEnv {
     return {
         electron: previewElectronApi,
-        rpc: mockRpcApi,
-        configAtoms: makeMockConfigAtoms(overrides),
+        rpc: makeMockRpc(),
+        configAtoms: makeMockConfigAtoms(),
         isDev: () => true,
         atoms: makeMockGlobalAtoms(ids),
         createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {

@@ -90,7 +90,7 @@ function PreviewHeader({ previewName }: { previewName: string }) {
 
 function PreviewRoot() {
     const waveEnvRef = useRef(
-        makeMockWaveEnv(undefined, {
+        makeMockWaveEnv({
             tabId: PreviewTabId,
             windowId: PreviewWindowId,
             clientId: PreviewClientId,
