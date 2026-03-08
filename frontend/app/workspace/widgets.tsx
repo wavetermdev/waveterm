@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { ContextMenuModel } from "@/app/store/contextmenu";
-import { RpcApiType } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
@@ -21,6 +19,23 @@ import {
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+
+export type WidgetsEnv = {
+    isDev: WaveEnv["isDev"];
+    electron: {
+        openBuilder: WaveEnv["electron"]["openBuilder"];
+    };
+    rpc: {
+        ListAllAppsCommand: WaveEnv["rpc"]["ListAllAppsCommand"];
+    };
+    atoms: {
+        fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
+        workspace: WaveEnv["atoms"]["workspace"];
+        hasCustomAIPresetsAtom: WaveEnv["atoms"]["hasCustomAIPresetsAtom"];
+    };
+    createBlock: WaveEnv["createBlock"];
+    showContextMenu: WaveEnv["showContextMenu"];
+};
 
 function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
     if (wmap == null) {
@@ -330,18 +345,6 @@ const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floa
 
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
-export type WidgetsEnv = {
-    isDev: () => boolean;
-    electron: {
-        openBuilder: ElectronApi["openBuilder"];
-    };
-    rpc: {
-        ListAllAppsCommand: RpcApiType["ListAllAppsCommand"];
-    };
-    atoms: Pick<GlobalAtomsType, "fullConfigAtom" | "workspace" | "hasCustomAIPresetsAtom">;
-    createBlock: WaveEnv["createBlock"];
-};
-
 const Widgets = memo(() => {
     const env = useWaveEnv<WidgetsEnv>();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
@@ -431,7 +434,7 @@ const Widgets = memo(() => {
                 },
             },
         ];
-        ContextMenuModel.getInstance().showContextMenu(menu, e);
+        env.showContextMenu(menu, e);
     };
 
     return (

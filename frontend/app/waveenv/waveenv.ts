@@ -15,6 +15,7 @@ export type WaveEnv = {
     isDev: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
+    showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);
