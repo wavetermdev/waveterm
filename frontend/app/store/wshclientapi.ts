@@ -17,7 +17,7 @@ export function setMockRpcClient(client: MockRpcClient): void {
 }
 
 // WshServerCommandToDeclMap
-class RpcApiType {
+export class RpcApiType {
     // command "activity" [call]
     ActivityCommand(client: WshClient, data: ActivityUpdate, opts?: RpcOpts): Promise<void> {
         if (mockClient) return mockClient.mockWshRpcCall(client, "activity", data, opts);

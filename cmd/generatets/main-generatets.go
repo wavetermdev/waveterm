@@ -122,7 +122,7 @@ func generateWshClientApiFile(tsTypeMap map[reflect.Type]string) error {
 	fmt.Fprintf(&buf, "}\n\n")
 	orderedKeys := utilfn.GetOrderedMapKeys(declMap)
 	fmt.Fprintf(&buf, "// WshServerCommandToDeclMap\n")
-	fmt.Fprintf(&buf, "class RpcApiType {\n")
+	fmt.Fprintf(&buf, "export class RpcApiType {\n")
 	for _, methodDecl := range orderedKeys {
 		methodDecl := declMap[methodDecl]
 		methodStr := tsgen.GenerateWshClientApiMethod(methodDecl, tsTypeMap)
