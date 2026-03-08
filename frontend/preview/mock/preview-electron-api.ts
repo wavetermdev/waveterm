@@ -65,4 +65,4 @@ function installPreviewElectronApi() {
     (window as any).api = previewElectronApi;
 }
 
-export { installPreviewElectronApi };
+export { installPreviewElectronApi, previewElectronApi };

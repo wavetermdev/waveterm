@@ -116,13 +116,13 @@ func generateWshClientApiFile(tsTypeMap map[reflect.Type]string) error {
 	fmt.Fprintf(&buf, "    mockWshRpcCall(client: WshClient, command: string, data: any, opts?: RpcOpts): Promise<any>;\n")
 	fmt.Fprintf(&buf, "    mockWshRpcStream(client: WshClient, command: string, data: any, opts?: RpcOpts): AsyncGenerator<any, void, boolean>;\n")
 	fmt.Fprintf(&buf, "}\n\n")
-	fmt.Fprintf(&buf, "let mockClient: MockRpcClient = null;\n\n")
-	fmt.Fprintf(&buf, "export function setMockRpcClient(client: MockRpcClient): void {\n")
-	fmt.Fprintf(&buf, "    mockClient = client;\n")
-	fmt.Fprintf(&buf, "}\n\n")
 	orderedKeys := utilfn.GetOrderedMapKeys(declMap)
 	fmt.Fprintf(&buf, "// WshServerCommandToDeclMap\n")
 	fmt.Fprintf(&buf, "export class RpcApiType {\n")
+	fmt.Fprintf(&buf, "    mockClient: MockRpcClient = null;\n\n")
+	fmt.Fprintf(&buf, "    setMockRpcClient(client: MockRpcClient): void {\n")
+	fmt.Fprintf(&buf, "        this.mockClient = client;\n")
+	fmt.Fprintf(&buf, "    }\n\n")
 	for _, methodDecl := range orderedKeys {
 		methodDecl := declMap[methodDecl]
 		methodStr := tsgen.GenerateWshClientApiMethod(methodDecl, tsTypeMap)
