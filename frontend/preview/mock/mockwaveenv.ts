@@ -1,10 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom } from "@/app/store/global";
+import { getSettingsKeyAtom, makeDefaultConnStatus } from "@/app/store/global";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
-import { atom } from "jotai";
+import { atom, PrimitiveAtom } from "jotai";
 import { previewElectronApi } from "./preview-electron-api";
 
 type RpcOverrides = {
@@ -19,23 +19,34 @@ export type MockEnv = {
     electron?: Partial<ElectronApi>;
     createBlock?: WaveEnv["createBlock"];
     showContextMenu?: WaveEnv["showContextMenu"];
+    connStatus?: Record<string, ConnStatus>;
+    mockWaveObjs?: Record<string, WaveObj>;
 };
 
 export type MockWaveEnv = WaveEnv & { mockEnv: MockEnv };
 
+function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>): Record<string, T> {
+    if (base == null && overrides == null) {
+        return undefined;
+    }
+    return { ...(base ?? {}), ...(overrides ?? {}) };
+}
+
 export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     return {
         isDev: overrides.isDev ?? base.isDev,
-        config: overrides.config != null || base.config != null ? { ...base.config, ...overrides.config } : undefined,
-        rpc: overrides.rpc != null || base.rpc != null ? { ...base.rpc, ...overrides.rpc } : undefined,
+        config: mergeRecords(base.config, overrides.config),
+        rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
         atoms:
             overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
         electron:
             overrides.electron != null || base.electron != null
-                ? { ...base.electron, ...overrides.electron }
+                ? { ...(base.electron ?? {}), ...(overrides.electron ?? {}) }
                 : undefined,
         createBlock: overrides.createBlock ?? base.createBlock,
         showContextMenu: overrides.showContextMenu ?? base.showContextMenu,
+        connStatus: mergeRecords(base.connStatus, overrides.connStatus),
+        mockWaveObjs: mergeRecords(base.mockWaveObjs, overrides.mockWaveObjs),
     };
 }
 
@@ -123,6 +134,8 @@ export function applyMockEnvOverrides(env: WaveEnv, newOverrides: MockEnv): Mock
 
 export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
+    const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
+    const waveObjectAtomCache = new Map<string, PrimitiveAtom<WaveObj>>();
     return {
         mockEnv: overrides,
         electron: overrides.electron ? { ...previewElectronApi, ...overrides.electron } : previewElectronApi,
@@ -141,5 +154,19 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             ((menu, e) => {
                 console.log("[mock showContextMenu]", menu, e);
             }),
+        getConnStatusAtom: (conn: string) => {
+            if (!connStatusAtomCache.has(conn)) {
+                const connStatus = overrides.connStatus?.[conn] ?? makeDefaultConnStatus(conn);
+                connStatusAtomCache.set(conn, atom(connStatus));
+            }
+            return connStatusAtomCache.get(conn);
+        },
+        getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
+            if (!waveObjectAtomCache.has(oref)) {
+                const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+                waveObjectAtomCache.set(oref, atom(obj));
+            }
+            return waveObjectAtomCache.get(oref) as PrimitiveAtom<T>;
+        },
     };
 }

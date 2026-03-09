@@ -28,8 +28,6 @@ declare global {
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 
-    type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
-
     type ThrottledValueAtom<T> = jotai.WritableAtom<T, [update: jotai.SetStateAction<T>], void>;
 
     type AtomWithThrottle<T> = {

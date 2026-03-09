@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApiType } from "@/app/store/wshclientapi";
-import { Atom } from "jotai";
+import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
 
 type ConfigAtoms = { [K in keyof SettingsType]: Atom<SettingsType[K]> };
@@ -16,6 +16,8 @@ export type WaveEnv = {
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
+    getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
+    getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);

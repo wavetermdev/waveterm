@@ -7,7 +7,7 @@ import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
-import { atom } from "jotai";
+import { atom, Provider } from "jotai";
 import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { makeMockWaveEnv } from "./mock/mockwaveenv";
@@ -99,9 +99,11 @@ function PreviewRoot() {
         })
     );
     return (
-        <WaveEnvContext.Provider value={waveEnvRef.current}>
-            <PreviewApp />
-        </WaveEnvContext.Provider>
+        <Provider store={globalStore}>
+            <WaveEnvContext.Provider value={waveEnvRef.current}>
+                <PreviewApp />
+            </WaveEnvContext.Provider>
+        </Provider>
     );
 }
 

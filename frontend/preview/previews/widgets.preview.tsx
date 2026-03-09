@@ -14,7 +14,12 @@ function makeMockApp(name: string, icon: string, iconcolor: string): AppInfo {
     return {
         appid: `local/${name.toLowerCase().replace(/\s+/g, "-")}`,
         modtime: 0,
-        manifest: { appmeta: { title: name, shortdesc: "", icon, iconcolor }, configschema: {}, dataschema: {}, secrets: {} },
+        manifest: {
+            appmeta: { title: name, shortdesc: "", icon, iconcolor },
+            configschema: {},
+            dataschema: {},
+            secrets: {},
+        },
     };
 }
 
@@ -178,4 +183,3 @@ export function WidgetsPreview() {
         </div>
     );
 }
-
