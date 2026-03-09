@@ -152,28 +152,23 @@ func (impl *ServerImpl) BadgeWatchPidCommand(ctx context.Context, data wshrpc.Co
 		defer func() {
 			panichandler.PanicHandler("BadgeWatchPidCommand", recover())
 		}()
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
 		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if !unixutil.IsPidRunning(data.Pid) {
-					orefStr := data.ORef.String()
-					event := wps.WaveEvent{
-						Event:  wps.Event_Badge,
-						Scopes: []string{orefStr},
-						Data: baseds.BadgeEvent{
-							ORef:      orefStr,
-							ClearById: data.BadgeId,
-						},
-					}
-					wshclient.EventPublishCommand(impl.RpcClient, event, nil)
-					log.Printf("BadgeWatchPidCommand: pid %d gone, cleared badge %s for oref %s\n", data.Pid, data.BadgeId, orefStr)
-					return
-				}
+			time.Sleep(time.Second)
+			if unixutil.IsPidRunning(data.Pid) {
+				continue
 			}
+			orefStr := data.ORef.String()
+			event := wps.WaveEvent{
+				Event:  wps.Event_Badge,
+				Scopes: []string{orefStr},
+				Data: baseds.BadgeEvent{
+					ORef:      orefStr,
+					ClearById: data.BadgeId,
+				},
+			}
+			wshclient.EventPublishCommand(impl.RpcClient, event, nil)
+			log.Printf("BadgeWatchPidCommand: pid %d gone, cleared badge %s for oref %s\n", data.Pid, data.BadgeId, orefStr)
+			return
 		}
 	}()
 	return nil
