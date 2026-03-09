@@ -3,6 +3,7 @@
 
 import { App } from "@/app/app";
 import { loadMonaco } from "@/app/monaco/monaco-env";
+import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
@@ -25,7 +26,6 @@ import {
     initGlobal,
     initGlobalWaveEventSubs,
     loadConnStatus,
-    loadTabIndicators,
     subscribeToConnEvents,
 } from "@/store/global";
 import { activeTabIdAtom } from "@/store/tab-model";
@@ -160,18 +160,18 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
-    await loadTabIndicators();
+    await loadBadges();
     initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
     try {
-        const [client, waveWindow, initialTab] = await Promise.all([
+        const [_client, waveWindow, initialTab] = await Promise.all([
             WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
             WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
             WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
         ]);
-        const [ws, layoutState] = await Promise.all([
+        const [ws, _layoutState] = await Promise.all([
             WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
             WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
         ]);
@@ -193,7 +193,7 @@ async function initWave(initOpts: WaveInitOpts) {
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
     console.log("Wave First Render");
     let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
+    const firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
     const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
@@ -252,7 +252,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     globalStore.set(atoms.builderAppId, appIdToUse);
 
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
+    const _client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
 
     registerBuilderGlobalKeys();
     registerElectronReinjectKeyHandler();
@@ -265,7 +265,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     console.log("Tsunami Builder First Render");
     let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
+    const firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
     const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn }, null);

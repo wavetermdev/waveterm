@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .tab-bar-wrapper {
-    padding-top: 6px;
+    padding-top: 3px;
     position: relative;
     user-select: none;
     display: flex;
@@ -11,6 +11,9 @@
     width: 100vw;
     -webkit-app-region: drag;
     height: max(33px, calc(33px * var(--zoomfactor-inv)));
+    backdrop-filter: blur(20px);
+    background: rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
 
     button {
         -webkit-app-region: no-drag;
@@ -27,6 +30,7 @@
         flex-direction: row;
         height: 27px;
         -webkit-app-region: no-drag;
+        margin-bottom: 1px;
     }
 
     .pinned-tab-spacer {
@@ -48,6 +52,7 @@
     .add-tab {
         padding: 0 10px;
         height: 27px;
+        margin-bottom: 2px;
     }
 
     // Customize scrollbar styles

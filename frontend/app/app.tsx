@@ -1,21 +1,21 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+    clearBadgesForBlockOnFocus,
+    clearBadgesForTabOnFocus,
+    getBadgeAtom,
+    getBlockBadgeAtom,
+} from "@/app/store/badge";
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
 import { Workspace } from "@/app/workspace/workspace";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
-import {
-    atoms,
-    clearTabIndicatorFromFocus,
-    createBlock,
-    getSettingsPrefixAtom,
-    getTabIndicatorAtom,
-    globalStore,
-} from "@/store/global";
+import { atoms, createBlock, getSettingsPrefixAtom, globalStore } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -108,7 +108,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     if (!canPaste && !canCopy && !canCut && !clipboardURL) {
         return;
     }
-    let menu: ContextMenuItem[] = [];
+    const menu: ContextMenuItem[] = [];
     if (canCut) {
         menu.push({ label: "Cut", role: "cut" });
     }
@@ -220,25 +220,57 @@ const AppKeyHandlers = () => {
     return null;
 };
 
-const TabIndicatorAutoClearing = () => {
+const BadgeAutoClearing = () => {
     const tabId = useAtomValue(atoms.staticTabId);
-    const indicator = useAtomValue(getTabIndicatorAtom(tabId));
     const documentHasFocus = useAtomValue(atoms.documentHasFocus);
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedNode = useAtomValue(layoutModel.focusedNode);
+    const focusedBlockId = focusedNode?.data?.blockId;
+    const badge = useAtomValue(getBlockBadgeAtom(focusedBlockId));
+    const tabTransientBadge = useAtomValue(getBadgeAtom(tabId != null ? `tab:${tabId}` : null));
+    const prevFocusedBlockIdRef = useRef<string>(null);
+    const prevDocHasFocusRef = useRef<boolean>(false);
+    const prevTabDocHasFocusRef = useRef<boolean>(false);
 
     useEffect(() => {
-        if (!indicator || !documentHasFocus || !indicator.clearonfocus) {
+        if (!focusedBlockId || !badge || !documentHasFocus) {
+            prevFocusedBlockIdRef.current = focusedBlockId;
+            prevDocHasFocusRef.current = documentHasFocus;
             return;
         }
-
+        const focusSwitched =
+            prevFocusedBlockIdRef.current !== focusedBlockId || prevDocHasFocusRef.current !== documentHasFocus;
+        prevFocusedBlockIdRef.current = focusedBlockId;
+        prevDocHasFocusRef.current = documentHasFocus;
+        const delay = focusSwitched ? 500 : 3000;
         const timeoutId = setTimeout(() => {
-            const currentIndicator = globalStore.get(getTabIndicatorAtom(tabId));
-            if (globalStore.get(atoms.documentHasFocus) && currentIndicator?.clearonfocus) {
-                clearTabIndicatorFromFocus(tabId);
+            if (!document.hasFocus()) {
+                return;
             }
-        }, 3000);
-
+            const currentFocusedNode = globalStore.get(layoutModel.focusedNode);
+            if (currentFocusedNode?.data?.blockId === focusedBlockId) {
+                clearBadgesForBlockOnFocus(focusedBlockId);
+            }
+        }, delay);
         return () => clearTimeout(timeoutId);
-    }, [tabId, indicator, documentHasFocus]);
+    }, [focusedBlockId, badge, documentHasFocus]);
+
+    useEffect(() => {
+        if (!tabId || !tabTransientBadge || !documentHasFocus) {
+            prevTabDocHasFocusRef.current = documentHasFocus;
+            return;
+        }
+        const focusSwitched = prevTabDocHasFocusRef.current !== documentHasFocus;
+        prevTabDocHasFocusRef.current = documentHasFocus;
+        const delay = focusSwitched ? 500 : 3000;
+        const timeoutId = setTimeout(() => {
+            if (!document.hasFocus()) {
+                return;
+            }
+            clearBadgesForTabOnFocus(tabId);
+        }, delay);
+        return () => clearTimeout(timeoutId);
+    }, [tabId, tabTransientBadge, documentHasFocus]);
 
     return null;
 };
@@ -270,7 +302,7 @@ const AppInner = () => {
             <AppKeyHandlers />
             <AppFocusHandler />
             <AppSettingsUpdater />
-            <TabIndicatorAutoClearing />
+            <BadgeAutoClearing />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>

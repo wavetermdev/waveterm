@@ -66,6 +66,12 @@ export class RpcApiType {
         return client.wshRpcCall("authenticatetokenverify", data, opts);
     }
 
+    // command "badgewatchpid" [call]
+    BadgeWatchPidCommand(client: WshClient, data: CommandBadgeWatchPidData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "badgewatchpid", data, opts);
+        return client.wshRpcCall("badgewatchpid", data, opts);
+    }
+
     // command "blockinfo" [call]
     BlockInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockInfoData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "blockinfo", data, opts);
@@ -390,10 +396,10 @@ export class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
-    // command "getalltabindicators" [call]
-    GetAllTabIndicatorsCommand(client: WshClient, opts?: RpcOpts): Promise<{[key: string]: TabIndicator}> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getalltabindicators", null, opts);
-        return client.wshRpcCall("getalltabindicators", null, opts);
+    // command "getallbadges" [call]
+    GetAllBadgesCommand(client: WshClient, opts?: RpcOpts): Promise<BadgeEvent[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getallbadges", null, opts);
+        return client.wshRpcCall("getallbadges", null, opts);
     }
 
     // command "getallvars" [call]
