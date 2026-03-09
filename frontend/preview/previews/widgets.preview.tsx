@@ -5,7 +5,7 @@ import { useWaveEnv, WaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import { Widgets } from "@/app/workspace/widgets";
 import { atom, useAtom } from "jotai";
 import { useRef } from "react";
-import { makeMockRpc } from "../mock/mockwaveenv";
+import { applyMockEnvOverrides } from "../mock/mockwaveenv";
 
 const workspaceAtom = atom<Workspace>(null as Workspace);
 const resizableHeightAtom = atom(250);
@@ -81,17 +81,15 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
 const fullConfigAtom = atom<FullConfigType>({ settings: {}, widgets: mockWidgets } as unknown as FullConfigType);
 
 function makeWidgetsEnv(baseEnv: WaveEnv, isDev: boolean, hasCustomAIPresets: boolean, apps?: AppInfo[]) {
-    return {
-        ...baseEnv,
-        rpc: makeMockRpc({ ListAllAppsCommand: () => Promise.resolve(apps ?? []) }),
-        isDev: () => isDev,
+    return applyMockEnvOverrides(baseEnv, {
+        isDev,
+        rpc: { ListAllAppsCommand: () => Promise.resolve(apps ?? []) },
         atoms: {
-            ...baseEnv.atoms,
             fullConfigAtom,
             workspace: workspaceAtom,
             hasCustomAIPresetsAtom: atom(hasCustomAIPresets),
         },
-    };
+    });
 }
 
 function WidgetsScenario({
@@ -108,7 +106,10 @@ function WidgetsScenario({
     apps?: AppInfo[];
 }) {
     const baseEnv = useWaveEnv();
-    const envRef = useRef(makeWidgetsEnv(baseEnv, isDev, hasCustomAIPresets, apps));
+    const envRef = useRef<WaveEnv>(null);
+    if (envRef.current == null) {
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, hasCustomAIPresets, apps);
+    }
 
     return (
         <div className="flex flex-col gap-2">
@@ -131,7 +132,10 @@ function WidgetsScenario({
 function WidgetsResizable() {
     const [height, setHeight] = useAtom(resizableHeightAtom);
     const baseEnv = useWaveEnv();
-    const envRef = useRef(makeWidgetsEnv(baseEnv, true, true, mockApps));
+    const envRef = useRef<WaveEnv>(null);
+    if (envRef.current == null) {
+        envRef.current = makeWidgetsEnv(baseEnv, true, true, mockApps);
+    }
 
     return (
         <div className="flex flex-col gap-2 items-start">

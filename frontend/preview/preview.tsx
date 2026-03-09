@@ -7,6 +7,7 @@ import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
+import { atom } from "jotai";
 import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { makeMockWaveEnv } from "./mock/mockwaveenv";
@@ -91,9 +92,10 @@ function PreviewHeader({ previewName }: { previewName: string }) {
 function PreviewRoot() {
     const waveEnvRef = useRef(
         makeMockWaveEnv({
-            tabId: PreviewTabId,
-            windowId: PreviewWindowId,
-            clientId: PreviewClientId,
+            atoms: {
+                uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
+                staticTabId: atom(PreviewTabId),
+            },
         })
     );
     return (

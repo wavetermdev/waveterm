@@ -7,6 +7,38 @@ import { WaveEnv } from "@/app/waveenv/waveenv";
 import { atom } from "jotai";
 import { previewElectronApi } from "./preview-electron-api";
 
+type RpcOverrides = {
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
+};
+
+export type MockEnv = {
+    isDev?: boolean;
+    config?: Partial<SettingsType>;
+    rpc?: RpcOverrides;
+    atoms?: Partial<GlobalAtomsType>;
+    electron?: Partial<ElectronApi>;
+    createBlock?: WaveEnv["createBlock"];
+    showContextMenu?: WaveEnv["showContextMenu"];
+};
+
+export type MockWaveEnv = WaveEnv & { mockEnv: MockEnv };
+
+export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
+    return {
+        isDev: overrides.isDev ?? base.isDev,
+        config: overrides.config != null || base.config != null ? { ...base.config, ...overrides.config } : undefined,
+        rpc: overrides.rpc != null || base.rpc != null ? { ...base.rpc, ...overrides.rpc } : undefined,
+        atoms:
+            overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
+        electron:
+            overrides.electron != null || base.electron != null
+                ? { ...base.electron, ...overrides.electron }
+                : undefined,
+        createBlock: overrides.createBlock ?? base.createBlock,
+        showContextMenu: overrides.showContextMenu ?? base.showContextMenu,
+    };
+}
+
 function makeMockConfigAtoms(overrides?: Partial<SettingsType>): WaveEnv["configAtoms"] {
     const overrideAtoms = new Map<keyof SettingsType, ReturnType<typeof atom>>();
     if (overrides) {
@@ -24,23 +56,17 @@ function makeMockConfigAtoms(overrides?: Partial<SettingsType>): WaveEnv["config
     });
 }
 
-type MockIds = {
-    tabId?: string;
-    windowId?: string;
-    clientId?: string;
-};
-
-function makeMockGlobalAtoms(ids?: MockIds): GlobalAtomsType {
-    return {
+function makeMockGlobalAtoms(atomOverrides?: Partial<GlobalAtomsType>): GlobalAtomsType {
+    const defaults: GlobalAtomsType = {
         builderId: atom(""),
         builderAppId: atom("") as any,
-        uiContext: atom({ windowid: ids?.windowId ?? "", activetabid: ids?.tabId ?? "" } as UIContext),
+        uiContext: atom({} as UIContext),
         workspace: atom(null as Workspace),
         fullConfigAtom: atom(null) as any,
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom: atom({} as SettingsType),
         hasCustomAIPresetsAtom: atom(false),
-        staticTabId: atom(ids?.tabId ?? ""),
+        staticTabId: atom(""),
         isFullScreen: atom(false) as any,
         zoomFactorAtom: atom(1.0) as any,
         controlShiftDelayAtom: atom(false) as any,
@@ -52,11 +78,11 @@ function makeMockGlobalAtoms(ids?: MockIds): GlobalAtomsType {
         reinitVersion: atom(0) as any,
         waveAIRateLimitInfoAtom: atom(null) as any,
     };
+    if (!atomOverrides) {
+        return defaults;
+    }
+    return { ...defaults, ...atomOverrides };
 }
-
-type RpcOverrides = {
-    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
-};
 
 export function makeMockRpc(overrides?: RpcOverrides): RpcApiType {
     const dispatchMap = new Map<string, (...args: any[]) => any>();
@@ -89,19 +115,31 @@ export function makeMockRpc(overrides?: RpcOverrides): RpcApiType {
     return rpc;
 }
 
-export function makeMockWaveEnv(ids?: MockIds): WaveEnv {
+export function applyMockEnvOverrides(env: WaveEnv, newOverrides: MockEnv): MockWaveEnv {
+    const existing = (env as MockWaveEnv).mockEnv;
+    const merged = existing != null ? mergeMockEnv(existing, newOverrides) : newOverrides;
+    return makeMockWaveEnv(merged);
+}
+
+export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
+    const overrides: MockEnv = mockEnv ?? {};
     return {
-        electron: previewElectronApi,
-        rpc: makeMockRpc(),
-        configAtoms: makeMockConfigAtoms(),
-        isDev: () => true,
-        atoms: makeMockGlobalAtoms(ids),
-        createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
-            console.log("[mock createBlock]", blockDef, { magnified, ephemeral });
-            return Promise.resolve(crypto.randomUUID());
-        },
-        showContextMenu: (menu, e) => {
-            console.log("[mock showContextMenu]", menu, e);
-        },
+        mockEnv: overrides,
+        electron: overrides.electron ? { ...previewElectronApi, ...overrides.electron } : previewElectronApi,
+        rpc: makeMockRpc(overrides.rpc),
+        configAtoms: makeMockConfigAtoms(overrides.config),
+        atoms: makeMockGlobalAtoms(overrides.atoms),
+        isDev: () => overrides.isDev ?? true,
+        createBlock:
+            overrides.createBlock ??
+            ((blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
+                console.log("[mock createBlock]", blockDef, { magnified, ephemeral });
+                return Promise.resolve(crypto.randomUUID());
+            }),
+        showContextMenu:
+            overrides.showContextMenu ??
+            ((menu, e) => {
+                console.log("[mock showContextMenu]", menu, e);
+            }),
     };
 }
