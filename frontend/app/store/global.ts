@@ -132,10 +132,6 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return metaAtom;
 }
 
-function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T): MetaType[T] {
-    return useAtomValue(getBlockMetaKeyAtom(blockId, key));
-}
-
 function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Atom<MetaType[T]> {
     const orefCache = getSingleOrefAtomCache(oref);
     const metaAtomName = "#meta-" + key;
@@ -614,33 +610,34 @@ function subscribeToConnEvents() {
     });
 }
 
+function makeDefaultConnStatus(conn: string): ConnStatus {
+    if (isLocalConnName(conn)) {
+        return {
+            connection: conn,
+            connected: true,
+            error: null,
+            status: "connected",
+            hasconnected: true,
+            activeconnnum: 0,
+            wshenabled: false,
+        };
+    }
+    return {
+        connection: conn,
+        connected: false,
+        error: null,
+        status: "disconnected",
+        hasconnected: false,
+        activeconnnum: 0,
+        wshenabled: false,
+    };
+}
+
 function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     const connStatusMap = globalStore.get(ConnStatusMapAtom);
     let rtn = connStatusMap.get(conn);
     if (rtn == null) {
-        if (isLocalConnName(conn)) {
-            const connStatus: ConnStatus = {
-                connection: conn,
-                connected: true,
-                error: null,
-                status: "connected",
-                hasconnected: true,
-                activeconnnum: 0,
-                wshenabled: false,
-            };
-            rtn = atom(connStatus);
-        } else {
-            const connStatus: ConnStatus = {
-                connection: conn,
-                connected: false,
-                error: null,
-                status: "disconnected",
-                hasconnected: false,
-                activeconnnum: 0,
-                wshenabled: false,
-            };
-            rtn = atom(connStatus);
-        }
+        rtn = atom(makeDefaultConnStatus(conn));
         const newConnStatusMap = new Map(connStatusMap);
         newConnStatusMap.set(conn, rtn);
         globalStore.set(ConnStatusMapAtom, newConnStatusMap);
@@ -692,6 +689,7 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
+    makeDefaultConnStatus,
     openLink,
     readAtom,
     recordTEvent,
@@ -706,7 +704,6 @@ export {
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,
-    useBlockMetaKeyAtom,
     useOrefMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,

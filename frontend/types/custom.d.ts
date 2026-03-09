@@ -4,6 +4,7 @@
 import { type Placement } from "@floating-ui/react";
 import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
+import type { WaveEnv } from "@/app/waveenv/waveenv";
 
 declare global {
     type GlobalAtomsType = {
@@ -27,8 +28,6 @@ declare global {
         reinitVersion: jotai.PrimitiveAtom<number>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
-
-    type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
 
     type ThrottledValueAtom<T> = jotai.WritableAtom<T, [update: jotai.SetStateAction<T>], void>;
 
@@ -291,7 +290,14 @@ declare global {
 
     declare type ViewComponent = React.FC<ViewComponentProps>;
 
-    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) => ViewModel;
+    type ViewModelInitType = {
+        blockId: string;
+        nodeModel: BlockNodeModel;
+        tabModel: TabModel;
+        waveEnv: WaveEnv;
+    };
+
+    type ViewModelClass = new (initOpts: ViewModelInitType) => ViewModel;
 
     interface ViewModel {
         // The type of view, used for identifying and rendering the appropriate component.

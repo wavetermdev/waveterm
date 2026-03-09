@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -9,12 +9,15 @@ import {
     FullSubBlockProps,
     SubBlockProps,
 } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
+import { useTabModel } from "@/app/store/tab-model";
 import { AiFileDiffViewModel } from "@/app/view/aifilediff/aifilediff";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
+import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
@@ -26,8 +29,6 @@ import {
     registerBlockComponentModel,
     unregisterBlockComponentModel,
 } from "@/store/global";
-import type { TabModel } from "@/app/store/tab-model";
-import { useTabModel } from "@/app/store/tab-model";
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
@@ -59,10 +60,16 @@ BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 
-function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
+function makeViewModel(
+    blockId: string,
+    blockView: string,
+    nodeModel: BlockNodeModel,
+    tabModel: TabModel,
+    waveEnv: WaveEnv
+): ViewModel {
     const ctor = BlockRegistry.get(blockView);
     if (ctor != null) {
-        return new ctor(blockId, nodeModel, tabModel);
+        return new ctor({ blockId, nodeModel, tabModel, waveEnv });
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -86,7 +93,7 @@ function getViewElem(
 
 function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
     const blockDataAtom = getWaveObjectAtom<Block>(makeORef("block", blockId));
-    let viewModel: ViewModel = {
+    const viewModel: ViewModel = {
         viewType: viewType,
         viewIcon: atom((get) => {
             const blockData = get(blockDataAtom);
@@ -308,11 +315,12 @@ const Block = memo((props: BlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const tabModel = useTabModel();
+    const waveEnv = useWaveEnv();
     const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel);
+        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
@@ -334,11 +342,12 @@ const SubBlock = memo((props: SubBlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const tabModel = useTabModel();
+    const waveEnv = useWaveEnv();
     const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel);
+        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {

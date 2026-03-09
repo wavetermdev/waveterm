@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
@@ -143,24 +143,6 @@ function strArrayIsEqual(a: string[], b: string[]) {
     }
     for (let i = 0; i < a.length; i++) {
         if (a[i] !== b[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
-    if (a == null && b == null) {
-        return true;
-    }
-    if (a == null || b == null) {
-        return false;
-    }
-    if (a.size !== b.size) {
-        return false;
-    }
-    for (const item of a) {
-        if (!b.has(item)) {
             return false;
         }
     }
@@ -506,7 +488,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         []
     );
 
-    const handleMouseUp = (event: MouseEvent) => {
+    const handleMouseUp = (_event: MouseEvent) => {
         const { tabIndex, dragged } = draggingTabDataRef.current;
 
         // Update the final position of the dragged tab

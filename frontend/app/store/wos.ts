@@ -3,8 +3,8 @@
 
 // WaveObjectStore
 
-import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { isPreviewWindow } from "@/app/store/windowtype";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { fireAndForget } from "@/util/util";
@@ -218,14 +218,9 @@ function loadAndPinWaveObject<T extends WaveObj>(oref: string): Promise<T> {
     return wov.pendingPromise;
 }
 
-function getWaveObjectAtom<T extends WaveObj>(oref: string): WritableWaveObjectAtom<T> {
+function getWaveObjectAtom<T extends WaveObj>(oref: string): Atom<T> {
     const wov = getWaveObjectValue<T>(oref);
-    return atom(
-        (get) => get(wov.dataAtom).value,
-        (_get, set, value: T) => {
-            setObjectValue(value, set, true);
-        }
-    );
+    return atom((get) => get(wov.dataAtom).value);
 }
 
 function getWaveObjectLoadingAtom(oref: string): Atom<boolean> {
