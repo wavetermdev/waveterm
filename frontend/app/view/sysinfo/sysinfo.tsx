@@ -16,8 +16,21 @@ import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WaveEnv } from "@/app/waveenv/waveenv";
 import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
+
+export type SysinfoEnv = {
+    rpc: {
+        EventReadHistoryCommand: WaveEnv["rpc"]["EventReadHistoryCommand"];
+        SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
+    };
+    atoms: {
+        fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
+    };
+    getConnStatusAtom: WaveEnv["getConnStatusAtom"];
+    getWaveObjectAtom: WaveEnv["getWaveObjectAtom"];
+};
 
 const DefaultNumPoints = 120;
 
@@ -49,13 +62,13 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
 }
 
 const PlotTypes: object = {
-    CPU: function (dataItem: DataItem): Array<string> {
+    CPU: function (_dataItem: DataItem): Array<string> {
         return ["cpu"];
     },
-    Mem: function (dataItem: DataItem): Array<string> {
+    Mem: function (_dataItem: DataItem): Array<string> {
         return ["mem:used"];
     },
-    "CPU + Mem": function (dataItem: DataItem): Array<string> {
+    "CPU + Mem": function (_dataItem: DataItem): Array<string> {
         return ["cpu", "mem:used"];
     },
     "All CPU": function (dataItem: DataItem): Array<string> {
@@ -169,7 +182,7 @@ class SysinfoViewModel implements ViewModel {
         });
         this.addContinuousDataAtom = jotai.atom(null, (get, set, newPoint) => {
             const targetLen = get(this.numPoints) + 1;
-            let data = get(this.dataAtom);
+            const data = get(this.dataAtom);
             try {
                 const latestItemTs = newPoint?.ts ?? 0;
                 const cutoffTs = latestItemTs - 1000 * targetLen;
@@ -193,7 +206,7 @@ class SysinfoViewModel implements ViewModel {
             return metaNumPoints;
         });
         this.metrics = jotai.atom((get) => {
-            let plotType = get(this.plotTypeSelectedAtom);
+            const plotType = get(this.plotTypeSelectedAtom);
             const plotData = get(this.dataAtom);
             try {
                 const metrics = PlotTypes[plotType](plotData[plotData.length - 1]);
@@ -219,7 +232,7 @@ class SysinfoViewModel implements ViewModel {
         this.viewName = jotai.atom((get) => {
             return get(this.plotTypeSelectedAtom);
         });
-        this.incrementCount = jotai.atom(null, async (get, set) => {
+        this.incrementCount = jotai.atom(null, async (get, _set) => {
             const meta = get(this.blockAtom).meta;
             const count = meta.count ?? 0;
             await RpcApi.SetMetaCommand(TabRpcClient, {
@@ -262,7 +275,7 @@ class SysinfoViewModel implements ViewModel {
             if (initialData == null) {
                 return;
             }
-            const newData = this.getDefaultData();
+            this.getDefaultData();
             const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
             // splice the initial data into the default data (replacing the newest points)
             //newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
@@ -326,7 +339,7 @@ class SysinfoViewModel implements ViewModel {
     }
 }
 
-const plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
+const _plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
 
 type SysinfoViewProps = {
     blockId: string;
@@ -418,7 +431,7 @@ function SingleLinePlot({
     const plotHeight = domRect?.height ?? 0;
     const plotWidth = domRect?.width ?? 0;
     const marks: Plot.Markish[] = [];
-    let decimalPlaces = yvalMeta?.decimalPlaces ?? 0;
+    const decimalPlaces = yvalMeta?.decimalPlaces ?? 0;
     let color = yvalMeta?.color;
     if (!color) {
         color = defaultColor;
@@ -492,10 +505,10 @@ function SingleLinePlot({
             Plot.pointerX({ x: "ts", y: yval, fill: color, r: 3, stroke: "var(--main-text-color)", strokeWidth: 1 })
         )
     );
-    let maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
-    let minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
-    let maxX = plotData[plotData.length - 1].ts;
-    let minX = maxX - targetLen * 1000;
+    const maxY = resolveDomainBound(yvalMeta?.maxy, plotData[plotData.length - 1]) ?? 100;
+    const minY = resolveDomainBound(yvalMeta?.miny, plotData[plotData.length - 1]) ?? 0;
+    const maxX = plotData[plotData.length - 1].ts;
+    const minX = maxX - targetLen * 1000;
     const plot = Plot.plot({
         axis: !sparkline,
         x: {
@@ -549,7 +562,7 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
             >
                 {plotData &&
                     plotData.length > 0 &&
-                    yvals.map((yval, idx) => {
+                    yvals.map((yval, _idx) => {
                         return (
                             <SingleLinePlot
                                 key={`plot-${model.blockId}-${yval}`}
