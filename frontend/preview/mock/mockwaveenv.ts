@@ -5,6 +5,7 @@ import { getSettingsKeyAtom, makeDefaultConnStatus } from "@/app/store/global";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { Atom, atom, PrimitiveAtom } from "jotai";
+import { DefaultFullConfig } from "./defaultconfig";
 import { previewElectronApi } from "./preview-electron-api";
 
 type RpcOverrides = {
@@ -13,7 +14,7 @@ type RpcOverrides = {
 
 export type MockEnv = {
     isDev?: boolean;
-    config?: Partial<SettingsType>;
+    settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
     atoms?: Partial<GlobalAtomsType>;
     electron?: Partial<ElectronApi>;
@@ -35,10 +36,9 @@ function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>):
 export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     return {
         isDev: overrides.isDev ?? base.isDev,
-        config: mergeRecords(base.config, overrides.config),
+        settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
-        atoms:
-            overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
+        atoms: overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
         electron:
             overrides.electron != null || base.electron != null
                 ? { ...(base.electron ?? {}), ...(overrides.electron ?? {}) }
@@ -67,15 +67,27 @@ function makeMockConfigAtoms(overrides?: Partial<SettingsType>): WaveEnv["config
     });
 }
 
-function makeMockGlobalAtoms(atomOverrides?: Partial<GlobalAtomsType>): GlobalAtomsType {
+function makeMockGlobalAtoms(
+    settingsOverrides?: Partial<SettingsType>,
+    atomOverrides?: Partial<GlobalAtomsType>
+): GlobalAtomsType {
+    let fullConfig = DefaultFullConfig;
+    if (settingsOverrides) {
+        fullConfig = {
+            ...DefaultFullConfig,
+            settings: { ...DefaultFullConfig.settings, ...settingsOverrides },
+        };
+    }
+    const fullConfigAtom = atom(fullConfig) as PrimitiveAtom<FullConfigType>;
+    const settingsAtom = atom((get) => get(fullConfigAtom)?.settings ?? {}) as Atom<SettingsType>;
     const defaults: GlobalAtomsType = {
         builderId: atom(""),
         builderAppId: atom("") as any,
         uiContext: atom({} as UIContext),
         workspace: atom(null as Workspace),
-        fullConfigAtom: atom(null) as any,
+        fullConfigAtom,
         waveaiModeConfigAtom: atom({}) as any,
-        settingsAtom: atom({} as SettingsType),
+        settingsAtom,
         hasCustomAIPresetsAtom: atom(false),
         staticTabId: atom(""),
         isFullScreen: atom(false) as any,
@@ -141,8 +153,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         mockEnv: overrides,
         electron: overrides.electron ? { ...previewElectronApi, ...overrides.electron } : previewElectronApi,
         rpc: makeMockRpc(overrides.rpc),
-        configAtoms: makeMockConfigAtoms(overrides.config),
-        atoms: makeMockGlobalAtoms(overrides.atoms),
+        configAtoms: makeMockConfigAtoms(overrides.settings),
+        atoms: makeMockGlobalAtoms(overrides.settings, overrides.atoms),
         isDev: () => overrides.isDev ?? true,
         createBlock:
             overrides.createBlock ??
