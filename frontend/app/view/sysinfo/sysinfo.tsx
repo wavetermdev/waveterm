@@ -3,7 +3,8 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
+import { makeORef } from "@/app/store/wos";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
 import clsx from "clsx";
@@ -14,10 +15,8 @@ import * as React from "react";
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
-import { atoms } from "@/store/global";
+import { BlockMetaKeyAtomFn, WaveEnv } from "@/app/waveenv/waveenv";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
 export type SysinfoEnv = {
@@ -29,7 +28,7 @@ export type SysinfoEnv = {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
-    getWaveObjectAtom: WaveEnv["getWaveObjectAtom"];
+    getBlockMetaKeyAtom: BlockMetaKeyAtomFn<"graph:numpoints" | "sysinfo:type" | "connection" | "count">;
 };
 
 const DefaultNumPoints = 120;
@@ -109,7 +108,6 @@ class SysinfoViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
     tabModel: TabModel;
-    blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
@@ -130,13 +128,14 @@ class SysinfoViewModel implements ViewModel {
     plotMetaAtom: jotai.PrimitiveAtom<Map<string, TimeSeriesMeta>>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     plotTypeSelectedAtom: jotai.Atom<string>;
+    env: SysinfoEnv;
 
-    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
+    constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
         this.viewType = "sysinfo";
         this.blockId = blockId;
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.env = waveEnv;
         this.addInitialDataAtom = jotai.atom(null, (get, set, points) => {
             const targetLen = get(this.numPoints) + 1;
             try {
@@ -198,8 +197,7 @@ class SysinfoViewModel implements ViewModel {
         this.filterOutNowsh = jotai.atom(true);
         this.loadingAtom = jotai.atom(true);
         this.numPoints = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const metaNumPoints = blockData?.meta?.["graph:numpoints"];
+            const metaNumPoints = get(this.env.getBlockMetaKeyAtom(blockId, "graph:numpoints"));
             if (metaNumPoints == null || metaNumPoints <= 0) {
                 return DefaultNumPoints;
             }
@@ -219,8 +217,7 @@ class SysinfoViewModel implements ViewModel {
             }
         });
         this.plotTypeSelectedAtom = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const plotType = blockData?.meta?.["sysinfo:type"];
+            const plotType = get(this.env.getBlockMetaKeyAtom(blockId, "sysinfo:type"));
             if (plotType == null || typeof plotType != "string") {
                 return "CPU";
             }
@@ -233,16 +230,14 @@ class SysinfoViewModel implements ViewModel {
             return get(this.plotTypeSelectedAtom);
         });
         this.incrementCount = jotai.atom(null, async (get, _set) => {
-            const meta = get(this.blockAtom).meta;
-            const count = meta.count ?? 0;
-            await RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("block", this.blockId),
+            const count = get(this.env.getBlockMetaKeyAtom(blockId, "count")) ?? 0;
+            await this.env.rpc.SetMetaCommand(TabRpcClient, {
+                oref: makeORef("block", this.blockId),
                 meta: { count: count + 1 },
             });
         });
         this.connection = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const connValue = blockData?.meta?.connection;
+            const connValue = get(this.env.getBlockMetaKeyAtom(blockId, "connection"));
             if (util.isBlank(connValue)) {
                 return "local";
             }
@@ -251,9 +246,8 @@ class SysinfoViewModel implements ViewModel {
         this.dataAtom = jotai.atom([]);
         this.loadInitialData();
         this.connStatus = jotai.atom((get) => {
-            const blockData = get(this.blockAtom);
-            const connName = blockData?.meta?.connection;
-            const connAtom = getConnStatusAtom(connName);
+            const connName = get(this.env.getBlockMetaKeyAtom(blockId, "connection"));
+            const connAtom = this.env.getConnStatusAtom(connName);
             return get(connAtom);
         });
     }
@@ -267,7 +261,7 @@ class SysinfoViewModel implements ViewModel {
         try {
             const numPoints = globalStore.get(this.numPoints);
             const connName = globalStore.get(this.connection);
-            const initialData = await RpcApi.EventReadHistoryCommand(TabRpcClient, {
+            const initialData = await this.env.rpc.EventReadHistoryCommand(TabRpcClient, {
                 event: "sysinfo",
                 scope: connName,
                 maxitems: numPoints,
@@ -288,7 +282,7 @@ class SysinfoViewModel implements ViewModel {
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
-        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const fullConfig = globalStore.get(this.env.atoms.fullConfigAtom);
         const termThemes = fullConfig?.termthemes ?? {};
         const termThemeKeys = Object.keys(termThemes);
         const plotData = globalStore.get(this.dataAtom);
@@ -309,8 +303,8 @@ class SysinfoViewModel implements ViewModel {
                     type: "radio",
                     checked: currentlySelected == plotType,
                     click: async () => {
-                        await RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
+                        await this.env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref: makeORef("block", this.blockId),
                             meta: { "graph:metrics": dataTypes, "sysinfo:type": plotType },
                         });
                     },
@@ -357,10 +351,9 @@ function resolveDomainBound(value: number | string, dataItem: DataItem): number 
 }
 
 function SysinfoView({ model, blockId }: SysinfoViewProps) {
-    const env = useWaveEnv<SysinfoEnv>();
     const connName = jotai.useAtomValue(model.connection);
     const lastConnName = React.useRef(connName);
-    const connStatus = jotai.useAtomValue(env.getConnStatusAtom(connName));
+    const connStatus = jotai.useAtomValue(model.connStatus);
     const addContinuousData = jotai.useSetAtom(model.addContinuousDataAtom);
     const loading = jotai.useAtomValue(model.loadingAtom);
 

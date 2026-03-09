@@ -4,7 +4,7 @@
 import { getSettingsKeyAtom, makeDefaultConnStatus } from "@/app/store/global";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
-import { atom, PrimitiveAtom } from "jotai";
+import { Atom, atom, PrimitiveAtom } from "jotai";
 import { previewElectronApi } from "./preview-electron-api";
 
 type RpcOverrides = {
@@ -136,7 +136,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
     const waveObjectAtomCache = new Map<string, PrimitiveAtom<WaveObj>>();
-    return {
+    const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
+    const env = {
         mockEnv: overrides,
         electron: overrides.electron ? { ...previewElectronApi, ...overrides.electron } : previewElectronApi,
         rpc: makeMockRpc(overrides.rpc),
@@ -168,5 +169,19 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return waveObjectAtomCache.get(oref) as PrimitiveAtom<T>;
         },
+        getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
+            const cacheKey = blockId + "#meta-" + key;
+            if (!blockMetaKeyAtomCache.has(cacheKey)) {
+                const metaAtom = atom<MetaType[T]>((get) => {
+                    const blockORef = "block:" + blockId;
+                    const blockAtom = env.getWaveObjectAtom<Block>(blockORef);
+                    const blockData = get(blockAtom);
+                    return blockData?.meta?.[key] as MetaType[T];
+                });
+                blockMetaKeyAtomCache.set(cacheKey, metaAtom);
+            }
+            return blockMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
+        },
     };
+    return env;
 }

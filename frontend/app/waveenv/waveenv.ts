@@ -7,6 +7,11 @@ import React from "react";
 
 type ConfigAtoms = { [K in keyof SettingsType]: Atom<SettingsType[K]> };
 
+export type BlockMetaKeyAtomFn<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
+    blockId: string,
+    key: T
+) => Atom<MetaType[T]>;
+
 // default implementation for production is in ./waveenvimpl.ts
 export type WaveEnv = {
     electron: ElectronApi;
@@ -18,6 +23,7 @@ export type WaveEnv = {
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
     getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
+    getBlockMetaKeyAtom: BlockMetaKeyAtomFn;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);
