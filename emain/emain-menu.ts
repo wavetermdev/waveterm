@@ -227,7 +227,7 @@ function makeViewMenu(
             label: "Toggle DevTools",
             accelerator: devToolsAccel,
             click: (_, window) => {
-                let wc = getWindowWebContents(window) ?? webContents;
+                const wc = getWindowWebContents(window) ?? webContents;
                 wc?.toggleDevTools();
             },
         },

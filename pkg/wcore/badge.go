@@ -1,0 +1,126 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package wcore
+
+import (
+	"log"
+	"sync"
+
+	"github.com/wavetermdev/waveterm/pkg/baseds"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+)
+
+// BadgeStore is an in-memory store for transient badges.
+// Badges are not persisted and are cleared on restart.
+// Values are stored by value (not pointer) to prevent external mutation.
+type BadgeStore struct {
+	lock      *sync.Mutex
+	transient map[string]baseds.Badge // keyed by oref string
+}
+
+var globalBadgeStore = &BadgeStore{
+	lock:      &sync.Mutex{},
+	transient: make(map[string]baseds.Badge),
+}
+
+// InitBadgeStore subscribes to incoming badge events.
+func InitBadgeStore() error {
+	log.Printf("initializing badge store\n")
+
+	rpcClient := wshclient.GetBareRpcClient()
+	rpcClient.EventListener.On(wps.Event_Badge, handleBadgeEvent)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_Badge,
+		AllScopes: true,
+	}, nil)
+
+	return nil
+}
+
+func handleBadgeEvent(event *wps.WaveEvent) {
+	if event.Event != wps.Event_Badge {
+		return
+	}
+	var data baseds.BadgeEvent
+	err := utilfn.ReUnmarshal(&data, event.Data)
+	if err != nil {
+		log.Printf("badge store: error unmarshaling BadgeEvent: %v\n", err)
+		return
+	}
+	if data.ClearAll {
+		clearAllBadges()
+		return
+	}
+	if data.ORef == "" {
+		log.Printf("badge store: received badge event with empty oref\n")
+		return
+	}
+	oref, err := waveobj.ParseORef(data.ORef)
+	if err != nil {
+		log.Printf("badge store: error parsing oref %q: %v\n", data.ORef, err)
+		return
+	}
+	if oref.OType != waveobj.OType_Block && oref.OType != waveobj.OType_Tab {
+		log.Printf("badge store: can only handle block/tab orefs")
+		return
+	}
+
+	setBadge(oref, data)
+}
+
+// setBadge updates the in-memory transient map.
+func setBadge(oref waveobj.ORef, data baseds.BadgeEvent) {
+	globalBadgeStore.lock.Lock()
+	defer globalBadgeStore.lock.Unlock()
+
+	orefStr := oref.String()
+
+	shouldClear := data.Clear
+	if data.ClearById != "" {
+		existing, ok := globalBadgeStore.transient[orefStr]
+		if !ok || existing.BadgeId != data.ClearById {
+			return
+		}
+		shouldClear = true
+	} else if !data.Clear {
+		shouldClear = data.Badge == nil
+	}
+
+	if shouldClear {
+		delete(globalBadgeStore.transient, orefStr)
+		log.Printf("badge store: badge cleared: oref=%s\n", orefStr)
+	} else {
+		globalBadgeStore.transient[orefStr] = *data.Badge
+		log.Printf("badge store: badge set: oref=%s badge=%+v\n", orefStr, *data.Badge)
+	}
+}
+
+// clearAllBadges removes all badges from the transient store.
+func clearAllBadges() {
+	globalBadgeStore.lock.Lock()
+	defer globalBadgeStore.lock.Unlock()
+
+	count := len(globalBadgeStore.transient)
+	globalBadgeStore.transient = make(map[string]baseds.Badge)
+	log.Printf("badge store: cleared all %d badges\n", count)
+}
+
+// GetAllBadges returns a snapshot of all currently active badges.
+func GetAllBadges() []baseds.BadgeEvent {
+	globalBadgeStore.lock.Lock()
+	defer globalBadgeStore.lock.Unlock()
+
+	result := make([]baseds.BadgeEvent, 0, len(globalBadgeStore.transient))
+	for orefStr, badge := range globalBadgeStore.transient {
+		b := badge // copy
+		result = append(result, baseds.BadgeEvent{
+			ORef:  orefStr,
+			Badge: &b,
+		})
+	}
+	return result
+}

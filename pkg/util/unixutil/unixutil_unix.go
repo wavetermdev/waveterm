@@ -68,3 +68,15 @@ func SignalTerm(pid int) error {
 func SignalHup(pid int) error {
 	return syscall.Kill(pid, syscall.SIGHUP)
 }
+
+func IsPidRunning(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	err := syscall.Kill(pid, 0)
+	// EPERM means no permission, but it exists (ESRCH is not found)
+	if err == nil || err == syscall.EPERM {
+		return true
+	}
+	return false
+}

@@ -10,6 +10,7 @@ import {
 } from "@/app/block/blockutil";
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
+import { getBlockBadgeAtom } from "@/app/store/badge";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { recordTEvent, refocusNode, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
@@ -19,7 +20,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
-import { cn } from "@/util/util";
+import { cn, makeIconClass } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
@@ -177,6 +178,7 @@ const BlockFrame_Header = ({
     const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
     const termConfigedDurable = util.useAtomValueSafe(viewModel?.termConfigedDurable);
     const hideViewName = util.useAtomValueSafe(viewModel?.hideViewName);
+    const badge = jotai.useAtomValue(getBlockBadgeAtom(useTermHeader ? nodeModel.blockId : null));
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
@@ -228,6 +230,11 @@ const BlockFrame_Header = ({
                     placement="bottom"
                     divClassName="iconbutton disabled text-[13px] ml-[-4px]"
                 />
+            )}
+            {useTermHeader && badge && (
+                <div className="pointer-events-none flex items-center px-1" style={{ color: badge.color || "#fbbf24" }}>
+                    <i className={makeIconClass(badge.icon, true, { defaultIcon: "circle-small" })} />
+                </div>
             )}
             <HeaderTextElems viewModel={viewModel} blockData={blockData} preview={preview} error={error} />
             <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} />

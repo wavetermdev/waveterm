@@ -40,3 +40,7 @@ func SignalTerm(pid int) error {
 func SignalHup(pid int) error {
 	return nil
 }
+
+func IsPidRunning(pid int) bool {
+	return false
+}

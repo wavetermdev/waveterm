@@ -10,7 +10,7 @@ const RenameFocusDelayMs = 50;
 export interface VTabItem {
     id: string;
     name: string;
-    indicator?: TabIndicator | null;
+    badge?: Badge | null;
 }
 
 interface VTabProps {
@@ -139,9 +139,9 @@ export function VTab({
                 isDragging && "opacity-50"
             )}
         >
-            {tab.indicator && (
-                <span className="mr-1 shrink-0 text-xs" style={{ color: tab.indicator.color || "#fbbf24" }}>
-                    <i className={makeIconClass(tab.indicator.icon, true, { defaultIcon: "bell" })} />
+            {tab.badge && (
+                <span className="mr-1 shrink-0 text-xs" style={{ color: tab.badge.color || "#fbbf24" }}>
+                    <i className={makeIconClass(tab.badge.icon, true, { defaultIcon: "circle-small" })} />
                 </span>
             )}
             <div

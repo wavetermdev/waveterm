@@ -54,7 +54,6 @@ var ExtraTypes = []any{
 	waveobj.ObjRTInfo{},
 	uctypes.RateLimitInfo{},
 	wconfig.AIModeConfigUpdate{},
-	wshrpc.TabIndicatorEventData{},
 	wshrpc.BlockJobStatusData{},
 }
 

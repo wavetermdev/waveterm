@@ -65,7 +65,7 @@ export function keyboardMouseDownHandler(e: MouseEvent) {
     }
 }
 
-function getFocusedBlockInStaticTab() {
+function getFocusedBlockInStaticTab(): string {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     return focusedNode.data?.blockId;
