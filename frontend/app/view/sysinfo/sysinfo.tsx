@@ -1,8 +1,6 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { globalStore } from "@/app/store/jotaiStore";
 import { makeORef } from "@/app/store/wos";
 import * as util from "@/util/util";
@@ -16,7 +14,7 @@ import * as React from "react";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { BlockMetaKeyAtomFn, WaveEnv } from "@/app/waveenv/waveenv";
+import type { BlockMetaKeyAtomFnType, WaveEnv } from "@/app/waveenv/waveenv";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
 export type SysinfoEnv = {
@@ -28,7 +26,7 @@ export type SysinfoEnv = {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
-    getBlockMetaKeyAtom: BlockMetaKeyAtomFn<"graph:numpoints" | "sysinfo:type" | "connection" | "count">;
+    getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<"graph:numpoints" | "sysinfo:type" | "connection" | "count">;
 };
 
 const DefaultNumPoints = 120;
@@ -106,8 +104,6 @@ function convertWaveEventToDataItem(event: Extract<WaveEvent, { event: "sysinfo"
 
 class SysinfoViewModel implements ViewModel {
     viewType: string;
-    nodeModel: BlockNodeModel;
-    tabModel: TabModel;
     termMode: jotai.Atom<string>;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
@@ -130,9 +126,7 @@ class SysinfoViewModel implements ViewModel {
     plotTypeSelectedAtom: jotai.Atom<string>;
     env: SysinfoEnv;
 
-    constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
-        this.nodeModel = nodeModel;
-        this.tabModel = tabModel;
+    constructor({ blockId, waveEnv }: ViewModelInitType) {
         this.viewType = "sysinfo";
         this.blockId = blockId;
         this.env = waveEnv;
