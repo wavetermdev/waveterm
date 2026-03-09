@@ -301,6 +301,42 @@ func HasWaveZshHistory() (bool, int64) {
 	return true, fileInfo.Size()
 }
 
+func GetBlockZshHistoryDir(blockId string) string {
+	zshDir := GetLocalZshZDotDir()
+	return filepath.Join(zshDir, "history", blockId)
+}
+
+func CleanupBlockZshHistory(blockId string) error {
+	histDir := GetBlockZshHistoryDir(blockId)
+	err := os.RemoveAll(histDir)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error removing block history dir %s: %w", histDir, err)
+	}
+	log.Printf("cleaned up block zsh history dir: %s\n", histDir)
+	return nil
+}
+
+// getPerBlockHistoryFiles returns a list of per-block .zsh_history file paths
+func getPerBlockHistoryFiles() []string {
+	zshDir := GetLocalZshZDotDir()
+	historyBaseDir := filepath.Join(zshDir, "history")
+	entries, err := os.ReadDir(historyBaseDir)
+	if err != nil {
+		return nil
+	}
+	var files []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		histFile := filepath.Join(historyBaseDir, entry.Name(), ZshHistoryFileName)
+		if _, err := os.Stat(histFile); err == nil {
+			files = append(files, histFile)
+		}
+	}
+	return files
+}
+
 func IsExtendedZshHistoryFile(fileName string) (bool, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -550,29 +586,34 @@ func FixupWaveZshHistory() error {
 		return nil
 	}
 
-	hasHistory, size := HasWaveZshHistory()
-	if !hasHistory {
-		return nil
-	}
-
-	zshDir := GetLocalZshZDotDir()
-	waveHistFile := filepath.Join(zshDir, ZshHistoryFileName)
-
-	if size == 0 {
-		err := os.Remove(waveHistFile)
-		if err != nil {
-			log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
-		}
-		return nil
-	}
-
-	log.Printf("merging wave zsh history %s into ~/.zsh_history\n", waveHistFile)
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("error getting home directory: %w", err)
 	}
 	realHistFile := filepath.Join(homeDir, ".zsh_history")
+
+	// Collect all history files to merge (legacy wave history + per-block histories)
+	var histFilesToMerge []string
+
+	// Check for legacy wave zsh history file
+	zshDir := GetLocalZshZDotDir()
+	waveHistFile := filepath.Join(zshDir, ZshHistoryFileName)
+	if fileInfo, err := os.Stat(waveHistFile); err == nil && fileInfo.Size() > 0 {
+		histFilesToMerge = append(histFilesToMerge, waveHistFile)
+	} else if err == nil && fileInfo.Size() == 0 {
+		// remove empty file
+		os.Remove(waveHistFile)
+	}
+
+	// Collect per-block history files
+	perBlockFiles := getPerBlockHistoryFiles()
+	histFilesToMerge = append(histFilesToMerge, perBlockFiles...)
+
+	if len(histFilesToMerge) == 0 {
+		return nil
+	}
+
+	log.Printf("merging %d wave zsh history file(s) into ~/.zsh_history\n", len(histFilesToMerge))
 
 	isExtended, err := IsExtendedZshHistoryFile(realHistFile)
 	if err != nil {
@@ -584,7 +625,12 @@ func FixupWaveZshHistory() error {
 		hasExtendedStr = "true"
 	}
 
-	quotedWaveHistFile := utilfn.ShellQuote(waveHistFile, true, -1)
+	// Build fc -RI commands for each history file
+	var fcCommands string
+	for _, hf := range histFilesToMerge {
+		quotedFile := utilfn.ShellQuote(hf, true, -1)
+		fcCommands += fmt.Sprintf("\t\tfc -RI %s\n", quotedFile)
+	}
 
 	script := fmt.Sprintf(`
 		HISTFILE=~/.zsh_history
@@ -593,11 +639,10 @@ func FixupWaveZshHistory() error {
 		has_extended_history=%s
 		[[ $has_extended_history == true ]] && setopt EXTENDED_HISTORY
 		fc -RI
-		fc -RI %s
-		fc -W
-	`, hasExtendedStr, quotedWaveHistFile)
+%s		fc -W
+	`, hasExtendedStr, fcCommands)
 
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 
 	cmd := exec.CommandContext(ctx, "zsh", "-f", "-i", "-c", script)
@@ -610,11 +655,27 @@ func FixupWaveZshHistory() error {
 		return fmt.Errorf("error executing zsh history fixup script: %w, output: %s", err, string(output))
 	}
 
-	err = os.Remove(waveHistFile)
-	if err != nil {
-		log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+	// Clean up merged history files
+	for _, hf := range histFilesToMerge {
+		err = os.Remove(hf)
+		if err != nil {
+			log.Printf("error removing wave zsh history file %s: %v\n", hf, err)
+		}
 	}
-	log.Printf("successfully merged wave zsh history %s into ~/.zsh_history\n", waveHistFile)
+
+	// Remove empty per-block history directories
+	historyBaseDir := filepath.Join(zshDir, "history")
+	entries, err := os.ReadDir(historyBaseDir)
+	if err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() {
+				blockDir := filepath.Join(historyBaseDir, entry.Name())
+				os.Remove(blockDir) // only removes if empty
+			}
+		}
+	}
+
+	log.Printf("successfully merged %d wave zsh history file(s) into ~/.zsh_history\n", len(histFilesToMerge))
 
 	return nil
 }
