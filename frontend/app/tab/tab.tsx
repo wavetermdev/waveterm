@@ -266,6 +266,7 @@ const FlagColors: { label: string; value: string }[] = [
     { label: "Orange", value: "#FF9500" },
     { label: "Yellow", value: "#FFE900" },
 ];
+const RefocusDelayMs = 10;
 
 function buildTabContextMenu(
     id: string,
@@ -390,7 +391,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const handleRename = useCallback(
         (newName: string) => {
             fireAndForget(() => env.tab.updateTabName(id, newName));
-            setTimeout(() => env.tab.refocusNode(null), 10);
+            setTimeout(() => env.tab.refocusNode(null), RefocusDelayMs);
         },
         [env, id]
     );
