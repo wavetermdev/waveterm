@@ -10,6 +10,8 @@ import {
 import { ClientModel } from "@/app/store/client-model";
 import { GlobalModel } from "@/app/store/global-model";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
+import { WaveEnvContext } from "@/app/waveenv/waveenv";
+import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
 import { Workspace } from "@/app/workspace/workspace";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
@@ -39,14 +41,17 @@ const focusLog = debug("wave:focus");
 
 const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
     const tabId = useAtomValue(atoms.staticTabId);
+    const waveEnvRef = useRef(makeWaveEnvImpl());
     useEffect(() => {
         onFirstRender();
     }, []);
     return (
         <Provider store={globalStore}>
-            <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
-                <AppInner />
-            </TabModelContext.Provider>
+            <WaveEnvContext.Provider value={waveEnvRef.current}>
+                <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
+                    <AppInner />
+                </TabModelContext.Provider>
+            </WaveEnvContext.Provider>
         </Provider>
     );
 };
