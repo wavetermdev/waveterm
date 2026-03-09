@@ -24,7 +24,7 @@ function OnboardingFeaturesV() {
     return (
         <div className="flex flex-col w-full gap-8">
             <OnboardingModalWrapper width="w-[560px]">
-                <InitPage isCompact={false} />
+                <InitPage isCompact={false} telemetryUpdateFn={async () => {}} />
             </OnboardingModalWrapper>
             <OnboardingModalWrapper width="w-[560px]">
                 <NoTelemetryStarPage isCompact={false} />

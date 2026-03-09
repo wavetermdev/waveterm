@@ -32,6 +32,10 @@ interface VersionConfig {
     nextText?: string;
 }
 
+interface UpgradeOnboardingPatchProps {
+    isReleaseNotes?: boolean;
+}
+
 interface UpgradeOnboardingFooterProps {
     hasPrev: boolean;
     hasNext: boolean;
@@ -131,7 +135,7 @@ export const UpgradeOnboardingVersions: VersionConfig[] = [
     },
 ];
 
-const UpgradeOnboardingPatch = () => {
+const UpgradeOnboardingPatch = ({ isReleaseNotes = false }: UpgradeOnboardingPatchProps) => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
     const [currentIndex, setCurrentIndex] = useState<number>(UpgradeOnboardingVersions.length - 1);
@@ -174,13 +178,21 @@ const UpgradeOnboardingPatch = () => {
     }, []);
 
     const doClose = () => {
-        globalStore.set(modalsModel.upgradeOnboardingOpen, false);
+        if (isReleaseNotes) {
+            modalsModel.popModal();
+        } else {
+            globalStore.set(modalsModel.upgradeOnboardingOpen, false);
+        }
         setTimeout(() => {
             globalRefocus();
         }, 10);
     };
 
     const handleClose = () => {
+        if (isReleaseNotes) {
+            doClose();
+            return;
+        }
         const clientId = ClientModel.getInstance().clientId;
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),

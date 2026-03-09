@@ -4,6 +4,7 @@
 // WaveObjectStore
 
 import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { isPreviewWindow } from "@/app/store/windowtype";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { fireAndForget } from "@/util/util";
@@ -57,7 +58,19 @@ function makeORef(otype: string, oid: string): string {
     return `${otype}:${oid}`;
 }
 
+const previewMockObjects: Map<string, WaveObj> = new Map();
+
+function mockObjectForPreview<T extends WaveObj>(oref: string, obj: T): void {
+    if (!isPreviewWindow()) {
+        throw new Error("mockObjectForPreview can only be called in a preview window");
+    }
+    previewMockObjects.set(oref, obj);
+}
+
 function GetObject<T>(oref: string): Promise<T> {
+    if (isPreviewWindow()) {
+        return Promise.resolve((previewMockObjects.get(oref) as T) ?? null);
+    }
     return callBackendService("object", "GetObject", [oref], true);
 }
 
@@ -105,7 +118,9 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     const usp = new URLSearchParams();
     usp.set("service", service);
     usp.set("method", method);
-    const url = getWebServerEndpoint() + "/wave/service?" + usp.toString();
+    const webEndpoint = getWebServerEndpoint();
+    if (webEndpoint == null) throw new Error(`cannot call ${methodName}: no web endpoint`);
+    const url = webEndpoint + "/wave/service?" + usp.toString();
     const fetchPromise = fetch(url, {
         method: "POST",
         body: JSON.stringify(waveCall),
@@ -315,6 +330,7 @@ export {
     getWaveObjectLoadingAtom,
     loadAndPinWaveObject,
     makeORef,
+    mockObjectForPreview,
     reloadWaveObject,
     setObjectValue,
     splitORef,
