@@ -493,15 +493,18 @@ type TableRowProps = {
     handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
 };
 
-const TableRow = React.forwardRef(function ({
-    model,
-    row,
-    focusIndex,
-    setFocusIndex,
-    setSearch,
-    idx,
-    handleFileContextMenu,
-}: TableRowProps) {
+const TableRow = React.forwardRef<HTMLDivElement, TableRowProps>(function TableRow(
+    {
+        model,
+        row,
+        focusIndex,
+        setFocusIndex,
+        setSearch,
+        idx,
+        handleFileContextMenu,
+    }: TableRowProps,
+    _ref
+) {
     const dirPath = useAtomValue(model.statFilePath);
     const connection = useAtomValue(model.connection);
 
