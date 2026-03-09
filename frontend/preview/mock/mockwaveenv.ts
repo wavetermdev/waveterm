@@ -96,6 +96,21 @@ export function makeMockWaveEnv(ids?: MockIds): WaveEnv {
         configAtoms: makeMockConfigAtoms(),
         isDev: () => true,
         atoms: makeMockGlobalAtoms(ids),
+        tab: {
+            getTabBadgeAtom: () => atom([]),
+            updateObjectMeta: async (oref, meta) => {
+                console.log("[mock updateObjectMeta]", oref, meta);
+            },
+            updateTabName: async (tabId, name) => {
+                console.log("[mock updateTabName]", tabId, name);
+            },
+            recordTEvent: (event, props) => {
+                console.log("[mock recordTEvent]", event, props);
+            },
+            refocusNode: (blockId) => {
+                console.log("[mock refocusNode]", blockId);
+            },
+        },
         createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
             console.log("[mock createBlock]", blockDef, { magnified, ephemeral });
             return Promise.resolve(crypto.randomUUID());

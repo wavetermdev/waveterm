@@ -1,8 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, getSettingsKeyAtom, isDev } from "@/app/store/global";
+import { getTabBadgeAtom } from "@/app/store/badge";
+import { atoms, createBlock, getSettingsKeyAtom, isDev, recordTEvent, refocusNode } from "@/app/store/global";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 
@@ -19,6 +21,13 @@ export function makeWaveEnvImpl(): WaveEnv {
         configAtoms,
         isDev,
         atoms,
+        tab: {
+            getTabBadgeAtom,
+            updateObjectMeta: (oref, meta) => ObjectService.UpdateObjectMeta(oref, meta),
+            updateTabName: (tabId, name) => ObjectService.UpdateTabName(tabId, name),
+            recordTEvent,
+            refocusNode,
+        },
         createBlock,
         showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => {
             ContextMenuModel.getInstance().showContextMenu(menu, e);

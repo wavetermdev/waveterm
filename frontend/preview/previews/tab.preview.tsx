@@ -1,11 +1,32 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TabV } from "@/app/tab/tab";
+import { Tab, TabEnv } from "@/app/tab/tab";
+import { globalStore } from "@/app/store/jotaiStore";
+import { getWaveObjectAtom, makeORef, mockObjectForPreview, setObjectValue } from "@/app/store/wos";
+import { WaveEnv, WaveEnvContext, useWaveEnv } from "@/app/waveenv/waveenv";
+import { atom, Atom, Provider } from "jotai";
 import { useEffect, useRef, useState } from "react";
+import { makeMockRpc } from "../mock/mockwaveenv";
 
 const TAB_WIDTH = 130;
 const TAB_HEIGHT = 26;
+const EmptyBadgeAtom = atom([] as Badge[]);
+const fullConfigAtom = atom<FullConfigType>({
+    settings: {},
+    presets: {
+        "bg@sunset": {
+            "display:name": "Sunset",
+            "display:order": 1,
+            "bg:opacity": 0.85,
+        },
+        "bg@aurora": {
+            "display:name": "Aurora",
+            "display:order": 2,
+            "bg:opacity": 0.65,
+        },
+    },
+} as FullConfigType);
 
 interface PreviewTabEntry {
     tabId: string;
@@ -57,10 +78,78 @@ const tabDefs: PreviewTabEntry[] = [
     },
 ];
 
+function makePreviewTab(entry: PreviewTabEntry): Tab {
+    const meta = entry.flagColor == null ? {} : { "tab:flagcolor": entry.flagColor };
+    return {
+        otype: "tab",
+        oid: entry.tabId,
+        version: 1,
+        name: entry.tabName,
+        blockids: [],
+        meta,
+    } as Tab;
+}
+
+function makeTabEnv(baseEnv: WaveEnv): TabEnv {
+    const tabs = new Map<string, Tab>();
+    const badgeAtoms = new Map<string, Atom<Badge[]>>();
+    for (const tabDef of tabDefs) {
+        const tab = makePreviewTab(tabDef);
+        const oref = makeORef("tab", tabDef.tabId);
+        tabs.set(tabDef.tabId, tab);
+        badgeAtoms.set(tabDef.tabId, atom(tabDef.badges ?? []));
+        mockObjectForPreview(oref, tab);
+        getWaveObjectAtom<Tab>(oref);
+        setObjectValue(tab);
+    }
+
+    const updatePreviewTab = (tabId: string, updateFn: (tab: Tab) => Tab) => {
+        const tab = tabs.get(tabId);
+        if (tab == null) {
+            return;
+        }
+        const nextTab = updateFn(tab);
+        tabs.set(tabId, nextTab);
+        mockObjectForPreview(makeORef("tab", tabId), nextTab);
+        setObjectValue(nextTab);
+    };
+
+    return {
+        ...baseEnv,
+        rpc: makeMockRpc({
+            ActivityCommand: () => Promise.resolve(null),
+        }),
+        atoms: {
+            ...baseEnv.atoms,
+            fullConfigAtom,
+        },
+        tab: {
+            ...baseEnv.tab,
+            getTabBadgeAtom: (tabId) => badgeAtoms.get(tabId) ?? EmptyBadgeAtom,
+            updateObjectMeta: async (oref, meta) => {
+                const tabId = oref.split(":")[1];
+                updatePreviewTab(tabId, (tab) => {
+                    const nextMeta = { ...(tab.meta ?? {}), ...meta };
+                    if (nextMeta["tab:flagcolor"] == null) {
+                        delete nextMeta["tab:flagcolor"];
+                    }
+                    return { ...tab, version: tab.version + 1, meta: nextMeta };
+                });
+            },
+            updateTabName: async (tabId, name) => {
+                updatePreviewTab(tabId, (tab) => ({ ...tab, version: tab.version + 1, name }));
+            },
+            recordTEvent: (event, props) => {
+                console.log("[preview recordTEvent]", event, props);
+            },
+            refocusNode: () => {},
+        },
+    };
+}
+
 export function TabPreview() {
-    const [tabNames, setTabNames] = useState<Record<string, string>>(
-        Object.fromEntries(tabDefs.map((t) => [t.tabId, t.tabName]))
-    );
+    const baseEnv = useWaveEnv();
+    const envRef = useRef(makeTabEnv(baseEnv));
     const [activeTabId, setActiveTabId] = useState<string>(tabDefs.find((t) => t.active)?.tabId ?? tabDefs[0].tabId);
     const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -77,37 +166,34 @@ export function TabPreview() {
     }, []);
 
     return (
-        <div style={{ position: "relative", width: TAB_WIDTH * tabDefs.length, height: TAB_HEIGHT }}>
-            {tabDefs.map((tab, index) => {
-                const activeIndex = tabDefs.findIndex((t) => t.tabId === activeTabId);
-                const isActive = tab.tabId === activeTabId;
-                const showDivider = index !== 0 && !isActive && index !== activeIndex + 1;
-                return (
-                    <TabV
-                        key={tab.tabId}
-                        ref={(el) => {
-                            tabRefs.current[tab.tabId] = el;
-                        }}
-                        tabId={tab.tabId}
-                        tabName={tabNames[tab.tabId]}
-                        active={isActive}
-                        showDivider={showDivider}
-                        isDragging={false}
-                        tabWidth={TAB_WIDTH}
-                        isNew={false}
-                        badges={tab.badges ?? null}
-                        flagColor={tab.flagColor ?? null}
-                        onClick={() => setActiveTabId(tab.tabId)}
-                        onClose={() => console.log("close", tab.tabId)}
-                        onDragStart={() => {}}
-                        onContextMenu={() => {}}
-                        onRename={(newName) => {
-                            console.log("rename", tab.tabId, newName);
-                            setTabNames((prev) => ({ ...prev, [tab.tabId]: newName }));
-                        }}
-                    />
-                );
-            })}
-        </div>
+        <Provider store={globalStore}>
+            <WaveEnvContext.Provider value={envRef.current}>
+                <div style={{ position: "relative", width: TAB_WIDTH * tabDefs.length, height: TAB_HEIGHT }}>
+                    {tabDefs.map((tab, index) => {
+                        const activeIndex = tabDefs.findIndex((t) => t.tabId === activeTabId);
+                        const isActive = tab.tabId === activeTabId;
+                        const showDivider = index !== 0 && !isActive && index !== activeIndex + 1;
+                        return (
+                            <Tab
+                                key={tab.tabId}
+                                ref={(el) => {
+                                    tabRefs.current[tab.tabId] = el;
+                                }}
+                                id={tab.tabId}
+                                active={isActive}
+                                showDivider={showDivider}
+                                isDragging={false}
+                                tabWidth={TAB_WIDTH}
+                                isNew={false}
+                                onSelect={() => setActiveTabId(tab.tabId)}
+                                onClose={() => console.log("close", tab.tabId)}
+                                onDragStart={() => {}}
+                                onLoaded={() => {}}
+                            />
+                        );
+                    })}
+                </div>
+            </WaveEnvContext.Provider>
+        </Provider>
     );
 }

@@ -14,6 +14,13 @@ export type WaveEnv = {
     configAtoms: ConfigAtoms;
     isDev: () => boolean;
     atoms: GlobalAtomsType;
+    tab: {
+        getTabBadgeAtom: (tabId: string) => Atom<Badge[]>;
+        updateObjectMeta: (oref: string, meta: MetaType) => Promise<void>;
+        updateTabName: (tabId: string, name: string) => Promise<void>;
+        recordTEvent: (event: string, props?: TEventProps) => void;
+        refocusNode: (blockId: string) => void;
+    };
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
 };
