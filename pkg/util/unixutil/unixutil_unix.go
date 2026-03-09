@@ -74,5 +74,9 @@ func IsPidRunning(pid int) bool {
 		return false
 	}
 	err := syscall.Kill(pid, 0)
-	return err == nil
+	// EPERM means no permission, but it exists (ESRCH is not found)
+	if err == nil || err == syscall.EPERM {
+		return true
+	}
+	return false
 }
