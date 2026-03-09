@@ -24,7 +24,7 @@ const tabDefs: PreviewTabEntry[] = [
         badges: [
             { badgeid: "b2", icon: "circle-check", color: "#4ade80", priority: 3 },
             { badgeid: "b1", icon: "circle-small", color: "#fbbf24", priority: 1 },
-            { badgeid: "b1", icon: "circle-small", color: "red", priority: 1 },
+            { badgeid: "b3", icon: "circle-small", color: "red", priority: 1 },
         ],
     },
     {
