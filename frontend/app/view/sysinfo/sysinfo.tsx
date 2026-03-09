@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
@@ -16,7 +16,7 @@ import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WaveEnv } from "@/app/waveenv/waveenv";
+import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
 import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
@@ -131,7 +131,7 @@ class SysinfoViewModel implements ViewModel {
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     plotTypeSelectedAtom: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
         this.viewType = "sysinfo";
@@ -357,9 +357,10 @@ function resolveDomainBound(value: number | string, dataItem: DataItem): number 
 }
 
 function SysinfoView({ model, blockId }: SysinfoViewProps) {
+    const env = useWaveEnv<SysinfoEnv>();
     const connName = jotai.useAtomValue(model.connection);
     const lastConnName = React.useRef(connName);
-    const connStatus = jotai.useAtomValue(model.connStatus);
+    const connStatus = jotai.useAtomValue(env.getConnStatusAtom(connName));
     const addContinuousData = jotai.useSetAtom(model.addContinuousDataAtom);
     const loading = jotai.useAtomValue(model.loadingAtom);
 

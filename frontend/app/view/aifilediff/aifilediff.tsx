@@ -1,13 +1,13 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { base64ToString } from "@/util/util";
 import { DiffViewer } from "@/app/view/codeeditor/diffviewer";
 import { globalStore, WOS } from "@/store/global";
+import { base64ToString } from "@/util/util";
 import * as jotai from "jotai";
 import { useEffect } from "react";
 
@@ -30,7 +30,7 @@ export class AiFileDiffViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
