@@ -132,10 +132,6 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return metaAtom;
 }
 
-function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T): MetaType[T] {
-    return useAtomValue(getBlockMetaKeyAtom(blockId, key));
-}
-
 function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Atom<MetaType[T]> {
     const orefCache = getSingleOrefAtomCache(oref);
     const metaAtomName = "#meta-" + key;
@@ -678,7 +674,6 @@ export {
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
     getConnStatusAtom,
-    makeDefaultConnStatus,
     getFocusedBlockId,
     getHostName,
     getLocalHostDisplayNameAtom,
@@ -694,6 +689,7 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
+    makeDefaultConnStatus,
     openLink,
     readAtom,
     recordTEvent,
@@ -708,7 +704,6 @@ export {
     useBlockAtom,
     useBlockCache,
     useBlockDataLoaded,
-    useBlockMetaKeyAtom,
     useOrefMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
