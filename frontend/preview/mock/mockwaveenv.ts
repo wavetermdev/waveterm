@@ -153,8 +153,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         configAtoms: makeMockConfigAtoms(overrides.config),
         atoms: makeMockGlobalAtoms(overrides.atoms),
         isDev: () => overrides.isDev ?? true,
-        isWindows: () => platform == PlatformWindows,
-        isMacOS: () => platform == PlatformMacOS,
+        isWindows: () => platform === PlatformWindows,
+        isMacOS: () => platform === PlatformMacOS,
         createBlock:
             overrides.createBlock ??
             ((blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
