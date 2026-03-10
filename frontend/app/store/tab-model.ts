@@ -1,9 +1,9 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { createContext, useContext } from "react";
-import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 
@@ -77,7 +77,7 @@ export function useTabModel(): TabModel {
     return ctxModel;
 }
 
-export function maybeUseTabModel(): TabModel {
+export function useTabModelMaybe(): TabModel {
     const waveEnv = useWaveEnv();
     const ctxModel = useContext(TabModelContext);
     if (waveEnv?.mockTabModel != null) {
