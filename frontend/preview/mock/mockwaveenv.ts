@@ -158,6 +158,13 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
     const connConfigKeyAtomCache = new Map<string, Atom<any>>();
     const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
+    const localHostDisplayNameAtom = atom<string>((get) => {
+        const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
+        if (configValue != null) {
+            return configValue;
+        }
+        return "user@localhost";
+    });
     const env = {
         mockEnv: overrides,
         electron: {
@@ -184,13 +191,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 console.log("[mock showContextMenu]", menu, e);
             }),
         getLocalHostDisplayNameAtom: () => {
-            return atom<string>((get) => {
-                const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
-                if (configValue != null) {
-                    return configValue;
-                }
-                return "user@localhost";
-            });
+            return localHostDisplayNameAtom;
         },
         getConnStatusAtom: (conn: string) => {
             if (!connStatusAtomCache.has(conn)) {
