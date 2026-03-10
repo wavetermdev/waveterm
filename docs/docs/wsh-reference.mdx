@@ -6,6 +6,7 @@ title: "wsh reference"
 
 import { Kbd } from "@site/src/components/kbd";
 import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
+import { VersionBadge } from "@site/src/components/versionbadge";
 
 <PlatformProvider>
 
@@ -258,6 +259,57 @@ The command validates that:
 
 :::tip
 Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background Preset](/presets#background-configurations)
+:::
+
+---
+
+## badge <VersionBadge version="v0.14.2" />
+
+The `badge` command sets or clears a visual badge indicator on a block or tab header.
+
+```sh
+wsh badge [icon]
+wsh badge --clear
+```
+
+Badges are used to draw attention to a block or tab, such as indicating a process has completed or needs attention. If no icon is provided, it defaults to `circle-small`. Icon names are [Font Awesome](https://fontawesome.com/icons) icon names (without the `fa-` prefix).
+
+Flags:
+
+- `--color string` - set the badge color (CSS color name or hex)
+- `--priority float` - set the badge priority (default 10; higher priority badges take precedence)
+- `--clear` - remove the badge from the block or tab
+- `--beep` - play the system bell sound when setting the badge
+- `--pid int` - watch a PID and automatically clear the badge when it exits (sets default priority to 5)
+- `-b, --block` - target a specific block or tab (same format as `getmeta`)
+
+Examples:
+
+```sh
+# Set a default badge on the current block
+wsh badge
+
+# Set a badge with a custom icon and color
+wsh badge circle-check --color green
+
+# Set a high-priority badge on a specific block
+wsh badge triangle-exclamation --color red --priority 20 -b 2
+
+# Set a badge that clears when a process exits
+wsh badge --pid 12345
+
+# Play the bell and set a badge when done
+wsh badge circle-check --beep
+
+# Clear the badge on the current block
+wsh badge --clear
+
+# Clear the badge on a specific tab
+wsh badge --clear -b tab
+```
+
+:::note
+The `--pid` flag is not supported on Windows.
 :::
 
 ---
