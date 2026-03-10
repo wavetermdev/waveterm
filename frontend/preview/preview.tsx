@@ -5,6 +5,8 @@ import Logo from "@/app/asset/logo.svg";
 import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
 import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
+import { setWpsRpcClient } from "@/app/store/wps";
+import type { WshClient } from "@/app/store/wshclient";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
 import { atom, Provider } from "jotai";
@@ -144,9 +146,16 @@ function PreviewApp() {
 const PreviewTabId = crypto.randomUUID();
 const PreviewWindowId = crypto.randomUUID();
 const PreviewClientId = crypto.randomUUID();
+const PreviewWpsClient = {
+    routeId: "preview:wps",
+    openRpcs: new Map(),
+    wshRpcCall: async () => null,
+    async *wshRpcStream() {},
+} as unknown as WshClient;
 
 function initPreview() {
     installPreviewElectronApi();
+    setWpsRpcClient(PreviewWpsClient);
     const initOpts = {
         tabId: PreviewTabId,
         windowId: PreviewWindowId,
