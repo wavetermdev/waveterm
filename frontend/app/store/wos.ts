@@ -9,7 +9,6 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { fireAndForget } from "@/util/util";
 import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
-import { useEffect } from "react";
 import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
 
@@ -21,8 +20,6 @@ type WaveObjectDataItemType<T extends WaveObj> = {
 type WaveObjectValue<T extends WaveObj> = {
     pendingPromise: Promise<T>;
     dataAtom: PrimitiveAtom<WaveObjectDataItemType<T>>;
-    refCount: number;
-    holdTime: number;
 };
 
 function splitORef(oref: string): [string, string] {
@@ -151,12 +148,6 @@ function callBackendService(service: string, method: string, args: any[], noUICo
 
 const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
 
-function clearWaveObjectCache() {
-    waveObjectValueCache.clear();
-}
-
-const defaultHoldTime = 5000; // 5-seconds
-
 function reloadWaveObject<T extends WaveObj>(oref: string): Promise<T> {
     let wov = waveObjectValueCache.get(oref);
     if (wov === undefined) {
@@ -171,7 +162,7 @@ function reloadWaveObject<T extends WaveObj>(oref: string): Promise<T> {
 }
 
 function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boolean): WaveObjectValue<T> {
-    const wov = { pendingPromise: null, dataAtom: null, refCount: 0, holdTime: Date.now() + 5000 };
+    const wov = { pendingPromise: null, dataAtom: null };
     wov.dataAtom = atom({ value: null, loading: true });
     if (!shouldFetch) {
         return wov;
@@ -210,7 +201,6 @@ function getWaveObjectValue<T extends WaveObj>(oref: string, createIfMissing = t
 
 function loadAndPinWaveObject<T extends WaveObj>(oref: string): Promise<T> {
     const wov = getWaveObjectValue<T>(oref);
-    wov.refCount++;
     if (wov.pendingPromise == null) {
         const dataValue = globalStore.get(wov.dataAtom);
         return Promise.resolve(dataValue.value);
@@ -260,12 +250,6 @@ function isWaveObjectNullAtom(oref: string): Atom<boolean> {
 
 function useWaveObjectValue<T extends WaveObj>(oref: string): [T, boolean] {
     const wov = getWaveObjectValue<T>(oref);
-    useEffect(() => {
-        wov.refCount++;
-        return () => {
-            wov.refCount--;
-        };
-    }, [oref]);
     const atomVal = useAtomValue(wov.dataAtom);
     return [atomVal.value, atomVal.loading];
 }
@@ -291,22 +275,12 @@ function updateWaveObject(update: WaveObjUpdate) {
         console.log("WaveObj updated", oref);
         globalStore.set(wov.dataAtom, { value: update.obj, loading: false });
     }
-    wov.holdTime = Date.now() + defaultHoldTime;
     return;
 }
 
 function updateWaveObjects(vals: WaveObjUpdate[]) {
     for (const val of vals) {
         updateWaveObject(val);
-    }
-}
-
-function cleanWaveObjectCache() {
-    const now = Date.now();
-    for (const [oref, wov] of waveObjectValueCache) {
-        if (wov.refCount == 0 && wov.holdTime < now) {
-            waveObjectValueCache.delete(oref);
-        }
     }
 }
 
@@ -342,8 +316,6 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: Setter, pushToServe
 
 export {
     callBackendService,
-    cleanWaveObjectCache,
-    clearWaveObjectCache,
     getObjectValue,
     getWaveObjectAtom,
     getWaveObjectLoadingAtom,
