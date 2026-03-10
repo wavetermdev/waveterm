@@ -8,6 +8,7 @@ import {
     getBlockMetaKeyAtom,
     getConnConfigKeyAtom,
     getConnStatusAtom,
+    getLocalHostDisplayNameAtom,
     getSettingsKeyAtom,
     isDev,
     WOS,
@@ -27,6 +28,7 @@ export function makeWaveEnvImpl(): WaveEnv {
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         getConnStatusAtom,
+        getLocalHostDisplayNameAtom,
         wos: {
             getWaveObjectAtom: WOS.getWaveObjectAtom,
             getWaveObjectLoadingAtom: WOS.getWaveObjectLoadingAtom,

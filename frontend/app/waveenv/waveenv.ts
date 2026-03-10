@@ -29,6 +29,7 @@ export type WaveEnv = {
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
+    getLocalHostDisplayNameAtom: () => Atom<string>;
     wos: {
         getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
         getWaveObjectLoadingAtom: (oref: string) => Atom<boolean>;

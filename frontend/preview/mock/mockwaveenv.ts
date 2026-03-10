@@ -172,6 +172,15 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             ((menu, e) => {
                 console.log("[mock showContextMenu]", menu, e);
             }),
+        getLocalHostDisplayNameAtom: () => {
+            return atom<string>((get) => {
+                const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
+                if (configValue != null) {
+                    return configValue;
+                }
+                return "user@localhost";
+            });
+        },
         getConnStatusAtom: (conn: string) => {
             if (!connStatusAtomCache.has(conn)) {
                 const connStatus = overrides.connStatus?.[conn] ?? makeDefaultConnStatus(conn);

@@ -27,6 +27,7 @@ export type BlockEnv = {
     };
     wos: WaveEnv["wos"];
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
+    getLocalHostDisplayNameAtom: WaveEnv["getLocalHostDisplayNameAtom"];
     getConnConfigKeyAtom: ConnConfigKeyAtomFnType<"conn:wshenabled">;
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<
         | "frame:text"
