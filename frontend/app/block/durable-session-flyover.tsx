@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi, getConnStatusAtom, recordTEvent } from "@/app/store/global";
+import { recordTEvent } from "@/app/store/global";
 import { TermViewModel } from "@/app/view/term/term-model";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import * as util from "@/util/util";
@@ -25,13 +25,13 @@ function isTermViewModel(viewModel: ViewModel): viewModel is TermViewModel {
     return viewModel?.viewType === "term";
 }
 
-function handleLearnMore() {
-    getApi().openExternal("https://docs.waveterm.dev/durable-sessions");
-}
-
 function LearnMoreButton() {
+    const waveEnv = useWaveEnv<BlockEnv>();
     return (
-        <button className="text-muted text-xs hover:underline cursor-pointer text-left" onClick={handleLearnMore}>
+        <button
+            className="text-muted text-xs hover:underline cursor-pointer text-left"
+            onClick={() => waveEnv.api.openExternal("https://docs.waveterm.dev/durable-sessions")}
+        >
             Learn More
         </button>
     );
@@ -339,7 +339,7 @@ export function DurableSessionFlyover({
     const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(blockId, "connection"));
     const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
     const termConfigedDurable = util.useAtomValueSafe(viewModel?.termConfigedDurable);
-    const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
+    const connStatus = jotai.useAtomValue(waveEnv.getConnStatusAtom(connName));
 
     const { color: durableIconColor, iconType: durableIconType } = getIconProps(
         termDurableStatus,

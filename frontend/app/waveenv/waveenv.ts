@@ -6,18 +6,24 @@ import { RpcApiType } from "@/app/store/wshclientapi";
 import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
 
-type SettingsAtoms = { [K in keyof SettingsType]: Atom<SettingsType[K]> };
-
 export type BlockMetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
     blockId: string,
     key: T
 ) => Atom<MetaType[T]>;
 
+export type ConnConfigKeyAtomFnType<Keys extends keyof ConnKeywords = keyof ConnKeywords> = <T extends Keys>(
+    connName: string,
+    key: T
+) => Atom<ConnKeywords[T]>;
+
+export type SettingsKeyAtomFnType<Keys extends keyof SettingsType = keyof SettingsType> = <T extends Keys>(
+    key: T
+) => Atom<SettingsType[T]>;
+
 // default implementation for production is in ./waveenvimpl.ts
 export type WaveEnv = {
     electron: ElectronApi;
     rpc: RpcApiType;
-    settingsAtoms: SettingsAtoms;
     isDev: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
@@ -29,7 +35,9 @@ export type WaveEnv = {
         isWaveObjectNullAtom: (oref: string) => Atom<boolean>;
         useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
     };
+    getSettingsKeyAtom: SettingsKeyAtomFnType;
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
+    getConnConfigKeyAtom: ConnConfigKeyAtomFnType;
     mockTabModel?: TabModel;
 };
 

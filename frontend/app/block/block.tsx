@@ -152,7 +152,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const isMagnified = useAtomValue(nodeModel.isMagnified);
     const anyMagnified = useAtomValue(nodeModel.anyMagnified);
     const modalOpen = useAtomValue(waveEnv.atoms.modalOpen);
-    const focusFollowsCursorMode = useAtomValue(waveEnv.settingsAtoms["app:focusfollowscursor"]) ?? "off";
+    const focusFollowsCursorMode = useAtomValue(waveEnv.getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
     const noPadding = useAtomValueSafe(viewModel.noPadding);
 

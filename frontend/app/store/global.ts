@@ -665,6 +665,7 @@ export {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
+    getConnConfigKeyAtom,
     getBlockTermDurableAtom,
     getConnStatusAtom,
     getFocusedBlockId,

@@ -30,7 +30,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(waveEnv.atoms.controlShiftDelayAtom);
-    const showOverlayBlockNums = jotai.useAtomValue(waveEnv.settingsAtoms["app:showoverlayblocknums"]) ?? true;
+    const showOverlayBlockNums = jotai.useAtomValue(waveEnv.getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
     const frameActiveBorderColor = jotai.useAtomValue(
         waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
@@ -107,9 +107,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
-    const [magnifiedBlockBlurAtom] = React.useState(() => waveEnv.settingsAtoms["window:magnifiedblockblurprimarypx"]);
+    const [magnifiedBlockBlurAtom] = React.useState(() => waveEnv.getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
-    const [magnifiedBlockOpacityAtom] = React.useState(() => waveEnv.settingsAtoms["window:magnifiedblockopacity"]);
+    const [magnifiedBlockOpacityAtom] = React.useState(() => waveEnv.getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
