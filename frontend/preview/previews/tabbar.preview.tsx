@@ -23,6 +23,8 @@ type PreviewTabEntry = {
 const TabDefaultWidth = 130;
 const TabMinWidth = 100;
 const TabHeight = 26;
+const MockWorkspaceSwitcherWidth = 42;
+const MockAddTabButtonWidth = 44;
 const MockConfigErrors: ConfigError[] = [
     { file: "~/.waveterm/config.json", err: "unknown preset \"bg@aurora\"" },
     { file: "~/.waveterm/settings.json", err: "invalid color for tab theme" },
@@ -191,8 +193,8 @@ export function TabBarPreview() {
         windowDragRightWidth -
         (showAppMenuButton ? 28 : 0) -
         (hideAiButton ? 0 : 48) -
-        42 -
-        44 -
+        MockWorkspaceSwitcherWidth -
+        MockAddTabButtonWidth -
         (updaterStatus === "up-to-date" ? 0 : 164) -
         (showConfigErrors ? 132 : 0) -
         24;
@@ -346,10 +348,10 @@ export function TabBarPreview() {
                             icon: "plus",
                             title: "Add Tab",
                             click: () => {
-                                const tabId = `preview-tab-${crypto.randomUUID()}`;
-                                const nextTab = { tabId, tabName: "New Tab" };
+                                const previewTabId = `preview-tab-${crypto.randomUUID()}`;
+                                const nextTab = { tabId: previewTabId, tabName: "New Tab" };
                                 setTabs((prevTabs) => [...prevTabs, nextTab]);
-                                setActiveTabId(tabId);
+                                setActiveTabId(previewTabId);
                             },
                         }}
                     />

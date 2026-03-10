@@ -191,6 +191,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const isFullScreen = useAtomValue(env.atoms.isFullScreen);
     const zoomFactor = useAtomValue(env.atoms.zoomFactorAtom);
     const settings = useAtomValue(env.atoms.settingsAtom);
+    const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -583,7 +584,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        const confirmClose = settings["tab:confirmclose"] ?? false;
         env.electron
             .closeTab(workspace.oid, tabId, confirmClose)
             .then((didClose) => {
