@@ -5,9 +5,8 @@ import { Button } from "@/app/element/button";
 import { Tooltip } from "@/app/element/tooltip";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, getSettingsKeyAtom, globalStore, setActiveTab } from "@/store/global";
-import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -17,6 +16,7 @@ import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
+import { TabBarEnv } from "./tabbarenv";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 
@@ -44,8 +44,9 @@ interface TabBarProps {
 }
 
 const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
+    const env = useWaveEnv<TabBarEnv>();
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
-    const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
+    const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
 
     const onClick = () => {
         const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
@@ -73,7 +74,8 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
 WaveAIButton.displayName = "WaveAIButton";
 
 const ConfigErrorMessage = () => {
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const env = useWaveEnv<TabBarEnv>();
+    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
 
     if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
         return (
@@ -109,7 +111,8 @@ const ConfigErrorMessage = () => {
 };
 
 const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement> }) => {
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const env = useWaveEnv<TabBarEnv>();
+    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
 
     function handleClick() {
         modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
@@ -150,6 +153,7 @@ function strArrayIsEqual(a: string[], b: string[]) {
 }
 
 const TabBar = memo(({ workspace }: TabBarProps) => {
+    const env = useWaveEnv<TabBarEnv>();
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
@@ -183,10 +187,10 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
-    const activeTabId = useAtomValue(atoms.staticTabId);
-    const isFullScreen = useAtomValue(atoms.isFullScreen);
-    const zoomFactor = useAtomValue(atoms.zoomFactorAtom);
-    const settings = useAtomValue(atoms.settingsAtom);
+    const activeTabId = useAtomValue(env.atoms.staticTabId);
+    const isFullScreen = useAtomValue(env.atoms.isFullScreen);
+    const zoomFactor = useAtomValue(env.atoms.zoomFactorAtom);
+    const settings = useAtomValue(env.atoms.settingsAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -306,7 +310,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         saveTabsPositionDebounced();
     }, [tabIds, newTabId, isFullScreen]);
 
-    const reinitVersion = useAtomValue(atoms.reinitVersion);
+    const reinitVersion = useAtomValue(env.atoms.reinitVersion);
     useEffect(() => {
         if (reinitVersion > 0) {
             setSizeAndPosition();
@@ -547,7 +551,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleSelectTab = (tabId: string) => {
         if (!draggingTabDataRef.current.dragged) {
-            setActiveTab(tabId);
+            env.electron.setActiveTab(tabId);
         }
     };
 
@@ -569,7 +573,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     );
 
     const handleAddTab = () => {
-        createTab();
+        env.electron.createTab();
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
 
         updateScrollDebounced();
@@ -579,10 +583,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        const ws = globalStore.get(atoms.workspace);
-        const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
-        getApi()
-            .closeTab(ws.oid, tabId, confirmClose)
+        const confirmClose = settings["tab:confirmclose"] ?? false;
+        env.electron
+            .closeTab(workspace.oid, tabId, confirmClose)
             .then((didClose) => {
                 if (didClose) {
                     tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
@@ -607,15 +610,15 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const activeTabIndex = tabIds.indexOf(activeTabId);
 
     function onEllipsisClick() {
-        getApi().showWorkspaceAppMenu(workspace.oid);
+        env.electron.showWorkspaceAppMenu(workspace.oid);
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const showAppMenuButton = isWindows() || (!isMacOS() && !settings["window:showmenubar"]);
+    const showAppMenuButton = env.isWindows() || (!env.isMacOS() && !settings["window:showmenubar"]);
 
     // Calculate window drag left width based on platform and state
     let windowDragLeftWidth = 10;
-    if (isMacOS() && !isFullScreen) {
+    if (env.isMacOS() && !isFullScreen) {
         if (zoomFactor > 0) {
             windowDragLeftWidth = 74 / zoomFactor;
         } else {
@@ -625,7 +628,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     // Calculate window drag right width
     let windowDragRightWidth = 12;
-    if (isWindows()) {
+    if (env.isWindows()) {
         if (zoomFactor > 0) {
             windowDragRightWidth = 139 / zoomFactor;
         } else {
@@ -704,4 +707,4 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     );
 });
 
-export { TabBar };
+export { ConfigErrorIcon, ConfigErrorMessage, TabBar, WaveAIButton };
