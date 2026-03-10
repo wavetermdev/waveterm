@@ -16,8 +16,11 @@ export type BlockMetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType>
 export type WaveEnv = {
     electron: ElectronApi;
     rpc: RpcApiType;
+    platform: NodeJS.Platform;
     configAtoms: ConfigAtoms;
     isDev: () => boolean;
+    isWindows: () => boolean;
+    isMacOS: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;

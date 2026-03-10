@@ -13,6 +13,7 @@ import {
 } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
+import { isMacOS, isWindows, PLATFORM } from "@/util/platformutil";
 
 const configAtoms = new Proxy({} as WaveEnv["configAtoms"], {
     get<K extends keyof SettingsType>(_target: WaveEnv["configAtoms"], key: K) {
@@ -24,8 +25,11 @@ export function makeWaveEnvImpl(): WaveEnv {
     return {
         electron: (window as any).api,
         rpc: RpcApi,
+        platform: PLATFORM,
         configAtoms,
         isDev,
+        isWindows,
+        isMacOS,
         atoms,
         createBlock,
         showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => {
