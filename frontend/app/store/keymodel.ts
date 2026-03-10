@@ -695,7 +695,15 @@ function registerGlobalKeys() {
             return false;
         }
         if (bcm.viewModel.searchAtoms) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            if (globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+                // Already open — increment the focusInput counter so this block's
+                // SearchComponent focuses its own input (avoids a global DOM query
+                // that could target the wrong block when multiple searches are open).
+                const cur = globalStore.get(bcm.viewModel.searchAtoms.focusInput) as number;
+                globalStore.set(bcm.viewModel.searchAtoms.focusInput, cur + 1);
+            } else {
+                globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            }
             return true;
         }
         return false;
