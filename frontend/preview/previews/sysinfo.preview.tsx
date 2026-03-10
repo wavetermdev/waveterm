@@ -70,7 +70,7 @@ function makeSysinfoEvent(pointNum: number, ts: number): Extract<WaveEvent, { ev
 }
 
 function makeSysinfoHistory(nowTs: number, count: number): Extract<WaveEvent, { event: "sysinfo" }>[] {
-    return Array.from({ length: count }, (_unused, index) => {
+    return Array.from({ length: count }, (_, index) => {
         const pointNum = index - count + 1;
         return makeSysinfoEvent(pointNum, nowTs - (count - index - 1) * 1000);
     });
@@ -106,8 +106,8 @@ function makePreviewTab(tabId: string, blockId: string): Tab {
 function SysinfoPreviewInner() {
     const baseEnv = useWaveEnv();
     const tabId = useAtomValue(baseEnv.atoms.staticTabId);
-    const envRef = useRef<WaveEnv>(null);
-    const nodeModelRef = useRef<NodeModel>(null);
+    const envRef = useRef<WaveEnv | null>(null);
+    const nodeModelRef = useRef<NodeModel | null>(null);
     const historyRef = useRef<Extract<WaveEvent, { event: "sysinfo" }>[]>([]);
     const pointNumRef = useRef(0);
     const blockORef = makeORef("block", PreviewBlockId);
@@ -157,6 +157,12 @@ function SysinfoPreviewInner() {
         envRef.current = previewEnv;
     }
 
+    const env = envRef.current;
+    const nodeModel = nodeModelRef.current;
+    if (env == null || nodeModel == null) {
+        return null;
+    }
+
     useEffect(() => {
         const intervalId = window.setInterval(() => {
             const event = makeSysinfoEvent(pointNumRef.current, Date.now());
@@ -170,11 +176,11 @@ function SysinfoPreviewInner() {
     }, []);
 
     return (
-        <WaveEnvContext.Provider value={envRef.current}>
+        <WaveEnvContext.Provider value={env}>
             <div className="w-full max-w-[1100px] p-6">
                 <div className="mb-3 text-xs text-muted font-mono">full sysinfo block with live frontend-only WPS updates</div>
                 <div className="h-[520px] rounded border border-border bg-panel p-2">
-                    <Block key={PreviewBlockId} nodeModel={nodeModelRef.current} preview={false} />
+                    <Block key={PreviewBlockId} nodeModel={nodeModel} preview={false} />
                 </div>
             </div>
         </WaveEnvContext.Provider>
