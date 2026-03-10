@@ -227,9 +227,6 @@ function getWaveObjectLoadingAtom(oref: string): Atom<boolean> {
     const wov = getWaveObjectValue(oref);
     return atom((get) => {
         const dataValue = get(wov.dataAtom);
-        if (dataValue.loading) {
-            return null;
-        }
         return dataValue.loading;
     });
 }
