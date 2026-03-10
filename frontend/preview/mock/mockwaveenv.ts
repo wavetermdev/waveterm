@@ -181,6 +181,10 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return waveObjectAtomCache.get(oref) as PrimitiveAtom<T>;
         },
+        useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
+            const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+            return [obj, false];
+        },
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
             const cacheKey = blockId + "#meta-" + key;
             if (!blockMetaKeyAtomCache.has(cacheKey)) {

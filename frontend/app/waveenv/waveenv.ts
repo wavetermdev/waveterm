@@ -23,6 +23,7 @@ export type WaveEnv = {
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
     getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
+    useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
 };
 
