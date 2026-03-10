@@ -212,9 +212,9 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
     const tabModel = useTabModel();
     const blockId = props.nodeModel.blockId;
-    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", blockId));
+    const blockIsNull = jotai.useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", blockId)));
     const numBlocks = jotai.useAtomValue(tabModel.tabNumBlocksAtom);
-    if (!blockId || !blockData) {
+    if (!blockId || blockIsNull) {
         return null;
     }
     return <BlockFrame_Default {...props} numBlocksInTab={numBlocks} />;

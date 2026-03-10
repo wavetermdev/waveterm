@@ -66,7 +66,7 @@ function makeViewModel(
     if (ctor != null) {
         return new ctor({ blockId, nodeModel, tabModel, waveEnv });
     }
-    return makeDefaultViewModel(blockId, blockView, waveEnv);
+    return makeDefaultViewModel(blockView);
 }
 
 function getViewElem(
@@ -86,18 +86,11 @@ function getViewElem(
     return <VC key={blockId} blockId={blockId} blockRef={blockRef} contentRef={contentRef} model={viewModel} />;
 }
 
-function makeDefaultViewModel(blockId: string, viewType: string, waveEnv: WaveEnv): ViewModel {
-    const blockDataAtom = waveEnv.wos.getWaveObjectAtom<Block>(makeORef("block", blockId));
+function makeDefaultViewModel(viewType: string): ViewModel {
     const viewModel: ViewModel = {
         viewType: viewType,
-        viewIcon: atom((get) => {
-            const blockData = get(blockDataAtom);
-            return blockViewToIcon(blockData?.meta?.view);
-        }),
-        viewName: atom((get) => {
-            const blockData = get(blockDataAtom);
-            return blockViewToName(blockData?.meta?.view);
-        }),
+        viewIcon: atom(blockViewToIcon(viewType)),
+        viewName: atom(blockViewToName(viewType)),
         preIconButton: atom(null),
         endIconButtons: atom(null),
         viewComponent: null,
@@ -107,8 +100,8 @@ function makeDefaultViewModel(blockId: string, viewType: string, waveEnv: WaveEn
 
 const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
-    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
-    if (!blockData) {
+    const blockIsNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", nodeModel.blockId)));
+    if (blockIsNull) {
         return null;
     }
     return (
@@ -124,15 +117,16 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 
 const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
-    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const blockIsNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", nodeModel.blockId)));
+    const blockView = useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view")) ?? "";
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const viewElem = useMemo(
-        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
-        [nodeModel.blockId, blockData?.meta?.view, viewModel]
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockView, viewModel),
+        [nodeModel.blockId, blockView, viewModel]
     );
     const noPadding = useAtomValueSafe(viewModel.noPadding);
-    if (!blockData) {
+    if (blockIsNull) {
         return null;
     }
     return (
@@ -151,7 +145,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = useState(false);
-    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const blockView = useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view")) ?? "";
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const isResizing = useAtomValue(nodeModel.isResizing);
@@ -211,8 +205,8 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     }, [innerRect, disablePointerEvents, blockContentOffset]);
 
     const viewElem = useMemo(
-        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
-        [nodeModel.blockId, blockData?.meta?.view, viewModel]
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockView, viewModel),
+        [nodeModel.blockId, blockView, viewModel]
     );
 
     const handleChildFocus = useCallback(
@@ -238,7 +232,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         (event: React.PointerEvent<HTMLDivElement>) => {
             const focusFollowsCursorEnabled =
                 focusFollowsCursorMode === "on" ||
-                (focusFollowsCursorMode === "term" && blockData?.meta?.view === "term");
+                (focusFollowsCursorMode === "term" && blockView === "term");
             if (!focusFollowsCursorEnabled || event.pointerType === "touch" || event.buttons > 0) {
                 return;
             }
@@ -255,7 +249,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         },
         [
             focusFollowsCursorMode,
-            blockData?.meta?.view,
+            blockView,
             modalOpen,
             disablePointerEvents,
             isResizing,

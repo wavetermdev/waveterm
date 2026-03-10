@@ -4,15 +4,17 @@
 import { Button } from "@/app/element/button";
 import { CopyButton } from "@/app/element/copybutton";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
-import { atoms, getConnStatusAtom, WOS } from "@/app/store/global";
+import { atoms, getConnStatusAtom } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
+import { BlockEnv } from "./blockenv";
 
 function formatElapsedTime(elapsedMs: number): string {
     if (elapsedMs <= 0) {
@@ -118,9 +120,9 @@ export const ConnStatusOverlay = React.memo(
         viewModel: ViewModel;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
     }) => {
-        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+        const waveEnv = useWaveEnv<BlockEnv>();
+        const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
         const [connModalOpen] = jotai.useAtom(changeConnModalAtom);
-        const connName = blockData?.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
         const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
@@ -215,7 +217,7 @@ export const ConnStatusOverlay = React.memo(
             [showError, showWshError, connStatus.error, connStatus.wsherror]
         );
 
-        let showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
+        const showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
         if (!showWshError && !showStalled && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
