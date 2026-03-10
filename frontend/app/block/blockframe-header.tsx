@@ -12,7 +12,7 @@ import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { getBlockBadgeAtom } from "@/app/store/badge";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { recordTEvent, refocusNode, WOS } from "@/app/store/global";
+import { recordTEvent, refocusNode } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -21,6 +21,8 @@ import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import { cn, makeIconClass } from "@/util/util";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { makeORef } from "@/store/wos";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
@@ -171,7 +173,8 @@ const BlockFrame_Header = ({
     changeConnModalAtom,
     error,
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const waveEnv = useWaveEnv();
+    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);

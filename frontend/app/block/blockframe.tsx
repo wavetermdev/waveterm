@@ -6,7 +6,7 @@ import { BlockFrame_Header } from "@/app/block/blockframe-header";
 import { blockViewToIcon, getViewIconElem } from "@/app/block/blockutil";
 import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
-import { atoms, getBlockComponentModel, getSettingsKeyAtom, globalStore, useBlockAtom, WOS } from "@/app/store/global";
+import { getBlockComponentModel, globalStore, useBlockAtom } from "@/app/store/global";
 import { useTabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -16,20 +16,23 @@ import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import { makeIconClass } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { makeORef } from "@/store/wos";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
 import { BlockFrameProps } from "./blocktypes";
 
 const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
+    const waveEnv = useWaveEnv();
     const tabModel = useTabModel();
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
-    const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
-    const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
+    const isLayoutMode = jotai.useAtomValue(waveEnv.atoms.controlShiftDelayAtom);
+    const showOverlayBlockNums = jotai.useAtomValue(waveEnv.settingsAtoms["app:showoverlayblocknums"]) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
     const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
     const style: React.CSSProperties = {};
@@ -87,8 +90,9 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
 });
 
 const BlockFrame_Default_Component = (props: BlockFrameProps) => {
+    const waveEnv = useWaveEnv();
     const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const aiPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
@@ -100,9 +104,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
-    const [magnifiedBlockBlurAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
+    const [magnifiedBlockBlurAtom] = React.useState(() => waveEnv.settingsAtoms["window:magnifiedblockblurprimarypx"]);
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
-    const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
+    const [magnifiedBlockOpacityAtom] = React.useState(() => waveEnv.settingsAtoms["window:magnifiedblockopacity"]);
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
@@ -203,9 +207,10 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
 const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 
 const BlockFrame = React.memo((props: BlockFrameProps) => {
+    const waveEnv = useWaveEnv();
     const tabModel = useTabModel();
     const blockId = props.nodeModel.blockId;
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", blockId));
     const numBlocks = jotai.useAtomValue(tabModel.tabNumBlocksAtom);
     if (!blockId || !blockData) {
         return null;

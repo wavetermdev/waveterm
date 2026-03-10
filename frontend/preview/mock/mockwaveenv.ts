@@ -1,7 +1,8 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom, makeDefaultConnStatus } from "@/app/store/global";
+import { makeDefaultConnStatus } from "@/app/store/global";
+import { TabModel } from "@/app/store/tab-model";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { Atom, atom, PrimitiveAtom } from "jotai";
@@ -14,6 +15,7 @@ type RpcOverrides = {
 
 export type MockEnv = {
     isDev?: boolean;
+    tabId?: string;
     settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
     atoms?: Partial<GlobalAtomsType>;
@@ -36,6 +38,7 @@ function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>):
 export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     return {
         isDev: overrides.isDev ?? base.isDev,
+        tabId: overrides.tabId ?? base.tabId,
         settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
         atoms: overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
@@ -50,26 +53,37 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     };
 }
 
-function makeMockConfigAtoms(overrides?: Partial<SettingsType>): WaveEnv["configAtoms"] {
+function makeMockSettingsAtoms(
+    settingsAtom: Atom<SettingsType>,
+    overrides?: Partial<SettingsType>
+): WaveEnv["settingsAtoms"] {
     const overrideAtoms = new Map<keyof SettingsType, ReturnType<typeof atom>>();
     if (overrides) {
         for (const key of Object.keys(overrides) as (keyof SettingsType)[]) {
             overrideAtoms.set(key, atom(overrides[key]));
         }
     }
-    return new Proxy({} as WaveEnv["configAtoms"], {
-        get<K extends keyof SettingsType>(_target: WaveEnv["configAtoms"], key: K) {
+    const keyAtomCache = new Map<keyof SettingsType, Atom<any>>();
+    return new Proxy({} as WaveEnv["settingsAtoms"], {
+        get<K extends keyof SettingsType>(_target: WaveEnv["settingsAtoms"], key: K) {
             if (overrideAtoms.has(key)) {
                 return overrideAtoms.get(key);
             }
-            return getSettingsKeyAtom(key);
+            if (!keyAtomCache.has(key)) {
+                keyAtomCache.set(
+                    key,
+                    atom((get) => get(settingsAtom)?.[key])
+                );
+            }
+            return keyAtomCache.get(key);
         },
     });
 }
 
 function makeMockGlobalAtoms(
     settingsOverrides?: Partial<SettingsType>,
-    atomOverrides?: Partial<GlobalAtomsType>
+    atomOverrides?: Partial<GlobalAtomsType>,
+    tabId?: string
 ): GlobalAtomsType {
     let fullConfig = DefaultFullConfig;
     if (settingsOverrides) {
@@ -83,13 +97,13 @@ function makeMockGlobalAtoms(
     const defaults: GlobalAtomsType = {
         builderId: atom(""),
         builderAppId: atom("") as any,
-        uiContext: atom({} as UIContext),
+        uiContext: atom({ windowid: "", activetabid: tabId ?? "" } as UIContext),
         workspace: atom(null as Workspace),
         fullConfigAtom,
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
         hasCustomAIPresetsAtom: atom(false),
-        staticTabId: atom(""),
+        staticTabId: atom(tabId ?? ""),
         isFullScreen: atom(false) as any,
         zoomFactorAtom: atom(1.0) as any,
         controlShiftDelayAtom: atom(false) as any,
@@ -149,12 +163,13 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
     const waveObjectAtomCache = new Map<string, PrimitiveAtom<WaveObj>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
+    const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
     const env = {
         mockEnv: overrides,
         electron: overrides.electron ? { ...previewElectronApi, ...overrides.electron } : previewElectronApi,
         rpc: makeMockRpc(overrides.rpc),
-        configAtoms: makeMockConfigAtoms(overrides.settings),
-        atoms: makeMockGlobalAtoms(overrides.settings, overrides.atoms),
+        atoms,
+        settingsAtoms: makeMockSettingsAtoms(atoms.settingsAtom, overrides.settings),
         isDev: () => overrides.isDev ?? true,
         createBlock:
             overrides.createBlock ??
@@ -198,6 +213,10 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return blockMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
         },
-    };
+        mockTabModel: null as TabModel,
+    } as MockWaveEnv;
+    if (overrides.tabId != null) {
+        env.mockTabModel = new TabModel(overrides.tabId, env);
+    }
     return env;
 }

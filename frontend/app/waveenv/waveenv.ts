@@ -1,11 +1,12 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
 
-type ConfigAtoms = { [K in keyof SettingsType]: Atom<SettingsType[K]> };
+type SettingsAtoms = { [K in keyof SettingsType]: Atom<SettingsType[K]> };
 
 export type BlockMetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
     blockId: string,
@@ -16,7 +17,7 @@ export type BlockMetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType>
 export type WaveEnv = {
     electron: ElectronApi;
     rpc: RpcApiType;
-    configAtoms: ConfigAtoms;
+    settingsAtoms: SettingsAtoms;
     isDev: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
@@ -25,6 +26,7 @@ export type WaveEnv = {
     getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
     useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
+    mockTabModel?: TabModel;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);

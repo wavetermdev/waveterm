@@ -14,8 +14,8 @@ import {
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 
-const configAtoms = new Proxy({} as WaveEnv["configAtoms"], {
-    get<K extends keyof SettingsType>(_target: WaveEnv["configAtoms"], key: K) {
+const settingsAtoms = new Proxy({} as WaveEnv["settingsAtoms"], {
+    get<K extends keyof SettingsType>(_target: WaveEnv["settingsAtoms"], key: K) {
         return getSettingsKeyAtom(key);
     },
 });
@@ -24,7 +24,7 @@ export function makeWaveEnvImpl(): WaveEnv {
     return {
         electron: (window as any).api,
         rpc: RpcApi,
-        configAtoms,
+        settingsAtoms,
         isDev,
         atoms,
         createBlock,
