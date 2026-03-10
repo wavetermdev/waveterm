@@ -1,9 +1,7 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi, globalStore, WOS } from "@/app/store/global";
-import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -21,8 +19,8 @@ class TsunamiViewModel extends WebViewModel {
     viewIcon: jotai.Atom<IconButtonDecl>;
     viewName: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
-        super(blockId, nodeModel, tabModel);
+    constructor(initOpts: ViewModelInitType) {
+        super(initOpts);
         this.viewType = "tsunami";
         this.isRestarting = jotai.atom(false);
 
@@ -30,16 +28,16 @@ class TsunamiViewModel extends WebViewModel {
         this.hideNav = jotai.atom(true);
 
         // Set custom partition for tsunami WebView isolation
-        this.partitionOverride = jotai.atom(`tsunami:${blockId}`);
+        this.partitionOverride = jotai.atom(`tsunami:${this.blockId}`);
 
         this.shellProcFullStatus = jotai.atom(null) as jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
-        const initialShellProcStatus = services.BlockService.GetControllerStatus(blockId);
+        const initialShellProcStatus = services.BlockService.GetControllerStatus(this.blockId);
         initialShellProcStatus.then((rts) => {
             this.updateShellProcStatus(rts);
         });
         this.shellProcStatusUnsubFn = waveEventSubscribeSingle({
             eventType: "controllerstatus",
-            scope: WOS.makeORef("block", blockId),
+            scope: WOS.makeORef("block", this.blockId),
             handler: (event) => {
                 this.updateShellProcStatus(event.data);
             },
@@ -61,7 +59,7 @@ class TsunamiViewModel extends WebViewModel {
             return meta?.title || "WaveApp";
         });
         const initialRTInfo = RpcApi.GetRTInfoCommand(TabRpcClient, {
-            oref: WOS.makeORef("block", blockId),
+            oref: WOS.makeORef("block", this.blockId),
         });
         initialRTInfo.then((rtInfo) => {
             if (rtInfo && rtInfo["tsunami:appmeta"]) {
@@ -70,7 +68,7 @@ class TsunamiViewModel extends WebViewModel {
         });
         this.appMetaUnsubFn = waveEventSubscribeSingle({
             eventType: "tsunami:updatemeta",
-            scope: WOS.makeORef("block", blockId),
+            scope: WOS.makeORef("block", this.blockId),
             handler: (event) => {
                 globalStore.set(this.appMeta, event.data);
             },

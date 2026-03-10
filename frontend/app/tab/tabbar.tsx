@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
@@ -61,13 +61,12 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
             content="Toggle Wave AI Panel"
             placement="bottom"
             hideOnClick
-            divClassName={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            divClassName={`flex h-[22px] px-3.5 justify-end mb-1 items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
             divStyle={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             divOnClick={onClick}
             divRef={divRef}
         >
             <i className="fa fa-sparkles" />
-            <span className="font-bold ml-1 -top-px font-mono">AI</span>
         </Tooltip>
     );
 });
@@ -144,24 +143,6 @@ function strArrayIsEqual(a: string[], b: string[]) {
     }
     for (let i = 0; i < a.length; i++) {
         if (a[i] !== b[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
-    if (a == null && b == null) {
-        return true;
-    }
-    if (a == null || b == null) {
-        return false;
-    }
-    if (a.size !== b.size) {
-        return false;
-    }
-    for (const item of a) {
-        if (!b.has(item)) {
             return false;
         }
     }
@@ -507,7 +488,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         []
     );
 
-    const handleMouseUp = (event: MouseEvent) => {
+    const handleMouseUp = (_event: MouseEvent) => {
         const { tabIndex, dragged } = draggingTabDataRef.current;
 
         // Update the final position of the dragged tab
@@ -623,9 +604,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         });
     }, []);
 
-    const isBeforeActive = (tabId: string) => {
-        return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
-    };
+    const activeTabIndex = tabIds.indexOf(activeTabId);
 
     function onEllipsisClick() {
         getApi().showWorkspaceAppMenu(workspace.oid);
@@ -645,7 +624,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }
 
     // Calculate window drag right width
-    let windowDragRightWidth = 6;
+    let windowDragRightWidth = 12;
     if (isWindows()) {
         if (zoomFactor > 0) {
             windowDragRightWidth = 139 / zoomFactor;
@@ -683,25 +662,26 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 placement="bottom"
                 hideOnClick
                 divRef={workspaceSwitcherRef}
-                divClassName="flex items-center h-full"
+                divClassName="flex items-center"
             >
                 <WorkspaceSwitcher />
             </Tooltip>
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
+                        const isActive = activeTabId === tabId;
+                        const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
                         return (
                             <Tab
                                 key={tabId}
                                 ref={tabRefs.current[index]}
                                 id={tabId}
-                                isFirst={index === 0}
+                                showDivider={showDivider}
                                 onSelect={() => handleSelectTab(tabId)}
-                                active={activeTabId === tabId}
+                                active={isActive}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
-                                isBeforeActive={isBeforeActive(tabId)}
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
                                 isNew={tabId === newTabId}

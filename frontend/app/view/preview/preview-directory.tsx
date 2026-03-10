@@ -493,7 +493,7 @@ type TableRowProps = {
     handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
 };
 
-const TableRow = React.forwardRef(function ({
+function TableRow({
     model,
     row,
     focusIndex,
@@ -552,7 +552,7 @@ const TableRow = React.forwardRef(function ({
             ))}
         </div>
     );
-});
+}
 
 const MemoizedTableBody = React.memo(
     TableBody,

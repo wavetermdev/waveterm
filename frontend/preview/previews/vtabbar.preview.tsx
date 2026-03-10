@@ -6,7 +6,7 @@ import { useState } from "react";
 
 const InitialTabs: VTabItem[] = [
     { id: "vtab-1", name: "Terminal" },
-    { id: "vtab-2", name: "Build Logs", indicator: { icon: "bell", color: "#f59e0b" } },
+    { id: "vtab-2", name: "Build Logs", badge: { badgeid: "01957000-0000-7000-0000-000000000001", icon: "bell", color: "#f59e0b", priority: 1 } },
     { id: "vtab-3", name: "Deploy" },
     { id: "vtab-4", name: "Wave AI" },
     { id: "vtab-5", name: "A Very Long Tab Name To Show Truncation" },
@@ -40,7 +40,7 @@ export function VTabBarPreview() {
                     className="w-full cursor-pointer"
                 />
                 <p className="mt-3 text-xs text-muted">
-                    Drag tabs to reorder. Names, indicators, and close buttons remain single-line.
+                    Drag tabs to reorder. Names, badges, and close buttons remain single-line.
                 </p>
             </div>
             <div className="h-[360px] rounded-md border border-border bg-background">

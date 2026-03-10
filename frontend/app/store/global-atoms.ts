@@ -9,7 +9,6 @@ import * as WOS from "./wos";
 let atoms!: GlobalAtomsType;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
-const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
@@ -154,4 +153,4 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-export { atoms, blockComponentModelMap, ConnStatusMapAtom, getAtoms, initGlobalAtoms, orefAtomCache, TabIndicatorMap };
+export { atoms, blockComponentModelMap, ConnStatusMapAtom, getAtoms, initGlobalAtoms, orefAtomCache };

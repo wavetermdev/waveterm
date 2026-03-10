@@ -5,10 +5,13 @@ import Logo from "@/app/asset/logo.svg";
 import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
 import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
+import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
-import React, { lazy, Suspense } from "react";
+import { atom, Provider } from "jotai";
+import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { installPreviewElectronApi } from "./preview-electron-api";
+import { makeMockWaveEnv } from "./mock/mockwaveenv";
+import { installPreviewElectronApi } from "./mock/preview-electron-api";
 
 import "../app/app.scss";
 
@@ -86,6 +89,24 @@ function PreviewHeader({ previewName }: { previewName: string }) {
     );
 }
 
+function PreviewRoot() {
+    const waveEnvRef = useRef(
+        makeMockWaveEnv({
+            atoms: {
+                uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
+                staticTabId: atom(PreviewTabId),
+            },
+        })
+    );
+    return (
+        <Provider store={globalStore}>
+            <WaveEnvContext.Provider value={waveEnvRef.current}>
+                <PreviewApp />
+            </WaveEnvContext.Provider>
+        </Provider>
+    );
+}
+
 function PreviewApp() {
     const params = new URLSearchParams(window.location.search);
     const previewName = params.get("preview");
@@ -139,7 +160,7 @@ function initPreview() {
     GlobalModel.getInstance().initialize(initOpts);
     loadFonts();
     const root = createRoot(document.getElementById("main")!);
-    root.render(<PreviewApp />);
+    root.render(<PreviewRoot />);
 }
 
 initPreview();

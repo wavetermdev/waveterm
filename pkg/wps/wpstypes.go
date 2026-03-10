@@ -32,8 +32,8 @@ const (
 	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated" // type: none
 	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"   // type: wshrpc.AppMeta
 	Event_AIModeConfig        = "waveai:modeconfig"    // type: wconfig.AIModeConfigUpdate
-	Event_TabIndicator        = "tab:indicator"        // type: wshrpc.TabIndicatorEventData
 	Event_BlockJobStatus      = "block:jobstatus"      // type: wshrpc.BlockJobStatusData
+	Event_Badge               = "badge"                // type: baseds.BadgeEvent
 )
 
 var AllEvents []string = []string{
@@ -54,8 +54,8 @@ var AllEvents []string = []string{
 	Event_WaveAppAppGoUpdated,
 	Event_TsunamiUpdateMeta,
 	Event_AIModeConfig,
-	Event_TabIndicator,
 	Event_BlockJobStatus,
+	Event_Badge,
 }
 
 type WaveEvent struct {

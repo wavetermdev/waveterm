@@ -4,6 +4,7 @@
 import { FocusManager } from "@/app/store/focusManager";
 import { getSettingsKeyAtom } from "@/app/store/global";
 import { BlockService } from "@/app/store/services";
+import * as WOS from "@/app/store/wos";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -88,7 +89,7 @@ export class LayoutModel {
     /**
      * WaveObject atom for persistence
      */
-    private waveObjectAtom: WritableWaveObjectAtom<LayoutState>;
+    private waveObjectAtom: Atom<LayoutState>;
     /**
      * Debounce timer for persistence
      */
@@ -587,7 +588,7 @@ export class LayoutModel {
             waveObj.leaforder = this.treeState.leafOrder;
             waveObj.pendingbackendactions = this.treeState.pendingBackendActions;
 
-            this.setter(this.waveObjectAtom, waveObj);
+            WOS.setObjectValue(waveObj, this.setter, true);
             this.persistDebounceTimer = null;
         }, 100);
     }

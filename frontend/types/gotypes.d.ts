@@ -108,6 +108,24 @@ declare global {
         iconcolor: string;
     };
 
+    // baseds.Badge
+    type Badge = {
+        badgeid: string;
+        icon: string;
+        color?: string;
+        priority: number;
+        pidlinked?: boolean;
+    };
+
+    // baseds.BadgeEvent
+    type BadgeEvent = {
+        oref: string;
+        clear?: boolean;
+        clearall?: boolean;
+        clearbyid?: string;
+        badge?: Badge;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -219,6 +237,13 @@ declare global {
     // wshrpc.CommandAuthenticateTokenData
     type CommandAuthenticateTokenData = {
         token: string;
+    };
+
+    // wshrpc.CommandBadgeWatchPidData
+    type CommandBadgeWatchPidData = {
+        pid: number;
+        oref: ORef;
+        badgeid: string;
     };
 
     // wshrpc.CommandBlockInputData
@@ -1089,6 +1114,7 @@ declare global {
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
         "sysinfo:type"?: string;
+        "tab:flagcolor"?: string;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
@@ -1567,21 +1593,6 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
-    };
-
-    // wshrpc.TabIndicator
-    type TabIndicator = {
-        icon: string;
-        color?: string;
-        priority: number;
-        clearonfocus?: boolean;
-        persistentindicator?: TabIndicator;
-    };
-
-    // wshrpc.TabIndicatorEventData
-    type TabIndicatorEventData = {
-        tabid: string;
-        indicator: TabIndicator;
     };
 
     // waveobj.TermSize

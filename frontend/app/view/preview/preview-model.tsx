@@ -1,9 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getConnStatusAtom, getOverrideConfigAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
@@ -168,7 +168,7 @@ export class PreviewModel implements ViewModel {
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
