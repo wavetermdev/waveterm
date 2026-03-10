@@ -23,10 +23,12 @@ export type WaveEnv = {
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
-    getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
-    getWaveObjectLoadingAtom: (oref: string) => Atom<boolean>;
-    isWaveObjectNullAtom: (oref: string) => Atom<boolean>;
-    useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
+    wos: {
+        getWaveObjectAtom: <T extends WaveObj>(oref: string) => Atom<T>;
+        getWaveObjectLoadingAtom: (oref: string) => Atom<boolean>;
+        isWaveObjectNullAtom: (oref: string) => Atom<boolean>;
+        useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
+    };
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
     mockTabModel?: TabModel;
 };

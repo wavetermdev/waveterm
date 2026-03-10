@@ -23,7 +23,7 @@ export class TabModel {
         this.waveEnv = waveEnv;
         this.tabAtom = atom((get) => {
             if (this.waveEnv != null) {
-                return get(this.waveEnv.getWaveObjectAtom<Tab>(WOS.makeORef("tab", this.tabId)));
+                return get(this.waveEnv.wos.getWaveObjectAtom<Tab>(WOS.makeORef("tab", this.tabId)));
             }
             return WOS.getObjectValue(WOS.makeORef("tab", this.tabId), get);
         });

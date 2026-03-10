@@ -18,7 +18,6 @@ export type BlockEnv = {
         ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
         ConnEnsureCommand: WaveEnv["rpc"]["ConnEnsureCommand"];
     };
-    useWaveObjectValue: WaveEnv["useWaveObjectValue"];
-    isWaveObjectNullAtom: WaveEnv["isWaveObjectNullAtom"];
+    wos: WaveEnv["wos"];
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<"frame:text" | "frame:activebordercolor" | "frame:bordercolor" | "view" | "connection" | "icon:color" | "frame:title" | "frame:icon">;
 };

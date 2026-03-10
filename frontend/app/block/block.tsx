@@ -87,7 +87,7 @@ function getViewElem(
 }
 
 function makeDefaultViewModel(blockId: string, viewType: string, waveEnv: WaveEnv): ViewModel {
-    const blockDataAtom = waveEnv.getWaveObjectAtom<Block>(makeORef("block", blockId));
+    const blockDataAtom = waveEnv.wos.getWaveObjectAtom<Block>(makeORef("block", blockId));
     const viewModel: ViewModel = {
         viewType: viewType,
         viewIcon: atom((get) => {
@@ -107,7 +107,7 @@ function makeDefaultViewModel(blockId: string, viewType: string, waveEnv: WaveEn
 
 const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
-    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     if (!blockData) {
         return null;
     }
@@ -124,7 +124,7 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 
 const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
-    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const viewElem = useMemo(
@@ -151,7 +151,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = useState(false);
-    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const [blockData] = waveEnv.wos.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const isResizing = useAtomValue(nodeModel.isResizing);
@@ -336,7 +336,7 @@ BlockInner.displayName = "BlockInner";
 
 const Block = memo((props: BlockProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
-    const isNull = useAtomValue(waveEnv.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
+    const isNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
     const viewType = useAtomValue(waveEnv.getBlockMetaKeyAtom(props.nodeModel.blockId, "view")) ?? "";
     if (isNull || isBlank(props.nodeModel.blockId)) {
         return null;
@@ -368,7 +368,7 @@ SubBlockInner.displayName = "SubBlockInner";
 
 const SubBlock = memo((props: SubBlockProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
-    const isNull = useAtomValue(waveEnv.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
+    const isNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
     const viewType = useAtomValue(waveEnv.getBlockMetaKeyAtom(props.nodeModel.blockId, "view")) ?? "";
     if (isNull || isBlank(props.nodeModel.blockId)) {
         return null;

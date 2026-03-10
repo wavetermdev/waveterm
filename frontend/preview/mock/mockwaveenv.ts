@@ -189,38 +189,43 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return connStatusAtomCache.get(conn);
         },
-        getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
-            const cacheKey = oref + ":value";
-            if (!waveObjectAtomCache.has(cacheKey)) {
+        wos: {
+            getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
+                const cacheKey = oref + ":value";
+                if (!waveObjectAtomCache.has(cacheKey)) {
+                    const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+                    waveObjectAtomCache.set(cacheKey, atom(obj));
+                }
+                return waveObjectAtomCache.get(cacheKey) as PrimitiveAtom<T>;
+            },
+            getWaveObjectLoadingAtom: (oref: string) => {
+                const cacheKey = oref + ":loading";
+                if (!waveObjectAtomCache.has(cacheKey)) {
+                    waveObjectAtomCache.set(cacheKey, atom(false));
+                }
+                return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+            },
+            isWaveObjectNullAtom: (oref: string) => {
+                const cacheKey = oref + ":isnull";
+                if (!waveObjectAtomCache.has(cacheKey)) {
+                    waveObjectAtomCache.set(
+                        cacheKey,
+                        atom((get) => get(env.wos.getWaveObjectAtom(oref)) == null)
+                    );
+                }
+                return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+            },
+            useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
                 const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                waveObjectAtomCache.set(cacheKey, atom(obj));
-            }
-            return waveObjectAtomCache.get(cacheKey) as PrimitiveAtom<T>;
-        },
-        getWaveObjectLoadingAtom: (oref: string) => {
-            const cacheKey = oref + ":loading";
-            if (!waveObjectAtomCache.has(cacheKey)) {
-                waveObjectAtomCache.set(cacheKey, atom(false));
-            }
-            return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
-        },
-        isWaveObjectNullAtom: (oref: string) => {
-            const cacheKey = oref + ":isnull";
-            if (!waveObjectAtomCache.has(cacheKey)) {
-                waveObjectAtomCache.set(cacheKey, atom((get) => get(env.getWaveObjectAtom(oref)) == null));
-            }
-            return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
-        },
-        useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
-            const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-            return [obj, false];
+                return [obj, false];
+            },
         },
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
             const cacheKey = blockId + "#meta-" + key;
             if (!blockMetaKeyAtomCache.has(cacheKey)) {
                 const metaAtom = atom<MetaType[T]>((get) => {
                     const blockORef = "block:" + blockId;
-                    const blockAtom = env.getWaveObjectAtom<Block>(blockORef);
+                    const blockAtom = env.wos.getWaveObjectAtom<Block>(blockORef);
                     const blockData = get(blockAtom);
                     return blockData?.meta?.[key] as MetaType[T];
                 });
