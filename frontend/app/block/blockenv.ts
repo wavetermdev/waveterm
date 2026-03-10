@@ -1,9 +1,15 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockMetaKeyAtomFnType, ConnConfigKeyAtomFnType, SettingsKeyAtomFnType, WaveEnv } from "@/app/waveenv/waveenv";
+import {
+    BlockMetaKeyAtomFnType,
+    ConnConfigKeyAtomFnType,
+    SettingsKeyAtomFnType,
+    WaveEnv,
+    WaveEnvSubset,
+} from "@/app/waveenv/waveenv";
 
-export type BlockEnv = {
+export type BlockEnv = WaveEnvSubset<{
     getSettingsKeyAtom: SettingsKeyAtomFnType<
         | "app:focusfollowscursor"
         | "app:showoverlayblocknums"
@@ -39,4 +45,4 @@ export type BlockEnv = {
         | "frame:title"
         | "frame:icon"
     >;
-};
+}>;

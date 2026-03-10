@@ -20,6 +20,29 @@ export type SettingsKeyAtomFnType<Keys extends keyof SettingsType = keyof Settin
     key: T
 ) => Atom<SettingsType[T]>;
 
+type OmitNever<T> = {
+    [K in keyof T as [T[K]] extends [never] ? never : K]: T[K];
+};
+
+type Subset<T, U> = OmitNever<{
+    [K in keyof T]: K extends keyof U ? T[K] : never;
+}>;
+
+type ComplexWaveEnvKeys = {
+    rpc: WaveEnv["rpc"];
+    electron: WaveEnv["electron"];
+    atoms: WaveEnv["atoms"];
+    wos: WaveEnv["wos"];
+};
+
+export type WaveEnvSubset<T> = OmitNever<{
+    [K in keyof T]: K extends keyof ComplexWaveEnvKeys
+        ? Subset<T[K], ComplexWaveEnvKeys[K]>
+        : K extends keyof WaveEnv
+          ? T[K]
+          : never;
+}>;
+
 // default implementation for production is in ./waveenvimpl.ts
 export type WaveEnv = {
     electron: ElectronApi;
