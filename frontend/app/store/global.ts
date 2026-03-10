@@ -324,13 +324,6 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): 
     return atom as Atom<T>;
 }
 
-function useBlockDataLoaded(blockId: string): boolean {
-    const loadedAtom = useBlockAtom<boolean>(blockId, "block-loaded", () => {
-        return WOS.getWaveObjectLoadingAtom(WOS.makeORef("block", blockId));
-    });
-    return useAtomValue(loadedAtom);
-}
-
 /**
  * Safely read an atom value, returning null if the atom is null.
  */
@@ -672,6 +665,7 @@ export {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
+    getConnConfigKeyAtom,
     getBlockTermDurableAtom,
     getConnStatusAtom,
     getFocusedBlockId,
@@ -703,7 +697,6 @@ export {
     unregisterBlockComponentModel,
     useBlockAtom,
     useBlockCache,
-    useBlockDataLoaded,
     useOrefMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,

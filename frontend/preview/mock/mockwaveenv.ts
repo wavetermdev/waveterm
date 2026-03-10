@@ -1,7 +1,8 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom, makeDefaultConnStatus } from "@/app/store/global";
+import { makeDefaultConnStatus } from "@/app/store/global";
+import { TabModel } from "@/app/store/tab-model";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
@@ -15,6 +16,7 @@ type RpcOverrides = {
 
 export type MockEnv = {
     isDev?: boolean;
+    tabId?: string;
     platform?: NodeJS.Platform;
     settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
@@ -38,6 +40,7 @@ function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>):
 export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     return {
         isDev: overrides.isDev ?? base.isDev,
+        tabId: overrides.tabId ?? base.tabId,
         platform: overrides.platform ?? base.platform,
         settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
@@ -53,26 +56,26 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     };
 }
 
-function makeMockConfigAtoms(overrides?: Partial<SettingsType>): WaveEnv["configAtoms"] {
-    const overrideAtoms = new Map<keyof SettingsType, ReturnType<typeof atom>>();
-    if (overrides) {
-        for (const key of Object.keys(overrides) as (keyof SettingsType)[]) {
-            overrideAtoms.set(key, atom(overrides[key]));
+function makeMockSettingsKeyAtom(
+    settingsAtom: Atom<SettingsType>,
+    overrides?: Partial<SettingsType>
+): WaveEnv["getSettingsKeyAtom"] {
+    const keyAtomCache = new Map<keyof SettingsType, Atom<any>>();
+    return <T extends keyof SettingsType>(key: T) => {
+        if (!keyAtomCache.has(key)) {
+            keyAtomCache.set(
+                key,
+                atom((get) => (overrides?.[key] !== undefined ? overrides[key] : get(settingsAtom)?.[key]))
+            );
         }
-    }
-    return new Proxy({} as WaveEnv["configAtoms"], {
-        get<K extends keyof SettingsType>(_target: WaveEnv["configAtoms"], key: K) {
-            if (overrideAtoms.has(key)) {
-                return overrideAtoms.get(key);
-            }
-            return getSettingsKeyAtom(key);
-        },
-    });
+        return keyAtomCache.get(key) as Atom<SettingsType[T]>;
+    };
 }
 
 function makeMockGlobalAtoms(
     settingsOverrides?: Partial<SettingsType>,
-    atomOverrides?: Partial<GlobalAtomsType>
+    atomOverrides?: Partial<GlobalAtomsType>,
+    tabId?: string
 ): GlobalAtomsType {
     let fullConfig = DefaultFullConfig;
     if (settingsOverrides) {
@@ -86,13 +89,13 @@ function makeMockGlobalAtoms(
     const defaults: GlobalAtomsType = {
         builderId: atom(""),
         builderAppId: atom("") as any,
-        uiContext: atom({} as UIContext),
+        uiContext: atom({ windowid: "", activetabid: tabId ?? "" } as UIContext),
         workspace: atom(null as Workspace),
         fullConfigAtom,
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
         hasCustomAIPresetsAtom: atom(false),
-        staticTabId: atom(""),
+        staticTabId: atom(tabId ?? ""),
         isFullScreen: atom(false) as any,
         zoomFactorAtom: atom(1.0) as any,
         controlShiftDelayAtom: atom(false) as any,
@@ -151,8 +154,17 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
     const platform = overrides.platform ?? PlatformMacOS;
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
-    const waveObjectAtomCache = new Map<string, PrimitiveAtom<WaveObj>>();
+    const waveObjectAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
+    const connConfigKeyAtomCache = new Map<string, Atom<any>>();
+    const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
+    const localHostDisplayNameAtom = atom<string>((get) => {
+        const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
+        if (configValue != null) {
+            return configValue;
+        }
+        return "user@localhost";
+    });
     const env = {
         mockEnv: overrides,
         electron: {
@@ -161,9 +173,9 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             ...overrides.electron,
         },
         rpc: makeMockRpc(overrides.rpc),
+        atoms,
+        getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom, overrides.settings),
         platform,
-        configAtoms: makeMockConfigAtoms(overrides.settings),
-        atoms: makeMockGlobalAtoms(overrides.settings, overrides.atoms),
         isDev: () => overrides.isDev ?? true,
         isWindows: () => platform === PlatformWindows,
         isMacOS: () => platform === PlatformMacOS,
@@ -178,6 +190,9 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             ((menu, e) => {
                 console.log("[mock showContextMenu]", menu, e);
             }),
+        getLocalHostDisplayNameAtom: () => {
+            return localHostDisplayNameAtom;
+        },
         getConnStatusAtom: (conn: string) => {
             if (!connStatusAtomCache.has(conn)) {
                 const connStatus = overrides.connStatus?.[conn] ?? makeDefaultConnStatus(conn);
@@ -185,19 +200,43 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return connStatusAtomCache.get(conn);
         },
-        getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
-            if (!waveObjectAtomCache.has(oref)) {
+        wos: {
+            getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
+                const cacheKey = oref + ":value";
+                if (!waveObjectAtomCache.has(cacheKey)) {
+                    const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+                    waveObjectAtomCache.set(cacheKey, atom(obj));
+                }
+                return waveObjectAtomCache.get(cacheKey) as PrimitiveAtom<T>;
+            },
+            getWaveObjectLoadingAtom: (oref: string) => {
+                const cacheKey = oref + ":loading";
+                if (!waveObjectAtomCache.has(cacheKey)) {
+                    waveObjectAtomCache.set(cacheKey, atom(false));
+                }
+                return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+            },
+            isWaveObjectNullAtom: (oref: string) => {
+                const cacheKey = oref + ":isnull";
+                if (!waveObjectAtomCache.has(cacheKey)) {
+                    waveObjectAtomCache.set(
+                        cacheKey,
+                        atom((get) => get(env.wos.getWaveObjectAtom(oref)) == null)
+                    );
+                }
+                return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+            },
+            useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
                 const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                waveObjectAtomCache.set(oref, atom(obj));
-            }
-            return waveObjectAtomCache.get(oref) as PrimitiveAtom<T>;
+                return [obj, false];
+            },
         },
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
             const cacheKey = blockId + "#meta-" + key;
             if (!blockMetaKeyAtomCache.has(cacheKey)) {
                 const metaAtom = atom<MetaType[T]>((get) => {
                     const blockORef = "block:" + blockId;
-                    const blockAtom = env.getWaveObjectAtom<Block>(blockORef);
+                    const blockAtom = env.wos.getWaveObjectAtom<Block>(blockORef);
                     const blockData = get(blockAtom);
                     return blockData?.meta?.[key] as MetaType[T];
                 });
@@ -205,6 +244,21 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return blockMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
         },
-    };
+        getConnConfigKeyAtom: <T extends keyof ConnKeywords>(connName: string, key: T) => {
+            const cacheKey = connName + "#conn-" + key;
+            if (!connConfigKeyAtomCache.has(cacheKey)) {
+                const keyAtom = atom<ConnKeywords[T]>((get) => {
+                    const fullConfig = get(atoms.fullConfigAtom);
+                    return fullConfig.connections?.[connName]?.[key];
+                });
+                connConfigKeyAtomCache.set(cacheKey, keyAtom);
+            }
+            return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
+        },
+        mockTabModel: null as TabModel,
+    } as MockWaveEnv;
+    if (overrides.tabId != null) {
+        env.mockTabModel = new TabModel(overrides.tabId, env);
+    }
     return env;
 }
