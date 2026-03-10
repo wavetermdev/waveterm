@@ -14,7 +14,7 @@ export type BlockEnv = {
         modalOpen: WaveEnv["atoms"]["modalOpen"];
         controlShiftDelayAtom: WaveEnv["atoms"]["controlShiftDelayAtom"];
     };
-    api: {
+    electron: {
         openExternal: WaveEnv["electron"]["openExternal"];
     };
     rpc: {
