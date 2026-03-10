@@ -218,17 +218,44 @@ function loadAndPinWaveObject<T extends WaveObj>(oref: string): Promise<T> {
     return wov.pendingPromise;
 }
 
+const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
+
 function getWaveObjectAtom<T extends WaveObj>(oref: string): Atom<T> {
+    const cacheKey = oref + ":value";
+    let cachedAtom = waveObjectDerivedAtomCache.get(cacheKey) as Atom<T>;
+    if (cachedAtom != null) {
+        return cachedAtom;
+    }
     const wov = getWaveObjectValue<T>(oref);
-    return atom((get) => get(wov.dataAtom).value);
+    cachedAtom = atom((get) => get(wov.dataAtom).value);
+    waveObjectDerivedAtomCache.set(cacheKey, cachedAtom);
+    return cachedAtom;
 }
 
 function getWaveObjectLoadingAtom(oref: string): Atom<boolean> {
+    const cacheKey = oref + ":loading";
+    let cachedAtom = waveObjectDerivedAtomCache.get(cacheKey) as Atom<boolean>;
+    if (cachedAtom != null) {
+        return cachedAtom;
+    }
     const wov = getWaveObjectValue(oref);
-    return atom((get) => {
+    cachedAtom = atom((get) => {
         const dataValue = get(wov.dataAtom);
         return dataValue.loading;
     });
+    waveObjectDerivedAtomCache.set(cacheKey, cachedAtom);
+    return cachedAtom;
+}
+
+function isWaveObjectNullAtom(oref: string): Atom<boolean> {
+    const cacheKey = oref + ":isnull";
+    let cachedAtom = waveObjectDerivedAtomCache.get(cacheKey) as Atom<boolean>;
+    if (cachedAtom != null) {
+        return cachedAtom;
+    }
+    cachedAtom = atom((get) => get(getWaveObjectAtom(oref)) == null);
+    waveObjectDerivedAtomCache.set(cacheKey, cachedAtom);
+    return cachedAtom;
 }
 
 function useWaveObjectValue<T extends WaveObj>(oref: string): [T, boolean] {
@@ -320,6 +347,7 @@ export {
     getObjectValue,
     getWaveObjectAtom,
     getWaveObjectLoadingAtom,
+    isWaveObjectNullAtom,
     loadAndPinWaveObject,
     makeORef,
     mockObjectForPreview,

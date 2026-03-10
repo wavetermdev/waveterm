@@ -22,11 +22,7 @@ import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
-import {
-    getBlockComponentModel,
-    registerBlockComponentModel,
-    unregisterBlockComponentModel,
-} from "@/store/global";
+import { getBlockComponentModel, registerBlockComponentModel, unregisterBlockComponentModel } from "@/store/global";
 import { makeORef } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
@@ -40,6 +36,7 @@ import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
 import "./block.scss";
+import { BlockEnv } from "./blockenv";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
@@ -109,7 +106,7 @@ function makeDefaultViewModel(blockId: string, viewType: string, waveEnv: WaveEn
 }
 
 const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
-    const waveEnv = useWaveEnv();
+    const waveEnv = useWaveEnv<BlockEnv>();
     const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     if (!blockData) {
         return null;
@@ -126,7 +123,7 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 });
 
 const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
-    const waveEnv = useWaveEnv();
+    const waveEnv = useWaveEnv<BlockEnv>();
     const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -149,7 +146,7 @@ const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
 
 const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     counterInc("render-BlockFull");
-    const waveEnv = useWaveEnv();
+    const waveEnv = useWaveEnv<BlockEnv>();
     const focusElemRef = useRef<HTMLInputElement>(null);
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -312,16 +309,16 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     );
 });
 
-const Block = memo((props: BlockProps) => {
+const BlockInner = memo((props: BlockProps & { viewType: string }) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const tabModel = useTabModel();
     const waveEnv = useWaveEnv();
-    const [blockData, loading] = waveEnv.useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
-    if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel, waveEnv);
+    if (viewModel == null) {
+        // viewModel gets the full waveEnv
+        viewModel = makeViewModel(props.nodeModel.blockId, props.viewType, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
@@ -330,25 +327,33 @@ const Block = memo((props: BlockProps) => {
             viewModel?.dispose?.();
         };
     }, []);
-    if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
-        return null;
-    }
     if (props.preview) {
         return <BlockPreview {...props} viewModel={viewModel} />;
     }
     return <BlockFull {...props} viewModel={viewModel} />;
 });
+BlockInner.displayName = "BlockInner";
 
-const SubBlock = memo((props: SubBlockProps) => {
+const Block = memo((props: BlockProps) => {
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const isNull = useAtomValue(waveEnv.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
+    const viewType = useAtomValue(waveEnv.getBlockMetaKeyAtom(props.nodeModel.blockId, "view")) ?? "";
+    if (isNull || isBlank(props.nodeModel.blockId)) {
+        return null;
+    }
+    return <BlockInner key={props.nodeModel.blockId + ":" + viewType} {...props} viewType={viewType} />;
+});
+
+const SubBlockInner = memo((props: SubBlockProps & { viewType: string }) => {
     counterInc("render-Block");
-    counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
+    counterInc("render-Block-" + props.nodeModel.blockId?.substring(0, 8));
     const tabModel = useTabModel();
     const waveEnv = useWaveEnv();
-    const [blockData, loading] = waveEnv.useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
-    if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel, waveEnv);
+    if (viewModel == null) {
+        // viewModel gets the full waveEnv
+        viewModel = makeViewModel(props.nodeModel.blockId, props.viewType, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
@@ -357,10 +362,18 @@ const SubBlock = memo((props: SubBlockProps) => {
             viewModel?.dispose?.();
         };
     }, []);
-    if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
+    return <BlockSubBlock {...props} viewModel={viewModel} />;
+});
+SubBlockInner.displayName = "SubBlockInner";
+
+const SubBlock = memo((props: SubBlockProps) => {
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const isNull = useAtomValue(waveEnv.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
+    const viewType = useAtomValue(waveEnv.getBlockMetaKeyAtom(props.nodeModel.blockId, "view")) ?? "";
+    if (isNull || isBlank(props.nodeModel.blockId)) {
         return null;
     }
-    return <BlockSubBlock {...props} viewModel={viewModel} />;
+    return <SubBlockInner key={props.nodeModel.blockId + ":" + viewType} {...props} viewType={viewType} />;
 });
 
 export { Block, SubBlock };

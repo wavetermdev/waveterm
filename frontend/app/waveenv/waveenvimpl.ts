@@ -33,6 +33,8 @@ export function makeWaveEnvImpl(): WaveEnv {
         },
         getConnStatusAtom,
         getWaveObjectAtom: WOS.getWaveObjectAtom,
+        getWaveObjectLoadingAtom: WOS.getWaveObjectLoadingAtom,
+        isWaveObjectNullAtom: WOS.isWaveObjectNullAtom,
         useWaveObjectValue: WOS.useWaveObjectValue,
         getBlockMetaKeyAtom,
     };

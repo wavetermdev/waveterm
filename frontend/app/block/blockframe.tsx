@@ -8,23 +8,23 @@ import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
 import { getBlockComponentModel, globalStore, useBlockAtom } from "@/app/store/global";
 import { useTabModel } from "@/app/store/tab-model";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { NodeModel } from "@/layout/index";
+import { makeORef } from "@/store/wos";
 import * as util from "@/util/util";
 import { makeIconClass } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
-import { useWaveEnv } from "@/app/waveenv/waveenv";
-import { makeORef } from "@/store/wos";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
+import { BlockEnv } from "./blockenv";
 import { BlockFrameProps } from "./blocktypes";
 
 const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
-    const waveEnv = useWaveEnv();
+    const waveEnv = useWaveEnv<BlockEnv>();
     const tabModel = useTabModel();
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
@@ -32,7 +32,10 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isLayoutMode = jotai.useAtomValue(waveEnv.atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(waveEnv.settingsAtoms["app:showoverlayblocknums"]) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
-    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const frameActiveBorderColor = jotai.useAtomValue(
+        waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
+    );
+    const frameBorderColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:bordercolor"));
     const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
     const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
     const style: React.CSSProperties = {};
@@ -42,15 +45,15 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         if (tabActiveBorderColor) {
             style.borderColor = tabActiveBorderColor;
         }
-        if (blockData?.meta?.["frame:activebordercolor"]) {
-            style.borderColor = blockData.meta["frame:activebordercolor"];
+        if (frameActiveBorderColor) {
+            style.borderColor = frameActiveBorderColor;
         }
     } else {
         if (tabBorderColor) {
             style.borderColor = tabBorderColor;
         }
-        if (blockData?.meta?.["frame:bordercolor"]) {
-            style.borderColor = blockData.meta["frame:bordercolor"];
+        if (frameBorderColor) {
+            style.borderColor = frameBorderColor;
         }
         if (isEphemeral && !style.borderColor) {
             style.borderColor = "rgba(255, 255, 255, 0.7)";
@@ -90,12 +93,12 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
 });
 
 const BlockFrame_Default_Component = (props: BlockFrameProps) => {
-    const waveEnv = useWaveEnv();
+    const waveEnv = useWaveEnv<BlockEnv>();
     const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
-    const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const aiPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
-    const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const metaView = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view"));
+    const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(metaView);
     const customBg = util.useAtomValueSafe(viewModel?.blockBg);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const changeConnModalAtom = useBlockAtom(nodeModel.blockId, "changeConn", () => {
@@ -109,6 +112,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const [magnifiedBlockOpacityAtom] = React.useState(() => waveEnv.settingsAtoms["window:magnifiedblockopacity"]);
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
+    const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
+    const iconColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "icon:color"));
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
     React.useEffect(() => {
@@ -130,23 +135,20 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     }, [manageConnection]);
     React.useEffect(() => {
         // on mount, if manageConnection, call ConnEnsure
-        if (!manageConnection || blockData == null || preview) {
+        if (!manageConnection || preview) {
             return;
         }
-        const connName = blockData?.meta?.connection;
         if (!util.isLocalConnName(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
-            RpcApi.ConnEnsureCommand(
-                TabRpcClient,
-                { connname: connName, logblockid: nodeModel.blockId },
-                { timeout: 60000 }
-            ).catch((e) => {
-                console.log("error ensuring connection", nodeModel.blockId, connName, e);
-            });
+            waveEnv.rpc
+                .ConnEnsureCommand(TabRpcClient, { connname: connName, logblockid: nodeModel.blockId }, { timeout: 60000 })
+                .catch((e) => {
+                    console.log("error ensuring connection", nodeModel.blockId, connName, e);
+                });
         }
-    }, [manageConnection, blockData]);
+    }, [manageConnection, connName]);
 
-    const viewIconElem = getViewIconElem(viewIconUnion, blockData);
+    const viewIconElem = getViewIconElem(viewIconUnion, iconColor);
     let innerStyle: React.CSSProperties = {};
     if (!preview) {
         innerStyle = computeBgStyleFromMeta(customBg);
@@ -207,7 +209,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
 const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 
 const BlockFrame = React.memo((props: BlockFrameProps) => {
-    const waveEnv = useWaveEnv();
+    const waveEnv = useWaveEnv<BlockEnv>();
     const tabModel = useTabModel();
     const blockId = props.nodeModel.blockId;
     const [blockData] = waveEnv.useWaveObjectValue<Block>(makeORef("block", blockId));

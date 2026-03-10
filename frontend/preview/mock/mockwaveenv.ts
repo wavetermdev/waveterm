@@ -161,7 +161,7 @@ export function applyMockEnvOverrides(env: WaveEnv, newOverrides: MockEnv): Mock
 export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
-    const waveObjectAtomCache = new Map<string, PrimitiveAtom<WaveObj>>();
+    const waveObjectAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
     const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
     const env = {
@@ -190,11 +190,26 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             return connStatusAtomCache.get(conn);
         },
         getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
-            if (!waveObjectAtomCache.has(oref)) {
+            const cacheKey = oref + ":value";
+            if (!waveObjectAtomCache.has(cacheKey)) {
                 const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                waveObjectAtomCache.set(oref, atom(obj));
+                waveObjectAtomCache.set(cacheKey, atom(obj));
             }
-            return waveObjectAtomCache.get(oref) as PrimitiveAtom<T>;
+            return waveObjectAtomCache.get(cacheKey) as PrimitiveAtom<T>;
+        },
+        getWaveObjectLoadingAtom: (oref: string) => {
+            const cacheKey = oref + ":loading";
+            if (!waveObjectAtomCache.has(cacheKey)) {
+                waveObjectAtomCache.set(cacheKey, atom(false));
+            }
+            return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+        },
+        isWaveObjectNullAtom: (oref: string) => {
+            const cacheKey = oref + ":isnull";
+            if (!waveObjectAtomCache.has(cacheKey)) {
+                waveObjectAtomCache.set(cacheKey, atom((get) => get(env.getWaveObjectAtom(oref)) == null));
+            }
+            return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
         },
         useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
             const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;

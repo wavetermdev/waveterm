@@ -66,7 +66,7 @@ export function processTitleString(titleString: string): React.ReactNode[] {
     const tagRegex = /<(\/)?([a-z]+)(?::([#a-z0-9@-]+))?>/g;
     let lastIdx = 0;
     let match;
-    let partsStack = [[]];
+    const partsStack = [[]];
     while ((match = tagRegex.exec(titleString)) != null) {
         const lastPart = partsStack[partsStack.length - 1];
         const before = titleString.substring(lastIdx, match.index);
@@ -98,7 +98,7 @@ export function processTitleString(titleString: string): React.ReactNode[] {
             if (!tagParam.match(colorRegex)) {
                 continue;
             }
-            let children = [];
+            const children = [];
             const rtag = React.createElement("span", { key: match.index, style: { color: tagParam } }, children);
             lastPart.push(rtag);
             partsStack.push(children);
@@ -112,7 +112,7 @@ export function processTitleString(titleString: string): React.ReactNode[] {
                 partsStack.pop();
                 continue;
             }
-            let children = [];
+            const children = [];
             const rtag = React.createElement(tagName, { key: match.index }, children);
             lastPart.push(rtag);
             partsStack.push(children);
@@ -123,12 +123,12 @@ export function processTitleString(titleString: string): React.ReactNode[] {
     return partsStack[0];
 }
 
-export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.ReactNode {
+export function getBlockHeaderIcon(blockIcon: string, overrideIconColor?: string): React.ReactNode {
     let blockIconElem: React.ReactNode = null;
     if (util.isBlank(blockIcon)) {
         blockIcon = "square";
     }
-    let iconColor = blockData?.meta?.["icon:color"];
+    let iconColor = overrideIconColor;
     if (iconColor && !iconColor.match(colorRegex)) {
         iconColor = null;
     }
@@ -145,17 +145,11 @@ export function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.R
 
 export function getViewIconElem(
     viewIconUnion: string | IconButtonDecl,
-    blockData: Block,
-    iconColor?: string
+    overrideIconColor?: string
 ): React.ReactElement {
     if (viewIconUnion == null || typeof viewIconUnion === "string") {
         const viewIcon = viewIconUnion as string;
-        const style: React.CSSProperties = iconColor ? { color: iconColor, opacity: 1.0 } : {};
-        return (
-            <div className="block-frame-view-icon" style={style}>
-                {getBlockHeaderIcon(viewIcon, blockData)}
-            </div>
-        );
+        return <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, overrideIconColor)}</div>;
     } else {
         return <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
     }
