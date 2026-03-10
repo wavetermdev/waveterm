@@ -343,6 +343,12 @@ export class TermWrap {
                     if (!globalStore.get(copyOnSelectAtom)) {
                         return;
                     }
+                    // Don't copy-on-select when the search bar has focus — navigating
+                    // search results changes the terminal selection programmatically.
+                    const active = document.activeElement;
+                    if (active != null && active.closest(".search-container") != null) {
+                        return;
+                    }
                     const selectedText = this.terminal.getSelection();
                     if (selectedText.length > 0) {
                         navigator.clipboard.writeText(selectedText);
