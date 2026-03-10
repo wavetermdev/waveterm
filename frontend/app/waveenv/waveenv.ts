@@ -24,7 +24,10 @@ export type SettingsKeyAtomFnType<Keys extends keyof SettingsType = keyof Settin
 export type WaveEnv = {
     electron: ElectronApi;
     rpc: RpcApiType;
+    platform: NodeJS.Platform;
     isDev: () => boolean;
+    isWindows: () => boolean;
+    isMacOS: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;

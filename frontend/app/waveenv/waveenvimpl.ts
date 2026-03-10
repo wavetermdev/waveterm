@@ -15,13 +15,17 @@ import {
 } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
+import { isMacOS, isWindows, PLATFORM } from "@/util/platformutil";
 
 export function makeWaveEnvImpl(): WaveEnv {
     return {
         electron: (window as any).api,
         rpc: RpcApi,
         getSettingsKeyAtom,
+        platform: PLATFORM,
         isDev,
+        isWindows,
+        isMacOS,
         atoms,
         createBlock,
         showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => {

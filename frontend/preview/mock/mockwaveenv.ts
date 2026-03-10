@@ -5,6 +5,7 @@ import { makeDefaultConnStatus } from "@/app/store/global";
 import { TabModel } from "@/app/store/tab-model";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
+import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
 import { previewElectronApi } from "./preview-electron-api";
@@ -16,6 +17,7 @@ type RpcOverrides = {
 export type MockEnv = {
     isDev?: boolean;
     tabId?: string;
+    platform?: NodeJS.Platform;
     settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
     atoms?: Partial<GlobalAtomsType>;
@@ -39,6 +41,7 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     return {
         isDev: overrides.isDev ?? base.isDev,
         tabId: overrides.tabId ?? base.tabId,
+        platform: overrides.platform ?? base.platform,
         settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
         atoms: overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
@@ -149,6 +152,7 @@ export function applyMockEnvOverrides(env: WaveEnv, newOverrides: MockEnv): Mock
 
 export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
+    const platform = overrides.platform ?? PlatformMacOS;
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
     const waveObjectAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
@@ -156,11 +160,18 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
     const env = {
         mockEnv: overrides,
-        electron: overrides.electron ? { ...previewElectronApi, ...overrides.electron } : previewElectronApi,
+        electron: {
+            ...previewElectronApi,
+            getPlatform: () => platform,
+            ...overrides.electron,
+        },
         rpc: makeMockRpc(overrides.rpc),
         atoms,
         getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom, overrides.settings),
+        platform,
         isDev: () => overrides.isDev ?? true,
+        isWindows: () => platform === PlatformWindows,
+        isMacOS: () => platform === PlatformMacOS,
         createBlock:
             overrides.createBlock ??
             ((blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
