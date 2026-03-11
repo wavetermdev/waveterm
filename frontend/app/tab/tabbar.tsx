@@ -110,13 +110,13 @@ const ConfigErrorMessage = () => {
 
 const ConfigErrorIcon = () => {
     const env = useWaveEnv<TabBarEnv>();
-    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
+    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
 
-    function handleClick() {
+    const handleClick = useCallback(() => {
         modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
-    }
+    }, []);
 
-    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
+    if (!hasConfigErrors) {
         return null;
     }
     return (
@@ -311,6 +311,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         saveTabsPositionDebounced();
     }, [tabIds, newTabId, isFullScreen]);
 
+    // update layout on reinit version
     const reinitVersion = useAtomValue(env.atoms.reinitVersion);
     useEffect(() => {
         if (reinitVersion > 0) {
@@ -318,13 +319,15 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     }, [reinitVersion]);
 
+    // update layout on resize
     useEffect(() => {
-        window.addEventListener("resize", () => handleResizeTabs());
+        window.addEventListener("resize", handleResizeTabs);
         return () => {
-            window.removeEventListener("resize", () => handleResizeTabs());
+            window.removeEventListener("resize", handleResizeTabs);
         };
     }, [handleResizeTabs]);
 
+    // update layout on changed tabIds, tabsLoaded, or newTabId
     useEffect(() => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);

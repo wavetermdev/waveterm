@@ -9,17 +9,20 @@ export type TabBarEnv = WaveEnvSubset<{
         closeTab: WaveEnv["electron"]["closeTab"];
         setActiveTab: WaveEnv["electron"]["setActiveTab"];
         showWorkspaceAppMenu: WaveEnv["electron"]["showWorkspaceAppMenu"];
+        installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
     };
     rpc: {
         UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
+        hasConfigErrors: WaveEnv["atoms"]["hasConfigErrors"];
         staticTabId: WaveEnv["atoms"]["staticTabId"];
         isFullScreen: WaveEnv["atoms"]["isFullScreen"];
         zoomFactorAtom: WaveEnv["atoms"]["zoomFactorAtom"];
         settingsAtom: WaveEnv["atoms"]["settingsAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
+        updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
     };
     wos: WaveEnv["wos"];
     getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "tab:confirmclose">;

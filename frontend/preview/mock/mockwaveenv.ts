@@ -3,8 +3,8 @@
 
 import { makeDefaultConnStatus } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { handleWaveEvent } from "@/app/store/wps";
 import { AllServiceTypes } from "@/app/store/services";
+import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
@@ -143,6 +143,10 @@ function makeMockGlobalAtoms(
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
         hasCustomAIPresetsAtom: atom(false),
+        hasConfigErrors: atom((get) => {
+            const c = get(fullConfigAtom);
+            return c?.configerrors != null && c.configerrors.length > 0;
+        }),
         staticTabId: atom(tabId ?? ""),
         isFullScreen: atom(false) as any,
         zoomFactorAtom: atom(1.0) as any,

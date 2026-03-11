@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { loadBadges, LoadBadgesEnv } from "@/app/store/badge";
-import { getAtoms } from "@/app/store/global-atoms";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabBarEnv } from "@/app/tab/tabbarenv";
@@ -190,7 +189,7 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
     const [isFullScreen, setIsFullScreen] = useAtom(env.atoms.isFullScreen);
     const [zoomFactor, setZoomFactor] = useAtom(env.atoms.zoomFactorAtom);
     const [fullConfig, setFullConfig] = useAtom(env.atoms.fullConfigAtom);
-    const [updaterStatus, setUpdaterStatus] = useAtom(getAtoms().updaterStatusAtom);
+    const [updaterStatus, setUpdaterStatus] = useAtom(env.atoms.updaterStatusAtom);
     const workspace = useAtomValue(env.wos.getWaveObjectAtom<Workspace>(`workspace:${MockWorkspaceId}`));
 
     useEffect(() => {

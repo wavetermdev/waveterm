@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/element/tooltip";
-import { atoms, getApi } from "@/store/global";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { TabBarEnv } from "./tabbarenv";
 import { useAtomValue } from "jotai";
-import { Download } from "lucide-react";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 
 const UpdateStatusBannerComponent = () => {
-    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
+    const env = useWaveEnv<TabBarEnv>();
+    const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
     const [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
 
@@ -48,9 +49,9 @@ const UpdateStatusBannerComponent = () => {
         }
     }, [appUpdateStatus]);
 
-    function onClick() {
-        getApi().installAppUpdate();
-    }
+    const onClick = useCallback(() => {
+        env.electron.installAppUpdate();
+    }, [env]);
 
     if (!updateStatusMessage) {
         return null;
@@ -67,7 +68,7 @@ const UpdateStatusBannerComponent = () => {
             divClassName={`flex items-center gap-1 px-2 mb-1 h-[22px] text-xs font-medium text-black bg-accent rounded-sm transition-all ${isReady ? "cursor-pointer hover:bg-[var(--button-green-border-color)]" : ""}`}
             divStyle={{ WebkitAppRegion: "no-drag" } as any}
         >
-            <Download size={12} />
+            <i className="fa fa-download" />
             {updateStatusMessage}
         </Tooltip>
     );

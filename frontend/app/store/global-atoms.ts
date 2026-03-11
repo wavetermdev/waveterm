@@ -71,6 +71,10 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return false;
     }) as Atom<boolean>;
+    const hasConfigErrors = atom((get) => {
+        const fullConfig = get(fullConfigAtom);
+        return fullConfig?.configerrors != null && fullConfig.configerrors.length > 0;
+    }) as Atom<boolean>;
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
@@ -133,6 +137,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         waveaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
+        hasConfigErrors,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
         zoomFactorAtom,
