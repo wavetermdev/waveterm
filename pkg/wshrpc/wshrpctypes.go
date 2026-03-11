@@ -94,6 +94,7 @@ type WshRpcInterface interface {
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
+	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions

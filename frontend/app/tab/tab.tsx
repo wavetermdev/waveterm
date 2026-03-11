@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getTabBadgeAtom, sortBadgesForTab } from "@/app/store/badge";
-import { atoms, getOrefMetaKeyAtom, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
-import { RpcApi } from "@/app/store/wshclientapi";
+import { getOrefMetaKeyAtom, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WaveEnv, WaveEnvSubset, useWaveEnv } from "@/app/waveenv/waveenv";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { validateCssColor } from "@/util/color-validator";
@@ -13,9 +13,20 @@ import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { v7 as uuidv7 } from "uuid";
-import { ObjectService } from "../store/services";
-import { makeORef, useWaveObjectValue } from "../store/wos";
+import { makeORef } from "../store/wos";
 import "./tab.scss";
+
+type TabEnv = WaveEnvSubset<{
+    rpc: {
+        ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
+        SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
+        UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
+    };
+    atoms: {
+        fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
+    };
+    wos: WaveEnv["wos"];
+}>;
 
 interface TabVProps {
     tabId: string;
@@ -253,7 +264,8 @@ const FlagColors: { label: string; value: string }[] = [
 function buildTabContextMenu(
     id: string,
     renameRef: React.RefObject<(() => void) | null>,
-    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void
+    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void,
+    env: TabEnv
 ): ContextMenuItem[] {
     const menu: ContextMenuItem[] = [];
     menu.push(
@@ -271,17 +283,21 @@ function buildTabContextMenu(
             label: "None",
             type: "checkbox",
             checked: currentFlagColor == null,
-            click: () => fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": null })),
+            click: () =>
+                fireAndForget(() => env.rpc.SetMetaCommand(TabRpcClient, { oref: tabORef, meta: { "tab:flagcolor": null } })),
         },
         ...FlagColors.map((fc) => ({
             label: fc.label,
             type: "checkbox" as const,
             checked: currentFlagColor === fc.value,
-            click: () => fireAndForget(() => ObjectService.UpdateObjectMeta(tabORef, { "tab:flagcolor": fc.value })),
+            click: () =>
+                fireAndForget(() =>
+                    env.rpc.SetMetaCommand(TabRpcClient, { oref: tabORef, meta: { "tab:flagcolor": fc.value } })
+                ),
         })),
     ];
     menu.push({ label: "Flag Tab", type: "submenu", submenu: flagSubmenu }, { type: "separator" });
-    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+    const fullConfig = globalStore.get(env.atoms.fullConfigAtom);
     const bgPresets: string[] = [];
     for (const key in fullConfig?.presets ?? {}) {
         if (key.startsWith("bg@") && fullConfig.presets[key] != null) {
@@ -303,8 +319,8 @@ function buildTabContextMenu(
                 label: preset["display:name"] ?? presetName,
                 click: () =>
                     fireAndForget(async () => {
-                        await ObjectService.UpdateObjectMeta(oref, preset);
-                        RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                        await env.rpc.SetMetaCommand(TabRpcClient, { oref, meta: preset });
+                        env.rpc.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
                         recordTEvent("action:settabtheme");
                     }),
             });
@@ -330,7 +346,8 @@ interface TabProps {
 
 const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, showDivider, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
-    const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
+    const env = useWaveEnv<TabEnv>();
+    const [tabData, _] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", id));
     const badges = useAtomValue(getTabBadgeAtom(id));
 
     const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
@@ -361,18 +378,18 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const handleContextMenu = useCallback(
         (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             e.preventDefault();
-            const menu = buildTabContextMenu(id, renameRef, onClose);
+            const menu = buildTabContextMenu(id, renameRef, onClose, env);
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [id, onClose]
+        [id, onClose, env]
     );
 
     const handleRename = useCallback(
         (newName: string) => {
-            fireAndForget(() => ObjectService.UpdateTabName(id, newName));
+            fireAndForget(() => env.rpc.UpdateTabNameCommand(TabRpcClient, id, newName));
             setTimeout(() => refocusNode(null), 10);
         },
-        [id]
+        [id, env]
     );
 
     return (
