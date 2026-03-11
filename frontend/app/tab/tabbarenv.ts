@@ -21,7 +21,9 @@ export type TabBarEnv = WaveEnvSubset<{
         settingsAtom: WaveEnv["atoms"]["settingsAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
     };
+    wos: WaveEnv["wos"];
     getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "tab:confirmclose">;
+    mockSetWaveObj: WaveEnv["mockSetWaveObj"];
     isWindows: WaveEnv["isWindows"];
     isMacOS: WaveEnv["isMacOS"];
 }>;

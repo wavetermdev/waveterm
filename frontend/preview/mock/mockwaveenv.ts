@@ -130,7 +130,7 @@ function makeMockGlobalAtoms(
 
 type MockWosFns = {
     getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>;
-    mockSetWaveObj: (oref: string, obj: WaveObj) => void;
+    mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
 };
 
 export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
@@ -237,7 +237,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
         },
-        mockSetWaveObj: (oref: string, obj: WaveObj) => {
+        mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => {
             if (!waveObjectValueAtomCache.has(oref)) {
                 waveObjectValueAtomCache.set(oref, atom(null as WaveObj));
             }
