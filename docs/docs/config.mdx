@@ -81,6 +81,7 @@ wsh editconfig
 | editor:fontsize                      | float64  | set the font size for the editor (defaults to 12px)                                                                                                                                                                                                           |
 | editor:inlinediff                    | bool     | set to true to show diffs inline instead of side-by-side, false for side-by-side (defaults to undefined which uses Monaco's responsive behavior)                                                                                                              |
 | preview:showhiddenfiles              | bool     | set to false to disable showing hidden files in the directory preview (defaults to true)                                                                                                                                                                      |
+| preview:defaultsort <VersionBadge version="v0.14.2" />                 | string   | sets the default sort column for directory preview. `"name"` (default) sorts alphabetically by name ascending; `"modtime"` sorts by last modified time descending (newest first)                                                                               |
 | markdown:fontsize                    | float64  | font size for the normal text when rendering markdown in preview. headers are scaled up from this size, (default 14px)                                                                                                                                        |
 | markdown:fixedfontsize               | float64  | font size for the code blocks when rendering markdown in preview (default is 12px)                                                                                                                                                                            |
 | web:openlinksinternally              | bool     | set to false to open web links in external browser                                                                                                                                                                                                            |
@@ -154,7 +155,8 @@ For reference, this is the current default configuration (v0.14.0):
     "term:copyonselect": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,
-    "waveai:defaultmode": "waveai@balanced"
+    "waveai:defaultmode": "waveai@balanced",
+    "preview:defaultsort": "name"
 }
 ```
 
