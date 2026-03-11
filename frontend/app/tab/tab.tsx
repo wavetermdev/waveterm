@@ -6,7 +6,6 @@ import { getOrefMetaKeyAtom, globalStore, recordTEvent, refocusNode } from "@/ap
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveEnv, WaveEnvSubset, useWaveEnv } from "@/app/waveenv/waveenv";
 import { Button } from "@/element/button";
-import { ContextMenuModel } from "@/store/contextmenu";
 import { validateCssColor } from "@/util/color-validator";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
@@ -26,6 +25,7 @@ type TabEnv = WaveEnvSubset<{
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };
     wos: WaveEnv["wos"];
+    showContextMenu: WaveEnv["showContextMenu"];
 }>;
 
 interface TabVProps {
@@ -284,7 +284,9 @@ function buildTabContextMenu(
             type: "checkbox",
             checked: currentFlagColor == null,
             click: () =>
-                fireAndForget(() => env.rpc.SetMetaCommand(TabRpcClient, { oref: tabORef, meta: { "tab:flagcolor": null } })),
+                fireAndForget(() =>
+                    env.rpc.SetMetaCommand(TabRpcClient, { oref: tabORef, meta: { "tab:flagcolor": null } })
+                ),
         },
         ...FlagColors.map((fc) => ({
             label: fc.label,
@@ -379,7 +381,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             e.preventDefault();
             const menu = buildTabContextMenu(id, renameRef, onClose, env);
-            ContextMenuModel.getInstance().showContextMenu(menu, e);
+            env.showContextMenu(menu, e);
         },
         [id, onClose, env]
     );

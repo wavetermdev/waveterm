@@ -8,7 +8,7 @@ import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
-import { Atom, atom, PrimitiveAtom } from "jotai";
+import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
 import { previewElectronApi } from "./preview-electron-api";
 
@@ -290,7 +290,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             },
             useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
                 const objAtom = env.wos.getWaveObjectAtom<T>(oref);
-                return [globalStore.get(objAtom), false];
+                return [useAtomValue(objAtom), false];
             },
         },
         mockSetWaveObj: mockWosFns.mockSetWaveObj,
