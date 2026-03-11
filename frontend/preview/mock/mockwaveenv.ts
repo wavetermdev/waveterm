@@ -31,12 +31,12 @@ import { previewElectronApi } from "./preview-electron-api";
 //   e.g. { "block": { "GetControllerStatus": (blockId) => myStatus } }
 
 type RpcOverrides = {
-    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => Promise<any>;
 };
 
 type ServiceOverrides = {
     [Service: string]: {
-        [Method: string]: (...args: any[]) => any;
+        [Method: string]: (...args: any[]) => Promise<any>;
     };
 };
 
@@ -175,18 +175,18 @@ type MockWosFns = {
 };
 
 export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
-    const dispatchMap = new Map<string, (...args: any[]) => any>();
-    dispatchMap.set("eventpublish", (_client, data: WaveEvent) => {
+    const dispatchMap = new Map<string, (...args: any[]) => Promise<any>>();
+    dispatchMap.set("eventpublish", async (_client, data: WaveEvent) => {
         console.log("[mock eventpublish]", data);
         handleWaveEvent(data);
-        return Promise.resolve(null);
+        return null;
     });
-    dispatchMap.set("getmeta", (_client, data: CommandGetMetaData) => {
+    dispatchMap.set("getmeta", async (_client, data: CommandGetMetaData) => {
         const objAtom = wos.getWaveObjectAtom(data.oref);
         const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
-        return Promise.resolve(current?.meta ?? {});
+        return current?.meta ?? {};
     });
-    dispatchMap.set("setmeta", (_client, data: CommandSetMetaData) => {
+    dispatchMap.set("setmeta", async (_client, data: CommandSetMetaData) => {
         const objAtom = wos.getWaveObjectAtom(data.oref);
         const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
         const updatedMeta = { ...(current?.meta ?? {}) };
@@ -199,30 +199,30 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         }
         const updated = { ...current, meta: updatedMeta };
         wos.mockSetWaveObj(data.oref, updated);
-        return Promise.resolve(null);
+        return null;
     });
-    dispatchMap.set("updatetabname", (_client, data: { args: [string, string] }) => {
+    dispatchMap.set("updatetabname", async (_client, data: { args: [string, string] }) => {
         const [tabId, newName] = data.args;
         const tabORef = "tab:" + tabId;
         const objAtom = wos.getWaveObjectAtom(tabORef);
         const current = globalStore.get(objAtom) as Tab;
         const updated = { ...current, name: newName };
         wos.mockSetWaveObj(tabORef, updated);
-        return Promise.resolve(null);
+        return null;
     });
-    dispatchMap.set("updateworkspacetabids", (_client, data: { args: [string, string[]] }) => {
+    dispatchMap.set("updateworkspacetabids", async (_client, data: { args: [string, string[]] }) => {
         const [workspaceId, tabIds] = data.args;
         const wsORef = "workspace:" + workspaceId;
         const objAtom = wos.getWaveObjectAtom(wsORef);
         const current = globalStore.get(objAtom) as Workspace;
         const updated = { ...current, tabids: tabIds };
         wos.mockSetWaveObj(wsORef, updated);
-        return Promise.resolve(null);
+        return null;
     });
     if (overrides) {
         for (const key of Object.keys(overrides) as (keyof RpcOverrides)[]) {
             const cmdName = key.slice(0, -"Command".length).toLowerCase();
-            dispatchMap.set(cmdName, overrides[key] as (...args: any[]) => any);
+            dispatchMap.set(cmdName, overrides[key] as (...args: any[]) => Promise<any>);
         }
     }
     const rpc = new RpcApiType();
@@ -238,7 +238,7 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         async *mockWshRpcStream(_client, command, data, _opts) {
             const fn = dispatchMap.get(command);
             if (fn) {
-                yield* fn(_client, data, _opts);
+                yield await fn(_client, data, _opts);
                 return;
             }
             console.log("[mock rpc stream]", command, data);
@@ -374,7 +374,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => {
             const fn = overrides.services?.[service]?.[method];
             if (fn) {
-                return Promise.resolve(fn(...args));
+                return fn(...args);
             }
             console.log("[mock callBackendService]", service, method, args, noUIContext);
             return Promise.resolve(null);
