@@ -15,11 +15,12 @@ import { previewElectronApi } from "./preview-electron-api";
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
 //
 // RPC calls (handled in makeMockRpc):
-//   - rpc.EventPublishCommand  -- dispatches to handleWaveEvent(); works when the subscriber
-//                                 is purely FE-based (registered via WPS on the frontend)
-//   - rpc.GetMetaCommand       -- reads .meta from the mock WOS atom for the given oref
-//   - rpc.SetMetaCommand       -- writes .meta to the mock WOS atom (null values delete keys)
-//   - rpc.UpdateTabNameCommand -- updates .name on the Tab WaveObj in the mock WOS
+//   - rpc.EventPublishCommand           -- dispatches to handleWaveEvent(); works when the subscriber
+//                                          is purely FE-based (registered via WPS on the frontend)
+//   - rpc.GetMetaCommand                -- reads .meta from the mock WOS atom for the given oref
+//   - rpc.SetMetaCommand                -- writes .meta to the mock WOS atom (null values delete keys)
+//   - rpc.UpdateTabNameCommand          -- updates .name on the Tab WaveObj in the mock WOS
+//   - rpc.UpdateWorkspaceTabIdsCommand  -- updates .tabids on the Workspace WaveObj in the mock WOS
 //
 // Any other RPC call falls through to a console.log and resolves null.
 // Override specific calls via MockEnv.rpc (keys are the Command method names, e.g. "GetMetaCommand").
@@ -166,6 +167,15 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         const current = globalStore.get(objAtom) as Tab;
         const updated = { ...current, name: newName };
         wos.mockSetWaveObj(tabORef, updated);
+        return Promise.resolve(null);
+    });
+    dispatchMap.set("updateworkspacetabids", (_client, data: { args: [string, string[]] }) => {
+        const [workspaceId, tabIds] = data.args;
+        const wsORef = "workspace:" + workspaceId;
+        const objAtom = wos.getWaveObjectAtom(wsORef);
+        const current = globalStore.get(objAtom) as Workspace;
+        const updated = { ...current, tabids: tabIds };
+        wos.mockSetWaveObj(wsORef, updated);
         return Promise.resolve(null);
     });
     if (overrides) {

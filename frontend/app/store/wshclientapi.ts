@@ -936,6 +936,12 @@ export class RpcApiType {
         return client.wshRpcCall("updatetabname", { args: [arg1, arg2] }, opts);
     }
 
+    // command "updateworkspacetabids" [call]
+    UpdateWorkspaceTabIdsCommand(client: WshClient, arg1: string, arg2: string[], opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "updateworkspacetabids", { args: [arg1, arg2] }, opts);
+        return client.wshRpcCall("updateworkspacetabids", { args: [arg1, arg2] }, opts);
+    }
+
     // command "vdomasyncinitiation" [call]
     VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "vdomasyncinitiation", data, opts);

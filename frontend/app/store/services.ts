@@ -166,11 +166,6 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
-    UpdateTabIds(workspaceId: string, tabIds: string[]): Promise<void> {
-        return WOS.callBackendService("workspace", "UpdateTabIds", Array.from(arguments))
-    }
-
-    // @returns object updates
     UpdateWorkspace(workspaceId: string, name: string, icon: string, color: string, applyDefaults: boolean): Promise<void> {
         return WOS.callBackendService("workspace", "UpdateWorkspace", Array.from(arguments))
     }

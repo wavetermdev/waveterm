@@ -927,6 +927,12 @@ func UpdateTabNameCommand(w *wshutil.WshRpc, arg1 string, arg2 string, opts *wsh
 	return err
 }
 
+// command "updateworkspacetabids", wshserver.UpdateWorkspaceTabIdsCommand
+func UpdateWorkspaceTabIdsCommand(w *wshutil.WshRpc, arg1 string, arg2 []string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "updateworkspacetabids", wshrpc.MultiArg{Args: []any{arg1, arg2}}, opts)
+	return err
+}
+
 // command "vdomasyncinitiation", wshserver.VDomAsyncInitiationCommand
 func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.VDomAsyncInitiationRequest, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "vdomasyncinitiation", data, opts)

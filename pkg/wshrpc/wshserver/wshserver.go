@@ -170,6 +170,16 @@ func (ws *WshServer) UpdateTabNameCommand(ctx context.Context, tabId string, new
 	return nil
 }
 
+func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Workspace, OID: workspaceId}
+	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	if err != nil {
+		return fmt.Errorf("error updating workspace tab ids: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
 	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef

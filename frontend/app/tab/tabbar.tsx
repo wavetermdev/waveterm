@@ -4,8 +4,8 @@
 import { Button } from "@/app/element/button";
 import { Tooltip } from "@/app/element/tooltip";
 import { modalsModel } from "@/app/store/modalmodel";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -13,7 +13,7 @@ import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
-import { WorkspaceService } from "../store/services";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { TabBarEnv } from "./tabbarenv";
@@ -488,7 +488,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             // Reset dragging state
             setDraggingTab(null);
             // Update workspace tab ids
-            fireAndForget(() => WorkspaceService.UpdateTabIds(workspace.oid, tabIds));
+            fireAndForget(() => env.rpc.UpdateWorkspaceTabIdsCommand(TabRpcClient, workspace.oid, tabIds));
         }),
         []
     );

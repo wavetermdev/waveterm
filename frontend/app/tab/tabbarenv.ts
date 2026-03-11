@@ -10,6 +10,9 @@ export type TabBarEnv = WaveEnvSubset<{
         setActiveTab: WaveEnv["electron"]["setActiveTab"];
         showWorkspaceAppMenu: WaveEnv["electron"]["showWorkspaceAppMenu"];
     };
+    rpc: {
+        UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
+    };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
         staticTabId: WaveEnv["atoms"]["staticTabId"];
