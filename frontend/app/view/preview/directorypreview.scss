@@ -139,7 +139,7 @@
                         white-space: nowrap;
                         padding: 0.25rem;
                         cursor: default;
-                        font-size: 0.8125rem;
+                        font-size: 12px;
                         flex: 0 0 auto;
 
                         &.col-size {
@@ -154,8 +154,10 @@
                             margin-right: 12px;
                         }
 
-                        .dir-table-modestr {
+                        .dir-table-modestr,
+                        .dir-table-lastmod {
                             font-family: Hack;
+                            font-size: 11px;
                         }
 
                         .dir-table-name {

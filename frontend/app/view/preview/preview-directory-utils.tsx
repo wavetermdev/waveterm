@@ -5,7 +5,6 @@ import { globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget, isBlank } from "@/util/util";
-import { Column } from "@tanstack/react-table";
 import dayjs from "dayjs";
 import React from "react";
 import { type PreviewModel } from "./preview-model";
@@ -40,23 +39,22 @@ export function getBestUnit(bytes: number, si = false, sigfig = 3): string {
     return `${parseFloat(value.toPrecision(sigfig))}${displaySuffixes[unit] ?? unit}`;
 }
 
-export function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number>): string {
-    const fileDatetime = dayjs(new Date(unixMillis));
-    const nowDatetime = dayjs(new Date());
+function padDay(day: number) {
+    return String(day).padStart(2, " ");
+}
 
-    let datePortion: string;
-    if (nowDatetime.isSame(fileDatetime, "date")) {
-        datePortion = "Today";
-    } else if (nowDatetime.subtract(1, "day").isSame(fileDatetime, "date")) {
-        datePortion = "Yesterday";
-    } else {
-        datePortion = dayjs(fileDatetime).format("M/D/YY");
+export function getLastModifiedTime(unixMillis: number): string {
+    const file = dayjs(unixMillis);
+    const now = dayjs();
+
+    const day = padDay(file.date());
+    const time = file.format("HH:mm");
+
+    if (now.isSame(file, "year")) {
+        return `${file.format("MMM")} ${day} ${time}`;
     }
 
-    if (column.getSize() > 120) {
-        return `${datePortion}, ${dayjs(fileDatetime).format("h:mm A")}`;
-    }
-    return datePortion;
+    return `${file.format("YYYY-MM-DD")}`;
 }
 
 const iconRegex = /^[a-z0-9- ]+$/;

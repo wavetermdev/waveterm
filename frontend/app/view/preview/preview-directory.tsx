@@ -159,7 +159,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("modtime", {
                 cell: (info) => (
-                    <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue(), info.column)}</span>
+                    <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue())}</span>
                 ),
                 header: () => <span>Last Modified</span>,
                 size: 91,
@@ -493,15 +493,7 @@ type TableRowProps = {
     handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
 };
 
-function TableRow({
-    model,
-    row,
-    focusIndex,
-    setFocusIndex,
-    setSearch,
-    idx,
-    handleFileContextMenu,
-}: TableRowProps) {
+function TableRow({ model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps) {
     const dirPath = useAtomValue(model.statFilePath);
     const connection = useAtomValue(model.connection);
 
