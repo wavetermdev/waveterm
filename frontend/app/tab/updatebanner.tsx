@@ -5,49 +5,25 @@ import { Tooltip } from "@/element/tooltip";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { TabBarEnv } from "./tabbarenv";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback } from "react";
+
+function getUpdateStatusMessage(status: string): string {
+    switch (status) {
+        case "ready":
+            return "Update";
+        case "downloading":
+            return "Downloading";
+        case "installing":
+            return "Installing";
+        default:
+            return null;
+    }
+}
 
 const UpdateStatusBannerComponent = () => {
     const env = useWaveEnv<TabBarEnv>();
     const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
-    const [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
-    const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
-
-    useEffect(() => {
-        let message: string;
-        const dismissBanner = false;
-        switch (appUpdateStatus) {
-            case "ready":
-                message = "Update";
-                break;
-            case "downloading":
-                message = "Downloading";
-                break;
-            case "installing":
-                message = "Installing";
-                break;
-            default:
-                break;
-        }
-        setUpdateStatusMessage(message);
-
-        // Clear any existing timeout
-        if (dismissBannerTimeout) {
-            clearTimeout(dismissBannerTimeout);
-        }
-
-        // If we want to dismiss the banner, set the new timeout, otherwise clear the state
-        if (dismissBanner) {
-            setDismissBannerTimeout(
-                setTimeout(() => {
-                    setUpdateStatusMessage(null);
-                    setDismissBannerTimeout(null);
-                }, 10000)
-            );
-        } else {
-            setDismissBannerTimeout(null);
-        }
-    }, [appUpdateStatus]);
+    const updateStatusMessage = getUpdateStatusMessage(appUpdateStatus);
 
     const onClick = useCallback(() => {
         env.electron.installAppUpdate();

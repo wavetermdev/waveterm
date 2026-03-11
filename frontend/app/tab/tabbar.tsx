@@ -190,6 +190,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const zoomFactor = useAtomValue(env.atoms.zoomFactorAtom);
     const settings = useAtomValue(env.atoms.settingsAtom);
     const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
+    const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
+    const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
+    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -327,7 +330,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         };
     }, [handleResizeTabs]);
 
-    // update layout on changed tabIds, tabsLoaded, or newTabId
+    // update layout on changed tabIds, tabsLoaded, newTabId, hideAiButton, appUpdateStatus, hasConfigErrors, or zoomFactor
     useEffect(() => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
@@ -338,7 +341,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 prevAllLoadedRef.current = true;
             }
         }
-    }, [tabIds, tabsLoaded, newTabId, saveTabsPosition]);
+    }, [tabIds, tabsLoaded, newTabId, saveTabsPosition, hideAiButton, appUpdateStatus, hasConfigErrors, zoomFactor]);
 
     const getDragDirection = (currentX: number) => {
         let dragDirection: string;
