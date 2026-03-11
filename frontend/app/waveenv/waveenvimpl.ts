@@ -41,5 +41,8 @@ export function makeWaveEnvImpl(): WaveEnv {
         },
         getBlockMetaKeyAtom,
         getConnConfigKeyAtom,
+        mockSetWaveObj: (_oref: string, _obj: WaveObj) => {
+            throw new Error("mockSetWaveObj is only available in the preview server");
+        },
     };
 }

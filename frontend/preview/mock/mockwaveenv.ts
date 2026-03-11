@@ -2,13 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { makeDefaultConnStatus } from "@/app/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
 import { TabModel } from "@/app/store/tab-model";
+import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
 import { previewElectronApi } from "./preview-electron-api";
+
+// What works "out of the box" in the mock environment (no MockEnv overrides needed):
+//
+// RPC calls (handled in makeMockRpc):
+//   - rpc.EventPublishCommand  -- dispatches to handleWaveEvent(); works when the subscriber
+//                                 is purely FE-based (registered via WPS on the frontend)
+//   - rpc.GetMetaCommand       -- reads .meta from the mock WOS atom for the given oref
+//   - rpc.SetMetaCommand       -- writes .meta to the mock WOS atom (null values delete keys)
+//   - rpc.UpdateTabNameCommand -- updates .name on the Tab WaveObj in the mock WOS
+//
+// Any other RPC call falls through to a console.log and resolves null.
+// Override specific calls via MockEnv.rpc (keys are the Command method names, e.g. "GetMetaCommand").
 
 type RpcOverrides = {
     [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
@@ -113,8 +127,47 @@ function makeMockGlobalAtoms(
     return { ...defaults, ...atomOverrides };
 }
 
-export function makeMockRpc(overrides?: RpcOverrides): RpcApiType {
+type MockWosFns = {
+    getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>;
+    mockSetWaveObj: (oref: string, obj: WaveObj) => void;
+};
+
+export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
     const dispatchMap = new Map<string, (...args: any[]) => any>();
+    dispatchMap.set("eventpublish", (_client, data: WaveEvent) => {
+        console.log("[mock eventpublish]", data);
+        handleWaveEvent(data);
+        return Promise.resolve(null);
+    });
+    dispatchMap.set("getmeta", (_client, data: CommandGetMetaData) => {
+        const objAtom = wos.getWaveObjectAtom(data.oref);
+        const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
+        return Promise.resolve(current?.meta ?? {});
+    });
+    dispatchMap.set("setmeta", (_client, data: CommandSetMetaData) => {
+        const objAtom = wos.getWaveObjectAtom(data.oref);
+        const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
+        const updatedMeta = { ...(current?.meta ?? {}) };
+        for (const [key, value] of Object.entries(data.meta)) {
+            if (value === null) {
+                delete updatedMeta[key];
+            } else {
+                (updatedMeta as any)[key] = value;
+            }
+        }
+        const updated = { ...current, meta: updatedMeta };
+        wos.mockSetWaveObj(data.oref, updated);
+        return Promise.resolve(null);
+    });
+    dispatchMap.set("updatetabname", (_client, data: { args: [string, string] }) => {
+        const [tabId, newName] = data.args;
+        const tabORef = "tab:" + tabId;
+        const objAtom = wos.getWaveObjectAtom(tabORef);
+        const current = globalStore.get(objAtom) as Tab;
+        const updated = { ...current, name: newName };
+        wos.mockSetWaveObj(tabORef, updated);
+        return Promise.resolve(null);
+    });
     if (overrides) {
         for (const key of Object.keys(overrides) as (keyof RpcOverrides)[]) {
             const cmdName = key.slice(0, -"Command".length).toLowerCase();
@@ -154,7 +207,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
     const platform = overrides.platform ?? PlatformMacOS;
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
-    const waveObjectAtomCache = new Map<string, Atom<any>>();
+    const waveObjectValueAtomCache = new Map<string, PrimitiveAtom<any>>();
+    const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
     const connConfigKeyAtomCache = new Map<string, Atom<any>>();
     const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
@@ -165,6 +219,21 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         }
         return "user@localhost";
     });
+    const mockWosFns: MockWosFns = {
+        getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
+            if (!waveObjectValueAtomCache.has(oref)) {
+                const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+                waveObjectValueAtomCache.set(oref, atom(obj) as PrimitiveAtom<T>);
+            }
+            return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
+        },
+        mockSetWaveObj: (oref: string, obj: WaveObj) => {
+            if (!waveObjectValueAtomCache.has(oref)) {
+                waveObjectValueAtomCache.set(oref, atom(null as WaveObj));
+            }
+            globalStore.set(waveObjectValueAtomCache.get(oref), obj);
+        },
+    };
     const env = {
         mockEnv: overrides,
         electron: {
@@ -172,7 +241,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             getPlatform: () => platform,
             ...overrides.electron,
         },
-        rpc: makeMockRpc(overrides.rpc),
+        rpc: makeMockRpc(overrides.rpc, mockWosFns),
         atoms,
         getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom, overrides.settings),
         platform,
@@ -201,36 +270,30 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             return connStatusAtomCache.get(conn);
         },
         wos: {
-            getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
-                const cacheKey = oref + ":value";
-                if (!waveObjectAtomCache.has(cacheKey)) {
-                    const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                    waveObjectAtomCache.set(cacheKey, atom(obj));
-                }
-                return waveObjectAtomCache.get(cacheKey) as PrimitiveAtom<T>;
-            },
+            getWaveObjectAtom: mockWosFns.getWaveObjectAtom,
             getWaveObjectLoadingAtom: (oref: string) => {
                 const cacheKey = oref + ":loading";
-                if (!waveObjectAtomCache.has(cacheKey)) {
-                    waveObjectAtomCache.set(cacheKey, atom(false));
+                if (!waveObjectDerivedAtomCache.has(cacheKey)) {
+                    waveObjectDerivedAtomCache.set(cacheKey, atom(false));
                 }
-                return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+                return waveObjectDerivedAtomCache.get(cacheKey) as Atom<boolean>;
             },
             isWaveObjectNullAtom: (oref: string) => {
                 const cacheKey = oref + ":isnull";
-                if (!waveObjectAtomCache.has(cacheKey)) {
-                    waveObjectAtomCache.set(
+                if (!waveObjectDerivedAtomCache.has(cacheKey)) {
+                    waveObjectDerivedAtomCache.set(
                         cacheKey,
                         atom((get) => get(env.wos.getWaveObjectAtom(oref)) == null)
                     );
                 }
-                return waveObjectAtomCache.get(cacheKey) as Atom<boolean>;
+                return waveObjectDerivedAtomCache.get(cacheKey) as Atom<boolean>;
             },
             useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
-                const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                return [obj, false];
+                const objAtom = env.wos.getWaveObjectAtom<T>(oref);
+                return [globalStore.get(objAtom), false];
             },
         },
+        mockSetWaveObj: mockWosFns.mockSetWaveObj,
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
             const cacheKey = blockId + "#meta-" + key;
             if (!blockMetaKeyAtomCache.has(cacheKey)) {

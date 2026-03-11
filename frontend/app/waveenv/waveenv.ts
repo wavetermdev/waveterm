@@ -65,6 +65,9 @@ export type WaveEnv = {
     getSettingsKeyAtom: SettingsKeyAtomFnType;
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
     getConnConfigKeyAtom: ConnConfigKeyAtomFnType;
+
+    // the mock fields are only usable in the preview server (may be be null or throw errors in production)
+    mockSetWaveObj: (oref: string, obj: WaveObj) => void;
     mockTabModel?: TabModel;
 };
 
