@@ -89,6 +89,8 @@ const (
 
 	MetaKey_SysinfoType                      = "sysinfo:type"
 
+	MetaKey_TabFlagColor                     = "tab:flagcolor"
+
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
 	MetaKey_BgOpacity                        = "bg:opacity"
@@ -121,6 +123,7 @@ const (
 	MetaKey_TermConnDebug                    = "term:conndebug"
 	MetaKey_TermBellSound                    = "term:bellsound"
 	MetaKey_TermBellIndicator                = "term:bellindicator"
+	MetaKey_TermOsc52                        = "term:osc52"
 	MetaKey_TermDurable                      = "term:durable"
 
 	MetaKey_WebZoom                          = "web:zoom"

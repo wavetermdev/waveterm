@@ -9,7 +9,7 @@ import { getOrCreateClientId } from "@/util/clientid";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { getDefaultStore } from "jotai";
-import { applyCanvasOp, restoreVDomElems } from "./model-utils";
+import { applyCanvasOp, applyTermOp, isTsunamiTermElem, restoreVDomElems } from "./model-utils";
 
 const dlog = debug("wave:vdom");
 
@@ -236,6 +236,25 @@ export class TsunamiModel {
             }
         });
 
+        this.serverEventSource.addEventListener("termwrite", (event: MessageEvent) => {
+            try {
+                const packet = JSON.parse(event.data);
+                if (packet?.refid == null || packet?.data64 == null) {
+                    return;
+                }
+                const refOp: VDomRefOperation = { refid: packet.refid, op: "termwrite", params: [packet.data64] };
+                const elem = this.getRefElem(refOp.refid);
+                if (elem == null) {
+                    return;
+                }
+                if (isTsunamiTermElem(elem)) {
+                    applyTermOp(elem, refOp);
+                }
+            } catch (e) {
+                console.error("Failed to parse termwrite event:", e);
+            }
+        });
+
         this.serverEventSource.addEventListener("error", (event) => {
             console.error("SSE connection error:", event);
         });
@@ -318,6 +337,12 @@ export class TsunamiModel {
                         scrolltop: ref.elem.scrollTop,
                         boundingclientrect: ref.elem.getBoundingClientRect(),
                     };
+                }
+                if (isTsunamiTermElem(ref.elem)) {
+                    const termsize = ref.elem.__termSize();
+                    if (termsize != null) {
+                        ru.termsize = termsize;
+                    }
                 }
                 updates.push(ru);
                 ref.updated = false;
@@ -606,6 +631,10 @@ export class TsunamiModel {
                 applyCanvasOp(elem, refOp, this.refOutputStore);
                 continue;
             }
+            if (isTsunamiTermElem(elem)) {
+                applyTermOp(elem, refOp);
+                continue;
+            }
             if (refOp.op == "focus") {
                 if (elem == null) {
                     this.addErrorMessage(`Could not focus ref with id ${refOp.refid}: elem is null`);
@@ -718,8 +747,7 @@ export class TsunamiModel {
             vdomEvent.globaleventtype = fnDecl.globalevent;
         }
         const needsAsync =
-            propName == "onSubmit" ||
-            (propName == "onChange" && (e.target as HTMLInputElement)?.type === "file");
+            propName == "onSubmit" || (propName == "onChange" && (e.target as HTMLInputElement)?.type === "file");
         if (needsAsync) {
             asyncAnnotateEvent(vdomEvent, propName, e)
                 .then(() => {

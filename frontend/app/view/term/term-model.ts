@@ -85,7 +85,7 @@ export class TermViewModel implements ViewModel {
     termConfigedDurable: jotai.Atom<null | boolean>;
     searchAtoms?: SearchAtoms;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.viewType = "term";
         this.blockId = blockId;
         this.tabModel = tabModel;

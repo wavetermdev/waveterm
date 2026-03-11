@@ -1,8 +1,9 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi, getConnStatusAtom, recordTEvent, WOS } from "@/app/store/global";
+import { recordTEvent } from "@/app/store/global";
 import { TermViewModel } from "@/app/view/term/term-model";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import * as util from "@/util/util";
 import { cn } from "@/util/util";
 import {
@@ -18,18 +19,19 @@ import {
 } from "@floating-ui/react";
 import * as jotai from "jotai";
 import { useEffect, useRef, useState } from "react";
+import { BlockEnv } from "./blockenv";
 
 function isTermViewModel(viewModel: ViewModel): viewModel is TermViewModel {
     return viewModel?.viewType === "term";
 }
 
-function handleLearnMore() {
-    getApi().openExternal("https://docs.waveterm.dev/durable-sessions");
-}
-
 function LearnMoreButton() {
+    const waveEnv = useWaveEnv<BlockEnv>();
     return (
-        <button className="text-muted text-xs hover:underline cursor-pointer text-left" onClick={handleLearnMore}>
+        <button
+            className="text-muted text-xs hover:underline cursor-pointer text-left"
+            onClick={() => waveEnv.electron.openExternal("https://docs.waveterm.dev/durable-sessions")}
+        >
             Learn More
         </button>
     );
@@ -194,7 +196,7 @@ function DurableEndedContent({ doneReason, startupError, viewModel, onClose }: D
 
     let titleText = "Durable Session (Ended)";
     let descriptionText = "The durable session has ended. This block is still configured for durable sessions.";
-    let showRestartButton = true;
+    const showRestartButton = true;
 
     if (doneReason === "terminated") {
         titleText = "Durable Session (Ended, Exited)";
@@ -333,11 +335,11 @@ export function DurableSessionFlyover({
     placement = "bottom",
     divClassName,
 }: DurableSessionFlyoverProps) {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(blockId, "connection"));
     const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
     const termConfigedDurable = util.useAtomValueSafe(viewModel?.termConfigedDurable);
-    const connName = blockData?.meta?.connection;
-    const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
+    const connStatus = jotai.useAtomValue(waveEnv.getConnStatusAtom(connName));
 
     const { color: durableIconColor, iconType: durableIconType } = getIconProps(
         termDurableStatus,

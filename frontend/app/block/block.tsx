@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -9,26 +9,21 @@ import {
     FullSubBlockProps,
     SubBlockProps,
 } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
+import { useTabModel } from "@/app/store/tab-model";
 import { AiFileDiffViewModel } from "@/app/view/aifilediff/aifilediff";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
+import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
-import {
-    atoms,
-    getBlockComponentModel,
-    getSettingsKeyAtom,
-    registerBlockComponentModel,
-    unregisterBlockComponentModel,
-} from "@/store/global";
-import type { TabModel } from "@/app/store/tab-model";
-import { useTabModel } from "@/app/store/tab-model";
-import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
+import { getBlockComponentModel, registerBlockComponentModel, unregisterBlockComponentModel } from "@/store/global";
+import { makeORef } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
@@ -41,6 +36,7 @@ import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
 import "./block.scss";
+import { BlockEnv } from "./blockenv";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
@@ -59,12 +55,18 @@ BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 
-function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
+function makeViewModel(
+    blockId: string,
+    blockView: string,
+    nodeModel: BlockNodeModel,
+    tabModel: TabModel,
+    waveEnv: WaveEnv
+): ViewModel {
     const ctor = BlockRegistry.get(blockView);
     if (ctor != null) {
-        return new ctor(blockId, nodeModel, tabModel);
+        return new ctor({ blockId, nodeModel, tabModel, waveEnv });
     }
-    return makeDefaultViewModel(blockId, blockView);
+    return makeDefaultViewModel(blockView);
 }
 
 function getViewElem(
@@ -84,18 +86,11 @@ function getViewElem(
     return <VC key={blockId} blockId={blockId} blockRef={blockRef} contentRef={contentRef} model={viewModel} />;
 }
 
-function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
-    const blockDataAtom = getWaveObjectAtom<Block>(makeORef("block", blockId));
-    let viewModel: ViewModel = {
+function makeDefaultViewModel(viewType: string): ViewModel {
+    const viewModel: ViewModel = {
         viewType: viewType,
-        viewIcon: atom((get) => {
-            const blockData = get(blockDataAtom);
-            return blockViewToIcon(blockData?.meta?.view);
-        }),
-        viewName: atom((get) => {
-            const blockData = get(blockDataAtom);
-            return blockViewToName(blockData?.meta?.view);
-        }),
+        viewIcon: atom(blockViewToIcon(viewType)),
+        viewName: atom(blockViewToName(viewType)),
         preIconButton: atom(null),
         endIconButtons: atom(null),
         viewComponent: null,
@@ -104,8 +99,9 @@ function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
 }
 
 const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
-    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
-    if (!blockData) {
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const blockIsNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", nodeModel.blockId)));
+    if (blockIsNull) {
         return null;
     }
     return (
@@ -120,15 +116,17 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 });
 
 const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
-    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const blockIsNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", nodeModel.blockId)));
+    const blockView = useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view")) ?? "";
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const viewElem = useMemo(
-        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
-        [nodeModel.blockId, blockData?.meta?.view, viewModel]
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockView, viewModel),
+        [nodeModel.blockId, blockView, viewModel]
     );
     const noPadding = useAtomValueSafe(viewModel.noPadding);
-    if (!blockData) {
+    if (blockIsNull) {
         return null;
     }
     return (
@@ -142,18 +140,19 @@ const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
 
 const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     counterInc("render-BlockFull");
+    const waveEnv = useWaveEnv<BlockEnv>();
     const focusElemRef = useRef<HTMLInputElement>(null);
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = useState(false);
-    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const blockView = useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view")) ?? "";
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const isResizing = useAtomValue(nodeModel.isResizing);
     const isMagnified = useAtomValue(nodeModel.isMagnified);
     const anyMagnified = useAtomValue(nodeModel.anyMagnified);
-    const modalOpen = useAtomValue(atoms.modalOpen);
-    const focusFollowsCursorMode = useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
+    const modalOpen = useAtomValue(waveEnv.atoms.modalOpen);
+    const focusFollowsCursorMode = useAtomValue(waveEnv.getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
     const noPadding = useAtomValueSafe(viewModel.noPadding);
 
@@ -206,8 +205,8 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     }, [innerRect, disablePointerEvents, blockContentOffset]);
 
     const viewElem = useMemo(
-        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockData?.meta?.view, viewModel),
-        [nodeModel.blockId, blockData?.meta?.view, viewModel]
+        () => getViewElem(nodeModel.blockId, blockRef, contentRef, blockView, viewModel),
+        [nodeModel.blockId, blockView, viewModel]
     );
 
     const handleChildFocus = useCallback(
@@ -233,7 +232,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         (event: React.PointerEvent<HTMLDivElement>) => {
             const focusFollowsCursorEnabled =
                 focusFollowsCursorMode === "on" ||
-                (focusFollowsCursorMode === "term" && blockData?.meta?.view === "term");
+                (focusFollowsCursorMode === "term" && blockView === "term");
             if (!focusFollowsCursorEnabled || event.pointerType === "touch" || event.buttons > 0) {
                 return;
             }
@@ -250,7 +249,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         },
         [
             focusFollowsCursorMode,
-            blockData?.meta?.view,
+            blockView,
             modalOpen,
             disablePointerEvents,
             isResizing,
@@ -304,15 +303,16 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     );
 });
 
-const Block = memo((props: BlockProps) => {
+const BlockInner = memo((props: BlockProps & { viewType: string }) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const tabModel = useTabModel();
-    const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
+    const waveEnv = useWaveEnv();
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
-    if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel);
+    if (viewModel == null) {
+        // viewModel gets the full waveEnv
+        viewModel = makeViewModel(props.nodeModel.blockId, props.viewType, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
@@ -321,24 +321,33 @@ const Block = memo((props: BlockProps) => {
             viewModel?.dispose?.();
         };
     }, []);
-    if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
-        return null;
-    }
     if (props.preview) {
         return <BlockPreview {...props} viewModel={viewModel} />;
     }
     return <BlockFull {...props} viewModel={viewModel} />;
 });
+BlockInner.displayName = "BlockInner";
 
-const SubBlock = memo((props: SubBlockProps) => {
+const Block = memo((props: BlockProps) => {
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const isNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
+    const viewType = useAtomValue(waveEnv.getBlockMetaKeyAtom(props.nodeModel.blockId, "view")) ?? "";
+    if (isNull || isBlank(props.nodeModel.blockId)) {
+        return null;
+    }
+    return <BlockInner key={props.nodeModel.blockId + ":" + viewType} {...props} viewType={viewType} />;
+});
+
+const SubBlockInner = memo((props: SubBlockProps & { viewType: string }) => {
     counterInc("render-Block");
-    counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
+    counterInc("render-Block-" + props.nodeModel.blockId?.substring(0, 8));
     const tabModel = useTabModel();
-    const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
+    const waveEnv = useWaveEnv();
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
-    if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
-        viewModel = makeViewModel(props.nodeModel.blockId, blockData?.meta?.view, props.nodeModel, tabModel);
+    if (viewModel == null) {
+        // viewModel gets the full waveEnv
+        viewModel = makeViewModel(props.nodeModel.blockId, props.viewType, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
@@ -347,10 +356,18 @@ const SubBlock = memo((props: SubBlockProps) => {
             viewModel?.dispose?.();
         };
     }, []);
-    if (loading || isBlank(props.nodeModel.blockId) || blockData == null) {
+    return <BlockSubBlock {...props} viewModel={viewModel} />;
+});
+SubBlockInner.displayName = "SubBlockInner";
+
+const SubBlock = memo((props: SubBlockProps) => {
+    const waveEnv = useWaveEnv<BlockEnv>();
+    const isNull = useAtomValue(waveEnv.wos.isWaveObjectNullAtom(makeORef("block", props.nodeModel.blockId)));
+    const viewType = useAtomValue(waveEnv.getBlockMetaKeyAtom(props.nodeModel.blockId, "view")) ?? "";
+    if (isNull || isBlank(props.nodeModel.blockId)) {
         return null;
     }
-    return <BlockSubBlock {...props} viewModel={viewModel} />;
+    return <SubBlockInner key={props.nodeModel.blockId + ":" + viewType} {...props} viewType={viewType} />;
 });
 
 export { Block, SubBlock };

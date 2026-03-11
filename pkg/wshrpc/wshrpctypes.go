@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -93,7 +94,7 @@ type WshRpcInterface interface {
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
-	GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*TabIndicator, error)
+	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -123,6 +124,7 @@ type WshRpcInterface interface {
 	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) (*CommandRemoteReconnectToJobManagerRtnData, error)
 	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
 	RemoteTerminateJobManagerCommand(ctx context.Context, data CommandRemoteTerminateJobManagerData) error
+	BadgeWatchPidCommand(ctx context.Context, data CommandBadgeWatchPidData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -874,17 +876,10 @@ type WaveFileInfo struct {
 	Meta      FileMeta `json:"meta"`
 }
 
-type TabIndicator struct {
-	Icon                string        `json:"icon"`
-	Color               string        `json:"color,omitempty"`
-	Priority            float64       `json:"priority"`
-	ClearOnFocus        bool          `json:"clearonfocus,omitempty"`
-	PersistentIndicator *TabIndicator `json:"persistentindicator,omitempty"`
-}
-
-type TabIndicatorEventData struct {
-	TabId     string        `json:"tabid"`
-	Indicator *TabIndicator `json:"indicator"`
+type CommandBadgeWatchPidData struct {
+	Pid     int          `json:"pid"`
+	ORef    waveobj.ORef `json:"oref"`
+	BadgeId string       `json:"badgeid"`
 }
 
 type BlockJobStatusData struct {

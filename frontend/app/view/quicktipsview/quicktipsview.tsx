@@ -1,10 +1,10 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { QuickTips } from "@/app/element/quicktips";
 import { globalStore } from "@/app/store/global";
+import type { TabModel } from "@/app/store/tab-model";
 import { Atom, atom, PrimitiveAtom } from "jotai";
 
 class QuickTipsViewModel implements ViewModel {
@@ -15,7 +15,7 @@ class QuickTipsViewModel implements ViewModel {
     showTocAtom: PrimitiveAtom<boolean>;
     endIconButtons: Atom<IconButtonDecl[]>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;

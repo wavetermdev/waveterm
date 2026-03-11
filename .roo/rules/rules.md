@@ -84,8 +84,7 @@ The full API is defined in custom.d.ts as type ElectronApi.
 
 - **CRITICAL: Completion format MUST be: "Done: [one-line description]"**
 - **Keep your Task Completed summaries VERY short**
-- **No lengthy pre-completion summaries** - Do not provide detailed explanations of implementation before using attempt_completion
-- **No recaps of changes** - Skip explaining what was done before completion
+- **No double-summarization** - Put your summary ONLY inside attempt_completion. Do not write a summary in the message body AND then repeat it in attempt_completion. One summary, one place.
 - **Go directly to completion** - After making changes, proceed directly to attempt_completion without summarizing
 - The project is currently an un-released POC / MVP. Do not worry about backward compatibility when making changes
 - With React hooks, always complete all hook calls at the top level before any conditional returns (including jotai hook calls useAtom and useAtomValue); when a user explicitly tells you a function handles null inputs, trust them and stop trying to "protect" it with unnecessary checks or workarounds.
