@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { fireAndForget, NullAtom } from "@/util/util";
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { v7 as uuidv7, version as uuidVersion } from "uuid";
@@ -10,10 +11,34 @@ import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 import { waveEventSubscribeSingle } from "./wps";
 
+export type BadgeEnv = WaveEnvSubset<{
+    rpc: {
+        EventPublishCommand: WaveEnv["rpc"]["EventPublishCommand"];
+    };
+}>;
+
+export type LoadBadgesEnv = WaveEnvSubset<{
+    rpc: {
+        GetAllBadgesCommand: WaveEnv["rpc"]["GetAllBadgesCommand"];
+    };
+}>;
+
+export type TabBadgesEnv = WaveEnvSubset<{
+    wos: WaveEnv["wos"];
+}>;
+
 const BadgeMap = new Map<string, PrimitiveAtom<Badge>>();
 const TabBadgeAtomCache = new Map<string, Atom<Badge[]>>();
 
-function clearBadgeInternal(oref: string) {
+function publishBadgeEvent(eventData: WaveEvent, env?: BadgeEnv) {
+    if (env != null) {
+        fireAndForget(() => env.rpc.EventPublishCommand(TabRpcClient, eventData));
+    } else {
+        fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+    }
+}
+
+function clearBadgeInternal(oref: string, env?: BadgeEnv) {
     const eventData: WaveEvent = {
         event: "badge",
         scopes: [oref],
@@ -22,28 +47,28 @@ function clearBadgeInternal(oref: string) {
             clear: true,
         } as BadgeEvent,
     };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+    publishBadgeEvent(eventData, env);
 }
 
-function clearBadgesForBlockOnFocus(blockId: string) {
+function clearBadgesForBlockOnFocus(blockId: string, env?: BadgeEnv) {
     const oref = WOS.makeORef("block", blockId);
     const badgeAtom = BadgeMap.get(oref);
     const badge = badgeAtom != null ? globalStore.get(badgeAtom) : null;
     if (badge != null && !badge.pidlinked) {
-        clearBadgeInternal(oref);
+        clearBadgeInternal(oref, env);
     }
 }
 
-function clearBadgesForTabOnFocus(tabId: string) {
+function clearBadgesForTabOnFocus(tabId: string, env?: BadgeEnv) {
     const oref = WOS.makeORef("tab", tabId);
     const badgeAtom = BadgeMap.get(oref);
     const badge = badgeAtom != null ? globalStore.get(badgeAtom) : null;
     if (badge != null && !badge.pidlinked) {
-        clearBadgeInternal(oref);
+        clearBadgeInternal(oref, env);
     }
 }
 
-function clearAllBadges() {
+function clearAllBadges(env?: BadgeEnv) {
     const eventData: WaveEvent = {
         event: "badge",
         scopes: [],
@@ -52,10 +77,10 @@ function clearAllBadges() {
             clearall: true,
         } as BadgeEvent,
     };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+    publishBadgeEvent(eventData, env);
 }
 
-function clearBadgesForTab(tabId: string) {
+function clearBadgesForTab(tabId: string, env?: BadgeEnv) {
     const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
     const tab = globalStore.get(tabAtom);
     const blockIds = (tab as Tab)?.blockids ?? [];
@@ -63,7 +88,7 @@ function clearBadgesForTab(tabId: string) {
         const oref = WOS.makeORef("block", blockId);
         const badgeAtom = BadgeMap.get(oref);
         if (badgeAtom != null && globalStore.get(badgeAtom) != null) {
-            clearBadgeInternal(oref);
+            clearBadgeInternal(oref, env);
         }
     }
 }
@@ -88,7 +113,7 @@ function getBlockBadgeAtom(blockId: string): Atom<Badge> {
     return getBadgeAtom(oref);
 }
 
-function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
+function getTabBadgeAtom(tabId: string, env?: TabBadgesEnv): Atom<Badge[]> {
     if (tabId == null) {
         return NullAtom as Atom<Badge[]>;
     }
@@ -98,7 +123,8 @@ function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
     }
     const tabOref = WOS.makeORef("tab", tabId);
     const tabBadgeAtom = getBadgeAtom(tabOref);
-    const tabAtom = atom((get) => WOS.getObjectValue<Tab>(tabOref, get));
+    const tabAtom =
+        env != null ? env.wos.getWaveObjectAtom<Tab>(tabOref) : WOS.getWaveObjectAtom<Tab>(tabOref);
     rtn = atom((get) => {
         const tab = get(tabAtom);
         const blockIds = tab?.blockids ?? [];
@@ -119,8 +145,9 @@ function getTabBadgeAtom(tabId: string): Atom<Badge[]> {
     return rtn;
 }
 
-async function loadBadges() {
-    const badges = await RpcApi.GetAllBadgesCommand(TabRpcClient);
+async function loadBadges(env?: LoadBadgesEnv) {
+    const rpc = env != null ? env.rpc : RpcApi;
+    const badges = await rpc.GetAllBadgesCommand(TabRpcClient);
     if (badges == null) {
         return;
     }
@@ -133,7 +160,7 @@ async function loadBadges() {
     }
 }
 
-function setBadge(blockId: string, badge: Omit<Badge, "badgeid"> & { badgeid?: string }) {
+function setBadge(blockId: string, badge: Omit<Badge, "badgeid"> & { badgeid?: string }, env?: BadgeEnv) {
     if (!badge.badgeid) {
         badge = { ...badge, badgeid: uuidv7() };
     } else if (uuidVersion(badge.badgeid) !== 7) {
@@ -148,10 +175,10 @@ function setBadge(blockId: string, badge: Omit<Badge, "badgeid"> & { badgeid?: s
             badge: badge,
         } as BadgeEvent,
     };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+    publishBadgeEvent(eventData, env);
 }
 
-function clearBadgeById(blockId: string, badgeId: string) {
+function clearBadgeById(blockId: string, badgeId: string, env?: BadgeEnv) {
     const oref = WOS.makeORef("block", blockId);
     const eventData: WaveEvent = {
         event: "badge",
@@ -161,7 +188,7 @@ function clearBadgeById(blockId: string, badgeId: string) {
             clearbyid: badgeId,
         } as BadgeEvent,
     };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
+    publishBadgeEvent(eventData, env);
 }
 
 function setupBadgesSubscription() {

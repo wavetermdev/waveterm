@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import WorkspaceSVG from "@/app/asset/workspace.svg";
-import { Tooltip } from "@/app/element/tooltip";
 import { IconButton } from "@/app/element/iconbutton";
+import { Tooltip } from "@/app/element/tooltip";
+import { loadBadges, LoadBadgesEnv } from "@/app/store/badge";
 import { getAtoms } from "@/app/store/global-atoms";
-import { TabV } from "@/app/tab/tab";
+import { Tab } from "@/app/tab/tab";
 import { ConfigErrorIcon, WaveAIButton } from "@/app/tab/tabbar";
 import { TabBarEnv } from "@/app/tab/tabbarenv";
 import { UpdateStatusBanner } from "@/app/tab/updatebanner";
-import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
+import { applyMockEnvOverrides } from "@/preview/mock/mockwaveenv";
 import { useAtom } from "jotai";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
@@ -20,13 +22,39 @@ type PreviewTabEntry = {
     flagColor?: string | null;
 };
 
+function badgeBlockId(tabId: string, badgeId: string): string {
+    return `${tabId}-badge-${badgeId}`;
+}
+
+function makeTabWaveObj(tab: PreviewTabEntry): Tab {
+    const blockids = (tab.badges ?? []).map((b) => badgeBlockId(tab.tabId, b.badgeid));
+    return {
+        otype: "tab",
+        oid: tab.tabId,
+        version: 1,
+        name: tab.tabName,
+        blockids,
+        meta: tab.flagColor ? { "tab:flagcolor": tab.flagColor } : {},
+    } as Tab;
+}
+
+function makeMockBadgeEvents(): BadgeEvent[] {
+    const events: BadgeEvent[] = [];
+    for (const tab of InitialTabs) {
+        for (const badge of tab.badges ?? []) {
+            events.push({ oref: `block:${badgeBlockId(tab.tabId, badge.badgeid)}`, badge });
+        }
+    }
+    return events;
+}
+
 const TabDefaultWidth = 130;
 const TabMinWidth = 100;
 const TabHeight = 26;
 const MockWorkspaceSwitcherWidth = 42;
 const MockAddTabButtonWidth = 44;
 const MockConfigErrors: ConfigError[] = [
-    { file: "~/.waveterm/config.json", err: "unknown preset \"bg@aurora\"" },
+    { file: "~/.waveterm/config.json", err: 'unknown preset "bg@aurora"' },
     { file: "~/.waveterm/settings.json", err: "invalid color for tab theme" },
 ];
 const InitialTabs: PreviewTabEntry[] = [
@@ -34,12 +62,21 @@ const InitialTabs: PreviewTabEntry[] = [
     {
         tabId: "preview-tab-2",
         tabName: "Build Logs",
-        badges: [{ badgeid: "01958000-0000-7000-0000-000000000001", icon: "triangle-exclamation", color: "#f59e0b", priority: 2 }],
+        badges: [
+            {
+                badgeid: "01958000-0000-7000-0000-000000000001",
+                icon: "triangle-exclamation",
+                color: "#f59e0b",
+                priority: 2,
+            },
+        ],
     },
     {
         tabId: "preview-tab-3",
         tabName: "Deploy",
-        badges: [{ badgeid: "01958000-0000-7000-0000-000000000002", icon: "circle-check", color: "#4ade80", priority: 3 }],
+        badges: [
+            { badgeid: "01958000-0000-7000-0000-000000000002", icon: "circle-check", color: "#4ade80", priority: 3 },
+        ],
         flagColor: "#429dff",
     },
     {
@@ -74,7 +111,13 @@ function getWindowDragWidths(platform: NodeJS.Platform, isFullScreen: boolean, z
 
 function MockWorkspaceSwitcher({ divRef }: { divRef: React.RefObject<HTMLDivElement> }) {
     return (
-        <Tooltip content="Workspace Switcher" placement="bottom" hideOnClick divRef={divRef} divClassName="flex items-center">
+        <Tooltip
+            content="Workspace Switcher"
+            placement="bottom"
+            hideOnClick
+            divRef={divRef}
+            divClassName="flex items-center"
+        >
             <div
                 className="mb-1 mr-1 flex h-[22px] w-[28px] items-center justify-center rounded-md bg-hover text-secondary"
                 style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
@@ -91,14 +134,12 @@ function MockTabStrip({
     availableWidth,
     onSelectTab,
     onCloseTab,
-    onRenameTab,
 }: {
     tabs: PreviewTabEntry[];
     activeTabId: string;
     availableWidth: number;
     onSelectTab: (tabId: string) => void;
     onCloseTab: (tabId: string) => void;
-    onRenameTab: (tabId: string, newName: string) => void;
 }) {
     const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const tabWidth = useMemo(() => {
@@ -128,25 +169,21 @@ function MockTabStrip({
                     const isActive = tab.tabId === activeTabId;
                     const showDivider = index !== 0 && !isActive && index !== activeIndex + 1;
                     return (
-                        <TabV
+                        <Tab
                             key={tab.tabId}
                             ref={(el) => {
                                 tabRefs.current[tab.tabId] = el;
                             }}
-                            tabId={tab.tabId}
-                            tabName={tab.tabName}
+                            id={tab.tabId}
                             active={isActive}
                             showDivider={showDivider}
                             isDragging={false}
                             tabWidth={tabWidth}
                             isNew={false}
-                            badges={tab.badges ?? null}
-                            flagColor={tab.flagColor ?? null}
-                            onClick={() => onSelectTab(tab.tabId)}
+                            onSelect={() => onSelectTab(tab.tabId)}
                             onClose={() => onCloseTab(tab.tabId)}
                             onDragStart={() => {}}
-                            onContextMenu={() => {}}
-                            onRename={(newName) => onRenameTab(tab.tabId, newName)}
+                            onLoaded={() => {}}
                         />
                     );
                 })}
@@ -156,7 +193,26 @@ function MockTabStrip({
 }
 
 export function TabBarPreview() {
+    const baseEnv = useWaveEnv();
+    const tabEnv = useMemo(() => {
+        const mockWaveObjs = Object.fromEntries(InitialTabs.map((tab) => [`tab:${tab.tabId}`, makeTabWaveObj(tab)]));
+        return applyMockEnvOverrides(baseEnv, {
+            mockWaveObjs,
+            rpc: {
+                GetAllBadgesCommand: () => Promise.resolve(makeMockBadgeEvents()),
+            },
+        });
+    }, []);
+    return (
+        <WaveEnvContext.Provider value={tabEnv}>
+            <TabBarPreviewInner />
+        </WaveEnvContext.Provider>
+    );
+}
+
+function TabBarPreviewInner() {
     const env = useWaveEnv<TabBarEnv>();
+    const loadBadgesEnv = useWaveEnv<LoadBadgesEnv>();
     const [tabs, setTabs] = useState<PreviewTabEntry[]>(InitialTabs);
     const [activeTabId, setActiveTabId] = useState<string>(InitialTabs[1].tabId);
     const [frameWidth, setFrameWidth] = useState(1180);
@@ -172,6 +228,10 @@ export function TabBarPreview() {
     const waveAIButtonRef = useRef<HTMLDivElement>(null);
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        loadBadges(loadBadgesEnv);
+    }, []);
 
     useEffect(() => {
         setFullConfig((prev) => ({
@@ -334,11 +394,6 @@ export function TabBarPreview() {
                                     return nextTabs;
                                 });
                             }}
-                            onRenameTab={(tabId, newName) => {
-                                setTabs((prevTabs) =>
-                                    prevTabs.map((tab) => (tab.tabId === tabId ? { ...tab, tabName: newName } : tab))
-                                );
-                            }}
                         />
                     </div>
                     <IconButton
@@ -372,3 +427,4 @@ export function TabBarPreview() {
         </div>
     );
 }
+TabBarPreviewInner.displayName = "TabBarPreviewInner";

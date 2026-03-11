@@ -350,7 +350,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, showDivider, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const env = useWaveEnv<TabEnv>();
     const [tabData, _] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", id));
-    const badges = useAtomValue(getTabBadgeAtom(id));
+    const badges = useAtomValue(getTabBadgeAtom(id, env));
 
     const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
     let flagColor: string | null = null;
