@@ -208,8 +208,8 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
     }, [hideAiButton, setFullConfig, showConfigErrors]);
 
     return (
-        <div className="flex w-full max-w-[1500px] flex-col gap-6 p-6">
-            <div className="grid gap-4 rounded-md border border-border bg-panel p-4 md:grid-cols-3">
+        <div className="flex w-full flex-col gap-6">
+            <div className="grid gap-4 rounded-md border border-border bg-panel p-4 md:grid-cols-3 mx-6 mt-6">
                 <label className="flex flex-col gap-2 text-xs text-muted">
                     <span>Platform</span>
                     <select
@@ -281,13 +281,13 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
             </div>
 
             <div
-                className="overflow-hidden rounded-md border border-border shadow-xl"
+                className="w-screen overflow-hidden border-y border-border shadow-xl"
                 style={{ "--zoomfactor-inv": zoomFactor > 0 ? 1 / zoomFactor : 1 } as CSSProperties}
             >
                 {workspace != null && <TabBar key={platform} workspace={workspace} />}
             </div>
 
-            <div className="text-xs text-muted">
+            <div className="mx-6 mb-6 text-xs text-muted">
                 Tabs: {workspace?.tabids?.length ?? 0} · Config errors: {fullConfig?.configerrors?.length ?? 0}
             </div>
         </div>
