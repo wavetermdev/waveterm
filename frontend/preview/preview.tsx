@@ -165,7 +165,12 @@ function initPreview() {
     globalStore.set(getAtoms().fullConfigAtom, {} as FullConfigType);
     GlobalModel.getInstance().initialize(initOpts);
     loadFonts();
-    const root = createRoot(document.getElementById("main")!);
+    const container = document.getElementById("main")!;
+    let root = (container as any).__reactRoot;
+    if (!root) {
+        root = createRoot(container);
+        (container as any).__reactRoot = root;
+    }
     root.render(<PreviewRoot />);
 }
 
