@@ -186,6 +186,7 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
     const loadBadgesEnv = useWaveEnv<LoadBadgesEnv>();
     const [showConfigErrors, setShowConfigErrors] = useState(true);
     const [hideAiButton, setHideAiButton] = useState(false);
+    const [showMenuBar, setShowMenuBar] = useState(false);
     const [isFullScreen, setIsFullScreen] = useAtom(env.atoms.isFullScreen);
     const [zoomFactor, setZoomFactor] = useAtom(env.atoms.zoomFactorAtom);
     const [fullConfig, setFullConfig] = useAtom(env.atoms.fullConfigAtom);
@@ -202,10 +203,11 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
             settings: {
                 ...(prev?.settings ?? {}),
                 "app:hideaibutton": hideAiButton,
+                "window:showmenubar": showMenuBar,
             },
             configerrors: showConfigErrors ? MockConfigErrors : [],
         }));
-    }, [hideAiButton, setFullConfig, showConfigErrors]);
+    }, [hideAiButton, showMenuBar, setFullConfig, showConfigErrors]);
 
     return (
         <div className="flex w-full flex-col gap-6">
@@ -253,6 +255,15 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
                         className="cursor-pointer"
                     />
                     Hide Wave AI button
+                </label>
+                <label className="flex items-center gap-2 text-xs text-muted">
+                    <input
+                        type="checkbox"
+                        checked={showMenuBar}
+                        onChange={(event) => setShowMenuBar(event.target.checked)}
+                        className="cursor-pointer"
+                    />
+                    Show menu bar
                 </label>
                 <label className="flex items-center gap-2 text-xs text-muted">
                     <input
