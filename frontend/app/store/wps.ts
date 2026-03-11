@@ -1,8 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { isPreviewWindow } from "@/app/store/windowtype";
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
 
@@ -43,6 +44,9 @@ function wpsReconnectHandler() {
 }
 
 function updateWaveEventSub(eventType: string) {
+    if (isPreviewWindow()) {
+        return;
+    }
     const subjects = waveEventSubjects.get(eventType);
     if (subjects == null) {
         RpcApi.EventUnsubCommand(WpsRpcClient, eventType, { noresponse: true });
@@ -84,7 +88,7 @@ function waveEventSubscribeSingle<T extends WaveEventName>(subscription: WaveEve
 function waveEventUnsubscribe(...unsubscribes: WaveEventUnsubscribe[]) {
     const eventTypeSet = new Set<string>();
     for (const unsubscribe of unsubscribes) {
-        let subjects = waveEventSubjects.get(unsubscribe.eventType);
+        const subjects = waveEventSubjects.get(unsubscribe.eventType);
         if (subjects == null) {
             return;
         }

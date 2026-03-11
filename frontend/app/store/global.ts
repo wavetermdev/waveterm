@@ -547,6 +547,7 @@ function getAllBlockComponentModels(): BlockComponentModel[] {
 
 function getFocusedBlockId(): string {
     const layoutModel = getLayoutModelForStaticTab();
+    if (layoutModel?.focusedNode == null) return null;
     const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
     return focusedLayoutNode?.data?.blockId;
 }

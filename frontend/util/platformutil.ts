@@ -3,6 +3,7 @@
 
 export const PlatformMacOS = "darwin";
 export const PlatformWindows = "win32";
+export const PlatformLinux = "linux";
 export let PLATFORM: NodeJS.Platform = PlatformMacOS;
 
 export function setPlatform(platform: NodeJS.Platform) {

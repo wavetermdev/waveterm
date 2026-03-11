@@ -30,7 +30,7 @@ export type WidgetsEnv = WaveEnvSubset<{
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
-        workspace: WaveEnv["atoms"]["workspace"];
+        workspaceId: WaveEnv["atoms"]["workspaceId"];
         hasCustomAIPresetsAtom: WaveEnv["atoms"]["hasCustomAIPresetsAtom"];
     };
     createBlock: WaveEnv["createBlock"];
@@ -348,7 +348,7 @@ SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 const Widgets = memo(() => {
     const env = useWaveEnv<WidgetsEnv>();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
-    const workspace = useAtomValue(env.atoms.workspace);
+    const workspaceId = useAtomValue(env.atoms.workspaceId);
     const hasCustomAIPresets = useAtomValue(env.atoms.hasCustomAIPresetsAtom);
     const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
@@ -361,7 +361,7 @@ const Widgets = memo(() => {
             if (!hasCustomAIPresets && key === "defwidget@ai") {
                 return false;
             }
-            return shouldIncludeWidgetForWorkspace(widget, workspace?.oid);
+            return shouldIncludeWidgetForWorkspace(widget, workspaceId);
         })
     );
     const widgets = sortByDisplayOrder(filteredWidgets);

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
 import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
@@ -13,6 +14,7 @@ import { createRoot } from "react-dom/client";
 import { makeMockWaveEnv } from "./mock/mockwaveenv";
 import { installPreviewElectronApi } from "./mock/preview-electron-api";
 
+import "overlayscrollbars/overlayscrollbars.css";
 import "../app/app.scss";
 
 // preview.css should come *after* app.scss (don't remove the newline above otherwise prettier will reorder these imports)
@@ -95,6 +97,7 @@ function PreviewRoot() {
             atoms: {
                 uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
                 staticTabId: atom(PreviewTabId),
+                workspaceId: atom(PreviewWorkspaceId),
             },
         })
     );
@@ -118,9 +121,11 @@ function PreviewApp() {
                 <>
                     <PreviewHeader previewName={previewName} />
                     <div className="h-screen overflow-y-auto bg-background text-foreground font-sans flex flex-col items-center pt-12 pb-8">
-                        <Suspense fallback={null}>
-                            <PreviewComponent />
-                        </Suspense>
+                        <ErrorBoundary>
+                            <Suspense fallback={null}>
+                                <PreviewComponent />
+                            </Suspense>
+                        </ErrorBoundary>
                     </div>
                 </>
             );
@@ -143,6 +148,7 @@ function PreviewApp() {
 
 const PreviewTabId = crypto.randomUUID();
 const PreviewWindowId = crypto.randomUUID();
+const PreviewWorkspaceId = crypto.randomUUID();
 const PreviewClientId = crypto.randomUUID();
 
 function initPreview() {
