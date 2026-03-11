@@ -14,7 +14,7 @@ const UpdateStatusBannerComponent = () => {
 
     useEffect(() => {
         let message: string;
-        let dismissBanner = false;
+        const dismissBanner = false;
         switch (appUpdateStatus) {
             case "ready":
                 message = "Update";

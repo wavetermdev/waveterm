@@ -79,7 +79,7 @@ export type WaveEnv = {
 
     // the mock fields are only usable in the preview server (may be be null or throw errors in production)
     mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
-    mockModels?: Map<any, any>;
+    mockModels: Map<any, any>;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);
