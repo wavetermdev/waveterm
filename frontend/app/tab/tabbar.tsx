@@ -188,7 +188,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const activeTabId = useAtomValue(env.atoms.staticTabId);
     const isFullScreen = useAtomValue(env.atoms.isFullScreen);
     const zoomFactor = useAtomValue(env.atoms.zoomFactorAtom);
-    const settings = useAtomValue(env.atoms.settingsAtom);
+    const showMenuBar = useAtomValue(env.getSettingsKeyAtom("window:showmenubar"));
     const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
     const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
     const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
@@ -341,7 +341,17 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 prevAllLoadedRef.current = true;
             }
         }
-    }, [tabIds, tabsLoaded, newTabId, saveTabsPosition, hideAiButton, appUpdateStatus, hasConfigErrors, zoomFactor]);
+    }, [
+        tabIds,
+        tabsLoaded,
+        newTabId,
+        saveTabsPosition,
+        hideAiButton,
+        appUpdateStatus,
+        hasConfigErrors,
+        zoomFactor,
+        showMenuBar,
+    ]);
 
     const getDragDirection = (currentX: number) => {
         let dragDirection: string;
@@ -620,7 +630,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const showAppMenuButton = env.isWindows() || (!env.isMacOS() && !settings["window:showmenubar"]);
+    const showAppMenuButton = env.isWindows() || (!env.isMacOS() && !showMenuBar);
 
     // Calculate window drag left width based on platform and state
     let windowDragLeftWidth = 10;

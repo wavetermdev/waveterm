@@ -20,12 +20,11 @@ export type TabBarEnv = WaveEnvSubset<{
         staticTabId: WaveEnv["atoms"]["staticTabId"];
         isFullScreen: WaveEnv["atoms"]["isFullScreen"];
         zoomFactorAtom: WaveEnv["atoms"]["zoomFactorAtom"];
-        settingsAtom: WaveEnv["atoms"]["settingsAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
         updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
     };
     wos: WaveEnv["wos"];
-    getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "tab:confirmclose">;
+    getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "tab:confirmclose" | "window:showmenubar">;
     mockSetWaveObj: WaveEnv["mockSetWaveObj"];
     isWindows: WaveEnv["isWindows"];
     isMacOS: WaveEnv["isMacOS"];
