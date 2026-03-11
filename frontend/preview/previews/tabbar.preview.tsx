@@ -8,6 +8,7 @@ import { TabBar } from "@/app/tab/tabbar";
 import { TabBarEnv } from "@/app/tab/tabbarenv";
 import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import { applyMockEnvOverrides, MockWaveEnv } from "@/preview/mock/mockwaveenv";
+import { PlatformLinux, PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
@@ -100,6 +101,7 @@ export function TabBarPreview() {
     const baseEnv = useWaveEnv();
     const initialTabIds = InitialTabs.map((t) => t.tabId);
     const envRef = useRef<MockWaveEnv>(null);
+    const [platform, setPlatform] = useState<NodeJS.Platform>(PlatformMacOS);
 
     const tabEnv = useMemo(() => {
         const mockWaveObjs: Record<string, WaveObj> = {
@@ -110,6 +112,7 @@ export function TabBarPreview() {
         }
         const env = applyMockEnvOverrides(baseEnv, {
             tabId: InitialTabs[1].tabId,
+            platform,
             mockWaveObjs,
             atoms: {
                 workspaceId: atom(MockWorkspaceId),
@@ -164,16 +167,21 @@ export function TabBarPreview() {
         });
         envRef.current = env;
         return env;
-    }, []);
+    }, [platform]);
 
     return (
         <WaveEnvContext.Provider value={tabEnv}>
-            <TabBarPreviewInner />
+            <TabBarPreviewInner platform={platform} setPlatform={setPlatform} />
         </WaveEnvContext.Provider>
     );
 }
 
-function TabBarPreviewInner() {
+type TabBarPreviewInnerProps = {
+    platform: NodeJS.Platform;
+    setPlatform: (platform: NodeJS.Platform) => void;
+};
+
+function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) {
     const env = useWaveEnv<TabBarEnv>();
     const loadBadgesEnv = useWaveEnv<LoadBadgesEnv>();
     const [showConfigErrors, setShowConfigErrors] = useState(true);
@@ -202,6 +210,18 @@ function TabBarPreviewInner() {
     return (
         <div className="flex w-full max-w-[1500px] flex-col gap-6 p-6">
             <div className="grid gap-4 rounded-md border border-border bg-panel p-4 md:grid-cols-3">
+                <label className="flex flex-col gap-2 text-xs text-muted">
+                    <span>Platform</span>
+                    <select
+                        value={platform}
+                        onChange={(event) => setPlatform(event.target.value as NodeJS.Platform)}
+                        className="rounded border border-border bg-background px-2 py-1 text-foreground cursor-pointer"
+                    >
+                        <option value={PlatformMacOS}>macOS</option>
+                        <option value={PlatformWindows}>Windows</option>
+                        <option value={PlatformLinux}>Linux</option>
+                    </select>
+                </label>
                 <label className="flex flex-col gap-2 text-xs text-muted">
                     <span>Updater banner</span>
                     <select
@@ -264,7 +284,7 @@ function TabBarPreviewInner() {
                 className="overflow-hidden rounded-md border border-border shadow-xl"
                 style={{ "--zoomfactor-inv": zoomFactor > 0 ? 1 / zoomFactor : 1 } as CSSProperties}
             >
-                {workspace != null && <TabBar workspace={workspace} />}
+                {workspace != null && <TabBar key={platform} workspace={workspace} />}
             </div>
 
             <div className="text-xs text-muted">
