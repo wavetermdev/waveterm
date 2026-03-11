@@ -1,6 +1,7 @@
-// Copyright 2025, Command Line
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import {
     ExpandableMenu,
     ExpandableMenuItem,
@@ -18,12 +19,22 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { CSSProperties, forwardRef, useCallback, useEffect } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
-import { atoms, getApi } from "../store/global";
 import { WorkspaceService } from "../store/services";
 import { getObjectValue, makeORef } from "../store/wos";
 import { waveEventSubscribeSingle } from "../store/wps";
 import { WorkspaceEditor } from "./workspaceeditor";
 import "./workspaceswitcher.scss";
+
+export type WorkspaceSwitcherEnv = WaveEnvSubset<{
+    electron: {
+        deleteWorkspace: WaveEnv["electron"]["deleteWorkspace"];
+        createWorkspace: WaveEnv["electron"]["createWorkspace"];
+        switchWorkspace: WaveEnv["electron"]["switchWorkspace"];
+    };
+    atoms: {
+        workspace: WaveEnv["atoms"]["workspace"];
+    };
+}>;
 
 type WorkspaceListEntry = {
     windowId: string;
@@ -35,8 +46,9 @@ const workspaceMapAtom = atom<WorkspaceList>([]);
 const workspaceSplitAtom = splitAtom(workspaceMapAtom);
 const editingWorkspaceAtom = atom<string>();
 const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
+    const env = useWaveEnv<WorkspaceSwitcherEnv>();
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
-    const activeWorkspace = useAtomValueSafe(atoms.workspace);
+    const activeWorkspace = useAtomValueSafe(env.atoms.workspace);
     const workspaceList = useAtomValue(workspaceSplitAtom);
     const setEditingWorkspace = useSetAtom(editingWorkspaceAtom);
 
@@ -71,7 +83,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     }, []);
 
     const onDeleteWorkspace = useCallback((workspaceId: string) => {
-        getApi().deleteWorkspace(workspaceId);
+        env.electron.deleteWorkspace(workspaceId);
     }, []);
 
     const isActiveWorkspaceSaved = !!(activeWorkspace.name && activeWorkspace.icon);
@@ -118,7 +130,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
 
                 <div className="actions">
                     {isActiveWorkspaceSaved ? (
-                        <ExpandableMenuItem onClick={() => getApi().createWorkspace()}>
+                        <ExpandableMenuItem onClick={() => env.electron.createWorkspace()}>
                             <ExpandableMenuItemLeftElement>
                                 <i className="fa-sharp fa-solid fa-plus"></i>
                             </ExpandableMenuItemLeftElement>
@@ -145,7 +157,8 @@ const WorkspaceSwitcherItem = ({
     entryAtom: PrimitiveAtom<WorkspaceListEntry>;
     onDeleteWorkspace: (workspaceId: string) => void;
 }) => {
-    const activeWorkspace = useAtomValueSafe(atoms.workspace);
+    const env = useWaveEnv<WorkspaceSwitcherEnv>();
+    const activeWorkspace = useAtomValueSafe(env.atoms.workspace);
     const [workspaceEntry, setWorkspaceEntry] = useAtom(entryAtom);
     const [editingWorkspace, setEditingWorkspace] = useAtom(editingWorkspaceAtom);
 
@@ -200,7 +213,7 @@ const WorkspaceSwitcherItem = ({
         >
             <ExpandableMenuItemGroupTitle
                 onClick={() => {
-                    getApi().switchWorkspace(workspace.oid);
+                    env.electron.switchWorkspace(workspace.oid);
                     // Create a fake escape key event to close the popover
                     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
                 }}
