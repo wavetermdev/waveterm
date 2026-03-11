@@ -233,14 +233,19 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const tabBar = tabBarRef.current;
         if (tabBar === null) return;
 
+        const getOuterWidth = (el: HTMLElement): number => {
+            const rect = el.getBoundingClientRect();
+            const style = getComputedStyle(el);
+            return rect.width + parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+        };
+
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
         const rightContainerWidth = rightContainerRef.current?.getBoundingClientRect().width ?? 0;
-        const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
+        const addBtnWidth = getOuterWidth(addBtnRef.current);
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
-        const waveAIButtonWidth = waveAIButtonRef.current?.getBoundingClientRect().width ?? 0;
-        const spacerMinWidth = 4;
+        const waveAIButtonWidth = waveAIButtonRef.current != null ? getOuterWidth(waveAIButtonRef.current) : 0;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
@@ -248,8 +253,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             addBtnWidth +
             appMenuButtonWidth +
             workspaceSwitcherWidth +
-            waveAIButtonWidth +
-            spacerMinWidth;
+            waveAIButtonWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -686,13 +690,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <button
                 ref={addBtnRef}
                 title="Add Tab"
-                className="flex h-[22px] px-2 mb-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary"
+                className="flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary"
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                 onClick={handleAddTab}
             >
                 <i className="fa fa-solid fa-plus" />
             </button>
-            <div className="flex-1 min-w-[4px]" />
+            <div className="flex-1" />
             <div ref={rightContainerRef} className="flex flex-row gap-1 items-end">
                 <UpdateStatusBanner />
                 <ConfigErrorIcon />

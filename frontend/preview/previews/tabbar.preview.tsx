@@ -184,7 +184,7 @@ type TabBarPreviewInnerProps = {
 function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) {
     const env = useWaveEnv<TabBarEnv>();
     const loadBadgesEnv = useWaveEnv<LoadBadgesEnv>();
-    const [showConfigErrors, setShowConfigErrors] = useState(true);
+    const [showConfigErrors, setShowConfigErrors] = useState(false);
     const [hideAiButton, setHideAiButton] = useState(false);
     const [showMenuBar, setShowMenuBar] = useState(false);
     const [isFullScreen, setIsFullScreen] = useAtom(env.atoms.isFullScreen);
