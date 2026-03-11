@@ -8,6 +8,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
 import { atom, Provider } from "jotai";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { makeMockWaveEnv } from "./mock/mockwaveenv";
@@ -119,9 +120,11 @@ function PreviewApp() {
                 <>
                     <PreviewHeader previewName={previewName} />
                     <div className="h-screen overflow-y-auto bg-background text-foreground font-sans flex flex-col items-center pt-12 pb-8">
-                        <Suspense fallback={null}>
-                            <PreviewComponent />
-                        </Suspense>
+                        <ErrorBoundary>
+                            <Suspense fallback={null}>
+                                <PreviewComponent />
+                            </Suspense>
+                        </ErrorBoundary>
                     </div>
                 </>
             );
