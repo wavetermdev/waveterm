@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { VTab, VTabItem } from "./vtab";
 
 const OriginalCss = globalThis.CSS;
+const HexColorRegex = /^#([\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i;
 
 function renderVTab(tab: VTabItem): string {
     return renderToStaticMarkup(
@@ -26,7 +27,7 @@ function renderVTab(tab: VTabItem): string {
 describe("VTab badges", () => {
     beforeAll(() => {
         globalThis.CSS = {
-            supports: (_property: string, value: string) => value === "#429DFF" || value === "#4ade80",
+            supports: (_property: string, value: string) => HexColorRegex.test(value),
         } as typeof CSS;
     });
 
