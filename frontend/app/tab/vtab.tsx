@@ -1,9 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { makeIconClass } from "@/util/util";
+import { validateCssColor } from "@/util/color-validator";
 import { cn } from "@/util/util";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TabBadges } from "./tabbadges";
 
 const RenameFocusDelayMs = 50;
 
@@ -11,6 +12,8 @@ export interface VTabItem {
     id: string;
     name: string;
     badge?: Badge | null;
+    badges?: Badge[] | null;
+    flagColor?: string | null;
 }
 
 interface VTabProps {
@@ -44,6 +47,18 @@ export function VTab({
     const [isEditable, setIsEditable] = useState(false);
     const editableRef = useRef<HTMLDivElement>(null);
     const editableTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const badges = tab.badges ?? (tab.badge ? [tab.badge] : null);
+
+    const rawFlagColor = tab.flagColor;
+    let flagColor: string | null = null;
+    if (rawFlagColor) {
+        try {
+            validateCssColor(rawFlagColor);
+            flagColor = rawFlagColor;
+        } catch {
+            flagColor = null;
+        }
+    }
 
     useEffect(() => {
         setOriginalName(tab.name);
@@ -139,11 +154,11 @@ export function VTab({
                 isDragging && "opacity-50"
             )}
         >
-            {tab.badge && (
-                <span className="mr-1 shrink-0 text-xs" style={{ color: tab.badge.color || "#fbbf24" }}>
-                    <i className={makeIconClass(tab.badge.icon, true, { defaultIcon: "circle-small" })} />
-                </span>
-            )}
+            <TabBadges
+                badges={badges}
+                flagColor={flagColor}
+                className="mr-1 min-w-[20px] shrink-0 static top-auto left-auto z-auto h-[20px] w-auto translate-y-0 justify-start px-[2px] py-[1px]"
+            />
             <div
                 ref={editableRef}
                 className={cn(
