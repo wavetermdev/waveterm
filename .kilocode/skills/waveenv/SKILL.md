@@ -80,6 +80,14 @@ export type MyEnv = WaveEnvSubset<{
 }>;
 ```
 
+### Automatically Included Fields
+
+Every `WaveEnvSubset<T>` automatically includes the mock fields — you never need to declare them:
+
+- `isMock: boolean`
+- `mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void`
+- `mockModels?: Map<any, any>`
+
 ### Rules for Each Section
 
 | Section                    | Pattern                                                | Notes                                                                                              |

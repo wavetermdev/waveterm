@@ -3,7 +3,6 @@
 
 import { makeDefaultConnStatus } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { TabModel } from "@/app/store/tab-model";
 import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
@@ -260,6 +259,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         },
     };
     const env = {
+        isMock: true,
         mockEnv: overrides,
         electron: {
             ...previewElectronApi,
@@ -318,7 +318,6 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 return [useAtomValue(objAtom), false];
             },
         },
-        mockSetWaveObj: mockWosFns.mockSetWaveObj,
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
             const cacheKey = blockId + "#meta-" + key;
             if (!blockMetaKeyAtomCache.has(cacheKey)) {
@@ -343,10 +342,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
         },
-        mockTabModel: null as TabModel,
+        mockSetWaveObj: mockWosFns.mockSetWaveObj,
+        mockModels: new Map<any, any>(),
     } as MockWaveEnv;
-    if (overrides.tabId != null) {
-        env.mockTabModel = new TabModel(overrides.tabId, env);
-    }
     return env;
 }

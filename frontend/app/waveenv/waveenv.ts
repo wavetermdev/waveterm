@@ -1,7 +1,6 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { TabModel } from "@/app/store/tab-model";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
@@ -35,16 +34,24 @@ type ComplexWaveEnvKeys = {
     wos: WaveEnv["wos"];
 };
 
-export type WaveEnvSubset<T> = OmitNever<{
-    [K in keyof T]: K extends keyof ComplexWaveEnvKeys
-        ? Subset<T[K], ComplexWaveEnvKeys[K]>
-        : K extends keyof WaveEnv
-          ? T[K]
-          : never;
-}>;
+type WaveEnvMockFields = {
+    isMock: WaveEnv["isMock"];
+    mockSetWaveObj: WaveEnv["mockSetWaveObj"];
+    mockModels: WaveEnv["mockModels"];
+};
+
+export type WaveEnvSubset<T> = WaveEnvMockFields &
+    OmitNever<{
+        [K in keyof T]: K extends keyof ComplexWaveEnvKeys
+            ? Subset<T[K], ComplexWaveEnvKeys[K]>
+            : K extends keyof WaveEnv
+              ? T[K]
+              : never;
+    }>;
 
 // default implementation for production is in ./waveenvimpl.ts
 export type WaveEnv = {
+    isMock: boolean;
     electron: ElectronApi;
     rpc: RpcApiType;
     platform: NodeJS.Platform;
@@ -68,7 +75,7 @@ export type WaveEnv = {
 
     // the mock fields are only usable in the preview server (may be be null or throw errors in production)
     mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
-    mockTabModel?: TabModel;
+    mockModels?: Map<any, any>;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);
