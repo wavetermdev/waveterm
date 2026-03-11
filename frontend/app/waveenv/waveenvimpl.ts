@@ -29,6 +29,7 @@ export function makeWaveEnvImpl(): WaveEnv {
         isMacOS,
         atoms,
         createBlock,
+        callBackendService: WOS.callBackendService,
         showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => {
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },

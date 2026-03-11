@@ -23,9 +23,20 @@ import { previewElectronApi } from "./preview-electron-api";
 //
 // Any other RPC call falls through to a console.log and resolves null.
 // Override specific calls via MockEnv.rpc (keys are the Command method names, e.g. "GetMetaCommand").
+//
+// Backend service calls (handled in callBackendService):
+//   Any call falls through to a console.log and resolves null.
+//   Override specific calls via MockEnv.services: { Service: { Method: impl } }
+//   e.g. { "block": { "GetControllerStatus": (blockId) => myStatus } }
 
 type RpcOverrides = {
     [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
+};
+
+type ServiceOverrides = {
+    [Service: string]: {
+        [Method: string]: (...args: any[]) => any;
+    };
 };
 
 export type MockEnv = {
@@ -34,6 +45,7 @@ export type MockEnv = {
     platform?: NodeJS.Platform;
     settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
+    services?: ServiceOverrides;
     atoms?: Partial<GlobalAtomsType>;
     electron?: Partial<ElectronApi>;
     createBlock?: WaveEnv["createBlock"];
@@ -52,12 +64,23 @@ function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>):
 }
 
 export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
+    let mergedServices: ServiceOverrides;
+    if (base.services != null || overrides.services != null) {
+        mergedServices = {};
+        for (const svc of Object.keys(base.services ?? {})) {
+            mergedServices[svc] = { ...(base.services[svc] ?? {}) };
+        }
+        for (const svc of Object.keys(overrides.services ?? {})) {
+            mergedServices[svc] = { ...(mergedServices[svc] ?? {}), ...(overrides.services[svc] ?? {}) };
+        }
+    }
     return {
         isDev: overrides.isDev ?? base.isDev,
         tabId: overrides.tabId ?? base.tabId,
         platform: overrides.platform ?? base.platform,
         settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
+        services: mergedServices,
         atoms: overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
         electron:
             overrides.electron != null || base.electron != null
@@ -341,6 +364,14 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 connConfigKeyAtomCache.set(cacheKey, keyAtom);
             }
             return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
+        },
+        callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => {
+            const fn = overrides.services?.[service]?.[method];
+            if (fn) {
+                return Promise.resolve(fn(...args));
+            }
+            console.log("[mock callBackendService]", service, method, args, noUIContext);
+            return Promise.resolve(null);
         },
         mockSetWaveObj: mockWosFns.mockSetWaveObj,
         mockModels: new Map<any, any>(),

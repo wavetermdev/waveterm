@@ -60,6 +60,7 @@ export type WaveEnv = {
     isMacOS: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
+    callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => Promise<any>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
     getLocalHostDisplayNameAtom: () => Atom<string>;
