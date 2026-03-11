@@ -1,7 +1,6 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
 import { Tooltip } from "@/app/element/tooltip";
 import { modalsModel } from "@/app/store/modalmodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -13,7 +12,6 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import { IconButton } from "../element/iconbutton";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { TabBarEnv } from "./tabbarenv";
@@ -110,7 +108,7 @@ const ConfigErrorMessage = () => {
     );
 };
 
-const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement> }) => {
+const ConfigErrorIcon = () => {
     const env = useWaveEnv<TabBarEnv>();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
 
@@ -122,14 +120,16 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
         return null;
     }
     return (
-        <Button
-            ref={buttonRef as React.RefObject<HTMLButtonElement>}
-            className="text-black flex-[0_0_fit-content] !h-full !px-3 red"
-            onClick={handleClick}
+        <Tooltip
+            content="Configuration Error"
+            placement="bottom"
+            hideOnClick
+            divClassName="flex h-[22px] px-2 mb-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-error"
+            divStyle={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            divOnClick={handleClick}
         >
-            <i className="fa fa-solid fa-exclamation-triangle" />
-            Config Error
-        </Button>
+            <i className="fa fa-solid fa-triangle-exclamation" />
+        </Tooltip>
     );
 };
 
@@ -178,14 +178,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
-    const draggerRightRef = useRef<HTMLDivElement>(null);
+    const rightContainerRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
     const waveAIButtonRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
-    const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
-    const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(env.atoms.staticTabId);
     const isFullScreen = useAtomValue(env.atoms.isFullScreen);
@@ -237,23 +235,21 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
-        const windowDragRightWidth = draggerRightRef.current?.getBoundingClientRect().width ?? 0;
+        const rightContainerWidth = rightContainerRef.current?.getBoundingClientRect().width ?? 0;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
-        const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
-        const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
         const waveAIButtonWidth = waveAIButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const spacerMinWidth = 4;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
-            windowDragRightWidth +
+            rightContainerWidth +
             addBtnWidth +
-            updateStatusLabelWidth +
-            configErrorWidth +
             appMenuButtonWidth +
             workspaceSwitcherWidth +
-            waveAIButtonWidth;
+            waveAIButtonWidth +
+            spacerMinWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -636,12 +632,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     }
 
-    const addtabButtonDecl: IconButtonDecl = {
-        elemtype: "iconbutton",
-        icon: "plus",
-        click: handleAddTab,
-        title: "Add Tab",
-    };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <div
@@ -693,12 +683,20 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     })}
                 </div>
             </div>
-            <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
-            <div className="tab-bar-right">
-                <UpdateStatusBanner ref={updateStatusBannerRef} />
-                <ConfigErrorIcon buttonRef={configErrorButtonRef} />
+            <button
+                ref={addBtnRef}
+                title="Add Tab"
+                className="flex h-[22px] px-2 mb-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary"
+                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+                onClick={handleAddTab}
+            >
+                <i className="fa fa-solid fa-plus" />
+            </button>
+            <div className="flex-1 min-w-[4px]" />
+            <div ref={rightContainerRef} className="flex flex-row gap-1 items-end">
+                <UpdateStatusBanner />
+                <ConfigErrorIcon />
                 <div
-                    ref={draggerRightRef}
                     className="h-full shrink-0 z-window-drag"
                     style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as any}
                 />
