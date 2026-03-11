@@ -731,68 +731,87 @@ export class PreviewModel implements ViewModel {
                 }),
         });
         menuItems.push({ type: "separator" });
-        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
-            (fontSize: number) => {
-                return {
-                    label: fontSize.toString() + "px",
-                    type: "checkbox",
-                    checked: overrideFontSize == fontSize,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "editor:fontsize": fontSize },
-                        });
-                    },
-                };
-            }
-        );
-        fontSizeSubMenu.unshift({
-            label: "Default (" + defaultFontSize + "px)",
-            type: "checkbox",
-            checked: overrideFontSize == null,
-            click: () => {
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("block", this.blockId),
-                    meta: { "editor:fontsize": null },
-                });
-            },
-        });
-        menuItems.push({
-            label: "Editor Font Size",
-            submenu: fontSizeSubMenu,
-        });
         const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
         addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo);
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
         const wordWrap = globalStore.get(wordWrapAtom) ?? false;
-        if (loadableSV.state == "hasData") {
-            if (loadableSV.data.specializedView == "codeedit") {
-                if (globalStore.get(this.newFileContent) != null) {
-                    menuItems.push({ type: "separator" });
-                    menuItems.push({
-                        label: "Save File",
-                        click: () => fireAndForget(this.handleFileSave.bind(this)),
-                    });
-                    menuItems.push({
-                        label: "Revert File",
-                        click: () => fireAndForget(this.handleFileRevert.bind(this)),
-                    });
+        menuItems.push({ type: "separator" });
+        if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit") {
+            const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
+                (fontSize: number) => {
+                    return {
+                        label: fontSize.toString() + "px",
+                        type: "checkbox",
+                        checked: overrideFontSize == fontSize,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "editor:fontsize": fontSize },
+                            });
+                        },
+                    };
                 }
+            );
+            fontSizeSubMenu.unshift({
+                label: "Default (" + defaultFontSize + "px)",
+                type: "checkbox",
+                checked: overrideFontSize == null,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "editor:fontsize": null },
+                    });
+                },
+            });
+            menuItems.push({
+                label: "Editor Font Size",
+                submenu: fontSizeSubMenu,
+            });
+            if (globalStore.get(this.newFileContent) != null) {
                 menuItems.push({ type: "separator" });
                 menuItems.push({
-                    label: "Word Wrap",
-                    type: "checkbox",
-                    checked: wordWrap,
-                    click: () =>
-                        fireAndForget(async () => {
-                            const blockOref = WOS.makeORef("block", this.blockId);
-                            await services.ObjectService.UpdateObjectMeta(blockOref, {
-                                "editor:wordwrap": !wordWrap,
-                            });
-                        }),
+                    label: "Save File",
+                    click: () => fireAndForget(this.handleFileSave.bind(this)),
+                });
+                menuItems.push({
+                    label: "Revert File",
+                    click: () => fireAndForget(this.handleFileRevert.bind(this)),
                 });
             }
+            menuItems.push({ type: "separator" });
+            menuItems.push({
+                label: "Word Wrap",
+                type: "checkbox",
+                checked: wordWrap,
+                click: () =>
+                    fireAndForget(async () => {
+                        const blockOref = WOS.makeORef("block", this.blockId);
+                        await services.ObjectService.UpdateObjectMeta(blockOref, {
+                            "editor:wordwrap": !wordWrap,
+                        });
+                    }),
+            });
+        }
+        if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "directory") {
+            const defaultSort = globalStore.get(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
+            menuItems.push({
+                label: "Directory Default Sort",
+                submenu: [
+                    {
+                        label: "Name",
+                        type: "checkbox",
+                        checked: defaultSort === "name",
+                        click: () => fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "name" })),
+                    },
+                    {
+                        label: "Last Modified",
+                        type: "checkbox",
+                        checked: defaultSort === "modtime",
+                        click: () => fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "modtime" })),
+                    },
+                ],
+            });
         }
         return menuItems;
     }
