@@ -281,7 +281,7 @@ function TabBarPreviewInner({ platform, setPlatform }: TabBarPreviewInnerProps) 
             </div>
 
             <div
-                className="w-screen overflow-hidden border-y border-border shadow-xl"
+                className="w-full border-y border-border shadow-xl overflow-hidden"
                 style={{ "--zoomfactor-inv": zoomFactor > 0 ? 1 / zoomFactor : 1 } as CSSProperties}
             >
                 {workspace != null && <TabBar key={platform} workspace={workspace} />}
