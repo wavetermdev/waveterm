@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, getApi, globalStore } from "@/app/store/global";
+import { atoms, getApi, getSettingsKeyAtom, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
@@ -111,6 +111,7 @@ function DirectoryTable({
 }: DirectoryTableProps) {
     const searchActive = useAtomValue(model.directorySearchActive);
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const defaultSort = useAtomValue(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
@@ -208,6 +209,8 @@ function DirectoryTable({
         [model, setErrorMsg]
     );
 
+    const initialSorting = defaultSort === "modtime" ? [{ id: "modtime", desc: true }] : [{ id: "name", desc: false }];
+
     const table = useReactTable({
         data,
         columns,
@@ -216,12 +219,7 @@ function DirectoryTable({
         getCoreRowModel: getCoreRowModel(),
 
         initialState: {
-            sorting: [
-                {
-                    id: "name",
-                    desc: false,
-                },
-            ],
+            sorting: initialSorting,
             columnVisibility: {
                 path: false,
             },

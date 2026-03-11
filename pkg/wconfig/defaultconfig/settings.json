@@ -36,5 +36,6 @@
     "term:copyonselect": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,
-    "waveai:defaultmode": "waveai@balanced"
+    "waveai:defaultmode": "waveai@balanced",
+    "preview:defaultsort": "name"
 }

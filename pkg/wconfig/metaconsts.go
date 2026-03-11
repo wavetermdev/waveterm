@@ -80,6 +80,7 @@ const (
 	ConfigKey_MarkdownFixedFontSize          = "markdown:fixedfontsize"
 
 	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
+	ConfigKey_PreviewDefaultSort             = "preview:defaultsort"
 
 	ConfigKey_TabPreset                      = "tab:preset"
 	ConfigKey_TabConfirmClose                = "tab:confirmclose"
