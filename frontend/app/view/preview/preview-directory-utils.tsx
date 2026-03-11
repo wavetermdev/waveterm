@@ -1,7 +1,7 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore } from "@/app/store/global";
+import { getSettingsKeyAtom, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget, isBlank } from "@/util/util";
@@ -151,4 +151,57 @@ export function handleFileDelete(
         }
         model.refreshCallback();
     });
+}
+
+export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuItem[] {
+    const defaultSort = globalStore.get(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
+    const showHiddenFiles = globalStore.get(model.showHiddenFiles) ?? true;
+    return [
+        {
+            label: "Directory Sort Order",
+            submenu: [
+                {
+                    label: "Name",
+                    type: "checkbox",
+                    checked: defaultSort === "name",
+                    click: () =>
+                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "name" })),
+                },
+                {
+                    label: "Last Modified",
+                    type: "checkbox",
+                    checked: defaultSort === "modtime",
+                    click: () =>
+                        fireAndForget(() =>
+                            RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "modtime" })
+                        ),
+                },
+            ],
+        },
+        {
+            label: "Show Hidden Files",
+            submenu: [
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: showHiddenFiles,
+                    click: () => {
+                        globalStore.set(model.showHiddenFiles, true);
+                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": true }));
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !showHiddenFiles,
+                    click: () => {
+                        globalStore.set(model.showHiddenFiles, false);
+                        fireAndForget(() =>
+                            RpcApi.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": false })
+                        );
+                    },
+                },
+            ],
+        },
+    ];
 }

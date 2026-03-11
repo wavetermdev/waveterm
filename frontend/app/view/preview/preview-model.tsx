@@ -20,6 +20,7 @@ import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor";
 import { createRef } from "react";
 import { PreviewView } from "./preview";
+import { makeDirectoryDefaultMenuItems } from "./preview-directory-utils";
 
 // TODO drive this using config
 const BOOKMARKS: { label: string; path: string }[] = [
@@ -795,60 +796,9 @@ export class PreviewModel implements ViewModel {
             });
         }
         if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "directory") {
-            const defaultSort = globalStore.get(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
-            const showHiddenFiles = globalStore.get(this.showHiddenFiles) ?? true;
             menuItems.push({ type: "separator" });
-            menuItems.push({ label: "Directory Defaults", enabled: false });
-            menuItems.push({
-                label: "Sort Order",
-                submenu: [
-                    {
-                        label: "Name",
-                        type: "checkbox",
-                        checked: defaultSort === "name",
-                        click: () =>
-                            fireAndForget(() =>
-                                RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "name" })
-                            ),
-                    },
-                    {
-                        label: "Last Modified",
-                        type: "checkbox",
-                        checked: defaultSort === "modtime",
-                        click: () =>
-                            fireAndForget(() =>
-                                RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "modtime" })
-                            ),
-                    },
-                ],
-            });
-            menuItems.push({
-                label: "Show Hidden Files",
-                submenu: [
-                    {
-                        label: "On",
-                        type: "checkbox",
-                        checked: showHiddenFiles,
-                        click: () => {
-                            globalStore.set(this.showHiddenFiles, true);
-                            fireAndForget(() =>
-                                RpcApi.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": true })
-                            );
-                        },
-                    },
-                    {
-                        label: "Off",
-                        type: "checkbox",
-                        checked: !showHiddenFiles,
-                        click: () => {
-                            globalStore.set(this.showHiddenFiles, false);
-                            fireAndForget(() =>
-                                RpcApi.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": false })
-                            );
-                        },
-                    },
-                ],
-            });
+            menuItems.push({ label: "Default Settings", enabled: false });
+            menuItems.push(...makeDirectoryDefaultMenuItems(this));
         }
         return menuItems;
     }

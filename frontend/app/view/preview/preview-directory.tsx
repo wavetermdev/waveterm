@@ -39,6 +39,7 @@ import {
     handleFileDelete,
     handleRename,
     isIconValid,
+    makeDirectoryDefaultMenuItems,
     mergeError,
     overwriteError,
 } from "./preview-directory-utils";
@@ -159,9 +160,7 @@ function DirectoryTable({
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modtime", {
-                cell: (info) => (
-                    <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue())}</span>
-                ),
+                cell: (info) => <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue())}</span>,
                 header: () => <span>Last Modified</span>,
                 size: 91,
                 minSize: 65,
@@ -409,6 +408,13 @@ function TableBody({
             ];
             addOpenMenuItems(menu, conn, finfo);
             menu.push(
+                {
+                    type: "separator",
+                },
+                {
+                    label: "Default Settings",
+                    submenu: makeDirectoryDefaultMenuItems(model),
+                },
                 {
                     type: "separator",
                 },
