@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { AllServiceImpls } from "@/app/store/services";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
@@ -32,6 +33,7 @@ type ComplexWaveEnvKeys = {
     electron: WaveEnv["electron"];
     atoms: WaveEnv["atoms"];
     wos: WaveEnv["wos"];
+    services: WaveEnv["services"];
 };
 
 type WaveEnvMockFields = {
@@ -60,6 +62,7 @@ export type WaveEnv = {
     isMacOS: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
+    services: typeof AllServiceImpls;
     callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => Promise<any>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;

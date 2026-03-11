@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { AllServiceImpls } from "@/app/store/services";
 import {
     atoms,
     createBlock,
@@ -29,6 +30,7 @@ export function makeWaveEnvImpl(): WaveEnv {
         isMacOS,
         atoms,
         createBlock,
+        services: AllServiceImpls,
         callBackendService: WOS.callBackendService,
         showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => {
             ContextMenuModel.getInstance().showContextMenu(menu, e);

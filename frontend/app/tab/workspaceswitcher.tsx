@@ -19,8 +19,8 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { CSSProperties, forwardRef, useCallback, useEffect } from "react";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
-import { WorkspaceService } from "../store/services";
-import { getObjectValue, makeORef } from "../store/wos";
+import { globalStore } from "@/app/store/jotaiStore";
+import { makeORef } from "../store/wos";
 import { waveEventSubscribeSingle } from "../store/wps";
 import { WorkspaceEditor } from "./workspaceeditor";
 import "./workspaceswitcher.scss";
@@ -34,6 +34,10 @@ export type WorkspaceSwitcherEnv = WaveEnvSubset<{
     atoms: {
         workspace: WaveEnv["atoms"]["workspace"];
     };
+    services: {
+        workspace: WaveEnv["services"]["workspace"];
+    };
+    wos: WaveEnv["wos"];
 }>;
 
 type WorkspaceListEntry = {
@@ -53,17 +57,17 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     const setEditingWorkspace = useSetAtom(editingWorkspaceAtom);
 
     const updateWorkspaceList = useCallback(async () => {
-        const workspaceList = await WorkspaceService.ListWorkspaces();
+        const workspaceList = await env.services.workspace.ListWorkspaces();
         if (!workspaceList) {
             return;
         }
         const newList: WorkspaceList = [];
         for (const entry of workspaceList) {
             // This just ensures that the atom exists for easier setting of the object
-            getObjectValue(makeORef("workspace", entry.workspaceid));
+            globalStore.get(env.wos.getWaveObjectAtom(makeORef("workspace", entry.workspaceid)));
             newList.push({
                 windowId: entry.windowid,
-                workspace: await WorkspaceService.GetWorkspace(entry.workspaceid),
+                workspace: await env.services.workspace.GetWorkspace(entry.workspaceid),
             });
         }
         setWorkspaceList(newList);
@@ -96,7 +100,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
 
     const saveWorkspace = () => {
         fireAndForget(async () => {
-            await WorkspaceService.UpdateWorkspace(activeWorkspace.oid, "", "", "", true);
+            await env.services.workspace.UpdateWorkspace(activeWorkspace.oid, "", "", "", true);
             await updateWorkspaceList();
             setEditingWorkspace(activeWorkspace.oid);
         });
@@ -169,7 +173,7 @@ const WorkspaceSwitcherItem = ({
         setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
         if (newWorkspace.name != "") {
             fireAndForget(() =>
-                WorkspaceService.UpdateWorkspace(
+                env.services.workspace.UpdateWorkspace(
                     workspace.oid,
                     newWorkspace.name,
                     newWorkspace.icon,

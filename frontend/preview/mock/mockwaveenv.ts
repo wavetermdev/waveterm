@@ -4,6 +4,7 @@
 import { makeDefaultConnStatus } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { handleWaveEvent } from "@/app/store/wps";
+import { AllServiceTypes } from "@/app/store/services";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
@@ -365,6 +366,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
         },
+        services: null as any,
         callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => {
             const fn = overrides.services?.[service]?.[method];
             if (fn) {
@@ -376,5 +378,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         mockSetWaveObj: mockWosFns.mockSetWaveObj,
         mockModels: new Map<any, any>(),
     } as MockWaveEnv;
+    env.services = Object.fromEntries(
+        Object.entries(AllServiceTypes).map(([key, ServiceClass]) => [key, new ServiceClass(env)])
+    ) as any;
     return env;
 }
