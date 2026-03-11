@@ -72,6 +72,17 @@
                         display: flex;
                         justify-content: center;
                         flex: 0 0 auto;
+                        position: relative;
+                        &::before {
+                            content: "";
+                            position: absolute;
+                            left: 50%;
+                            top: 10%;
+                            height: 80%;
+                            width: 1px;
+                            background-color: var(--border-color);
+                            pointer-events: none;
+                        }
                         .dir-table-head-resize {
                             cursor: col-resize;
                             user-select: none;
@@ -148,14 +159,15 @@
 
                         .dir-table-lastmod,
                         .dir-table-modestr,
-                        .dir-table-size,
                         .dir-table-type {
                             color: var(--secondary-text-color);
                             margin-right: 12px;
                         }
 
                         .dir-table-modestr,
+                        .dir-table-size,
                         .dir-table-lastmod {
+                            color: var(--secondary-text-color);
                             font-family: Hack;
                             font-size: 11px;
                         }
