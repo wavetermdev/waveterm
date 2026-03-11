@@ -173,7 +173,7 @@ func (s *FileStore) DeleteZone(ctx context.Context, zoneId string) error {
 	return nil
 }
 
-// if file doesn't exsit, returns fs.ErrNotExist
+// if file doesn't exist, returns fs.ErrNotExist
 func (s *FileStore) Stat(ctx context.Context, zoneId string, name string) (*WaveFile, error) {
 	return withLockRtn(s, zoneId, name, func(entry *CacheEntry) (*WaveFile, error) {
 		file, err := entry.loadFileForRead(ctx)
