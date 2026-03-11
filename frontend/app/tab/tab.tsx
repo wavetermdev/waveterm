@@ -106,7 +106,10 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         onRename,
         renameRef,
     } = props;
-    const [originalName, setOriginalName] = useState(tabName);
+    const MaxTabNameLength = 14;
+    const truncateTabName = (name: string) => [...(name ?? "")].slice(0, MaxTabNameLength).join("");
+    const displayName = truncateTabName(tabName);
+    const [originalName, setOriginalName] = useState(displayName);
     const [isEditable, setIsEditable] = useState(false);
 
     const editableRef = useRef<HTMLDivElement>(null);
@@ -116,7 +119,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
     useImperativeHandle(ref, () => tabRef.current as HTMLDivElement);
 
     useEffect(() => {
-        setOriginalName(tabName);
+        setOriginalName(truncateTabName(tabName));
     }, [tabName]);
 
     useEffect(() => {
@@ -192,8 +195,11 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
             event.preventDefault();
             event.stopPropagation();
         } else if (curLen >= 14 && !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(event.key)) {
-            event.preventDefault();
-            event.stopPropagation();
+            const selection = window.getSelection();
+            if (!selection || selection.isCollapsed) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
         }
     };
 
@@ -233,7 +239,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                     onKeyDown={handleKeyDown}
                     suppressContentEditableWarning={true}
                 >
-                    {tabName}
+                    {displayName}
                 </div>
                 <TabBadges badges={badges} flagColor={flagColor} />
                 <Button
