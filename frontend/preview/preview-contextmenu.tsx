@@ -101,7 +101,7 @@ const PreviewContextMenuItem = memo(
         const isSubmenuOpen = hasSubmenu && isPathOpen(openPath, itemPath);
 
         if (isSeparator) {
-            return <div className="my-1 border-t border-border" role="separator" />;
+            return <div className="my-0.5 border-t border-border" role="separator" />;
         }
 
         const handleMouseEnter = () => {
@@ -133,9 +133,9 @@ const PreviewContextMenuItem = memo(
                     aria-checked={item.type === "checkbox" || item.type === "radio" ? isChecked : undefined}
                     data-context-menu-item={item.label ?? item.type ?? "item"}
                     className={cn(
-                        "flex min-h-8 items-center gap-3 px-3 text-sm text-foreground select-none",
+                        "flex min-h-7 items-center gap-2 px-2.5 text-xs text-foreground select-none",
                         !isHeader && "cursor-pointer",
-                        isHeader && "px-3 py-1 text-xxs uppercase tracking-[0.08em] text-muted",
+                        isHeader && "px-2.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-muted",
                         !isHeader && !isDisabled && "hover:bg-hoverbg",
                         isDisabled && "text-muted",
                         isSubmenuOpen && "bg-hoverbg"
@@ -147,15 +147,15 @@ const PreviewContextMenuItem = memo(
                         <span className="truncate">{item.label}</span>
                     ) : (
                         <>
-                            <span className="flex w-4 items-center justify-center text-center text-xs">
+                            <span className="flex w-3.5 items-center justify-center text-center text-[10px]">
                                 {isChecked ? <i className="fa fa-check" /> : null}
                             </span>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate">{item.label}</span>
-                                {item.sublabel ? <span className="truncate text-xxs text-muted">{item.sublabel}</span> : null}
+                                {item.sublabel ? <span className="truncate text-[10px] text-muted">{item.sublabel}</span> : null}
                             </div>
                             {hasSubmenu ? (
-                                <span className="ml-3 text-xs text-muted">
+                                <span className="ml-2 text-[10px] text-muted">
                                     <i className="fa fa-chevron-right" />
                                 </span>
                             ) : null}
@@ -218,7 +218,7 @@ const PreviewContextMenuPanel = memo(
             <div
                 ref={refs.setFloating}
                 style={floatingStyles}
-                className="min-w-[220px] overflow-hidden rounded-md border border-border bg-modalbg py-1 shadow-2xl"
+                className="min-w-[180px] overflow-visible rounded-md border border-border bg-modalbg py-0.5 shadow-2xl"
                 role="menu"
             >
                 {visibleItems.map((item, index) => (
