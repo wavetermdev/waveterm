@@ -10,6 +10,7 @@ import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
+import { showPreviewContextMenu } from "../preview-contextmenu";
 import { previewElectronApi } from "./preview-electron-api";
 
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
@@ -308,10 +309,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 return Promise.resolve(crypto.randomUUID());
             }),
         showContextMenu:
-            overrides.showContextMenu ??
-            ((menu, e) => {
-                console.log("[mock showContextMenu]", menu, e);
-            }),
+            overrides.showContextMenu ?? showPreviewContextMenu,
         getLocalHostDisplayNameAtom: () => {
             return localHostDisplayNameAtom;
         },
