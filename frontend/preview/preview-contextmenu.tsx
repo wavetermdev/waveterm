@@ -43,6 +43,7 @@ type PreviewContextMenuItemProps = {
 };
 
 let previewContextMenuListener: ((state: PreviewContextMenuState) => void) | null = null;
+const previewContextMenuItemIds = new WeakMap<ContextMenuItem, string>();
 
 function makeVirtualElement(x: number, y: number): VirtualElement {
     return {
@@ -56,7 +57,7 @@ function makeVirtualElement(x: number, y: number): VirtualElement {
                 right: x,
                 bottom: y,
                 left: x,
-                toJSON: () => undefined,
+                toJSON: () => ({}),
             } as DOMRect;
         },
     };
@@ -76,6 +77,16 @@ function getVisibleItems(items: ContextMenuItem[]): ContextMenuItem[] {
 function activateItem(item: ContextMenuItem, closeMenu: () => void): void {
     closeMenu();
     item.click?.();
+}
+
+function getPreviewContextMenuItemId(item: ContextMenuItem): string {
+    const existingId = previewContextMenuItemIds.get(item);
+    if (existingId != null) {
+        return existingId;
+    }
+    const newId = crypto.randomUUID();
+    previewContextMenuItemIds.set(item, newId);
+    return newId;
 }
 
 const PreviewContextMenuItem = memo(
@@ -212,7 +223,7 @@ const PreviewContextMenuPanel = memo(
             >
                 {visibleItems.map((item, index) => (
                     <PreviewContextMenuItem
-                        key={`${depth}-${index}-${item.label ?? item.type ?? "item"}`}
+                        key={getPreviewContextMenuItemId(item)}
                         item={item}
                         itemPath={[...parentPath, index]}
                         depth={depth}
@@ -231,16 +242,16 @@ PreviewContextMenuPanel.displayName = "PreviewContextMenuPanel";
 
 export function showPreviewContextMenu(menu: ContextMenuItem[], e: React.MouseEvent): void {
     e.stopPropagation();
-    e.preventDefault?.();
+    e.preventDefault();
     previewContextMenuListener?.({
         items: menu,
-        x: e.clientX ?? 0,
-        y: e.clientY ?? 0,
+        x: e.clientX,
+        y: e.clientY,
     });
 }
 
 export const PreviewContextMenu = memo(() => {
-    const [menuState, setMenuState] = useState<PreviewContextMenuState>(null);
+    const [menuState, setMenuState] = useState<PreviewContextMenuState | null>(null);
     const [openPath, setOpenPath] = useState<number[]>([]);
     const portalRef = useRef<HTMLDivElement>(null);
 
