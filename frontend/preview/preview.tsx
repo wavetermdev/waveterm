@@ -95,6 +95,7 @@ function PreviewRoot() {
             atoms: {
                 uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
                 staticTabId: atom(PreviewTabId),
+                workspaceId: atom(PreviewWorkspaceId),
             },
         })
     );
@@ -143,6 +144,7 @@ function PreviewApp() {
 
 const PreviewTabId = crypto.randomUUID();
 const PreviewWindowId = crypto.randomUUID();
+const PreviewWorkspaceId = crypto.randomUUID();
 const PreviewClientId = crypto.randomUUID();
 
 function initPreview() {

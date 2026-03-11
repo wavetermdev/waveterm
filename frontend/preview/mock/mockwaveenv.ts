@@ -88,9 +88,10 @@ function makeMockSettingsKeyAtom(
 }
 
 function makeMockGlobalAtoms(
-    settingsOverrides?: Partial<SettingsType>,
-    atomOverrides?: Partial<GlobalAtomsType>,
-    tabId?: string
+    settingsOverrides: Partial<SettingsType>,
+    atomOverrides: Partial<GlobalAtomsType>,
+    tabId: string,
+    getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>
 ): GlobalAtomsType {
     let fullConfig = DefaultFullConfig;
     if (settingsOverrides) {
@@ -101,11 +102,20 @@ function makeMockGlobalAtoms(
     }
     const fullConfigAtom = atom(fullConfig) as PrimitiveAtom<FullConfigType>;
     const settingsAtom = atom((get) => get(fullConfigAtom)?.settings ?? {}) as Atom<SettingsType>;
+    const workspaceIdAtom: Atom<string> = atomOverrides?.workspaceId ?? (atom(null as string) as Atom<string>);
+    const workspaceAtom: Atom<Workspace> = atom((get) => {
+        const wsId = get(workspaceIdAtom);
+        if (wsId == null) {
+            return null;
+        }
+        return get(getWaveObjectAtom<Workspace>("workspace:" + wsId));
+    });
     const defaults: GlobalAtomsType = {
         builderId: atom(""),
         builderAppId: atom("") as any,
         uiContext: atom({ windowid: "", activetabid: tabId ?? "" } as UIContext),
-        workspace: atom(null as Workspace),
+        workspaceId: workspaceIdAtom,
+        workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
@@ -125,7 +135,11 @@ function makeMockGlobalAtoms(
     if (!atomOverrides) {
         return defaults;
     }
-    return { ...defaults, ...atomOverrides };
+    const merged = { ...defaults, ...atomOverrides };
+    if (!atomOverrides.workspace) {
+        merged.workspace = workspaceAtom;
+    }
+    return merged;
 }
 
 type MockWosFns = {
@@ -221,7 +235,14 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
     const connConfigKeyAtomCache = new Map<string, Atom<any>>();
-    const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId);
+    const getWaveObjectAtom = <T extends WaveObj>(oref: string): PrimitiveAtom<T> => {
+        if (!waveObjectValueAtomCache.has(oref)) {
+            const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+            waveObjectValueAtomCache.set(oref, atom(obj) as PrimitiveAtom<T>);
+        }
+        return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
+    };
+    const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId, getWaveObjectAtom);
     const localHostDisplayNameAtom = atom<string>((get) => {
         const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
         if (configValue != null) {
@@ -230,13 +251,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         return "user@localhost";
     });
     const mockWosFns: MockWosFns = {
-        getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
-            if (!waveObjectValueAtomCache.has(oref)) {
-                const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                waveObjectValueAtomCache.set(oref, atom(obj) as PrimitiveAtom<T>);
-            }
-            return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
-        },
+        getWaveObjectAtom,
         mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => {
             if (!waveObjectValueAtomCache.has(oref)) {
                 waveObjectValueAtomCache.set(oref, atom(null as WaveObj));

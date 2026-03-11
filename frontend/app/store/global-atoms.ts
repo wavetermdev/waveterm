@@ -43,12 +43,16 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         console.log("failed to initialize zoomFactorAtom", e);
     }
 
-    const workspaceAtom: Atom<Workspace> = atom((get) => {
+    const workspaceIdAtom: Atom<string> = atom((get) => {
         const windowData = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
-        if (windowData == null) {
+        return windowData?.workspaceid ?? null;
+    });
+    const workspaceAtom: Atom<Workspace> = atom((get) => {
+        const workspaceId = get(workspaceIdAtom);
+        if (workspaceId == null) {
             return null;
         }
-        return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
+        return WOS.getObjectValue(WOS.makeORef("workspace", workspaceId), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
     const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
@@ -123,6 +127,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         builderId: builderIdAtom,
         builderAppId: builderAppIdAtom,
         uiContext: uiContextAtom,
+        workspaceId: workspaceIdAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom,
