@@ -25,15 +25,18 @@ const UpgradeOnboardingModal_v0_14_2_Content = () => {
                             </li>
                             <li>
                                 <strong>Bell Indicator On by Default</strong> - Terminal bell badge now lights up the
-                                block and tab when your terminal rings (controlled by{" "}
-                                <code>term:bellindicator</code>)
+                                block and tab when your terminal rings (controlled by <code>term:bellindicator</code>)
                             </li>
                             <li>
                                 <strong>
                                     <code>wsh badge</code>
                                 </strong>{" "}
                                 - New command to set or clear badges from the CLI. Supports icons, colors, priorities,
-                                and PID-linked badges that auto-clear when a process exits
+                                and PID-linked badges
+                            </li>
+                            <li>
+                                <strong>Claude Code Integration</strong> - Use <code>wsh badge</code> with Claude Code
+                                hooks to surface AI task status as tab bar notifications
                             </li>
                         </ul>
                     </div>
