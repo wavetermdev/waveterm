@@ -1,0 +1,97 @@
+---
+sidebar_position: 1.9
+id: "claude-code"
+title: "Claude Code Integration"
+---
+
+# Claude Code Tab Badges
+
+When you run multiple Claude Code sessions in parallel — one per feature, one per repo, a few long-running tasks — it gets hard to know which tabs need your attention without clicking through each one. Wave's badge system solves this: hooks in Claude Code write a small visual indicator to the tab header whenever something important happens, so you can see at a glance which sessions are waiting, done, or in trouble.
+
+## How it works
+
+Claude Code supports [lifecycle hooks](https://code.claude.com/docs/en/hooks) — shell commands that run automatically at specific points in a session. Wave's `wsh badge` command sets or clears a visual indicator on the current block or tab. By wiring these together, you get ambient awareness across all your sessions without watching any of them.
+
+Badges auto-clear when you focus the block, so they're purely a "hey, look over here" signal. Once you click in and read what's happening, the badge disappears on its own.
+
+Wave already shows a bell icon when a terminal outputs a BEL character. These hooks complement that with semantic badges — *permission needed*, *done* — that survive across tab switches and work across splits.
+
+### Badge rollup
+
+If a tab has multiple terminals (block), Wave shows the highest-priority badge on the tab header. Ties at the same priority go to the earliest badge set, so the most urgent signal from any pane in the tab floats to the top.
+
+## Setup
+
+These hooks go in your global Claude Code settings so they apply to every session on your machine, not just one project.
+
+Add the following to `~/.claude/settings.json`. If you already have a `hooks` key, merge the entries in:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "wsh badge bell-exclamation --color '#e0b956' --priority 20 --beep"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "wsh badge check --color '#58c142' --priority 10"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+That's it. Restart any running Claude Code sessions for the hooks to take effect.
+
+## What each hook does
+
+### Permission prompt — `circle-exclamation` gold, priority 20
+
+Claude Code occasionally needs your approval before it can continue — to run a command, write a file outside the project, or use a tool that requires explicit permission. When it hits one of these, it stops and waits. Without a signal, you might not notice for minutes.
+
+This hook fires on the `permission_prompt` notification type and sets a high-priority gold badge with an audible beep. Priority 20 means it beats any other badge on that tab, so a waiting session always surfaces above a finished one.
+
+When you click into the tab and approve or deny the request, the badge clears automatically.
+
+### Session complete — `circle-check` green, priority 10
+
+When Claude Code finishes responding, this hook sets a green check badge. It's a low-key signal: glance at the tab bar, see which sessions are done, review their output in whatever order you like.
+
+The `stop_hook_active` guard in the command prevents the hook from firing recursively if you have other `Stop` hooks that keep Claude running.
+
+## Choosing your own icons and colors
+
+Icon names are [Font Awesome](https://fontawesome.com/icons) icon names without the `fa-` prefix. Colors are any valid CSS color — named colors like `gold` and `green`, hex values like `#f59e0b`, or anything else CSS accepts.
+
+Some alternatives to consider:
+
+| Situation | Icon | Color |
+|-----------|------|-------|
+| Permission needed | `circle-exclamation` | `gold` |
+| Session complete | `circle-check` | `green` |
+| Custom high-priority alert | `triangle-exclamation` | `red` |
+| Neutral / informational | `circle-info` | `steelblue` |
+
+To target a specific block or tab instead of the current one, add `-b <blockid>` or `-b tab`. See the [`wsh badge` reference](/reference/wsh-cmd/badge) for all available flags.
+
+## Adjusting priorities
+
+Priority controls which badge wins when multiple blocks in a tab each have one. Higher numbers take precedence. The defaults above use:
+
+- **20** for permission prompts — always surfaces above everything else
+- **10** for session complete — visible when nothing more urgent is active
+
+If you add more hooks, keep permission-blocking signals at the high end (15–25) and informational signals at the low end (5–10).

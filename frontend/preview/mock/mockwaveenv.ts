@@ -292,6 +292,9 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         electron: {
             ...previewElectronApi,
             getPlatform: () => platform,
+            openExternal: (url: string) => {
+                window.open(url, "_blank");
+            },
             ...overrides.electron,
         },
         rpc: makeMockRpc(overrides.rpc, mockWosFns),
