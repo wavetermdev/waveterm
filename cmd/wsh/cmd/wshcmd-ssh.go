@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -15,6 +16,8 @@ import (
 
 var (
 	identityFiles []string
+	sshLogin      string
+	sshPort       string
 	newBlock      bool
 )
 
@@ -28,6 +31,8 @@ var sshCmd = &cobra.Command{
 
 func init() {
 	sshCmd.Flags().StringArrayVarP(&identityFiles, "identityfile", "i", []string{}, "add an identity file for publickey authentication")
+	sshCmd.Flags().StringVarP(&sshLogin, "login", "l", "", "set the remote login name")
+	sshCmd.Flags().StringVarP(&sshPort, "port", "p", "", "set the remote port")
 	sshCmd.Flags().BoolVarP(&newBlock, "new", "n", false, "create a new terminal block with this connection")
 	rootCmd.AddCommand(sshCmd)
 }
@@ -38,6 +43,11 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}()
 
 	sshArg := args[0]
+	var err error
+	sshArg, err = applySSHOverrides(sshArg, sshLogin, sshPort)
+	if err != nil {
+		return err
+	}
 	blockId := RpcContext.BlockId
 	if blockId == "" && !newBlock {
 		return fmt.Errorf("cannot determine blockid (not in JWT)")
@@ -91,10 +101,27 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			waveobj.MetaKey_CmdCwd:     nil,
 		},
 	}
-	err := wshclient.SetMetaCommand(RpcClient, data, nil)
+	err = wshclient.SetMetaCommand(RpcClient, data, nil)
 	if err != nil {
 		return fmt.Errorf("setting connection in block: %w", err)
 	}
 	WriteStderr("switched connection to %q\n", sshArg)
 	return nil
+}
+
+func applySSHOverrides(sshArg string, login string, port string) (string, error) {
+	if login == "" && port == "" {
+		return sshArg, nil
+	}
+	opts, err := remote.ParseOpts(sshArg)
+	if err != nil {
+		return "", err
+	}
+	if login != "" {
+		opts.SSHUser = login
+	}
+	if port != "" {
+		opts.SSHPort = port
+	}
+	return opts.String(), nil
 }
