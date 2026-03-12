@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { SubBlock } from "@/app/block/block";
@@ -14,6 +14,7 @@ import type { TermViewModel } from "@/app/view/term/term-model";
 import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
+import { Claude } from "@lobehub/icons";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -32,6 +33,12 @@ interface TerminalViewProps {
     blockId: string;
     model: TermViewModel;
 }
+
+const TermClaudeIcon = React.memo(() => {
+    return <Claude size={15} aria-hidden="true" />;
+});
+
+TermClaudeIcon.displayName = "TermClaudeIcon";
 
 const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => {
     const connStatus = jotai.useAtomValue(model.connStatus);
@@ -392,3 +399,4 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
 };
 
 export { TerminalView };
+export { TermClaudeIcon };

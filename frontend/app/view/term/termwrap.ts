@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
@@ -32,6 +32,7 @@ import {
     handleOsc16162Command,
     handleOsc52Command,
     handleOsc7Command,
+    isClaudeCodeCommand,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
 import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
@@ -90,6 +91,7 @@ export class TermWrap {
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
+    claudeCodeActiveAtom: jotai.PrimitiveAtom<boolean>;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
@@ -142,6 +144,7 @@ export class TermWrap {
         this.promptMarkers = [];
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.claudeCodeActiveAtom = jotai.atom(false);
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
@@ -393,9 +396,10 @@ export class TermWrap {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("block", this.blockId),
             });
+            let shellState: ShellIntegrationStatus = null;
 
             if (rtInfo && rtInfo["shell:integration"]) {
-                const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
+                shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
                 globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
             } else {
                 globalStore.set(this.shellIntegrationStatusAtom, null);
@@ -403,6 +407,10 @@ export class TermWrap {
 
             const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
             globalStore.set(this.lastCommandAtom, lastCmd || null);
+            globalStore.set(
+                this.claudeCodeActiveAtom,
+                shellState === "running-command" && isClaudeCodeCommand(lastCmd)
+            );
         } catch (e) {
             console.log("Error loading runtime info:", e);
         }

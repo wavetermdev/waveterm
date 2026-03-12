@@ -25,6 +25,8 @@ const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace
 // See aiprompts/wave-osc-16162.md for full documentation
 export type ShellIntegrationStatus = "ready" | "running-command";
 
+const ClaudeCodeRegex = /(?:^|\/)claude\b/;
+
 type Osc16162Command =
     | { command: "A"; data: Record<string, never> }
     | { command: "C"; data: { cmd64?: string } }
@@ -65,8 +67,7 @@ function checkCommandForTelemetry(decodedCmd: string) {
         return;
     }
 
-    const claudeRegex = /^claude\b/;
-    if (claudeRegex.test(decodedCmd)) {
+    if (isClaudeCodeCommand(decodedCmd)) {
         recordTEvent("action:term", { "action:type": "claude" });
         return;
     }
@@ -76,6 +77,14 @@ function checkCommandForTelemetry(decodedCmd: string) {
         recordTEvent("action:term", { "action:type": "opencode" });
         return;
     }
+}
+
+export function isClaudeCodeCommand(decodedCmd: string): boolean {
+    if (!decodedCmd) {
+        return false;
+    }
+    const normalizedCmd = decodedCmd.trim().replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "").replace(/^env\s+/, "");
+    return ClaudeCodeRegex.test(normalizedCmd);
 }
 
 function handleShellIntegrationCommandStart(
@@ -101,16 +110,19 @@ function handleShellIntegrationCommandStart(
                 const decodedCmd = base64ToString(cmd.data.cmd64);
                 rtInfo["shell:lastcmd"] = decodedCmd;
                 globalStore.set(termWrap.lastCommandAtom, decodedCmd);
+                globalStore.set(termWrap.claudeCodeActiveAtom, isClaudeCodeCommand(decodedCmd));
                 checkCommandForTelemetry(decodedCmd);
             } catch (e) {
                 console.error("Error decoding cmd64:", e);
                 rtInfo["shell:lastcmd"] = null;
                 globalStore.set(termWrap.lastCommandAtom, null);
+                globalStore.set(termWrap.claudeCodeActiveAtom, false);
             }
         }
     } else {
         rtInfo["shell:lastcmd"] = null;
         globalStore.set(termWrap.lastCommandAtom, null);
+        globalStore.set(termWrap.claudeCodeActiveAtom, false);
     }
     rtInfo["shell:lastcmdexitcode"] = null;
 }
@@ -287,6 +299,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
         case "A": {
             rtInfo["shell:state"] = "ready";
             globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
@@ -324,6 +337,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             }
             break;
         case "D":
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             if (cmd.data.exitcode != null) {
                 rtInfo["shell:lastcmdexitcode"] = cmd.data.exitcode;
             } else {
@@ -337,6 +351,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             break;
         case "R":
             globalStore.set(termWrap.shellIntegrationStatusAtom, null);
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
