@@ -21,6 +21,7 @@ import { previewElectronApi } from "./preview-electron-api";
 //                                          is purely FE-based (registered via WPS on the frontend)
 //   - rpc.GetMetaCommand                -- reads .meta from the mock WOS atom for the given oref
 //   - rpc.SetMetaCommand                -- writes .meta to the mock WOS atom (null values delete keys)
+//   - rpc.SetConfigCommand              -- merges settings into fullConfigAtom (null values delete keys)
 //   - rpc.UpdateTabNameCommand          -- updates .name on the Tab WaveObj in the mock WOS
 //   - rpc.UpdateWorkspaceTabIdsCommand  -- updates .tabids on the Workspace WaveObj in the mock WOS
 //
@@ -176,6 +177,7 @@ function makeMockGlobalAtoms(
 type MockWosFns = {
     getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>;
     mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
+    fullConfigAtom: PrimitiveAtom<FullConfigType>;
 };
 
 export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
@@ -219,6 +221,19 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         const current = globalStore.get(objAtom) as Tab;
         const updated = { ...current, name: newName };
         wos.mockSetWaveObj(tabORef, updated);
+        return null;
+    });
+    setCallHandler("setconfig", async (_client, data: SettingsType) => {
+        const current = globalStore.get(wos.fullConfigAtom);
+        const updatedSettings = { ...(current?.settings ?? {}) };
+        for (const [key, value] of Object.entries(data)) {
+            if (value === null) {
+                delete (updatedSettings as any)[key];
+            } else {
+                (updatedSettings as any)[key] = value;
+            }
+        }
+        globalStore.set(wos.fullConfigAtom, { ...current, settings: updatedSettings as SettingsType });
         return null;
     });
     setCallHandler("updateworkspacetabids", async (_client, data: { args: [string, string[]] }) => {
@@ -309,6 +324,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     });
     const mockWosFns: MockWosFns = {
         getWaveObjectAtom,
+        fullConfigAtom: atoms.fullConfigAtom,
         mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => {
             if (!waveObjectValueAtomCache.has(oref)) {
                 waveObjectValueAtomCache.set(oref, atom(null as WaveObj));
