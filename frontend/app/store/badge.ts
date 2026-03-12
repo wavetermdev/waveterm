@@ -123,8 +123,7 @@ function getTabBadgeAtom(tabId: string, env?: TabBadgesEnv): Atom<Badge[]> {
     }
     const tabOref = WOS.makeORef("tab", tabId);
     const tabBadgeAtom = getBadgeAtom(tabOref);
-    const tabAtom =
-        env != null ? env.wos.getWaveObjectAtom<Tab>(tabOref) : WOS.getWaveObjectAtom<Tab>(tabOref);
+    const tabAtom = env != null ? env.wos.getWaveObjectAtom<Tab>(tabOref) : WOS.getWaveObjectAtom<Tab>(tabOref);
     rtn = atom((get) => {
         const tab = get(tabAtom);
         const blockIds = tab?.blockids ?? [];
@@ -213,7 +212,13 @@ function setupBadgesSubscription() {
                 }
                 return;
             }
-            globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
+            if (data.clear) {
+                globalStore.set(curAtom, null);
+            } else if (data.badge != null) {
+                const existing = globalStore.get(curAtom);
+                const candidates = existing != null ? [existing, data.badge] : [data.badge];
+                globalStore.set(curAtom, sortBadges(candidates)[0]);
+            }
         },
     });
 }

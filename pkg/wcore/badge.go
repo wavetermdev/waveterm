@@ -94,8 +94,12 @@ func setBadge(oref waveobj.ORef, data baseds.BadgeEvent) {
 		delete(globalBadgeStore.transient, orefStr)
 		log.Printf("badge store: badge cleared: oref=%s\n", orefStr)
 	} else {
-		globalBadgeStore.transient[orefStr] = *data.Badge
-		log.Printf("badge store: badge set: oref=%s badge=%+v\n", orefStr, *data.Badge)
+		incoming := *data.Badge
+		existing, hasExisting := globalBadgeStore.transient[orefStr]
+		if !hasExisting || incoming.Priority > existing.Priority || (incoming.Priority == existing.Priority && incoming.BadgeId > existing.BadgeId) {
+			globalBadgeStore.transient[orefStr] = incoming
+			log.Printf("badge store: badge set: oref=%s badge=%+v\n", orefStr, incoming)
+		}
 	}
 }
 
