@@ -10,6 +10,7 @@ import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
+import { DefaultMockFilesystem } from "./mockfilesystem";
 import { showPreviewContextMenu } from "../preview-contextmenu";
 import { previewElectronApi } from "./preview-electron-api";
 
@@ -33,7 +34,9 @@ import { previewElectronApi } from "./preview-electron-api";
 //   e.g. { "block": { "GetControllerStatus": (blockId) => myStatus } }
 
 type RpcOverrides = {
-    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => Promise<any>;
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (
+        ...args: any[]
+    ) => Promise<any> | AsyncGenerator<any, void, boolean>;
 };
 
 type ServiceOverrides = {
@@ -178,18 +181,25 @@ type MockWosFns = {
 };
 
 export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
-    const dispatchMap = new Map<string, (...args: any[]) => Promise<any>>();
-    dispatchMap.set("eventpublish", async (_client, data: WaveEvent) => {
+    const callDispatchMap = new Map<string, (...args: any[]) => Promise<any>>();
+    const streamDispatchMap = new Map<string, (...args: any[]) => AsyncGenerator<any, void, boolean>>();
+    const setCallHandler = (command: string, fn: (...args: any[]) => Promise<any>) => {
+        callDispatchMap.set(command, fn);
+    };
+    const setStreamHandler = (command: string, fn: (...args: any[]) => AsyncGenerator<any, void, boolean>) => {
+        streamDispatchMap.set(command, fn);
+    };
+    setCallHandler("eventpublish", async (_client, data: WaveEvent) => {
         console.log("[mock eventpublish]", data);
         handleWaveEvent(data);
         return null;
     });
-    dispatchMap.set("getmeta", async (_client, data: CommandGetMetaData) => {
+    setCallHandler("getmeta", async (_client, data: CommandGetMetaData) => {
         const objAtom = wos.getWaveObjectAtom(data.oref);
         const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
         return current?.meta ?? {};
     });
-    dispatchMap.set("setmeta", async (_client, data: CommandSetMetaData) => {
+    setCallHandler("setmeta", async (_client, data: CommandSetMetaData) => {
         const objAtom = wos.getWaveObjectAtom(data.oref);
         const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
         const updatedMeta = { ...(current?.meta ?? {}) };
@@ -204,7 +214,7 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         wos.mockSetWaveObj(data.oref, updated);
         return null;
     });
-    dispatchMap.set("updatetabname", async (_client, data: { args: [string, string] }) => {
+    setCallHandler("updatetabname", async (_client, data: { args: [string, string] }) => {
         const [tabId, newName] = data.args;
         const tabORef = "tab:" + tabId;
         const objAtom = wos.getWaveObjectAtom(tabORef);
@@ -213,7 +223,7 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         wos.mockSetWaveObj(tabORef, updated);
         return null;
     });
-    dispatchMap.set("setconfig", async (_client, data: SettingsType) => {
+    setCallHandler("setconfig", async (_client, data: SettingsType) => {
         const current = globalStore.get(wos.fullConfigAtom);
         const updatedSettings = { ...(current?.settings ?? {}) };
         for (const [key, value] of Object.entries(data)) {
@@ -226,7 +236,7 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         globalStore.set(wos.fullConfigAtom, { ...current, settings: updatedSettings as SettingsType });
         return null;
     });
-    dispatchMap.set("updateworkspacetabids", async (_client, data: { args: [string, string[]] }) => {
+    setCallHandler("updateworkspacetabids", async (_client, data: { args: [string, string[]] }) => {
         const [workspaceId, tabIds] = data.args;
         const wsORef = "workspace:" + workspaceId;
         const objAtom = wos.getWaveObjectAtom(wsORef);
@@ -235,16 +245,30 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
         wos.mockSetWaveObj(wsORef, updated);
         return null;
     });
+    setCallHandler("fileinfo", async (_client, data: FileData) => DefaultMockFilesystem.fileInfo(data));
+    setCallHandler("fileread", async (_client, data: FileData) => DefaultMockFilesystem.fileRead(data));
+    setCallHandler("filelist", async (_client, data: FileListData) => DefaultMockFilesystem.fileList(data));
+    setCallHandler("filejoin", async (_client, data: string[]) => DefaultMockFilesystem.fileJoin(data));
+    setStreamHandler("filereadstream", async function* (_client, data: FileData) {
+        yield* DefaultMockFilesystem.fileReadStream(data);
+    });
+    setStreamHandler("fileliststream", async function* (_client, data: FileListData) {
+        yield* DefaultMockFilesystem.fileListStream(data);
+    });
     if (overrides) {
         for (const key of Object.keys(overrides) as (keyof RpcOverrides)[]) {
             const cmdName = key.slice(0, -"Command".length).toLowerCase();
-            dispatchMap.set(cmdName, overrides[key] as (...args: any[]) => Promise<any>);
+            if (cmdName === "filereadstream" || cmdName === "fileliststream") {
+                setStreamHandler(cmdName, overrides[key] as (...args: any[]) => AsyncGenerator<any, void, boolean>);
+            } else {
+                setCallHandler(cmdName, overrides[key] as (...args: any[]) => Promise<any>);
+            }
         }
     }
     const rpc = new RpcApiType();
     rpc.setMockRpcClient({
         mockWshRpcCall(_client, command, data, _opts) {
-            const fn = dispatchMap.get(command);
+            const fn = callDispatchMap.get(command);
             if (fn) {
                 return fn(_client, data, _opts);
             }
@@ -252,9 +276,14 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
             return Promise.resolve(null);
         },
         async *mockWshRpcStream(_client, command, data, _opts) {
-            const fn = dispatchMap.get(command);
-            if (fn) {
-                yield await fn(_client, data, _opts);
+            const streamFn = streamDispatchMap.get(command);
+            if (streamFn) {
+                yield* streamFn(_client, data, _opts);
+                return;
+            }
+            const callFn = callDispatchMap.get(command);
+            if (callFn) {
+                yield await callFn(_client, data, _opts);
                 return;
             }
             console.log("[mock rpc stream]", command, data);
