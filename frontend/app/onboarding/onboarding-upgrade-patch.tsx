@@ -133,10 +133,10 @@ export const UpgradeOnboardingVersions: VersionConfig[] = [
         version: "v0.14.1",
         content: () => <UpgradeOnboardingModal_v0_14_1_Content />,
         prevText: "Prev (v0.14.0)",
-        nextText: "Next (v0.14.2)",
+        nextText: "Next (v0.14.3)",
     },
     {
-        version: "v0.14.2",
+        version: "v0.14.3",
         content: () => <UpgradeOnboardingModal_v0_14_2_Content />,
         prevText: "Prev (v0.14.1)",
     },
