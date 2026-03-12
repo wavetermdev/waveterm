@@ -14,10 +14,10 @@ import * as React from "react";
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import type { BlockMetaKeyAtomFnType, WaveEnv } from "@/app/waveenv/waveenv";
+import type { BlockMetaKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
-export type SysinfoEnv = {
+export type SysinfoEnv = WaveEnvSubset<{
     rpc: {
         EventReadHistoryCommand: WaveEnv["rpc"]["EventReadHistoryCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
@@ -27,7 +27,7 @@ export type SysinfoEnv = {
     };
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
     getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<"graph:numpoints" | "sysinfo:type" | "connection" | "count">;
-};
+}>;
 
 const DefaultNumPoints = 120;
 

@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
@@ -129,11 +129,11 @@ function getStaticTabBlockCount(): number {
 }
 
 function simpleCloseStaticTab() {
-    const ws = globalStore.get(atoms.workspace);
+    const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
     const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
     getApi()
-        .closeTab(ws.oid, tabId, confirmClose)
+        .closeTab(workspaceId, tabId, confirmClose)
         .then((didClose) => {
             if (didClose) {
                 deleteLayoutModelForTab(tabId);
@@ -490,7 +490,7 @@ function tryReinjectKey(event: WaveKeyboardEvent): boolean {
 function countTermBlocks(): number {
     const allBCMs = getAllBlockComponentModels();
     let count = 0;
-    let gsGetBound = globalStore.get.bind(globalStore);
+    const gsGetBound = globalStore.get.bind(globalStore);
     for (const bcm of allBCMs) {
         const viewModel = bcm.viewModel;
         if (viewModel.viewType == "term" && viewModel.isBasicTerm?.(gsGetBound)) {
@@ -695,7 +695,15 @@ function registerGlobalKeys() {
             return false;
         }
         if (bcm.viewModel.searchAtoms) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            if (globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+                // Already open — increment the focusInput counter so this block's
+                // SearchComponent focuses its own input (avoids a global DOM query
+                // that could target the wrong block when multiple searches are open).
+                const cur = globalStore.get(bcm.viewModel.searchAtoms.focusInput) as number;
+                globalStore.set(bcm.viewModel.searchAtoms.focusInput, cur + 1);
+            } else {
+                globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            }
             return true;
         }
         return false;

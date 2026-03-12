@@ -1,23 +1,57 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom, makeDefaultConnStatus } from "@/app/store/global";
+import { makeDefaultConnStatus } from "@/app/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
+import { AllServiceTypes } from "@/app/store/services";
+import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
-import { Atom, atom, PrimitiveAtom } from "jotai";
+import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
+import { DefaultMockFilesystem } from "./mockfilesystem";
+import { showPreviewContextMenu } from "../preview-contextmenu";
 import { previewElectronApi } from "./preview-electron-api";
 
+// What works "out of the box" in the mock environment (no MockEnv overrides needed):
+//
+// RPC calls (handled in makeMockRpc):
+//   - rpc.EventPublishCommand           -- dispatches to handleWaveEvent(); works when the subscriber
+//                                          is purely FE-based (registered via WPS on the frontend)
+//   - rpc.GetMetaCommand                -- reads .meta from the mock WOS atom for the given oref
+//   - rpc.SetMetaCommand                -- writes .meta to the mock WOS atom (null values delete keys)
+//   - rpc.SetConfigCommand              -- merges settings into fullConfigAtom (null values delete keys)
+//   - rpc.UpdateTabNameCommand          -- updates .name on the Tab WaveObj in the mock WOS
+//   - rpc.UpdateWorkspaceTabIdsCommand  -- updates .tabids on the Workspace WaveObj in the mock WOS
+//
+// Any other RPC call falls through to a console.log and resolves null.
+// Override specific calls via MockEnv.rpc (keys are the Command method names, e.g. "GetMetaCommand").
+//
+// Backend service calls (handled in callBackendService):
+//   Any call falls through to a console.log and resolves null.
+//   Override specific calls via MockEnv.services: { Service: { Method: impl } }
+//   e.g. { "block": { "GetControllerStatus": (blockId) => myStatus } }
+
 type RpcOverrides = {
-    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (...args: any[]) => any;
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (
+        ...args: any[]
+    ) => Promise<any> | AsyncGenerator<any, void, boolean>;
+};
+
+type ServiceOverrides = {
+    [Service: string]: {
+        [Method: string]: (...args: any[]) => Promise<any>;
+    };
 };
 
 export type MockEnv = {
     isDev?: boolean;
+    tabId?: string;
     platform?: NodeJS.Platform;
     settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
+    services?: ServiceOverrides;
     atoms?: Partial<GlobalAtomsType>;
     electron?: Partial<ElectronApi>;
     createBlock?: WaveEnv["createBlock"];
@@ -36,11 +70,23 @@ function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>):
 }
 
 export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
+    let mergedServices: ServiceOverrides;
+    if (base.services != null || overrides.services != null) {
+        mergedServices = {};
+        for (const svc of Object.keys(base.services ?? {})) {
+            mergedServices[svc] = { ...(base.services[svc] ?? {}) };
+        }
+        for (const svc of Object.keys(overrides.services ?? {})) {
+            mergedServices[svc] = { ...(mergedServices[svc] ?? {}), ...(overrides.services[svc] ?? {}) };
+        }
+    }
     return {
         isDev: overrides.isDev ?? base.isDev,
+        tabId: overrides.tabId ?? base.tabId,
         platform: overrides.platform ?? base.platform,
         settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
+        services: mergedServices,
         atoms: overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
         electron:
             overrides.electron != null || base.electron != null
@@ -53,26 +99,27 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     };
 }
 
-function makeMockConfigAtoms(overrides?: Partial<SettingsType>): WaveEnv["configAtoms"] {
-    const overrideAtoms = new Map<keyof SettingsType, ReturnType<typeof atom>>();
-    if (overrides) {
-        for (const key of Object.keys(overrides) as (keyof SettingsType)[]) {
-            overrideAtoms.set(key, atom(overrides[key]));
+function makeMockSettingsKeyAtom(
+    settingsAtom: Atom<SettingsType>,
+    overrides?: Partial<SettingsType>
+): WaveEnv["getSettingsKeyAtom"] {
+    const keyAtomCache = new Map<keyof SettingsType, Atom<any>>();
+    return <T extends keyof SettingsType>(key: T) => {
+        if (!keyAtomCache.has(key)) {
+            keyAtomCache.set(
+                key,
+                atom((get) => (overrides?.[key] !== undefined ? overrides[key] : get(settingsAtom)?.[key]))
+            );
         }
-    }
-    return new Proxy({} as WaveEnv["configAtoms"], {
-        get<K extends keyof SettingsType>(_target: WaveEnv["configAtoms"], key: K) {
-            if (overrideAtoms.has(key)) {
-                return overrideAtoms.get(key);
-            }
-            return getSettingsKeyAtom(key);
-        },
-    });
+        return keyAtomCache.get(key) as Atom<SettingsType[T]>;
+    };
 }
 
 function makeMockGlobalAtoms(
-    settingsOverrides?: Partial<SettingsType>,
-    atomOverrides?: Partial<GlobalAtomsType>
+    settingsOverrides: Partial<SettingsType>,
+    atomOverrides: Partial<GlobalAtomsType>,
+    tabId: string,
+    getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>
 ): GlobalAtomsType {
     let fullConfig = DefaultFullConfig;
     if (settingsOverrides) {
@@ -83,16 +130,29 @@ function makeMockGlobalAtoms(
     }
     const fullConfigAtom = atom(fullConfig) as PrimitiveAtom<FullConfigType>;
     const settingsAtom = atom((get) => get(fullConfigAtom)?.settings ?? {}) as Atom<SettingsType>;
+    const workspaceIdAtom: Atom<string> = atomOverrides?.workspaceId ?? (atom(null as string) as Atom<string>);
+    const workspaceAtom: Atom<Workspace> = atom((get) => {
+        const wsId = get(workspaceIdAtom);
+        if (wsId == null) {
+            return null;
+        }
+        return get(getWaveObjectAtom<Workspace>("workspace:" + wsId));
+    });
     const defaults: GlobalAtomsType = {
         builderId: atom(""),
         builderAppId: atom("") as any,
-        uiContext: atom({} as UIContext),
-        workspace: atom(null as Workspace),
+        uiContext: atom({ windowid: "", activetabid: tabId ?? "" } as UIContext),
+        workspaceId: workspaceIdAtom,
+        workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
         hasCustomAIPresetsAtom: atom(false),
-        staticTabId: atom(""),
+        hasConfigErrors: atom((get) => {
+            const c = get(fullConfigAtom);
+            return c?.configerrors != null && c.configerrors.length > 0;
+        }),
+        staticTabId: atom(tabId ?? ""),
         isFullScreen: atom(false) as any,
         zoomFactorAtom: atom(1.0) as any,
         controlShiftDelayAtom: atom(false) as any,
@@ -107,21 +167,108 @@ function makeMockGlobalAtoms(
     if (!atomOverrides) {
         return defaults;
     }
-    return { ...defaults, ...atomOverrides };
+    const merged = { ...defaults, ...atomOverrides };
+    if (!atomOverrides.workspace) {
+        merged.workspace = workspaceAtom;
+    }
+    return merged;
 }
 
-export function makeMockRpc(overrides?: RpcOverrides): RpcApiType {
-    const dispatchMap = new Map<string, (...args: any[]) => any>();
+type MockWosFns = {
+    getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>;
+    mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
+    fullConfigAtom: PrimitiveAtom<FullConfigType>;
+};
+
+export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
+    const callDispatchMap = new Map<string, (...args: any[]) => Promise<any>>();
+    const streamDispatchMap = new Map<string, (...args: any[]) => AsyncGenerator<any, void, boolean>>();
+    const setCallHandler = (command: string, fn: (...args: any[]) => Promise<any>) => {
+        callDispatchMap.set(command, fn);
+    };
+    const setStreamHandler = (command: string, fn: (...args: any[]) => AsyncGenerator<any, void, boolean>) => {
+        streamDispatchMap.set(command, fn);
+    };
+    setCallHandler("eventpublish", async (_client, data: WaveEvent) => {
+        console.log("[mock eventpublish]", data);
+        handleWaveEvent(data);
+        return null;
+    });
+    setCallHandler("getmeta", async (_client, data: CommandGetMetaData) => {
+        const objAtom = wos.getWaveObjectAtom(data.oref);
+        const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
+        return current?.meta ?? {};
+    });
+    setCallHandler("setmeta", async (_client, data: CommandSetMetaData) => {
+        const objAtom = wos.getWaveObjectAtom(data.oref);
+        const current = globalStore.get(objAtom) as WaveObj & { meta?: MetaType };
+        const updatedMeta = { ...(current?.meta ?? {}) };
+        for (const [key, value] of Object.entries(data.meta)) {
+            if (value === null) {
+                delete updatedMeta[key];
+            } else {
+                (updatedMeta as any)[key] = value;
+            }
+        }
+        const updated = { ...current, meta: updatedMeta };
+        wos.mockSetWaveObj(data.oref, updated);
+        return null;
+    });
+    setCallHandler("updatetabname", async (_client, data: { args: [string, string] }) => {
+        const [tabId, newName] = data.args;
+        const tabORef = "tab:" + tabId;
+        const objAtom = wos.getWaveObjectAtom(tabORef);
+        const current = globalStore.get(objAtom) as Tab;
+        const updated = { ...current, name: newName };
+        wos.mockSetWaveObj(tabORef, updated);
+        return null;
+    });
+    setCallHandler("setconfig", async (_client, data: SettingsType) => {
+        const current = globalStore.get(wos.fullConfigAtom);
+        const updatedSettings = { ...(current?.settings ?? {}) };
+        for (const [key, value] of Object.entries(data)) {
+            if (value === null) {
+                delete (updatedSettings as any)[key];
+            } else {
+                (updatedSettings as any)[key] = value;
+            }
+        }
+        globalStore.set(wos.fullConfigAtom, { ...current, settings: updatedSettings as SettingsType });
+        return null;
+    });
+    setCallHandler("updateworkspacetabids", async (_client, data: { args: [string, string[]] }) => {
+        const [workspaceId, tabIds] = data.args;
+        const wsORef = "workspace:" + workspaceId;
+        const objAtom = wos.getWaveObjectAtom(wsORef);
+        const current = globalStore.get(objAtom) as Workspace;
+        const updated = { ...current, tabids: tabIds };
+        wos.mockSetWaveObj(wsORef, updated);
+        return null;
+    });
+    setCallHandler("fileinfo", async (_client, data: FileData) => DefaultMockFilesystem.fileInfo(data));
+    setCallHandler("fileread", async (_client, data: FileData) => DefaultMockFilesystem.fileRead(data));
+    setCallHandler("filelist", async (_client, data: FileListData) => DefaultMockFilesystem.fileList(data));
+    setCallHandler("filejoin", async (_client, data: string[]) => DefaultMockFilesystem.fileJoin(data));
+    setStreamHandler("filereadstream", async function* (_client, data: FileData) {
+        yield* DefaultMockFilesystem.fileReadStream(data);
+    });
+    setStreamHandler("fileliststream", async function* (_client, data: FileListData) {
+        yield* DefaultMockFilesystem.fileListStream(data);
+    });
     if (overrides) {
         for (const key of Object.keys(overrides) as (keyof RpcOverrides)[]) {
             const cmdName = key.slice(0, -"Command".length).toLowerCase();
-            dispatchMap.set(cmdName, overrides[key] as (...args: any[]) => any);
+            if (cmdName === "filereadstream" || cmdName === "fileliststream") {
+                setStreamHandler(cmdName, overrides[key] as (...args: any[]) => AsyncGenerator<any, void, boolean>);
+            } else {
+                setCallHandler(cmdName, overrides[key] as (...args: any[]) => Promise<any>);
+            }
         }
     }
     const rpc = new RpcApiType();
     rpc.setMockRpcClient({
         mockWshRpcCall(_client, command, data, _opts) {
-            const fn = dispatchMap.get(command);
+            const fn = callDispatchMap.get(command);
             if (fn) {
                 return fn(_client, data, _opts);
             }
@@ -129,9 +276,14 @@ export function makeMockRpc(overrides?: RpcOverrides): RpcApiType {
             return Promise.resolve(null);
         },
         async *mockWshRpcStream(_client, command, data, _opts) {
-            const fn = dispatchMap.get(command);
-            if (fn) {
-                yield* fn(_client, data, _opts);
+            const streamFn = streamDispatchMap.get(command);
+            if (streamFn) {
+                yield* streamFn(_client, data, _opts);
+                return;
+            }
+            const callFn = callDispatchMap.get(command);
+            if (callFn) {
+                yield await callFn(_client, data, _opts);
                 return;
             }
             console.log("[mock rpc stream]", command, data);
@@ -151,19 +303,50 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
     const platform = overrides.platform ?? PlatformMacOS;
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
-    const waveObjectAtomCache = new Map<string, PrimitiveAtom<WaveObj>>();
+    const waveObjectValueAtomCache = new Map<string, PrimitiveAtom<any>>();
+    const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
+    const connConfigKeyAtomCache = new Map<string, Atom<any>>();
+    const getWaveObjectAtom = <T extends WaveObj>(oref: string): PrimitiveAtom<T> => {
+        if (!waveObjectValueAtomCache.has(oref)) {
+            const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+            waveObjectValueAtomCache.set(oref, atom(obj) as PrimitiveAtom<T>);
+        }
+        return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
+    };
+    const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId, getWaveObjectAtom);
+    const localHostDisplayNameAtom = atom<string>((get) => {
+        const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
+        if (configValue != null) {
+            return configValue;
+        }
+        return "user@localhost";
+    });
+    const mockWosFns: MockWosFns = {
+        getWaveObjectAtom,
+        fullConfigAtom: atoms.fullConfigAtom,
+        mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => {
+            if (!waveObjectValueAtomCache.has(oref)) {
+                waveObjectValueAtomCache.set(oref, atom(null as WaveObj));
+            }
+            globalStore.set(waveObjectValueAtomCache.get(oref), obj);
+        },
+    };
     const env = {
+        isMock: true,
         mockEnv: overrides,
         electron: {
             ...previewElectronApi,
             getPlatform: () => platform,
+            openExternal: (url: string) => {
+                window.open(url, "_blank");
+            },
             ...overrides.electron,
         },
-        rpc: makeMockRpc(overrides.rpc),
+        rpc: makeMockRpc(overrides.rpc, mockWosFns),
+        atoms,
+        getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom, overrides.settings),
         platform,
-        configAtoms: makeMockConfigAtoms(overrides.settings),
-        atoms: makeMockGlobalAtoms(overrides.settings, overrides.atoms),
         isDev: () => overrides.isDev ?? true,
         isWindows: () => platform === PlatformWindows,
         isMacOS: () => platform === PlatformMacOS,
@@ -174,10 +357,10 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 return Promise.resolve(crypto.randomUUID());
             }),
         showContextMenu:
-            overrides.showContextMenu ??
-            ((menu, e) => {
-                console.log("[mock showContextMenu]", menu, e);
-            }),
+            overrides.showContextMenu ?? showPreviewContextMenu,
+        getLocalHostDisplayNameAtom: () => {
+            return localHostDisplayNameAtom;
+        },
         getConnStatusAtom: (conn: string) => {
             if (!connStatusAtomCache.has(conn)) {
                 const connStatus = overrides.connStatus?.[conn] ?? makeDefaultConnStatus(conn);
@@ -185,19 +368,36 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return connStatusAtomCache.get(conn);
         },
-        getWaveObjectAtom: <T extends WaveObj>(oref: string) => {
-            if (!waveObjectAtomCache.has(oref)) {
-                const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
-                waveObjectAtomCache.set(oref, atom(obj));
-            }
-            return waveObjectAtomCache.get(oref) as PrimitiveAtom<T>;
+        wos: {
+            getWaveObjectAtom: mockWosFns.getWaveObjectAtom,
+            getWaveObjectLoadingAtom: (oref: string) => {
+                const cacheKey = oref + ":loading";
+                if (!waveObjectDerivedAtomCache.has(cacheKey)) {
+                    waveObjectDerivedAtomCache.set(cacheKey, atom(false));
+                }
+                return waveObjectDerivedAtomCache.get(cacheKey) as Atom<boolean>;
+            },
+            isWaveObjectNullAtom: (oref: string) => {
+                const cacheKey = oref + ":isnull";
+                if (!waveObjectDerivedAtomCache.has(cacheKey)) {
+                    waveObjectDerivedAtomCache.set(
+                        cacheKey,
+                        atom((get) => get(env.wos.getWaveObjectAtom(oref)) == null)
+                    );
+                }
+                return waveObjectDerivedAtomCache.get(cacheKey) as Atom<boolean>;
+            },
+            useWaveObjectValue: <T extends WaveObj>(oref: string): [T, boolean] => {
+                const objAtom = env.wos.getWaveObjectAtom<T>(oref);
+                return [useAtomValue(objAtom), false];
+            },
         },
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
             const cacheKey = blockId + "#meta-" + key;
             if (!blockMetaKeyAtomCache.has(cacheKey)) {
                 const metaAtom = atom<MetaType[T]>((get) => {
                     const blockORef = "block:" + blockId;
-                    const blockAtom = env.getWaveObjectAtom<Block>(blockORef);
+                    const blockAtom = env.wos.getWaveObjectAtom<Block>(blockORef);
                     const blockData = get(blockAtom);
                     return blockData?.meta?.[key] as MetaType[T];
                 });
@@ -205,6 +405,31 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return blockMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
         },
-    };
+        getConnConfigKeyAtom: <T extends keyof ConnKeywords>(connName: string, key: T) => {
+            const cacheKey = connName + "#conn-" + key;
+            if (!connConfigKeyAtomCache.has(cacheKey)) {
+                const keyAtom = atom<ConnKeywords[T]>((get) => {
+                    const fullConfig = get(atoms.fullConfigAtom);
+                    return fullConfig.connections?.[connName]?.[key];
+                });
+                connConfigKeyAtomCache.set(cacheKey, keyAtom);
+            }
+            return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
+        },
+        services: null as any,
+        callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => {
+            const fn = overrides.services?.[service]?.[method];
+            if (fn) {
+                return fn(...args);
+            }
+            console.log("[mock callBackendService]", service, method, args, noUIContext);
+            return Promise.resolve(null);
+        },
+        mockSetWaveObj: mockWosFns.mockSetWaveObj,
+        mockModels: new Map<any, any>(),
+    } as MockWaveEnv;
+    env.services = Object.fromEntries(
+        Object.entries(AllServiceTypes).map(([key, ServiceClass]) => [key, new ServiceClass(env)])
+    ) as any;
     return env;
 }

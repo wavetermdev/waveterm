@@ -40,15 +40,6 @@
         border: 1px solid var(--border-color);
     }
 
-    .tab-bar-right {
-        display: flex;
-        flex-direction: row;
-        gap: 6px;
-        height: 100%;
-        align-items: center;
-        margin-left: auto;
-    }
-
     .add-tab {
         padding: 0 10px;
         height: 27px;

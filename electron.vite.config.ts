@@ -159,6 +159,7 @@ export default defineConfig({
                     "**/go.mod",
                     "**/go.sum",
                     "**/*.md",
+                    "**/*.mdx",
                     "**/*.json",
                     "emain/**",
                     "**/*.txt",

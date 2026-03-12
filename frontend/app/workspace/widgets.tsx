@@ -3,7 +3,7 @@
 
 import { Tooltip } from "@/app/element/tooltip";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
+import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
 import { modalsModel } from "@/store/modalmodel";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
@@ -20,7 +20,7 @@ import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
-export type WidgetsEnv = {
+export type WidgetsEnv = WaveEnvSubset<{
     isDev: WaveEnv["isDev"];
     electron: {
         openBuilder: WaveEnv["electron"]["openBuilder"];
@@ -30,12 +30,12 @@ export type WidgetsEnv = {
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
-        workspace: WaveEnv["atoms"]["workspace"];
+        workspaceId: WaveEnv["atoms"]["workspaceId"];
         hasCustomAIPresetsAtom: WaveEnv["atoms"]["hasCustomAIPresetsAtom"];
     };
     createBlock: WaveEnv["createBlock"];
     showContextMenu: WaveEnv["showContextMenu"];
-};
+}>;
 
 function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetConfigType[] {
     if (wmap == null) {
@@ -348,7 +348,7 @@ SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 const Widgets = memo(() => {
     const env = useWaveEnv<WidgetsEnv>();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
-    const workspace = useAtomValue(env.atoms.workspace);
+    const workspaceId = useAtomValue(env.atoms.workspaceId);
     const hasCustomAIPresets = useAtomValue(env.atoms.hasCustomAIPresetsAtom);
     const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
@@ -361,7 +361,7 @@ const Widgets = memo(() => {
             if (!hasCustomAIPresets && key === "defwidget@ai") {
                 return false;
             }
-            return shouldIncludeWidgetForWorkspace(widget, workspace?.oid);
+            return shouldIncludeWidgetForWorkspace(widget, workspaceId);
         })
     );
     const widgets = sortByDisplayOrder(filteredWidgets);

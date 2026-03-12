@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { AllServiceImpls } from "@/app/store/services";
 import {
     atoms,
     createBlock,
     getBlockMetaKeyAtom,
+    getConnConfigKeyAtom,
     getConnStatusAtom,
+    getLocalHostDisplayNameAtom,
     getSettingsKeyAtom,
     isDev,
     WOS,
@@ -15,28 +18,37 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { isMacOS, isWindows, PLATFORM } from "@/util/platformutil";
 
-const configAtoms = new Proxy({} as WaveEnv["configAtoms"], {
-    get<K extends keyof SettingsType>(_target: WaveEnv["configAtoms"], key: K) {
-        return getSettingsKeyAtom(key);
-    },
-});
-
 export function makeWaveEnvImpl(): WaveEnv {
     return {
+        isMock: false,
         electron: (window as any).api,
         rpc: RpcApi,
+        getSettingsKeyAtom,
         platform: PLATFORM,
-        configAtoms,
         isDev,
         isWindows,
         isMacOS,
         atoms,
         createBlock,
+        services: AllServiceImpls,
+        callBackendService: WOS.callBackendService,
         showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => {
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
         getConnStatusAtom,
-        getWaveObjectAtom: WOS.getWaveObjectAtom,
+        getLocalHostDisplayNameAtom,
+        wos: {
+            getWaveObjectAtom: WOS.getWaveObjectAtom,
+            getWaveObjectLoadingAtom: WOS.getWaveObjectLoadingAtom,
+            isWaveObjectNullAtom: WOS.isWaveObjectNullAtom,
+            useWaveObjectValue: WOS.useWaveObjectValue,
+        },
         getBlockMetaKeyAtom,
+        getConnConfigKeyAtom,
+
+        mockSetWaveObj: <T extends WaveObj>(_oref: string, _obj: T) => {
+            throw new Error("mockSetWaveObj is only available in the preview server");
+        },
+        mockModels: new Map<any, any>(),
     };
 }

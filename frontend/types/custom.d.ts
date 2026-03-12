@@ -1,21 +1,23 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { WaveEnv } from "@/app/waveenv/waveenv";
 import { type Placement } from "@floating-ui/react";
 import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
-import type { WaveEnv } from "@/app/waveenv/waveenv";
 
 declare global {
     type GlobalAtomsType = {
         builderId: jotai.Atom<string>; // readonly (for builder mode)
         builderAppId: jotai.PrimitiveAtom<string>; // app being edited in builder mode
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
-        workspace: jotai.Atom<Workspace>; // driven from WOS
+        workspaceId: jotai.Atom<string>; // derived from window WOS object
+        workspace: jotai.Atom<Workspace>; // driven from workspaceId via WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
+        hasConfigErrors: jotai.Atom<boolean>; // derived from fullConfig
         staticTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         zoomFactorAtom: jotai.PrimitiveAtom<number>;
@@ -276,6 +278,7 @@ declare global {
         resultsIndex: PrimitiveAtom<number>;
         resultsCount: PrimitiveAtom<number>;
         isOpen: PrimitiveAtom<boolean>;
+        focusInput: PrimitiveAtom<number>;
         regex?: PrimitiveAtom<boolean>;
         caseSensitive?: PrimitiveAtom<boolean>;
         wholeWord?: PrimitiveAtom<boolean>;
