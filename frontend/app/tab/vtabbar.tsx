@@ -1,20 +1,22 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { cn } from "@/util/util";
+import { getTabBadgeAtom } from "@/app/store/badge";
+import { makeORef } from "@/app/store/wos";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { validateCssColor } from "@/util/color-validator";
+import { cn, fireAndForget } from "@/util/util";
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { VTab, VTabItem } from "./vtab";
+import { VTabBarEnv } from "./vtabbarenv";
 export type { VTabItem } from "./vtab";
 
 interface VTabBarProps {
-    tabs: VTabItem[];
-    activeTabId?: string;
+    workspace: Workspace;
     width?: number;
     className?: string;
-    onSelectTab?: (tabId: string) => void;
-    onCloseTab?: (tabId: string) => void;
-    onRenameTab?: (tabId: string, newName: string) => void;
-    onReorderTabs?: (tabIds: string[]) => void;
 }
 
 function clampWidth(width?: number): number {
@@ -30,8 +32,83 @@ function clampWidth(width?: number): number {
     return width;
 }
 
-export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCloseTab, onRenameTab, onReorderTabs }: VTabBarProps) {
-    const [orderedTabs, setOrderedTabs] = useState<VTabItem[]>(tabs);
+interface VTabWrapperProps {
+    tabId: string;
+    active: boolean;
+    isDragging: boolean;
+    isReordering: boolean;
+    hoverResetVersion: number;
+    index: number;
+    onSelect: () => void;
+    onClose: () => void;
+    onRename: (newName: string) => void;
+    onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
+    onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
+    onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
+    onDragEnd: () => void;
+}
+
+function VTabWrapper({
+    tabId,
+    active,
+    isDragging,
+    isReordering,
+    hoverResetVersion,
+    onSelect,
+    onClose,
+    onRename,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+}: VTabWrapperProps) {
+    const env = useWaveEnv<VTabBarEnv>();
+    const [tabData] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", tabId));
+    const badges = useAtomValue(getTabBadgeAtom(tabId, env));
+
+    const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
+    let flagColor: string | null = null;
+    if (rawFlagColor) {
+        try {
+            validateCssColor(rawFlagColor);
+            flagColor = rawFlagColor;
+        } catch {
+            flagColor = null;
+        }
+    }
+
+    const tab: VTabItem = {
+        id: tabId,
+        name: tabData?.name ?? "",
+        badges,
+        flagColor,
+    };
+
+    return (
+        <VTab
+            key={`${tabId}:${hoverResetVersion}`}
+            tab={tab}
+            active={active}
+            isDragging={isDragging}
+            isReordering={isReordering}
+            onSelect={onSelect}
+            onClose={onClose}
+            onRename={onRename}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onDragEnd={onDragEnd}
+        />
+    );
+}
+
+export function VTabBar({ workspace, width, className }: VTabBarProps) {
+    const env = useWaveEnv<VTabBarEnv>();
+    const activeTabId = useAtomValue(env.atoms.staticTabId);
+    const reinitVersion = useAtomValue(env.atoms.reinitVersion);
+    const tabIds = workspace?.tabids ?? [];
+
+    const [orderedTabIds, setOrderedTabIds] = useState<string[]>(tabIds);
     const [dragTabId, setDragTabId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
     const [dropLineTop, setDropLineTop] = useState<number | null>(null);
@@ -40,8 +117,14 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
     const didResetHoverForDragRef = useRef(false);
 
     useEffect(() => {
-        setOrderedTabs(tabs);
-    }, [tabs]);
+        setOrderedTabIds(tabIds);
+    }, [workspace?.tabids]);
+
+    useEffect(() => {
+        if (reinitVersion > 0) {
+            setOrderedTabIds(workspace?.tabids ?? []);
+        }
+    }, [reinitVersion]);
 
     const barWidth = useMemo(() => clampWidth(width), [width]);
 
@@ -61,25 +144,28 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
         if (sourceTabId == null) {
             return;
         }
-        const sourceIndex = orderedTabs.findIndex((tab) => tab.id === sourceTabId);
+        const sourceIndex = orderedTabIds.findIndex((id) => id === sourceTabId);
         if (sourceIndex === -1) {
             return;
         }
-        const boundedTargetIndex = Math.max(0, Math.min(targetIndex, orderedTabs.length));
+        const boundedTargetIndex = Math.max(0, Math.min(targetIndex, orderedTabIds.length));
         const adjustedTargetIndex = sourceIndex < boundedTargetIndex ? boundedTargetIndex - 1 : boundedTargetIndex;
         if (sourceIndex === adjustedTargetIndex) {
             return;
         }
-        const nextTabs = [...orderedTabs];
-        const [movedTab] = nextTabs.splice(sourceIndex, 1);
-        nextTabs.splice(adjustedTargetIndex, 0, movedTab);
-        setOrderedTabs(nextTabs);
-        onReorderTabs?.(nextTabs.map((tab) => tab.id));
+        const nextTabIds = [...orderedTabIds];
+        const [movedId] = nextTabIds.splice(sourceIndex, 1);
+        nextTabIds.splice(adjustedTargetIndex, 0, movedId);
+        setOrderedTabIds(nextTabIds);
+        fireAndForget(() => env.rpc.UpdateWorkspaceTabIdsCommand(TabRpcClient, workspace.oid, nextTabIds));
     };
 
     return (
         <div
-            className={cn("flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden border-r border-border bg-panel", className)}
+            className={cn(
+                "flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden border-r border-border bg-panel",
+                className
+            )}
             style={{ width: barWidth }}
         >
             <div
@@ -87,7 +173,7 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                 onDragOver={(event) => {
                     event.preventDefault();
                     if (event.target === event.currentTarget) {
-                        setDropIndex(orderedTabs.length);
+                        setDropIndex(orderedTabIds.length);
                         setDropLineTop(event.currentTarget.scrollHeight);
                     }
                 }}
@@ -99,22 +185,26 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                     clearDragState();
                 }}
             >
-                {orderedTabs.map((tab, index) => (
-                    <VTab
-                        key={`${tab.id}:${hoverResetVersion}`}
-                        tab={tab}
-                        active={tab.id === activeTabId}
-                        isDragging={dragTabId === tab.id}
+                {orderedTabIds.map((tabId, index) => (
+                    <VTabWrapper
+                        key={`${tabId}:${hoverResetVersion}`}
+                        tabId={tabId}
+                        active={tabId === activeTabId}
+                        isDragging={dragTabId === tabId}
                         isReordering={dragTabId != null}
-                        onSelect={() => onSelectTab?.(tab.id)}
-                        onClose={onCloseTab ? () => onCloseTab(tab.id) : undefined}
-                        onRename={onRenameTab ? (newName) => onRenameTab(tab.id, newName) : undefined}
+                        hoverResetVersion={hoverResetVersion}
+                        index={index}
+                        onSelect={() => env.electron.setActiveTab(tabId)}
+                        onClose={() => fireAndForget(() => env.electron.closeTab(workspace.oid, tabId, false))}
+                        onRename={(newName) =>
+                            fireAndForget(() => env.rpc.UpdateTabNameCommand(TabRpcClient, tabId, newName))
+                        }
                         onDragStart={(event) => {
                             didResetHoverForDragRef.current = false;
-                            dragSourceRef.current = tab.id;
+                            dragSourceRef.current = tabId;
                             event.dataTransfer.effectAllowed = "move";
-                            event.dataTransfer.setData("text/plain", tab.id);
-                            setDragTabId(tab.id);
+                            event.dataTransfer.setData("text/plain", tabId);
+                            setDragTabId(tabId);
                             setDropIndex(index);
                             setDropLineTop(event.currentTarget.offsetTop);
                         }}
@@ -141,6 +231,15 @@ export function VTabBar({ tabs, activeTabId, width, className, onSelectTab, onCl
                         onDragEnd={clearDragState}
                     />
                 ))}
+                <button
+                    type="button"
+                    className="my-1 flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm pr-3 pl-2 py-1.5 text-xs text-secondary/60 transition-colors hover:bg-hover hover:text-primary"
+                    onClick={() => env.electron.createTab()}
+                    aria-label="New Tab"
+                >
+                    <i className="fa fa-solid fa-plus" style={{ fontSize: "10px" }} />
+                    <span>New Tab</span>
+                </button>
                 {dragTabId != null && dropIndex != null && dropLineTop != null && (
                     <div
                         className="pointer-events-none absolute left-0 right-0 border-t-2 border-accent/80"
