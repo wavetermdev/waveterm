@@ -214,22 +214,31 @@ function setupBadgesSubscription() {
             }
             if (data.clear) {
                 globalStore.set(curAtom, null);
-            } else if (data.badge != null) {
-                const existing = globalStore.get(curAtom);
-                const candidates = existing != null ? [existing, data.badge] : [data.badge];
-                globalStore.set(curAtom, sortBadges(candidates)[0]);
+                return;
+            }
+            if (data.badge == null) {
+                return;
+            }
+            const existing = globalStore.get(curAtom);
+            if (existing == null || cmpBadge(data.badge, existing) > 0) {
+                globalStore.set(curAtom, data.badge);
             }
         },
     });
 }
 
+function cmpBadge(a: Badge, b: Badge): number {
+    if (a.priority !== b.priority) {
+        return a.priority > b.priority ? 1 : -1;
+    }
+    if (a.badgeid !== b.badgeid) {
+        return a.badgeid > b.badgeid ? 1 : -1;
+    }
+    return 0;
+}
+
 function sortBadges(badges: Badge[]): Badge[] {
-    return [...badges].sort((a, b) => {
-        if (a.priority !== b.priority) {
-            return b.priority - a.priority;
-        }
-        return b.badgeid < a.badgeid ? -1 : b.badgeid > a.badgeid ? 1 : 0;
-    });
+    return [...badges].sort((a, b) => cmpBadge(b, a));
 }
 
 function sortBadgesForTab(badges: Badge[]): Badge[] {

@@ -72,34 +72,56 @@ func handleBadgeEvent(event *wps.WaveEvent) {
 	setBadge(oref, data)
 }
 
+// cmpBadge compares two badges by priority then by badgeid (both descending).
+// Returns 1 if a > b, -1 if a < b, 0 if equal.
+func cmpBadge(a, b baseds.Badge) int {
+	if a.Priority != b.Priority {
+		if a.Priority > b.Priority {
+			return 1
+		}
+		return -1
+	}
+	if a.BadgeId != b.BadgeId {
+		if a.BadgeId > b.BadgeId {
+			return 1
+		}
+		return -1
+	}
+	return 0
+}
+
 // setBadge updates the in-memory transient map.
 func setBadge(oref waveobj.ORef, data baseds.BadgeEvent) {
 	globalBadgeStore.lock.Lock()
 	defer globalBadgeStore.lock.Unlock()
 
 	orefStr := oref.String()
+	if orefStr == "" {
+		return
+	}
 
-	shouldClear := data.Clear
 	if data.ClearById != "" {
 		existing, ok := globalBadgeStore.transient[orefStr]
 		if !ok || existing.BadgeId != data.ClearById {
 			return
 		}
-		shouldClear = true
-	} else if !data.Clear {
-		shouldClear = data.Badge == nil
+		delete(globalBadgeStore.transient, orefStr)
+		log.Printf("badge store: badge cleared by id: oref=%s id=%s\n", orefStr, data.ClearById)
+		return
 	}
-
-	if shouldClear {
+	if data.Clear {
 		delete(globalBadgeStore.transient, orefStr)
 		log.Printf("badge store: badge cleared: oref=%s\n", orefStr)
-	} else {
-		incoming := *data.Badge
-		existing, hasExisting := globalBadgeStore.transient[orefStr]
-		if !hasExisting || incoming.Priority > existing.Priority || (incoming.Priority == existing.Priority && incoming.BadgeId > existing.BadgeId) {
-			globalBadgeStore.transient[orefStr] = incoming
-			log.Printf("badge store: badge set: oref=%s badge=%+v\n", orefStr, incoming)
-		}
+		return
+	}
+	if data.Badge == nil {
+		return
+	}
+	incoming := *data.Badge
+	existing, hasExisting := globalBadgeStore.transient[orefStr]
+	if !hasExisting || cmpBadge(incoming, existing) > 0 {
+		globalBadgeStore.transient[orefStr] = incoming
+		log.Printf("badge store: badge set: oref=%s badge=%+v\n", orefStr, incoming)
 	}
 }
 
