@@ -123,8 +123,7 @@ function getTabBadgeAtom(tabId: string, env?: TabBadgesEnv): Atom<Badge[]> {
     }
     const tabOref = WOS.makeORef("tab", tabId);
     const tabBadgeAtom = getBadgeAtom(tabOref);
-    const tabAtom =
-        env != null ? env.wos.getWaveObjectAtom<Tab>(tabOref) : WOS.getWaveObjectAtom<Tab>(tabOref);
+    const tabAtom = env != null ? env.wos.getWaveObjectAtom<Tab>(tabOref) : WOS.getWaveObjectAtom<Tab>(tabOref);
     rtn = atom((get) => {
         const tab = get(tabAtom);
         const blockIds = tab?.blockids ?? [];
@@ -213,18 +212,33 @@ function setupBadgesSubscription() {
                 }
                 return;
             }
-            globalStore.set(curAtom, data.clear ? null : (data.badge ?? null));
+            if (data.clear) {
+                globalStore.set(curAtom, null);
+                return;
+            }
+            if (data.badge == null) {
+                return;
+            }
+            const existing = globalStore.get(curAtom);
+            if (existing == null || cmpBadge(data.badge, existing) > 0) {
+                globalStore.set(curAtom, data.badge);
+            }
         },
     });
 }
 
+function cmpBadge(a: Badge, b: Badge): number {
+    if (a.priority !== b.priority) {
+        return a.priority > b.priority ? 1 : -1;
+    }
+    if (a.badgeid !== b.badgeid) {
+        return a.badgeid > b.badgeid ? 1 : -1;
+    }
+    return 0;
+}
+
 function sortBadges(badges: Badge[]): Badge[] {
-    return [...badges].sort((a, b) => {
-        if (a.priority !== b.priority) {
-            return b.priority - a.priority;
-        }
-        return b.badgeid < a.badgeid ? -1 : b.badgeid > a.badgeid ? 1 : 0;
-    });
+    return [...badges].sort((a, b) => cmpBadge(b, a));
 }
 
 function sortBadgesForTab(badges: Badge[]): Badge[] {
