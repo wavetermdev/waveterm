@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, getApi, globalStore } from "@/app/store/global";
+import { atoms, getApi, getSettingsKeyAtom, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
@@ -39,6 +39,7 @@ import {
     handleFileDelete,
     handleRename,
     isIconValid,
+    makeDirectoryDefaultMenuItems,
     mergeError,
     overwriteError,
 } from "./preview-directory-utils";
@@ -111,6 +112,7 @@ function DirectoryTable({
 }: DirectoryTableProps) {
     const searchActive = useAtomValue(model.directorySearchActive);
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const defaultSort = useAtomValue(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
@@ -158,9 +160,7 @@ function DirectoryTable({
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modtime", {
-                cell: (info) => (
-                    <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue(), info.column)}</span>
-                ),
+                cell: (info) => <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue())}</span>,
                 header: () => <span>Last Modified</span>,
                 size: 91,
                 minSize: 65,
@@ -208,6 +208,8 @@ function DirectoryTable({
         [model, setErrorMsg]
     );
 
+    const initialSorting = defaultSort === "modtime" ? [{ id: "modtime", desc: true }] : [{ id: "name", desc: false }];
+
     const table = useReactTable({
         data,
         columns,
@@ -216,12 +218,7 @@ function DirectoryTable({
         getCoreRowModel: getCoreRowModel(),
 
         initialState: {
-            sorting: [
-                {
-                    id: "name",
-                    desc: false,
-                },
-            ],
+            sorting: initialSorting,
             columnVisibility: {
                 path: false,
             },
@@ -415,6 +412,13 @@ function TableBody({
                     type: "separator",
                 },
                 {
+                    label: "Default Settings",
+                    submenu: makeDirectoryDefaultMenuItems(model),
+                },
+                {
+                    type: "separator",
+                },
+                {
                     label: "Delete",
                     click: () => handleFileDelete(model, finfo.path, false, setErrorMsg),
                 }
@@ -493,15 +497,7 @@ type TableRowProps = {
     handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
 };
 
-const TableRow = React.forwardRef(function ({
-    model,
-    row,
-    focusIndex,
-    setFocusIndex,
-    setSearch,
-    idx,
-    handleFileContextMenu,
-}: TableRowProps) {
+function TableRow({ model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps) {
     const dirPath = useAtomValue(model.statFilePath);
     const connection = useAtomValue(model.connection);
 
@@ -552,7 +548,7 @@ const TableRow = React.forwardRef(function ({
             ))}
         </div>
     );
-});
+}
 
 const MemoizedTableBody = React.memo(
     TableBody,

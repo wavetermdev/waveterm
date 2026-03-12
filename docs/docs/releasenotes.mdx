@@ -6,6 +6,29 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.14.2 &mdash; Mar 12, 2026
+
+Wave v0.14.2 adds block/tab badges, directory preview improvements, and assorted bug fixes.
+
+**Block/Tab Badges:**
+
+- **Block Level Badges, Rolled up to Tabs** - Blocks can now display icon badges (with color and priority) that roll up and are visible in the tab bar for at-a-glance status
+- **Bell Indicator Enabled by Default** - Terminal bell badge is now on by default, lighting up the block and tab when your terminal rings the bell (controlled with `term:bellindicator`)
+- **`wsh badge`** - New `wsh badge` command to set or clear badges on blocks from the command line. Supports icons, colors, priorities, beep, and PID-linked badges that auto-clear when a process exits. Great for use with Claude Code hooks to surface notifications in the tab bar ([docs](https://docs.waveterm.dev/wsh-reference#badge))
+
+**Other Changes:**
+
+- **Directory Preview Improvements** - Improved mod time formatting, zebra-striped rows, better default sort, YAML file support, and context menu improvements
+- **Search Bar** - Clipboard and focus improvements in the search bar
+- [bugfix] Fixed "New Window" hanging/not working on GNOME desktops
+- [bugfix] Fixed "Save Session As..." (focused window tracking bug)
+- [bugfix] Zoom change notifications were not being properly sent to all tabs (layout inconsistencies)
+- Added a Release Notes link in the settings menu
+- Working on anthropic-messages Wave AI backend (for native Claude integration)
+- Lots of internal work on testing/mock infrastructure to enable quicker async AI edits
+- Documention updates
+- Package updates and dependency upgrades
+
 ### v0.14.1 &mdash; Mar 3, 2026
 
 Wave v0.14.1 fixes several high-impact terminal bugs (Claude Code scrolling, IME input) and adds new config options: focus-follows-cursor, cursor style customization, workspace-scoped widgets, and vim-style block navigation.

@@ -573,7 +573,11 @@ func main() {
 	blocklogger.InitBlockLogger()
 	jobcontroller.InitJobController()
 	blockcontroller.InitBlockController()
-	wcore.InitTabIndicatorStore()
+	err = wcore.InitBadgeStore()
+	if err != nil {
+		log.Printf("error initializing badge store: %v\n", err)
+		return
+	}
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("GetSystemSummary", recover())

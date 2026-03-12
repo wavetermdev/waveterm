@@ -1,10 +1,10 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
@@ -170,7 +170,7 @@ export class WaveConfigViewModel implements ViewModel {
     storageBackendErrorAtom: PrimitiveAtom<string | null>;
     secretValueRef: HTMLTextAreaElement | null = null;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;

@@ -22,6 +22,7 @@ import (
 
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
@@ -157,6 +158,26 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 		return nil, fmt.Errorf("object not found: %s", data.ORef)
 	}
 	return waveobj.GetMeta(obj), nil
+}
+
+func (ws *WshServer) UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}
+	err := wstore.UpdateTabName(ctx, tabId, newName)
+	if err != nil {
+		return fmt.Errorf("error updating tab name: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
+func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Workspace, OID: workspaceId}
+	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	if err != nil {
+		return fmt.Errorf("error updating workspace tab ids: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
@@ -1447,8 +1468,8 @@ func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.
 	return tab, nil
 }
 
-func (ws *WshServer) GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*wshrpc.TabIndicator, error) {
-	return wcore.GetAllTabIndicators(), nil
+func (ws *WshServer) GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error) {
+	return wcore.GetAllBadges(), nil
 }
 
 func (ws *WshServer) GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error) {

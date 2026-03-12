@@ -1,9 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getConnStatusAtom, getOverrideConfigAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
@@ -20,6 +20,7 @@ import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor";
 import { createRef } from "react";
 import { PreviewView } from "./preview";
+import { makeDirectoryDefaultMenuItems } from "./preview-directory-utils";
 
 // TODO drive this using config
 const BOOKMARKS: { label: string; path: string }[] = [
@@ -168,7 +169,7 @@ export class PreviewModel implements ViewModel {
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
@@ -335,6 +336,7 @@ export class PreviewModel implements ViewModel {
                     {
                         elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",
+                        title: showHiddenFiles ? "Hide Hidden Files" : "Show Hidden Files",
                         click: () => {
                             globalStore.set(this.showHiddenFiles, (prev) => !prev);
                         },
@@ -731,68 +733,72 @@ export class PreviewModel implements ViewModel {
                 }),
         });
         menuItems.push({ type: "separator" });
-        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
-            (fontSize: number) => {
-                return {
-                    label: fontSize.toString() + "px",
-                    type: "checkbox",
-                    checked: overrideFontSize == fontSize,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "editor:fontsize": fontSize },
-                        });
-                    },
-                };
-            }
-        );
-        fontSizeSubMenu.unshift({
-            label: "Default (" + defaultFontSize + "px)",
-            type: "checkbox",
-            checked: overrideFontSize == null,
-            click: () => {
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("block", this.blockId),
-                    meta: { "editor:fontsize": null },
-                });
-            },
-        });
-        menuItems.push({
-            label: "Editor Font Size",
-            submenu: fontSizeSubMenu,
-        });
         const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
         addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo);
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
         const wordWrap = globalStore.get(wordWrapAtom) ?? false;
-        if (loadableSV.state == "hasData") {
-            if (loadableSV.data.specializedView == "codeedit") {
-                if (globalStore.get(this.newFileContent) != null) {
-                    menuItems.push({ type: "separator" });
-                    menuItems.push({
-                        label: "Save File",
-                        click: () => fireAndForget(this.handleFileSave.bind(this)),
-                    });
-                    menuItems.push({
-                        label: "Revert File",
-                        click: () => fireAndForget(this.handleFileRevert.bind(this)),
-                    });
+        menuItems.push({ type: "separator" });
+        if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit") {
+            const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
+                (fontSize: number) => {
+                    return {
+                        label: fontSize.toString() + "px",
+                        type: "checkbox",
+                        checked: overrideFontSize == fontSize,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "editor:fontsize": fontSize },
+                            });
+                        },
+                    };
                 }
+            );
+            fontSizeSubMenu.unshift({
+                label: "Default (" + defaultFontSize + "px)",
+                type: "checkbox",
+                checked: overrideFontSize == null,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "editor:fontsize": null },
+                    });
+                },
+            });
+            menuItems.push({
+                label: "Editor Font Size",
+                submenu: fontSizeSubMenu,
+            });
+            if (globalStore.get(this.newFileContent) != null) {
                 menuItems.push({ type: "separator" });
                 menuItems.push({
-                    label: "Word Wrap",
-                    type: "checkbox",
-                    checked: wordWrap,
-                    click: () =>
-                        fireAndForget(async () => {
-                            const blockOref = WOS.makeORef("block", this.blockId);
-                            await services.ObjectService.UpdateObjectMeta(blockOref, {
-                                "editor:wordwrap": !wordWrap,
-                            });
-                        }),
+                    label: "Save File",
+                    click: () => fireAndForget(this.handleFileSave.bind(this)),
+                });
+                menuItems.push({
+                    label: "Revert File",
+                    click: () => fireAndForget(this.handleFileRevert.bind(this)),
                 });
             }
+            menuItems.push({ type: "separator" });
+            menuItems.push({
+                label: "Word Wrap",
+                type: "checkbox",
+                checked: wordWrap,
+                click: () =>
+                    fireAndForget(async () => {
+                        const blockOref = WOS.makeORef("block", this.blockId);
+                        await services.ObjectService.UpdateObjectMeta(blockOref, {
+                            "editor:wordwrap": !wordWrap,
+                        });
+                    }),
+            });
+        }
+        if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "directory") {
+            menuItems.push({ type: "separator" });
+            menuItems.push({ label: "Default Settings", enabled: false });
+            menuItems.push(...makeDirectoryDefaultMenuItems(this));
         }
         return menuItems;
     }

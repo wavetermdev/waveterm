@@ -27,27 +27,19 @@ import {
     isWslConnName,
     NullAtom,
 } from "@/util/util";
-import { isPreviewWindow } from "./windowtype";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
-import {
-    atoms,
-    blockComponentModelMap,
-    ConnStatusMapAtom,
-    initGlobalAtoms,
-    orefAtomCache,
-    TabIndicatorMap,
-} from "./global-atoms";
+import { setupBadgesSubscription } from "./badge";
+import { atoms, blockComponentModelMap, ConnStatusMapAtom, initGlobalAtoms, orefAtomCache } from "./global-atoms";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
 import { ClientService, ObjectService } from "./services";
+import { isPreviewWindow } from "./windowtype";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribeSingle } from "./wps";
 
-let globalEnvironment: "electron" | "renderer";
 let globalPrimaryTabStartup: boolean = false;
 
 function initGlobal(initOpts: GlobalInitOptions) {
-    globalEnvironment = initOpts.environment;
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
@@ -105,12 +97,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             globalStore.set(atoms.waveAIRateLimitInfoAtom, event.data);
         },
     });
-    waveEventSubscribeSingle({
-        eventType: "tab:indicator",
-        handler: (event) => {
-            setTabIndicatorInternal(event.data.tabid, event.data.indicator);
-        },
-    });
+    setupBadgesSubscription();
 }
 
 const blockCache = new Map<string, Map<string, any>>();
@@ -137,16 +124,12 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let blockAtom = WOS.getWaveObjectAtom(WOS.makeORef("block", blockId));
-        let blockData = get(blockAtom);
+        const blockAtom = WOS.getWaveObjectAtom(WOS.makeORef("block", blockId));
+        const blockData = get(blockAtom);
         return blockData?.meta?.[key];
     });
     blockCache.set(metaAtomName, metaAtom);
     return metaAtom;
-}
-
-function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T): MetaType[T] {
-    return useAtomValue(getBlockMetaKeyAtom(blockId, key));
 }
 
 function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Atom<MetaType[T]> {
@@ -157,8 +140,8 @@ function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Ato
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let objAtom = WOS.getWaveObjectAtom(oref);
-        let objData = get(objAtom);
+        const objAtom = WOS.getWaveObjectAtom(oref);
+        const objData = get(objAtom);
         return objData?.meta?.[key];
     });
     orefCache.set(metaAtomName, metaAtom);
@@ -171,14 +154,14 @@ function useOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Met
 
 function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
     if (isPreviewWindow()) return NullAtom as Atom<ConnKeywords[T]>;
-    let connCache = getSingleConnAtomCache(connName);
+    const connCache = getSingleConnAtomCache(connName);
     const keyAtomName = "#conn-" + key;
     let keyAtom = connCache.get(keyAtomName);
     if (keyAtom != null) {
         return keyAtom;
     }
     keyAtom = atom((get) => {
-        let fullConfig = get(atoms.fullConfigAtom);
+        const fullConfig = get(atoms.fullConfigAtom);
         return fullConfig.connections?.[connName]?.[key];
     });
     connCache.set(keyAtomName, keyAtom);
@@ -339,13 +322,6 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): 
         console.log("New BlockAtom", blockId, name);
     }
     return atom as Atom<T>;
-}
-
-function useBlockDataLoaded(blockId: string): boolean {
-    const loadedAtom = useBlockAtom<boolean>(blockId, "block-loaded", () => {
-        return WOS.getWaveObjectLoadingAtom(WOS.makeORef("block", blockId));
-    });
-    return useAtomValue(loadedAtom);
 }
 
 /**
@@ -571,6 +547,7 @@ function getAllBlockComponentModels(): BlockComponentModel[] {
 
 function getFocusedBlockId(): string {
     const layoutModel = getLayoutModelForStaticTab();
+    if (layoutModel?.focusedNode == null) return null;
     const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
     return focusedLayoutNode?.data?.blockId;
 }
@@ -608,17 +585,6 @@ async function loadConnStatus() {
     }
 }
 
-async function loadTabIndicators() {
-    const tabIndicators = await RpcApi.GetAllTabIndicatorsCommand(TabRpcClient);
-    if (tabIndicators == null) {
-        return;
-    }
-    for (const [tabId, indicator] of Object.entries(tabIndicators)) {
-        const curAtom = getTabIndicatorAtom(tabId);
-        globalStore.set(curAtom, indicator);
-    }
-}
-
 function subscribeToConnEvents() {
     waveEventSubscribeSingle({
         eventType: "connchange",
@@ -629,7 +595,7 @@ function subscribeToConnEvents() {
                     return;
                 }
                 console.log("connstatus update", connStatus);
-                let curAtom = getConnStatusAtom(connStatus.connection);
+                const curAtom = getConnStatusAtom(connStatus.connection);
                 globalStore.set(curAtom, connStatus);
             } catch (e) {
                 console.log("connchange error", e);
@@ -638,108 +604,39 @@ function subscribeToConnEvents() {
     });
 }
 
+function makeDefaultConnStatus(conn: string): ConnStatus {
+    if (isLocalConnName(conn)) {
+        return {
+            connection: conn,
+            connected: true,
+            error: null,
+            status: "connected",
+            hasconnected: true,
+            activeconnnum: 0,
+            wshenabled: false,
+        };
+    }
+    return {
+        connection: conn,
+        connected: false,
+        error: null,
+        status: "disconnected",
+        hasconnected: false,
+        activeconnnum: 0,
+        wshenabled: false,
+    };
+}
+
 function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     const connStatusMap = globalStore.get(ConnStatusMapAtom);
     let rtn = connStatusMap.get(conn);
     if (rtn == null) {
-        if (isLocalConnName(conn)) {
-            const connStatus: ConnStatus = {
-                connection: conn,
-                connected: true,
-                error: null,
-                status: "connected",
-                hasconnected: true,
-                activeconnnum: 0,
-                wshenabled: false,
-            };
-            rtn = atom(connStatus);
-        } else {
-            const connStatus: ConnStatus = {
-                connection: conn,
-                connected: false,
-                error: null,
-                status: "disconnected",
-                hasconnected: false,
-                activeconnnum: 0,
-                wshenabled: false,
-            };
-            rtn = atom(connStatus);
-        }
+        rtn = atom(makeDefaultConnStatus(conn));
         const newConnStatusMap = new Map(connStatusMap);
         newConnStatusMap.set(conn, rtn);
         globalStore.set(ConnStatusMapAtom, newConnStatusMap);
     }
     return rtn;
-}
-
-function getTabIndicatorAtom(tabId: string): PrimitiveAtom<TabIndicator> {
-    let rtn = TabIndicatorMap.get(tabId);
-    if (rtn == null) {
-        rtn = atom(null) as PrimitiveAtom<TabIndicator>;
-        TabIndicatorMap.set(tabId, rtn);
-    }
-    return rtn;
-}
-
-function setTabIndicatorInternal(tabId: string, indicator: TabIndicator) {
-    if (indicator == null) {
-        const indicatorAtom = getTabIndicatorAtom(tabId);
-        globalStore.set(indicatorAtom, null);
-        return;
-    }
-    const indicatorAtom = getTabIndicatorAtom(tabId);
-    const currentIndicator = globalStore.get(indicatorAtom);
-    if (currentIndicator == null) {
-        globalStore.set(indicatorAtom, indicator);
-        return;
-    }
-    if (indicator.priority >= currentIndicator.priority) {
-        if (indicator.clearonfocus && !currentIndicator.clearonfocus) {
-            indicator.persistentindicator = currentIndicator;
-        }
-        globalStore.set(indicatorAtom, indicator);
-    }
-}
-
-function setTabIndicator(tabId: string, indicator: TabIndicator) {
-    setTabIndicatorInternal(tabId, indicator);
-
-    const eventData: WaveEvent = {
-        event: "tab:indicator",
-        scopes: [WOS.makeORef("tab", tabId)],
-        data: {
-            tabid: tabId,
-            indicator: indicator,
-        },
-    };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
-}
-
-function clearTabIndicatorFromFocus(tabId: string) {
-    const indicatorAtom = getTabIndicatorAtom(tabId);
-    const currentIndicator = globalStore.get(indicatorAtom);
-    if (currentIndicator == null) {
-        return;
-    }
-    const persistentIndicator = currentIndicator.persistentindicator;
-    const eventData: WaveEvent = {
-        event: "tab:indicator",
-        scopes: [WOS.makeORef("tab", tabId)],
-        data: {
-            tabid: tabId,
-            indicator: persistentIndicator ?? null,
-        } as TabIndicatorEventData,
-    };
-    fireAndForget(() => RpcApi.EventPublishCommand(TabRpcClient, eventData));
-}
-
-function clearAllTabIndicators() {
-    for (const [tabId, indicatorAtom] of TabIndicatorMap.entries()) {
-        const indicator = globalStore.get(indicatorAtom);
-        if (indicator != null) {
-            setTabIndicator(tabId, null);
-        }
-    }
 }
 
 function createTab() {
@@ -758,12 +655,8 @@ function recordTEvent(event: string, props?: TEventProps) {
     RpcApi.RecordTEventCommand(TabRpcClient, { event, props }, { noresponse: true });
 }
 
-export { ConnStatusMapAtom, getAtoms, initGlobalAtoms, orefAtomCache, TabIndicatorMap, blockComponentModelMap } from "./global-atoms";
-
 export {
     atoms,
-    clearAllTabIndicators,
-    clearTabIndicatorFromFocus,
     createBlock,
     createBlockSplitHorizontally,
     createBlockSplitVertically,
@@ -773,6 +666,7 @@ export {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
+    getConnConfigKeyAtom,
     getBlockTermDurableAtom,
     getConnStatusAtom,
     getFocusedBlockId,
@@ -783,7 +677,6 @@ export {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
-    getTabIndicatorAtom,
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
@@ -791,7 +684,7 @@ export {
     initGlobalWaveEventSubs,
     isDev,
     loadConnStatus,
-    loadTabIndicators,
+    makeDefaultConnStatus,
     openLink,
     readAtom,
     recordTEvent,
@@ -801,13 +694,10 @@ export {
     setActiveTab,
     setNodeFocus,
     setPlatform,
-    setTabIndicator,
     subscribeToConnEvents,
     unregisterBlockComponentModel,
     useBlockAtom,
     useBlockCache,
-    useBlockDataLoaded,
-    useBlockMetaKeyAtom,
     useOrefMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,

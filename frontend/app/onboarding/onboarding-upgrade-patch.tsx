@@ -24,12 +24,17 @@ import { UpgradeOnboardingModal_v0_13_0_Content } from "./onboarding-upgrade-v01
 import { UpgradeOnboardingModal_v0_13_1_Content } from "./onboarding-upgrade-v0131";
 import { UpgradeOnboardingModal_v0_14_0_Content } from "./onboarding-upgrade-v0140";
 import { UpgradeOnboardingModal_v0_14_1_Content } from "./onboarding-upgrade-v0141";
+import { UpgradeOnboardingModal_v0_14_2_Content } from "./onboarding-upgrade-v0142";
 
 interface VersionConfig {
     version: string;
     content: () => React.ReactNode;
     prevText?: string;
     nextText?: string;
+}
+
+interface UpgradeOnboardingPatchProps {
+    isReleaseNotes?: boolean;
 }
 
 interface UpgradeOnboardingFooterProps {
@@ -128,10 +133,16 @@ export const UpgradeOnboardingVersions: VersionConfig[] = [
         version: "v0.14.1",
         content: () => <UpgradeOnboardingModal_v0_14_1_Content />,
         prevText: "Prev (v0.14.0)",
+        nextText: "Next (v0.14.2)",
+    },
+    {
+        version: "v0.14.2",
+        content: () => <UpgradeOnboardingModal_v0_14_2_Content />,
+        prevText: "Prev (v0.14.1)",
     },
 ];
 
-const UpgradeOnboardingPatch = () => {
+const UpgradeOnboardingPatch = ({ isReleaseNotes = false }: UpgradeOnboardingPatchProps) => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
     const [currentIndex, setCurrentIndex] = useState<number>(UpgradeOnboardingVersions.length - 1);
@@ -174,13 +185,21 @@ const UpgradeOnboardingPatch = () => {
     }, []);
 
     const doClose = () => {
-        globalStore.set(modalsModel.upgradeOnboardingOpen, false);
+        if (isReleaseNotes) {
+            modalsModel.popModal();
+        } else {
+            globalStore.set(modalsModel.upgradeOnboardingOpen, false);
+        }
         setTimeout(() => {
             globalRefocus();
         }, 10);
     };
 
     const handleClose = () => {
+        if (isReleaseNotes) {
+            doClose();
+            return;
+        }
         const clientId = ClientModel.getInstance().clientId;
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),

@@ -2,14 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
 import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
+import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
-import React, { lazy, Suspense } from "react";
+import { atom, Provider } from "jotai";
+import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { installPreviewElectronApi } from "./preview-electron-api";
+import { makeMockWaveEnv } from "./mock/mockwaveenv";
+import { installPreviewElectronApi } from "./mock/preview-electron-api";
+import { PreviewContextMenu } from "./preview-contextmenu";
 
+import "overlayscrollbars/overlayscrollbars.css";
 import "../app/app.scss";
 
 // preview.css should come *after* app.scss (don't remove the newline above otherwise prettier will reorder these imports)
@@ -86,6 +92,28 @@ function PreviewHeader({ previewName }: { previewName: string }) {
     );
 }
 
+function PreviewRoot() {
+    const waveEnvRef = useRef(
+        makeMockWaveEnv({
+            atoms: {
+                uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
+                staticTabId: atom(PreviewTabId),
+                workspaceId: atom(PreviewWorkspaceId),
+            },
+        })
+    );
+    return (
+        <Provider store={globalStore}>
+            <WaveEnvContext.Provider value={waveEnvRef.current}>
+                <>
+                    <PreviewApp />
+                    <PreviewContextMenu />
+                </>
+            </WaveEnvContext.Provider>
+        </Provider>
+    );
+}
+
 function PreviewApp() {
     const params = new URLSearchParams(window.location.search);
     const previewName = params.get("preview");
@@ -97,9 +125,11 @@ function PreviewApp() {
                 <>
                     <PreviewHeader previewName={previewName} />
                     <div className="h-screen overflow-y-auto bg-background text-foreground font-sans flex flex-col items-center pt-12 pb-8">
-                        <Suspense fallback={null}>
-                            <PreviewComponent />
-                        </Suspense>
+                        <ErrorBoundary>
+                            <Suspense fallback={null}>
+                                <PreviewComponent />
+                            </Suspense>
+                        </ErrorBoundary>
                     </div>
                 </>
             );
@@ -122,6 +152,7 @@ function PreviewApp() {
 
 const PreviewTabId = crypto.randomUUID();
 const PreviewWindowId = crypto.randomUUID();
+const PreviewWorkspaceId = crypto.randomUUID();
 const PreviewClientId = crypto.randomUUID();
 
 function initPreview() {
@@ -138,8 +169,13 @@ function initPreview() {
     globalStore.set(getAtoms().fullConfigAtom, {} as FullConfigType);
     GlobalModel.getInstance().initialize(initOpts);
     loadFonts();
-    const root = createRoot(document.getElementById("main")!);
-    root.render(<PreviewApp />);
+    const container = document.getElementById("main")!;
+    let root = (container as any).__reactRoot;
+    if (!root) {
+        root = createRoot(container);
+        (container as any).__reactRoot = root;
+    }
+    root.render(<PreviewRoot />);
 }
 
 initPreview();

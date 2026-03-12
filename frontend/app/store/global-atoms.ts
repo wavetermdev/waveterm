@@ -9,7 +9,6 @@ import * as WOS from "./wos";
 let atoms!: GlobalAtomsType;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
-const TabIndicatorMap = new Map<string, PrimitiveAtom<TabIndicator>>();
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
@@ -44,12 +43,16 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         console.log("failed to initialize zoomFactorAtom", e);
     }
 
-    const workspaceAtom: Atom<Workspace> = atom((get) => {
+    const workspaceIdAtom: Atom<string> = atom((get) => {
         const windowData = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
-        if (windowData == null) {
+        return windowData?.workspaceid ?? null;
+    });
+    const workspaceAtom: Atom<Workspace> = atom((get) => {
+        const workspaceId = get(workspaceIdAtom);
+        if (workspaceId == null) {
             return null;
         }
-        return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
+        return WOS.getObjectValue(WOS.makeORef("workspace", workspaceId), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
     const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
@@ -67,6 +70,10 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
             }
         }
         return false;
+    }) as Atom<boolean>;
+    const hasConfigErrors = atom((get) => {
+        const fullConfig = get(fullConfigAtom);
+        return fullConfig?.configerrors != null && fullConfig.configerrors.length > 0;
     }) as Atom<boolean>;
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
@@ -124,11 +131,13 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         builderId: builderIdAtom,
         builderAppId: builderAppIdAtom,
         uiContext: uiContextAtom,
+        workspaceId: workspaceIdAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
+        hasConfigErrors,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
         zoomFactorAtom,
@@ -154,4 +163,4 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
-export { atoms, blockComponentModelMap, ConnStatusMapAtom, getAtoms, initGlobalAtoms, orefAtomCache, TabIndicatorMap };
+export { atoms, blockComponentModelMap, ConnStatusMapAtom, getAtoms, initGlobalAtoms, orefAtomCache };
