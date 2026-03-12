@@ -83,7 +83,9 @@ export function isClaudeCodeCommand(decodedCmd: string): boolean {
     if (!decodedCmd) {
         return false;
     }
-    const normalizedCmd = decodedCmd.trim().replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "").replace(/^env\s+/, "");
+    let normalizedCmd = decodedCmd.trim();
+    normalizedCmd = normalizedCmd.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
+    normalizedCmd = normalizedCmd.replace(/^env\s+/, "");
     return ClaudeCodeRegex.test(normalizedCmd);
 }
 
