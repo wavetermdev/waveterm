@@ -13,6 +13,7 @@ import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { makeMockWaveEnv } from "./mock/mockwaveenv";
 import { installPreviewElectronApi } from "./mock/preview-electron-api";
+import { PreviewContextMenu } from "./preview-contextmenu";
 
 import "overlayscrollbars/overlayscrollbars.css";
 import "../app/app.scss";
@@ -104,7 +105,10 @@ function PreviewRoot() {
     return (
         <Provider store={globalStore}>
             <WaveEnvContext.Provider value={waveEnvRef.current}>
-                <PreviewApp />
+                <>
+                    <PreviewApp />
+                    <PreviewContextMenu />
+                </>
             </WaveEnvContext.Provider>
         </Provider>
     );
