@@ -44,6 +44,7 @@ class WorkspaceLayoutModel {
     private transitionTimeoutRef: NodeJS.Timeout | null = null;
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
+    vtabVisibleAtom: jotai.PrimitiveAtom<boolean>;
 
     private constructor() {
         this.aiPanelRef = null;
@@ -57,6 +58,7 @@ class WorkspaceLayoutModel {
         this.vtabWidth = VTabBar_DefaultWidth;
         this.showLeftTabBar = false;
         this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
+        this.vtabVisibleAtom = jotai.atom(false);
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
         this.handlePanelLayout = this.handlePanelLayout.bind(this);
@@ -152,6 +154,7 @@ class WorkspaceLayoutModel {
         this.panelGroupRef = panelGroupRef;
         this.panelContainerRef = panelContainerRef;
         this.aiPanelWrapperRef = aiPanelWrapperRef;
+        globalStore.set(this.vtabVisibleAtom, this.showLeftTabBar);
         this.syncAIPanelRef();
         this.updateWrapperWidth();
     }
@@ -210,6 +213,10 @@ class WorkspaceLayoutModel {
         }
 
         const currentWindowWidth = window.innerWidth;
+        const vtabIsVisible = sizes[0] > 0;
+        if (globalStore.get(this.vtabVisibleAtom) !== vtabIsVisible) {
+            globalStore.set(this.vtabVisibleAtom, vtabIsVisible);
+        }
         if (this.showLeftTabBar && sizes[0] > 0) {
             const vtabPixelWidth = (sizes[0] / 100) * currentWindowWidth;
             const clamped = Math.max(VTabBar_MinWidth, Math.min(vtabPixelWidth, VTabBar_MaxWidth));
@@ -360,6 +367,29 @@ class WorkspaceLayoutModel {
         }
         const clampedWidth = this.getClampedAIPanelWidth(width, windowWidth);
         this.setAIPanelWidth(clampedWidth);
+    }
+
+    setShowLeftTabBar(showLeftTabBar: boolean): void {
+        if (this.showLeftTabBar === showLeftTabBar) {
+            return;
+        }
+        this.showLeftTabBar = showLeftTabBar;
+        globalStore.set(this.vtabVisibleAtom, showLeftTabBar);
+        if (this.vtabPanelRef) {
+            if (showLeftTabBar) {
+                this.vtabPanelRef.expand();
+            } else {
+                this.vtabPanelRef.collapse();
+            }
+        }
+        if (!this.panelGroupRef) {
+            return;
+        }
+        this.enableTransitions(250);
+        const layout = this.buildLayout(window.innerWidth);
+        this.inResize = true;
+        this.panelGroupRef.setLayout(layout);
+        this.inResize = false;
     }
 }
 

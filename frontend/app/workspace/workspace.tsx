@@ -27,6 +27,8 @@ const WorkspaceElem = memo(() => {
     const ws = useAtomValue(atoms.workspace);
     const tabBarPosition = useAtomValue(getSettingsKeyAtom("app:tabbar")) ?? "top";
     const showLeftTabBar = tabBarPosition === "left";
+    const aiPanelVisible = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+    const vtabVisible = useAtomValue(workspaceLayoutModel.vtabVisibleAtom);
     const windowWidth = window.innerWidth;
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(windowWidth);
     const vtabInitialPct = workspaceLayoutModel.getVTabBarInitialPercentage(windowWidth, showLeftTabBar);
@@ -57,6 +59,10 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     useEffect(() => {
+        workspaceLayoutModel.setShowLeftTabBar(showLeftTabBar);
+    }, [showLeftTabBar]);
+
+    useEffect(() => {
         window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
@@ -82,7 +88,7 @@ const WorkspaceElem = memo(() => {
                         >
                             {showLeftTabBar && <VTabBar workspace={ws} />}
                         </Panel>
-                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
+                        <PanelResizeHandle className={`bg-transparent hover:bg-zinc-500/20 transition-colors ${showLeftTabBar && vtabVisible ? "w-0.5" : "w-0"}`} />
                         <Panel
                             ref={aiPanelRef}
                             collapsible
@@ -94,7 +100,7 @@ const WorkspaceElem = memo(() => {
                                 {tabId !== "" && <AIPanel roundTopLeft={showLeftTabBar} />}
                             </div>
                         </Panel>
-                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
+                        <PanelResizeHandle className={`bg-transparent hover:bg-zinc-500/20 transition-colors ${aiPanelVisible ? "w-0.5" : "w-0"}`} />
                         <Panel order={2} defaultSize={100 - vtabInitialPct - initialAiPanelPercentage}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
