@@ -19,6 +19,7 @@ import { buildTabContextMenu } from "./tabcontextmenu";
 export type TabEnv = WaveEnvSubset<{
     rpc: {
         ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
+        SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
         UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
     };
@@ -26,6 +27,7 @@ export type TabEnv = WaveEnvSubset<{
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };
     wos: WaveEnv["wos"];
+    getSettingsKeyAtom: WaveEnv["getSettingsKeyAtom"];
     showContextMenu: WaveEnv["showContextMenu"];
 }>;
 

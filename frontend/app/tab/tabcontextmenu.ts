@@ -85,6 +85,22 @@ function buildTabContextMenu(
         }
         menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
     }
+    const currentTabBar = globalStore.get(env.getSettingsKeyAtom("app:tabbar")) ?? "top";
+    const tabBarSubmenu: ContextMenuItem[] = [
+        {
+            label: "Top",
+            type: "checkbox",
+            checked: currentTabBar === "top",
+            click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "top" })),
+        },
+        {
+            label: "Left",
+            type: "checkbox",
+            checked: currentTabBar === "left",
+            click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "left" })),
+        },
+    ];
+    menu.push({ label: "Tab Bar Position", type: "submenu", submenu: tabBarSubmenu }, { type: "separator" });
     menu.push({ label: "Close Tab", click: () => onClose(null) });
     return menu;
 }
