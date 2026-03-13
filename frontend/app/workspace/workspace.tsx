@@ -58,7 +58,11 @@ const WorkspaceElem = memo(() => {
         <div className="flex flex-col w-full flex-grow overflow-hidden">
             <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
-                {showLeftTabBar && <VTabBar workspace={ws} />}
+                {showLeftTabBar && (
+                    <div className="min-w-[100px]">
+                        <VTabBar workspace={ws} />
+                    </div>
+                )}
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
                         direction="horizontal"

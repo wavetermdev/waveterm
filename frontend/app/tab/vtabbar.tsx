@@ -232,7 +232,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                 })}
                 <button
                     type="button"
-                    className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none"
+                    className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none whitespace-nowrap"
                     onClick={() => env.electron.createTab()}
                     onMouseEnter={() => setIsNewTabHovered(true)}
                     onMouseLeave={() => setIsNewTabHovered(false)}
