@@ -23,6 +23,9 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    build: {
+        minify: false,
+    },
     server: {
         port: 7007,
     },

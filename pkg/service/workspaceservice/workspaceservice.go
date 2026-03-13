@@ -6,7 +6,6 @@ package workspaceservice
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
@@ -163,24 +162,6 @@ func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activ
 		wps.Broker.SendUpdateEvents(updates)
 	}()
 	return tabId, updates, nil
-}
-
-func (svc *WorkspaceService) UpdateTabIds_Meta() tsgenmeta.MethodMeta {
-	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"uiContext", "workspaceId", "tabIds"},
-	}
-}
-
-func (svc *WorkspaceService) UpdateTabIds(uiContext waveobj.UIContext, workspaceId string, tabIds []string) (waveobj.UpdatesRtnType, error) {
-	log.Printf("UpdateTabIds %s %v\n", workspaceId, tabIds)
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
-	if err != nil {
-		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
-	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 
 func (svc *WorkspaceService) SetActiveTab_Meta() tsgenmeta.MethodMeta {

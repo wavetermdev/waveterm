@@ -16,6 +16,7 @@ export type BlockEnv = WaveEnvSubset<{
         | "window:magnifiedblockblurprimarypx"
         | "window:magnifiedblockopacity"
     >;
+    showContextMenu: WaveEnv["showContextMenu"];
     atoms: {
         modalOpen: WaveEnv["atoms"]["modalOpen"];
         controlShiftDelayAtom: WaveEnv["atoms"]["controlShiftDelayAtom"];

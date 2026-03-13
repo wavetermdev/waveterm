@@ -12,7 +12,6 @@ import {
     recordTEvent,
     WOS,
 } from "@/store/global";
-import * as services from "@/store/services";
 import { base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/util/util";
 import debug from "debug";
 import type { TermWrap } from "./termwrap";
@@ -243,8 +242,9 @@ export function handleOsc7Command(data: string, blockId: string, loaded: boolean
 
     setTimeout(() => {
         fireAndForget(async () => {
-            await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
-                "cmd:cwd": pathPart,
+            await RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", blockId),
+                meta: { "cmd:cwd": pathPart },
             });
 
             const rtInfo = { "shell:hascurcwd": true };

@@ -7,7 +7,6 @@ import { atom, useAtom } from "jotai";
 import { useRef } from "react";
 import { applyMockEnvOverrides } from "../mock/mockwaveenv";
 
-const workspaceAtom = atom<Workspace>(null as Workspace);
 const resizableHeightAtom = atom(250);
 
 function makeMockApp(name: string, icon: string, iconcolor: string): AppInfo {
@@ -91,7 +90,6 @@ function makeWidgetsEnv(baseEnv: WaveEnv, isDev: boolean, hasCustomAIPresets: bo
         rpc: { ListAllAppsCommand: () => Promise.resolve(apps ?? []) },
         atoms: {
             fullConfigAtom,
-            workspace: workspaceAtom,
             hasCustomAIPresetsAtom: atom(hasCustomAIPresets),
         },
     });

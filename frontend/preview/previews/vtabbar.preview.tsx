@@ -1,31 +1,36 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { VTabBar, VTabItem } from "@/app/tab/vtabbar";
-import { useState } from "react";
-
-const InitialTabs: VTabItem[] = [
-    { id: "vtab-1", name: "Terminal" },
-    { id: "vtab-2", name: "Build Logs", badge: { badgeid: "01957000-0000-7000-0000-000000000001", icon: "bell", color: "#f59e0b", priority: 1 } },
-    { id: "vtab-3", name: "Deploy" },
-    { id: "vtab-4", name: "Wave AI" },
-    { id: "vtab-5", name: "A Very Long Tab Name To Show Truncation" },
-];
+import { loadBadges, LoadBadgesEnv } from "@/app/store/badge";
+import { VTabBar } from "@/app/tab/vtabbar";
+import { VTabBarEnv } from "@/app/tab/vtabbarenv";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { TabBarMockEnvProvider, TabBarMockWorkspaceId } from "@/preview/mock/tabbar-mock";
+import { useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
 
 export function VTabBarPreview() {
-    const [tabs, setTabs] = useState<VTabItem[]>(InitialTabs);
-    const [activeTabId, setActiveTabId] = useState<string>(InitialTabs[0].id);
     const [width, setWidth] = useState<number>(220);
+    return (
+        <TabBarMockEnvProvider>
+            <VTabBarPreviewInner width={width} setWidth={setWidth} />
+        </TabBarMockEnvProvider>
+    );
+}
 
-    const handleCloseTab = (tabId: string) => {
-        setTabs((prevTabs) => {
-            const nextTabs = prevTabs.filter((tab) => tab.id !== tabId);
-            if (activeTabId === tabId && nextTabs.length > 0) {
-                setActiveTabId(nextTabs[0].id);
-            }
-            return nextTabs;
-        });
-    };
+type VTabBarPreviewInnerProps = {
+    width: number;
+    setWidth: (width: number) => void;
+};
+
+function VTabBarPreviewInner({ width, setWidth }: VTabBarPreviewInnerProps) {
+    const env = useWaveEnv<VTabBarEnv>();
+    const loadBadgesEnv = useWaveEnv<LoadBadgesEnv>();
+    const workspace = useAtomValue(env.wos.getWaveObjectAtom<Workspace>(`workspace:${TabBarMockWorkspaceId}`));
+
+    useEffect(() => {
+        loadBadges(loadBadgesEnv);
+    }, []);
 
     return (
         <div className="flex w-full max-w-[900px] gap-6 px-6">
@@ -44,25 +49,9 @@ export function VTabBarPreview() {
                 </p>
             </div>
             <div className="h-[360px] rounded-md border border-border bg-background">
-                <VTabBar
-                    tabs={tabs}
-                    activeTabId={activeTabId}
-                    width={width}
-                    onSelectTab={setActiveTabId}
-                    onCloseTab={handleCloseTab}
-                    onRenameTab={(tabId, newName) => {
-                        setTabs((prevTabs) =>
-                            prevTabs.map((tab) => (tab.id === tabId ? { ...tab, name: newName } : tab))
-                        );
-                    }}
-                    onReorderTabs={(tabIds) => {
-                        setTabs((prevTabs) => {
-                            const tabById = new Map(prevTabs.map((tab) => [tab.id, tab]));
-                            return tabIds.map((tabId) => tabById.get(tabId)).filter((tab) => tab != null);
-                        });
-                    }}
-                />
+                {workspace != null && <VTabBar workspace={workspace} width={width} />}
             </div>
         </div>
     );
 }
+VTabBarPreviewInner.displayName = "VTabBarPreviewInner";

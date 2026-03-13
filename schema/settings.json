@@ -215,6 +215,13 @@
         "preview:showhiddenfiles": {
           "type": "boolean"
         },
+        "preview:defaultsort": {
+          "type": "string",
+          "enum": [
+            "name",
+            "modtime"
+          ]
+        },
         "tab:preset": {
           "type": "string"
         },
