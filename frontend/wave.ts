@@ -32,6 +32,7 @@ import { activeTabIdAtom } from "@/store/tab-model";
 import * as WOS from "@/store/wos";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
+import { isMacOS, setMacOSVersion } from "@/util/platformutil";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -163,6 +164,10 @@ async function initWave(initOpts: WaveInitOpts) {
     await loadBadges();
     initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
+    if (isMacOS()) {
+        const macOSVersion = await RpcApi.MacOSVersionCommand(TabRpcClient);
+        setMacOSVersion(macOSVersion);
+    }
 
     // ensures client/window/workspace are loaded into the cache before rendering
     try {
