@@ -29,6 +29,7 @@ interface VTabProps {
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
     onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
     onDragEnd: () => void;
+    onHoverChanged?: (isHovered: boolean) => void;
 }
 
 export function VTab({
@@ -44,6 +45,7 @@ export function VTab({
     onDragOver,
     onDrop,
     onDragEnd,
+    onHoverChanged,
 }: VTabProps) {
     const [originalName, setOriginalName] = useState(tab.name);
     const [isEditable, setIsEditable] = useState(false);
@@ -145,20 +147,16 @@ export function VTab({
             onDragOver={onDragOver}
             onDrop={onDrop}
             onDragEnd={onDragEnd}
+            onMouseEnter={() => onHoverChanged?.(true)}
+            onMouseLeave={() => onHoverChanged?.(false)}
             className={cn(
                 "group relative flex h-9 w-full cursor-pointer items-center pl-3 text-xs transition-colors select-none",
                 "whitespace-nowrap",
-                active
-                    ? "text-primary"
-                    : isReordering
-                      ? "text-secondary"
-                      : "text-secondary hover:text-primary",
+                active ? "text-primary" : isReordering ? "text-secondary" : "text-secondary hover:text-primary",
                 isDragging && "opacity-50"
             )}
         >
-            {active && (
-                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-accent/20" />
-            )}
+            {active && <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-accent/20" />}
             {!active && !isReordering && (
                 <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
             )}

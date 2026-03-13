@@ -47,6 +47,7 @@ interface VTabWrapperProps {
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
     onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
     onDragEnd: () => void;
+    onHoverChanged: (isHovered: boolean) => void;
 }
 
 function VTabWrapper({
@@ -63,6 +64,7 @@ function VTabWrapper({
     onDragOver,
     onDrop,
     onDragEnd,
+    onHoverChanged,
 }: VTabWrapperProps) {
     const env = useWaveEnv<VTabBarEnv>();
     const [tabData] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", tabId));
@@ -101,6 +103,7 @@ function VTabWrapper({
             onDragOver={onDragOver}
             onDrop={onDrop}
             onDragEnd={onDragEnd}
+            onHoverChanged={onHoverChanged}
         />
     );
 }
@@ -116,6 +119,8 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
     const [dropIndex, setDropIndex] = useState<number | null>(null);
     const [dropLineTop, setDropLineTop] = useState<number | null>(null);
     const [hoverResetVersion, setHoverResetVersion] = useState(0);
+    const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
+    const [isNewTabHovered, setIsNewTabHovered] = useState(false);
     const dragSourceRef = useRef<string | null>(null);
     const didResetHoverForDragRef = useRef(false);
 
@@ -190,14 +195,17 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
             >
                 {orderedTabIds.map((tabId, index) => {
                     const isActive = tabId === activeTabId;
+                    const isHovered = tabId === hoveredTabId;
+                    const isLast = index === orderedTabIds.length - 1;
                     const nextTabId = orderedTabIds[index + 1];
                     const isNextActive = nextTabId === activeTabId;
+                    const isNextHovered = nextTabId === hoveredTabId;
                     return (
                     <VTabWrapper
                         key={`${tabId}:${hoverResetVersion}`}
                         tabId={tabId}
                         active={isActive}
-                        showDivider={!isActive && !isNextActive}
+                        showDivider={!isActive && !isNextActive && !isHovered && !isNextHovered && !(isLast && isNewTabHovered)}
                         isDragging={dragTabId === tabId}
                         isReordering={dragTabId != null}
                         hoverResetVersion={hoverResetVersion}
@@ -237,6 +245,7 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
                             clearDragState();
                         }}
                         onDragEnd={clearDragState}
+                        onHoverChanged={(isHovered) => setHoveredTabId(isHovered ? tabId : null)}
                     />
                     );
                 })}
@@ -244,6 +253,8 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
                     type="button"
                     className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none"
                     onClick={() => env.electron.createTab()}
+                    onMouseEnter={() => setIsNewTabHovered(true)}
+                    onMouseLeave={() => setIsNewTabHovered(false)}
                     aria-label="New Tab"
                 >
                     <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
