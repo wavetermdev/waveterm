@@ -109,6 +109,9 @@ function computeBgColor(fullConfig: FullConfigType): string {
 const wcIdToWaveTabMap = new Map<number, WaveTabView>();
 
 export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
+    if (webContentsId == null) {
+        return null;
+    }
     return wcIdToWaveTabMap.get(webContentsId);
 }
 
@@ -313,6 +316,9 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
     tabView.webContents.on("did-attach-webview", (event, wc) => {
         wc.setWindowOpenHandler((details) => {
+            if (wc == null || wc.isDestroyed() || tabView.webContents == null || tabView.webContents.isDestroyed()) {
+                return { action: "deny" };
+            }
             tabView.webContents.send("webview-new-window", wc.id, details);
             return { action: "deny" };
         });
