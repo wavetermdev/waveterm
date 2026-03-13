@@ -157,14 +157,15 @@ export class WaveTabView extends WebContentsView {
         this.waveReadyPromise.then(() => {
             this.isWaveReady = true;
         });
-        wcIdToWaveTabMap.set(this.webContents.id, this);
+        const wcId = this.webContents.id;
+        wcIdToWaveTabMap.set(wcId, this);
         if (isDevVite) {
             this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`);
         } else {
             this.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"));
         }
         this.webContents.on("destroyed", () => {
-            wcIdToWaveTabMap.delete(this.webContents.id);
+            wcIdToWaveTabMap.delete(wcId);
             removeWaveTabView(this.waveTabId);
             this.isDestroyed = true;
         });
@@ -286,7 +287,6 @@ function checkAndEvictCache(): void {
         // Otherwise, sort by lastUsedTs
         return a.lastUsedTs - b.lastUsedTs;
     });
-    const now = Date.now();
     for (let i = 0; i < sorted.length - MaxCacheSize; i++) {
         tryEvictEntry(sorted[i].waveTabId);
     }
