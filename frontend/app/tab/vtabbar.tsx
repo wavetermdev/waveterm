@@ -124,6 +124,9 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
     const dragSourceRef = useRef<string | null>(null);
     const didResetHoverForDragRef = useRef(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const scrollAnimFrameRef = useRef<number | null>(null);
+    const scrollDirectionRef = useRef<number>(0);
+    const scrollSpeedRef = useRef<number>(0);
 
     useEffect(() => {
         setOrderedTabIds(tabIds);
@@ -143,7 +146,59 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
         el?.scrollIntoView({ block: "nearest" });
     }, [activeTabId, documentHasFocus]);
 
+    const stopScrollLoop = useCallback(() => {
+        if (scrollAnimFrameRef.current != null) {
+            cancelAnimationFrame(scrollAnimFrameRef.current);
+            scrollAnimFrameRef.current = null;
+        }
+        scrollDirectionRef.current = 0;
+    }, []);
+
+    const startScrollLoop = useCallback(() => {
+        if (scrollAnimFrameRef.current != null) {
+            return;
+        }
+        const loop = () => {
+            const container = scrollContainerRef.current;
+            if (container == null || scrollDirectionRef.current === 0) {
+                scrollAnimFrameRef.current = null;
+                return;
+            }
+            container.scrollTop += scrollDirectionRef.current * scrollSpeedRef.current;
+            scrollAnimFrameRef.current = requestAnimationFrame(loop);
+        };
+        scrollAnimFrameRef.current = requestAnimationFrame(loop);
+    }, []);
+
+    const updateScrollFromDragY = useCallback(
+        (clientY: number) => {
+            const container = scrollContainerRef.current;
+            if (container == null) {
+                return;
+            }
+            const EdgeZone = 60;
+            const MaxScrollSpeed = 12;
+            const rect = container.getBoundingClientRect();
+            const relY = clientY - rect.top;
+            const height = rect.height;
+            if (relY < EdgeZone) {
+                scrollDirectionRef.current = -1;
+                scrollSpeedRef.current = MaxScrollSpeed * (1 - relY / EdgeZone);
+                startScrollLoop();
+            } else if (relY > height - EdgeZone) {
+                scrollDirectionRef.current = 1;
+                scrollSpeedRef.current = MaxScrollSpeed * (1 - (height - relY) / EdgeZone);
+                startScrollLoop();
+            } else {
+                scrollDirectionRef.current = 0;
+                stopScrollLoop();
+            }
+        },
+        [startScrollLoop, stopScrollLoop]
+    );
+
     const clearDragState = () => {
+        stopScrollLoop();
         if (dragSourceRef.current != null && !didResetHoverForDragRef.current) {
             didResetHoverForDragRef.current = true;
             setHoverResetVersion((version) => version + 1);
@@ -185,6 +240,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                 className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
                 onDragOver={(event) => {
                     event.preventDefault();
+                    updateScrollFromDragY(event.clientY);
                     if (event.target === event.currentTarget) {
                         setDropIndex(orderedTabIds.length);
                         setDropLineTop(event.currentTarget.scrollHeight);
