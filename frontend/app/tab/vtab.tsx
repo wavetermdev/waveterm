@@ -19,6 +19,7 @@ export interface VTabItem {
 interface VTabProps {
     tab: VTabItem;
     active: boolean;
+    showDivider?: boolean;
     isDragging: boolean;
     isReordering: boolean;
     onSelect: () => void;
@@ -33,6 +34,7 @@ interface VTabProps {
 export function VTab({
     tab,
     active,
+    showDivider = true,
     isDragging,
     isReordering,
     onSelect,
@@ -144,26 +146,38 @@ export function VTab({
             onDrop={onDrop}
             onDragEnd={onDragEnd}
             className={cn(
-                "group relative flex h-9 w-full cursor-pointer items-center border-b border-border/70 pl-2 text-sm transition-colors select-none",
+                "group relative flex h-9 w-full cursor-pointer items-center pl-3 text-xs transition-colors select-none",
                 "whitespace-nowrap",
                 active
-                    ? "bg-accent/20 text-primary"
+                    ? "text-primary"
                     : isReordering
-                      ? "bg-transparent text-secondary"
-                      : "bg-transparent text-secondary hover:bg-hover",
+                      ? "text-secondary"
+                      : "text-secondary hover:text-primary",
                 isDragging && "opacity-50"
             )}
         >
+            {active && (
+                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-accent/20" />
+            )}
+            {!active && !isReordering && (
+                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
+            )}
+            <div
+                className={cn(
+                    "pointer-events-none absolute bottom-0 left-[5%] right-[5%] h-px bg-border/70",
+                    !showDivider && "opacity-0"
+                )}
+            />
             <TabBadges
                 badges={badges}
                 flagColor={flagColor}
-                className="mr-1 min-w-[20px] shrink-0 static top-auto left-auto z-auto h-[20px] w-auto translate-y-0 justify-start px-[2px] py-[1px]"
+                className="mr-1 min-w-[16px] shrink-0 static top-auto left-auto z-auto h-[16px] w-auto translate-y-0 justify-start px-[2px] py-[1px] [&_i]:text-[10px]"
             />
             <div
                 ref={editableRef}
                 className={cn(
                     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap transition-[padding-right]",
-                    onClose && !isReordering && "group-hover:pr-[18px]",
+                    onClose && !isReordering && "group-hover:pr-6",
                     isEditable && "rounded-[2px] bg-white/15 outline-none"
                 )}
                 contentEditable={isEditable}
@@ -180,7 +194,7 @@ export function VTab({
                 <button
                     type="button"
                     className={cn(
-                        "absolute top-1/2 right-0 shrink-0 -translate-y-1/2 cursor-pointer py-1 pl-1 pr-1.5 text-secondary transition",
+                        "absolute top-1/2 right-0 shrink-0 -translate-y-1/2 cursor-pointer py-1 pl-1 pr-3 text-secondary transition",
                         isReordering ? "opacity-0" : "opacity-0 group-hover:opacity-100 hover:text-primary"
                     )}
                     onClick={(event) => {

@@ -35,6 +35,7 @@ function clampWidth(width?: number): number {
 interface VTabWrapperProps {
     tabId: string;
     active: boolean;
+    showDivider: boolean;
     isDragging: boolean;
     isReordering: boolean;
     hoverResetVersion: number;
@@ -51,6 +52,7 @@ interface VTabWrapperProps {
 function VTabWrapper({
     tabId,
     active,
+    showDivider,
     isDragging,
     isReordering,
     hoverResetVersion,
@@ -89,6 +91,7 @@ function VTabWrapper({
             key={`${tabId}:${hoverResetVersion}`}
             tab={tab}
             active={active}
+            showDivider={showDivider}
             isDragging={isDragging}
             isReordering={isReordering}
             onSelect={onSelect}
@@ -185,11 +188,16 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
                     clearDragState();
                 }}
             >
-                {orderedTabIds.map((tabId, index) => (
+                {orderedTabIds.map((tabId, index) => {
+                    const isActive = tabId === activeTabId;
+                    const nextTabId = orderedTabIds[index + 1];
+                    const isNextActive = nextTabId === activeTabId;
+                    return (
                     <VTabWrapper
                         key={`${tabId}:${hoverResetVersion}`}
                         tabId={tabId}
-                        active={tabId === activeTabId}
+                        active={isActive}
+                        showDivider={!isActive && !isNextActive}
                         isDragging={dragTabId === tabId}
                         isReordering={dragTabId != null}
                         hoverResetVersion={hoverResetVersion}
@@ -230,13 +238,15 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
                         }}
                         onDragEnd={clearDragState}
                     />
-                ))}
+                    );
+                })}
                 <button
                     type="button"
-                    className="my-1 flex shrink-0 cursor-pointer items-center gap-1.5 rounded-sm pr-3 pl-2 py-1.5 text-xs text-secondary/60 transition-colors hover:bg-hover hover:text-primary"
+                    className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none"
                     onClick={() => env.electron.createTab()}
                     aria-label="New Tab"
                 >
+                    <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
                     <i className="fa fa-solid fa-plus" style={{ fontSize: "10px" }} />
                     <span>New Tab</span>
                 </button>
