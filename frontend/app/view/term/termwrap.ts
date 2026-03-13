@@ -425,14 +425,18 @@ export class TermWrap {
         this.promptMarkers.forEach((marker) => {
             try {
                 marker.dispose();
-            } catch (_) {}
+            } catch (_) {
+                /* nothing */
+            }
         });
         this.promptMarkers = [];
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {
                 d.dispose();
-            } catch (_) {}
+            } catch (_) {
+                /* nothing */
+            }
         });
         this.mainFileSubject.release();
     }
@@ -487,7 +491,7 @@ export class TermWrap {
             }
         }
         let resolve: () => void = null;
-        let prtn = new Promise<void>((presolve, _) => {
+        const prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
         this.terminal.write(data, () => {
