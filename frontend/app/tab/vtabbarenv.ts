@@ -12,6 +12,8 @@ export type VTabBarEnv = WaveEnvSubset<{
     rpc: {
         UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
         UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
+        ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
+        SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
     };
     atoms: {
         staticTabId: WaveEnv["atoms"]["staticTabId"];
@@ -19,6 +21,7 @@ export type VTabBarEnv = WaveEnvSubset<{
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
     };
     wos: WaveEnv["wos"];
+    showContextMenu: WaveEnv["showContextMenu"];
     getSettingsKeyAtom: SettingsKeyAtomFnType<"tab:confirmclose">;
     mockSetWaveObj: WaveEnv["mockSetWaveObj"];
     isWindows: WaveEnv["isWindows"];

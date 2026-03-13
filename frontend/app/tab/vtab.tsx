@@ -25,11 +25,13 @@ interface VTabProps {
     onSelect: () => void;
     onClose?: () => void;
     onRename?: (newName: string) => void;
+    onContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
     onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
     onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
     onDragEnd: () => void;
     onHoverChanged?: (isHovered: boolean) => void;
+    renameRef?: React.RefObject<(() => void) | null>;
 }
 
 export function VTab({
@@ -41,11 +43,13 @@ export function VTab({
     onSelect,
     onClose,
     onRename,
+    onContextMenu,
     onDragStart,
     onDragOver,
     onDrop,
     onDragEnd,
     onHoverChanged,
+    renameRef,
 }: VTabProps) {
     const [originalName, setOriginalName] = useState(tab.name);
     const [isEditable, setIsEditable] = useState(false);
@@ -104,6 +108,10 @@ export function VTab({
         }, RenameFocusDelayMs);
     }, [isReordering, onRename, selectEditableText]);
 
+    if (renameRef != null) {
+        renameRef.current = startRename;
+    }
+
     const handleBlur = () => {
         if (!editableRef.current) {
             return;
@@ -143,6 +151,7 @@ export function VTab({
                 event.stopPropagation();
                 startRename();
             }}
+            onContextMenu={onContextMenu}
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDrop={onDrop}

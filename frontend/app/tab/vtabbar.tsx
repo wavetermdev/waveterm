@@ -8,8 +8,9 @@ import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { validateCssColor } from "@/util/color-validator";
 import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { VTab, VTabItem } from "./vtab";
+import { buildTabContextMenu } from "./tabcontextmenu";
 import { VTabBarEnv } from "./vtabbarenv";
 export type { VTabItem } from "./vtab";
 
@@ -55,6 +56,7 @@ function VTabWrapper({
     const env = useWaveEnv<VTabBarEnv>();
     const [tabData] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", tabId));
     const badges = useAtomValue(getTabBadgeAtom(tabId, env));
+    const renameRef = useRef<(() => void) | null>(null);
 
     const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
     let flagColor: string | null = null;
@@ -74,6 +76,15 @@ function VTabWrapper({
         flagColor,
     };
 
+    const handleContextMenu = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            const menu = buildTabContextMenu(tabId, renameRef, () => onClose(), env);
+            env.showContextMenu(menu, e);
+        },
+        [tabId, onClose, env]
+    );
+
     return (
         <VTab
             key={`${tabId}:${hoverResetVersion}`}
@@ -85,11 +96,13 @@ function VTabWrapper({
             onSelect={onSelect}
             onClose={onClose}
             onRename={onRename}
+            onContextMenu={handleContextMenu}
             onDragStart={onDragStart}
             onDragOver={onDragOver}
             onDrop={onDrop}
             onDragEnd={onDragEnd}
             onHoverChanged={onHoverChanged}
+            renameRef={renameRef}
         />
     );
 }
