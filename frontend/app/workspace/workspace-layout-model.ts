@@ -265,6 +265,14 @@ class WorkspaceLayoutModel {
 
     // ---- Registration & sync ----
 
+    syncVTabWidthFromMeta(): void {
+        const savedVTabWidth = globalStore.get(this.getVTabBarWidthAtom());
+        if (savedVTabWidth != null && savedVTabWidth > 0 && savedVTabWidth !== this.vtabWidth) {
+            this.vtabWidth = savedVTabWidth;
+            this.commitLayouts(window.innerWidth);
+        }
+    }
+
     registerRefs(
         aiPanelRef: ImperativePanelHandle,
         outerPanelGroupRef: ImperativePanelGroupHandle,

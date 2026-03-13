@@ -74,6 +74,12 @@ const WorkspaceElem = memo(() => {
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
 
+    useEffect(() => {
+        const handleFocus = () => workspaceLayoutModel.syncVTabWidthFromMeta();
+        window.addEventListener("focus", handleFocus);
+        return () => window.removeEventListener("focus", handleFocus);
+    }, []);
+
     const innerHandleVisible = vtabVisible && aiPanelVisible;
     const innerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${innerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
     const outerHandleVisible = vtabVisible || aiPanelVisible;

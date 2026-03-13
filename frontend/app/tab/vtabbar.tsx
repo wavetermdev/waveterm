@@ -245,7 +245,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
         >
             <div
                 ref={scrollContainerRef}
-                className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
+                className="relative flex min-h-0 flex-col overflow-y-auto"
                 onDragOver={(event) => {
                     event.preventDefault();
                     updateScrollFromDragY(event.clientY);
