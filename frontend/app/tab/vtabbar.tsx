@@ -111,6 +111,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
     const env = useWaveEnv<VTabBarEnv>();
     const activeTabId = useAtomValue(env.atoms.staticTabId);
     const reinitVersion = useAtomValue(env.atoms.reinitVersion);
+    const documentHasFocus = useAtomValue(env.atoms.documentHasFocus);
     const tabIds = workspace?.tabids ?? [];
 
     const [orderedTabIds, setOrderedTabIds] = useState<string[]>(tabIds);
@@ -122,6 +123,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
     const [isNewTabHovered, setIsNewTabHovered] = useState(false);
     const dragSourceRef = useRef<string | null>(null);
     const didResetHoverForDragRef = useRef(false);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setOrderedTabIds(tabIds);
@@ -132,6 +134,14 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
             setOrderedTabIds(workspace?.tabids ?? []);
         }
     }, [reinitVersion]);
+
+    useEffect(() => {
+        if (activeTabId == null || scrollContainerRef.current == null) {
+            return;
+        }
+        const el = scrollContainerRef.current.querySelector(`[data-tabid="${activeTabId}"]`);
+        el?.scrollIntoView({ block: "nearest" });
+    }, [activeTabId, documentHasFocus]);
 
     const clearDragState = () => {
         if (dragSourceRef.current != null && !didResetHoverForDragRef.current) {
@@ -171,6 +181,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
             style={{ backdropFilter: "blur(20px)", background: "rgba(0, 0, 0, 0.35)" }}
         >
             <div
+                ref={scrollContainerRef}
                 className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
                 onDragOver={(event) => {
                     event.preventDefault();
@@ -249,18 +260,6 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                         />
                     );
                 })}
-                <button
-                    type="button"
-                    className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none whitespace-nowrap"
-                    onClick={() => env.electron.createTab()}
-                    onMouseEnter={() => setIsNewTabHovered(true)}
-                    onMouseLeave={() => setIsNewTabHovered(false)}
-                    aria-label="New Tab"
-                >
-                    <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
-                    <i className="fa fa-solid fa-plus" style={{ fontSize: "10px" }} />
-                    <span>New Tab</span>
-                </button>
                 {dragTabId != null && dropIndex != null && dropLineTop != null && (
                     <div
                         className="pointer-events-none absolute left-0 right-0 border-t-2 border-accent/80"
@@ -268,6 +267,18 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                     />
                 )}
             </div>
+            <button
+                type="button"
+                className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none whitespace-nowrap"
+                onClick={() => env.electron.createTab()}
+                onMouseEnter={() => setIsNewTabHovered(true)}
+                onMouseLeave={() => setIsNewTabHovered(false)}
+                aria-label="New Tab"
+            >
+                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
+                <i className="fa fa-solid fa-plus" style={{ fontSize: "10px" }} />
+                <span>New Tab</span>
+            </button>
         </div>
     );
 }

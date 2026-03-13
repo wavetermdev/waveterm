@@ -19,6 +19,7 @@ export type VTabBarEnv = WaveEnvSubset<{
         staticTabId: WaveEnv["atoms"]["staticTabId"];
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
+        documentHasFocus: WaveEnv["atoms"]["documentHasFocus"];
     };
     wos: WaveEnv["wos"];
     showContextMenu: WaveEnv["showContextMenu"];

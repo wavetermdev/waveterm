@@ -146,6 +146,7 @@ export function VTab({
     return (
         <div
             draggable
+            data-tabid={tab.id}
             onClick={onSelect}
             onDoubleClick={(event) => {
                 event.stopPropagation();
