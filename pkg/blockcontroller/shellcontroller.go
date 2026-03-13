@@ -663,12 +663,18 @@ func isLastShellBlockInWorkspace(ctx context.Context, blockId string) bool {
 	shellBlockCount := 0
 	for _, wsTabId := range workspace.TabIds {
 		tab, err := wstore.DBGet[*waveobj.Tab](ctx, wsTabId)
-		if err != nil || tab == nil {
+		if err != nil {
+			return false
+		}
+		if tab == nil {
 			continue
 		}
 		for _, wsBlockId := range tab.BlockIds {
 			block, err := wstore.DBGet[*waveobj.Block](ctx, wsBlockId)
-			if err != nil || block == nil {
+			if err != nil {
+				return false
+			}
+			if block == nil {
 				continue
 			}
 			controller := block.Meta.GetString(waveobj.MetaKey_Controller, "")
