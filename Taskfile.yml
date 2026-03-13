@@ -282,6 +282,18 @@ tasks:
             - cmd: powershell -NoProfile -NonInteractive -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wsh*"
               platforms: [windows]
               ignore_error: true
+            - task: build:wsh:parallel
+        deps:
+            - go:mod:tidy
+            - generate
+        sources:
+            - "cmd/wsh/**/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - "dist/bin/wsh*"
+
+    build:wsh:parallel:
+        deps:
             - task: build:wsh:internal
               vars:
                   GOOS: darwin
@@ -314,14 +326,7 @@ tasks:
               vars:
                   GOOS: windows
                   GOARCH: arm64
-        deps:
-            - go:mod:tidy
-            - generate
-        sources:
-            - "cmd/wsh/**/*.go"
-            - "pkg/**/*.go"
-        generates:
-            - "dist/bin/wsh*"
+        internal: true
 
     build:wsh:internal:
         vars:
