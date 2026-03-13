@@ -171,10 +171,10 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
     return (
         <div
             className={cn(
-                "flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden bg-panel",
+                "flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden",
                 className
             )}
-            style={{ width: barWidth }}
+            style={{ width: barWidth, backdropFilter: "blur(20px)", background: "rgba(0, 0, 0, 0.35)" }}
         >
             <div
                 className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"

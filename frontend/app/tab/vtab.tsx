@@ -156,9 +156,9 @@ export function VTab({
                 isDragging && "opacity-50"
             )}
         >
-            {active && <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-accent/20" />}
+            {active && <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-foreground/10" />}
             {!active && !isReordering && (
-                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-hover" />
+                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-foreground/10" />
             )}
             <div
                 className={cn(
