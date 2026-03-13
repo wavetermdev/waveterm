@@ -159,7 +159,7 @@ export function VTab({
             onMouseEnter={() => onHoverChanged?.(true)}
             onMouseLeave={() => onHoverChanged?.(false)}
             className={cn(
-                "group relative flex h-9 w-full cursor-pointer items-center pl-3 text-xs transition-colors select-none",
+                "group relative flex h-9 w-full shrink-0 cursor-pointer items-center pl-3 text-xs transition-colors select-none",
                 "whitespace-nowrap",
                 active ? "text-primary" : isReordering ? "text-secondary" : "text-secondary hover:text-primary",
                 isDragging && "opacity-50"
