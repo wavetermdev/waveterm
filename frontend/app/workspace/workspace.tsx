@@ -30,21 +30,28 @@ const WorkspaceElem = memo(() => {
     const aiPanelVisible = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
     const vtabVisible = useAtomValue(workspaceLayoutModel.vtabVisibleAtom);
     const windowWidth = window.innerWidth;
-    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(windowWidth);
-    const vtabInitialPct = workspaceLayoutModel.getVTabBarInitialPercentage(windowWidth, showLeftTabBar);
-    const vtabMinPct = workspaceLayoutModel.getVTabBarMinPercentage(windowWidth);
-    const vtabMaxPct = workspaceLayoutModel.getVTabBarMaxPercentage(windowWidth);
-    const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+    const leftGroupInitialPct = workspaceLayoutModel.getLeftGroupInitialPercentage(windowWidth, showLeftTabBar);
+    const innerVTabInitialPct = workspaceLayoutModel.getInnerVTabInitialPercentage(windowWidth, showLeftTabBar);
+    const innerAIPanelInitialPct = workspaceLayoutModel.getInnerAIPanelInitialPercentage(windowWidth, showLeftTabBar);
+    const outerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+    const innerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
     const vtabPanelRef = useRef<ImperativePanelHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
+        if (
+            aiPanelRef.current &&
+            outerPanelGroupRef.current &&
+            innerPanelGroupRef.current &&
+            panelContainerRef.current &&
+            aiPanelWrapperRef.current
+        ) {
             workspaceLayoutModel.registerRefs(
                 aiPanelRef.current,
-                panelGroupRef.current,
+                outerPanelGroupRef.current,
+                innerPanelGroupRef.current,
                 panelContainerRef.current,
                 aiPanelWrapperRef.current,
                 vtabPanelRef.current ?? undefined,
@@ -67,6 +74,11 @@ const WorkspaceElem = memo(() => {
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
 
+    const innerHandleVisible = vtabVisible && aiPanelVisible;
+    const innerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${innerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+    const outerHandleVisible = vtabVisible || aiPanelVisible;
+    const outerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${outerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
             <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />
@@ -74,34 +86,44 @@ const WorkspaceElem = memo(() => {
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
                         direction="horizontal"
-                        onLayout={workspaceLayoutModel.handlePanelLayout}
-                        ref={panelGroupRef}
+                        onLayout={workspaceLayoutModel.handleOuterPanelLayout}
+                        ref={outerPanelGroupRef}
                     >
                         <Panel
-                            ref={vtabPanelRef}
-                            collapsible
-                            defaultSize={vtabInitialPct}
-                            minSize={vtabMinPct}
-                            maxSize={vtabMaxPct}
                             order={0}
+                            defaultSize={leftGroupInitialPct}
                             className="overflow-hidden"
                         >
-                            {showLeftTabBar && <VTabBar workspace={ws} />}
+                            <PanelGroup
+                                direction="horizontal"
+                                onLayout={workspaceLayoutModel.handleInnerPanelLayout}
+                                ref={innerPanelGroupRef}
+                            >
+                                <Panel
+                                    ref={vtabPanelRef}
+                                    collapsible
+                                    defaultSize={innerVTabInitialPct}
+                                    order={0}
+                                    className="overflow-hidden"
+                                >
+                                    {showLeftTabBar && <VTabBar workspace={ws} />}
+                                </Panel>
+                                <PanelResizeHandle className={innerHandleClass} />
+                                <Panel
+                                    ref={aiPanelRef}
+                                    collapsible
+                                    defaultSize={innerAIPanelInitialPct}
+                                    order={1}
+                                    className="overflow-hidden"
+                                >
+                                    <div ref={aiPanelWrapperRef} className={`w-full h-full pr-0.5 ${aiPanelVisible ? "" : "opacity-0"}`}>
+                                        {tabId !== "" && <AIPanel roundTopLeft={showLeftTabBar} />}
+                                    </div>
+                                </Panel>
+                            </PanelGroup>
                         </Panel>
-                        <PanelResizeHandle className={`bg-transparent hover:bg-zinc-500/20 transition-colors ${showLeftTabBar && vtabVisible ? "w-0.5" : "w-0"}`} />
-                        <Panel
-                            ref={aiPanelRef}
-                            collapsible
-                            defaultSize={initialAiPanelPercentage}
-                            order={1}
-                            className="overflow-hidden"
-                        >
-                            <div ref={aiPanelWrapperRef} className="w-full h-full pr-0.5">
-                                {tabId !== "" && <AIPanel roundTopLeft={showLeftTabBar} />}
-                            </div>
-                        </Panel>
-                        <PanelResizeHandle className={`bg-transparent hover:bg-zinc-500/20 transition-colors ${aiPanelVisible ? "w-0.5" : "w-0"}`} />
-                        <Panel order={2} defaultSize={100 - vtabInitialPct - initialAiPanelPercentage}>
+                        <PanelResizeHandle className={outerHandleClass} />
+                        <Panel order={1} defaultSize={100 - leftGroupInitialPct}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
