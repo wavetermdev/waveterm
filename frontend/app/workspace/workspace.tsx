@@ -27,9 +27,14 @@ const WorkspaceElem = memo(() => {
     const ws = useAtomValue(atoms.workspace);
     const tabBarPosition = useAtomValue(getSettingsKeyAtom("app:tabbar")) ?? "top";
     const showLeftTabBar = tabBarPosition === "left";
-    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
+    const windowWidth = window.innerWidth;
+    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(windowWidth);
+    const vtabInitialPct = workspaceLayoutModel.getVTabBarInitialPercentage(windowWidth, showLeftTabBar);
+    const vtabMinPct = workspaceLayoutModel.getVTabBarMinPercentage(windowWidth);
+    const vtabMaxPct = workspaceLayoutModel.getVTabBarMaxPercentage(windowWidth);
     const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
+    const vtabPanelRef = useRef<ImperativePanelHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -39,7 +44,9 @@ const WorkspaceElem = memo(() => {
                 aiPanelRef.current,
                 panelGroupRef.current,
                 panelContainerRef.current,
-                aiPanelWrapperRef.current
+                aiPanelWrapperRef.current,
+                vtabPanelRef.current ?? undefined,
+                showLeftTabBar
             );
         }
     }, []);
@@ -58,17 +65,24 @@ const WorkspaceElem = memo(() => {
         <div className="flex flex-col w-full flex-grow overflow-hidden">
             <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
-                {showLeftTabBar && (
-                    <div className="min-w-[100px]">
-                        <VTabBar workspace={ws} />
-                    </div>
-                )}
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
                         direction="horizontal"
                         onLayout={workspaceLayoutModel.handlePanelLayout}
                         ref={panelGroupRef}
                     >
+                        <Panel
+                            ref={vtabPanelRef}
+                            collapsible
+                            defaultSize={vtabInitialPct}
+                            minSize={vtabMinPct}
+                            maxSize={vtabMaxPct}
+                            order={0}
+                            className="overflow-hidden"
+                        >
+                            {showLeftTabBar && <VTabBar workspace={ws} />}
+                        </Panel>
+                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
                         <Panel
                             ref={aiPanelRef}
                             collapsible
@@ -81,7 +95,7 @@ const WorkspaceElem = memo(() => {
                             </div>
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
-                        <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>
+                        <Panel order={2} defaultSize={100 - vtabInitialPct - initialAiPanelPercentage}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
