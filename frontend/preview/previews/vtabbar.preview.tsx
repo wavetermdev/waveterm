@@ -41,15 +41,15 @@ function VTabBarPreviewInner({ width, setWidth }: VTabBarPreviewInnerProps) {
                     min={100}
                     max={400}
                     value={width}
-                    onChange={(event) => setWidth(Number(event.target.value))}
+                    onChange={(event) => setWidth(Math.max(100, Math.min(400, Number(event.target.value))))}
                     className="w-full cursor-pointer"
                 />
                 <p className="mt-3 text-xs text-muted">
                     Drag tabs to reorder. Names, badges, and close buttons remain single-line.
                 </p>
             </div>
-            <div className="h-[360px] rounded-md border border-border bg-background">
-                {workspace != null && <VTabBar workspace={workspace} width={width} />}
+            <div className="h-[360px] overflow-hidden rounded-md border border-border bg-background" style={{ width }}>
+                {workspace != null && <VTabBar workspace={workspace} />}
             </div>
         </div>
     );

@@ -8,28 +8,14 @@ import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { validateCssColor } from "@/util/color-validator";
 import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { VTab, VTabItem } from "./vtab";
 import { VTabBarEnv } from "./vtabbarenv";
 export type { VTabItem } from "./vtab";
 
 interface VTabBarProps {
     workspace: Workspace;
-    width?: number;
     className?: string;
-}
-
-function clampWidth(width?: number): number {
-    if (width == null) {
-        return 220;
-    }
-    if (width < 100) {
-        return 100;
-    }
-    if (width > 400) {
-        return 400;
-    }
-    return width;
 }
 
 interface VTabWrapperProps {
@@ -108,7 +94,7 @@ function VTabWrapper({
     );
 }
 
-export function VTabBar({ workspace, width, className }: VTabBarProps) {
+export function VTabBar({ workspace, className }: VTabBarProps) {
     const env = useWaveEnv<VTabBarEnv>();
     const activeTabId = useAtomValue(env.atoms.staticTabId);
     const reinitVersion = useAtomValue(env.atoms.reinitVersion);
@@ -133,8 +119,6 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
             setOrderedTabIds(workspace?.tabids ?? []);
         }
     }, [reinitVersion]);
-
-    const barWidth = useMemo(() => clampWidth(width), [width]);
 
     const clearDragState = () => {
         if (dragSourceRef.current != null && !didResetHoverForDragRef.current) {
@@ -170,11 +154,8 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
 
     return (
         <div
-            className={cn(
-                "flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden",
-                className
-            )}
-            style={{ width: barWidth, backdropFilter: "blur(20px)", background: "rgba(0, 0, 0, 0.35)" }}
+            className={cn("flex h-full flex-col overflow-hidden", className)}
+            style={{ backdropFilter: "blur(20px)", background: "rgba(0, 0, 0, 0.35)" }}
         >
             <div
                 className="relative flex min-h-0 flex-1 flex-col overflow-y-auto"
