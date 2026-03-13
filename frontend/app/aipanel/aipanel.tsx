@@ -245,7 +245,11 @@ const ConfigChangeModeFixer = memo(() => {
 
 ConfigChangeModeFixer.displayName = "ConfigChangeModeFixer";
 
-const AIPanelComponentInner = memo(() => {
+type AIPanelComponentInnerProps = {
+    roundTopLeft: boolean;
+};
+
+const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -554,6 +558,7 @@ const AIPanelComponentInner = memo(() => {
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
+                borderTopLeftRadius: roundTopLeft ? 10 : 0,
                 borderTopRightRadius: model.inBuilder ? 0 : 10,
                 borderBottomRightRadius: model.inBuilder ? 0 : 10,
                 borderBottomLeftRadius: 10,
@@ -607,10 +612,14 @@ const AIPanelComponentInner = memo(() => {
 
 AIPanelComponentInner.displayName = "AIPanelInner";
 
-const AIPanelComponent = () => {
+type AIPanelComponentProps = {
+    roundTopLeft: boolean;
+};
+
+const AIPanelComponent = ({ roundTopLeft }: AIPanelComponentProps) => {
     return (
         <ErrorBoundary>
-            <AIPanelComponentInner />
+            <AIPanelComponentInner roundTopLeft={roundTopLeft} />
         </ErrorBoundary>
     );
 };

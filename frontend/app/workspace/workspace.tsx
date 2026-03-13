@@ -90,8 +90,8 @@ const WorkspaceElem = memo(() => {
                             order={1}
                             className="overflow-hidden"
                         >
-                            <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                {tabId !== "" && <AIPanel />}
+                            <div ref={aiPanelWrapperRef} className="w-full h-full pr-0.5">
+                                {tabId !== "" && <AIPanel roundTopLeft={showLeftTabBar} />}
                             </div>
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
