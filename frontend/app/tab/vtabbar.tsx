@@ -163,7 +163,7 @@ export function VTabBar({ workspace, width, className }: VTabBarProps) {
     return (
         <div
             className={cn(
-                "flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden border-r border-border bg-panel",
+                "flex h-full min-w-[100px] max-w-[400px] flex-col overflow-hidden bg-panel",
                 className
             )}
             style={{ width: barWidth }}

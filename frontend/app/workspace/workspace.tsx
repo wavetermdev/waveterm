@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { AIPanel } from "@/app/aipanel/aipanel";
@@ -7,9 +7,10 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
+import { VTabBar } from "@/app/tab/vtabbar";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { atoms, getApi } from "@/store/global";
+import { atoms, getApi, getSettingsKeyAtom } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import {
@@ -24,6 +25,8 @@ const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
+    const tabBarPosition = useAtomValue(getSettingsKeyAtom("app:tabbar")) ?? "top";
+    const showLeftTabBar = tabBarPosition === "left";
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
@@ -53,8 +56,9 @@ const WorkspaceElem = memo(() => {
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            <TabBar key={ws.oid} workspace={ws} />
+            <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
+                {showLeftTabBar && <VTabBar workspace={ws} />}
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
                         direction="horizontal"

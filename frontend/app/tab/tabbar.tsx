@@ -39,6 +39,7 @@ const OSOptions = {
 
 interface TabBarProps {
     workspace: Workspace;
+    noTabs?: boolean;
 }
 
 const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
@@ -152,7 +153,7 @@ function strArrayIsEqual(a: string[], b: string[]) {
     return true;
 }
 
-const TabBar = memo(({ workspace }: TabBarProps) => {
+const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const env = useWaveEnv<TabBarEnv>();
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
@@ -680,8 +681,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <WorkspaceSwitcher />
             </Tooltip>
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
-                <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
-                    {tabIds.map((tabId, index) => {
+                <div
+                    className="tabs-wrapper"
+                    ref={tabsWrapperRef}
+                    style={{ width: `${tabsWrapperWidth}px`, ...(noTabs ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : {}) }}
+                >
+                    {!noTabs && tabIds.map((tabId, index) => {
                         const isActive = activeTabId === tabId;
                         const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
                         return (
@@ -706,7 +711,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <button
                 ref={addBtnRef}
                 title="Add Tab"
-                className="flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary"
+                className={`flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary${noTabs ? " invisible" : ""}`}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                 onClick={handleAddTab}
             >
