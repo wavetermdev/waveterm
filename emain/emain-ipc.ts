@@ -209,7 +209,7 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
         const menu = new electron.Menu();
-        const win = getWaveWindowByWebContentsId(event.sender.hostWebContents.id);
+        const win = getWaveWindowByWebContentsId(event.sender.hostWebContents?.id);
         if (win == null) {
             return;
         }
@@ -353,6 +353,7 @@ export function initIpcHandlers() {
             const png = PNG.sync.read(overlayBuffer);
             const color = fac.prepareResult(fac.getColorFromArray4(png.data));
             const ww = getWaveWindowByWebContentsId(event.sender.id);
+            if (ww == null) return;
             ww.setTitleBarOverlay({
                 color: unamePlatform === "linux" ? color.rgba : "#00000000",
                 symbolColor: color.isDark ? "white" : "black",
