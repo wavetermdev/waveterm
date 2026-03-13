@@ -10,7 +10,7 @@ import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { TerminalView } from "@/app/view/term/term";
+import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
@@ -155,7 +155,7 @@ export class TermViewModel implements ViewModel {
             if (isCmd) {
                 const blockMeta = get(this.blockAtom)?.meta;
                 let cmdText = blockMeta?.["cmd"];
-                let cmdArgs = blockMeta?.["cmd:args"];
+                const cmdArgs = blockMeta?.["cmd:args"];
                 if (cmdArgs != null && Array.isArray(cmdArgs) && cmdArgs.length > 0) {
                     cmdText += " " + cmdArgs.join(" ");
                 }
@@ -242,7 +242,7 @@ export class TermViewModel implements ViewModel {
         });
         this.termTransparencyAtom = useBlockAtom(blockId, "termtransparencyatom", () => {
             return jotai.atom<number>((get) => {
-                let value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
+                const value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
                 return boundNumber(value, 0, 1);
             });
         });
@@ -397,10 +397,12 @@ export class TermViewModel implements ViewModel {
             return null;
         }
         const shellIntegrationStatus = get(this.termRef.current.shellIntegrationStatusAtom);
+        const claudeCodeActive = get(this.termRef.current.claudeCodeActiveAtom);
+        const icon = claudeCodeActive ? React.createElement(TermClaudeIcon) : "sparkles";
         if (shellIntegrationStatus == null) {
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-muted",
                 title: "No shell integration — Wave AI unable to run commands.",
                 noAction: true,
@@ -409,14 +411,16 @@ export class TermViewModel implements ViewModel {
         if (shellIntegrationStatus === "ready") {
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-accent",
                 title: "Shell ready — Wave AI can run commands in this terminal.",
                 noAction: true,
             };
         }
         if (shellIntegrationStatus === "running-command") {
-            let title = "Shell busy — Wave AI unable to run commands while another command is running.";
+            let title = claudeCodeActive
+                ? "Claude Code Detected"
+                : "Shell busy — Wave AI unable to run commands while another command is running.";
 
             if (this.termRef.current) {
                 const inAltBuffer = this.termRef.current.terminal?.buffer?.active?.type === "alternate";
@@ -429,7 +433,7 @@ export class TermViewModel implements ViewModel {
 
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-warning",
                 title: title,
                 noAction: true,
@@ -544,7 +548,7 @@ export class TermViewModel implements ViewModel {
             console.log("search is open, not giving focus");
             return true;
         }
-        let termMode = globalStore.get(this.termMode);
+        const termMode = globalStore.get(this.termMode);
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.focus();
