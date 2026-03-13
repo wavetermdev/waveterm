@@ -419,7 +419,7 @@ export class TermViewModel implements ViewModel {
         }
         if (shellIntegrationStatus === "running-command") {
             let title = claudeCodeActive
-                ? "Claude Code running — Wave AI unable to run commands while Claude Code is active."
+                ? "Claude Code Detected"
                 : "Shell busy — Wave AI unable to run commands while another command is running.";
 
             if (this.termRef.current) {

@@ -14,7 +14,7 @@ import type { TermViewModel } from "@/app/view/term/term-model";
 import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
-import { Claude } from "@lobehub/icons";
+import ClaudeColorSvg from "@/app/asset/claude-color.svg";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -35,7 +35,11 @@ interface TerminalViewProps {
 }
 
 const TermClaudeIcon = React.memo(() => {
-    return <Claude size={15} aria-hidden="true" />;
+    return (
+        <div className="[&_svg]:w-[15px] [&_svg]:h-[15px]" aria-hidden="true">
+            <ClaudeColorSvg />
+        </div>
+    );
 });
 
 TermClaudeIcon.displayName = "TermClaudeIcon";

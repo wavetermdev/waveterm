@@ -112,7 +112,8 @@ function handleShellIntegrationCommandStart(
                 const decodedCmd = base64ToString(cmd.data.cmd64);
                 rtInfo["shell:lastcmd"] = decodedCmd;
                 globalStore.set(termWrap.lastCommandAtom, decodedCmd);
-                globalStore.set(termWrap.claudeCodeActiveAtom, isClaudeCodeCommand(decodedCmd));
+                const isCC = isClaudeCodeCommand(decodedCmd);
+                globalStore.set(termWrap.claudeCodeActiveAtom, isCC);
                 checkCommandForTelemetry(decodedCmd);
             } catch (e) {
                 console.error("Error decoding cmd64:", e);

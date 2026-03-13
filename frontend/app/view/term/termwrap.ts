@@ -406,11 +406,9 @@ export class TermWrap {
             }
 
             const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
+            const isCC = shellState === "running-command" && isClaudeCodeCommand(lastCmd);
             globalStore.set(this.lastCommandAtom, lastCmd || null);
-            globalStore.set(
-                this.claudeCodeActiveAtom,
-                shellState === "running-command" && isClaudeCodeCommand(lastCmd)
-            );
+            globalStore.set(this.claudeCodeActiveAtom, isCC);
         } catch (e) {
             console.log("Error loading runtime info:", e);
         }
