@@ -144,7 +144,15 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
         }
         const el = scrollContainerRef.current.querySelector(`[data-tabid="${activeTabId}"]`);
         el?.scrollIntoView({ block: "nearest" });
-    }, [activeTabId, documentHasFocus]);
+    }, [activeTabId]);
+
+    useEffect(() => {
+        if (!documentHasFocus || activeTabId == null || scrollContainerRef.current == null) {
+            return;
+        }
+        const el = scrollContainerRef.current.querySelector(`[data-tabid="${activeTabId}"]`);
+        el?.scrollIntoView({ block: "nearest" });
+    }, [documentHasFocus]);
 
     const stopScrollLoop = useCallback(() => {
         if (scrollAnimFrameRef.current != null) {
