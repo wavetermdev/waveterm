@@ -412,7 +412,7 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta tsg
 }
 
 func GenerateMethodBody(serviceName string, method reflect.Method, meta tsgenmeta.MethodMeta) string {
-	return fmt.Sprintf("        return callBackendService(this.waveEnv, %q, %q, Array.from(arguments))\n", serviceName, method.Name)
+	return fmt.Sprintf("        return callBackendService(this?.waveEnv, %q, %q, Array.from(arguments))\n", serviceName, method.Name)
 }
 
 func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[reflect.Type]string) string {

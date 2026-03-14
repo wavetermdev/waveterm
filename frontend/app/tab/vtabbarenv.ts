@@ -3,33 +3,38 @@
 
 import { SettingsKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 
-export type TabBarEnv = WaveEnvSubset<{
+export type VTabBarEnv = WaveEnvSubset<{
     electron: {
         createTab: WaveEnv["electron"]["createTab"];
         closeTab: WaveEnv["electron"]["closeTab"];
         setActiveTab: WaveEnv["electron"]["setActiveTab"];
-        showWorkspaceAppMenu: WaveEnv["electron"]["showWorkspaceAppMenu"];
+        deleteWorkspace: WaveEnv["electron"]["deleteWorkspace"];
+        createWorkspace: WaveEnv["electron"]["createWorkspace"];
+        switchWorkspace: WaveEnv["electron"]["switchWorkspace"];
         installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
     };
     rpc: {
+        UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
+        UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
         ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
         SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
-        UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
-        UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
     };
     atoms: {
-        fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
-        hasConfigErrors: WaveEnv["atoms"]["hasConfigErrors"];
         staticTabId: WaveEnv["atoms"]["staticTabId"];
-        isFullScreen: WaveEnv["atoms"]["isFullScreen"];
-        zoomFactorAtom: WaveEnv["atoms"]["zoomFactorAtom"];
+        fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
+        documentHasFocus: WaveEnv["atoms"]["documentHasFocus"];
+        workspace: WaveEnv["atoms"]["workspace"];
         updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
+        isFullScreen: WaveEnv["atoms"]["isFullScreen"];
+    };
+    services: {
+        workspace: WaveEnv["services"]["workspace"];
     };
     wos: WaveEnv["wos"];
-    getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "app:tabbar" | "tab:confirmclose" | "window:showmenubar">;
     showContextMenu: WaveEnv["showContextMenu"];
+    getSettingsKeyAtom: SettingsKeyAtomFnType<"tab:confirmclose" | "app:tabbar" | "app:hideaibutton">;
     mockSetWaveObj: WaveEnv["mockSetWaveObj"];
     isWindows: WaveEnv["isWindows"];
     isMacOS: WaveEnv["isMacOS"];

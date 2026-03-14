@@ -1,16 +1,18 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { AIPanel } from "@/app/aipanel/aipanel";
 import { ErrorBoundary } from "@/app/element/errorboundary";
-import { FileExplorerPanel } from "@/app/fileexplorer/fileexplorer";
 import { CenteredDiv } from "@/app/element/quickelems";
+import { FileExplorerPanel } from "@/app/fileexplorer/fileexplorer";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { Widgets } from "@/app/workspace/widgets";
+import { VTabBar } from "@/app/tab/vtabbar";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { atoms, getApi, isDev } from "@/store/global";
+import { Widgets } from "@/app/workspace/widgets";
+import { atoms, getApi, getSettingsKeyAtom } from "@/store/global";
+import { isMacOS } from "@/util/platformutil";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import {
@@ -21,24 +23,59 @@ import {
     PanelResizeHandle,
 } from "react-resizable-panels";
 
+const MacOSTabBarSpacer = memo(() => {
+    return (
+        <div
+            className="w-full shrink-0"
+            style={
+                {
+                    height: "calc(8px * var(--zoomfactor-inv))",
+                    WebkitAppRegion: "drag",
+                    backdropFilter: "blur(20px)",
+                    background: "rgba(0, 0, 0, 0.35)",
+                } as React.CSSProperties
+            }
+        />
+    );
+});
+MacOSTabBarSpacer.displayName = "MacOSTabBarSpacer";
+
 const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
+    const tabBarPosition = useAtomValue(getSettingsKeyAtom("app:tabbar")) ?? "top";
+    const showLeftTabBar = tabBarPosition === "left";
     const activePanel = useAtomValue(workspaceLayoutModel.activePanelAtom);
-    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
-    const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+    const aiPanelVisible = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+    const vtabVisible = useAtomValue(workspaceLayoutModel.vtabVisibleAtom);
+    const windowWidth = window.innerWidth;
+    const leftGroupInitialPct = workspaceLayoutModel.getLeftGroupInitialPercentage(windowWidth, showLeftTabBar);
+    const innerVTabInitialPct = workspaceLayoutModel.getInnerVTabInitialPercentage(windowWidth, showLeftTabBar);
+    const innerAIPanelInitialPct = workspaceLayoutModel.getInnerAIPanelInitialPercentage(windowWidth, showLeftTabBar);
+    const outerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+    const innerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
+    const vtabPanelRef = useRef<ImperativePanelHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
+        if (
+            aiPanelRef.current &&
+            outerPanelGroupRef.current &&
+            innerPanelGroupRef.current &&
+            panelContainerRef.current &&
+            aiPanelWrapperRef.current
+        ) {
             workspaceLayoutModel.registerRefs(
                 aiPanelRef.current,
-                panelGroupRef.current,
+                outerPanelGroupRef.current,
+                innerPanelGroupRef.current,
                 panelContainerRef.current,
-                aiPanelWrapperRef.current
+                aiPanelWrapperRef.current,
+                vtabPanelRef.current ?? undefined,
+                showLeftTabBar
             );
         }
     }, []);
@@ -49,39 +86,80 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     useEffect(() => {
+        workspaceLayoutModel.setShowLeftTabBar(showLeftTabBar);
+    }, [showLeftTabBar]);
+
+    useEffect(() => {
         window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
 
+    useEffect(() => {
+        const handleFocus = () => workspaceLayoutModel.syncVTabWidthFromMeta();
+        window.addEventListener("focus", handleFocus);
+        return () => window.removeEventListener("focus", handleFocus);
+    }, []);
+
+    const innerHandleVisible = vtabVisible && aiPanelVisible;
+    const innerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${innerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+    const outerHandleVisible = vtabVisible || aiPanelVisible;
+    const outerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${outerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            <TabBar key={ws.oid} workspace={ws} />
+            {!(showLeftTabBar && isMacOS()) && <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />}
+            {showLeftTabBar && isMacOS() && <MacOSTabBarSpacer />}
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
                         direction="horizontal"
-                        onLayout={workspaceLayoutModel.handlePanelLayout}
-                        ref={panelGroupRef}
+                        onLayout={workspaceLayoutModel.handleOuterPanelLayout}
+                        ref={outerPanelGroupRef}
                     >
-                        <Panel
-                            ref={aiPanelRef}
-                            collapsible
-                            defaultSize={initialAiPanelPercentage}
-                            order={1}
-                            className="overflow-hidden"
-                        >
-                            <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                {tabId !== "" &&
-                                    (isDev() && activePanel === "fileexplorer" ? <FileExplorerPanel /> : <AIPanel />)}
-                            </div>
+                        <Panel order={0} defaultSize={leftGroupInitialPct} className="overflow-hidden">
+                            <PanelGroup
+                                direction="horizontal"
+                                onLayout={workspaceLayoutModel.handleInnerPanelLayout}
+                                ref={innerPanelGroupRef}
+                            >
+                                <Panel
+                                    ref={vtabPanelRef}
+                                    collapsible
+                                    defaultSize={innerVTabInitialPct}
+                                    order={0}
+                                    className="overflow-hidden"
+                                >
+                                    {showLeftTabBar && <VTabBar workspace={ws} />}
+                                </Panel>
+                                <PanelResizeHandle className={innerHandleClass} />
+                                <Panel
+                                    ref={aiPanelRef}
+                                    collapsible
+                                    defaultSize={innerAIPanelInitialPct}
+                                    order={1}
+                                    className="overflow-hidden"
+                                >
+                                    <div
+                                        ref={aiPanelWrapperRef}
+                                        className={`w-full h-full pr-0.5 ${aiPanelVisible ? "" : "opacity-0"}`}
+                                    >
+                                        {tabId !== "" &&
+                                            (activePanel === "fileexplorer" ? (
+                                                <FileExplorerPanel />
+                                            ) : (
+                                                <AIPanel roundTopLeft={showLeftTabBar} />
+                                            ))}
+                                    </div>
+                                </Panel>
+                            </PanelGroup>
                         </Panel>
-                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
-                        <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>
+                        <PanelResizeHandle className={outerHandleClass} />
+                        <Panel order={1} defaultSize={100 - leftGroupInitialPct}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
                                 <div className="flex flex-row h-full">
-                                    <TabContent key={tabId} tabId={tabId} />
+                                    <TabContent key={tabId} tabId={tabId} noTopPadding={showLeftTabBar && isMacOS()} />
                                     <Widgets />
                                 </div>
                             )}

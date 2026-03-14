@@ -11,26 +11,26 @@ import {
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { getBlockBadgeAtom } from "@/app/store/badge";
-import { ContextMenuModel } from "@/app/store/contextmenu";
 import { recordTEvent, refocusNode } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
-import { BlockEnv } from "./blockenv";
 import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import { cn, makeIconClass } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
+import { BlockEnv } from "./blockenv";
 import { BlockFrameProps } from "./blocktypes";
 
 function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
     blockId: string,
     viewModel: ViewModel,
-    nodeModel: NodeModel
+    nodeModel: NodeModel,
+    blockEnv: BlockEnv
 ) {
     e.preventDefault();
     e.stopPropagation();
@@ -59,7 +59,7 @@ function handleHeaderContextMenu(
             click: () => uxCloseBlock(blockId),
         }
     );
-    ContextMenuModel.getInstance().showContextMenu(menu, e);
+    blockEnv.showContextMenu(menu, e);
 }
 
 type HeaderTextElemsProps = {
@@ -113,6 +113,7 @@ type HeaderEndIconsProps = {
 };
 
 const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndIconsProps) => {
+    const blockEnv = useWaveEnv<BlockEnv>();
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
@@ -128,7 +129,7 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
         elemtype: "iconbutton",
         icon: "cog",
         title: "Settings",
-        click: (e) => handleHeaderContextMenu(e, blockId, viewModel, nodeModel),
+        click: (e) => handleHeaderContextMenu(e, blockId, viewModel, nodeModel, blockEnv),
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
     if (ephemeral) {
@@ -211,7 +212,7 @@ const BlockFrame_Header = ({
             className={cn("block-frame-default-header", useTermHeader && "!pl-[2px]")}
             data-role="block-header"
             ref={dragHandleRef}
-            onContextMenu={(e) => handleHeaderContextMenu(e, nodeModel.blockId, viewModel, nodeModel)}
+            onContextMenu={(e) => handleHeaderContextMenu(e, nodeModel.blockId, viewModel, nodeModel, waveEnv)}
         >
             {!useTermHeader && (
                 <>

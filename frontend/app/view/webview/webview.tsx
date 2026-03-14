@@ -14,6 +14,7 @@ import {
     SuggestionControlNoData,
     SuggestionControlNoResults,
 } from "@/app/suggestion/suggestion";
+import { MockBoundary } from "@/app/waveenv/mockboundary";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
@@ -83,7 +84,7 @@ export class WebViewModel implements ViewModel {
         const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
         this.homepageUrl = atom((get) => {
             const defaultUrl = get(defaultUrlAtom);
-            const pinnedUrl = get(this.blockAtom).meta.pinnedurl;
+            const pinnedUrl = get(this.blockAtom)?.meta?.pinnedurl;
             return pinnedUrl ?? defaultUrl;
         });
         this.urlWrapperClassName = atom("");
@@ -112,7 +113,7 @@ export class WebViewModel implements ViewModel {
             const refreshIcon = get(this.refreshIcon);
             const mediaPlaying = get(this.mediaPlaying);
             const mediaMuted = get(this.mediaMuted);
-            const url = currUrl ?? metaUrl ?? homepageUrl;
+            const url = currUrl ?? metaUrl ?? homepageUrl ?? "";
             const rtn: HeaderElem[] = [];
             if (get(this.hideNav)) {
                 return rtn;
@@ -802,13 +803,35 @@ interface WebViewProps {
     initialSrc?: string;
 }
 
+function getWebPreviewDisplayUrl(url?: string | null): string {
+    return url?.trim() || "about:blank";
+}
+
+function WebViewPreviewFallback({ url }: { url?: string | null }) {
+    const displayUrl = getWebPreviewDisplayUrl(url);
+
+    return (
+        <div className="flex h-full w-full items-center justify-center bg-panel">
+            <div className="mx-6 flex max-w-[720px] flex-col gap-3 rounded-lg border border-dashed border-border bg-background px-6 py-5 shadow-sm">
+                <div className="text-xs font-mono text-muted">preview mock · electron webview unavailable</div>
+                <div className="text-sm text-foreground">web widget placeholder</div>
+                <div className="rounded-md border border-border bg-panel px-3 py-2 font-mono text-xs text-foreground break-all">
+                    {displayUrl}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps) => {
     const blockData = useAtomValue(model.blockAtom);
     const defaultUrl = useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
     const defaultSearch = useAtomValue(defaultSearchAtom);
-    let metaUrl = blockData?.meta?.url || defaultUrl;
-    metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
+    let metaUrl = blockData?.meta?.url || defaultUrl || "";
+    if (metaUrl) {
+        metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
+    }
     const metaUrlRef = useRef(metaUrl);
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
     const partitionOverride = useAtomValueSafe(model.partitionOverride);
@@ -1055,19 +1078,21 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
 
     return (
         <Fragment>
-            <webview
-                id="webview"
-                className="webview"
-                ref={model.webviewRef}
-                src={metaUrlInitial}
-                data-blockid={model.blockId}
-                data-webcontentsid={webContentsId} // needed for emain
-                preload={getWebviewPreloadUrl()}
-                // @ts-expect-error This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
-                allowpopups="true"
-                partition={webPartition}
-                useragent={userAgent}
-            />
+            <MockBoundary fallback={<WebViewPreviewFallback url={metaUrl} />}>
+                <webview
+                    id="webview"
+                    className="webview"
+                    ref={model.webviewRef}
+                    src={metaUrlInitial}
+                    data-blockid={model.blockId}
+                    data-webcontentsid={webContentsId} // needed for emain
+                    preload={getWebviewPreloadUrl()}
+                    // @ts-expect-error This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
+                    allowpopups="true"
+                    partition={webPartition}
+                    useragent={userAgent}
+                />
+            </MockBoundary>
             {errorText && (
                 <div className="webview-error">
                     <div>{errorText}</div>
@@ -1079,4 +1104,4 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     );
 });
 
-export { WebView };
+export { getWebPreviewDisplayUrl, WebView, WebViewPreviewFallback };

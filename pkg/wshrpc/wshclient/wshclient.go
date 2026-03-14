@@ -615,6 +615,12 @@ func ListAllEditableAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshr
 	return resp, err
 }
 
+// command "macosversion", wshserver.MacOSVersionCommand
+func MacOSVersionCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "macosversion", nil, opts)
+	return resp, err
+}
+
 // command "makedraftfromlocal", wshserver.MakeDraftFromLocalCommand
 func MakeDraftFromLocalCommand(w *wshutil.WshRpc, data wshrpc.CommandMakeDraftFromLocalData, opts *wshrpc.RpcOpts) (*wshrpc.CommandMakeDraftFromLocalRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandMakeDraftFromLocalRtnData](w, "makedraftfromlocal", data, opts)

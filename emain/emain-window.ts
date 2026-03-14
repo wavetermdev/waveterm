@@ -674,6 +674,9 @@ export function getWaveWindowByTabId(tabId: string): WaveBrowserWindow {
 }
 
 export function getWaveWindowByWebContentsId(webContentsId: number): WaveBrowserWindow {
+    if (webContentsId == null) {
+        return null;
+    }
     const tabView = getWaveTabViewByWebContentsId(webContentsId);
     if (tabView == null) {
         return null;

@@ -618,6 +618,12 @@ export class RpcApiType {
         return client.wshRpcCall("listalleditableapps", null, opts);
     }
 
+    // command "macosversion" [call]
+    MacOSVersionCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "macosversion", null, opts);
+        return client.wshRpcCall("macosversion", null, opts);
+    }
+
     // command "makedraftfromlocal" [call]
     MakeDraftFromLocalCommand(client: WshClient, data: CommandMakeDraftFromLocalData, opts?: RpcOpts): Promise<CommandMakeDraftFromLocalRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "makedraftfromlocal", data, opts);
