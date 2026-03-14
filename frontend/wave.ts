@@ -160,17 +160,17 @@ async function initWave(initOpts: WaveInitOpts) {
     const globalWS = initWshrpc(makeTabRouteId(initOpts.tabId));
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
-    await loadConnStatus();
-    await loadBadges();
-    initGlobalWaveEventSubs(initOpts);
-    subscribeToConnEvents();
-    if (isMacOS()) {
-        const macOSVersion = await RpcApi.MacOSVersionCommand(TabRpcClient);
-        setMacOSVersion(macOSVersion);
-    }
 
     // ensures client/window/workspace are loaded into the cache before rendering
     try {
+        await loadConnStatus();
+        await loadBadges();
+        initGlobalWaveEventSubs(initOpts);
+        subscribeToConnEvents();
+        if (isMacOS()) {
+            const macOSVersion = await RpcApi.MacOSVersionCommand(TabRpcClient);
+            setMacOSVersion(macOSVersion);
+        }
         const [_client, waveWindow, initialTab] = await Promise.all([
             WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
             WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
