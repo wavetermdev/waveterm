@@ -17,7 +17,26 @@ const FlagColors: { label: string; value: string }[] = [
     { label: "Yellow", value: "#FFE900" },
 ];
 
-function buildTabContextMenu(
+export function buildTabBarContextMenu(env: TabEnv): ContextMenuItem[] {
+    const currentTabBar = globalStore.get(env.getSettingsKeyAtom("app:tabbar")) ?? "top";
+    const tabBarSubmenu: ContextMenuItem[] = [
+        {
+            label: "Top",
+            type: "checkbox",
+            checked: currentTabBar === "top",
+            click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "top" })),
+        },
+        {
+            label: "Left",
+            type: "checkbox",
+            checked: currentTabBar === "left",
+            click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "left" })),
+        },
+    ];
+    return [{ label: "Tab Bar Position", type: "submenu", submenu: tabBarSubmenu }];
+}
+
+export function buildTabContextMenu(
     id: string,
     renameRef: React.RefObject<(() => void) | null>,
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void,
@@ -85,24 +104,7 @@ function buildTabContextMenu(
         }
         menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
     }
-    const currentTabBar = globalStore.get(env.getSettingsKeyAtom("app:tabbar")) ?? "top";
-    const tabBarSubmenu: ContextMenuItem[] = [
-        {
-            label: "Top",
-            type: "checkbox",
-            checked: currentTabBar === "top",
-            click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "top" })),
-        },
-        {
-            label: "Left",
-            type: "checkbox",
-            checked: currentTabBar === "left",
-            click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "left" })),
-        },
-    ];
-    menu.push({ label: "Tab Bar Position", type: "submenu", submenu: tabBarSubmenu }, { type: "separator" });
+    menu.push(...buildTabBarContextMenu(env), { type: "separator" });
     menu.push({ label: "Close Tab", click: () => onClose(null) });
     return menu;
 }
-
-export { buildTabContextMenu };

@@ -8,6 +8,10 @@ export type VTabBarEnv = WaveEnvSubset<{
         createTab: WaveEnv["electron"]["createTab"];
         closeTab: WaveEnv["electron"]["closeTab"];
         setActiveTab: WaveEnv["electron"]["setActiveTab"];
+        deleteWorkspace: WaveEnv["electron"]["deleteWorkspace"];
+        createWorkspace: WaveEnv["electron"]["createWorkspace"];
+        switchWorkspace: WaveEnv["electron"]["switchWorkspace"];
+        installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
     };
     rpc: {
         UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
@@ -21,10 +25,16 @@ export type VTabBarEnv = WaveEnvSubset<{
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
         documentHasFocus: WaveEnv["atoms"]["documentHasFocus"];
+        workspace: WaveEnv["atoms"]["workspace"];
+        updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
+        isFullScreen: WaveEnv["atoms"]["isFullScreen"];
+    };
+    services: {
+        workspace: WaveEnv["services"]["workspace"];
     };
     wos: WaveEnv["wos"];
     showContextMenu: WaveEnv["showContextMenu"];
-    getSettingsKeyAtom: SettingsKeyAtomFnType<"tab:confirmclose" | "app:tabbar">;
+    getSettingsKeyAtom: SettingsKeyAtomFnType<"tab:confirmclose" | "app:tabbar" | "app:hideaibutton">;
     mockSetWaveObj: WaveEnv["mockSetWaveObj"];
     isWindows: WaveEnv["isWindows"];
     isMacOS: WaveEnv["isMacOS"];

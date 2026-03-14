@@ -11,6 +11,7 @@ import { VTabBar } from "@/app/tab/vtabbar";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi, getSettingsKeyAtom } from "@/store/global";
+import { isMacOS } from "@/util/platformutil";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import {
@@ -20,6 +21,23 @@ import {
     PanelGroup,
     PanelResizeHandle,
 } from "react-resizable-panels";
+
+const MacOSTabBarSpacer = memo(() => {
+    return (
+        <div
+            className="w-full shrink-0"
+            style={
+                {
+                    height: "calc(8px * var(--zoomfactor-inv))",
+                    WebkitAppRegion: "drag",
+                    backdropFilter: "blur(20px)",
+                    background: "rgba(0, 0, 0, 0.35)",
+                } as React.CSSProperties
+            }
+        />
+    );
+});
+MacOSTabBarSpacer.displayName = "MacOSTabBarSpacer";
 
 const WorkspaceElem = memo(() => {
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
@@ -87,7 +105,8 @@ const WorkspaceElem = memo(() => {
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />
+            {!(showLeftTabBar && isMacOS()) && <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />}
+            {showLeftTabBar && isMacOS() && <MacOSTabBarSpacer />}
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
@@ -95,11 +114,7 @@ const WorkspaceElem = memo(() => {
                         onLayout={workspaceLayoutModel.handleOuterPanelLayout}
                         ref={outerPanelGroupRef}
                     >
-                        <Panel
-                            order={0}
-                            defaultSize={leftGroupInitialPct}
-                            className="overflow-hidden"
-                        >
+                        <Panel order={0} defaultSize={leftGroupInitialPct} className="overflow-hidden">
                             <PanelGroup
                                 direction="horizontal"
                                 onLayout={workspaceLayoutModel.handleInnerPanelLayout}
@@ -122,7 +137,10 @@ const WorkspaceElem = memo(() => {
                                     order={1}
                                     className="overflow-hidden"
                                 >
-                                    <div ref={aiPanelWrapperRef} className={`w-full h-full pr-0.5 ${aiPanelVisible ? "" : "opacity-0"}`}>
+                                    <div
+                                        ref={aiPanelWrapperRef}
+                                        className={`w-full h-full pr-0.5 ${aiPanelVisible ? "" : "opacity-0"}`}
+                                    >
                                         {tabId !== "" && <AIPanel roundTopLeft={showLeftTabBar} />}
                                     </div>
                                 </Panel>
@@ -134,7 +152,7 @@ const WorkspaceElem = memo(() => {
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
                                 <div className="flex flex-row h-full">
-                                    <TabContent key={tabId} tabId={tabId} />
+                                    <TabContent key={tabId} tabId={tabId} noTopPadding={showLeftTabBar && isMacOS()} />
                                     <Widgets />
                                 </div>
                             )}

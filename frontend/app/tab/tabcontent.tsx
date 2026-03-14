@@ -17,7 +17,7 @@ const tileGapSizeAtom = atom((get) => {
     return settings["window:tilegapsize"];
 });
 
-const TabContent = React.memo(({ tabId }: { tabId: string }) => {
+const TabContent = React.memo(({ tabId, noTopPadding }: { tabId: string; noTopPadding?: boolean }) => {
     const oref = useMemo(() => WOS.makeORef("tab", tabId), [tabId]);
     const loadingAtom = useMemo(() => WOS.getWaveObjectLoadingAtom(oref), [oref]);
     const tabLoading = useAtomValue(loadingAtom);
@@ -67,7 +67,7 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     }
 
     return (
-        <div className="flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative pt-[3px] pr-[3px]">
+        <div className={`flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative ${noTopPadding ? "" : "pt-[3px]"} pr-[3px]`}>
             {innerContent}
         </div>
     );
