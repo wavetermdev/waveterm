@@ -99,17 +99,11 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     };
 }
 
-function makeMockSettingsKeyAtom(
-    settingsAtom: Atom<SettingsType>,
-    overrides?: Partial<SettingsType>
-): WaveEnv["getSettingsKeyAtom"] {
+function makeMockSettingsKeyAtom(settingsAtom: Atom<SettingsType>): WaveEnv["getSettingsKeyAtom"] {
     const keyAtomCache = new Map<keyof SettingsType, Atom<any>>();
     return <T extends keyof SettingsType>(key: T) => {
         if (!keyAtomCache.has(key)) {
-            keyAtomCache.set(
-                key,
-                atom((get) => (overrides?.[key] !== undefined ? overrides[key] : get(settingsAtom)?.[key]))
-            );
+            keyAtomCache.set(key, atom((get) => get(settingsAtom)?.[key]));
         }
         return keyAtomCache.get(key) as Atom<SettingsType[T]>;
     };
@@ -345,7 +339,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         },
         rpc: makeMockRpc(overrides.rpc, mockWosFns),
         atoms,
-        getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom, overrides.settings),
+        getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom),
         platform,
         isDev: () => overrides.isDev ?? true,
         isWindows: () => platform === PlatformWindows,
