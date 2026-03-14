@@ -43,7 +43,7 @@ export class AiFileDiffViewModel implements ViewModel {
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
         this.env = waveEnv as AiFileDiffEnv;
-        this.blockAtom = this.env?.wos?.getWaveObjectAtom<Block>(`block:${blockId}`) ?? WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = this.env.wos.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.diffDataAtom = jotai.atom(null) as jotai.PrimitiveAtom<DiffData | null>;
         this.errorAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.loadingAtom = jotai.atom<boolean>(true);
