@@ -100,6 +100,9 @@ type MetaTSType struct {
 	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
+	// for workspace
+	LayoutVTabBarWidth int `json:"layout:vtabbarwidth,omitempty"`
+
 	// for tabs+waveai
 	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`
 	WaveAiPanelWidth    int    `json:"waveai:panelwidth,omitempty"`

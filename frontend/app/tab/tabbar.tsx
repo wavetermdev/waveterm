@@ -7,6 +7,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
+import { isMacOSTahoeOrLater } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -20,6 +21,9 @@ import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TabDefaultWidth = 130;
 const TabMinWidth = 100;
+const MacOSTrafficLightsWidth = 74;
+const MacOSTahoeTrafficLightsWidth = 80;
+
 const OSOptions = {
     overflow: {
         x: "scroll",
@@ -39,6 +43,7 @@ const OSOptions = {
 
 interface TabBarProps {
     workspace: Workspace;
+    noTabs?: boolean;
 }
 
 const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
@@ -152,7 +157,7 @@ function strArrayIsEqual(a: string[], b: string[]) {
     return true;
 }
 
-const TabBar = memo(({ workspace }: TabBarProps) => {
+const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const env = useWaveEnv<TabBarEnv>();
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
@@ -635,10 +640,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     // Calculate window drag left width based on platform and state
     let windowDragLeftWidth = 10;
     if (env.isMacOS() && !isFullScreen) {
+        const trafficLightsWidth = isMacOSTahoeOrLater()
+            ? MacOSTahoeTrafficLightsWidth
+            : MacOSTrafficLightsWidth;
         if (zoomFactor > 0) {
-            windowDragLeftWidth = 74 / zoomFactor;
+            windowDragLeftWidth = trafficLightsWidth / zoomFactor;
         } else {
-            windowDragLeftWidth = 74;
+            windowDragLeftWidth = trafficLightsWidth;
         }
     }
 
@@ -680,33 +688,41 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <WorkspaceSwitcher />
             </Tooltip>
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
-                <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
-                    {tabIds.map((tabId, index) => {
-                        const isActive = activeTabId === tabId;
-                        const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
-                        return (
-                            <Tab
-                                key={tabId}
-                                ref={tabRefs.current[index]}
-                                id={tabId}
-                                showDivider={showDivider}
-                                onSelect={() => handleSelectTab(tabId)}
-                                active={isActive}
-                                onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
-                                onClose={(event) => handleCloseTab(event, tabId)}
-                                onLoaded={() => handleTabLoaded(tabId)}
-                                isDragging={draggingTab === tabId}
-                                tabWidth={tabWidthRef.current}
-                                isNew={tabId === newTabId}
-                            />
-                        );
-                    })}
+                <div
+                    className="tabs-wrapper"
+                    ref={tabsWrapperRef}
+                    style={{
+                        width: noTabs ? 0 : tabsWrapperWidth,
+                        ...(noTabs ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : {}),
+                    }}
+                >
+                    {!noTabs &&
+                        tabIds.map((tabId, index) => {
+                            const isActive = activeTabId === tabId;
+                            const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
+                            return (
+                                <Tab
+                                    key={tabId}
+                                    ref={tabRefs.current[index]}
+                                    id={tabId}
+                                    showDivider={showDivider}
+                                    onSelect={() => handleSelectTab(tabId)}
+                                    active={isActive}
+                                    onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
+                                    onClose={(event) => handleCloseTab(event, tabId)}
+                                    onLoaded={() => handleTabLoaded(tabId)}
+                                    isDragging={draggingTab === tabId}
+                                    tabWidth={tabWidthRef.current}
+                                    isNew={tabId === newTabId}
+                                />
+                            );
+                        })}
                 </div>
             </div>
             <button
                 ref={addBtnRef}
                 title="Add Tab"
-                className="flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary"
+                className={`flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary${noTabs ? " invisible" : ""}`}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                 onClick={handleAddTab}
             >

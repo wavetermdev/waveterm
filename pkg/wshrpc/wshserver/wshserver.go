@@ -878,6 +878,10 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 	}, nil
 }
 
+func (ws *WshServer) MacOSVersionCommand(ctx context.Context) (string, error) {
+	return wavebase.ClientMacOSVersion(), nil
+}
+
 // BlocksListCommand returns every block visible in the requested
 // scope (current workspace by default).
 func (ws *WshServer) BlocksListCommand(

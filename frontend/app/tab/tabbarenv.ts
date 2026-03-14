@@ -12,6 +12,10 @@ export type TabBarEnv = WaveEnvSubset<{
         installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
     };
     rpc: {
+        ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
+        SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
+        SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
+        UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
         UpdateWorkspaceTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspaceTabIdsCommand"];
     };
     atoms: {
@@ -24,7 +28,8 @@ export type TabBarEnv = WaveEnvSubset<{
         updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
     };
     wos: WaveEnv["wos"];
-    getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "tab:confirmclose" | "window:showmenubar">;
+    getSettingsKeyAtom: SettingsKeyAtomFnType<"app:hideaibutton" | "app:tabbar" | "tab:confirmclose" | "window:showmenubar">;
+    showContextMenu: WaveEnv["showContextMenu"];
     mockSetWaveObj: WaveEnv["mockSetWaveObj"];
     isWindows: WaveEnv["isWindows"];
     isMacOS: WaveEnv["isMacOS"];
