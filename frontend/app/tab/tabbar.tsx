@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { modalsModel } from "@/app/store/modalmodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
@@ -76,68 +75,6 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
 });
 WaveAIButton.displayName = "WaveAIButton";
 
-const ConfigErrorMessage = () => {
-    const env = useWaveEnv<TabBarEnv>();
-    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
-
-    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
-        return (
-            <div className="max-w-[500px] p-5">
-                <h3 className="font-bold text-base mb-2.5">Configuration Clean</h3>
-                <p>There are no longer any errors detected in your config.</p>
-            </div>
-        );
-    }
-    if (fullConfig?.configerrors.length == 1) {
-        const singleError = fullConfig.configerrors[0];
-        return (
-            <div className="max-w-[500px] p-5">
-                <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
-                <div>
-                    {singleError.file}: {singleError.err}
-                </div>
-            </div>
-        );
-    }
-    return (
-        <div className="max-w-[500px] p-5">
-            <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
-            <ul>
-                {fullConfig.configerrors.map((error, index) => (
-                    <li key={index}>
-                        {error.file}: {error.err}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-};
-
-const ConfigErrorIcon = () => {
-    const env = useWaveEnv<TabBarEnv>();
-    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
-
-    const handleClick = useCallback(() => {
-        modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
-    }, []);
-
-    if (!hasConfigErrors) {
-        return null;
-    }
-    return (
-        <Tooltip
-            content="Configuration Error"
-            placement="bottom"
-            hideOnClick
-            divClassName="flex h-[22px] px-2 mb-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-error"
-            divStyle={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            divOnClick={handleClick}
-        >
-            <i className="fa fa-solid fa-triangle-exclamation" />
-        </Tooltip>
-    );
-};
-
 function strArrayIsEqual(a: string[], b: string[]) {
     // null check
     if (a == null && b == null) {
@@ -197,7 +134,6 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
     const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
     const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
-    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -335,7 +271,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         };
     }, [handleResizeTabs]);
 
-    // update layout on changed tabIds, tabsLoaded, newTabId, hideAiButton, appUpdateStatus, hasConfigErrors, or zoomFactor
+    // update layout on changed tabIds, tabsLoaded, newTabId, hideAiButton, appUpdateStatus, or zoomFactor
     useEffect(() => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
@@ -353,7 +289,6 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         saveTabsPosition,
         hideAiButton,
         appUpdateStatus,
-        hasConfigErrors,
         zoomFactor,
         showMenuBar,
     ]);
@@ -731,7 +666,6 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
             <div className="flex-1" />
             <div ref={rightContainerRef} className="flex flex-row gap-1 items-end">
                 <UpdateStatusBanner />
-                <ConfigErrorIcon />
                 <div
                     className="h-full shrink-0 z-window-drag"
                     style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as any}
@@ -741,4 +675,4 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     );
 });
 
-export { ConfigErrorIcon, ConfigErrorMessage, TabBar, WaveAIButton };
+export { TabBar, WaveAIButton };

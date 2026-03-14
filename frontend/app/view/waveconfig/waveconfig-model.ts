@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
+import { atoms, getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -11,7 +11,7 @@ import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
-import { atom, type PrimitiveAtom } from "jotai";
+import { atom, type Atom, type PrimitiveAtom } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
 import * as React from "react";
 
@@ -156,6 +156,7 @@ export class WaveConfigViewModel implements ViewModel {
     isMenuOpenAtom: PrimitiveAtom<boolean>;
     presetsJsonExistsAtom: PrimitiveAtom<boolean>;
     activeTabAtom: PrimitiveAtom<"visual" | "json">;
+    configErrorFilesAtom: Atom<Set<string>>;
     configDir: string;
     saveShortcut: string;
     editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
@@ -189,6 +190,14 @@ export class WaveConfigViewModel implements ViewModel {
         this.isMenuOpenAtom = atom(false);
         this.presetsJsonExistsAtom = atom(false);
         this.activeTabAtom = atom<"visual" | "json">("visual");
+        this.configErrorFilesAtom = atom((get) => {
+            const fullConfig = get(atoms.fullConfigAtom);
+            const errorSet = new Set<string>();
+            for (const cerr of fullConfig?.configerrors ?? []) {
+                errorSet.add(cerr.file);
+            }
+            return errorSet;
+        });
         this.editorRef = React.createRef();
 
         this.secretNamesAtom = atom<string[]>([]);

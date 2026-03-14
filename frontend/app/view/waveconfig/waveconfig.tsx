@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { atoms } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
@@ -21,6 +22,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const configFiles = model.getConfigFiles();
     const deprecatedConfigFiles = model.getDeprecatedConfigFiles();
+    const configErrorFiles = useAtomValue(model.configErrorFilesAtom);
 
     const handleFileSelect = (file: ConfigFile) => {
         model.loadFile(file);
@@ -46,7 +48,12 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                         selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                     }`}
                 >
-                    <div className="whitespace-nowrap overflow-hidden text-ellipsis">{file.name}</div>
+                    <div className="flex items-center gap-1">
+                        <div className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">{file.name}</div>
+                        {configErrorFiles.has(file.path) && (
+                            <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] shrink-0" />
+                        )}
+                    </div>
                     {file.description && (
                         <div className="text-xs text-muted mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
                             {file.description}
@@ -75,6 +82,9 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                                 >
                                     deprecated
                                 </span>
+                                {configErrorFiles.has(file.path) && (
+                                    <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] ml-auto shrink-0" />
+                                )}
                             </div>
                         </div>
                     ))}
@@ -96,6 +106,8 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const hasChanges = useAtomValue(model.hasEditedAtom);
     const [activeTab, setActiveTab] = useAtom(model.activeTabAtom);
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const configErrors = fullConfig?.configerrors;
 
     const handleContentChange = useCallback(
         (newContent: string) => {
@@ -148,7 +160,8 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const saveTooltip = `Save (${model.saveShortcut})`;
 
     return (
-        <div className="@container flex flex-row w-full h-full">
+        <div className="@container flex flex-col w-full h-full">
+            <div className="flex flex-row flex-1 min-h-0">
             {isMenuOpen && (
                 <div className="absolute inset-0 bg-black/50 z-5 @w600:hidden" onClick={() => setIsMenuOpen(false)} />
             )}
@@ -284,6 +297,17 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                     </>
                 )}
             </div>
+            </div>
+            {configErrors?.length > 0 && (
+                <div className="bg-error text-primary px-4 py-1 max-h-12 overflow-y-auto border-t border-error/50 shrink-0">
+                    {configErrors.map((cerr, i) => (
+                        <div key={i} className="text-sm">
+                            <span className="font-semibold">Config Error: </span>
+                            {cerr.file}: {cerr.err}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 });
