@@ -803,11 +803,11 @@ interface WebViewProps {
     initialSrc?: string;
 }
 
-function getWebPreviewDisplayUrl(url: string): string {
+function getWebPreviewDisplayUrl(url?: string): string {
     return url?.trim() || "about:blank";
 }
 
-function WebViewPreviewFallback({ url }: { url: string }) {
+function WebViewPreviewFallback({ url }: { url?: string }) {
     const displayUrl = getWebPreviewDisplayUrl(url);
 
     return (
