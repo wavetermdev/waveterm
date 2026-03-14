@@ -692,7 +692,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                     className="tabs-wrapper"
                     ref={tabsWrapperRef}
                     style={{
-                        width: `${tabsWrapperWidth}px`,
+                        width: noTabs ? 0 : tabsWrapperWidth,
                         ...(noTabs ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : {}),
                     }}
                 >

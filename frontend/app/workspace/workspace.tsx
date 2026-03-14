@@ -58,6 +58,8 @@ const WorkspaceElem = memo(() => {
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
+    // showLeftTabBar is passed as a seed value only; subsequent changes are handled by setShowLeftTabBar below.
+    // Do NOT add showLeftTabBar as a dep here — re-registering refs on config changes would redundantly re-run commitLayouts.
     useEffect(() => {
         if (
             aiPanelRef.current &&
