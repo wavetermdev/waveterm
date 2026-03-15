@@ -7,22 +7,22 @@ import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import type { TabModel } from "@/app/store/tab-model";
 import { makeORef } from "@/app/store/wos";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { useWaveEnv } from "@/app/waveenv/waveenv";
 import {
     BlockHeaderSuggestionControl,
     SuggestionControlNoData,
     SuggestionControlNoResults,
 } from "@/app/suggestion/suggestion";
 import { MockBoundary } from "@/app/waveenv/mockboundary";
-import { globalStore } from "@/store/global";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { globalStore, openLink } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
-import type { WebViewEnv } from "./webviewenv";
 import "./webview.scss";
+import type { WebViewEnv } from "./webviewenv";
 
 // User agent strings for mobile emulation
 const USER_AGENT_IPHONE =
@@ -1010,14 +1010,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         const newWindowHandler = (e: any) => {
             e.preventDefault();
             const newUrl = e.detail.url;
-            fireAndForget(() =>
-                env.createBlock({
-                    meta: {
-                        view: "web",
-                        url: newUrl,
-                    },
-                })
-            );
+            fireAndForget(() => openLink(newUrl, true));
         };
         const startLoadingHandler = () => {
             model.setRefreshIcon("xmark-large");
@@ -1120,4 +1113,4 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     );
 });
 
-export { getWebPreviewDisplayUrl, WebView, WebViewPreviewFallback };
+export { WebView, WebViewPreviewFallback, getWebPreviewDisplayUrl };
