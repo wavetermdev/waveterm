@@ -26,7 +26,7 @@ export type PreviewEnv = WaveEnvSubset<{
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };
     services: {
-        ObjectService: WaveEnv["services"]["ObjectService"];
+        object: WaveEnv["services"]["object"];
     };
     wos: WaveEnv["wos"];
     getSettingsKeyAtom: SettingsKeyAtomFnType<"preview:showhiddenfiles" | "editor:fontsize" | "preview:defaultsort">;
