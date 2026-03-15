@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
@@ -65,7 +65,9 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     if (fileInfo.mimetype === "application/pdf") {
         return (
             <div className="flex flex-row h-full overflow-hidden items-center justify-center p-[5px]">
-                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
+                <object data={streamingUrl} type="application/pdf" width="100%" height="100%">
+                    <embed src={streamingUrl} type="application/pdf" width="100%" height="100%" />
+                </object>
             </div>
         );
     }
