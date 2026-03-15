@@ -84,8 +84,8 @@ func TestSetConfigCallbackWritesAndRemovesConfig(t *testing.T) {
 	toolUse := &uctypes.UIMessageDataToolUse{}
 	_, err = setConfigCallback(map[string]any{
 		"config": map[string]any{
-			"web:defaulturl": "https://example.com",
-			"term:fontsize":  14.0,
+			"web:defaulturl":    "https://example.com",
+			"term:fontsize":     14.0,
 			"term:copyonselect": true,
 		},
 	}, toolUse)
