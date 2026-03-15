@@ -1602,6 +1602,8 @@ declare global {
     type TermSize = {
         rows: number;
         cols: number;
+        xpixel?: number;
+        ypixel?: number;
     };
 
     // wconfig.TermThemeType

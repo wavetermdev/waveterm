@@ -368,6 +368,8 @@ func AllWaveObjTypes() []reflect.Type {
 }
 
 type TermSize struct {
-	Rows int `json:"rows"`
-	Cols int `json:"cols"`
+	Rows   int `json:"rows"`
+	Cols   int `json:"cols"`
+	XPixel int `json:"xpixel,omitempty"`
+	YPixel int `json:"ypixel,omitempty"`
 }
