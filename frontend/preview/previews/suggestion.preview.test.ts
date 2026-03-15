@@ -47,4 +47,20 @@ describe("suggestion preview helpers", () => {
         expect(result).toBeNull();
         expect(disposeSuggestionsCommand).toHaveBeenCalledOnce();
     });
+
+    it("uses the lowercase object service key exposed by WaveEnv", async () => {
+        const updateObjectMeta = vi.fn(async () => null);
+        const env = makeMockWaveEnv({
+            services: {
+                object: {
+                    UpdateObjectMeta: updateObjectMeta,
+                },
+            },
+        });
+
+        await env.services.object.UpdateObjectMeta("block:test", { file: "/Users/mike/Documents/meeting-notes.md" });
+
+        expect(updateObjectMeta).toHaveBeenCalledOnce();
+        expect(updateObjectMeta).toHaveBeenCalledWith("block:test", { file: "/Users/mike/Documents/meeting-notes.md" });
+    });
 });
