@@ -11,6 +11,7 @@ import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
 import { DefaultMockFilesystem } from "./mockfilesystem";
+import { fetchMockSuggestions } from "./mocksuggestions";
 import { showPreviewContextMenu } from "../preview-contextmenu";
 import { previewElectronApi } from "./preview-electron-api";
 
@@ -249,6 +250,8 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
     setCallHandler("fileread", async (_client, data: FileData) => DefaultMockFilesystem.fileRead(data));
     setCallHandler("filelist", async (_client, data: FileListData) => DefaultMockFilesystem.fileList(data));
     setCallHandler("filejoin", async (_client, data: string[]) => DefaultMockFilesystem.fileJoin(data));
+    setCallHandler("fetchsuggestions", async (_client, data: FetchSuggestionsData) => fetchMockSuggestions(data));
+    setCallHandler("disposesuggestions", async () => null);
     setStreamHandler("filereadstream", async function* (_client, data: FileData) {
         yield* DefaultMockFilesystem.fileReadStream(data);
     });
