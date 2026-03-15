@@ -1198,7 +1198,8 @@ declare global {
         "shell:integration"?: boolean;
         "shell:omz"?: boolean;
         "shell:comp"?: string;
-        "shell:inputempty"?: boolean;
+        "shell:inputbuffer64"?: string;
+        "shell:inputcursor"?: number;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
         "builder:layout"?: {[key: string]: number};
