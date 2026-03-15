@@ -4,10 +4,8 @@
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import type { TabModel } from "@/app/store/tab-model";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getConnStatusAtom, getOverrideConfigAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
-import * as services from "@/store/services";
+import { getOverrideConfigAtom, globalStore, refocusNode } from "@/store/global";
 import * as WOS from "@/store/wos";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { checkKeyPressed } from "@/util/keyutil";
@@ -21,6 +19,7 @@ import type * as MonacoTypes from "monaco-editor";
 import { createRef } from "react";
 import { PreviewView } from "./preview";
 import { makeDirectoryDefaultMenuItems } from "./preview-directory-utils";
+import type { PreviewEnv } from "./previewenv";
 
 // TODO drive this using config
 const BOOKMARKS: { label: string; path: string }[] = [
@@ -168,13 +167,15 @@ export class PreviewModel implements ViewModel {
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
+    env: PreviewEnv;
 
-    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
+    constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
-        let showHiddenFiles = globalStore.get(getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
+        this.env = waveEnv;
+        let showHiddenFiles = globalStore.get(this.env.getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
         this.showHiddenFiles = atom<boolean>(showHiddenFiles);
         this.refreshVersion = atom(0);
         this.directorySearchActive = atom(false);
@@ -184,7 +185,7 @@ export class PreviewModel implements ViewModel {
         this.openFileError = atom(null) as PrimitiveAtom<string>;
         this.openFileModalGiveFocusRef = createRef();
         this.manageConnection = atom(true);
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = this.env.wos.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.markdownShowToc = atom(false);
         this.filterOutNowsh = atom(true);
         this.monacoRef = createRef();
@@ -389,7 +390,7 @@ export class PreviewModel implements ViewModel {
         this.connection = atom<Promise<string>>(async (get) => {
             const connName = get(this.blockAtom)?.meta?.connection;
             try {
-                await RpcApi.ConnEnsureCommand(TabRpcClient, { connname: connName }, { timeout: 60000 });
+                await this.env.rpc.ConnEnsureCommand(TabRpcClient, { connname: connName }, { timeout: 60000 });
                 globalStore.set(this.connectionError, "");
             } catch (e) {
                 globalStore.set(this.connectionError, e as string);
@@ -406,7 +407,7 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             try {
-                const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
+                const statFile = await this.env.rpc.FileInfoCommand(TabRpcClient, {
                     info: {
                         path,
                     },
@@ -436,7 +437,7 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             try {
-                const file = await RpcApi.FileReadCommand(TabRpcClient, {
+                const file = await this.env.rpc.FileReadCommand(TabRpcClient, {
                     info: {
                         path,
                     },
@@ -482,7 +483,7 @@ export class PreviewModel implements ViewModel {
         this.connStatus = atom((get) => {
             const blockData = get(this.blockAtom);
             const connName = blockData?.meta?.connection;
-            const connAtom = getConnStatusAtom(connName);
+            const connAtom = this.env.getConnStatusAtom(connName);
             return get(connAtom);
         });
 
@@ -586,7 +587,7 @@ export class PreviewModel implements ViewModel {
             return;
         }
         const blockOref = WOS.makeORef("block", this.blockId);
-        await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
 
         // Clear the saved file buffers
         globalStore.set(this.fileContentSaved, null);
@@ -622,7 +623,7 @@ export class PreviewModel implements ViewModel {
         }
         updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
-        await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
     async goHistoryForward() {
@@ -634,13 +635,13 @@ export class PreviewModel implements ViewModel {
         }
         updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
-        await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
     }
 
     async setEditMode(edit: boolean) {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const blockOref = WOS.makeORef("block", this.blockId);
-        await services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
+        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
     async handleFileSave() {
@@ -654,7 +655,7 @@ export class PreviewModel implements ViewModel {
             return;
         }
         try {
-            await RpcApi.FileWriteCommand(TabRpcClient, {
+            await this.env.rpc.FileWriteCommand(TabRpcClient, {
                 info: {
                     path: await this.formatRemoteUri(filePath, globalStore.get),
                 },
@@ -699,7 +700,7 @@ export class PreviewModel implements ViewModel {
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
-        const defaultFontSize = globalStore.get(getSettingsKeyAtom("editor:fontsize")) ?? 12;
+        const defaultFontSize = globalStore.get(this.env.getSettingsKeyAtom("editor:fontsize")) ?? 12;
         const blockData = globalStore.get(this.blockAtom);
         const overrideFontSize = blockData?.meta?.["editor:fontsize"];
         const menuItems: ContextMenuItem[] = [];
@@ -747,7 +748,7 @@ export class PreviewModel implements ViewModel {
                         type: "checkbox",
                         checked: overrideFontSize == fontSize,
                         click: () => {
-                            RpcApi.SetMetaCommand(TabRpcClient, {
+                            this.env.rpc.SetMetaCommand(TabRpcClient, {
                                 oref: WOS.makeORef("block", this.blockId),
                                 meta: { "editor:fontsize": fontSize },
                             });
@@ -760,7 +761,7 @@ export class PreviewModel implements ViewModel {
                 type: "checkbox",
                 checked: overrideFontSize == null,
                 click: () => {
-                    RpcApi.SetMetaCommand(TabRpcClient, {
+                    this.env.rpc.SetMetaCommand(TabRpcClient, {
                         oref: WOS.makeORef("block", this.blockId),
                         meta: { "editor:fontsize": null },
                     });
@@ -789,7 +790,7 @@ export class PreviewModel implements ViewModel {
                 click: () =>
                     fireAndForget(async () => {
                         const blockOref = WOS.makeORef("block", this.blockId);
-                        await services.ObjectService.UpdateObjectMeta(blockOref, {
+                        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, {
                             "editor:wordwrap": !wordWrap,
                         });
                     }),
