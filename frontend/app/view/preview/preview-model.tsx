@@ -587,7 +587,7 @@ export class PreviewModel implements ViewModel {
             return;
         }
         const blockOref = WOS.makeORef("block", this.blockId);
-        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await this.env.services.object.UpdateObjectMeta(blockOref, updateMeta);
 
         // Clear the saved file buffers
         globalStore.set(this.fileContentSaved, null);
@@ -623,7 +623,7 @@ export class PreviewModel implements ViewModel {
         }
         updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
-        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await this.env.services.object.UpdateObjectMeta(blockOref, updateMeta);
     }
 
     async goHistoryForward() {
@@ -635,13 +635,13 @@ export class PreviewModel implements ViewModel {
         }
         updateMeta.edit = false;
         const blockOref = WOS.makeORef("block", this.blockId);
-        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+        await this.env.services.object.UpdateObjectMeta(blockOref, updateMeta);
     }
 
     async setEditMode(edit: boolean) {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const blockOref = WOS.makeORef("block", this.blockId);
-        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
+        await this.env.services.object.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
     async handleFileSave() {
@@ -790,7 +790,7 @@ export class PreviewModel implements ViewModel {
                 click: () =>
                     fireAndForget(async () => {
                         const blockOref = WOS.makeORef("block", this.blockId);
-                        await this.env.services.ObjectService.UpdateObjectMeta(blockOref, {
+                        await this.env.services.object.UpdateObjectMeta(blockOref, {
                             "editor:wordwrap": !wordWrap,
                         });
                     }),
