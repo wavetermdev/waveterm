@@ -15,6 +15,17 @@ export type ConfigNumberValidationOptions = {
     integer?: boolean;
 };
 
+export function isConfigValueOverridden<T>(value: T | undefined): boolean {
+    return value != null;
+}
+
+export function getEffectiveConfigValue<T>(value: T | undefined, defaultValue: T): T {
+    if (value != null) {
+        return value;
+    }
+    return defaultValue;
+}
+
 export function normalizeConfigStringInput(value: string, options?: ConfigStringValidationOptions): string {
     if (options?.trim === false) {
         return value;

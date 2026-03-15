@@ -3,6 +3,8 @@
 
 import { describe, expect, it } from "vitest";
 import {
+    getEffectiveConfigValue,
+    isConfigValueOverridden,
     normalizeConfigStringInput,
     validateConfigNumberInput,
     validateConfigStringInput,
@@ -31,5 +33,13 @@ describe("configvalidation", () => {
         expect(validateConfigNumberInput("256", { min: 128, max: 10000, integer: true })).toEqual({
             value: 256,
         });
+    });
+
+    it("distinguishes overridden values from inherited defaults", () => {
+        expect(isConfigValueOverridden(undefined)).toBe(false);
+        expect(isConfigValueOverridden(false)).toBe(true);
+        expect(isConfigValueOverridden(0.95)).toBe(true);
+        expect(getEffectiveConfigValue(undefined, 0.95)).toBe(0.95);
+        expect(getEffectiveConfigValue(0.95, 0.9)).toBe(0.95);
     });
 });
