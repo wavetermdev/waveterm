@@ -7,7 +7,7 @@ import { AllServiceTypes } from "@/app/store/services";
 import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
-import { PlatformMacOS, PlatformWindows } from "@/util/platformutil";
+import { PlatformLinux, PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { DefaultFullConfig } from "./defaultconfig";
 import { DefaultMockFilesystem } from "./mockfilesystem";
@@ -21,8 +21,13 @@ import { previewElectronApi } from "./preview-electron-api";
 //   - rpc.EventPublishCommand           -- dispatches to handleWaveEvent(); works when the subscriber
 //                                          is purely FE-based (registered via WPS on the frontend)
 //   - rpc.GetMetaCommand                -- reads .meta from the mock WOS atom for the given oref
+//   - rpc.GetSecretsCommand             -- reads secrets from an in-memory mock secret store
+//   - rpc.GetSecretsLinuxStorageBackendCommand
+//                                        returns "libsecret" on Linux previews and "" elsewhere
+//   - rpc.GetSecretsNamesCommand        -- lists secret names from the in-memory mock secret store
 //   - rpc.SetMetaCommand                -- writes .meta to the mock WOS atom (null values delete keys)
 //   - rpc.SetConfigCommand              -- merges settings into fullConfigAtom (null values delete keys)
+//   - rpc.SetSecretsCommand             -- writes/deletes secrets in the in-memory mock secret store
 //   - rpc.UpdateTabNameCommand          -- updates .name on the Tab WaveObj in the mock WOS
 //   - rpc.UpdateWorkspaceTabIdsCommand  -- updates .tabids on the Workspace WaveObj in the mock WOS
 //
@@ -100,17 +105,11 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
     };
 }
 
-function makeMockSettingsKeyAtom(
-    settingsAtom: Atom<SettingsType>,
-    overrides?: Partial<SettingsType>
-): WaveEnv["getSettingsKeyAtom"] {
+function makeMockSettingsKeyAtom(settingsAtom: Atom<SettingsType>): WaveEnv["getSettingsKeyAtom"] {
     const keyAtomCache = new Map<keyof SettingsType, Atom<any>>();
     return <T extends keyof SettingsType>(key: T) => {
         if (!keyAtomCache.has(key)) {
-            keyAtomCache.set(
-                key,
-                atom((get) => (overrides?.[key] !== undefined ? overrides[key] : get(settingsAtom)?.[key]))
-            );
+            keyAtomCache.set(key, atom((get) => get(settingsAtom)?.[key]));
         }
         return keyAtomCache.get(key) as Atom<SettingsType[T]>;
     };
@@ -179,11 +178,13 @@ type MockWosFns = {
     getWaveObjectAtom: <T extends WaveObj>(oref: string) => PrimitiveAtom<T>;
     mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
     fullConfigAtom: PrimitiveAtom<FullConfigType>;
+    platform: NodeJS.Platform;
 };
 
 export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
     const callDispatchMap = new Map<string, (...args: any[]) => Promise<any>>();
     const streamDispatchMap = new Map<string, (...args: any[]) => AsyncGenerator<any, void, boolean>>();
+    const secrets = new Map<string, string>();
     const setCallHandler = (command: string, fn: (...args: any[]) => Promise<any>) => {
         callDispatchMap.set(command, fn);
     };
@@ -235,6 +236,35 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
             }
         }
         globalStore.set(wos.fullConfigAtom, { ...current, settings: updatedSettings as SettingsType });
+        return null;
+    });
+    setCallHandler("getsecretslinuxstoragebackend", async () => {
+        if (wos.platform !== PlatformLinux) {
+            return "";
+        }
+        return "libsecret";
+    });
+    setCallHandler("getsecretsnames", async () => {
+        return Array.from(secrets.keys()).sort();
+    });
+    setCallHandler("getsecrets", async (_client, data: string[]) => {
+        const foundSecrets: Record<string, string> = {};
+        for (const name of data ?? []) {
+            const value = secrets.get(name);
+            if (value != null) {
+                foundSecrets[name] = value;
+            }
+        }
+        return foundSecrets;
+    });
+    setCallHandler("setsecrets", async (_client, data: Record<string, string>) => {
+        for (const [name, value] of Object.entries(data ?? {})) {
+            if (value == null) {
+                secrets.delete(name);
+                continue;
+            }
+            secrets.set(name, value);
+        }
         return null;
     });
     setCallHandler("updateworkspacetabids", async (_client, data: { args: [string, string[]] }) => {
@@ -328,6 +358,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const mockWosFns: MockWosFns = {
         getWaveObjectAtom,
         fullConfigAtom: atoms.fullConfigAtom,
+        platform,
         mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => {
             if (!waveObjectValueAtomCache.has(oref)) {
                 waveObjectValueAtomCache.set(oref, atom(null as WaveObj));
@@ -348,7 +379,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         },
         rpc: makeMockRpc(overrides.rpc, mockWosFns),
         atoms,
-        getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom, overrides.settings),
+        getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom),
         platform,
         isDev: () => overrides.isDev ?? true,
         isWindows: () => platform === PlatformWindows,

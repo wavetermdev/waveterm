@@ -107,7 +107,7 @@ function WebPreviewInner() {
                 staticTabId: atom(PreviewTabId),
             },
             settings: {
-                "web:defaultsearch": "https://www.google.com/search?q=%s",
+                "web:defaultsearch": "https://www.google.com/search?q={query}",
             },
         });
     }, [baseEnv]);

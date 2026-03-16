@@ -3,11 +3,9 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Search, useSearch } from "@/app/element/search";
-import { createBlock, getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
-import { ObjectService } from "@/app/store/services";
 import type { TabModel } from "@/app/store/tab-model";
-import { RpcApi } from "@/app/store/wshclientapi";
+import { makeORef } from "@/app/store/wos";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     BlockHeaderSuggestionControl,
@@ -15,7 +13,8 @@ import {
     SuggestionControlNoResults,
 } from "@/app/suggestion/suggestion";
 import { MockBoundary } from "@/app/waveenv/mockboundary";
-import { WOS, globalStore } from "@/store/global";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
+import { globalStore, openLink } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
@@ -23,6 +22,7 @@ import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import "./webview.scss";
+import type { WebViewEnv } from "./webviewenv";
 
 // User agent strings for mobile emulation
 const USER_AGENT_IPHONE =
@@ -32,9 +32,9 @@ const USER_AGENT_ANDROID =
 
 let webviewPreloadUrl = null;
 
-function getWebviewPreloadUrl() {
+function getWebviewPreloadUrl(env: WebViewEnv) {
     if (webviewPreloadUrl == null) {
-        webviewPreloadUrl = getApi().getWebviewPreload();
+        webviewPreloadUrl = env.electron.getWebviewPreload();
         console.log("webviewPreloadUrl", webviewPreloadUrl);
     }
     if (webviewPreloadUrl == null) {
@@ -72,16 +72,18 @@ export class WebViewModel implements ViewModel {
     typeaheadOpen: PrimitiveAtom<boolean>;
     partitionOverride: PrimitiveAtom<string> | null;
     userAgentType: Atom<string>;
+    env: WebViewEnv;
 
-    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
+    constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
         this.viewType = "web";
         this.blockId = blockId;
+        this.env = waveEnv;
         this.noPadding = atom(true);
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = this.env.wos.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.url = atom();
-        const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
+        const defaultUrlAtom = this.env.getSettingsKeyAtom("web:defaulturl");
         this.homepageUrl = atom((get) => {
             const defaultUrl = get(defaultUrlAtom);
             const pinnedUrl = get(this.blockAtom)?.meta?.pinnedurl;
@@ -97,10 +99,10 @@ export class WebViewModel implements ViewModel {
         this.urlInputRef = createRef<HTMLInputElement>();
         this.webviewRef = createRef<WebviewTag>();
         this.domReady = atom(false);
-        this.hideNav = getBlockMetaKeyAtom(blockId, "web:hidenav");
+        this.hideNav = this.env.getBlockMetaKeyAtom(blockId, "web:hidenav");
         this.typeaheadOpen = atom(false);
         this.partitionOverride = null;
-        this.userAgentType = getBlockMetaKeyAtom(blockId, "web:useragenttype");
+        this.userAgentType = this.env.getBlockMetaKeyAtom(blockId, "web:useragenttype");
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -199,7 +201,7 @@ export class WebViewModel implements ViewModel {
                     console.log("open external", url);
                     if (url != null && url != "") {
                         const externalUrl = this.modifyExternalUrl?.(url) ?? url;
-                        return getApi().openExternal(externalUrl);
+                        return this.env.electron.openExternal(externalUrl);
                     }
                 },
             });
@@ -280,7 +282,7 @@ export class WebViewModel implements ViewModel {
         query: string,
         reqContext: SuggestionRequestContext
     ): Promise<FetchSuggestionsResponse> {
-        const result = await RpcApi.FetchSuggestionsCommand(TabRpcClient, {
+        const result = await this.env.rpc.FetchSuggestionsCommand(TabRpcClient, {
             suggestiontype: "bookmark",
             query,
             widgetid: reqContext.widgetid,
@@ -369,7 +371,12 @@ export class WebViewModel implements ViewModel {
      * @param url The URL that has been navigated to.
      */
     handleNavigate(url: string) {
-        fireAndForget(() => ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), { url }));
+        fireAndForget(() =>
+            this.env.rpc.SetMetaCommand(TabRpcClient, {
+                oref: makeORef("block", this.blockId),
+                meta: { url },
+            })
+        );
         globalStore.set(this.url, url);
         if (this.searchAtoms) {
             globalStore.set(this.searchAtoms.isOpen, false);
@@ -415,7 +422,7 @@ export class WebViewModel implements ViewModel {
      * @param newUrl The new URL to load in the webview.
      */
     loadUrl(newUrl: string, reason: string) {
-        const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
+        const defaultSearchAtom = this.env.getSettingsKeyAtom("web:defaultsearch");
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrl", reason, nextUrl, "cur=", this.webviewRef.current.getURL());
@@ -437,7 +444,7 @@ export class WebViewModel implements ViewModel {
      * @returns Promise that resolves when the URL is loaded.
      */
     loadUrlPromise(newUrl: string, reason: string): Promise<void> {
-        const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
+        const defaultSearchAtom = this.env.getSettingsKeyAtom("web:defaultsearch");
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrlPromise", reason, nextUrl, "cur=", this.webviewRef.current?.getURL());
@@ -477,17 +484,17 @@ export class WebViewModel implements ViewModel {
         if (url != null && url != "") {
             switch (scope) {
                 case "block":
-                    await RpcApi.SetMetaCommand(TabRpcClient, {
-                        oref: WOS.makeORef("block", this.blockId),
+                    await this.env.rpc.SetMetaCommand(TabRpcClient, {
+                        oref: makeORef("block", this.blockId),
                         meta: { pinnedurl: url },
                     });
                     break;
                 case "global":
-                    await RpcApi.SetMetaCommand(TabRpcClient, {
-                        oref: WOS.makeORef("block", this.blockId),
-                        meta: { pinnedurl: "" },
+                    await this.env.rpc.SetMetaCommand(TabRpcClient, {
+                        oref: makeORef("block", this.blockId),
+                        meta: { pinnedurl: null },
                     });
-                    await RpcApi.SetConfigCommand(TabRpcClient, { "web:defaulturl": url });
+                    await this.env.rpc.SetConfigCommand(TabRpcClient, { "web:defaulturl": url });
                     break;
             }
         }
@@ -537,7 +544,7 @@ export class WebViewModel implements ViewModel {
         try {
             const webContentsId = this.webviewRef.current?.getWebContentsId();
             if (webContentsId) {
-                await getApi().clearWebviewStorage(webContentsId);
+                await this.env.electron.clearWebviewStorage(webContentsId);
             }
         } catch (e) {
             console.error("Failed to clear cookies and storage", e);
@@ -583,8 +590,8 @@ export class WebViewModel implements ViewModel {
             return;
         }
         this.webviewRef.current?.setZoomFactor(factor || 1);
-        RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("block", this.blockId),
+        this.env.rpc.SetMetaCommand(TabRpcClient, {
+            oref: makeORef("block", this.blockId),
             meta: { "web:zoom": factor }, // allow null so we can remove the zoom factor here
         });
     }
@@ -632,8 +639,8 @@ export class WebViewModel implements ViewModel {
                 type: "checkbox",
                 click: () => {
                     fireAndForget(() => {
-                        return RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
+                        return this.env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref: makeORef("block", this.blockId),
                             meta: { "web:useragenttype": null },
                         });
                     });
@@ -645,8 +652,8 @@ export class WebViewModel implements ViewModel {
                 type: "checkbox",
                 click: () => {
                     fireAndForget(() => {
-                        return RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
+                        return this.env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref: makeORef("block", this.blockId),
                             meta: { "web:useragenttype": "mobile:iphone" },
                         });
                     });
@@ -658,8 +665,8 @@ export class WebViewModel implements ViewModel {
                 type: "checkbox",
                 click: () => {
                     fireAndForget(() => {
-                        return RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
+                        return this.env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref: makeORef("block", this.blockId),
                             meta: { "web:useragenttype": "mobile:android" },
                         });
                     });
@@ -696,8 +703,8 @@ export class WebViewModel implements ViewModel {
                 label: isNavHidden ? "Un-Hide Navigation" : "Hide Navigation",
                 click: () =>
                     fireAndForget(() => {
-                        return RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
+                        return this.env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref: makeORef("block", this.blockId),
                             meta: { "web:hidenav": !isNavHidden },
                         });
                     }),
@@ -735,16 +742,17 @@ export class WebViewModel implements ViewModel {
 
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
+        const env = useWaveEnv<WebViewEnv>();
         const openBookmarksJson = () => {
             fireAndForget(async () => {
-                const path = `${getApi().getConfigDir()}/presets/bookmarks.json`;
+                const path = `${env.electron.getConfigDir()}/presets/bookmarks.json`;
                 const blockDef: BlockDef = {
                     meta: {
                         view: "preview",
                         file: path,
                     },
                 };
-                await createBlock(blockDef, false, true);
+                await env.createBlock(blockDef, false, true);
                 model.setTypeaheadOpen(false);
             });
         };
@@ -824,18 +832,19 @@ function WebViewPreviewFallback({ url }: { url?: string | null }) {
 }
 
 const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps) => {
+    const env = useWaveEnv<WebViewEnv>();
     const blockData = useAtomValue(model.blockAtom);
     const defaultUrl = useAtomValue(model.homepageUrl);
-    const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
+    const defaultSearchAtom = env.getSettingsKeyAtom("web:defaultsearch");
     const defaultSearch = useAtomValue(defaultSearchAtom);
     let metaUrl = blockData?.meta?.url || defaultUrl || "";
     if (metaUrl) {
         metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     }
     const metaUrlRef = useRef(metaUrl);
-    const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
+    const zoomFactor = useAtomValue(env.getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
     const partitionOverride = useAtomValueSafe(model.partitionOverride);
-    const metaPartition = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:partition"));
+    const metaPartition = useAtomValue(env.getBlockMetaKeyAtom(model.blockId, "web:partition"));
     const webPartition = partitionOverride || metaPartition || undefined;
     const userAgentType = useAtomValue(model.userAgentType) || "default";
 
@@ -1027,11 +1036,11 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
             }
         };
         const webviewFocus = () => {
-            getApi().setWebviewFocus(webview.getWebContentsId());
+            env.electron.setWebviewFocus(webview.getWebContentsId());
             model.nodeModel.focusNode();
         };
         const webviewBlur = () => {
-            getApi().setWebviewFocus(null);
+            env.electron.setWebviewFocus(null);
         };
         const handleDomReady = () => {
             globalStore.set(model.domReady, true);
@@ -1086,7 +1095,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
                     src={metaUrlInitial}
                     data-blockid={model.blockId}
                     data-webcontentsid={webContentsId} // needed for emain
-                    preload={getWebviewPreloadUrl()}
+                    preload={getWebviewPreloadUrl(env)}
                     // @ts-expect-error This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
                     allowpopups="true"
                     partition={webPartition}
@@ -1104,4 +1113,4 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     );
 });
 
-export { getWebPreviewDisplayUrl, WebView, WebViewPreviewFallback };
+export { WebView, WebViewPreviewFallback, getWebPreviewDisplayUrl };

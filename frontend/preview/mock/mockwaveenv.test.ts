@@ -93,4 +93,27 @@ describe("makeMockWaveEnv", () => {
         const imageBytes = base64ToArray(readPackets[1].data64);
         expect(Array.from(imageBytes.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
     });
+
+    it("implements secrets commands with in-memory storage", async () => {
+        const { makeMockWaveEnv } = await import("./mockwaveenv");
+        const env = makeMockWaveEnv({ platform: "linux" });
+
+        await env.rpc.SetSecretsCommand(null as any, {
+            OPENAI_API_KEY: "sk-test",
+            ANTHROPIC_API_KEY: "anthropic-test",
+        } as any);
+
+        expect(await env.rpc.GetSecretsLinuxStorageBackendCommand(null as any)).toBe("libsecret");
+        expect(await env.rpc.GetSecretsNamesCommand(null as any)).toEqual(["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]);
+        expect(await env.rpc.GetSecretsCommand(null as any, ["OPENAI_API_KEY", "MISSING_SECRET"])).toEqual({
+            OPENAI_API_KEY: "sk-test",
+        });
+
+        await env.rpc.SetSecretsCommand(null as any, { OPENAI_API_KEY: null } as any);
+
+        expect(await env.rpc.GetSecretsNamesCommand(null as any)).toEqual(["ANTHROPIC_API_KEY"]);
+        expect(await env.rpc.GetSecretsCommand(null as any, ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"])).toEqual({
+            ANTHROPIC_API_KEY: "anthropic-test",
+        });
+    });
 });
