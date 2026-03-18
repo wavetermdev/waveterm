@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
 import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
+import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
 import { atom, Provider } from "jotai";
@@ -92,9 +93,37 @@ function PreviewHeader({ previewName }: { previewName: string }) {
     );
 }
 
+function makeSharedMockWorkspace(): Workspace {
+    return {
+        otype: "workspace",
+        oid: PreviewWorkspaceId,
+        version: 1,
+        name: "Preview Workspace",
+        tabids: [PreviewTabId],
+        activetabid: PreviewTabId,
+        meta: {},
+    } as Workspace;
+}
+
+function makeSharedMockTab(): Tab {
+    return {
+        otype: "tab",
+        oid: PreviewTabId,
+        version: 1,
+        name: "Preview Tab",
+        blockids: [],
+        meta: {},
+    } as Tab;
+}
+
 function PreviewRoot() {
     const waveEnvRef = useRef(
         makeMockWaveEnv({
+            tabId: PreviewTabId,
+            mockWaveObjs: {
+                [`workspace:${PreviewWorkspaceId}`]: makeSharedMockWorkspace(),
+                [`tab:${PreviewTabId}`]: makeSharedMockTab(),
+            },
             atoms: {
                 uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
                 staticTabId: atom(PreviewTabId),
@@ -105,10 +134,12 @@ function PreviewRoot() {
     return (
         <Provider store={globalStore}>
             <WaveEnvContext.Provider value={waveEnvRef.current}>
-                <>
-                    <PreviewApp />
-                    <PreviewContextMenu />
-                </>
+                <TabModelContext.Provider value={getTabModelByTabId(PreviewTabId, waveEnvRef.current)}>
+                    <>
+                        <PreviewApp />
+                        <PreviewContextMenu />
+                    </>
+                </TabModelContext.Provider>
             </WaveEnvContext.Provider>
         </Provider>
     );

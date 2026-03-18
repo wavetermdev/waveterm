@@ -22,29 +22,6 @@ const PreviewTabId = "preview-sysinfo-tab";
 const PreviewNodeId = "preview-sysinfo-node";
 const PreviewBlockId = "preview-sysinfo-block";
 
-function makeMockWorkspace(): Workspace {
-    return {
-        otype: "workspace",
-        oid: PreviewWorkspaceId,
-        version: 1,
-        name: "Preview Workspace",
-        tabids: [PreviewTabId],
-        activetabid: PreviewTabId,
-        meta: {},
-    } as Workspace;
-}
-
-function makeMockTab(): Tab {
-    return {
-        otype: "tab",
-        oid: PreviewTabId,
-        version: 1,
-        name: "Sysinfo Preview",
-        blockids: [PreviewBlockId],
-        meta: {},
-    } as Tab;
-}
-
 function makeMockBlock(): Block {
     return {
         otype: "block",
@@ -97,15 +74,11 @@ function SysinfoPreviewInner() {
     const nodeModel = React.useMemo(() => makePreviewNodeModel(), []);
 
     const env = React.useMemo<MockWaveEnv>(() => {
-        const mockWaveObjs: Record<string, WaveObj> = {
-            [`workspace:${PreviewWorkspaceId}`]: makeMockWorkspace(),
-            [`tab:${PreviewTabId}`]: makeMockTab(),
-            [`block:${PreviewBlockId}`]: makeMockBlock(),
-        };
-
         return applyMockEnvOverrides(baseEnv, {
             tabId: PreviewTabId,
-            mockWaveObjs,
+            mockWaveObjs: {
+                [`block:${PreviewBlockId}`]: makeMockBlock(),
+            },
             atoms: {
                 workspaceId: atom(PreviewWorkspaceId),
                 staticTabId: atom(PreviewTabId),

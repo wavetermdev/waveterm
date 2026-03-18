@@ -4,7 +4,6 @@
 import { Block } from "@/app/block/block";
 import { globalStore } from "@/app/store/jotaiStore";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
-import { mockObjectForPreview } from "@/app/store/wos";
 import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import type { NodeModel } from "@/layout/index";
 import { atom } from "jotai";
@@ -16,29 +15,6 @@ const PreviewTabId = "preview-web-tab";
 const PreviewNodeId = "preview-web-node";
 const PreviewBlockId = "preview-web-block";
 const PreviewUrl = "https://waveterm.dev";
-
-function makeMockWorkspace(): Workspace {
-    return {
-        otype: "workspace",
-        oid: PreviewWorkspaceId,
-        version: 1,
-        name: "Preview Workspace",
-        tabids: [PreviewTabId],
-        activetabid: PreviewTabId,
-        meta: {},
-    } as Workspace;
-}
-
-function makeMockTab(): Tab {
-    return {
-        otype: "tab",
-        oid: PreviewTabId,
-        version: 1,
-        name: "Web Preview",
-        blockids: [PreviewBlockId],
-        meta: {},
-    } as Tab;
-}
 
 function makeMockBlock(): Block {
     return {
@@ -53,14 +29,8 @@ function makeMockBlock(): Block {
 }
 
 const previewWaveObjs: Record<string, WaveObj> = {
-    [`workspace:${PreviewWorkspaceId}`]: makeMockWorkspace(),
-    [`tab:${PreviewTabId}`]: makeMockTab(),
     [`block:${PreviewBlockId}`]: makeMockBlock(),
 };
-
-for (const [oref, obj] of Object.entries(previewWaveObjs)) {
-    mockObjectForPreview(oref, obj);
-}
 
 function makePreviewNodeModel(): NodeModel {
     const isFocusedAtom = atom(true);
@@ -105,9 +75,6 @@ function WebPreviewInner() {
             atoms: {
                 workspaceId: atom(PreviewWorkspaceId),
                 staticTabId: atom(PreviewTabId),
-            },
-            settings: {
-                "web:defaultsearch": "https://www.google.com/search?q={query}",
             },
         });
     }, [baseEnv]);
