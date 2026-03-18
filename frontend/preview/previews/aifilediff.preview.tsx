@@ -3,12 +3,11 @@
 
 import { Block } from "@/app/block/block";
 import { globalStore } from "@/app/store/jotaiStore";
-import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import type { NodeModel } from "@/layout/index";
 import { atom } from "jotai";
 import * as React from "react";
-import { applyMockEnvOverrides, MockWaveEnv } from "../mock/mockwaveenv";
+import { applyMockEnvOverrides } from "../mock/mockwaveenv";
 import {
     DefaultAiFileDiffChatId,
     DefaultAiFileDiffFileName,
@@ -16,33 +15,8 @@ import {
     makeMockAiFileDiffResponse,
 } from "./aifilediff.preview-util";
 
-const PreviewWorkspaceId = "preview-aifilediff-workspace";
-const PreviewTabId = "preview-aifilediff-tab";
 const PreviewNodeId = "preview-aifilediff-node";
-const PreviewBlockId = "preview-aifilediff-block";
-
-function makeMockWorkspace(): Workspace {
-    return {
-        otype: "workspace",
-        oid: PreviewWorkspaceId,
-        version: 1,
-        name: "Preview Workspace",
-        tabids: [PreviewTabId],
-        activetabid: PreviewTabId,
-        meta: {},
-    } as Workspace;
-}
-
-function makeMockTab(): Tab {
-    return {
-        otype: "tab",
-        oid: PreviewTabId,
-        version: 1,
-        name: "AI File Diff Preview",
-        blockids: [PreviewBlockId],
-        meta: {},
-    } as Tab;
-}
+const PreviewBlockId = crypto.randomUUID();
 
 function makeMockBlock(): Block {
     return {
@@ -90,23 +64,14 @@ function makePreviewNodeModel(): NodeModel {
     };
 }
 
-function AiFileDiffPreviewInner() {
+export function AiFileDiffPreview() {
     const baseEnv = useWaveEnv();
     const nodeModel = React.useMemo(() => makePreviewNodeModel(), []);
 
-    const env = React.useMemo<MockWaveEnv>(() => {
-        const mockWaveObjs: Record<string, WaveObj> = {
-            [`workspace:${PreviewWorkspaceId}`]: makeMockWorkspace(),
-            [`tab:${PreviewTabId}`]: makeMockTab(),
-            [`block:${PreviewBlockId}`]: makeMockBlock(),
-        };
-
+    const env = React.useMemo(() => {
         return applyMockEnvOverrides(baseEnv, {
-            tabId: PreviewTabId,
-            mockWaveObjs,
-            atoms: {
-                workspaceId: atom(PreviewWorkspaceId),
-                staticTabId: atom(PreviewTabId),
+            mockWaveObjs: {
+                [`block:${PreviewBlockId}`]: makeMockBlock(),
             },
             rpc: {
                 WaveAIGetToolDiffCommand: async (_client, data) => {
@@ -122,24 +87,16 @@ function AiFileDiffPreviewInner() {
         });
     }, [baseEnv]);
 
-    const tabModel = React.useMemo(() => getTabModelByTabId(PreviewTabId, env), [env]);
-
     return (
         <WaveEnvContext.Provider value={env}>
-            <TabModelContext.Provider value={tabModel}>
-                <div className="flex w-full max-w-[1120px] flex-col gap-2 px-6 py-6">
-                    <div className="text-xs text-muted font-mono">full aifilediff block (mock WOS + mock WaveAI diff RPC)</div>
-                    <div className="rounded-md border border-border bg-panel p-4">
-                        <div className="h-[720px]">
-                            <Block preview={false} nodeModel={nodeModel} />
-                        </div>
+            <div className="flex w-full max-w-[1120px] flex-col gap-2 px-6 py-6">
+                <div className="text-xs text-muted font-mono">full aifilediff block (mock WOS + mock WaveAI diff RPC)</div>
+                <div className="rounded-md border border-border bg-panel p-4">
+                    <div className="h-[720px]">
+                        <Block preview={false} nodeModel={nodeModel} />
                     </div>
                 </div>
-            </TabModelContext.Provider>
+            </div>
         </WaveEnvContext.Provider>
     );
-}
-
-export function AiFileDiffPreview() {
-    return <AiFileDiffPreviewInner />;
 }

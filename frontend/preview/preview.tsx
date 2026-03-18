@@ -9,10 +9,10 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
-import { atom, Provider } from "jotai";
+import { Provider } from "jotai";
 import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { makeMockWaveEnv } from "./mock/mockwaveenv";
+import { makeMockWaveEnv, PreviewClientId, PreviewTabId, PreviewWindowId } from "./mock/mockwaveenv";
 import { installPreviewElectronApi } from "./mock/preview-electron-api";
 import { PreviewContextMenu } from "./preview-contextmenu";
 
@@ -93,44 +93,8 @@ function PreviewHeader({ previewName }: { previewName: string }) {
     );
 }
 
-function makeSharedMockWorkspace(): Workspace {
-    return {
-        otype: "workspace",
-        oid: PreviewWorkspaceId,
-        version: 1,
-        name: "Preview Workspace",
-        tabids: [PreviewTabId],
-        activetabid: PreviewTabId,
-        meta: {},
-    } as Workspace;
-}
-
-function makeSharedMockTab(): Tab {
-    return {
-        otype: "tab",
-        oid: PreviewTabId,
-        version: 1,
-        name: "Preview Tab",
-        blockids: [],
-        meta: {},
-    } as Tab;
-}
-
 function PreviewRoot() {
-    const waveEnvRef = useRef(
-        makeMockWaveEnv({
-            tabId: PreviewTabId,
-            mockWaveObjs: {
-                [`workspace:${PreviewWorkspaceId}`]: makeSharedMockWorkspace(),
-                [`tab:${PreviewTabId}`]: makeSharedMockTab(),
-            },
-            atoms: {
-                uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
-                staticTabId: atom(PreviewTabId),
-                workspaceId: atom(PreviewWorkspaceId),
-            },
-        })
-    );
+    const waveEnvRef = useRef(makeMockWaveEnv());
     return (
         <Provider store={globalStore}>
             <WaveEnvContext.Provider value={waveEnvRef.current}>
@@ -180,11 +144,6 @@ function PreviewApp() {
 
     return <PreviewIndex />;
 }
-
-const PreviewTabId = crypto.randomUUID();
-const PreviewWindowId = crypto.randomUUID();
-const PreviewWorkspaceId = crypto.randomUUID();
-const PreviewClientId = crypto.randomUUID();
 
 function initPreview() {
     installPreviewElectronApi();

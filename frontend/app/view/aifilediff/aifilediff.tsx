@@ -6,7 +6,7 @@ import type { TabModel } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { DiffViewer } from "@/app/view/codeeditor/diffviewer";
 import type { WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
-import { globalStore, WOS } from "@/store/global";
+import { globalStore } from "@/store/jotaiStore";
 import { base64ToString } from "@/util/util";
 import * as jotai from "jotai";
 import { useEffect } from "react";

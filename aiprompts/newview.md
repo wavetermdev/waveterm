@@ -104,7 +104,8 @@ Create a new file for your view model (e.g., `frontend/app/view/myview/myview-mo
 
 ```typescript
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { WOS, globalStore, useBlockAtom } from "@/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
+import { WOS, useBlockAtom } from "@/store/global";
 import * as jotai from "jotai";
 import { MyView } from "./myview";
 

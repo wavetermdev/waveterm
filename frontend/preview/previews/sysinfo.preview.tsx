@@ -3,13 +3,12 @@
 
 import { Block } from "@/app/block/block";
 import { globalStore } from "@/app/store/jotaiStore";
-import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { handleWaveEvent } from "@/app/store/wps";
 import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import type { NodeModel } from "@/layout/index";
 import { atom } from "jotai";
 import * as React from "react";
-import { applyMockEnvOverrides, MockWaveEnv } from "../mock/mockwaveenv";
+import { applyMockEnvOverrides, SysinfoBlockId } from "../mock/mockwaveenv";
 import {
     DefaultSysinfoHistoryPoints,
     makeMockSysinfoEvent,
@@ -17,24 +16,7 @@ import {
     MockSysinfoConnection,
 } from "./sysinfo.preview-util";
 
-const PreviewWorkspaceId = "preview-sysinfo-workspace";
-const PreviewTabId = "preview-sysinfo-tab";
 const PreviewNodeId = "preview-sysinfo-node";
-const PreviewBlockId = "preview-sysinfo-block";
-
-function makeMockBlock(): Block {
-    return {
-        otype: "block",
-        oid: PreviewBlockId,
-        version: 1,
-        meta: {
-            view: "sysinfo",
-            connection: MockSysinfoConnection,
-            "sysinfo:type": "CPU + Mem",
-            "graph:numpoints": 90,
-        },
-    } as Block;
-}
 
 function makePreviewNodeModel(): NodeModel {
     const isFocusedAtom = atom(true);
@@ -46,7 +28,7 @@ function makePreviewNodeModel(): NodeModel {
         blockNum: atom(1),
         numLeafs: atom(2),
         nodeId: PreviewNodeId,
-        blockId: PreviewBlockId,
+        blockId: SysinfoBlockId,
         addEphemeralNodeToLayout: () => {},
         animationTimeS: atom(0),
         isResizing: atom(false),
@@ -68,21 +50,13 @@ function makePreviewNodeModel(): NodeModel {
     };
 }
 
-function SysinfoPreviewInner() {
+export default function SysinfoPreview() {
     const baseEnv = useWaveEnv();
     const historyRef = React.useRef(makeMockSysinfoHistory());
     const nodeModel = React.useMemo(() => makePreviewNodeModel(), []);
 
-    const env = React.useMemo<MockWaveEnv>(() => {
+    const env = React.useMemo(() => {
         return applyMockEnvOverrides(baseEnv, {
-            tabId: PreviewTabId,
-            mockWaveObjs: {
-                [`block:${PreviewBlockId}`]: makeMockBlock(),
-            },
-            atoms: {
-                workspaceId: atom(PreviewWorkspaceId),
-                staticTabId: atom(PreviewTabId),
-            },
             rpc: {
                 EventReadHistoryCommand: async (_client, data) => {
                     if (data.event !== "sysinfo" || data.scope !== MockSysinfoConnection) {
@@ -94,8 +68,6 @@ function SysinfoPreviewInner() {
             },
         });
     }, [baseEnv]);
-
-    const tabModel = React.useMemo(() => getTabModelByTabId(PreviewTabId, env), [env]);
 
     React.useEffect(() => {
         let nextStep = historyRef.current.length;
@@ -115,20 +87,14 @@ function SysinfoPreviewInner() {
 
     return (
         <WaveEnvContext.Provider value={env}>
-            <TabModelContext.Provider value={tabModel}>
-                <div className="flex w-full max-w-[980px] flex-col gap-2 px-6 py-6">
-                    <div className="text-xs text-muted font-mono">full sysinfo block (mock WOS + FE-only WPS events)</div>
-                    <div className="rounded-md border border-border bg-panel p-4">
-                        <div className="h-[620px]">
-                            <Block preview={false} nodeModel={nodeModel} />
-                        </div>
+            <div className="flex w-full max-w-[980px] flex-col gap-2 px-6 py-6">
+                <div className="text-xs text-muted font-mono">full sysinfo block (mock WOS + FE-only WPS events)</div>
+                <div className="rounded-md border border-border bg-panel p-4">
+                    <div className="h-[620px]">
+                        <Block preview={false} nodeModel={nodeModel} />
                     </div>
                 </div>
-            </TabModelContext.Provider>
+            </div>
         </WaveEnvContext.Provider>
     );
-}
-
-export default function SysinfoPreview() {
-    return <SysinfoPreviewInner />;
 }

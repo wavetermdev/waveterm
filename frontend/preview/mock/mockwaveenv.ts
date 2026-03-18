@@ -9,10 +9,18 @@ import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformLinux, PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
+import { MockSysinfoConnection } from "../previews/sysinfo.preview-util";
+import { showPreviewContextMenu } from "../preview-contextmenu";
 import { DefaultFullConfig } from "./defaultconfig";
 import { DefaultMockFilesystem } from "./mockfilesystem";
-import { showPreviewContextMenu } from "../preview-contextmenu";
 import { previewElectronApi } from "./preview-electron-api";
+
+export const PreviewTabId = crypto.randomUUID();
+export const PreviewWindowId = crypto.randomUUID();
+export const PreviewWorkspaceId = crypto.randomUUID();
+export const PreviewClientId = crypto.randomUUID();
+export const WebBlockId = crypto.randomUUID();
+export const SysinfoBlockId = crypto.randomUUID();
 
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
 //
@@ -331,7 +339,57 @@ export function applyMockEnvOverrides(env: WaveEnv, newOverrides: MockEnv): Mock
 
 export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const overrides: MockEnv = mockEnv ?? {};
-    const platform = overrides.platform ?? PlatformMacOS;
+    const tabId = overrides.tabId ?? PreviewTabId;
+    const defaultMockWaveObjs: Record<string, WaveObj> = {
+        [`workspace:${PreviewWorkspaceId}`]: {
+            otype: "workspace",
+            oid: PreviewWorkspaceId,
+            version: 1,
+            name: "Preview Workspace",
+            tabids: [PreviewTabId],
+            activetabid: PreviewTabId,
+            meta: {},
+        } as Workspace,
+        [`tab:${PreviewTabId}`]: {
+            otype: "tab",
+            oid: PreviewTabId,
+            version: 1,
+            name: "Preview Tab",
+            blockids: [WebBlockId, SysinfoBlockId],
+            meta: {},
+        } as Tab,
+        [`block:${WebBlockId}`]: {
+            otype: "block",
+            oid: WebBlockId,
+            version: 1,
+            meta: {
+                view: "web",
+            },
+        } as Block,
+        [`block:${SysinfoBlockId}`]: {
+            otype: "block",
+            oid: SysinfoBlockId,
+            version: 1,
+            meta: {
+                view: "sysinfo",
+                connection: MockSysinfoConnection,
+                "sysinfo:type": "CPU + Mem",
+                "graph:numpoints": 90,
+            },
+        } as Block,
+    };
+    const defaultAtoms: Partial<GlobalAtomsType> = {
+        uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
+        staticTabId: atom(PreviewTabId),
+        workspaceId: atom(PreviewWorkspaceId),
+    };
+    const mergedOverrides: MockEnv = {
+        ...overrides,
+        tabId,
+        mockWaveObjs: { ...defaultMockWaveObjs, ...(overrides.mockWaveObjs ?? {}) },
+        atoms: { ...defaultAtoms, ...(overrides.atoms ?? {}) },
+    };
+    const platform = mergedOverrides.platform ?? PlatformMacOS;
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
     const waveObjectValueAtomCache = new Map<string, PrimitiveAtom<any>>();
     const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
@@ -339,12 +397,12 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const connConfigKeyAtomCache = new Map<string, Atom<any>>();
     const getWaveObjectAtom = <T extends WaveObj>(oref: string): PrimitiveAtom<T> => {
         if (!waveObjectValueAtomCache.has(oref)) {
-            const obj = (overrides.mockWaveObjs?.[oref] ?? null) as T;
+            const obj = (mergedOverrides.mockWaveObjs?.[oref] ?? null) as T;
             waveObjectValueAtomCache.set(oref, atom(obj) as PrimitiveAtom<T>);
         }
         return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
     };
-    const atoms = makeMockGlobalAtoms(overrides.settings, overrides.atoms, overrides.tabId, getWaveObjectAtom);
+    const atoms = makeMockGlobalAtoms(mergedOverrides.settings, mergedOverrides.atoms, mergedOverrides.tabId, getWaveObjectAtom);
     const localHostDisplayNameAtom = atom<string>((get) => {
         const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
         if (configValue != null) {
@@ -365,36 +423,36 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     };
     const env = {
         isMock: true,
-        mockEnv: overrides,
+        mockEnv: mergedOverrides,
         electron: {
             ...previewElectronApi,
             getPlatform: () => platform,
             openExternal: (url: string) => {
                 window.open(url, "_blank");
             },
-            ...overrides.electron,
+            ...mergedOverrides.electron,
         },
-        rpc: makeMockRpc(overrides.rpc, mockWosFns),
+        rpc: makeMockRpc(mergedOverrides.rpc, mockWosFns),
         atoms,
         getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom),
         platform,
-        isDev: () => overrides.isDev ?? true,
+        isDev: () => mergedOverrides.isDev ?? true,
         isWindows: () => platform === PlatformWindows,
         isMacOS: () => platform === PlatformMacOS,
         createBlock:
-            overrides.createBlock ??
+            mergedOverrides.createBlock ??
             ((blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
                 console.log("[mock createBlock]", blockDef, { magnified, ephemeral });
                 return Promise.resolve(crypto.randomUUID());
             }),
         showContextMenu:
-            overrides.showContextMenu ?? showPreviewContextMenu,
+            mergedOverrides.showContextMenu ?? showPreviewContextMenu,
         getLocalHostDisplayNameAtom: () => {
             return localHostDisplayNameAtom;
         },
         getConnStatusAtom: (conn: string) => {
             if (!connStatusAtomCache.has(conn)) {
-                const connStatus = overrides.connStatus?.[conn] ?? makeDefaultConnStatus(conn);
+                const connStatus = mergedOverrides.connStatus?.[conn] ?? makeDefaultConnStatus(conn);
                 connStatusAtomCache.set(conn, atom(connStatus));
             }
             return connStatusAtomCache.get(conn);
@@ -449,7 +507,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         },
         services: null as any,
         callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => {
-            const fn = overrides.services?.[service]?.[method];
+            const fn = mergedOverrides.services?.[service]?.[method];
             if (fn) {
                 return fn(...args);
             }
