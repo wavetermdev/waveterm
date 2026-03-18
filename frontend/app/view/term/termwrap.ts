@@ -17,7 +17,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { base64ToArray, fireAndForget } from "@/util/util";
+import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -90,6 +90,8 @@ export class TermWrap {
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
+    shellInputBufferAtom: jotai.PrimitiveAtom<string | null>;
+    shellInputCursorAtom: jotai.PrimitiveAtom<number | null>;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
@@ -142,6 +144,8 @@ export class TermWrap {
         this.promptMarkers = [];
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.shellInputBufferAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.shellInputCursorAtom = jotai.atom(null) as jotai.PrimitiveAtom<number | null>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
@@ -403,6 +407,19 @@ export class TermWrap {
 
             const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
             globalStore.set(this.lastCommandAtom, lastCmd || null);
+            const inputBuffer64 = rtInfo ? rtInfo["shell:inputbuffer64"] : null;
+            if (inputBuffer64 == null) {
+                globalStore.set(this.shellInputBufferAtom, null);
+            } else {
+                try {
+                    globalStore.set(this.shellInputBufferAtom, base64ToString(inputBuffer64));
+                } catch (e) {
+                    console.error("Error loading shell input buffer:", e);
+                    globalStore.set(this.shellInputBufferAtom, null);
+                }
+            }
+            const inputCursor = rtInfo ? rtInfo["shell:inputcursor"] : null;
+            globalStore.set(this.shellInputCursorAtom, inputCursor == null ? null : inputCursor);
         } catch (e) {
             console.log("Error loading runtime info:", e);
         }

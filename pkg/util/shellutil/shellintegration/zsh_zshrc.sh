@@ -110,31 +110,20 @@ _waveterm_si_preexec() {
   fi
 }
 
-typeset -g WAVETERM_SI_INPUTEMPTY=1
-
-_waveterm_si_inputempty() {
+_waveterm_si_inputreadback() {
   _waveterm_si_blocked && return
-  
-  local current_empty=1
-  if [[ -n "$BUFFER" ]]; then
-    current_empty=0
-  fi
-  
-  if (( current_empty != WAVETERM_SI_INPUTEMPTY )); then
-    WAVETERM_SI_INPUTEMPTY=$current_empty
-    if (( current_empty )); then
-      printf '\033]16162;I;{"inputempty":true}\007'
-    else
-      printf '\033]16162;I;{"inputempty":false}\007'
-    fi
-  fi
+  local buffer64 cursor
+  # base64 may wrap lines on some platforms, so strip newlines before embedding JSON
+  buffer64=$(printf '%s' "$BUFFER" | base64 2>/dev/null | tr -d '\n\r')
+  cursor=$CURSOR
+  zle -I
+  printf '\033]16162;I;{"buffer64":"%s","cursor":%d}\007' "$buffer64" "$cursor"
 }
 
-autoload -Uz add-zle-hook-widget 2>/dev/null
-if (( $+functions[add-zle-hook-widget] )); then
-  add-zle-hook-widget zle-line-init _waveterm_si_inputempty
-  add-zle-hook-widget zle-line-pre-redraw _waveterm_si_inputempty
-fi
+zle -N _waveterm_si_inputreadback
+bindkey -M emacs '^_Wr' _waveterm_si_inputreadback 2>/dev/null
+bindkey -M viins '^_Wr' _waveterm_si_inputreadback 2>/dev/null
+bindkey -M vicmd '^_Wr' _waveterm_si_inputreadback 2>/dev/null
 
 autoload -U add-zsh-hook
 add-zsh-hook precmd  _waveterm_si_precmd
