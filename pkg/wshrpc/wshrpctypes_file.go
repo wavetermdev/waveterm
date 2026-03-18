@@ -25,6 +25,8 @@ type WshRpcFileInterface interface {
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+	// modern streaming interface
+	FileStreamCommand(ctx context.Context, data CommandFileStreamData) (*FileInfo, error)
 }
 
 type WshRpcRemoteFileInterface interface {
@@ -137,6 +139,12 @@ type CommandRemoteStreamFileData struct {
 
 type CommandRemoteFileStreamData struct {
 	Path       string     `json:"path"`
+	ByteRange  string     `json:"byterange,omitempty"`
+	StreamMeta StreamMeta `json:"streammeta"`
+}
+
+type CommandFileStreamData struct {
+	Info       *FileInfo  `json:"info"`
 	ByteRange  string     `json:"byterange,omitempty"`
 	StreamMeta StreamMeta `json:"streammeta"`
 }
