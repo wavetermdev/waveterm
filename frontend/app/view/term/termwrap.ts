@@ -85,9 +85,10 @@ export class TermWrap {
     multiInputCallback: (data: string) => void;
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
-    private toDispose: TermTypes.IDisposable[] = [];
+    toDispose: TermTypes.IDisposable[] = [];
     webglAddon: WebglAddon | null = null;
     canvasAddon: CanvasAddon | null = null;
+    webglContextLossDisposable: TermTypes.IDisposable | null = null;
     webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
     lastUpdated: number;
@@ -307,6 +308,9 @@ export class TermWrap {
             }
             if (!WebGLSupported) {
                 renderer = "canvas";
+                if (this.canvasAddon != null) {
+                    return;
+                }
             }
         } else {
             if (this.canvasAddon != null) {
@@ -314,6 +318,8 @@ export class TermWrap {
             }
         }
         if (this.webglAddon != null) {
+            this.webglContextLossDisposable?.dispose();
+            this.webglContextLossDisposable = null;
             this.webglAddon.dispose();
             this.webglAddon = null;
             globalStore.set(this.webglEnabledAtom, false);
@@ -324,13 +330,9 @@ export class TermWrap {
         }
         if (renderer === "webgl") {
             const addon = new WebglAddon();
-            this.toDispose.push(
-                addon.onContextLoss(() => {
-                    if (addon === this.webglAddon) {
-                        this.setTermRenderer("canvas");
-                    }
-                })
-            );
+            this.webglContextLossDisposable = addon.onContextLoss(() => {
+                this.setTermRenderer("canvas");
+            });
             this.terminal.loadAddon(addon);
             this.webglAddon = addon;
             globalStore.set(this.webglEnabledAtom, true);
@@ -468,6 +470,8 @@ export class TermWrap {
             } catch (_) {}
         });
         this.promptMarkers = [];
+        this.webglContextLossDisposable?.dispose();
+        this.webglContextLossDisposable = null;
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {
