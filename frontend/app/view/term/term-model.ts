@@ -155,7 +155,7 @@ export class TermViewModel implements ViewModel {
             if (isCmd) {
                 const blockMeta = get(this.blockAtom)?.meta;
                 let cmdText = blockMeta?.["cmd"];
-                let cmdArgs = blockMeta?.["cmd:args"];
+                const cmdArgs = blockMeta?.["cmd:args"];
                 if (cmdArgs != null && Array.isArray(cmdArgs) && cmdArgs.length > 0) {
                     cmdText += " " + cmdArgs.join(" ");
                 }
@@ -242,7 +242,7 @@ export class TermViewModel implements ViewModel {
         });
         this.termTransparencyAtom = useBlockAtom(blockId, "termtransparencyatom", () => {
             return jotai.atom<number>((get) => {
-                let value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
+                const value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
                 return boundNumber(value, 0, 1);
             });
         });
@@ -517,6 +517,10 @@ export class TermViewModel implements ViewModel {
         });
     }
 
+    getTermRenderer(): "webgl" | "canvas" {
+        return this.termRef.current?.getTermRenderer() ?? "canvas";
+    }
+
     isWebGlEnabled(): boolean {
         return this.termRef.current?.isWebGlEnabled() ?? false;
     }
@@ -525,11 +529,8 @@ export class TermViewModel implements ViewModel {
         if (!this.termRef.current) {
             return;
         }
-        if (this.termRef.current.isWebGlEnabled()) {
-            this.termRef.current.disableWebGl();
-        } else {
-            this.termRef.current.enableWebGl();
-        }
+        const renderer = this.termRef.current.getTermRenderer() === "webgl" ? "canvas" : "webgl";
+        this.termRef.current.setTermRenderer(renderer);
     }
 
     triggerRestartAtom() {
@@ -598,7 +599,7 @@ export class TermViewModel implements ViewModel {
             console.log("search is open, not giving focus");
             return true;
         }
-        let termMode = globalStore.get(this.termMode);
+        const termMode = globalStore.get(this.termMode);
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.focus();
