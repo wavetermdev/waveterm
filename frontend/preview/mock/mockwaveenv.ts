@@ -9,8 +9,8 @@ import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformLinux, PlatformMacOS, PlatformWindows } from "@/util/platformutil";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
-import { MockSysinfoConnection } from "../previews/sysinfo.preview-util";
 import { showPreviewContextMenu } from "../preview-contextmenu";
+import { MockSysinfoConnection } from "../previews/sysinfo.preview-util";
 import { DefaultFullConfig } from "./defaultconfig";
 import { DefaultMockFilesystem } from "./mockfilesystem";
 import { previewElectronApi } from "./preview-electron-api";
@@ -46,10 +46,11 @@ export const SysinfoBlockId = crypto.randomUUID();
 //   Override specific calls via MockEnv.services: { Service: { Method: impl } }
 //   e.g. { "block": { "GetControllerStatus": (blockId) => myStatus } }
 
-type RpcOverrides = {
-    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: (
-        ...args: any[]
-    ) => Promise<any> | AsyncGenerator<any, void, boolean>;
+export type RpcHandlerType = (...args: any[]) => Promise<any>;
+export type RpcStreamHandlerType = (...args: any[]) => AsyncGenerator<any, void, boolean>;
+
+export type RpcOverrides = {
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: RpcHandlerType | RpcStreamHandlerType;
 };
 
 type ServiceOverrides = {
@@ -73,7 +74,11 @@ export type MockEnv = {
     mockWaveObjs?: Record<string, WaveObj>;
 };
 
-export type MockWaveEnv = WaveEnv & { mockEnv: MockEnv };
+export type MockWaveEnv = WaveEnv & {
+    mockEnv: MockEnv;
+    addRpcOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcHandlerType) => void;
+    addRpcStreamOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcStreamHandlerType) => void;
+};
 
 function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>): Record<string, T> {
     if (base == null && overrides == null) {
@@ -116,7 +121,10 @@ function makeMockSettingsKeyAtom(settingsAtom: Atom<SettingsType>): WaveEnv["get
     const keyAtomCache = new Map<keyof SettingsType, Atom<any>>();
     return <T extends keyof SettingsType>(key: T) => {
         if (!keyAtomCache.has(key)) {
-            keyAtomCache.set(key, atom((get) => get(settingsAtom)?.[key]));
+            keyAtomCache.set(
+                key,
+                atom((get) => get(settingsAtom)?.[key])
+            );
         }
         return keyAtomCache.get(key) as Atom<SettingsType[T]>;
     };
@@ -188,7 +196,14 @@ type MockWosFns = {
     platform: NodeJS.Platform;
 };
 
-export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiType {
+export function makeMockRpc(
+    overrides: RpcOverrides,
+    wos: MockWosFns
+): {
+    rpc: RpcApiType;
+    setRpcHandler: (command: string, fn: RpcHandlerType) => void;
+    setRpcStreamHandler: (command: string, fn: RpcStreamHandlerType) => void;
+} {
     const callDispatchMap = new Map<string, (...args: any[]) => Promise<any>>();
     const streamDispatchMap = new Map<string, (...args: any[]) => AsyncGenerator<any, void, boolean>>();
     const secrets = new Map<string, string>();
@@ -328,7 +343,17 @@ export function makeMockRpc(overrides: RpcOverrides, wos: MockWosFns): RpcApiTyp
             yield null;
         },
     });
-    return rpc;
+    return {
+        rpc,
+        setRpcHandler: (command: string, fn: RpcHandlerType) => {
+            const cmdName = command.endsWith("Command") ? command.slice(0, -"Command".length).toLowerCase() : command;
+            setCallHandler(cmdName, fn);
+        },
+        setRpcStreamHandler: (command: string, fn: RpcStreamHandlerType) => {
+            const cmdName = command.endsWith("Command") ? command.slice(0, -"Command".length).toLowerCase() : command;
+            setStreamHandler(cmdName, fn);
+        },
+    };
 }
 
 export function applyMockEnvOverrides(env: WaveEnv, newOverrides: MockEnv): MockWaveEnv {
@@ -402,7 +427,12 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         }
         return waveObjectValueAtomCache.get(oref) as PrimitiveAtom<T>;
     };
-    const atoms = makeMockGlobalAtoms(mergedOverrides.settings, mergedOverrides.atoms, mergedOverrides.tabId, getWaveObjectAtom);
+    const atoms = makeMockGlobalAtoms(
+        mergedOverrides.settings,
+        mergedOverrides.atoms,
+        mergedOverrides.tabId,
+        getWaveObjectAtom
+    );
     const localHostDisplayNameAtom = atom<string>((get) => {
         const configValue = get(atoms.settingsAtom)?.["conn:localhostdisplayname"];
         if (configValue != null) {
@@ -421,6 +451,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             globalStore.set(waveObjectValueAtomCache.get(oref), obj);
         },
     };
+    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(mergedOverrides.rpc, mockWosFns);
     const env = {
         isMock: true,
         mockEnv: mergedOverrides,
@@ -432,7 +463,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             },
             ...mergedOverrides.electron,
         },
-        rpc: makeMockRpc(mergedOverrides.rpc, mockWosFns),
+        rpc,
         atoms,
         getSettingsKeyAtom: makeMockSettingsKeyAtom(atoms.settingsAtom),
         platform,
@@ -445,8 +476,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 console.log("[mock createBlock]", blockDef, { magnified, ephemeral });
                 return Promise.resolve(crypto.randomUUID());
             }),
-        showContextMenu:
-            mergedOverrides.showContextMenu ?? showPreviewContextMenu,
+        showContextMenu: mergedOverrides.showContextMenu ?? showPreviewContextMenu,
         getLocalHostDisplayNameAtom: () => {
             return localHostDisplayNameAtom;
         },
@@ -516,6 +546,12 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         },
         mockSetWaveObj: mockWosFns.mockSetWaveObj,
         mockModels: new Map<any, any>(),
+        addRpcOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcHandlerType) => {
+            setRpcHandler(command as string, handler);
+        },
+        addRpcStreamOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcStreamHandlerType) => {
+            setRpcStreamHandler(command as string, handler);
+        },
     } as MockWaveEnv;
     env.services = Object.fromEntries(
         Object.entries(AllServiceTypes).map(([key, ServiceClass]) => [key, new ServiceClass(env)])

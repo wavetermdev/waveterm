@@ -4,11 +4,11 @@
 import { Block } from "@/app/block/block";
 import { globalStore } from "@/app/store/jotaiStore";
 import { handleWaveEvent } from "@/app/store/wps";
-import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import type { NodeModel } from "@/layout/index";
 import { atom } from "jotai";
 import * as React from "react";
-import { applyMockEnvOverrides, SysinfoBlockId } from "../mock/mockwaveenv";
+import { SysinfoBlockId } from "../mock/mockwaveenv";
+import { useRpcOverride } from "../mock/use-rpc-override";
 import {
     DefaultSysinfoHistoryPoints,
     makeMockSysinfoEvent,
@@ -51,23 +51,16 @@ function makePreviewNodeModel(): NodeModel {
 }
 
 export default function SysinfoPreview() {
-    const baseEnv = useWaveEnv();
     const historyRef = React.useRef(makeMockSysinfoHistory());
     const nodeModel = React.useMemo(() => makePreviewNodeModel(), []);
 
-    const env = React.useMemo(() => {
-        return applyMockEnvOverrides(baseEnv, {
-            rpc: {
-                EventReadHistoryCommand: async (_client, data) => {
-                    if (data.event !== "sysinfo" || data.scope !== MockSysinfoConnection) {
-                        return [];
-                    }
-                    const maxItems = data.maxitems ?? historyRef.current.length;
-                    return historyRef.current.slice(-maxItems);
-                },
-            },
-        });
-    }, [baseEnv]);
+    useRpcOverride("EventReadHistoryCommand", async (_client, data) => {
+        if (data.event !== "sysinfo" || data.scope !== MockSysinfoConnection) {
+            return [];
+        }
+        const maxItems = data.maxitems ?? historyRef.current.length;
+        return historyRef.current.slice(-maxItems);
+    });
 
     React.useEffect(() => {
         let nextStep = historyRef.current.length;
@@ -86,15 +79,13 @@ export default function SysinfoPreview() {
     }, []);
 
     return (
-        <WaveEnvContext.Provider value={env}>
-            <div className="flex w-full max-w-[980px] flex-col gap-2 px-6 py-6">
-                <div className="text-xs text-muted font-mono">full sysinfo block (mock WOS + FE-only WPS events)</div>
-                <div className="rounded-md border border-border bg-panel p-4">
-                    <div className="h-[620px]">
-                        <Block preview={false} nodeModel={nodeModel} />
-                    </div>
+        <div className="flex w-full max-w-[980px] flex-col gap-2 px-6 py-6">
+            <div className="text-xs text-muted font-mono">full sysinfo block (mock WOS + FE-only WPS events)</div>
+            <div className="rounded-md border border-border bg-panel p-4">
+                <div className="h-[620px]">
+                    <Block preview={false} nodeModel={nodeModel} />
                 </div>
             </div>
-        </WaveEnvContext.Provider>
+        </div>
     );
 }
