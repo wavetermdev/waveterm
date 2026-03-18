@@ -50,7 +50,7 @@ const MaxRepaintTransactionMs = 2000;
 function detectWebGLSupport(): boolean {
     try {
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("webgl");
+        const ctx = canvas.getContext("webgl2");
         return !!ctx;
     } catch (e) {
         return false;
