@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
@@ -164,6 +165,9 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("RemoteStreamFileCommand", recover())
+		}()
 		defer close(ch)
 		firstPk := true
 		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType) {
@@ -344,6 +348,9 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("RemoteListEntriesCommand", recover())
+		}()
 		defer close(ch)
 		path, err := wavebase.ExpandHomeDir(data.Path)
 		if err != nil {
@@ -678,6 +685,94 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}
 	return nil
+}
+
+func (impl *ServerImpl) RemoteFileStreamCommand(ctx context.Context, data wshrpc.CommandRemoteFileStreamData) (*wshrpc.FileInfo, error) {
+	wshRpc := wshutil.GetWshRpcFromContext(ctx)
+	if wshRpc == nil || wshRpc.StreamBroker == nil {
+		return nil, fmt.Errorf("no stream broker available")
+	}
+
+	writer, err := wshRpc.StreamBroker.CreateStreamWriter(&data.StreamMeta)
+	if err != nil {
+		return nil, fmt.Errorf("error creating stream writer: %w", err)
+	}
+
+	path, err := wavebase.ExpandHomeDir(data.Path)
+	if err != nil {
+		writer.CloseWithError(err)
+		return nil, err
+	}
+	cleanedPath := filepath.Clean(path)
+
+	finfo, err := os.Stat(cleanedPath)
+	if err != nil {
+		writer.CloseWithError(err)
+		return nil, fmt.Errorf("cannot stat file %q: %w", data.Path, err)
+	}
+	if finfo.IsDir() {
+		writer.CloseWithError(fmt.Errorf("path is a directory"))
+		return nil, fmt.Errorf("cannot stream directory %q", data.Path)
+	}
+
+	byteRange, err := parseByteRange(data.ByteRange)
+	if err != nil {
+		writer.CloseWithError(err)
+		return nil, err
+	}
+
+	fileInfo := &wshrpc.FileInfo{
+		Path:    data.Path,
+		Name:    finfo.Name(),
+		Size:    finfo.Size(),
+		Mode:    finfo.Mode(),
+		ModTime: finfo.ModTime().UnixMilli(),
+	}
+
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("RemoteFileStreamCommand", recover())
+		}()
+		defer writer.Close()
+
+		file, err := os.Open(cleanedPath)
+		if err != nil {
+			writer.CloseWithError(fmt.Errorf("cannot open file %q: %w", data.Path, err))
+			return
+		}
+		defer utilfn.GracefulClose(file, "RemoteFileStreamCommand", cleanedPath)
+
+		if !byteRange.All && byteRange.Start > 0 {
+			if _, err := file.Seek(byteRange.Start, io.SeekStart); err != nil {
+				writer.CloseWithError(fmt.Errorf("cannot seek in file %q: %w", data.Path, err))
+				return
+			}
+		}
+
+		var src io.Reader = file
+		if !byteRange.All {
+			src = io.LimitReader(file, byteRange.End-byteRange.Start)
+		}
+
+		buf := make([]byte, 32*1024)
+		for {
+			n, readErr := src.Read(buf)
+			if n > 0 {
+				if _, writeErr := writer.Write(buf[:n]); writeErr != nil {
+					return
+				}
+			}
+			if readErr == io.EOF {
+				return
+			}
+			if readErr != nil {
+				writer.CloseWithError(fmt.Errorf("error reading file %q: %w", data.Path, readErr))
+				return
+			}
+		}
+	}()
+
+	return fileInfo, nil
 }
 
 func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.CommandDeleteFileData) error {

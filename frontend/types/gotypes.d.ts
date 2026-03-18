@@ -521,6 +521,13 @@ declare global {
         paths: string[];
     };
 
+    // wshrpc.CommandRemoteFileStreamData
+    type CommandRemoteFileStreamData = {
+        path: string;
+        byterange?: string;
+        streammeta: StreamMeta;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;

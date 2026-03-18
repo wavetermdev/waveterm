@@ -720,6 +720,12 @@ export class RpcApiType {
         return client.wshRpcCall("remotefilemultiinfo", data, opts);
     }
 
+    // command "remotefilestream" [call]
+    RemoteFileStreamCommand(client: WshClient, data: CommandRemoteFileStreamData, opts?: RpcOpts): Promise<FileInfo> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotefilestream", data, opts);
+        return client.wshRpcCall("remotefilestream", data, opts);
+    }
+
     // command "remotefiletouch" [call]
     RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotefiletouch", data, opts);

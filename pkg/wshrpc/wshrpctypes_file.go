@@ -28,7 +28,12 @@ type WshRpcFileInterface interface {
 }
 
 type WshRpcRemoteFileInterface interface {
+	// old streaming inferface
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
+
+	// modern streaming interface
+	RemoteFileStreamCommand(ctx context.Context, data CommandRemoteFileStreamData) (*FileInfo, error)
+
 	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
@@ -128,6 +133,12 @@ type FileCopyOpts struct {
 type CommandRemoteStreamFileData struct {
 	Path      string `json:"path"`
 	ByteRange string `json:"byterange,omitempty"`
+}
+
+type CommandRemoteFileStreamData struct {
+	Path       string     `json:"path"`
+	ByteRange  string     `json:"byterange,omitempty"`
+	StreamMeta StreamMeta `json:"streammeta"`
 }
 
 type CommandRemoteListEntriesData struct {
