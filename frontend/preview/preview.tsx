@@ -99,10 +99,8 @@ function PreviewRoot() {
         <Provider store={globalStore}>
             <WaveEnvContext.Provider value={waveEnvRef.current}>
                 <TabModelContext.Provider value={getTabModelByTabId(PreviewTabId, waveEnvRef.current)}>
-                    <>
-                        <PreviewApp />
-                        <PreviewContextMenu />
-                    </>
+                    <PreviewApp />
+                    <PreviewContextMenu />
                 </TabModelContext.Provider>
             </WaveEnvContext.Provider>
         </Provider>

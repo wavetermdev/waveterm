@@ -3,7 +3,7 @@
 
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import * as React from "react";
-import { MockWaveEnv, RpcHandlerType, RpcOverrides, RpcStreamHandlerType } from "./mockwaveenv";
+import { MockWaveEnv, RpcHandlerType, RpcOverrides, RpcStreamHandlerType, RpcStreamOverrides } from "./mockwaveenv";
 
 export function useRpcOverride<K extends keyof RpcOverrides>(command: K, handler: RpcHandlerType): void {
     const mockEnv = useWaveEnv() as MockWaveEnv;
@@ -14,7 +14,7 @@ export function useRpcOverride<K extends keyof RpcOverrides>(command: K, handler
     }
 }
 
-export function useRpcStreamOverride<K extends keyof RpcOverrides>(command: K, handler: RpcStreamHandlerType): void {
+export function useRpcStreamOverride<K extends keyof RpcStreamOverrides>(command: K, handler: RpcStreamHandlerType): void {
     const mockEnv = useWaveEnv() as MockWaveEnv;
     const registeredRef = React.useRef(false);
     if (!registeredRef.current) {

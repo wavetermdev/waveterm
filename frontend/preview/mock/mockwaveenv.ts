@@ -39,7 +39,8 @@ export const SysinfoBlockId = crypto.randomUUID();
 //   - rpc.UpdateWorkspaceTabIdsCommand  -- updates .tabids on the Workspace WaveObj in the mock WOS
 //
 // Any other RPC call falls through to a console.log and resolves null.
-// Override specific calls via MockEnv.rpc (keys are the Command method names, e.g. "GetMetaCommand").
+// Override specific calls via MockEnv.rpc (keys are Command method names, e.g. "GetMetaCommand").
+// Override specific streaming calls via MockEnv.rpcStreaming (same key names, handler returns AsyncGenerator).
 //
 // Backend service calls (handled in callBackendService):
 //   Any call falls through to a console.log and resolves null.
@@ -50,7 +51,11 @@ export type RpcHandlerType = (...args: any[]) => Promise<any>;
 export type RpcStreamHandlerType = (...args: any[]) => AsyncGenerator<any, void, boolean>;
 
 export type RpcOverrides = {
-    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: RpcHandlerType | RpcStreamHandlerType;
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: RpcHandlerType;
+};
+
+export type RpcStreamOverrides = {
+    [K in keyof RpcApiType as K extends `${string}Command` ? K : never]?: RpcStreamHandlerType;
 };
 
 type ServiceOverrides = {
@@ -65,6 +70,7 @@ export type MockEnv = {
     platform?: NodeJS.Platform;
     settings?: Partial<SettingsType>;
     rpc?: RpcOverrides;
+    rpcStreaming?: RpcStreamOverrides;
     services?: ServiceOverrides;
     atoms?: Partial<GlobalAtomsType>;
     electron?: Partial<ElectronApi>;
@@ -77,7 +83,7 @@ export type MockEnv = {
 export type MockWaveEnv = WaveEnv & {
     mockEnv: MockEnv;
     addRpcOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcHandlerType) => void;
-    addRpcStreamOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcStreamHandlerType) => void;
+    addRpcStreamOverride: <K extends keyof RpcStreamOverrides>(command: K, handler: RpcStreamHandlerType) => void;
 };
 
 function mergeRecords<T>(base: Record<string, T>, overrides: Record<string, T>): Record<string, T> {
@@ -104,6 +110,7 @@ export function mergeMockEnv(base: MockEnv, overrides: MockEnv): MockEnv {
         platform: overrides.platform ?? base.platform,
         settings: mergeRecords(base.settings, overrides.settings),
         rpc: mergeRecords(base.rpc as any, overrides.rpc as any) as RpcOverrides,
+        rpcStreaming: mergeRecords(base.rpcStreaming as any, overrides.rpcStreaming as any) as RpcStreamOverrides,
         services: mergedServices,
         atoms: overrides.atoms != null || base.atoms != null ? { ...base.atoms, ...overrides.atoms } : undefined,
         electron:
@@ -198,6 +205,7 @@ type MockWosFns = {
 
 export function makeMockRpc(
     overrides: RpcOverrides,
+    streamOverrides: RpcStreamOverrides,
     wos: MockWosFns
 ): {
     rpc: RpcApiType;
@@ -311,11 +319,13 @@ export function makeMockRpc(
     if (overrides) {
         for (const key of Object.keys(overrides) as (keyof RpcOverrides)[]) {
             const cmdName = key.slice(0, -"Command".length).toLowerCase();
-            if (cmdName === "filereadstream" || cmdName === "fileliststream") {
-                setStreamHandler(cmdName, overrides[key] as (...args: any[]) => AsyncGenerator<any, void, boolean>);
-            } else {
-                setCallHandler(cmdName, overrides[key] as (...args: any[]) => Promise<any>);
-            }
+            setCallHandler(cmdName, overrides[key] as RpcHandlerType);
+        }
+    }
+    if (streamOverrides) {
+        for (const key of Object.keys(streamOverrides) as (keyof RpcStreamOverrides)[]) {
+            const cmdName = key.slice(0, -"Command".length).toLowerCase();
+            setStreamHandler(cmdName, streamOverrides[key] as RpcStreamHandlerType);
         }
     }
     const rpc = new RpcApiType();
@@ -451,7 +461,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             globalStore.set(waveObjectValueAtomCache.get(oref), obj);
         },
     };
-    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(mergedOverrides.rpc, mockWosFns);
+    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(mergedOverrides.rpc, mergedOverrides.rpcStreaming, mockWosFns);
     const env = {
         isMock: true,
         mockEnv: mergedOverrides,
@@ -566,7 +576,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
         addRpcOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcHandlerType) => {
             setRpcHandler(command as string, handler);
         },
-        addRpcStreamOverride: <K extends keyof RpcOverrides>(command: K, handler: RpcStreamHandlerType) => {
+        addRpcStreamOverride: <K extends keyof RpcStreamOverrides>(command: K, handler: RpcStreamHandlerType) => {
             setRpcStreamHandler(command as string, handler);
         },
     } as MockWaveEnv;
