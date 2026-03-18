@@ -474,7 +474,24 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             mergedOverrides.createBlock ??
             ((blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => {
                 console.log("[mock createBlock]", blockDef, { magnified, ephemeral });
-                return Promise.resolve(crypto.randomUUID());
+                const newBlockId = crypto.randomUUID();
+                const newBlock: Block = {
+                    otype: "block",
+                    oid: newBlockId,
+                    version: 1,
+                    meta: blockDef.meta ?? {},
+                };
+                mockWosFns.mockSetWaveObj(`block:${newBlockId}`, newBlock);
+                const tabORef = `tab:${tabId}`;
+                const tabAtom = getWaveObjectAtom<Tab>(tabORef);
+                const currentTab = globalStore.get(tabAtom);
+                if (currentTab != null) {
+                    mockWosFns.mockSetWaveObj(tabORef, {
+                        ...currentTab,
+                        blockids: [...(currentTab.blockids ?? []), newBlockId],
+                    });
+                }
+                return Promise.resolve(newBlockId);
             }),
         showContextMenu: mergedOverrides.showContextMenu ?? showPreviewContextMenu,
         getLocalHostDisplayNameAtom: () => {
