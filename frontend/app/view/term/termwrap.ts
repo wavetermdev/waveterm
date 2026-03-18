@@ -18,6 +18,7 @@ import {
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
+import { CanvasAddon } from "@xterm/addon-canvas";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -49,14 +50,14 @@ const MaxRepaintTransactionMs = 2000;
 function detectWebGLSupport(): boolean {
     try {
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("webgl");
+        const ctx = canvas.getContext("webgl2");
         return !!ctx;
     } catch (e) {
         return false;
     }
 }
 
-const WebGLSupported = detectWebGLSupport();
+export const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
 
 type TermWrapOptions = {
@@ -84,7 +85,11 @@ export class TermWrap {
     multiInputCallback: (data: string) => void;
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
-    private toDispose: TermTypes.IDisposable[] = [];
+    toDispose: TermTypes.IDisposable[] = [];
+    webglAddon: WebglAddon | null = null;
+    canvasAddon: CanvasAddon | null = null;
+    webglContextLossDisposable: TermTypes.IDisposable | null = null;
+    webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
@@ -142,6 +147,7 @@ export class TermWrap {
         this.promptMarkers = [];
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
@@ -179,19 +185,7 @@ export class TermWrap {
                 }
             )
         );
-        if (WebGLSupported && waveOptions.useWebGl) {
-            const webglAddon = new WebglAddon();
-            this.toDispose.push(
-                webglAddon.onContextLoss(() => {
-                    webglAddon.dispose();
-                })
-            );
-            this.terminal.loadAddon(webglAddon);
-            if (!loggedWebGL) {
-                console.log("loaded webgl!");
-                loggedWebGL = true;
-            }
-        }
+        this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "canvas");
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
@@ -305,6 +299,60 @@ export class TermWrap {
 
     setCursorBlink(cursorBlink: boolean) {
         this.terminal.options.cursorBlink = cursorBlink ?? false;
+    }
+
+    setTermRenderer(renderer: "webgl" | "canvas") {
+        if (renderer === "webgl") {
+            if (this.webglAddon != null) {
+                return;
+            }
+            if (!WebGLSupported) {
+                renderer = "canvas";
+                if (this.canvasAddon != null) {
+                    return;
+                }
+            }
+        } else {
+            if (this.canvasAddon != null) {
+                return;
+            }
+        }
+        if (this.webglAddon != null) {
+            this.webglContextLossDisposable?.dispose();
+            this.webglContextLossDisposable = null;
+            this.webglAddon.dispose();
+            this.webglAddon = null;
+            globalStore.set(this.webglEnabledAtom, false);
+        }
+        if (this.canvasAddon != null) {
+            this.canvasAddon.dispose();
+            this.canvasAddon = null;
+        }
+        if (renderer === "webgl") {
+            const addon = new WebglAddon();
+            this.webglContextLossDisposable = addon.onContextLoss(() => {
+                this.setTermRenderer("canvas");
+            });
+            this.terminal.loadAddon(addon);
+            this.webglAddon = addon;
+            globalStore.set(this.webglEnabledAtom, true);
+            if (!loggedWebGL) {
+                console.log("loaded webgl!");
+                loggedWebGL = true;
+            }
+        } else {
+            const addon = new CanvasAddon();
+            this.terminal.loadAddon(addon);
+            this.canvasAddon = addon;
+        }
+    }
+
+    getTermRenderer(): "webgl" | "canvas" {
+        return this.webglAddon != null ? "webgl" : "canvas";
+    }
+
+    isWebGlEnabled(): boolean {
+        return this.webglAddon != null;
     }
 
     resetCompositionState() {
@@ -422,6 +470,8 @@ export class TermWrap {
             } catch (_) {}
         });
         this.promptMarkers = [];
+        this.webglContextLossDisposable?.dispose();
+        this.webglContextLossDisposable = null;
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {

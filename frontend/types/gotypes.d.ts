@@ -1395,6 +1395,7 @@ declare global {
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
+        "debug:webglstatus"?: boolean;
         "tsunami:*"?: boolean;
         "tsunami:scaffoldpath"?: string;
         "tsunami:sdkreplacepath"?: string;

@@ -172,6 +172,7 @@ type SettingsType struct {
 	DebugClear               bool `json:"debug:*,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
 	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
+	DebugWebGlStatus         bool `json:"debug:webglstatus,omitempty"`
 
 	TsunamiClear          bool   `json:"tsunami:*,omitempty"`
 	TsunamiScaffoldPath   string `json:"tsunami:scaffoldpath,omitempty"`
