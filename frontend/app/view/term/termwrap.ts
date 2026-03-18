@@ -56,7 +56,7 @@ function detectWebGLSupport(): boolean {
     }
 }
 
-const WebGLSupported = detectWebGLSupport();
+export const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
 
 type TermWrapOptions = {
@@ -85,6 +85,8 @@ export class TermWrap {
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
     private toDispose: TermTypes.IDisposable[] = [];
+    webglAddon: WebglAddon | null = null;
+    webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
@@ -142,6 +144,7 @@ export class TermWrap {
         this.promptMarkers = [];
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
@@ -180,17 +183,7 @@ export class TermWrap {
             )
         );
         if (WebGLSupported && waveOptions.useWebGl) {
-            const webglAddon = new WebglAddon();
-            this.toDispose.push(
-                webglAddon.onContextLoss(() => {
-                    webglAddon.dispose();
-                })
-            );
-            this.terminal.loadAddon(webglAddon);
-            if (!loggedWebGL) {
-                console.log("loaded webgl!");
-                loggedWebGL = true;
-            }
+            this.loadWebGlAddon();
         }
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
@@ -305,6 +298,44 @@ export class TermWrap {
 
     setCursorBlink(cursorBlink: boolean) {
         this.terminal.options.cursorBlink = cursorBlink ?? false;
+    }
+
+    loadWebGlAddon() {
+        const addon = new WebglAddon();
+        this.toDispose.push(
+            addon.onContextLoss(() => {
+                if (addon === this.webglAddon) {
+                    this.disableWebGl();
+                }
+            })
+        );
+        this.terminal.loadAddon(addon);
+        this.webglAddon = addon;
+        globalStore.set(this.webglEnabledAtom, true);
+        if (!loggedWebGL) {
+            console.log("loaded webgl!");
+            loggedWebGL = true;
+        }
+    }
+
+    isWebGlEnabled(): boolean {
+        return this.webglAddon != null;
+    }
+
+    enableWebGl() {
+        if (!WebGLSupported || this.webglAddon != null) {
+            return;
+        }
+        this.loadWebGlAddon();
+    }
+
+    disableWebGl() {
+        if (this.webglAddon == null) {
+            return;
+        }
+        this.webglAddon.dispose();
+        this.webglAddon = null;
+        globalStore.set(this.webglEnabledAtom, false);
     }
 
     resetCompositionState() {

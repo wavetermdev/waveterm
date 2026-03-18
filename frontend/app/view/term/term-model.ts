@@ -41,7 +41,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
 import { computeTheme, DefaultTermTheme } from "./termutil";
-import { TermWrap } from "./termwrap";
+import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
@@ -293,6 +293,13 @@ export class TermViewModel implements ViewModel {
                 }
             }
 
+            if (get(getSettingsKeyAtom("debug:webglstatus"))) {
+                const webglButton = this.getWebGlIconButton(get);
+                if (webglButton) {
+                    rtn.push(webglButton);
+                }
+            }
+
             if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
                 return rtn;
             }
@@ -438,6 +445,38 @@ export class TermViewModel implements ViewModel {
         return null;
     }
 
+    getWebGlIconButton(get: jotai.Getter): IconButtonDecl | null {
+        if (!WebGLSupported) {
+            return {
+                elemtype: "iconbutton",
+                icon: "microchip",
+                iconColor: "var(--error-color)",
+                title: "WebGL not supported",
+                noAction: true,
+            };
+        }
+        if (!this.termRef.current?.webglEnabledAtom) {
+            return null;
+        }
+        const webglEnabled = get(this.termRef.current.webglEnabledAtom);
+        if (webglEnabled) {
+            return {
+                elemtype: "iconbutton",
+                icon: "microchip",
+                iconColor: "var(--success-color)",
+                title: "WebGL enabled (click to disable)",
+                click: () => this.toggleWebGl(),
+            };
+        }
+        return {
+            elemtype: "iconbutton",
+            icon: "microchip",
+            iconColor: "var(--secondary-text-color)",
+            title: "WebGL disabled (click to enable)",
+            click: () => this.toggleWebGl(),
+        };
+    }
+
     get viewComponent(): ViewComponent {
         return TerminalView as ViewComponent;
     }
@@ -476,6 +515,21 @@ export class TermViewModel implements ViewModel {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:mode": mode },
         });
+    }
+
+    isWebGlEnabled(): boolean {
+        return this.termRef.current?.isWebGlEnabled() ?? false;
+    }
+
+    toggleWebGl() {
+        if (!this.termRef.current) {
+            return;
+        }
+        if (this.termRef.current.isWebGlEnabled()) {
+            this.termRef.current.disableWebGl();
+        } else {
+            this.termRef.current.enableWebGl();
+        }
     }
 
     triggerRestartAtom() {
