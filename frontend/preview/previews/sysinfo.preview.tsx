@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block } from "@/app/block/block";
-import { globalStore } from "@/app/store/jotaiStore";
 import { handleWaveEvent } from "@/app/store/wps";
-import type { NodeModel } from "@/layout/index";
-import { atom } from "jotai";
 import * as React from "react";
+import { makeMockNodeModel } from "../mock/mock-node-model";
 import { SysinfoBlockId } from "../mock/mockwaveenv";
 import { useRpcOverride } from "../mock/use-rpc-override";
 import {
@@ -18,41 +16,12 @@ import {
 
 const PreviewNodeId = "preview-sysinfo-node";
 
-function makePreviewNodeModel(): NodeModel {
-    const isFocusedAtom = atom(true);
-    const isMagnifiedAtom = atom(false);
-
-    return {
-        additionalProps: atom({} as any),
-        innerRect: atom({ width: "920px", height: "560px" }),
-        blockNum: atom(1),
-        numLeafs: atom(2),
-        nodeId: PreviewNodeId,
-        blockId: SysinfoBlockId,
-        addEphemeralNodeToLayout: () => {},
-        animationTimeS: atom(0),
-        isResizing: atom(false),
-        isFocused: isFocusedAtom,
-        isMagnified: isMagnifiedAtom,
-        anyMagnified: atom(false),
-        isEphemeral: atom(false),
-        ready: atom(true),
-        disablePointerEvents: atom(false),
-        toggleMagnify: () => {
-            globalStore.set(isMagnifiedAtom, !globalStore.get(isMagnifiedAtom));
-        },
-        focusNode: () => {
-            globalStore.set(isFocusedAtom, true);
-        },
-        onClose: () => {},
-        dragHandleRef: { current: null },
-        displayContainerRef: { current: null },
-    };
-}
-
 export default function SysinfoPreview() {
     const historyRef = React.useRef(makeMockSysinfoHistory());
-    const nodeModel = React.useMemo(() => makePreviewNodeModel(), []);
+    const nodeModel = React.useMemo(
+        () => makeMockNodeModel({ nodeId: PreviewNodeId, blockId: SysinfoBlockId, innerRect: { width: "920px", height: "560px" }, numLeafs: 2 }),
+        []
+    );
 
     useRpcOverride("EventReadHistoryCommand", async (_client, data) => {
         if (data.event !== "sysinfo" || data.scope !== MockSysinfoConnection) {

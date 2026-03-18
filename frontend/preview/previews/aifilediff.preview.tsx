@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block } from "@/app/block/block";
-import { globalStore } from "@/app/store/jotaiStore";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
-import type { NodeModel } from "@/layout/index";
-import { atom } from "jotai";
 import * as React from "react";
+import { makeMockNodeModel } from "../mock/mock-node-model";
 import { useRpcOverride } from "../mock/use-rpc-override";
 import {
     DefaultAiFileDiffChatId,
@@ -16,38 +14,6 @@ import {
 } from "./aifilediff.preview-util";
 
 const PreviewNodeId = "preview-aifilediff-node";
-
-function makePreviewNodeModel(blockId: string): NodeModel {
-    const isFocusedAtom = atom(true);
-    const isMagnifiedAtom = atom(false);
-
-    return {
-        additionalProps: atom({} as any),
-        innerRect: atom({ width: "1000px", height: "640px" }),
-        blockNum: atom(1),
-        numLeafs: atom(1),
-        nodeId: PreviewNodeId,
-        blockId,
-        addEphemeralNodeToLayout: () => {},
-        animationTimeS: atom(0),
-        isResizing: atom(false),
-        isFocused: isFocusedAtom,
-        isMagnified: isMagnifiedAtom,
-        anyMagnified: atom(false),
-        isEphemeral: atom(false),
-        ready: atom(true),
-        disablePointerEvents: atom(false),
-        toggleMagnify: () => {
-            globalStore.set(isMagnifiedAtom, !globalStore.get(isMagnifiedAtom));
-        },
-        focusNode: () => {
-            globalStore.set(isFocusedAtom, true);
-        },
-        onClose: () => {},
-        dragHandleRef: { current: null },
-        displayContainerRef: { current: null },
-    };
-}
 
 export function AiFileDiffPreview() {
     const env = useWaveEnv();
@@ -75,7 +41,10 @@ export function AiFileDiffPreview() {
         ).then((id) => setBlockId(id));
     }, []);
 
-    const nodeModel = React.useMemo(() => (blockId != null ? makePreviewNodeModel(blockId) : null), [blockId]);
+    const nodeModel = React.useMemo(
+        () => (blockId != null ? makeMockNodeModel({ nodeId: PreviewNodeId, blockId }) : null),
+        [blockId]
+    );
 
     if (blockId == null || nodeModel == null) {
         return null;
