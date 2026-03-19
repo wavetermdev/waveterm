@@ -67,6 +67,14 @@ func readStream(conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.
 	return wshclient.RemoteStreamFileCommand(RpcClient, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
+func GetConnectionRouteId(ctx context.Context, path string) (string, error) {
+	conn, err := parseConnection(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	return wshutil.MakeConnectionRouteId(conn.Host), nil
+}
+
 func FileStream(ctx context.Context, data wshrpc.CommandFileStreamData) (*wshrpc.FileInfo, error) {
 	if data.Info == nil {
 		return nil, fmt.Errorf("file info is required")

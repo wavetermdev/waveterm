@@ -721,13 +721,8 @@ func (impl *ServerImpl) RemoteFileStreamCommand(ctx context.Context, data wshrpc
 		return nil, err
 	}
 
-	fileInfo := &wshrpc.FileInfo{
-		Path:    data.Path,
-		Name:    finfo.Name(),
-		Size:    finfo.Size(),
-		Mode:    finfo.Mode(),
-		ModTime: finfo.ModTime().UnixMilli(),
-	}
+	fileInfo := statToFileInfo(cleanedPath, finfo, true)
+	fileInfo.Path = data.Path
 
 	go func() {
 		defer func() {

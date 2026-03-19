@@ -4,8 +4,6 @@
 package web
 
 import (
-	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -28,12 +26,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
@@ -246,78 +241,45 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 	}
 }
 
-func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn string, path string, no404 bool) error {
-	client := wshserver.GetMainRpcClient()
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
-	route := wshutil.MakeConnectionRouteId(conn)
-	rpcOpts := &wshrpc.RpcOpts{Route: route, Timeout: 60 * 1000}
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, rpcOpts)
-	return handleRemoteStreamFileFromCh(w, req, path, rtnCh, rpcOpts.StreamCancelFn, no404)
-}
-
-func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(context.Context) error, no404 bool) error {
-	firstPk := true
-	var fileInfo *wshrpc.FileInfo
-	loopDone := false
-	defer func() {
-		if loopDone {
-			return
-		}
-		// if loop didn't finish naturally clear it out
-		utilfn.DrainChannelSafe(rtnCh, "handleRemoteStreamFile")
-	}()
-	ctx := req.Context()
-	for {
-		select {
-		case <-ctx.Done():
-			if streamCancelFn != nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				streamCancelFn(ctx)
-			}
-			return ctx.Err()
-		case respUnion, ok := <-rtnCh:
-			if !ok {
-				loopDone = true
-				return nil
-			}
-			if respUnion.Error != nil {
-				return respUnion.Error
-			}
-			if firstPk {
-				firstPk = false
-				if respUnion.Response.Info == nil {
-					return fmt.Errorf("stream file protocol error, fileinfo is empty")
-				}
-				fileInfo = respUnion.Response.Info
-				if fileInfo.NotFound {
-					if no404 {
-						serveTransparentGIF(w)
-						return nil
-					} else {
-						return fmt.Errorf("file not found: %q", path)
-					}
-				}
-				if fileInfo.IsDir {
-					return fmt.Errorf("cannot stream directory: %q", path)
-				}
-				w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
-				w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
-				continue
-			}
-			if respUnion.Response.Data64 == "" {
-				continue
-			}
-			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
-			_, err := io.Copy(w, decoder)
-			if err != nil {
-				log.Printf("error streaming file %q: %v\n", path, err)
-				// not sure what to do here, the headers have already been sent.
-				// just return
-				return nil
-			}
-		}
+func handleStreamFileFromReader(w http.ResponseWriter, r *http.Request, path string, no404 bool) error {
+	writerRouteId, err := wshfs.GetConnectionRouteId(r.Context(), path)
+	if err != nil {
+		return err
 	}
+	bareRpc := wshclient.GetBareRpcClient()
+	readerRouteId := wshclient.GetBareRpcClientRouteId()
+	reader, streamMeta := bareRpc.StreamBroker.CreateStreamReader(readerRouteId, writerRouteId, 256*1024)
+	defer reader.Close()
+
+	data := wshrpc.CommandFileStreamData{
+		Info:       &wshrpc.FileInfo{Path: path},
+		StreamMeta: *streamMeta,
+	}
+	fileInfo, err := wshfs.FileStream(r.Context(), data)
+	if err != nil {
+		if no404 {
+			serveTransparentGIF(w)
+			return nil
+		}
+		return err
+	}
+	if fileInfo.NotFound {
+		if no404 {
+			serveTransparentGIF(w)
+			return nil
+		}
+		return fmt.Errorf("file not found: %q", path)
+	}
+	if fileInfo.IsDir {
+		return fmt.Errorf("cannot stream directory: %q", path)
+	}
+	w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
+	w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+	_, copyErr := io.Copy(w, reader)
+	if copyErr != nil {
+		log.Printf("error streaming file %q: %v\n", path, copyErr)
+	}
+	return nil
 }
 
 func handleStreamLocalFile(w http.ResponseWriter, r *http.Request) {
@@ -338,13 +300,7 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	}
 	no404 := r.URL.Query().Get("no404")
 	// path should already be formatted as a wsh:// URI (e.g. wsh://local/path or wsh://connection/path)
-	data := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path,
-		},
-	}
-	rtnCh := wshfs.ReadStream(r.Context(), data)
-	err := handleRemoteStreamFileFromCh(w, r, path, rtnCh, nil, no404 != "")
+	err := handleStreamFileFromReader(w, r, path, no404 != "")
 	if err != nil {
 		log.Printf("error streaming file %q: %v\n", path, err)
 		http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
