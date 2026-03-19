@@ -375,6 +375,12 @@ func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreB
 	return err
 }
 
+// command "filestream", wshserver.FileStreamCommand
+func FileStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandFileStreamData, opts *wshrpc.RpcOpts) (*wshrpc.FileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.FileInfo](w, "filestream", data, opts)
+	return resp, err
+}
+
 // command "filewrite", wshserver.FileWriteCommand
 func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filewrite", data, opts)
@@ -714,6 +720,12 @@ func RemoteFileMoveCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCopyData, o
 // command "remotefilemultiinfo", wshserver.RemoteFileMultiInfoCommand
 func RemoteFileMultiInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileMultiInfoData, opts *wshrpc.RpcOpts) (map[string]wshrpc.FileInfo, error) {
 	resp, err := sendRpcRequestCallHelper[map[string]wshrpc.FileInfo](w, "remotefilemultiinfo", data, opts)
+	return resp, err
+}
+
+// command "remotefilestream", wshserver.RemoteFileStreamCommand
+func RemoteFileStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileStreamData, opts *wshrpc.RpcOpts) (*wshrpc.FileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.FileInfo](w, "remotefilestream", data, opts)
 	return resp, err
 }
 

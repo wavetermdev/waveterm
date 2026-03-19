@@ -1,10 +1,11 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package fileutil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,6 +18,38 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
+
+type ByteRangeType struct {
+	All     bool
+	Start   int64
+	End     int64 // inclusive; only valid when OpenEnd is false
+	OpenEnd bool  // true when range is "N-" (read from Start to EOF)
+}
+
+func ParseByteRange(rangeStr string) (ByteRangeType, error) {
+	if rangeStr == "" {
+		return ByteRangeType{All: true}, nil
+	}
+	// handle open-ended range "N-"
+	if len(rangeStr) > 0 && rangeStr[len(rangeStr)-1] == '-' {
+		var start int64
+		_, err := fmt.Sscanf(rangeStr, "%d-", &start)
+		if err != nil || start < 0 {
+			return ByteRangeType{}, errors.New("invalid byte range")
+		}
+		return ByteRangeType{Start: start, OpenEnd: true}, nil
+	}
+	var start, end int64
+	_, err := fmt.Sscanf(rangeStr, "%d-%d", &start, &end)
+	if err != nil {
+		return ByteRangeType{}, errors.New("invalid byte range")
+	}
+	if start < 0 || end < 0 || start > end {
+		return ByteRangeType{}, errors.New("invalid byte range")
+	}
+	// End is inclusive (HTTP byte range semantics: bytes=0-999 means 1000 bytes)
+	return ByteRangeType{Start: start, End: end}, nil
+}
 
 func FixPath(path string) (string, error) {
 	origPath := path

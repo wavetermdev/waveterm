@@ -61,10 +61,35 @@ func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrE
 func readStream(conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	byteRange := ""
 	if data.At != nil && data.At.Size > 0 {
-		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size))
+		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size)-1)
 	}
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
 	return wshclient.RemoteStreamFileCommand(RpcClient, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+}
+
+func GetConnectionRouteId(ctx context.Context, path string) (string, error) {
+	conn, err := parseConnection(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	return wshutil.MakeConnectionRouteId(conn.Host), nil
+}
+
+func FileStream(ctx context.Context, data wshrpc.CommandFileStreamData) (*wshrpc.FileInfo, error) {
+	if data.Info == nil {
+		return nil, fmt.Errorf("file info is required")
+	}
+	log.Printf("FileStream: %v", data.Info.Path)
+	conn, err := parseConnection(ctx, data.Info.Path)
+	if err != nil {
+		return nil, err
+	}
+	remoteData := wshrpc.CommandRemoteFileStreamData{
+		Path:       conn.Path,
+		ByteRange:  data.ByteRange,
+		StreamMeta: data.StreamMeta,
+	}
+	return wshclient.RemoteFileStreamCommand(RpcClient, remoteData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {

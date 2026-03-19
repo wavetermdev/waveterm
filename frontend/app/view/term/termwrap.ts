@@ -531,7 +531,7 @@ export class TermWrap {
             }
         }
         let resolve: () => void = null;
-        let prtn = new Promise<void>((presolve, _) => {
+        const prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
         this.terminal.write(data, () => {
