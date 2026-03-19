@@ -217,6 +217,7 @@ func serveTransparentGIF(w http.ResponseWriter) {
 }
 
 func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, no404 bool) {
+	http.NewResponseController(w).SetWriteDeadline(time.Time{})
 	if no404 {
 		log.Printf("streaming file w/no404: %q\n", path)
 		// use the custom response writer
@@ -313,6 +314,7 @@ func handleStreamFileFromReader(w http.ResponseWriter, r *http.Request, path str
 	} else {
 		w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
 	}
+	http.NewResponseController(w).SetWriteDeadline(time.Time{})
 	_, copyErr := io.Copy(w, reader)
 	if copyErr != nil && r.Context().Err() == nil {
 		log.Printf("error streaming file %q: %v\n", path, copyErr)
