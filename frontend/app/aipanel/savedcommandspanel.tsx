@@ -25,6 +25,15 @@ const SavedCommandCard = memo(({ command }: { command: SavedCommand }) => {
                     <IconButton
                         decl={{
                             elemtype: "iconbutton",
+                            icon: "regular@square-terminal",
+                            title: "Run in focused terminal",
+                            click: () => void model.runSavedCommand(command.text),
+                            disabled: command.text.trim().length === 0,
+                        }}
+                    />
+                    <IconButton
+                        decl={{
+                            elemtype: "iconbutton",
                             icon: "plus",
                             title: "Insert into prompt",
                             click: () => model.appendText(command.text, true, { scrollToBottom: true }),

@@ -9,7 +9,14 @@ import {
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
-import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
+import {
+    atoms,
+    createBlock,
+    getBlockComponentModel,
+    getFocusedBlockId,
+    getOrefMetaKeyAtom,
+    getSettingsKeyAtom,
+} from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { isBuilderWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
@@ -345,6 +352,39 @@ export class WaveAIModel {
 
     removeSavedCommand(id: string) {
         this.persistSavedCommands(globalStore.get(this.savedCommandsAtom).filter((command) => command.id !== id));
+    }
+
+    async runSavedCommand(text: string) {
+        const commandText = text.trim();
+        if (!commandText) {
+            return;
+        }
+        if (this.inBuilder) {
+            this.setError("Running saved commands in the terminal is not available from the builder.");
+            return;
+        }
+
+        const focusedBlockId = getFocusedBlockId();
+        if (!focusedBlockId) {
+            this.setError("Focus a terminal block, then run the saved command again.");
+            return;
+        }
+        const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedBlockId));
+        const blockData = globalStore.get(blockAtom);
+        if (blockData?.meta?.view !== "term") {
+            this.setError("Focus a terminal block, then run the saved command again.");
+            return;
+        }
+        const blockComponentModel = getBlockComponentModel(focusedBlockId);
+        const termViewModel = blockComponentModel?.viewModel as { sendDataToController?: (data: string) => void };
+        if (typeof termViewModel?.sendDataToController !== "function") {
+            this.setError("The focused terminal is not ready to receive commands.");
+            return;
+        }
+
+        const commandWithNewline = text.endsWith("\n") ? text : `${text}\n`;
+        termViewModel.sendDataToController(commandWithNewline);
+        this.requestNodeFocus();
     }
 
     setError(message: string) {
