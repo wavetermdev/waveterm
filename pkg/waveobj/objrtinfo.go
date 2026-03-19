@@ -3,6 +3,13 @@
 
 package waveobj
 
+type WaveAISavedCommand struct {
+	Id        string `json:"id"`
+	Text      string `json:"text"`
+	CreatedTs int64  `json:"createdts,omitempty"`
+	UpdatedTs int64  `json:"updatedts,omitempty"`
+}
+
 type ObjRTInfo struct {
 	TsunamiAppMeta any `json:"tsunami:appmeta,omitempty" tstype:"AppMeta"`
 	TsunamiSchemas any `json:"tsunami:schemas,omitempty"`
@@ -23,7 +30,8 @@ type ObjRTInfo struct {
 	BuilderAppId  string             `json:"builder:appid,omitempty"`
 	BuilderEnv    map[string]string  `json:"builder:env,omitempty"`
 
-	WaveAIChatId          string `json:"waveai:chatid,omitempty"`
-	WaveAIMode            string `json:"waveai:mode,omitempty"`
-	WaveAIMaxOutputTokens int    `json:"waveai:maxoutputtokens,omitempty"`
+	WaveAIChatId          string               `json:"waveai:chatid,omitempty"`
+	WaveAIMode            string               `json:"waveai:mode,omitempty"`
+	WaveAIMaxOutputTokens int                  `json:"waveai:maxoutputtokens,omitempty"`
+	WaveAISavedCommands   []WaveAISavedCommand `json:"waveai:savedcommands,omitempty"`
 }

@@ -124,6 +124,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
                     text={content}
                     parseIncompleteMarkdown={isStreaming}
                     className="text-gray-100"
+                    onClickSaveCommand={(cmd) => model.addSavedCommand(cmd)}
                     codeBlockMaxWidthAtom={model.codeBlockMaxWidth}
                 />
             );

@@ -23,6 +23,7 @@ import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
+import { SavedCommandsPanel } from "./savedcommandspanel";
 import { WaveUIMessage } from "./aitypes";
 import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
@@ -596,6 +597,7 @@ const AIPanelComponentInner = memo(() => {
                             />
                         )}
                         <AIErrorMessage />
+                        <SavedCommandsPanel />
                         <AIDroppedFiles model={model} />
                         <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
                     </>
