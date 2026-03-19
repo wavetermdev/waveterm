@@ -292,10 +292,12 @@ func handleStreamFileFromReader(w http.ResponseWriter, r *http.Request, path str
 			serveTransparentGIF(w)
 			return nil
 		}
-		return fmt.Errorf("file not found: %q", path)
+		http.Error(w, fmt.Sprintf("file not found: %q", path), http.StatusNotFound)
+		return nil
 	}
 	if fileInfo.IsDir {
-		return fmt.Errorf("cannot stream directory: %q", path)
+		http.Error(w, fmt.Sprintf("cannot stream directory: %q", path), http.StatusBadRequest)
+		return nil
 	}
 	log.Printf("stream-file headers-ready path=%q time-to-headers=%v\n", path, time.Since(startTime))
 	w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
