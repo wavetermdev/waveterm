@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -242,17 +244,38 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 }
 
 func handleStreamFileFromReader(w http.ResponseWriter, r *http.Request, path string, no404 bool) error {
+	startTime := time.Now()
+	rangeHeader := r.Header.Get("Range")
+	log.Printf("stream-file path=%q range=%q\n", path, rangeHeader)
+
 	writerRouteId, err := wshfs.GetConnectionRouteId(r.Context(), path)
 	if err != nil {
 		return err
 	}
+
+	byteRange := ""
+	if rangeHeader != "" {
+		stripped := strings.TrimPrefix(rangeHeader, "bytes=")
+		br, parseErr := fileutil.ParseByteRange(stripped)
+		if parseErr != nil || br.All {
+			http.Error(w, "invalid range", http.StatusRequestedRangeNotSatisfiable)
+			return nil
+		}
+		byteRange = stripped
+	}
+
 	bareRpc := wshclient.GetBareRpcClient()
 	readerRouteId := wshclient.GetBareRpcClientRouteId()
 	reader, streamMeta := bareRpc.StreamBroker.CreateStreamReader(readerRouteId, writerRouteId, 256*1024)
 	defer reader.Close()
+	go func() {
+		<-r.Context().Done()
+		reader.Close()
+	}()
 
 	data := wshrpc.CommandFileStreamData{
 		Info:       &wshrpc.FileInfo{Path: path},
+		ByteRange:  byteRange,
 		StreamMeta: *streamMeta,
 	}
 	fileInfo, err := wshfs.FileStream(r.Context(), data)
@@ -273,10 +296,25 @@ func handleStreamFileFromReader(w http.ResponseWriter, r *http.Request, path str
 	if fileInfo.IsDir {
 		return fmt.Errorf("cannot stream directory: %q", path)
 	}
+	log.Printf("stream-file headers-ready path=%q time-to-headers=%v\n", path, time.Since(startTime))
 	w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
-	w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+	w.Header().Set("Accept-Ranges", "bytes")
+	if byteRange != "" {
+		br, _ := fileutil.ParseByteRange(byteRange)
+		var rangeEnd int64
+		if br.OpenEnd {
+			rangeEnd = fileInfo.Size - 1
+		} else {
+			rangeEnd = br.End
+		}
+		w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", rangeEnd-br.Start+1))
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", br.Start, rangeEnd, fileInfo.Size))
+		w.WriteHeader(http.StatusPartialContent)
+	} else {
+		w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+	}
 	_, copyErr := io.Copy(w, reader)
-	if copyErr != nil {
+	if copyErr != nil && r.Context().Err() == nil {
 		log.Printf("error streaming file %q: %v\n", path, copyErr)
 	}
 	return nil
@@ -404,11 +442,15 @@ const schemaPrefix = "/schema/"
 func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
 
-	// Create separate routers for different timeout requirements
+	// Streaming routes must be registered before the /wave/ prefix catch-all to bypass TimeoutHandler.
+	// http.TimeoutHandler buffers the entire response before flushing, which stalls streaming.
+	gr.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
+	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	gr.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
+
+	// Non-streaming /wave/ routes get timeout protection
 	waveRouter := mux.NewRouter()
-	waveRouter.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
-	waveRouter.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
-	waveRouter.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
@@ -416,12 +458,8 @@ func RunWebServer(listener net.Listener) {
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 
-	// Routes that need timeout handling
 	gr.PathPrefix("/wave/").Handler(http.TimeoutHandler(waveRouter, HttpTimeoutDuration, "Timeout"))
 	gr.PathPrefix("/vdom/").Handler(http.TimeoutHandler(vdomRouter, HttpTimeoutDuration, "Timeout"))
-
-	// Routes that should NOT have timeout handling (for streaming)
-	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
 
 	// Other routes without timeout
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))

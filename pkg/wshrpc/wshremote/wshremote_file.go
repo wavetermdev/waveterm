@@ -32,28 +32,8 @@ const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
 
 var DisableRecursiveFileOpts = true
 
-type ByteRangeType struct {
-	All   bool
-	Start int64
-	End   int64
-}
 
-func parseByteRange(rangeStr string) (ByteRangeType, error) {
-	if rangeStr == "" {
-		return ByteRangeType{All: true}, nil
-	}
-	var start, end int64
-	_, err := fmt.Sscanf(rangeStr, "%d-%d", &start, &end)
-	if err != nil {
-		return ByteRangeType{}, errors.New("invalid byte range")
-	}
-	if start < 0 || end < 0 || start > end {
-		return ByteRangeType{}, errors.New("invalid byte range")
-	}
-	return ByteRangeType{Start: start, End: end}, nil
-}
-
-func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
+func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, byteRange fileutil.ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
 	innerFilesEntries, err := os.ReadDir(path)
 	if err != nil {
 		return fmt.Errorf("cannot open dir %q: %w", path, err)
@@ -64,9 +44,14 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		}
 	} else {
 		if byteRange.Start < int64(len(innerFilesEntries)) {
-			realEnd := byteRange.End
-			if realEnd > int64(len(innerFilesEntries)) {
+			var realEnd int64
+			if byteRange.OpenEnd {
 				realEnd = int64(len(innerFilesEntries))
+			} else {
+				realEnd = byteRange.End + 1
+				if realEnd > int64(len(innerFilesEntries)) {
+					realEnd = int64(len(innerFilesEntries))
+				}
 			}
 			innerFilesEntries = innerFilesEntries[byteRange.Start:realEnd]
 		} else {
@@ -95,7 +80,7 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 	return nil
 }
 
-func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
+func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange fileutil.ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
 	fd, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
@@ -116,13 +101,13 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 		}
 		n, err := fd.Read(buf)
 		if n > 0 {
-			if !byteRange.All && filePos+int64(n) > byteRange.End {
-				n = int(byteRange.End - filePos)
+			if !byteRange.All && !byteRange.OpenEnd && filePos+int64(n) > byteRange.End+1 {
+				n = int(byteRange.End + 1 - filePos)
 			}
 			filePos += int64(n)
 			dataCallback(nil, buf[:n], byteRange)
 		}
-		if !byteRange.All && filePos >= byteRange.End {
+		if !byteRange.All && !byteRange.OpenEnd && filePos >= byteRange.End+1 {
 			break
 		}
 		if errors.Is(err, io.EOF) {
@@ -135,8 +120,8 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 	return nil
 }
 
-func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
-	byteRange, err := parseByteRange(data.ByteRange)
+func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
+	byteRange, err := fileutil.ParseByteRange(data.ByteRange)
 	if err != nil {
 		return err
 	}
@@ -170,7 +155,7 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 		}()
 		defer close(ch)
 		firstPk := true
-		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType) {
+		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType) {
 			resp := wshrpc.FileData{}
 			fileInfoLen := len(fileInfo)
 			if fileInfoLen > 1 || !firstPk {
@@ -715,7 +700,7 @@ func (impl *ServerImpl) RemoteFileStreamCommand(ctx context.Context, data wshrpc
 		return nil, fmt.Errorf("cannot stream directory %q", data.Path)
 	}
 
-	byteRange, err := parseByteRange(data.ByteRange)
+	byteRange, err := fileutil.ParseByteRange(data.ByteRange)
 	if err != nil {
 		writer.CloseWithError(err)
 		return nil, err
@@ -745,8 +730,8 @@ func (impl *ServerImpl) RemoteFileStreamCommand(ctx context.Context, data wshrpc
 		}
 
 		var src io.Reader = file
-		if !byteRange.All {
-			src = io.LimitReader(file, byteRange.End-byteRange.Start)
+		if !byteRange.All && !byteRange.OpenEnd {
+			src = io.LimitReader(file, byteRange.End-byteRange.Start+1)
 		}
 
 		buf := make([]byte, 32*1024)
