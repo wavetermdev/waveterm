@@ -24,14 +24,11 @@ type WshRpcFileInterface interface {
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
-	// modern streaming interface
 	FileStreamCommand(ctx context.Context, data CommandFileStreamData) (*FileInfo, error)
 }
 
 type WshRpcRemoteFileInterface interface {
-	// modern streaming interface
 	RemoteFileStreamCommand(ctx context.Context, data CommandRemoteFileStreamData) (*FileInfo, error)
-
 	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
