@@ -462,7 +462,7 @@ export class WaveBrowserWindow extends BaseWindow {
             this.finalizePositioning();
         } else {
             console.log("reusing an existing tab, calling wave-init", tabView.waveTabId);
-            await tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
+            tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
             this.finalizePositioning();
         }
 
@@ -478,35 +478,6 @@ export class WaveBrowserWindow extends BaseWindow {
                 tabView.webContents.focus();
             }
         }, 30);
-    }
-
-    private async repositionTabsSlowly(delayMs: number) {
-        const activeTabView = this.activeTabView;
-        const winBounds = this.getContentBounds();
-        if (activeTabView == null) {
-            return;
-        }
-        if (activeTabView.isOnScreen()) {
-            activeTabView.setBounds({
-                x: 0,
-                y: 0,
-                width: winBounds.width,
-                height: winBounds.height,
-            });
-        } else {
-            activeTabView.setBounds({
-                x: winBounds.width - 10,
-                y: winBounds.height - 10,
-                width: winBounds.width,
-                height: winBounds.height,
-            });
-        }
-        await delay(delayMs);
-        if (this.activeTabView != activeTabView) {
-            // another tab view has been set, do not finalize this layout
-            return;
-        }
-        this.finalizePositioning();
     }
 
     private finalizePositioning() {
@@ -543,10 +514,10 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    private removeTabViewLater(tabId: string, _delayMs: number) {
+    private removeTabViewLater(tabId: string, delayMs: number) {
         setTimeout(() => {
             this.removeTabView(tabId, false);
-        }, 1000);
+        }, delayMs);
     }
 
     // the queue and this function are used to serialize operations that update the window contents view
