@@ -18,7 +18,6 @@ import {
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
-import { CanvasAddon } from "@xterm/addon-canvas";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -87,7 +86,6 @@ export class TermWrap {
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
     toDispose: TermTypes.IDisposable[] = [];
     webglAddon: WebglAddon | null = null;
-    canvasAddon: CanvasAddon | null = null;
     webglContextLossDisposable: TermTypes.IDisposable | null = null;
     webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
@@ -185,7 +183,7 @@ export class TermWrap {
                 }
             )
         );
-        this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "canvas");
+        this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
@@ -301,19 +299,16 @@ export class TermWrap {
         this.terminal.options.cursorBlink = cursorBlink ?? false;
     }
 
-    setTermRenderer(renderer: "webgl" | "canvas") {
+    setTermRenderer(renderer: "webgl" | "dom") {
         if (renderer === "webgl") {
             if (this.webglAddon != null) {
                 return;
             }
             if (!WebGLSupported) {
-                renderer = "canvas";
-                if (this.canvasAddon != null) {
-                    return;
-                }
+                renderer = "dom";
             }
         } else {
-            if (this.canvasAddon != null) {
+            if (this.webglAddon == null) {
                 return;
             }
         }
@@ -324,14 +319,10 @@ export class TermWrap {
             this.webglAddon = null;
             globalStore.set(this.webglEnabledAtom, false);
         }
-        if (this.canvasAddon != null) {
-            this.canvasAddon.dispose();
-            this.canvasAddon = null;
-        }
         if (renderer === "webgl") {
             const addon = new WebglAddon();
             this.webglContextLossDisposable = addon.onContextLoss(() => {
-                this.setTermRenderer("canvas");
+                this.setTermRenderer("dom");
             });
             this.terminal.loadAddon(addon);
             this.webglAddon = addon;
@@ -340,15 +331,11 @@ export class TermWrap {
                 console.log("loaded webgl!");
                 loggedWebGL = true;
             }
-        } else {
-            const addon = new CanvasAddon();
-            this.terminal.loadAddon(addon);
-            this.canvasAddon = addon;
         }
     }
 
-    getTermRenderer(): "webgl" | "canvas" {
-        return this.webglAddon != null ? "webgl" : "canvas";
+    getTermRenderer(): "webgl" | "dom" {
+        return this.webglAddon != null ? "webgl" : "dom";
     }
 
     isWebGlEnabled(): boolean {
@@ -409,7 +396,7 @@ export class TermWrap {
         }
 
         // Register IME composition event listeners on the xterm.js textarea
-        const textareaElem = this.connectElem.querySelector("textarea");
+        const textareaElem = this.terminal.textarea;
         if (textareaElem) {
             textareaElem.addEventListener("compositionstart", this.handleCompositionStart);
             textareaElem.addEventListener("compositionupdate", this.handleCompositionUpdate);

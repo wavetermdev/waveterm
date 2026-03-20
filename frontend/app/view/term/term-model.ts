@@ -517,8 +517,8 @@ export class TermViewModel implements ViewModel {
         });
     }
 
-    getTermRenderer(): "webgl" | "canvas" {
-        return this.termRef.current?.getTermRenderer() ?? "canvas";
+    getTermRenderer(): "webgl" | "dom" {
+        return this.termRef.current?.getTermRenderer() ?? "dom";
     }
 
     isWebGlEnabled(): boolean {
@@ -529,7 +529,7 @@ export class TermViewModel implements ViewModel {
         if (!this.termRef.current) {
             return;
         }
-        const renderer = this.termRef.current.getTermRenderer() === "webgl" ? "canvas" : "webgl";
+        const renderer = this.termRef.current.getTermRenderer() === "webgl" ? "dom" : "webgl";
         this.termRef.current.setTermRenderer(renderer);
     }
 
