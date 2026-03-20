@@ -40,8 +40,8 @@ export function calculateWindowBounds(
 ): { x: number; y: number; width: number; height: number } {
     let winWidth = winSize?.width;
     let winHeight = winSize?.height;
-    let winPosX = pos?.x ?? 100;
-    let winPosY = pos?.y ?? 100;
+    const winPosX = pos?.x ?? 100;
+    const winPosY = pos?.y ?? 100;
 
     if (
         (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
@@ -86,7 +86,7 @@ export function calculateWindowBounds(
     winWidth = Math.max(winWidth, MinWindowWidth);
     winHeight = Math.max(winHeight, MinWindowHeight);
 
-    let winBounds = {
+    const winBounds = {
         x: winPosX,
         y: winPosY,
         width: winWidth,
@@ -393,6 +393,8 @@ export class WaveBrowserWindow extends BaseWindow {
     private async initializeTab(tabView: WaveTabView, primaryStartupTab: boolean) {
         const clientId = await getClientId();
         await this.awaitWithDevTimeout(tabView.initPromise, "initPromise", tabView.waveTabId);
+        const winBounds = this.getContentBounds();
+        tabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
         this.contentView.addChildView(tabView);
         const initOpts: WaveInitOpts = {
             tabId: tabView.waveTabId,
@@ -406,7 +408,7 @@ export class WaveBrowserWindow extends BaseWindow {
         tabView.savedInitOpts = { ...initOpts };
         tabView.savedInitOpts.activate = false;
         delete tabView.savedInitOpts.primaryTabStartup;
-        let startTime = Date.now();
+        const startTime = Date.now();
         console.log(
             "before wave ready, init tab, sending wave-init",
             tabView.waveTabId,
@@ -456,14 +458,12 @@ export class WaveBrowserWindow extends BaseWindow {
         this.allLoadedTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
             console.log("initializing a new tab", primaryStartupTab ? "(primary startup)" : "");
-            const p1 = this.initializeTab(tabView, primaryStartupTab);
-            const p2 = this.repositionTabsSlowly(100);
-            await Promise.all([p1, p2]);
+            await this.initializeTab(tabView, primaryStartupTab);
+            this.finalizePositioning();
         } else {
             console.log("reusing an existing tab, calling wave-init", tabView.waveTabId);
-            const p1 = this.repositionTabsSlowly(35);
-            const p2 = tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
-            await Promise.all([p1, p2]);
+            tabView.webContents.send("wave-init", tabView.savedInitOpts); // reinit
+            this.finalizePositioning();
         }
 
         // something is causing the new tab to lose focus so it requires manual refocusing
@@ -478,35 +478,6 @@ export class WaveBrowserWindow extends BaseWindow {
                 tabView.webContents.focus();
             }
         }, 30);
-    }
-
-    private async repositionTabsSlowly(delayMs: number) {
-        const activeTabView = this.activeTabView;
-        const winBounds = this.getContentBounds();
-        if (activeTabView == null) {
-            return;
-        }
-        if (activeTabView.isOnScreen()) {
-            activeTabView.setBounds({
-                x: 0,
-                y: 0,
-                width: winBounds.width,
-                height: winBounds.height,
-            });
-        } else {
-            activeTabView.setBounds({
-                x: winBounds.width - 10,
-                y: winBounds.height - 10,
-                width: winBounds.width,
-                height: winBounds.height,
-            });
-        }
-        await delay(delayMs);
-        if (this.activeTabView != activeTabView) {
-            // another tab view has been set, do not finalize this layout
-            return;
-        }
-        this.finalizePositioning();
     }
 
     private finalizePositioning() {
@@ -546,7 +517,7 @@ export class WaveBrowserWindow extends BaseWindow {
     private removeTabViewLater(tabId: string, delayMs: number) {
         setTimeout(() => {
             this.removeTabView(tabId, false);
-        }, 1000);
+        }, delayMs);
     }
 
     // the queue and this function are used to serialize operations that update the window contents view
@@ -744,7 +715,7 @@ ipcMain.on("set-active-tab", async (event, tabId) => {
     await ww?.setActiveTab(tabId, true);
 });
 
-ipcMain.on("create-tab", async (event, opts) => {
+ipcMain.on("create-tab", async (event, _opts) => {
     const senderWc = event.sender;
     const ww = getWaveWindowByWebContentsId(senderWc.id);
     if (ww != null) {
@@ -818,7 +789,7 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
 
         const workspaceList = await WorkspaceService.ListWorkspaces();
 
-        const workspaceHasWindow = !!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid;
+        const _workspaceHasWindow = !!workspaceList.find((wse) => wse.workspaceid === workspaceId)?.windowid;
 
         const choice = dialog.showMessageBoxSync(this, {
             type: "question",
