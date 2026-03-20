@@ -774,12 +774,6 @@ export class RpcApiType {
         return client.wshRpcStream("remotestreamcpudata", null, opts);
     }
 
-    // command "remotestreamfile" [responsestream]
-	RemoteStreamFileCommand(client: WshClient, data: CommandRemoteStreamFileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "remotestreamfile", data, opts);
-        return client.wshRpcStream("remotestreamfile", data, opts);
-    }
-
     // command "remoteterminatejobmanager" [call]
     RemoteTerminateJobManagerCommand(client: WshClient, data: CommandRemoteTerminateJobManagerData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remoteterminatejobmanager", data, opts);

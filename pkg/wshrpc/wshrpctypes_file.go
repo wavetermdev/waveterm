@@ -29,9 +29,6 @@ type WshRpcFileInterface interface {
 }
 
 type WshRpcRemoteFileInterface interface {
-	// old streaming inferface
-	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
-
 	// modern streaming interface
 	RemoteFileStreamCommand(ctx context.Context, data CommandRemoteFileStreamData) (*FileInfo, error)
 
