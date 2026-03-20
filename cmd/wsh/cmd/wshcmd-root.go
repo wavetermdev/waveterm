@@ -31,6 +31,7 @@ var WrappedStdout io.Writer = &WrappedWriter{dest: os.Stdout}
 var WrappedStderr io.Writer = &WrappedWriter{dest: os.Stderr}
 var RpcClient *wshutil.WshRpc
 var RpcContext wshrpc.RpcContext
+var RpcClientRouteId string
 var UsingTermWshMode bool
 var blockArg string
 var WshExitCode int
@@ -140,7 +141,12 @@ func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtn
 	if err != nil {
 		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
 	}
-	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	rtn, err = wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	if err != nil {
+		return rtn, err
+	}
+	RpcClientRouteId = rtn.RouteId
+	return rtn, nil
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
@@ -158,10 +164,11 @@ func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
-	_, err = wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	authRtn, err := wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 	if err != nil {
 		return fmt.Errorf("error authenticating: %v", err)
 	}
+	RpcClientRouteId = authRtn.RouteId
 	blockId := os.Getenv("WAVETERM_BLOCKID")
 	if blockId != "" {
 		peerInfo := fmt.Sprintf("domain:block:%s", blockId)
