@@ -46,14 +46,12 @@ class WorkspaceLayoutModel {
     aiPanelWrapperRef: HTMLDivElement | null;
     vtabPanelWrapperRef: HTMLDivElement | null;
     panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
-    vtabVisibleAtom: jotai.PrimitiveAtom<boolean>;
 
     private inResize: boolean;
     private aiPanelVisible: boolean;
     private aiPanelWidth: number | null;
     private vtabWidth: number;
     private vtabVisible: boolean;
-    private initialized: boolean = false;
     private transitionTimeoutRef: NodeJS.Timeout | null = null;
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     private debouncedPersistAIWidth: () => void;
@@ -73,7 +71,6 @@ class WorkspaceLayoutModel {
         this.vtabWidth = VTabBar_DefaultWidth;
         this.vtabVisible = false;
         this.panelVisibleAtom = jotai.atom(false);
-        this.vtabVisibleAtom = jotai.atom(false);
         this.initializeFromMeta();
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
@@ -156,7 +153,6 @@ class WorkspaceLayoutModel {
             const tabBarPosition = globalStore.get(getSettingsKeyAtom("app:tabbar")) ?? "top";
             const showLeftTabBar = tabBarPosition === "left" && !isBuilderWindow();
             this.vtabVisible = showLeftTabBar;
-            globalStore.set(this.vtabVisibleAtom, showLeftTabBar);
         } catch (e) {
             console.warn("Failed to initialize from tab meta:", e);
         }
@@ -297,7 +293,6 @@ class WorkspaceLayoutModel {
         this.aiPanelWrapperRef = aiPanelWrapperRef;
         this.vtabPanelWrapperRef = vtabPanelWrapperRef ?? null;
         this.vtabVisible = showLeftTabBar ?? false;
-        globalStore.set(this.vtabVisibleAtom, this.vtabVisible);
         this.syncPanelCollapse();
         this.commitLayouts(window.innerWidth);
     }
@@ -428,7 +423,6 @@ class WorkspaceLayoutModel {
     setShowLeftTabBar(showLeftTabBar: boolean): void {
         if (this.vtabVisible === showLeftTabBar) return;
         this.vtabVisible = showLeftTabBar;
-        globalStore.set(this.vtabVisibleAtom, showLeftTabBar);
         this.enableTransitions(250);
         this.syncPanelCollapse();
         this.commitLayouts(window.innerWidth);
