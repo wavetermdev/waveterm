@@ -18,6 +18,7 @@ import {
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
+import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -27,7 +28,6 @@ import { Terminal } from "@xterm/xterm";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
-import { FitAddon } from "./fitaddon";
 import {
     handleOsc16162Command,
     handleOsc52Command,
@@ -109,12 +109,6 @@ export class TermWrap {
     lastPasteData: string = "";
     lastPasteTime: number = 0;
 
-    // for scrollToBottom support during a resize
-    lastAtBottomTime: number = Date.now();
-    lastScrollAtBottom: boolean = true;
-    cachedAtBottomForResize: boolean | null = null;
-    viewportScrollTop: number = 0;
-
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
@@ -148,7 +142,6 @@ export class TermWrap {
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
-        this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
@@ -273,18 +266,6 @@ export class TermWrap {
                 this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
-        const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
-        if (viewportElem) {
-            const scrollHandler = (e: any) => {
-                this.handleViewportScroll(viewportElem);
-            };
-            viewportElem.addEventListener("scroll", scrollHandler);
-            this.toDispose.push({
-                dispose: () => {
-                    viewportElem.removeEventListener("scroll", scrollHandler);
-                },
-            });
-        }
     }
 
     getZoneId(): string {
@@ -518,7 +499,7 @@ export class TermWrap {
             }
         }
         let resolve: () => void = null;
-        let prtn = new Promise<void>((presolve, _) => {
+        const prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
         this.terminal.write(data, () => {
@@ -582,43 +563,9 @@ export class TermWrap {
         }
     }
 
-    setAtBottom(atBottom: boolean) {
-        if (this.lastScrollAtBottom && !atBottom) {
-            this.lastAtBottomTime = Date.now();
-        }
-        this.lastScrollAtBottom = atBottom;
-        if (atBottom) {
-            this.lastAtBottomTime = Date.now();
-        }
-    }
-
-    wasRecentlyAtBottom(): boolean {
-        if (this.lastScrollAtBottom) {
-            return true;
-        }
-        return Date.now() - this.lastAtBottomTime <= 1000;
-    }
-
-    handleViewportScroll(viewportElem: HTMLElement) {
-        const { scrollTop, scrollHeight, clientHeight } = viewportElem;
-        const atBottom = scrollTop + clientHeight >= scrollHeight - clientHeight * 0.5;
-        this.setAtBottom(atBottom);
-        const delta = this.viewportScrollTop - scrollTop;
-        if (isDev() && delta >= 500) {
-            console.log(
-                `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${atBottom}`
-            );
-        }
-        this.viewportScrollTop = scrollTop;
-    }
-
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
-        const atBottom = this.cachedAtBottomForResize ?? this.wasRecentlyAtBottom();
-        if (!atBottom) {
-            this.cachedAtBottomForResize = null;
-        }
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
@@ -626,9 +573,7 @@ export class TermWrap {
                 "[termwrap] resize",
                 `${oldRows}x${oldCols}`,
                 "->",
-                `${this.terminal.rows}x${this.terminal.cols}`,
-                "atBottom:",
-                atBottom
+                `${this.terminal.rows}x${this.terminal.cols}`
             );
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
@@ -636,14 +581,6 @@ export class TermWrap {
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
-        }
-        if (atBottom) {
-            setTimeout(() => {
-                console.log("[termwrap] resize scroll-to-bottom");
-                this.cachedAtBottomForResize = null;
-                this.terminal.scrollToBottom();
-                this.setAtBottom(true);
-            }, 20);
         }
     }
 
