@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { ClientService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
@@ -167,6 +167,7 @@ export class WaveBrowserWindow extends BaseWindow {
             winOpts.titleBarStyle = "hiddenInset";
             winOpts.titleBarOverlay = false;
             winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
+            winOpts.acceptFirstMouse = true;
             if (isTransparent) {
                 winOpts.transparent = true;
             } else if (isBlur) {

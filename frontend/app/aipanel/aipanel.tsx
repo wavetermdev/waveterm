@@ -571,6 +571,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             onDrop={handleDrop}
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
+            data-aipanel="true"
         >
             <ConfigChangeModeFixer />
             {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
