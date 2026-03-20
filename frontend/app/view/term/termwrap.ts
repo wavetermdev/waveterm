@@ -42,7 +42,6 @@ const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
-const IMEDedupWindowMs = 20;
 const MaxRepaintTransactionMs = 2000;
 
 // detect webgl support
@@ -96,13 +95,6 @@ export class TermWrap {
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
-
-    // IME composition state tracking
-    isComposing: boolean = false;
-    composingData: string = "";
-    lastCompositionEnd: number = 0;
-    lastComposedText: string = "";
-    firstDataAfterCompositionSent: boolean = false;
 
     // Paste deduplication
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
@@ -245,9 +237,6 @@ export class TermWrap {
             })
         );
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-            if (e.isComposing && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                return true;
-            }
             if (!waveOptions.keydownHandler) {
                 return true;
             }
@@ -323,33 +312,6 @@ export class TermWrap {
         return this.webglAddon != null;
     }
 
-    resetCompositionState() {
-        this.isComposing = false;
-        this.composingData = "";
-        this.lastComposedText = "";
-        this.lastCompositionEnd = 0;
-        this.firstDataAfterCompositionSent = false;
-    }
-
-    private handleCompositionStart = (e: CompositionEvent) => {
-        dlog("compositionstart", e.data);
-        this.isComposing = true;
-        this.composingData = "";
-    };
-
-    private handleCompositionUpdate = (e: CompositionEvent) => {
-        dlog("compositionupdate", e.data);
-        this.composingData = e.data || "";
-    };
-
-    private handleCompositionEnd = (e: CompositionEvent) => {
-        dlog("compositionend", e.data);
-        this.isComposing = false;
-        this.lastComposedText = e.data || "";
-        this.lastCompositionEnd = Date.now();
-        this.firstDataAfterCompositionSent = false;
-    };
-
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
@@ -374,32 +336,6 @@ export class TermWrap {
         );
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
-        }
-
-        // Register IME composition event listeners on the xterm.js textarea
-        const textareaElem = this.terminal.textarea;
-        if (textareaElem) {
-            textareaElem.addEventListener("compositionstart", this.handleCompositionStart);
-            textareaElem.addEventListener("compositionupdate", this.handleCompositionUpdate);
-            textareaElem.addEventListener("compositionend", this.handleCompositionEnd);
-
-            // Handle blur during composition - reset state to avoid stale data
-            const blurHandler = () => {
-                if (this.isComposing) {
-                    dlog("Terminal lost focus during composition, resetting IME state");
-                    this.resetCompositionState();
-                }
-            };
-            textareaElem.addEventListener("blur", blurHandler);
-
-            this.toDispose.push({
-                dispose: () => {
-                    textareaElem.removeEventListener("compositionstart", this.handleCompositionStart);
-                    textareaElem.removeEventListener("compositionupdate", this.handleCompositionUpdate);
-                    textareaElem.removeEventListener("compositionend", this.handleCompositionEnd);
-                    textareaElem.removeEventListener("blur", blurHandler);
-                },
-            });
         }
 
         this.mainFileSubject = getFileSubject(this.getZoneId(), TermFileName);
@@ -452,17 +388,6 @@ export class TermWrap {
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
-        }
-
-        // IME fix: suppress isComposing=true events unless they immediately follow
-        // a compositionend (within 20ms). This handles CapsLock input method switching
-        // where the composition buffer gets flushed as a spurious isComposing=true event
-        if (this.isComposing) {
-            const timeSinceCompositionEnd = Date.now() - this.lastCompositionEnd;
-            if (timeSinceCompositionEnd > IMEDedupWindowMs) {
-                dlog("Suppressed IME data (composing, not near compositionend):", data);
-                return;
-            }
         }
 
         this.sendDataHandler?.(data);
