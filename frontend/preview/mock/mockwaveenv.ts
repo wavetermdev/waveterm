@@ -310,9 +310,6 @@ export function makeMockRpc(
     setCallHandler("fileread", async (_client, data: FileData) => DefaultMockFilesystem.fileRead(data));
     setCallHandler("filelist", async (_client, data: FileListData) => DefaultMockFilesystem.fileList(data));
     setCallHandler("filejoin", async (_client, data: string[]) => DefaultMockFilesystem.fileJoin(data));
-    setStreamHandler("filereadstream", async function* (_client, data: FileData) {
-        yield* DefaultMockFilesystem.fileReadStream(data);
-    });
     setStreamHandler("fileliststream", async function* (_client, data: FileListData) {
         yield* DefaultMockFilesystem.fileListStream(data);
     });
@@ -461,7 +458,11 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             globalStore.set(waveObjectValueAtomCache.get(oref), obj);
         },
     };
-    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(mergedOverrides.rpc, mergedOverrides.rpcStreaming, mockWosFns);
+    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(
+        mergedOverrides.rpc,
+        mergedOverrides.rpcStreaming,
+        mockWosFns
+    );
     const env = {
         isMock: true,
         mockEnv: mergedOverrides,

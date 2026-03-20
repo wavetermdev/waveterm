@@ -18,7 +18,6 @@ type WshRpcFileInterface interface {
 	FileAppendCommand(ctx context.Context, data FileData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
-	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)

@@ -366,12 +366,6 @@ export class RpcApiType {
         return client.wshRpcCall("fileread", data, opts);
     }
 
-    // command "filereadstream" [responsestream]
-	FileReadStreamCommand(client: WshClient, data: FileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "filereadstream", data, opts);
-        return client.wshRpcStream("filereadstream", data, opts);
-    }
-
     // command "filerestorebackup" [call]
     FileRestoreBackupCommand(client: WshClient, data: CommandFileRestoreBackupData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "filerestorebackup", data, opts);
