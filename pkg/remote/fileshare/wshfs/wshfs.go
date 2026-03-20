@@ -30,6 +30,7 @@ const (
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
 var RpcClient *wshutil.WshRpc
+var RpcClientRouteId string
 
 func parseConnection(ctx context.Context, path string) (*connparse.Connection, error) {
 	conn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, path)

@@ -18,7 +18,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -31,7 +30,6 @@ import (
 const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
 
 var DisableRecursiveFileOpts = true
-
 
 func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, byteRange fileutil.ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
 	innerFilesEntries, err := os.ReadDir(path)
@@ -315,8 +313,25 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	}
 	defer destFile.Close()
 
-	streamChan := wshclient.RemoteStreamFileCommand(wshfs.RpcClient, wshrpc.CommandRemoteStreamFileData{Path: srcConn.Path}, &wshrpc.RpcOpts{Timeout: opts.Timeout, Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
-	if err = fsutil.ReadFileStreamToWriter(readCtx, streamChan, destFile); err != nil {
+	if wshfs.RpcClientRouteId == "" {
+		return false, fmt.Errorf("stream broker route id not available for file copy")
+	}
+	writerRouteId := wshutil.MakeConnectionRouteId(srcConn.Host)
+	reader, streamMeta := wshfs.RpcClient.StreamBroker.CreateStreamReader(wshfs.RpcClientRouteId, writerRouteId, 256*1024)
+	log.Printf("RemoteFileCopyCommand: readroute=%s writeroute=%s", streamMeta.ReaderRouteId, streamMeta.WriterRouteId)
+	defer reader.Close()
+	go func() {
+		<-readCtx.Done()
+		reader.Close()
+	}()
+	streamData := wshrpc.CommandRemoteFileStreamData{
+		Path:       srcConn.Path,
+		StreamMeta: *streamMeta,
+	}
+	if _, err = wshclient.RemoteFileStreamCommand(wshfs.RpcClient, streamData, &wshrpc.RpcOpts{Route: writerRouteId}); err != nil {
+		return false, fmt.Errorf("error starting file stream for %q: %w", data.SrcUri, err)
+	}
+	if _, err = io.Copy(destFile, reader); err != nil {
 		return false, fmt.Errorf("error copying file %q to %q: %w", data.SrcUri, data.DestUri, err)
 	}
 
