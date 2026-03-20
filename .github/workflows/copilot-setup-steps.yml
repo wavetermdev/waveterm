@@ -48,7 +48,7 @@ jobs:
                   git config --global url.https://github.com/.insteadof git@github.com:
 
             # Warm caches only (no builds)
-            - uses: nick-fields/retry@v3
+            - uses: nick-fields/retry@v4
               name: npm ci
               with:
                   command: npm ci --no-audit --no-fund
