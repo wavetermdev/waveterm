@@ -357,6 +357,9 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
+		if data.Opts == nil {
+			data.Opts = &wshrpc.FileListOpts{}
+		}
 		innerFilesEntries := []os.DirEntry{}
 		seen := 0
 		if data.Opts.Limit == 0 {
