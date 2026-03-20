@@ -50,15 +50,6 @@ func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	return fsutil.ReadStreamToFileData(ctx, rtnCh)
 }
 
-func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	log.Printf("ReadStream: %v", data.Info.Path)
-	conn, err := parseConnection(ctx, data.Info.Path)
-	if err != nil {
-		return wshutil.SendErrCh[wshrpc.FileData](err)
-	}
-	return readStream(conn, data)
-}
-
 func readStream(conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	byteRange := ""
 	if data.At != nil && data.At.Size > 0 {
