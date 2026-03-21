@@ -285,6 +285,8 @@ export class WaveConfigViewModel implements ViewModel {
         const originalContent = globalStore.get(this.originalContentAtom);
         globalStore.set(this.fileContentAtom, originalContent);
         globalStore.set(this.hasEditedAtom, false);
+        globalStore.set(this.validationErrorAtom, null);
+        globalStore.set(this.errorMessageAtom, null);
     }
 
     markAsEdited() {
