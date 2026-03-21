@@ -232,6 +232,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 <button
                                     onClick={() => {
                                         if (!model.confirmDiscardChanges()) return;
+                                        model.discardChanges();
                                         setActiveTab("visual");
                                     }}
                                     className={cn(
