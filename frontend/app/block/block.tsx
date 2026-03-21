@@ -226,6 +226,9 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
             return;
         }
         focusElemRef.current?.focus({ preventScroll: true });
+        requestAnimationFrame(() => {
+            viewModel?.giveFocus?.();
+        });
     }, [viewModel]);
 
     const focusFromPointerEnter = useCallback(
