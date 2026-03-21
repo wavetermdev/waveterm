@@ -77,6 +77,32 @@ const ToolDesc = memo(({ text, className }: ToolDescProps) => {
 
 ToolDesc.displayName = "ToolDesc";
 
+// Extract directory path from a tool description like: reading "/path/to/file" (...)
+function extractDirFromToolDesc(toolDesc: string): string | null {
+    const match = toolDesc?.match(/(?:reading|reading directory)\s+"([^"]+)"/);
+    if (!match) return null;
+    const filePath = match[1];
+    // For "reading directory" — the path itself is the directory
+    if (toolDesc.startsWith("reading directory")) {
+        return filePath;
+    }
+    // For "reading" (file) — get parent directory
+    const lastSlash = filePath.lastIndexOf("/");
+    if (lastSlash < 0) return filePath;
+    if (lastSlash === 0) return "/";
+    return filePath.substring(0, lastSlash);
+}
+
+// Extract all unique directories from a set of tool use parts
+function extractDirsFromParts(parts: Array<WaveUIMessagePart & { type: "data-tooluse" }>): string[] {
+    const dirs = new Set<string>();
+    for (const part of parts) {
+        const dir = extractDirFromToolDesc(part.data.tooldesc);
+        if (dir) dirs.add(dir);
+    }
+    return Array.from(dirs);
+}
+
 function getEffectiveApprovalStatus(baseApproval: string, isStreaming: boolean): string {
     return !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
 }
@@ -85,9 +111,11 @@ interface AIToolApprovalButtonsProps {
     count: number;
     onApprove: () => void;
     onDeny: () => void;
+    onAllowSession?: () => void;
+    showSessionButton?: boolean;
 }
 
-const AIToolApprovalButtons = memo(({ count, onApprove, onDeny }: AIToolApprovalButtonsProps) => {
+const AIToolApprovalButtons = memo(({ count, onApprove, onDeny, onAllowSession, showSessionButton }: AIToolApprovalButtonsProps) => {
     const approveText = count > 1 ? `Approve All (${count})` : "Approve";
     const denyText = count > 1 ? "Deny All" : "Deny";
 
@@ -99,6 +127,15 @@ const AIToolApprovalButtons = memo(({ count, onApprove, onDeny }: AIToolApproval
             >
                 {approveText}
             </button>
+            {showSessionButton && onAllowSession && (
+                <button
+                    onClick={onAllowSession}
+                    className="px-3 py-1 border border-green-700 text-green-400 hover:border-green-500 hover:text-green-300 text-sm rounded cursor-pointer transition-colors"
+                    title="Auto-approve all file reads under this directory for the rest of this session"
+                >
+                    Allow reading in this session
+                </button>
+            )}
             <button
                 onClick={onDeny}
                 className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
@@ -165,6 +202,19 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
         });
     };
 
+    const handleAllowSession = () => {
+        const dirs = extractDirsFromParts(parts);
+        const model = WaveAIModel.getInstance();
+        for (const dir of dirs) {
+            model.sessionReadApprove(dir);
+        }
+        handleApprove();
+    };
+
+    const isReadOp = parts.some(
+        (p) => p.data.toolname === "read_text_file" || p.data.toolname === "read_dir"
+    );
+
     return (
         <div className="flex items-start gap-2 p-2 rounded bg-zinc-800/60 border border-zinc-700">
             <div className="flex-1">
@@ -175,7 +225,13 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
                     ))}
                 </div>
                 {effectiveApproval === "needs-approval" && (
-                    <AIToolApprovalButtons count={parts.length} onApprove={handleApprove} onDeny={handleDeny} />
+                    <AIToolApprovalButtons
+                        count={parts.length}
+                        onApprove={handleApprove}
+                        onDeny={handleDeny}
+                        onAllowSession={handleAllowSession}
+                        showSessionButton={isReadOp}
+                    />
                 )}
             </div>
         </div>
@@ -215,6 +271,8 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         };
     }, []);
 
+    const isReadTool = toolData.toolname === "read_text_file" || toolData.toolname === "read_dir";
+
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
         WaveAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-approved");
@@ -223,6 +281,14 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const handleDeny = () => {
         setUserApprovalOverride("user-denied");
         WaveAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-denied");
+    };
+
+    const handleAllowSession = () => {
+        const dir = extractDirFromToolDesc(toolData.tooldesc);
+        if (dir) {
+            WaveAIModel.getInstance().sessionReadApprove(dir);
+        }
+        handleApprove();
     };
 
     const handleMouseEnter = () => {
@@ -309,7 +375,13 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
             )}
             {effectiveApproval === "needs-approval" && (
                 <div className="pl-6">
-                    <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
+                    <AIToolApprovalButtons
+                        count={1}
+                        onApprove={handleApprove}
+                        onDeny={handleDeny}
+                        onAllowSession={handleAllowSession}
+                        showSessionButton={isReadTool}
+                    />
                 </div>
             )}
             {showRestoreModal && <RestoreBackupModal part={part} />}

@@ -724,6 +724,11 @@ declare global {
         modifiedcontents64: string;
     };
 
+    // wshrpc.CommandWaveAISessionReadApproveData
+    type CommandWaveAISessionReadApproveData = {
+        path: string;
+    };
+
     // wshrpc.CommandWaveAIToolApproveData
     type CommandWaveAIToolApproveData = {
         toolcallid: string;

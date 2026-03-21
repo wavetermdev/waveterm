@@ -166,6 +166,17 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 		},
 		ToolAnyCallback: readDirCallback,
 		ToolApproval: func(input any) string {
+			parsed, err := parseReadDirInput(input)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			expandedPath, err := wavebase.ExpandHomeDir(parsed.Path)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			if IsSessionReadApproved(expandedPath) {
+				return uctypes.ApprovalAutoApproved
+			}
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyReadDirInput,

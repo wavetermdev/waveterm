@@ -1308,6 +1308,14 @@ func (ws *WshServer) WaveAIToolApproveCommand(ctx context.Context, data wshrpc.C
 	return aiusechat.UpdateToolApproval(data.ToolCallId, data.Approval)
 }
 
+func (ws *WshServer) WaveAISessionReadApproveCommand(ctx context.Context, data wshrpc.CommandWaveAISessionReadApproveData) error {
+	if data.Path == "" {
+		return fmt.Errorf("path is required")
+	}
+	aiusechat.AddSessionReadApproval(data.Path)
+	return nil
+}
+
 func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.CommandWaveAIGetToolDiffData) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
 	originalContent, modifiedContent, err := aiusechat.CreateWriteTextFileDiff(ctx, data.ChatId, data.ToolCallId)
 	if err != nil {

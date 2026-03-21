@@ -403,6 +403,17 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 		},
 		ToolAnyCallback: readTextFileCallback,
 		ToolApproval: func(input any) string {
+			parsed, err := parseReadTextFileInput(input)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			expandedPath, err := wavebase.ExpandHomeDir(parsed.Filename)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			if IsSessionReadApproved(expandedPath) {
+				return uctypes.ApprovalAutoApproved
+			}
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyReadTextFileInput,

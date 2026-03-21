@@ -997,6 +997,12 @@ func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToo
 	return resp, err
 }
 
+// command "waveaisessionreadapprove", wshserver.WaveAISessionReadApproveCommand
+func WaveAISessionReadApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAISessionReadApproveData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "waveaisessionreadapprove", data, opts)
+	return err
+}
+
 // command "waveaitoolapprove", wshserver.WaveAIToolApproveCommand
 func WaveAIToolApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIToolApproveData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "waveaitoolapprove", data, opts)
