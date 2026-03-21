@@ -4,6 +4,7 @@
 package aiusechat
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -40,9 +41,57 @@ func AddSessionReadApproval(dirPath string) {
 	globalSessionApproval.approvedPaths[cleaned] = true
 }
 
+// isSensitivePath checks if a path is or falls under a sensitive directory
+// that should never be auto-approved, even with session approval.
+func isSensitivePath(expandedPath string) bool {
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		homeDir = os.Getenv("USERPROFILE")
+	}
+	cleanPath := filepath.Clean(expandedPath)
+
+	sensitiveDirs := []string{
+		filepath.Join(homeDir, ".ssh"),
+		filepath.Join(homeDir, ".aws"),
+		filepath.Join(homeDir, ".gnupg"),
+		filepath.Join(homeDir, ".password-store"),
+		filepath.Join(homeDir, ".secrets"),
+		filepath.Join(homeDir, ".kube"),
+		filepath.Join(homeDir, "Library", "Keychains"),
+		"/Library/Keychains",
+		"/etc/sudoers.d",
+	}
+
+	for _, dir := range sensitiveDirs {
+		dirWithSep := dir + string(filepath.Separator)
+		if cleanPath == dir || strings.HasPrefix(cleanPath, dirWithSep) {
+			return true
+		}
+	}
+
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		credPath := filepath.Join(localAppData, "Microsoft", "Credentials")
+		if cleanPath == credPath || strings.HasPrefix(cleanPath, credPath+string(filepath.Separator)) {
+			return true
+		}
+	}
+	if appData := os.Getenv("APPDATA"); appData != "" {
+		credPath := filepath.Join(appData, "Microsoft", "Credentials")
+		if cleanPath == credPath || strings.HasPrefix(cleanPath, credPath+string(filepath.Separator)) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // IsSessionReadApproved checks if a file path falls under any session-approved directory.
+// Sensitive paths (e.g. ~/.ssh, ~/.aws) are never auto-approved.
 func IsSessionReadApproved(filePath string) bool {
 	cleaned := filepath.Clean(filePath)
+	if isSensitivePath(cleaned) {
+		return false
+	}
 	globalSessionApproval.mu.RLock()
 	defer globalSessionApproval.mu.RUnlock()
 	for approvedDir := range globalSessionApproval.approvedPaths {
