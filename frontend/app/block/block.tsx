@@ -144,6 +144,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const focusElemRef = useRef<HTMLInputElement>(null);
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
+    const pendingFocusRafRef = useRef<number | null>(null);
     const [blockClicked, setBlockClicked] = useState(false);
     const blockView = useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view")) ?? "";
     const isFocused = useAtomValue(nodeModel.isFocused);
@@ -155,6 +156,14 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const focusFollowsCursorMode = useAtomValue(waveEnv.getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
     const noPadding = useAtomValueSafe(viewModel.noPadding);
+
+    useEffect(() => {
+        return () => {
+            if (pendingFocusRafRef.current != null) {
+                cancelAnimationFrame(pendingFocusRafRef.current);
+            }
+        };
+    }, []);
 
     useLayoutEffect(() => {
         setBlockClicked(isFocused);
@@ -221,12 +230,17 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     );
 
     const setFocusTarget = useCallback(() => {
+        if (pendingFocusRafRef.current != null) {
+            cancelAnimationFrame(pendingFocusRafRef.current);
+            pendingFocusRafRef.current = null;
+        }
         const ok = viewModel?.giveFocus?.();
         if (ok) {
             return;
         }
         focusElemRef.current?.focus({ preventScroll: true });
-        requestAnimationFrame(() => {
+        pendingFocusRafRef.current = requestAnimationFrame(() => {
+            pendingFocusRafRef.current = null;
             viewModel?.giveFocus?.();
         });
     }, [viewModel]);
