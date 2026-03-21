@@ -231,7 +231,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                             <div className="flex gap-0 border-b border-border">
                                 <button
                                     onClick={() => {
-                                        if (activeTab === "json" && !model.confirmDiscardChanges()) return;
+                                        if (!model.confirmDiscardChanges()) return;
                                         setActiveTab("visual");
                                     }}
                                     className={cn(
@@ -243,6 +243,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 >
                                     Visual
                                 </button>
+                                {/* No guard needed: visual tab saves changes immediately via RPC */}
                                 <button
                                     onClick={() => setActiveTab("json")}
                                     className={cn(
