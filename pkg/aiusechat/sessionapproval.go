@@ -24,21 +24,37 @@ var globalSessionApproval = &SessionApprovalRegistry{
 	approvedPaths: make(map[string]bool),
 }
 
-// AddSessionReadApproval adds a directory path to the session-level read approval list.
-// All files under this directory (and subdirectories) will be auto-approved for reading.
-func AddSessionReadApproval(dirPath string) {
-	expanded, err := wavebase.ExpandHomeDir(dirPath)
+// canonicalizePath expands ~, cleans, and resolves symlinks for a path.
+// Falls back to cleaned path if symlink resolution fails (e.g. path doesn't exist yet).
+func canonicalizePath(rawPath string) string {
+	expanded, err := wavebase.ExpandHomeDir(rawPath)
 	if err != nil {
-		expanded = dirPath
+		expanded = rawPath
 	}
 	cleaned := filepath.Clean(expanded)
-	if !strings.HasSuffix(cleaned, string(filepath.Separator)) {
-		cleaned += string(filepath.Separator)
+	resolved, err := filepath.EvalSymlinks(cleaned)
+	if err != nil {
+		return cleaned
 	}
-	logutil.DevPrintf("session read approval added: %s\n", cleaned)
+	return resolved
+}
+
+// AddSessionReadApproval adds a directory path to the session-level read approval list.
+// All files under this directory (and subdirectories) will be auto-approved for reading.
+// The path is canonicalized (symlinks resolved) to prevent bypass via symlinked directories.
+func AddSessionReadApproval(dirPath string) {
+	canonical := canonicalizePath(dirPath)
+	if isSensitivePath(canonical) {
+		logutil.DevPrintf("session read approval rejected (sensitive path): %s\n", canonical)
+		return
+	}
+	if !strings.HasSuffix(canonical, string(filepath.Separator)) {
+		canonical += string(filepath.Separator)
+	}
+	logutil.DevPrintf("session read approval added: %s\n", canonical)
 	globalSessionApproval.mu.Lock()
 	defer globalSessionApproval.mu.Unlock()
-	globalSessionApproval.approvedPaths[cleaned] = true
+	globalSessionApproval.approvedPaths[canonical] = true
 }
 
 // isSensitivePath checks if a path is or falls under a sensitive directory
@@ -86,16 +102,17 @@ func isSensitivePath(expandedPath string) bool {
 }
 
 // IsSessionReadApproved checks if a file path falls under any session-approved directory.
+// The path is canonicalized (symlinks resolved) to prevent bypass.
 // Sensitive paths (e.g. ~/.ssh, ~/.aws) are never auto-approved.
 func IsSessionReadApproved(filePath string) bool {
-	cleaned := filepath.Clean(filePath)
-	if isSensitivePath(cleaned) {
+	canonical := canonicalizePath(filePath)
+	if isSensitivePath(canonical) {
 		return false
 	}
 	globalSessionApproval.mu.RLock()
 	defer globalSessionApproval.mu.RUnlock()
 	for approvedDir := range globalSessionApproval.approvedPaths {
-		if strings.HasPrefix(cleaned, approvedDir) || cleaned == strings.TrimSuffix(approvedDir, string(filepath.Separator)) {
+		if strings.HasPrefix(canonical, approvedDir) || canonical == strings.TrimSuffix(approvedDir, string(filepath.Separator)) {
 			return true
 		}
 	}
