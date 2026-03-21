@@ -274,6 +274,13 @@ export class WaveConfigViewModel implements ViewModel {
         return globalStore.get(this.hasEditedAtom);
     }
 
+    confirmDiscardChanges(): boolean {
+        if (!this.hasChanges()) {
+            return true;
+        }
+        return window.confirm("You have unsaved changes. Discard and continue?");
+    }
+
     markAsEdited() {
         globalStore.set(this.hasEditedAtom, true);
     }
