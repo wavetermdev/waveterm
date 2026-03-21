@@ -241,7 +241,9 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         focusElemRef.current?.focus({ preventScroll: true });
         pendingFocusRafRef.current = requestAnimationFrame(() => {
             pendingFocusRafRef.current = null;
-            viewModel?.giveFocus?.();
+            if (blockRef.current?.contains(document.activeElement)) {
+                viewModel?.giveFocus?.();
+            }
         });
     }, [viewModel]);
 
