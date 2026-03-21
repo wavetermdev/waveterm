@@ -319,7 +319,6 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): 
     if (atom == null) {
         atom = makeFn();
         blockCache.set(name, atom);
-        console.log("New BlockAtom", blockId, name);
     }
     return atom as Atom<T>;
 }
@@ -666,8 +665,8 @@ export {
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
-    getConnConfigKeyAtom,
     getBlockTermDurableAtom,
+    getConnConfigKeyAtom,
     getConnStatusAtom,
     getFocusedBlockId,
     getHostName,
