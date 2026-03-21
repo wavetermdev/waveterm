@@ -86,10 +86,10 @@ function extractDirFromToolDesc(toolDesc: string): string | null {
     if (toolDesc.startsWith("reading directory")) {
         return filePath;
     }
-    // For "reading" (file) — get parent directory
-    const lastSlash = filePath.lastIndexOf("/");
+    // For "reading" (file) — get parent directory (handle both / and \ separators)
+    const lastSlash = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
     if (lastSlash < 0) return filePath;
-    if (lastSlash === 0) return "/";
+    if (lastSlash === 0) return filePath.substring(0, 1);
     return filePath.substring(0, lastSlash);
 }
 
