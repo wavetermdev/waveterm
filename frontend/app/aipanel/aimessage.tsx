@@ -2,8 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveStreamdown } from "@/app/element/streamdown";
-import { cn } from "@/util/util";
-import { memo, useEffect, useRef } from "react";
+import { atoms, globalStore } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import * as WOS from "@/app/store/wos";
+import { cn, stringToBase64 } from "@/util/util";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
@@ -110,8 +114,32 @@ interface AIMessagePartProps {
     isStreaming: boolean;
 }
 
+function findFirstTerminalBlockId(): string | null {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const tabObj = WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabId));
+    if (!tabObj?.blockids) return null;
+    for (const blockId of tabObj.blockids) {
+        const block = WOS.getObjectValue<Block>(WOS.makeORef("block", blockId));
+        if (block?.meta?.view === "term") {
+            return blockId;
+        }
+    }
+    return null;
+}
+
+function sendCommandToTerminal(cmd: string) {
+    const blockId = findFirstTerminalBlockId();
+    if (!blockId) return;
+    const b64data = stringToBase64(cmd + "\n");
+    RpcApi.ControllerInputCommand(TabRpcClient, { blockid: blockId, inputdata64: b64data });
+}
+
 const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => {
     const model = WaveAIModel.getInstance();
+
+    const handleExecute = useCallback((cmd: string) => {
+        sendCommandToTerminal(cmd);
+    }, []);
 
     if (part.type === "text") {
         const content = part.text ?? "";
@@ -125,6 +153,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
                     parseIncompleteMarkdown={isStreaming}
                     className="text-gray-100"
                     codeBlockMaxWidthAtom={model.codeBlockMaxWidth}
+                    onClickExecute={handleExecute}
                 />
             );
         }

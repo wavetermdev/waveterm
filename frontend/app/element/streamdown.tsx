@@ -148,6 +148,7 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
     };
 
     const language = getLanguage(children);
+    const isShellLanguage = /^(bash|sh|shell|zsh|fish|ksh|csh|tcsh|powershell|pwsh|cmd|bat)$/i.test(language);
 
     return (
         <div
@@ -162,7 +163,7 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
                 <span className="text-[11px] text-white/50">{language}</span>
                 <div className="flex items-center gap-2">
                     <CopyButton onClick={handleCopy} title="Copy" />
-                    {onClickExecute && (
+                    {onClickExecute && isShellLanguage && (
                         <IconButton
                             decl={{
                                 elemtype: "iconbutton",
