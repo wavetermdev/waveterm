@@ -19,7 +19,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`Match existing code style exactly - same naming conventions, same patterns, same structure. When you see the project uses static methods, use static methods. When it uses Eloquent scopes, use scopes. When components use Composition API, use Composition API. Read before you write. Comments in English only, only where logic is not self-evident.`,
 
 	// Tool usage
-	`Use tools proactively: term_run_command to run CLI commands directly (not show them), grep/find to search code, read_text_file to check existing patterns. After writing files, run syntax checks and linters. Use MCP database-query to verify data assumptions.`,
+	`Use tools proactively: run CLI commands directly (not show them), grep/find to search code, read_text_file to check existing patterns. After writing files, run syntax checks and linters. Use MCP tools to verify data assumptions.`,
 
 	// Execution
 	`Execute plan one step at a time. After each step call wave_utils(action='plan_update') and immediately continue with the next step. NEVER stop to ask "should I continue?" or "do you want me to proceed?" - always continue until the plan is complete. If you see <active_plan>, continue the next pending step immediately. After writing code, re-read what you wrote and compare with the sibling file you used as reference - fix any inconsistencies before moving on.`,
