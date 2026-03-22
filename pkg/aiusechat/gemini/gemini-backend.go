@@ -107,6 +107,7 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	var allTools []uctypes.ToolDefinition
 	allTools = append(allTools, chatOpts.Tools...)
 	allTools = append(allTools, chatOpts.TabTools...)
+	allTools = append(allTools, chatOpts.MCPTools...)
 
 	if len(allTools) > 0 {
 		var functionDeclarations []GeminiFunctionDeclaration
@@ -132,6 +133,9 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	// Injected data - append to last user message as separate parts
 	if chatOpts.TabState != "" {
 		appendPartToLastUserMessage(reqBody.Contents, chatOpts.TabState)
+	}
+	if chatOpts.MCPState != "" {
+		appendPartToLastUserMessage(reqBody.Contents, chatOpts.MCPState)
 	}
 	if chatOpts.PlatformInfo != "" {
 		appendPartToLastUserMessage(reqBody.Contents, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")

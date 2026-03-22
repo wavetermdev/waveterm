@@ -221,6 +221,9 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(inputs, chatOpts.TabState)
 	}
+	if chatOpts.MCPState != "" {
+		appendToLastUserMessage(inputs, chatOpts.MCPState)
+	}
 	if chatOpts.PlatformInfo != "" {
 		appendToLastUserMessage(inputs, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
 	}
@@ -260,6 +263,10 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		reqBody.Tools = tools
 	}
 	for _, tool := range chatOpts.TabTools {
+		convertedTool := ConvertToolDefinitionToOpenAI(tool)
+		reqBody.Tools = append(reqBody.Tools, convertedTool)
+	}
+	for _, tool := range chatOpts.MCPTools {
 		convertedTool := ConvertToolDefinitionToOpenAI(tool)
 		reqBody.Tools = append(reqBody.Tools, convertedTool)
 	}

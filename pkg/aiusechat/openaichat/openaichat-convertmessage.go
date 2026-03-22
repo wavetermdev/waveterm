@@ -96,6 +96,9 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(finalMessages, chatOpts.TabState)
 	}
+	if chatOpts.MCPState != "" {
+		appendToLastUserMessage(finalMessages, chatOpts.MCPState)
+	}
 	if chatOpts.PlatformInfo != "" {
 		appendToLastUserMessage(finalMessages, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
 	}
@@ -121,6 +124,7 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	if opts.HasCapability(uctypes.AICapabilityTools) {
 		allTools = append(allTools, chatOpts.Tools...)
 		allTools = append(allTools, chatOpts.TabTools...)
+		allTools = append(allTools, chatOpts.MCPTools...)
 		if len(allTools) > 0 {
 			reqBody.Tools = convertToolDefinitions(allTools, opts.Capabilities)
 		}
