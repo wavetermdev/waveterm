@@ -39,7 +39,7 @@ import (
 )
 
 const DefaultAPI = uctypes.APIType_OpenAIResponses
-const DefaultMaxTokens = 4 * 1024
+const DefaultMaxTokens = 16 * 1024
 const BuilderMaxTokens = 24 * 1024
 
 func init() {
@@ -734,21 +734,35 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		sessionhistory.RegisterChatTab(req.ChatID, req.TabId)
 	}
 
-	// Notify AI about previous session history availability
-	if req.TabId != "" {
-		prevSession := sessionhistory.LoadSessionHistory(req.TabId)
-		if prevSession != "" {
-			chatOpts.SystemPrompt = append(chatOpts.SystemPrompt,
-				"A previous session history exists for this tab. Use the session_history tool to read what was done before when you need context about previous work, or when the user references something from earlier.")
-		}
-	}
-
-	// Notify AI about project instructions file availability
+	// Inject project context
 	if req.TabId != "" {
 		cwd := getTerminalCwd(r.Context(), req.TabId)
-		if cwd != "" && projectctx.FindInstructionsFile(cwd) != "" {
-			chatOpts.SystemPrompt = append(chatOpts.SystemPrompt,
-				"Project coding instructions file found (CLAUDE.md or similar). Use the project_instructions tool to read project conventions and architecture before writing code. You can filter by file extension (e.g., 'php', 'vue') to get only relevant sections.")
+		if cwd != "" {
+			// Project stack info (name, tech stack, architecture) - always injected (~50 tokens)
+			if stack := projectctx.ExtractProjectStack(cwd); stack != "" {
+				chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, stack)
+			}
+			// Critical rules from CLAUDE.md/WAVE.md - always injected (~100 tokens)
+			if rules := projectctx.ExtractCriticalRules(cwd); rules != "" {
+				chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, rules)
+			}
+			// First message only: project structure + hints
+			if chatstore.DefaultChatStore.CountUserMessages(req.ChatID) == 0 {
+				if tree := projectctx.GetProjectTree(cwd, 2); tree != "" {
+					chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, tree)
+				}
+				// Hints about available context (compact)
+				var hints []string
+				if projectctx.FindInstructionsFile(cwd) != "" {
+					hints = append(hints, "project_instructions available via wave_utils")
+				}
+				if sessionhistory.LoadSessionHistory(req.TabId) != "" {
+					hints = append(hints, "previous session history available via wave_utils(action='session_history')")
+				}
+				if len(hints) > 0 {
+					chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, "Context: "+strings.Join(hints, "; ")+".")
+				}
+			}
 		}
 	}
 

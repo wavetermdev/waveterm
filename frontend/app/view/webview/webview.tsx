@@ -1068,8 +1068,19 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         webview.addEventListener("media-paused", handleMediaPaused);
         webview.addEventListener("found-in-page", onFoundInPage);
 
+        // Track page title for AI context
+        const pageTitleHandler = (e: any) => {
+            const title = e.title || "";
+            model.env.rpc.SetMetaCommand(TabRpcClient, {
+                oref: makeORef("block", model.blockId),
+                meta: { "web:title": title } as any,
+            });
+        };
+        webview.addEventListener("page-title-updated", pageTitleHandler);
+
         // Clean up event listeners on component unmount
         return () => {
+            webview.removeEventListener("page-title-updated", pageTitleHandler);
             webview.removeEventListener("did-frame-navigate", navigateListener);
             webview.removeEventListener("did-navigate", navigateListener);
             webview.removeEventListener("did-navigate-in-page", navigateListener);

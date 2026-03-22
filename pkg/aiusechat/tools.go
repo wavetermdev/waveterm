@@ -102,8 +102,13 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		}
 		return "file and directory preview widget"
 	case "web":
-		if url, hasUrl := block.Meta["url"].(string); hasUrl && url != "" {
-			return fmt.Sprintf("web browser widget pointing at %q", url)
+		url, _ := block.Meta["url"].(string)
+		title, _ := block.Meta["web:title"].(string)
+		if url != "" && title != "" {
+			return fmt.Sprintf("web browser: %q (%s)", title, url)
+		}
+		if url != "" {
+			return fmt.Sprintf("web browser: %s", url)
 		}
 		return "web browser widget"
 	case "waveai":

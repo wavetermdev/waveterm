@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiplan"
@@ -24,7 +25,7 @@ func GetWaveUtilsToolDefinition(tabId string) uctypes.ToolDefinition {
 		Description: "Utility tool. Actions: " +
 			"session_history - previous session; " +
 			"project_instructions - read CLAUDE.md/WAVE.md (params: sections, file_ext); " +
-			"plan_create - multi-step plan (params: name, steps[]); " +
+			"plan_create - multi-step plan (params: name, steps[{label,details}] - include concrete requirements, file paths, conventions in details); " +
 			"plan_update - mark step done/failed (params: step_id, status, result); " +
 			"plan_status - check progress",
 		ShortDescription: "Session history, project instructions, plans",
@@ -121,7 +122,12 @@ func GetWaveUtilsToolDefinition(tabId string) uctypes.ToolDefinition {
 				for i, s := range sectionsRaw {
 					requested[i] = fmt.Sprintf("%v", s)
 				}
-				return formatRequestedSections(allInstructions, requested, fileExt), nil
+				result := formatRequestedSections(allInstructions, requested, fileExt)
+				// Fallback: if no sections matched, return table of contents so AI can retry
+				if strings.HasPrefix(result, "No sections found") {
+					return result + "\n\n" + formatTableOfContents(allInstructions, fileExt), nil
+				}
+				return result, nil
 
 			case "plan_create":
 				name, _ := params["name"].(string)
@@ -130,11 +136,27 @@ func GetWaveUtilsToolDefinition(tabId string) uctypes.ToolDefinition {
 				if name == "" || len(stepsRaw) == 0 {
 					return "", fmt.Errorf("plan_create requires name and steps")
 				}
-				labels := make([]string, len(stepsRaw))
-				for i, s := range stepsRaw {
-					labels[i] = fmt.Sprintf("%v", s)
+				var labels []string
+				var details []string
+				for _, s := range stepsRaw {
+					switch v := s.(type) {
+					case string:
+						labels = append(labels, v)
+						details = append(details, "")
+					case map[string]any:
+						l, _ := v["label"].(string)
+						d, _ := v["details"].(string)
+						if l == "" {
+							l = fmt.Sprintf("%v", s)
+						}
+						labels = append(labels, l)
+						details = append(details, d)
+					default:
+						labels = append(labels, fmt.Sprintf("%v", s))
+						details = append(details, "")
+					}
 				}
-				plan, err := aiplan.CreatePlan(tabId, name, desc, labels)
+				plan, err := aiplan.CreatePlanWithDetails(tabId, name, desc, labels, details)
 				if err != nil {
 					return "", err
 				}

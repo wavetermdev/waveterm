@@ -94,9 +94,12 @@ func getTermScrollbackOutput(tabId string, widgetId string, rpcData wshrpc.Comma
 	result, err := wshclient.TermGetScrollbackLinesCommand(
 		rpcClient,
 		rpcData,
-		&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(fullBlockId)},
+		&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(fullBlockId), Timeout: 5000},
 	)
 	if err != nil {
+		if strings.Contains(err.Error(), "no route") {
+			return nil, fmt.Errorf("terminal widget %s is not active - make sure it is visible on screen. Try using term_run_command instead", widgetId)
+		}
 		return nil, err
 	}
 

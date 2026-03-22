@@ -59,7 +59,7 @@ export class WaveAIModel {
     mcpContextAtom!: jotai.Atom<boolean>;
     mcpCwdAtom!: jotai.Atom<string>;
     showMCPConnectInput: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
-    showApiKeyInput: jotai.PrimitiveAtom<{ presetKey: string; secretName: string; secretLabel: string } | null> = jotai.atom(null) as any;
+    showApiKeyInput: jotai.PrimitiveAtom<{ presetKey: string; secretName: string; secretLabel: string } | null> = jotai.atom(null as any);
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
     currentAIMode!: jotai.PrimitiveAtom<string>;

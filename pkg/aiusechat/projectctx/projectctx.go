@@ -258,3 +258,155 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// criticalKeywords are patterns that indicate mandatory rules the AI must always follow.
+var criticalKeywords = []string{
+	"must", "always", "never", "required", "mandatory", "enforce",
+	"every change", "after change", "before commit",
+	"pint", "lint", "format", "test",
+}
+
+// ExtractCriticalRules scans all instruction files in the directory and extracts
+// short, mandatory rules (lines containing critical keywords).
+// Returns a compact string (~100-200 tokens) injected into every system prompt.
+func ExtractCriticalRules(dir string) string {
+	files := FindAllInstructionsFiles(dir)
+	if len(files) == 0 {
+		return ""
+	}
+
+	var rules []string
+	seen := make(map[string]bool)
+
+	for _, filePath := range files {
+		pi, err := ParseInstructions(filePath)
+		if err != nil {
+			continue
+		}
+		for _, section := range pi.Sections {
+			lines := strings.Split(section.Content, "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" || len(line) < 10 || len(line) > 200 {
+					continue
+				}
+				lineLower := strings.ToLower(line)
+				for _, kw := range criticalKeywords {
+					if strings.Contains(lineLower, kw) {
+						// Clean up markdown formatting
+						clean := strings.TrimLeft(line, "- *>")
+						clean = strings.TrimSpace(clean)
+						if clean != "" && !seen[clean] {
+							seen[clean] = true
+							rules = append(rules, clean)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if len(rules) == 0 {
+		return ""
+	}
+
+	// Limit to most important rules
+	if len(rules) > 10 {
+		rules = rules[:10]
+	}
+
+	return "<project_rules>\n" + strings.Join(rules, "\n") + "\n</project_rules>"
+}
+
+// ExtractProjectStack extracts the project overview/stack section from instruction files.
+// Returns a compact string with project name, tech stack, and key architectural decisions.
+func ExtractProjectStack(dir string) string {
+	files := FindAllInstructionsFiles(dir)
+	if len(files) == 0 {
+		return ""
+	}
+
+	for _, filePath := range files {
+		pi, err := ParseInstructions(filePath)
+		if err != nil || pi == nil {
+			continue
+		}
+		// Find first overview section
+		for _, section := range pi.Sections {
+			if isOverviewSection(section.Heading) {
+				content := section.Content
+				// Truncate to keep it compact
+				if len(content) > 500 {
+					content = content[:500] + "..."
+				}
+				return "<project_stack>\n" + content + "\n</project_stack>"
+			}
+		}
+	}
+	return ""
+}
+
+// skipDirs are directories to skip when building project tree.
+var skipDirs = map[string]bool{
+	"node_modules": true, "vendor": true, ".git": true,
+	".idea": true, ".vscode": true, "dist": true,
+	"build": true, "storage": true, ".next": true,
+	"__pycache__": true, ".cache": true, "tmp": true,
+}
+
+// GetProjectTree returns a compact directory tree of the project (max depth levels).
+// Injected on first message so AI knows the project structure.
+func GetProjectTree(dir string, maxDepth int) string {
+	var sb strings.Builder
+	sb.WriteString("<project_structure>\n")
+	buildTree(&sb, dir, "", 0, maxDepth)
+	sb.WriteString("</project_structure>")
+
+	result := sb.String()
+	// Limit size to avoid eating too many tokens
+	const maxLen = 3000
+	if len(result) > maxLen {
+		result = result[:maxLen] + "\n...\n</project_structure>"
+	}
+	return result
+}
+
+func buildTree(sb *strings.Builder, dir string, prefix string, depth int, maxDepth int) {
+	if depth >= maxDepth {
+		return
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	// Separate dirs and files
+	var dirs []os.DirEntry
+	var files []os.DirEntry
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, ".") && depth == 0 && e.IsDir() {
+			continue // skip hidden dirs at root
+		}
+		if e.IsDir() {
+			if !skipDirs[name] {
+				dirs = append(dirs, e)
+			}
+		} else {
+			files = append(files, e)
+		}
+	}
+
+	// Show files at this level (just names, no details)
+	for _, f := range files {
+		sb.WriteString(prefix + f.Name() + "\n")
+	}
+
+	// Recurse into dirs
+	for _, d := range dirs {
+		sb.WriteString(prefix + d.Name() + "/\n")
+		buildTree(sb, filepath.Join(dir, d.Name()), prefix+"  ", depth+1, maxDepth)
+	}
+}

@@ -30,6 +30,7 @@ type PlanStep struct {
 	Id       int    `json:"id"`
 	Label    string `json:"label"`
 	Status   string `json:"status"`
+	Details  string `json:"details,omitempty"`
 	Result   string `json:"result,omitempty"`
 	Error    string `json:"error,omitempty"`
 	DoneAt   string `json:"doneAt,omitempty"`
@@ -57,8 +58,14 @@ func getPlanFilePath(tabId string) string {
 	return filepath.Join(getPlanDir(), tabId+".json")
 }
 
-// CreatePlan creates a new plan for the given tab.
+// CreatePlan creates a new plan (without details per step).
 func CreatePlan(tabId string, name string, description string, stepLabels []string) (*Plan, error) {
+	details := make([]string, len(stepLabels))
+	return CreatePlanWithDetails(tabId, name, description, stepLabels, details)
+}
+
+// CreatePlanWithDetails creates a new plan with optional details per step.
+func CreatePlanWithDetails(tabId string, name string, description string, stepLabels []string, stepDetails []string) (*Plan, error) {
 	plansMu.Lock()
 	defer plansMu.Unlock()
 
@@ -66,12 +73,38 @@ func CreatePlan(tabId string, name string, description string, stepLabels []stri
 		return nil, fmt.Errorf("creating plans dir: %w", err)
 	}
 
+	// Auto-append testing and lint steps if not already present
+	hasTestStep := false
+	hasLintStep := false
+	for _, label := range stepLabels {
+		lower := strings.ToLower(label)
+		if strings.Contains(lower, "test") && (strings.Contains(lower, "write") || strings.Contains(lower, "create")) {
+			hasTestStep = true
+		}
+		if strings.Contains(lower, "lint") || strings.Contains(lower, "pint") || strings.Contains(lower, "format") {
+			hasLintStep = true
+		}
+	}
+	if !hasLintStep {
+		stepLabels = append(stepLabels, "Run syntax check (php -l) and lint/format (pint) on all modified files")
+	}
+	// Review step: verify code against project conventions
+	stepLabels = append(stepLabels, "Call wave_utils(action='project_instructions') then review all created files against those rules - fix any violations")
+	if !hasTestStep {
+		stepLabels = append(stepLabels, "Write NEW test file with happy path, edge cases, and business logic tests")
+	}
+	// Always end with running tests
+	stepLabels = append(stepLabels, "Run all tests and verify they pass")
+
 	steps := make([]PlanStep, len(stepLabels))
 	for i, label := range stepLabels {
 		steps[i] = PlanStep{
 			Id:     i + 1,
 			Label:  label,
 			Status: StatusPending,
+		}
+		if i < len(stepDetails) && stepDetails[i] != "" {
+			steps[i].Details = stepDetails[i]
 		}
 	}
 
@@ -208,6 +241,9 @@ func FormatPlanStatus(plan *Plan) string {
 		}
 
 		sb.WriteString(fmt.Sprintf("%s %d. %s", icon, step.Id, step.Label))
+		if step.Details != "" {
+			sb.WriteString(fmt.Sprintf("\n     %s", step.Details))
+		}
 		if step.Result != "" {
 			// Show abbreviated result
 			result := step.Result
@@ -225,7 +261,10 @@ func FormatPlanStatus(plan *Plan) string {
 	next := GetNextPendingStep(plan)
 	if next != nil {
 		sb.WriteString(fmt.Sprintf("\nNext step: #%d %s\n", next.Id, next.Label))
-		sb.WriteString("Execute this step now, then call plan_update to mark it done with the result.\n")
+		if next.Details != "" {
+			sb.WriteString(fmt.Sprintf("Details: %s\n", next.Details))
+		}
+		sb.WriteString("IMPORTANT: This plan was started in a previous session. Continue executing from this step now. Do not restart the plan or re-create completed steps. Call wave_utils(action='plan_update') when done.\n")
 	} else {
 		sb.WriteString("\nAll steps completed. Summarize the results for the user.\n")
 	}

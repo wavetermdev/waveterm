@@ -15,20 +15,23 @@ export const ApiKeyInput = memo(() => {
     const [saving, setSaving] = useState(false);
 
     const handleSave = useCallback(async () => {
-        if (!apiKey.trim() || !inputData) return;
+        console.log("[apikeyinput] handleSave called", { apiKey: apiKey ? "***" : "empty", inputData });
+        if (!apiKey.trim() || !inputData) {
+            console.log("[apikeyinput] early return - missing data");
+            return;
+        }
         setSaving(true);
         try {
-            // Save API key as secret
+            console.log("[apikeyinput] saving secret:", inputData.secretName);
             await RpcApi.SetSecretsCommand(TabRpcClient, {
                 [inputData.secretName]: apiKey.trim(),
             });
-            // Switch to the preset mode
+            console.log("[apikeyinput] secret saved, switching to mode:", inputData.presetKey);
             model.setAIMode(inputData.presetKey);
-            // Close input
             globalStore.set(model.showApiKeyInput, null);
             setApiKey("");
         } catch (e) {
-            console.error("Failed to save API key:", e);
+            console.error("[apikeyinput] Failed to save API key:", e);
         }
         setSaving(false);
     }, [apiKey, inputData, model]);
