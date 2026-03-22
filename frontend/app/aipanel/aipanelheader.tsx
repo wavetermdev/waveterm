@@ -6,9 +6,52 @@ import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";
 
+const ToggleSwitch = memo(
+    ({
+        label,
+        shortLabel,
+        enabled,
+        onToggle,
+        title,
+    }: {
+        label: string;
+        shortLabel: string;
+        enabled: boolean;
+        onToggle: () => void;
+        title: string;
+    }) => (
+        <div className="flex items-center text-sm whitespace-nowrap">
+            <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">{shortLabel}</span>
+            <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">{label}</span>
+            <button
+                onClick={onToggle}
+                className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                    enabled ? "bg-accent-600" : "bg-zinc-600"
+                }`}
+                title={title}
+            >
+                <span
+                    className={`absolute inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        enabled ? "translate-x-8" : "translate-x-1"
+                    }`}
+                />
+                <span
+                    className={`relative z-10 text-xs text-white transition-all ${
+                        enabled ? "ml-2.5 mr-6 text-left" : "ml-6 mr-1 text-right"
+                    }`}
+                >
+                    {enabled ? "ON" : "OFF"}
+                </span>
+            </button>
+        </div>
+    )
+);
+ToggleSwitch.displayName = "ToggleSwitch";
+
 export const AIPanelHeader = memo(() => {
     const model = WaveAIModel.getInstance();
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
+    const mcpContext = useAtomValue(model.mcpContextAtom);
     const inBuilder = model.inBuilder;
 
     const handleKebabClick = (e: React.MouseEvent) => {
@@ -29,42 +72,35 @@ export const AIPanelHeader = memo(() => {
                 Wave AI
             </h2>
 
-            <div className="flex items-center flex-shrink-0 whitespace-nowrap">
+            <div className="flex items-center flex-shrink-0 whitespace-nowrap gap-3">
                 {!inBuilder && (
-                    <div className="flex items-center text-sm whitespace-nowrap">
-                        <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">Context</span>
-                        <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">Widget Context</span>
-                        <button
-                            onClick={() => {
+                    <>
+                        <ToggleSwitch
+                            label="Widget Context"
+                            shortLabel="Context"
+                            enabled={widgetAccess}
+                            onToggle={() => {
                                 model.setWidgetAccess(!widgetAccess);
-                                setTimeout(() => {
-                                    model.focusInput();
-                                }, 0);
+                                setTimeout(() => model.focusInput(), 0);
                             }}
-                            className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                                widgetAccess ? "bg-accent-600" : "bg-zinc-600"
-                            }`}
                             title={`Widget Access ${widgetAccess ? "ON" : "OFF"}`}
-                        >
-                            <span
-                                className={`absolute inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    widgetAccess ? "translate-x-8" : "translate-x-1"
-                                }`}
-                            />
-                            <span
-                                className={`relative z-10 text-xs text-white transition-all ${
-                                    widgetAccess ? "ml-2.5 mr-6 text-left" : "ml-6 mr-1 text-right"
-                                }`}
-                            >
-                                {widgetAccess ? "ON" : "OFF"}
-                            </span>
-                        </button>
-                    </div>
+                        />
+                        <ToggleSwitch
+                            label="MCP Context"
+                            shortLabel="MCP"
+                            enabled={mcpContext}
+                            onToggle={() => {
+                                model.setMCPContext(!mcpContext);
+                                setTimeout(() => model.focusInput(), 0);
+                            }}
+                            title={`MCP Context ${mcpContext ? "ON" : "OFF"}`}
+                        />
+                    </>
                 )}
 
                 <button
                     onClick={handleKebabClick}
-                    className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none"
+                    className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 focus:outline-none"
                     title="More options"
                 >
                     <i className="fa fa-ellipsis-vertical"></i>

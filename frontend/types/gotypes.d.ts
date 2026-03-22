@@ -1146,6 +1146,8 @@ declare global {
         "waveai:model"?: string;
         "waveai:chatid"?: string;
         "waveai:widgetcontext"?: boolean;
+        "waveai:mcpcontext"?: boolean;
+        "waveai:mcpcwd"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

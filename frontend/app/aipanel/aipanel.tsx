@@ -21,6 +21,10 @@ import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIModeDropdown } from "./aimode";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
+import { ApiKeyInput } from "./apikeyinput";
+import { MCPConnectInput, MCPDetectBanner } from "./mcpdetect";
+import { PlanProgressPanel } from "./planprogress";
+import { SessionHistoryBanner } from "./sessionhistory";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { WaveUIMessage } from "./aitypes";
@@ -219,6 +223,15 @@ const AIErrorMessage = memo(() => {
             <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">
                 {errorMessage}
                 <button
+                    onClick={() => {
+                        model.clearError();
+                        model.focusInput();
+                    }}
+                    className="ml-2 text-xs text-red-300 hover:text-red-200 cursor-pointer underline"
+                >
+                    Retry
+                </button>
+                <button
                     onClick={() => model.clearChat()}
                     className="ml-2 text-xs text-red-300 hover:text-red-200 cursor-pointer underline"
                 >
@@ -274,12 +287,17 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (_opts) => {
                 const msg = model.getAndClearMessage();
+                const mcpCwd = globalStore.get(model.mcpCwdAtom);
                 const body: any = {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
+                    mcpaccess: globalStore.get(model.mcpContextAtom),
                     aimode: globalStore.get(model.currentAIMode),
                 };
+                if (mcpCwd) {
+                    body.mcpcwd = mcpCwd;
+                }
                 if (isBuilderWindow()) {
                     body.builderid = globalStore.get(atoms.builderId);
                     body.builderappid = globalStore.get(atoms.builderAppId);
@@ -291,7 +309,18 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
         }),
         onError: (error) => {
             console.error("AI Chat error:", error);
-            model.setError(error.message || "An error occurred");
+            let errorMsg = error.message || "An error occurred";
+            if (
+                errorMsg.includes("fetch") ||
+                errorMsg.includes("network") ||
+                errorMsg.includes("ECONNREFUSED") ||
+                errorMsg.includes("Failed to fetch") ||
+                errorMsg.includes("timeout") ||
+                errorMsg.includes("aborted")
+            ) {
+                errorMsg = "Connection failed — check your internet connection and try again.";
+            }
+            model.setError(errorMsg);
         },
     });
 
@@ -577,6 +606,11 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
+            {tabModel && <MCPDetectBanner tabId={tabModel.tabId} />}
+            {tabModel && <SessionHistoryBanner tabId={tabModel.tabId} />}
+            {tabModel && <PlanProgressPanel tabId={tabModel.tabId} />}
+            <MCPConnectInput />
+            <ApiKeyInput />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
