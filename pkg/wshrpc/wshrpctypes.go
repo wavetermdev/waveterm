@@ -471,8 +471,12 @@ type ConnStatus struct {
 }
 
 type WebSelectorOpts struct {
-	All   bool `json:"all,omitempty"`
-	Inner bool `json:"inner,omitempty"`
+	All       bool   `json:"all,omitempty"`
+	Inner     bool   `json:"inner,omitempty"`
+	InnerText bool   `json:"innertext,omitempty"`
+	Reload    bool   `json:"reload,omitempty"`
+	ExecJs    string `json:"execjs,omitempty"`
+	Highlight bool   `json:"highlight,omitempty"`
 }
 
 type CommandWebSelectorData struct {
