@@ -24,6 +24,9 @@ const ToggleSwitch = memo(
             <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">{shortLabel}</span>
             <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">{label}</span>
             <button
+                role="switch"
+                aria-checked={enabled}
+                aria-label={label}
                 onClick={onToggle}
                 className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
                     enabled ? "bg-accent-600" : "bg-zinc-600"
