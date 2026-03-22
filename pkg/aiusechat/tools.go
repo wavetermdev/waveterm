@@ -172,6 +172,9 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetReadDirToolDefinition())
 		tools = append(tools, GetWriteTextFileToolDefinition())
 		tools = append(tools, GetEditTextFileToolDefinition())
+
+		// Consolidated utility tool (plans, session history, project instructions)
+		tools = append(tools, GetWaveUtilsToolDefinition(tabid))
 		tools = append(tools, GetDeleteTextFileToolDefinition())
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
@@ -190,10 +193,14 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		}
 		if viewTypes["term"] {
 			tools = append(tools, GetTermGetScrollbackToolDefinition(tabid))
+			tools = append(tools, GetTermRunCommandToolDefinition(tabid))
 			// tools = append(tools, GetTermCommandOutputToolDefinition(tabid))
 		}
 		if viewTypes["web"] {
 			tools = append(tools, GetWebNavigateToolDefinition(tabid))
+			tools = append(tools, GetWebReadTextToolDefinition(tabid))
+			tools = append(tools, GetWebReadHTMLToolDefinition(tabid))
+			tools = append(tools, GetWebSEOAuditToolDefinition(tabid))
 		}
 	}
 	return tabState, tools, nil

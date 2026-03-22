@@ -53,7 +53,7 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "capture_screenshot",
 		DisplayName: "Capture Screenshot",
-		Description: "Capture a screenshot of a widget and return it as an image",
+		Description: "Screenshot a widget, returns image.",
 		ToolLogName: "gen:screenshot",
 		Strict:      true,
 		InputSchema: map[string]any{

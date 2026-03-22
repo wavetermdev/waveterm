@@ -124,7 +124,7 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "read_dir",
 		DisplayName: "Read Directory",
-		Description: "Read a directory from the filesystem and list its contents. Returns information about files and subdirectories including names, types, sizes, permissions, and modification times.",
+		Description: "List directory contents: names, types, sizes, permissions, modification times.",
 		ToolLogName: "gen:readdir",
 		Strict:      false,
 		InputSchema: map[string]any{

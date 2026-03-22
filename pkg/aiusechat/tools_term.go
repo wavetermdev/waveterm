@@ -155,7 +155,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_get_scrollback",
 		DisplayName: "Get Terminal Scrollback",
-		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines). Also returns last command and exit code if shell integration is enabled.",
+		Description: "Get terminal scrollback text. Index 0 = newest line. Includes last command and exit code.",
 		ToolLogName: "term:getscrollback",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -245,7 +245,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_command_output",
 		DisplayName: "Get Last Command Output",
-		Description: "Retrieve output from the most recent command in a terminal widget. Requires shell integration to be enabled. Returns the command text, exit code, and up to 1000 lines of output.",
+		Description: "Get last command's output, exit code, and command text. Max 1000 lines. Requires shell integration.",
 		ToolLogName: "term:commandoutput",
 		InputSchema: map[string]any{
 			"type": "object",
