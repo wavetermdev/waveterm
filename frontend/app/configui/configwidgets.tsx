@@ -101,14 +101,22 @@ function formatDefaultSelectLabel(defaultText?: string): string {
     return `Default (${defaultText})`;
 }
 
-export function ConfigSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+export function ConfigSection({
+    title,
+    description,
+    children,
+}: {
+    title: string;
+    description?: string;
+    children: ReactNode;
+}) {
     return (
-        <section className="rounded-xl border border-border bg-panel/70 p-5 shadow-sm">
-            <div className="mb-4 flex flex-col gap-1">
-                <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <section className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
+                <h2 className="text-4xl font-semibold tracking-tight text-foreground">{title}</h2>
                 {description && <p className="text-sm text-muted">{description}</p>}
             </div>
-            <div className="grid gap-4">{children}</div>
+            <div className="flex flex-col">{children}</div>
         </section>
     );
 }
@@ -130,8 +138,8 @@ function ConfigFieldFrame({
     const messageClassName = messageTone === "error" ? "text-error" : "text-muted";
 
     return (
-        <div className="grid gap-3 rounded-lg border border-border/80 bg-background/40 p-4 md:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-1">
+        <div className="border-b border-border/70 py-6 first:pt-0 last:border-b-0 last:pb-0">
+            <div className="flex max-w-4xl flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                     <label htmlFor={fieldId} className="text-sm font-medium text-foreground">
                         {label}
@@ -148,11 +156,9 @@ function ConfigFieldFrame({
                     </span>
                 </div>
                 <div className="font-mono text-[11px] text-accent">{configKey}</div>
-                {description && <p className="text-xs leading-5 text-muted">{description}</p>}
-            </div>
-            <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-start gap-2">
-                    <div className="min-w-0 flex-1">{children}</div>
+                {description && <p className="max-w-3xl text-sm leading-7 text-muted">{description}</p>}
+                <div className="flex flex-wrap items-start gap-2 pt-1">
+                    <div className="min-w-0 flex-1 max-w-xl">{children}</div>
                     {showUseDefault && (
                         <button
                             type="button"
