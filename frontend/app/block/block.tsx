@@ -34,6 +34,7 @@ import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
+import { MCPClientViewModel } from "../view/mcpclient/mcpclient";
 import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
 import "./block.scss";
 import { BlockEnv } from "./blockenv";
@@ -54,6 +55,7 @@ BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
+BlockRegistry.set("mcpclient", MCPClientViewModel);
 
 function makeViewModel(
     blockId: string,
