@@ -17,12 +17,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcloud"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/panichandler"
+	"github.com/woveterm/wove/pkg/wavejwt"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/wcloud"
+	"github.com/woveterm/wove/pkg/wps"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 // the wcore package coordinates actions across the storage layer

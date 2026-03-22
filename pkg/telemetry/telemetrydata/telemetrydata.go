@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/util/utilfn"
 )
 
 var ValidEventNames = map[string]bool{

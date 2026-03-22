@@ -14,11 +14,11 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/util/fileutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/wshutil"
 )
 
 var aiCmd = &cobra.Command{

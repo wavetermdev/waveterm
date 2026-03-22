@@ -5,7 +5,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/wshutil"
 )
 
 func init() {

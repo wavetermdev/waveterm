@@ -4,8 +4,8 @@
 package aiusechat
 
 import (
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/sessionhistory"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/sessionhistory"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 func GetSessionHistoryToolDefinition(tabId string) uctypes.ToolDefinition {

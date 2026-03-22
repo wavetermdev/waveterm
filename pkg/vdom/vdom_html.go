@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/htmltoken"
-	"github.com/wavetermdev/waveterm/pkg/vdom/cssparser"
+	"github.com/woveterm/wove/pkg/vdom/cssparser"
 )
 
 // can tokenize and bind HTML to Elems

@@ -17,10 +17,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wcore"
+	"github.com/woveterm/wove/pkg/web/sse"
 )
 
 // ExtractXmlAttribute extracts an attribute value from an XML-like tag.

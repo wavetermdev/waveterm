@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/util/logutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/util/logutil"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 // SessionApprovalRegistry tracks paths that the user has approved for reading

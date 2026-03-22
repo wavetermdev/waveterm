@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/wshutil"
 )
 
 func isProcessRunning(pid int, pidStartTs int64) (*process.Process, error) {

@@ -11,11 +11,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/remote/connparse"
+	"github.com/woveterm/wove/pkg/remote/fileshare/fsutil"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/wshutil"
 )
 
 const (

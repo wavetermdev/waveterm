@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 var (

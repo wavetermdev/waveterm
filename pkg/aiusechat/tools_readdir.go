@@ -8,10 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/util/fileutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 const ReadDirDefaultMaxEntries = 500

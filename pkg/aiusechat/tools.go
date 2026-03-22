@@ -10,13 +10,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/aiusechat/aiutil"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/blockcontroller"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 func makeTerminalBlockDesc(block *waveobj.Block) string {

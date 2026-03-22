@@ -19,12 +19,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/vdom"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/wps"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/wshutil"
 )
 
 type AppOpts struct {

@@ -11,8 +11,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/panichandler"
+	"github.com/woveterm/wove/pkg/util/utilfn"
 )
 
 const DumpFilePath = "/tmp/waveterm-usr1-dump.log"

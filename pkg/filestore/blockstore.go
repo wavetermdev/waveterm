@@ -17,9 +17,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/ijson"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/ijson"
+	"github.com/woveterm/wove/pkg/panichandler"
+	"github.com/woveterm/wove/pkg/wshrpc"
 )
 
 const (

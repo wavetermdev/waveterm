@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
 	"golang.org/x/term"
 )
 

@@ -16,12 +16,12 @@ import (
 
 	"github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
-	"github.com/wavetermdev/waveterm/pkg/faviconcache"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/faviconcache"
+	"github.com/woveterm/wove/pkg/util/fileutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/wconfig"
+	"github.com/woveterm/wove/pkg/wshrpc"
 )
 
 const MaxSuggestions = 50

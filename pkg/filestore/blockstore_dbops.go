@@ -9,7 +9,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
+	"github.com/woveterm/wove/pkg/util/dbutil"
 )
 
 // can return fs.ErrExist

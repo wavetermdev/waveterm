@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/projectctx"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/projectctx"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 func GetProjectInstructionsToolDefinition(tabId string) uctypes.ToolDefinition {

@@ -7,10 +7,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/mcpclient"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/mcpclient"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 // generateMCPStateAndTools connects to MCP servers based on the CWD stored in chatOpts

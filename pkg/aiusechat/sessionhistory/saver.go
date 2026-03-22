@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 // ExtractSimpleMessages converts UIMessages to SimpleChatMessages for history storage.

@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiplan"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/aiplan"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 func GetPlanCreateToolDefinition(tabId string) uctypes.ToolDefinition {

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiplan"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/projectctx"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/sessionhistory"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/aiplan"
+	"github.com/woveterm/wove/pkg/aiusechat/projectctx"
+	"github.com/woveterm/wove/pkg/aiusechat/sessionhistory"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 // GetWaveUtilsToolDefinition returns a consolidated tool for less frequently used operations.

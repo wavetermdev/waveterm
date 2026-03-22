@@ -6,7 +6,7 @@ package engine
 import (
 	"strconv"
 
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/woveterm/wove/tsunami/vdom"
 )
 
 // generic hook structure

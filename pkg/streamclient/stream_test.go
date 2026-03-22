@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc"
 )
 
 type fakeTransport struct {

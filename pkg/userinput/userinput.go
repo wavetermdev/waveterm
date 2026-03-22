@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/blocklogger"
+	"github.com/woveterm/wove/pkg/genconn"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wps"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 var MainUserInputHandler = UserInputHandler{Channels: make(map[string](chan *UserInputResponse), 1)}

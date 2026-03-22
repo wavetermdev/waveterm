@@ -10,7 +10,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc"
 )
 
 const (
