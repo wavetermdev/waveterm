@@ -49,6 +49,18 @@ func (cs *ChatStore) Delete(chatId string) {
 	delete(cs.chats, chatId)
 }
 
+// GetAll returns a copy of all chats in the store.
+func (cs *ChatStore) GetAll() map[string]*uctypes.AIChat {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	result := make(map[string]*uctypes.AIChat, len(cs.chats))
+	for k, v := range cs.chats {
+		result[k] = v
+	}
+	return result
+}
+
 func (cs *ChatStore) CountUserMessages(chatId string) int {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()
