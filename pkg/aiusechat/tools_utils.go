@@ -163,12 +163,13 @@ func GetWaveUtilsToolDefinition(tabId string) uctypes.ToolDefinition {
 				return aiplan.FormatPlanStatus(plan), nil
 
 			case "plan_update":
-				stepId := int(params["step_id"].(float64))
+				stepIdRaw, ok := params["step_id"].(float64)
+				if !ok || stepIdRaw == 0 {
+					return "", fmt.Errorf("step_id required (must be a number)")
+				}
+				stepId := int(stepIdRaw)
 				status, _ := params["status"].(string)
 				result, _ := params["result"].(string)
-				if stepId == 0 {
-					return "", fmt.Errorf("step_id required")
-				}
 				if status == "" {
 					status = aiplan.StatusDone
 				}
