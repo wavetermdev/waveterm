@@ -9,6 +9,29 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
 
+async function activateByokPreset(presetKey: string, secretName: string | null, secretLabel: string | null) {
+    const model = WaveAIModel.getInstance();
+
+    if (secretName && secretLabel) {
+        globalStore.set(model.showApiKeyInput, { presetKey, secretName, secretLabel });
+    } else {
+        // Local model (Ollama) - check if endpoint is reachable
+        try {
+            const resp = await fetch("http://localhost:11434/api/tags");
+            if (!resp.ok) throw new Error("not reachable");
+            // Mark as enabled and switch
+            await RpcApi.SetSecretsCommand(TabRpcClient, { "byok-local-enabled": "true" });
+            model.setAIMode(presetKey);
+        } catch {
+            globalStore.set(model.showApiKeyInput, {
+                presetKey,
+                secretName: "__ollama_error",
+                secretLabel: "Ollama not running. Start it with: ollama serve",
+            });
+        }
+    }
+}
+
 export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boolean): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
@@ -126,6 +149,58 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
     });
 
     menu.push({ type: "separator" });
+
+    const mcpEnabled = globalStore.get(model.mcpContextAtom);
+    if (mcpEnabled) {
+        menu.push({
+            label: "Disconnect MCP",
+            click: () => {
+                model.setMCPContext(false);
+            },
+        });
+    } else {
+        menu.push({
+            label: "Connect MCP...",
+            click: () => {
+                globalStore.set(model.showMCPConnectInput, true);
+                setTimeout(() => model.focusInput(), 0);
+            },
+        });
+    }
+
+    menu.push({ type: "separator" });
+
+    const quickAddModels: ContextMenuItem[] = [
+        {
+            label: "Claude (Anthropic)",
+            click: () => activateByokPreset("byok@claude-sonnet", "anthropic-api-key", "Anthropic API Key"),
+        },
+        {
+            label: "GPT-5 (OpenAI)",
+            click: () => activateByokPreset("byok@gpt5-mini", "openai-api-key", "OpenAI API Key"),
+        },
+        {
+            label: "Gemini (Google)",
+            click: () => activateByokPreset("byok@gemini-flash", "google-ai-key", "Google AI API Key"),
+        },
+        {
+            label: "MiniMax",
+            click: () => activateByokPreset("byok@minimax", "minimax-api-key", "MiniMax API Key"),
+        },
+        {
+            label: "Ollama (Local)",
+            click: () => activateByokPreset("byok@ollama", null, null),
+        },
+        {
+            label: "OpenRouter",
+            click: () => activateByokPreset("byok@openrouter", "openrouter-api-key", "OpenRouter API Key"),
+        },
+    ];
+
+    menu.push({
+        label: "Quick Add Model",
+        submenu: quickAddModels,
+    });
 
     menu.push({
         label: "Configure Modes",

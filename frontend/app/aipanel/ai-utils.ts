@@ -548,7 +548,8 @@ export const getFilteredAIModeConfigs = (
     showCloudModes: boolean,
     inBuilder: boolean,
     hasPremium: boolean,
-    currentMode?: string
+    currentMode?: string,
+    availableSecrets?: Set<string>
 ): FilteredAIModeConfigs => {
     const hideQuick = inBuilder && hasPremium;
 
@@ -557,10 +558,24 @@ export const getFilteredAIModeConfigs = (
         .filter((config) => !(hideQuick && config.mode === "waveai@quick"));
 
     const otherProviderConfigs = allConfigs
-        .filter((config) => config["ai:provider"] !== "wave")
+        .filter((config) => {
+            if (config["ai:provider"] === "wave") return false;
+            // Hide byok presets that need API key unless the secret exists
+            if (config.mode.startsWith("byok@")) {
+                const secretName = config["ai:apitokensecretname"];
+                if (secretName) {
+                    return config["ai:apitoken"] || (availableSecrets && availableSecrets.has(secretName));
+                }
+                // No secret needed (local models) - show only if marker secret exists
+                // Set by Quick Add Model after verifying the endpoint works
+                return availableSecrets && availableSecrets.has("byok-local-enabled");
+            }
+            return true;
+        })
         .sort(sortByDisplayOrder);
 
-    const hasCustomModels = otherProviderConfigs.length > 0;
+    // Only count user-configured custom models, not built-in byok presets
+    const hasCustomModels = otherProviderConfigs.some((config) => !config.mode.startsWith("byok@"));
     const isCurrentModeCloud = currentMode?.startsWith("waveai@") ?? false;
     const shouldShowCloudModes = showCloudModes || !hasCustomModels || isCurrentModeCloud;
 

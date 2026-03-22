@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { getFilteredAIModeConfigs, getModeDisplayName } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
@@ -146,14 +146,23 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
     const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const [isOpen, setIsOpen] = useState(false);
+    const [availableSecrets, setAvailableSecrets] = useState<Set<string>>(new Set());
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Load available secret names to filter byok presets
+    useEffect(() => {
+        RpcApi.GetSecretsNamesCommand(TabRpcClient)
+            .then((names) => setAvailableSecrets(new Set(names || [])))
+            .catch(() => {});
+    }, [isOpen]);
 
     const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
         showCloudModes,
         model.inBuilder,
         hasPremium,
-        currentMode
+        currentMode,
+        availableSecrets
     );
 
     const sections: ConfigSection[] = compatibilityMode
