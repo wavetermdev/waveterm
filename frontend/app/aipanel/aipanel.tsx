@@ -287,16 +287,19 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (_opts) => {
                 const msg = model.getAndClearMessage();
-                const mcpCwd = globalStore.get(model.mcpCwdAtom);
+                const mcpAccess = globalStore.get(model.mcpContextAtom);
                 const body: any = {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
-                    mcpaccess: globalStore.get(model.mcpContextAtom),
+                    mcpaccess: mcpAccess,
                     aimode: globalStore.get(model.currentAIMode),
                 };
-                if (mcpCwd) {
-                    body.mcpcwd = mcpCwd;
+                if (mcpAccess) {
+                    const mcpCwd = globalStore.get(model.mcpCwdAtom);
+                    if (mcpCwd) {
+                        body.mcpcwd = mcpCwd;
+                    }
                 }
                 if (isBuilderWindow()) {
                     body.builderid = globalStore.get(atoms.builderId);
