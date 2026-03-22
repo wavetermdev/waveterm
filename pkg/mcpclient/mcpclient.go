@@ -160,7 +160,9 @@ func (c *MCPClient) call(method string, params any, result any) error {
 		return fmt.Errorf("writing to stdin: %w", err)
 	}
 
-	// Read response line with timeout via channel
+	// Read response line with timeout.
+	// On timeout we close stdin to unblock the goroutine reading stdout,
+	// then mark client as closed to prevent further use.
 	type readResult struct {
 		line []byte
 		err  error
@@ -190,7 +192,15 @@ func (c *MCPClient) call(method string, params any, result any) error {
 		}
 		return nil
 	case <-time.After(ReadTimeout):
-		return fmt.Errorf("timeout waiting for response to %q after %v", method, ReadTimeout)
+		// Kill the process to unblock the leaked goroutine
+		c.closed = true
+		if c.stdin != nil {
+			c.stdin.Close()
+		}
+		if c.cmd != nil && c.cmd.Process != nil {
+			c.cmd.Process.Kill()
+		}
+		return fmt.Errorf("timeout waiting for response to %q after %v - connection closed", method, ReadTimeout)
 	}
 }
 
