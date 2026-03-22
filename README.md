@@ -50,10 +50,78 @@ Wave AI is your context-aware terminal assistant with access to your workspace:
 - **CLI Integration**: Use `wsh ai` to pipe output or attach files directly from the command line
 - **BYOK Support**: Bring your own API keys for OpenAI, Claude, Gemini, Azure, and other providers
 - **Local Models**: Run local models with Ollama, LM Studio, and other OpenAI-compatible providers
+- **Quick Add Model**: Add AI providers in 3 clicks - kebab menu, pick provider, paste API key
 - **Free Beta**: Included AI credits while we refine the experience
-- **Coming Soon**: Command execution (with approval)
 
 Learn more in our [Wave AI documentation](https://docs.waveterm.dev/waveai) and [Wave AI Modes documentation](https://docs.waveterm.dev/waveai-modes).
+
+## MCP Integration
+
+Wave Terminal supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) - giving AI full context of your project without manual configuration.
+
+- **Auto-detect**: Wave finds `.mcp.json` in your terminal's working directory and offers to connect
+- **Project Context**: AI automatically gets database schema, application info, and framework documentation
+- **AI Tools**: MCP tools are registered as AI tools - the model queries your database, searches docs, and reads logs on its own
+- **MCP Client Widget**: Dedicated widget showing server status, available tools, and a live call log with expandable results
+- **Any MCP Server**: Works with Laravel Boost, Prisma, Django, or any MCP-compatible server
+
+Add a `.mcp.json` to your project root:
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["mcp-server.js"]
+    }
+  }
+}
+```
+
+## Web Content Tools
+
+AI can read and analyze web pages directly from Wave's web widget:
+
+- **web_read_text**: Extract clean text from pages by CSS selector
+- **web_read_html**: Get raw HTML for structure inspection
+- **web_seo_audit**: Full SEO audit - JSON-LD, Open Graph, meta tags, headings, alt text, link statistics
+- **AI Reading Animation**: Visual highlight on elements being read by AI
+- Pages auto-refresh before reading to ensure fresh content
+
+## Execution Plans
+
+For complex multi-step tasks, AI creates execution plans with progress tracking:
+
+- **Plan Creation**: AI breaks tasks into steps (e.g., audit 10 pages, process multiple files)
+- **Step-by-step Execution**: Each step runs independently with clean context
+- **Live Progress Panel**: Visual progress bar and expandable step results in the AI panel
+- **Persistent**: Plans survive Wave restarts, AI continues from where it left off
+- **Dismiss**: Close completed plans with one click
+
+## Session History
+
+AI remembers what you did in previous sessions:
+
+- **Auto-save**: Chat history saved per tab when Wave shuts down
+- **Previous Session Banner**: Expandable summary of last session's messages and tool calls
+- **session_history Tool**: AI reads previous work context on demand
+- **Per-tab**: Each tab maintains its own history independently
+
+## Project Instructions
+
+Wave reads project-specific coding instructions from `WAVE.md`, `CLAUDE.md`, `.cursorrules`, and other convention files:
+
+- **Smart Filtering**: AI requests only relevant sections (e.g., PHP sections when editing .php files)
+- **Table of Contents**: First call lists available sections, second call fetches specific ones
+- **Multiple Files**: Reads all instruction files found and combines them
+- **Token Efficient**: Two-step approach minimizes context usage for smaller models
+
+## Auto-approve for File Reading
+
+AI can read files without asking for approval each time:
+
+- **Session-level Approval**: Approve a directory once, all reads within it are auto-approved
+- **Sensitive Path Protection**: ~/.ssh, ~/.aws, .env files are never auto-approved
+- **Symlink Safety**: Canonical path resolution prevents bypass via symlinks
 
 ## Installation
 
