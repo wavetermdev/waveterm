@@ -20,14 +20,10 @@ async function activateByokPreset(presetKey: string, secretName: string | null, 
             const resp = await fetch("http://localhost:11434/api/tags");
             if (!resp.ok) throw new Error("not reachable");
             // Mark as enabled and switch
-            await RpcApi.SetSecretsCommand(TabRpcClient, { "byok-local-enabled": "true" });
+            await RpcApi.SetSecretsCommand(TabRpcClient, { "byok_local_enabled": "true" });
             model.setAIMode(presetKey);
         } catch {
-            globalStore.set(model.showApiKeyInput, {
-                presetKey,
-                secretName: "__ollama_error",
-                secretLabel: "Ollama not running. Start it with: ollama serve",
-            });
+            model.setError("Ollama is not running. Start it with: ollama serve");
         }
     }
 }
