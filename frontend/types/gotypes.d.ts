@@ -2126,6 +2126,10 @@ declare global {
     type WebSelectorOpts = {
         all?: boolean;
         inner?: boolean;
+        innertext?: boolean;
+        reload?: boolean;
+        highlight?: boolean;
+        execjs?: string;
     };
 
     // wconfig.WidgetConfigType

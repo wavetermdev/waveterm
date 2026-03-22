@@ -27,7 +27,22 @@ export class ElectronWshClientType extends WshClient {
         if (wc == null) {
             throw new Error(`no webcontents found with blockid ${data.blockid}`);
         }
-        const rtn = await webGetSelector(wc, data.selector, data.opts);
+        // Sanitize opts: only allow known safe options from RPC
+        const safeOpts: any = {};
+        if (data.opts) {
+            if (data.opts.all) safeOpts.all = true;
+            if (data.opts.inner) safeOpts.inner = true;
+            if (data.opts.innertext) safeOpts.innertext = true;
+            if (data.opts.reload) safeOpts.reload = true;
+            if (data.opts.highlight) safeOpts.highlight = true;
+            // execjs: only allow from server-side (Go backend) tool calls.
+            // The RPC route is trusted (server -> electron), so we allow it here
+            // but validate that the value is a non-empty string to prevent injection of non-string types.
+            if (typeof data.opts.execjs === "string" && data.opts.execjs.length > 0) {
+                safeOpts.execjs = data.opts.execjs;
+            }
+        }
+        const rtn = await webGetSelector(wc, data.selector, safeOpts);
         return rtn;
     }
 
