@@ -300,6 +300,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 macOptionIsMeta: termMacOptionIsMeta,
                 cursorStyle: termCursorStyle,
                 cursorBlink: termCursorBlink,
+                overviewRuler: { width: 6 },
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
@@ -312,9 +313,6 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         model.termRef.current = termWrap;
         setTermWrapInst(termWrap);
         const rszObs = new ResizeObserver(() => {
-            if (termWrap.cachedAtBottomForResize == null) {
-                termWrap.cachedAtBottomForResize = termWrap.wasRecentlyAtBottom();
-            }
             termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);
