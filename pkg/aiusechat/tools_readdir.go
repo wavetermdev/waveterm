@@ -8,10 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/util/fileutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 const ReadDirDefaultMaxEntries = 500
@@ -124,7 +124,7 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "read_dir",
 		DisplayName: "Read Directory",
-		Description: "Read a directory from the filesystem and list its contents. Returns information about files and subdirectories including names, types, sizes, permissions, and modification times.",
+		Description: "List directory contents: names, types, sizes, permissions, modification times.",
 		ToolLogName: "gen:readdir",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -166,6 +166,17 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 		},
 		ToolAnyCallback: readDirCallback,
 		ToolApproval: func(input any) string {
+			parsed, err := parseReadDirInput(input)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			expandedPath, err := wavebase.ExpandHomeDir(parsed.Path)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			if IsSessionReadApproved(expandedPath) {
+				return uctypes.ApprovalAutoApproved
+			}
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyReadDirInput,

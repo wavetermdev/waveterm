@@ -10,13 +10,13 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/aiusechat/aiutil"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/blockcontroller"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 func makeTerminalBlockDesc(block *waveobj.Block) string {
@@ -102,8 +102,13 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		}
 		return "file and directory preview widget"
 	case "web":
-		if url, hasUrl := block.Meta["url"].(string); hasUrl && url != "" {
-			return fmt.Sprintf("web browser widget pointing at %q", url)
+		url, _ := block.Meta["url"].(string)
+		title, _ := block.Meta["web:title"].(string)
+		if url != "" && title != "" {
+			return fmt.Sprintf("web browser: %q (%s)", title, url)
+		}
+		if url != "" {
+			return fmt.Sprintf("web browser: %s", url)
 		}
 		return "web browser widget"
 	case "waveai":
@@ -172,6 +177,9 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetReadDirToolDefinition())
 		tools = append(tools, GetWriteTextFileToolDefinition())
 		tools = append(tools, GetEditTextFileToolDefinition())
+
+		// Consolidated utility tool (plans, session history, project instructions)
+		tools = append(tools, GetWaveUtilsToolDefinition(tabid))
 		tools = append(tools, GetDeleteTextFileToolDefinition())
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
@@ -190,10 +198,14 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		}
 		if viewTypes["term"] {
 			tools = append(tools, GetTermGetScrollbackToolDefinition(tabid))
+			tools = append(tools, GetTermRunCommandToolDefinition(tabid))
 			// tools = append(tools, GetTermCommandOutputToolDefinition(tabid))
 		}
 		if viewTypes["web"] {
 			tools = append(tools, GetWebNavigateToolDefinition(tabid))
+			tools = append(tools, GetWebReadTextToolDefinition(tabid))
+			tools = append(tools, GetWebReadHTMLToolDefinition(tabid))
+			tools = append(tools, GetWebSEOAuditToolDefinition(tabid))
 		}
 	}
 	return tabState, tools, nil

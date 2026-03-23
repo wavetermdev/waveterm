@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/readutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/util/readutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 const ReadFileDefaultLineCount = 100
@@ -328,7 +328,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "read_text_file",
 		DisplayName: "Read Text File",
-		Description: "Read a text file from the filesystem. Can read specific line ranges or from the end. Detects and rejects binary files.",
+		Description: "Read text file. Supports line ranges and tail. Rejects binary.",
 		ToolLogName: "gen:readfile",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -403,6 +403,17 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 		},
 		ToolAnyCallback: readTextFileCallback,
 		ToolApproval: func(input any) string {
+			parsed, err := parseReadTextFileInput(input)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			expandedPath, err := wavebase.ExpandHomeDir(parsed.Filename)
+			if err != nil {
+				return uctypes.ApprovalNeedsApproval
+			}
+			if IsSessionReadApproved(expandedPath) {
+				return uctypes.ApprovalAutoApproved
+			}
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyReadTextFileInput,

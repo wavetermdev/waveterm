@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	openaiapi "github.com/sashabaranov/go-openai"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/panichandler"
+	"github.com/woveterm/wove/pkg/wshrpc"
 )
 
 type OpenAIBackend struct{}

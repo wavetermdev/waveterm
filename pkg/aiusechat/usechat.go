@@ -18,26 +18,33 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/secretstore"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/ds"
-	"github.com/wavetermdev/waveterm/pkg/util/logutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/aiusechat/aiutil"
+	"github.com/woveterm/wove/pkg/aiusechat/aiplan"
+	"github.com/woveterm/wove/pkg/aiusechat/chatstore"
+	"github.com/woveterm/wove/pkg/aiusechat/projectctx"
+	"github.com/woveterm/wove/pkg/aiusechat/sessionhistory"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/secretstore"
+	"github.com/woveterm/wove/pkg/telemetry"
+	"github.com/woveterm/wove/pkg/telemetry/telemetrydata"
+	"github.com/woveterm/wove/pkg/util/ds"
+	"github.com/woveterm/wove/pkg/util/logutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/waveappstore"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/web/sse"
+	"github.com/woveterm/wove/pkg/wps"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 const DefaultAPI = uctypes.APIType_OpenAIResponses
-const DefaultMaxTokens = 4 * 1024
+const DefaultMaxTokens = 16 * 1024
 const BuilderMaxTokens = 24 * 1024
+
+func init() {
+	sessionhistory.SaveAllCallback = saveAllSessionHistories
+}
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -46,7 +53,7 @@ var (
 	activeChats = ds.MakeSyncMap[bool]() // key is chatid
 )
 
-func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool) []string {
+func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool, mcpAccess bool) []string {
 	if isBuilder {
 		return []string{}
 	}
@@ -55,12 +62,17 @@ func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapab
 	if useNoToolsPrompt {
 		basePrompt = SystemPromptText_NoTools
 	}
+	dateInfo := fmt.Sprintf("Current date: %s", time.Now().Format("2006-01-02 (Monday)"))
+	prompts := []string{basePrompt, dateInfo}
 	modelLower := strings.ToLower(model)
 	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
 	if needsStrictToolAddOn && !useNoToolsPrompt {
-		return []string{basePrompt, SystemPromptText_StrictToolAddOn}
+		prompts = append(prompts, SystemPromptText_StrictToolAddOn)
 	}
-	return []string{basePrompt}
+	if mcpAccess {
+		prompts = append(prompts, SystemPromptText_MCPAddOn)
+	}
+	return prompts
 }
 
 func isLocalEndpoint(endpoint string) bool {
@@ -178,12 +190,23 @@ func GetGlobalRateLimit() *uctypes.RateLimitInfo {
 	return globalRateLimitInfo
 }
 
+const DefaultAITimeoutMs = 90000 // 90 seconds default timeout for AI requests
+
 func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
 	if chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
 		return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 	}
+	// Apply default timeout if none is configured
+	if chatOpts.Config.TimeoutMs <= 0 {
+		chatOpts.Config.TimeoutMs = DefaultAITimeoutMs
+	}
 	stopReason, messages, rateLimitInfo, err := backend.RunChatStep(ctx, sseHandler, chatOpts, cont)
 	updateRateLimit(rateLimitInfo)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, fmt.Errorf("request timed out - check your internet connection and try again")
+		}
+	}
 	return stopReason, messages, err
 }
 
@@ -431,6 +454,15 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				chatOpts.PlatformInfo = platformInfo
 			}
 		}
+		if chatOpts.MCPAccess && firstStep {
+			mcpState, mcpTools, mcpErr := generateMCPStateAndTools(chatOpts)
+			if mcpErr == nil {
+				chatOpts.MCPState = mcpState
+				chatOpts.MCPTools = mcpTools
+			} else {
+				log.Printf("[mcp] warning: failed to generate MCP context: %v\n", mcpErr)
+			}
+		}
 		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsWaveProxy() {
@@ -629,6 +661,8 @@ type PostMessageRequest struct {
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
+	MCPAccess    bool              `json:"mcpaccess,omitempty"`
+	MCPCwd       string            `json:"mcpcwd,omitempty"`
 	AIMode       string            `json:"aimode"`
 }
 
@@ -688,16 +722,70 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		ClientId:             wstore.GetClientId(),
 		Config:               *aiOpts,
 		WidgetAccess:         req.WidgetAccess,
+		MCPAccess:            req.MCPAccess,
 		AllowNativeWebSearch: true,
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,
 	}
-	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess)
+	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess, chatOpts.MCPAccess)
+
+	// Register chat-tab mapping for session history persistence
+	if req.TabId != "" {
+		sessionhistory.RegisterChatTab(req.ChatID, req.TabId)
+	}
+
+	// Inject project context
+	if req.TabId != "" {
+		cwd := getTerminalCwd(r.Context(), req.TabId)
+		if cwd != "" {
+			// Project stack info (name, tech stack, architecture) - always injected (~50 tokens)
+			if stack := projectctx.ExtractProjectStack(cwd); stack != "" {
+				chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, stack)
+			}
+			// Critical rules from CLAUDE.md/WAVE.md - always injected (~100 tokens)
+			if rules := projectctx.ExtractCriticalRules(cwd); rules != "" {
+				chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, rules)
+			}
+			// First message only: project structure + hints
+			if chatstore.DefaultChatStore.CountUserMessages(req.ChatID) == 0 {
+				if tree := projectctx.GetProjectTree(cwd, 2); tree != "" {
+					chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, tree)
+				}
+				// Hints about available context (compact)
+				var hints []string
+				if projectctx.FindInstructionsFile(cwd) != "" {
+					hints = append(hints, "project_instructions available via wave_utils")
+				}
+				if sessionhistory.LoadSessionHistory(req.TabId) != "" {
+					hints = append(hints, "previous session history available via wave_utils(action='session_history')")
+				}
+				if len(hints) > 0 {
+					chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, "Context: "+strings.Join(hints, "; ")+".")
+				}
+			}
+		}
+	}
+
+	// Inject active plan status if one exists for this tab
+	if req.TabId != "" {
+		activePlan := aiplan.GetPlan(req.TabId)
+		if activePlan != nil && !aiplan.IsComplete(activePlan) {
+			chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, aiplan.FormatPlanStatus(activePlan))
+		}
+	}
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
 			tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess, &chatOpts)
 			return tabState, tabTools, req.TabId, err
+		}
+		// Extract CWD for MCP context: prefer explicit mcpcwd, fallback to terminal CWD
+		if req.MCPAccess {
+			if req.MCPCwd != "" {
+				chatOpts.MCPCwd = req.MCPCwd
+			} else {
+				chatOpts.MCPCwd = getTerminalCwd(r.Context(), req.TabId)
+			}
 		}
 	}
 
@@ -881,4 +969,27 @@ func generateBuilderAppData(appId string) (string, string, string, error) {
 	}
 
 	return appGoFile, staticFilesJSON, platformInfo, nil
+}
+
+// saveAllSessionHistories converts all in-memory chats to UIChat and saves as session history.
+func saveAllSessionHistories() {
+	allChats := chatstore.DefaultChatStore.GetAll()
+	mappings := sessionhistory.GetAllMappings()
+	saved := 0
+	for chatId, aiChat := range allChats {
+		tabId, ok := mappings[chatId]
+		if !ok || tabId == "" {
+			continue
+		}
+		uiChat, err := ConvertAIChatToUIChat(aiChat)
+		if err != nil {
+			log.Printf("[sessionhistory] error converting chat %s: %v\n", chatId[:8], err)
+			continue
+		}
+		sessionhistory.SaveChatAsHistory(tabId, uiChat)
+		saved++
+	}
+	if saved > 0 {
+		log.Printf("[sessionhistory] saved %d session histories at shutdown\n", saved)
+	}
 }

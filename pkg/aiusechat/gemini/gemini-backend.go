@@ -17,12 +17,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/woveterm/wove/pkg/aiusechat/aiutil"
+	"github.com/woveterm/wove/pkg/aiusechat/chatstore"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/web/sse"
 )
 
 // ensureAltSse ensures the ?alt=sse query parameter is set on the endpoint
@@ -107,6 +107,7 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	var allTools []uctypes.ToolDefinition
 	allTools = append(allTools, chatOpts.Tools...)
 	allTools = append(allTools, chatOpts.TabTools...)
+	allTools = append(allTools, chatOpts.MCPTools...)
 
 	if len(allTools) > 0 {
 		var functionDeclarations []GeminiFunctionDeclaration
@@ -132,6 +133,9 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	// Injected data - append to last user message as separate parts
 	if chatOpts.TabState != "" {
 		appendPartToLastUserMessage(reqBody.Contents, chatOpts.TabState)
+	}
+	if chatOpts.MCPState != "" {
+		appendPartToLastUserMessage(reqBody.Contents, chatOpts.MCPState)
 	}
 	if chatOpts.PlatformInfo != "" {
 		appendPartToLastUserMessage(reqBody.Contents, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")

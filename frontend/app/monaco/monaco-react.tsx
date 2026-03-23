@@ -135,8 +135,13 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
         const el = divRef.current;
         if (!el) return;
 
-        const origUri = monaco.Uri.parse(`wave://diff/${encodeURIComponent(path)}.orig`);
-        const modUri = monaco.Uri.parse(`wave://diff/${encodeURIComponent(path)}.mod`);
+        // Preserve file extension in URI so Monaco can detect language for syntax highlighting.
+        // Before: wave://diff/file.php.orig → Monaco sees ".orig" → no highlighting
+        // After:  wave://diff/file-original.php → Monaco sees ".php" → PHP highlighting
+        const ext = path.includes(".") ? path.substring(path.lastIndexOf(".")) : "";
+        const basePath = path.includes(".") ? encodeURIComponent(path.substring(0, path.lastIndexOf("."))) : encodeURIComponent(path);
+        const origUri = monaco.Uri.parse(`wave://diff/${basePath}-original${ext}`);
+        const modUri = monaco.Uri.parse(`wave://diff/${basePath}-modified${ext}`);
 
         const originalModel = monaco.editor.createModel(original, language, origUri);
         const modifiedModel = monaco.editor.createModel(modified, language, modUri);

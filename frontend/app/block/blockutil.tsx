@@ -31,6 +31,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "tips") {
         return "lightbulb";
     }
+    if (view == "mcpclient") {
+        return "plug";
+    }
     return "square";
 }
 
@@ -55,6 +58,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "tips") {
         return "Tips";
+    }
+    if (view == "mcpclient") {
+        return "MCP Client";
     }
     return view;
 }

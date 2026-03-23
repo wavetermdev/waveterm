@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/filebackup"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/filebackup"
+	"github.com/woveterm/wove/pkg/util/fileutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 const MaxEditFileSize = 100 * 1024 // 100KB
@@ -184,7 +184,7 @@ func GetWriteTextFileToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "write_text_file",
 		DisplayName: "Write Text File",
-		Description: "Write a text file to the filesystem. Will create or overwrite the file. Maximum file size: 100KB.",
+		Description: "Create or overwrite a text file. Max 100KB.",
 		ToolLogName: "gen:writefile",
 		Strict:      true,
 		InputSchema: map[string]any{
@@ -349,10 +349,7 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "edit_text_file",
 		DisplayName: "Edit Text File",
-		Description: "Edit a text file using precise search and replace. " +
-			"Each old_str must appear EXACTLY ONCE in the file or the edit will fail. " +
-			"All edits are applied atomically - if any single edit fails, the entire operation fails and no changes are made. " +
-			"Maximum file size: 100KB.",
+		Description: "Edit file via search-and-replace. Each old_str must be unique. Atomic: all edits succeed or none apply. Max 100KB.",
 		ToolLogName: "gen:editfile",
 		Strict:      true,
 		InputSchema: map[string]any{
@@ -496,7 +493,7 @@ func GetDeleteTextFileToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "delete_text_file",
 		DisplayName: "Delete Text File",
-		Description: "Delete a text file from the filesystem. A backup is created before deletion. Maximum file size: 100KB.",
+		Description: "Delete a text file. Backup created before deletion.",
 		ToolLogName: "gen:deletefile",
 		Strict:      true,
 		InputSchema: map[string]any{

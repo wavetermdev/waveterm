@@ -505,6 +505,7 @@ type WaveChatOpts struct {
 	TabStateGenerator    func() (string, []ToolDefinition, string, error)
 	BuilderAppGenerator  func() (string, string, string, error)
 	WidgetAccess         bool
+	MCPAccess            bool
 	AllowNativeWebSearch bool
 	BuilderId            string
 	BuilderAppId         string
@@ -516,6 +517,9 @@ type WaveChatOpts struct {
 	AppGoFile      string
 	AppStaticFiles string
 	PlatformInfo   string
+	MCPState       string
+	MCPTools       []ToolDefinition
+	MCPCwd         string
 }
 
 func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
@@ -525,6 +529,11 @@ func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
 		}
 	}
 	for _, tool := range opts.TabTools {
+		if tool.Name == toolName {
+			return &tool
+		}
+	}
+	for _, tool := range opts.MCPTools {
 		if tool.Name == toolName {
 			return &tool
 		}

@@ -8,7 +8,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
 )
 
 type ChatStore struct {
@@ -47,6 +47,18 @@ func (cs *ChatStore) Delete(chatId string) {
 	defer cs.lock.Unlock()
 
 	delete(cs.chats, chatId)
+}
+
+// GetAll returns a copy of all chats in the store.
+func (cs *ChatStore) GetAll() map[string]*uctypes.AIChat {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	result := make(map[string]*uctypes.AIChat, len(cs.chats))
+	for k, v := range cs.chats {
+		result[k] = v
+	}
+	return result
 }
 
 func (cs *ChatStore) CountUserMessages(chatId string) int {

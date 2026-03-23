@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
+	"github.com/woveterm/wove/pkg/util/iterfn"
 )
 
 func TestCollectSeqToSorted(t *testing.T) {

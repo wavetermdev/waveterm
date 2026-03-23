@@ -1,16 +1,16 @@
 {
-    "name": "waveterm",
+    "name": "wove",
     "author": {
-        "name": "Command Line Inc",
-        "email": "info@commandline.dev"
+        "name": "MITS Sp. z o.o.",
+        "email": "hello@getwove.dev"
     },
-    "productName": "Wave",
-    "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
+    "productName": "Wove",
+    "description": "AI-first terminal for developers who code, not click",
     "license": "Apache-2.0",
-    "version": "0.14.3",
-    "homepage": "https://waveterm.dev",
+    "version": "0.1.0",
+    "homepage": "https://getwove.dev",
     "build": {
-        "appId": "dev.commandline.waveterm"
+        "appId": "dev.getwove.wove"
     },
     "private": true,
     "main": "./dist/main/index.js",

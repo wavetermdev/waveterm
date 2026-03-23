@@ -96,8 +96,8 @@ function AiFileDiffView({ blockId, model }: ViewComponentProps<AiFileDiffViewMod
                     return;
                 }
 
-                const originalContent = base64ToString(result.originalcontents64);
-                const modifiedContent = base64ToString(result.modifiedcontents64);
+                const originalContent = result.originalcontents64 ? base64ToString(result.originalcontents64) : "";
+                const modifiedContent = result.modifiedcontents64 ? base64ToString(result.modifiedcontents64) : "";
 
                 globalStore.set(model.diffDataAtom, {
                     original: originalContent,

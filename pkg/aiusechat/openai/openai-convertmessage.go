@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/aiusechat/aiutil"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 const (
@@ -221,6 +221,9 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(inputs, chatOpts.TabState)
 	}
+	if chatOpts.MCPState != "" {
+		appendToLastUserMessage(inputs, chatOpts.MCPState)
+	}
 	if chatOpts.PlatformInfo != "" {
 		appendToLastUserMessage(inputs, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
 	}
@@ -260,6 +263,10 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		reqBody.Tools = tools
 	}
 	for _, tool := range chatOpts.TabTools {
+		convertedTool := ConvertToolDefinitionToOpenAI(tool)
+		reqBody.Tools = append(reqBody.Tools, convertedTool)
+	}
+	for _, tool := range chatOpts.MCPTools {
 		convertedTool := ConvertToolDefinitionToOpenAI(tool)
 		reqBody.Tools = append(reqBody.Tools, convertedTool)
 	}

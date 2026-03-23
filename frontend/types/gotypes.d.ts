@@ -724,6 +724,11 @@ declare global {
         modifiedcontents64: string;
     };
 
+    // wshrpc.CommandWaveAISessionReadApproveData
+    type CommandWaveAISessionReadApproveData = {
+        path: string;
+    };
+
     // wshrpc.CommandWaveAIToolApproveData
     type CommandWaveAIToolApproveData = {
         toolcallid: string;
@@ -1141,6 +1146,8 @@ declare global {
         "waveai:model"?: string;
         "waveai:chatid"?: string;
         "waveai:widgetcontext"?: boolean;
+        "waveai:mcpcontext"?: boolean;
+        "waveai:mcpcwd"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -2119,6 +2126,10 @@ declare global {
     type WebSelectorOpts = {
         all?: boolean;
         inner?: boolean;
+        innertext?: boolean;
+        reload?: boolean;
+        highlight?: boolean;
+        execjs?: string;
     };
 
     // wconfig.WidgetConfigType

@@ -50,5 +50,16 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@mcpclient": {
+        "display:order": 0,
+        "icon": "plug",
+        "label": "mcp client",
+        "description": "MCP Client - connect to Model Context Protocol servers",
+        "blockdef": {
+            "meta": {
+                "view": "mcpclient"
+            }
+        }
     }
 }

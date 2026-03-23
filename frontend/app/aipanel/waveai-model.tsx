@@ -56,6 +56,10 @@ export class WaveAIModel {
     isAIStreaming = jotai.atom(false);
 
     widgetAccessAtom!: jotai.Atom<boolean>;
+    mcpContextAtom!: jotai.Atom<boolean>;
+    mcpCwdAtom!: jotai.Atom<string>;
+    showMCPConnectInput: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
+    showApiKeyInput: jotai.PrimitiveAtom<{ presetKey: string; secretName: string; secretLabel: string } | null> = jotai.atom(null as any);
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
     currentAIMode!: jotai.PrimitiveAtom<string>;
@@ -94,6 +98,21 @@ export class WaveAIModel {
             const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
             return value ?? true;
+        });
+
+        this.mcpContextAtom = jotai.atom((get) => {
+            if (this.inBuilder) {
+                return false;
+            }
+            const mcpContextMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:mcpcontext");
+            const value = get(mcpContextMetaAtom);
+            return value ?? false;
+        });
+
+        this.mcpCwdAtom = jotai.atom((get) => {
+            const mcpCwdMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:mcpcwd");
+            const value = get(mcpCwdMetaAtom);
+            return (value as string) ?? "";
         });
 
         this.codeBlockMaxWidth = jotai.atom((get) => {
@@ -393,6 +412,20 @@ export class WaveAIModel {
         });
     }
 
+    setMCPContext(enabled: boolean) {
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: this.orefContext,
+            meta: { "waveai:mcpcontext": enabled },
+        });
+    }
+
+    setMCPCwd(cwd: string) {
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: this.orefContext,
+            meta: { "waveai:mcpcwd": cwd },
+        });
+    }
+
     isValidMode(mode: string): boolean {
         const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
         if (mode.startsWith("waveai@") && !telemetryEnabled) {
@@ -609,6 +642,12 @@ export class WaveAIModel {
         RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
             toolcallid: toolcallid,
             approval: approval,
+        });
+    }
+
+    sessionReadApprove(path: string) {
+        RpcApi.WaveAISessionReadApproveCommand(TabRpcClient, {
+            path: path,
         });
     }
 

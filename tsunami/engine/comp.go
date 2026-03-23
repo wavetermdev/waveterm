@@ -3,7 +3,7 @@
 
 package engine
 
-import "github.com/wavetermdev/waveterm/tsunami/vdom"
+import "github.com/woveterm/wove/tsunami/vdom"
 
 // so components either render to another component (or fragment)
 // or to a base element (text or vdom).  base elements can then render children

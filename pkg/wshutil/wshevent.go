@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/woveterm/wove/pkg/wps"
 )
 
 // event inverter.  converts WaveEvents to a listener.On() API

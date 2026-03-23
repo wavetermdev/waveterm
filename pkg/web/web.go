@@ -20,17 +20,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/authkey"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/schema"
-	"github.com/wavetermdev/waveterm/pkg/service"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/aiusechat"
+	"github.com/woveterm/wove/pkg/aiusechat/aiplan"
+	"github.com/woveterm/wove/pkg/aiusechat/sessionhistory"
+	"github.com/woveterm/wove/pkg/authkey"
+	"github.com/woveterm/wove/pkg/mcpclient"
+	"github.com/woveterm/wove/pkg/filestore"
+	"github.com/woveterm/wove/pkg/panichandler"
+	"github.com/woveterm/wove/pkg/remote/fileshare/wshfs"
+	"github.com/woveterm/wove/pkg/schema"
+	"github.com/woveterm/wove/pkg/service"
+	"github.com/woveterm/wove/pkg/util/fileutil"
+	"github.com/woveterm/wove/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
@@ -458,6 +461,16 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
+
+	// Session history and plan endpoints
+	waveRouter.HandleFunc("/wave/session-history", WebFnWrap(WebFnOpts{JsonErrors: true}, sessionhistory.HandleSessionHistory))
+	waveRouter.HandleFunc("/wave/plan/status", WebFnWrap(WebFnOpts{JsonErrors: true}, aiplan.HandlePlanStatus))
+	waveRouter.HandleFunc("/wave/plan/delete", WebFnWrap(WebFnOpts{JsonErrors: true}, aiplan.HandlePlanDelete))
+
+	// MCP client API endpoints
+	waveRouter.HandleFunc("/wave/mcp/status", WebFnWrap(WebFnOpts{JsonErrors: true}, mcpclient.HandleMCPStatus))
+	waveRouter.HandleFunc("/wave/mcp/call", WebFnWrap(WebFnOpts{JsonErrors: true}, mcpclient.HandleMCPCall))
+	waveRouter.HandleFunc("/wave/mcp/calllog", WebFnWrap(WebFnOpts{JsonErrors: true}, mcpclient.HandleMCPCallLog))
 
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))

@@ -15,6 +15,34 @@ interface DiffViewerProps {
     fileName: string;
 }
 
+const extToLanguage: Record<string, string> = {
+    ts: "typescript", tsx: "typescriptreact",
+    js: "javascript", jsx: "javascriptreact",
+    php: "php", vue: "html",
+    py: "python", rb: "ruby",
+    go: "go", rs: "rust", java: "java",
+    css: "css", scss: "scss", less: "less",
+    html: "html", json: "json",
+    yaml: "yaml", yml: "yaml",
+    md: "markdown", sql: "sql",
+    sh: "shell", bash: "shell", zsh: "shell",
+    xml: "xml", svg: "xml",
+    c: "c", cpp: "cpp", h: "c",
+    cs: "csharp", swift: "swift", kt: "kotlin",
+    blade: "html",
+};
+
+function getLanguageFromFileName(fileName: string): string | undefined {
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    // Handle compound extensions like .blade.php
+    const parts = fileName.split(".");
+    if (parts.length >= 3) {
+        const compound = parts.slice(-2).join(".");
+        if (compound === "blade.php") return "html";
+    }
+    return ext ? extToLanguage[ext] : undefined;
+}
+
 function defaultDiffEditorOptions(): MonacoTypes.editor.IDiffEditorOptions {
     const opts: MonacoTypes.editor.IDiffEditorOptions = {
         scrollBeyondLastLine: false,
@@ -67,7 +95,7 @@ export function DiffViewer({ blockId, original, modified, language, fileName }: 
                     original={original}
                     modified={modified}
                     options={editorOpts}
-                    language={language}
+                    language={language ?? getLanguageFromFileName(fileName)}
                 />
             </div>
         </div>

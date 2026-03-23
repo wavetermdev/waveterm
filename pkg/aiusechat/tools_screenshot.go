@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/wcore"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/wshutil"
 )
 
 func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
@@ -53,7 +53,7 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "capture_screenshot",
 		DisplayName: "Capture Screenshot",
-		Description: "Capture a screenshot of a widget and return it as an image",
+		Description: "Screenshot a widget, returns image.",
 		ToolLogName: "gen:screenshot",
 		Strict:      true,
 		InputSchema: map[string]any{

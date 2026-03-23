@@ -17,11 +17,11 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/logutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/woveterm/wove/pkg/aiusechat/chatstore"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/util/logutil"
+	"github.com/woveterm/wove/pkg/util/utilfn"
+	"github.com/woveterm/wove/pkg/wavebase"
 )
 
 // these conversions are based off the anthropic spec
@@ -66,6 +66,20 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 				}
 				// Append to the Content of this message
 				convertedMsgs[i].Content = append(convertedMsgs[i].Content, tabStateBlock)
+				break
+			}
+		}
+	}
+
+	// inject chatOpts.MCPState as a "text" block at the END of the LAST "user" message found
+	if chatOpts.MCPState != "" {
+		for i := len(convertedMsgs) - 1; i >= 0; i-- {
+			if convertedMsgs[i].Role == "user" {
+				mcpStateBlock := anthropicMessageContentBlock{
+					Type: "text",
+					Text: chatOpts.MCPState,
+				}
+				convertedMsgs[i].Content = append(convertedMsgs[i].Content, mcpStateBlock)
 				break
 			}
 		}
@@ -127,6 +141,10 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		reqBody.Tools = append(reqBody.Tools, cleanedTool)
 	}
 	for _, tool := range chatOpts.TabTools {
+		cleanedTool := tool.Clean()
+		reqBody.Tools = append(reqBody.Tools, cleanedTool)
+	}
+	for _, tool := range chatOpts.MCPTools {
 		cleanedTool := tool.Clean()
 		reqBody.Tools = append(reqBody.Tools, cleanedTool)
 	}

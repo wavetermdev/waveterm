@@ -10,13 +10,13 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/baseds"
+	"github.com/woveterm/wove/pkg/telemetry/telemetrydata"
+	"github.com/woveterm/wove/pkg/vdom"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/wconfig"
+	"github.com/woveterm/wove/pkg/wps"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -157,6 +157,7 @@ type WshRpcInterface interface {
 	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
 	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
 	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
+	WaveAISessionReadApproveCommand(ctx context.Context, data CommandWaveAISessionReadApproveData) error
 	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
 	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
 
@@ -470,8 +471,12 @@ type ConnStatus struct {
 }
 
 type WebSelectorOpts struct {
-	All   bool `json:"all,omitempty"`
-	Inner bool `json:"inner,omitempty"`
+	All       bool   `json:"all,omitempty"`
+	Inner     bool   `json:"inner,omitempty"`
+	InnerText bool   `json:"innertext,omitempty"`
+	Reload    bool   `json:"reload,omitempty"`
+	ExecJs    string `json:"execjs,omitempty"`
+	Highlight bool   `json:"highlight,omitempty"`
 }
 
 type CommandWebSelectorData struct {
@@ -546,6 +551,10 @@ type CommandGetWaveAIChatData struct {
 type CommandWaveAIToolApproveData struct {
 	ToolCallId string `json:"toolcallid"`
 	Approval   string `json:"approval,omitempty"`
+}
+
+type CommandWaveAISessionReadApproveData struct {
+	Path string `json:"path"`
 }
 
 type AIAttachedFile struct {

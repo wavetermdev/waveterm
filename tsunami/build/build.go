@@ -24,12 +24,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/woveterm/wove/tsunami/util"
 	"golang.org/x/mod/modfile"
 )
 
 const MinSupportedGoMinorVersion = 22
-const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
+const TsunamiUIImportPath = "github.com/woveterm/wove/tsunami/ui"
 const MainAppFileName = "app.go"
 
 type OutputCapture struct {
@@ -382,7 +382,7 @@ func createGoMod(tempDir, appNS, appName string, buildEnv *BuildEnv, opts BuildO
 		}
 
 		// Add requirement for tsunami SDK
-		if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", opts.SdkVersion); err != nil {
+		if err := modFile.AddRequire("github.com/woveterm/wove/tsunami", opts.SdkVersion); err != nil {
 			return fmt.Errorf("failed to add require directive: %w", err)
 		}
 	} else {
@@ -391,7 +391,7 @@ func createGoMod(tempDir, appNS, appName string, buildEnv *BuildEnv, opts BuildO
 
 	// Add replace directive for tsunami SDK if path is provided
 	if opts.SdkReplacePath != "" {
-		if err := modFile.AddReplace("github.com/wavetermdev/waveterm/tsunami", "", opts.SdkReplacePath, ""); err != nil {
+		if err := modFile.AddReplace("github.com/woveterm/wove/tsunami", "", opts.SdkReplacePath, ""); err != nil {
 			return fmt.Errorf("failed to add replace directive: %w", err)
 		}
 	}
@@ -410,9 +410,9 @@ func createGoMod(tempDir, appNS, appName string, buildEnv *BuildEnv, opts BuildO
 
 	if verbose {
 		oc.Printf("[debug] Created go.mod with module path: %s", modulePath)
-		oc.Printf("[debug] Added require: github.com/wavetermdev/waveterm/tsunami %s", opts.SdkVersion)
+		oc.Printf("[debug] Added require: github.com/woveterm/wove/tsunami %s", opts.SdkVersion)
 		if opts.SdkReplacePath != "" {
-			oc.Printf("[debug] Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+			oc.Printf("[debug] Added replace directive: github.com/woveterm/wove/tsunami => %s", opts.SdkReplacePath)
 		}
 	}
 

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/woveterm/wove/pkg/panichandler"
 )
 
 // --- Constants and Types ---

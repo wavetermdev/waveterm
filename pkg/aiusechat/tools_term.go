@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/woveterm/wove/pkg/aiusechat/uctypes"
+	"github.com/woveterm/wove/pkg/waveobj"
+	"github.com/woveterm/wove/pkg/wcore"
+	"github.com/woveterm/wove/pkg/wshrpc"
+	"github.com/woveterm/wove/pkg/wshrpc/wshclient"
+	"github.com/woveterm/wove/pkg/wshutil"
+	"github.com/woveterm/wove/pkg/wstore"
 )
 
 type TermGetScrollbackToolInput struct {
@@ -94,9 +94,12 @@ func getTermScrollbackOutput(tabId string, widgetId string, rpcData wshrpc.Comma
 	result, err := wshclient.TermGetScrollbackLinesCommand(
 		rpcClient,
 		rpcData,
-		&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(fullBlockId)},
+		&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(fullBlockId), Timeout: 5000},
 	)
 	if err != nil {
+		if strings.Contains(err.Error(), "no route") {
+			return nil, fmt.Errorf("terminal widget %s is not active - make sure it is visible on screen. Try using term_run_command instead", widgetId)
+		}
 		return nil, err
 	}
 
@@ -155,7 +158,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_get_scrollback",
 		DisplayName: "Get Terminal Scrollback",
-		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines). Also returns last command and exit code if shell integration is enabled.",
+		Description: "Get terminal scrollback text. Index 0 = newest line. Includes last command and exit code.",
 		ToolLogName: "term:getscrollback",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -245,7 +248,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_command_output",
 		DisplayName: "Get Last Command Output",
-		Description: "Retrieve output from the most recent command in a terminal widget. Requires shell integration to be enabled. Returns the command text, exit code, and up to 1000 lines of output.",
+		Description: "Get last command's output, exit code, and command text. Max 1000 lines. Requires shell integration.",
 		ToolLogName: "term:commandoutput",
 		InputSchema: map[string]any{
 			"type": "object",
