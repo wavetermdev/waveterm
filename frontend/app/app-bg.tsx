@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -10,11 +10,24 @@ import { debounce } from "throttle-debounce";
 import { atoms, getApi, WOS } from "./store/global";
 import { useWaveObjectValue } from "./store/wos";
 
+function resolveTabBgMeta(tabMeta: MetaType, fullConfig: FullConfigType): BackgroundConfigType {
+    const tabBg = tabMeta?.["tab:background"];
+    if (tabBg) {
+        const bgMeta = fullConfig?.backgrounds?.[tabBg];
+        if (bgMeta) {
+            return bgMeta;
+        }
+    }
+    return tabMeta;
+}
+
 export function AppBackground() {
     const bgRef = useRef<HTMLDivElement>(null);
     const tabId = useAtomValue(atoms.staticTabId);
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
-    const style: CSSProperties = computeBgStyleFromMeta(tabData?.meta, 0.5) ?? {};
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const resolvedMeta = resolveTabBgMeta(tabData?.meta, fullConfig);
+    const style: CSSProperties = computeBgStyleFromMeta(resolvedMeta, 0.5) ?? {};
     const getAvgColor = useCallback(
         debounce(30, () => {
             if (
@@ -42,5 +55,11 @@ export function AppBackground() {
     useLayoutEffect(getAvgColor, [getAvgColor]);
     useResizeObserver(bgRef, getAvgColor);
 
-    return <div ref={bgRef} className="pointer-events-none absolute top-0 left-0 w-full h-full z-[var(--zindex-app-background)]" style={style} />;
+    return (
+        <div
+            ref={bgRef}
+            className="pointer-events-none absolute top-0 left-0 w-full h-full z-[var(--zindex-app-background)]"
+            style={style}
+        />
+    );
 }

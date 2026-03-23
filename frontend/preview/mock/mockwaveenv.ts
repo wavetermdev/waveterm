@@ -430,6 +430,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
     const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
     const connConfigKeyAtomCache = new Map<string, Atom<any>>();
+    const configBackgroundAtomCache = new Map<string, Atom<BackgroundConfigType>>();
     const getWaveObjectAtom = <T extends WaveObj>(oref: string): PrimitiveAtom<T> => {
         if (!waveObjectValueAtomCache.has(oref)) {
             const obj = (mergedOverrides.mockWaveObjs?.[oref] ?? null) as T;
@@ -461,7 +462,11 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             globalStore.set(waveObjectValueAtomCache.get(oref), obj);
         },
     };
-    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(mergedOverrides.rpc, mergedOverrides.rpcStreaming, mockWosFns);
+    const { rpc, setRpcHandler, setRpcStreamHandler } = makeMockRpc(
+        mergedOverrides.rpc,
+        mergedOverrides.rpcStreaming,
+        mockWosFns
+    );
     const env = {
         isMock: true,
         mockEnv: mergedOverrides,
@@ -561,6 +566,18 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 connConfigKeyAtomCache.set(cacheKey, keyAtom);
             }
             return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
+        },
+        getConfigBackgroundAtom: (bgKey: string) => {
+            if (!configBackgroundAtomCache.has(bgKey)) {
+                configBackgroundAtomCache.set(
+                    bgKey,
+                    atom((get) => {
+                        const fullConfig = get(atoms.fullConfigAtom);
+                        return fullConfig.backgrounds?.[bgKey];
+                    })
+                );
+            }
+            return configBackgroundAtomCache.get(bgKey);
         },
         services: null as any,
         callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => {

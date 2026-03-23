@@ -136,6 +136,7 @@ type SettingsType struct {
 
 	TabPreset       string `json:"tab:preset,omitempty"`
 	TabConfirmClose bool   `json:"tab:confirmclose,omitempty"`
+	TabBackground   string `json:"tab:background,omitempty"`
 
 	WidgetClear    bool  `json:"widget:*,omitempty"`
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
@@ -309,16 +310,17 @@ type AIModeConfigUpdate struct {
 }
 
 type FullConfigType struct {
-	Settings       SettingsType                   `json:"settings" merge:"meta"`
-	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
-	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
-	Widgets        map[string]WidgetConfigType    `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType `json:"presets"`
-	TermThemes     map[string]TermThemeType       `json:"termthemes"`
-	Connections    map[string]ConnKeywords        `json:"connections"`
-	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
-	WaveAIModes    map[string]AIModeConfigType    `json:"waveai"`
-	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
+	Settings       SettingsType                    `json:"settings" merge:"meta"`
+	MimeTypes      map[string]MimeTypeConfigType   `json:"mimetypes"`
+	DefaultWidgets map[string]WidgetConfigType     `json:"defaultwidgets"`
+	Widgets        map[string]WidgetConfigType     `json:"widgets"`
+	Presets        map[string]waveobj.MetaMapType  `json:"presets"`
+	Backgrounds    map[string]BackgroundConfigType `json:"backgrounds"`
+	TermThemes     map[string]TermThemeType        `json:"termthemes"`
+	Connections    map[string]ConnKeywords         `json:"connections"`
+	Bookmarks      map[string]WebBookmark          `json:"bookmarks"`
+	WaveAIModes    map[string]AIModeConfigType     `json:"waveai"`
+	ConfigErrors   []ConfigError                   `json:"configerrors" configfile:"-"`
 }
 
 type ConnKeywords struct {
@@ -849,8 +851,7 @@ type WidgetConfigType struct {
 	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }
 
-type BgPresetsType struct {
-	BgClear             bool    `json:"bg:*,omitempty"`
+type BackgroundConfigType struct {
 	Bg                  string  `json:"bg,omitempty" jsonschema_description:"CSS background property value"`
 	BgOpacity           float64 `json:"bg:opacity,omitempty" jsonschema_description:"Background opacity (0.0-1.0)"`
 	BgBlendMode         string  `json:"bg:blendmode,omitempty" jsonschema_description:"CSS background-blend-mode property value"`

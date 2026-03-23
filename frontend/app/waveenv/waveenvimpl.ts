@@ -7,6 +7,7 @@ import {
     atoms,
     createBlock,
     getBlockMetaKeyAtom,
+    getConfigBackgroundAtom,
     getConnConfigKeyAtom,
     getConnStatusAtom,
     getLocalHostDisplayNameAtom,
@@ -44,6 +45,7 @@ export function makeWaveEnvImpl(): WaveEnv {
             useWaveObjectValue: WOS.useWaveObjectValue,
         },
         getBlockMetaKeyAtom,
+        getConfigBackgroundAtom,
         getConnConfigKeyAtom,
 
         mockSetWaveObj: <T extends WaveObj>(_oref: string, _obj: T) => {

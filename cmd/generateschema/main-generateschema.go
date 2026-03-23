@@ -20,7 +20,7 @@ const WaveSchemaSettingsFileName = "schema/settings.json"
 const WaveSchemaConnectionsFileName = "schema/connections.json"
 const WaveSchemaAiPresetsFileName = "schema/aipresets.json"
 const WaveSchemaWidgetsFileName = "schema/widgets.json"
-const WaveSchemaBgPresetsFileName = "schema/bgpresets.json"
+const WaveSchemaBackgroundsFileName = "schema/backgrounds.json"
 const WaveSchemaWaveAIFileName = "schema/waveai.json"
 
 // ViewNameType is a string type whose JSON Schema offers enum suggestions for the most
@@ -185,8 +185,8 @@ func main() {
 		log.Fatalf("widgets schema error: %v", err)
 	}
 
-	bgPresetsTemplate := make(map[string]wconfig.BgPresetsType)
-	err = generateSchema(&bgPresetsTemplate, WaveSchemaBgPresetsFileName)
+	bgPresetsTemplate := make(map[string]wconfig.BackgroundConfigType)
+	err = generateSchema(&bgPresetsTemplate, WaveSchemaBackgroundsFileName)
 	if err != nil {
 		log.Fatalf("bg presets schema error: %v", err)
 	}

@@ -107,9 +107,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
-    const [magnifiedBlockBlurAtom] = React.useState(() => waveEnv.getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
+    const [magnifiedBlockBlurAtom] = React.useState(() =>
+        waveEnv.getSettingsKeyAtom("window:magnifiedblockblurprimarypx")
+    );
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
-    const [magnifiedBlockOpacityAtom] = React.useState(() => waveEnv.getSettingsKeyAtom("window:magnifiedblockopacity"));
+    const [magnifiedBlockOpacityAtom] = React.useState(() =>
+        waveEnv.getSettingsKeyAtom("window:magnifiedblockopacity")
+    );
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
@@ -141,7 +145,11 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         if (!util.isLocalConnName(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
             waveEnv.rpc
-                .ConnEnsureCommand(TabRpcClient, { connname: connName, logblockid: nodeModel.blockId }, { timeout: 60000 })
+                .ConnEnsureCommand(
+                    TabRpcClient,
+                    { connname: connName, logblockid: nodeModel.blockId },
+                    { timeout: 60000 }
+                )
                 .catch((e) => {
                     console.log("error ensuring connection", nodeModel.blockId, connName, e);
                 });

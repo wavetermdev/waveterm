@@ -229,6 +229,21 @@ function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): SettingsType[
     return useAtomValue(getSettingsKeyAtom(key));
 }
 
+const configBackgroundAtomCache = new Map<string, Atom<BackgroundConfigType>>();
+
+function getConfigBackgroundAtom(bgKey: string): Atom<BackgroundConfigType> {
+    if (isPreviewWindow()) return NullAtom as Atom<BackgroundConfigType>;
+    let bgAtom = configBackgroundAtomCache.get(bgKey);
+    if (bgAtom == null) {
+        bgAtom = atom((get) => {
+            const fullConfig = get(atoms.fullConfigAtom);
+            return fullConfig.backgrounds?.[bgKey];
+        });
+        configBackgroundAtomCache.set(bgKey, bgAtom);
+    }
+    return bgAtom;
+}
+
 function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
     if (isPreviewWindow()) return NullAtom as Atom<SettingsType>;
     let settingsPrefixAtom = settingsAtomCache.get(prefix + ":");
@@ -666,6 +681,7 @@ export {
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
+    getConfigBackgroundAtom,
     getConnConfigKeyAtom,
     getConnStatusAtom,
     getFocusedBlockId,

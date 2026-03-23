@@ -187,14 +187,12 @@ func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) 
 	return wstore.DBMustGet[*waveobj.Workspace](ctx, wsID)
 }
 
-func getTabPresetMeta() (waveobj.MetaMapType, error) {
-	settings := wconfig.GetWatcher().GetFullConfig()
-	tabPreset := settings.Settings.TabPreset
-	if tabPreset == "" {
-		return nil, nil
+func getTabBackground() string {
+	config := wconfig.GetWatcher().GetFullConfig()
+	if config.Settings.TabBackground != "" {
+		return config.Settings.TabBackground
 	}
-	presetMeta := settings.Presets[tabPreset]
-	return presetMeta, nil
+	return config.Settings.TabPreset
 }
 
 var tabNameRe = regexp.MustCompile(`^T(\d+)$`)
@@ -256,12 +254,10 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}
-		presetMeta, presetErr := getTabPresetMeta()
-		if presetErr != nil {
-			log.Printf("error getting tab preset meta: %v\n", presetErr)
-		} else if len(presetMeta) > 0 {
+		tabBg := getTabBackground()
+		if tabBg != "" {
 			tabORef := waveobj.ORefFromWaveObj(tab)
-			wstore.UpdateObjectMeta(ctx, *tabORef, presetMeta, true)
+			wstore.UpdateObjectMeta(ctx, *tabORef, waveobj.MetaMapType{waveobj.MetaKey_TabBackground: tabBg}, false)
 		}
 	}
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
