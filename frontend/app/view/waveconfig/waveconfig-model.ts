@@ -93,7 +93,7 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
             name: "Tab Backgrounds",
             path: "backgrounds.json",
             language: "json",
-            docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
+            docsUrl: "https://docs.waveterm.dev/tab-backgrounds",
             hasJsonView: true,
         },
         {
