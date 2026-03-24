@@ -515,4 +515,39 @@
         font-size: 11px;
         font-weight: 600;
     }
+
+    .arb-hist-table {
+        .arb-hist-row {
+            display: grid;
+            grid-template-columns: 70px 1.5fr 70px 70px 70px 90px;
+            gap: 8px;
+            align-items: center;
+            padding: 4px 6px;
+            font-size: 11px;
+            border-radius: 4px;
+
+            &.header {
+                font-size: 10px;
+                color: rgba(148, 163, 184, 0.5);
+                text-transform: uppercase;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                margin-bottom: 3px;
+            }
+
+            &.data:hover {
+                background: rgba(255, 255, 255, 0.03);
+            }
+        }
+
+        .hist-time {
+            font-family: monospace;
+            color: rgba(148, 163, 184, 0.5);
+            font-size: 10px;
+        }
+
+        .hist-path {
+            color: #a5b4fc;
+            font-size: 11px;
+        }
+    }
 }

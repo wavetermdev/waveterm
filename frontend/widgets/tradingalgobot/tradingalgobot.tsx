@@ -220,7 +220,7 @@ function MetricsTab({ model }: { model: TradingAlgoBotViewModel }) {
                         <div key={m.label} className={`metric-card trend-${m.trend}`}>
                             <div className="metric-label">{m.label}</div>
                             <div className="metric-value">
-                                {m.value >= 0 && m.trend !== "neutral" && m.unit !== "USDC" ? "" : ""}
+                                {m.value > 0 && m.unit === "USDC" ? "+" : ""}
                                 {m.value.toFixed(m.decimals ?? 2)}
                                 {m.unit && <span className="metric-unit">{m.unit}</span>}
                             </div>
@@ -265,6 +265,67 @@ function MetricsTab({ model }: { model: TradingAlgoBotViewModel }) {
     );
 }
 
+function PositionsTab({ model }: { model: TradingAlgoBotViewModel }) {
+    const positions = useAtomValue(model.positions);
+
+    const totalPnl = positions.reduce((s, p) => s + p.unrealizedPnl, 0);
+    const totalNotional = positions.reduce((s, p) => s + p.size * p.currentPrice, 0);
+
+    return (
+        <div className="widget-tab-content">
+            <div className="widget-stat-row">
+                <div className={`widget-stat-card ${totalPnl >= 0 ? "positive" : "negative"}`}>
+                    <div className="stat-label">Unrealized P&L</div>
+                    <div className="stat-value">
+                        {totalPnl >= 0 ? "+" : ""}
+                        {totalPnl.toFixed(2)} USDC
+                    </div>
+                </div>
+                <div className="widget-stat-card">
+                    <div className="stat-label">Total Notional</div>
+                    <div className="stat-value">${totalNotional.toLocaleString("en-US", { maximumFractionDigits: 0 })}</div>
+                </div>
+                <div className="widget-stat-card">
+                    <div className="stat-label">Open Positions</div>
+                    <div className="stat-value">{positions.length}</div>
+                </div>
+            </div>
+            <div className="widget-section">
+                <div className="widget-section-header">All Open Positions</div>
+                <div className="positions-table">
+                    <div className="table-header">
+                        <span>Symbol</span>
+                        <span>Side</span>
+                        <span>Size</span>
+                        <span>Entry</span>
+                        <span>Mark</span>
+                        <span>PnL</span>
+                    </div>
+                    {positions.map((pos) => {
+                        const roe = ((pos.unrealizedPnl / (pos.size * pos.entryPrice)) * pos.leverage) * 100;
+                        return (
+                            <div key={pos.symbol} className="table-row">
+                                <span className="symbol-name">{pos.symbol}</span>
+                                <span className={`side-badge ${pos.side}`}>{pos.side.toUpperCase()} {pos.leverage}x</span>
+                                <span>{pos.size.toFixed(3)}</span>
+                                <span>${pos.entryPrice.toFixed(2)}</span>
+                                <span>${pos.currentPrice.toFixed(2)}</span>
+                                <span className={pos.unrealizedPnl >= 0 ? "positive" : "negative"}>
+                                    {pos.unrealizedPnl >= 0 ? "+" : ""}
+                                    {pos.unrealizedPnl.toFixed(2)}
+                                    <span style={{ fontSize: "9px", marginLeft: 3, opacity: 0.7 }}>
+                                        ({roe >= 0 ? "+" : ""}{roe.toFixed(1)}%)
+                                    </span>
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export const TradingAlgoBot: React.FC<ViewComponentProps<TradingAlgoBotViewModel>> = ({ model }) => {
     const [activeTab, setActiveTab] = useAtom(model.activeTab);
 
@@ -299,7 +360,7 @@ export const TradingAlgoBot: React.FC<ViewComponentProps<TradingAlgoBotViewModel
             <div className="widget-body">
                 {activeTab === "overview" && <OverviewTab model={model} />}
                 {activeTab === "signals" && <SignalsTab model={model} />}
-                {activeTab === "positions" && <OverviewTab model={model} />}
+                {activeTab === "positions" && <PositionsTab model={model} />}
                 {activeTab === "metrics" && <MetricsTab model={model} />}
             </div>
         </div>

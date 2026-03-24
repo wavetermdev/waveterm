@@ -598,4 +598,55 @@
         font-size: 11px;
         font-weight: 600;
     }
+
+    .history-table {
+        .hist-row {
+            display: grid;
+            grid-template-columns: 120px 1.6fr 80px 70px 90px 90px;
+            gap: 8px;
+            align-items: center;
+            padding: 4px 6px;
+            font-size: 11px;
+            border-radius: 4px;
+
+            &.header {
+                font-size: 10px;
+                color: rgba(148, 163, 184, 0.5);
+                text-transform: uppercase;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+                margin-bottom: 3px;
+            }
+
+            &.data:hover {
+                background: rgba(255, 255, 255, 0.03);
+            }
+        }
+
+        .hist-date {
+            color: rgba(148, 163, 184, 0.6);
+            font-size: 10px;
+        }
+
+        .hist-strategy {
+            color: #c4b5fd;
+        }
+
+        .hist-status {
+            font-weight: 600;
+
+            &.status-success {
+                color: #22c55e;
+            }
+
+            &.status-failed {
+                color: #ef4444;
+            }
+        }
+
+        .hist-tx {
+            font-family: monospace;
+            font-size: 10px;
+            color: #a5b4fc;
+        }
+    }
 }

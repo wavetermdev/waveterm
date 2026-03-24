@@ -227,6 +227,48 @@ function SimulateTab({ model }: { model: FlashLoanViewModel }) {
     );
 }
 
+const MOCK_FLASH_HISTORY = [
+    { date: "2026-03-24 14:32", strategy: "Aave Flash + Uni Rebalance", profit: 323.8, gas: 18.7, status: "success", tx: "0x1a2b...3c4d" },
+    { date: "2026-03-24 11:15", strategy: "Balancer Flash + Multi-hop", profit: 165.2, gas: 24.1, status: "success", tx: "0x5e6f...7a8b" },
+    { date: "2026-03-23 22:07", strategy: "Aave Flash + Uni Rebalance", profit: 291.4, gas: 17.9, status: "success", tx: "0x9c0d...1e2f" },
+    { date: "2026-03-23 18:44", strategy: "Leveraged Rebalance", profit: 0, gas: 42.5, status: "failed", tx: "0x3a4b...5c6d" },
+    { date: "2026-03-23 09:20", strategy: "Balancer Flash + Multi-hop", profit: 189.3, gas: 22.8, status: "success", tx: "0x7e8f...9a0b" },
+];
+
+function HistoryTab() {
+    return (
+        <div className="widget-tab-content">
+            <div className="flash-section">
+                <div className="flash-section-header">Execution History</div>
+                <div className="history-table">
+                    <div className="hist-row header">
+                        <span>Date</span>
+                        <span>Strategy</span>
+                        <span>Profit</span>
+                        <span>Gas</span>
+                        <span>Status</span>
+                        <span>Tx</span>
+                    </div>
+                    {MOCK_FLASH_HISTORY.map((h, i) => (
+                        <div key={i} className={`hist-row data status-${h.status}`}>
+                            <span className="hist-date">{h.date}</span>
+                            <span className="hist-strategy">{h.strategy}</span>
+                            <span className={h.profit > 0 ? "positive" : "negative"}>
+                                {h.profit > 0 ? `+$${h.profit.toFixed(2)}` : "—"}
+                            </span>
+                            <span className="negative">-${h.gas.toFixed(2)}</span>
+                            <span className={`hist-status status-${h.status}`}>
+                                {h.status === "success" ? "✓ Success" : "✗ Failed"}
+                            </span>
+                            <span className="hist-tx">{h.tx}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export const FlashLoan: React.FC<ViewComponentProps<FlashLoanViewModel>> = ({ model }) => {
     const [activeTab, setActiveTab] = useAtom(model.activeTab);
 
@@ -261,7 +303,7 @@ export const FlashLoan: React.FC<ViewComponentProps<FlashLoanViewModel>> = ({ mo
                 {activeTab === "portfolio" && <PortfolioTab model={model} />}
                 {activeTab === "strategies" && <StrategiesTab model={model} />}
                 {activeTab === "simulate" && <SimulateTab model={model} />}
-                {activeTab === "history" && <PortfolioTab model={model} />}
+                {activeTab === "history" && <HistoryTab />}
             </div>
         </div>
     );

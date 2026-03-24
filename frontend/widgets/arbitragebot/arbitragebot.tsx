@@ -247,6 +247,48 @@ function ModelTab({ model }: { model: ArbitrageBotViewModel }) {
     );
 }
 
+const MOCK_ARB_HISTORY = [
+    { ts: "14:32:07", path: ["USDC", "ETH", "ARB"], profit: 47.2, gas: 12.1, net: 35.1, status: "completed" as const },
+    { ts: "14:18:44", path: ["ARB", "ETH", "USDC"], profit: 28.9, gas: 11.8, net: 17.1, status: "completed" as const },
+    { ts: "13:55:22", path: ["WBTC", "USDC", "ARB"], profit: 89.3, gas: 15.2, net: 74.1, status: "completed" as const },
+    { ts: "13:41:09", path: ["ETH", "USDT", "GMX"], profit: 0, gas: 10.4, net: -10.4, status: "failed" as const },
+    { ts: "13:29:55", path: ["USDC", "ETH", "ARB"], profit: 62.8, gas: 13.0, net: 49.8, status: "completed" as const },
+];
+
+function ArbHistoryTab() {
+    return (
+        <div className="widget-tab-content">
+            <div className="arb-section">
+                <div className="arb-section-header">Trade History — Today</div>
+                <div className="arb-hist-table">
+                    <div className="arb-hist-row header">
+                        <span>Time</span>
+                        <span>Path</span>
+                        <span>Gross</span>
+                        <span>Gas</span>
+                        <span>Net</span>
+                        <span>Status</span>
+                    </div>
+                    {MOCK_ARB_HISTORY.map((h, i) => (
+                        <div key={i} className={`arb-hist-row data`}>
+                            <span className="hist-time">{h.ts}</span>
+                            <span className="hist-path">{h.path.join(" → ")}</span>
+                            <span className={h.profit > 0 ? "positive" : ""}>${h.profit.toFixed(2)}</span>
+                            <span className="negative">-${h.gas.toFixed(2)}</span>
+                            <span className={h.net > 0 ? "positive" : "negative"}>
+                                {h.net > 0 ? "+" : ""}${h.net.toFixed(2)}
+                            </span>
+                            <span className={`arb-status-badge status-${h.status}`}>
+                                {h.status === "completed" ? "SUCCESS" : "FAILED"}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export const ArbitrageBot: React.FC<ViewComponentProps<ArbitrageBotViewModel>> = ({ model }) => {
     const [activeTab, setActiveTab] = useAtom(model.activeTab);
 
@@ -281,7 +323,7 @@ export const ArbitrageBot: React.FC<ViewComponentProps<ArbitrageBotViewModel>> =
             <div className="widget-body">
                 {activeTab === "live" && <LiveTab model={model} />}
                 {activeTab === "prices" && <PricesTab model={model} />}
-                {activeTab === "history" && <LiveTab model={model} />}
+                {activeTab === "history" && <ArbHistoryTab />}
                 {activeTab === "model" && <ModelTab model={model} />}
             </div>
         </div>
