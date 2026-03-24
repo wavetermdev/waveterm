@@ -23,7 +23,7 @@ export function AppBackground() {
     const env = useWaveEnv<AppBgEnv>();
     const tabBg = useAtomValue(env.getTabMetaKeyAtom(tabId, "tab:background"));
     const configBg = useAtomValue(env.getConfigBackgroundAtom(tabBg));
-    const resolvedMeta: BackgroundConfigType = tabBg && configBg ? configBg : tabData?.meta;
+    const resolvedMeta: Omit<BackgroundConfigType, "display:name"> = tabBg && configBg ? configBg : tabData?.meta;
     const style: CSSProperties = computeBgStyleFromMeta(resolvedMeta, 0.5) ?? {};
     const getAvgColor = useCallback(
         debounce(30, () => {

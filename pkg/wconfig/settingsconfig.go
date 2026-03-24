@@ -309,6 +309,60 @@ type AIModeConfigUpdate struct {
 	Configs map[string]AIModeConfigType `json:"configs"`
 }
 
+type WidgetConfigType struct {
+	DisplayOrder  float64          `json:"display:order,omitempty"`
+	DisplayHidden bool             `json:"display:hidden,omitempty"`
+	Icon          string           `json:"icon,omitempty"`
+	Color         string           `json:"color,omitempty"`
+	Label         string           `json:"label,omitempty"`
+	Description   string           `json:"description,omitempty"`
+	Workspaces    []string         `json:"workspaces,omitempty"`
+	Magnified     bool             `json:"magnified,omitempty"`
+	BlockDef      waveobj.BlockDef `json:"blockdef"`
+}
+
+type BackgroundConfigType struct {
+	Bg                  string  `json:"bg,omitempty" jsonschema_description:"CSS background property value"`
+	BgOpacity           float64 `json:"bg:opacity,omitempty" jsonschema_description:"Background opacity (0.0-1.0)"`
+	BgBlendMode         string  `json:"bg:blendmode,omitempty" jsonschema_description:"CSS background-blend-mode property value"`
+	BgBorderColor       string  `json:"bg:bordercolor,omitempty" jsonschema_description:"Block frame border color"`
+	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty" jsonschema_description:"Block frame focused border color"`
+	DisplayName         string  `json:"display:name" jsonschema_description:"The name shown in the context menu"`
+	DisplayOrder        float64 `json:"display:order,omitempty" jsonschema_description:"Determines the order of the background in the context menu"`
+}
+
+type MimeTypeConfigType struct {
+	Icon  string `json:"icon"`
+	Color string `json:"color"`
+}
+
+type TermThemeType struct {
+	DisplayName         string  `json:"display:name"`
+	DisplayOrder        float64 `json:"display:order"`
+	Black               string  `json:"black"`
+	Red                 string  `json:"red"`
+	Green               string  `json:"green"`
+	Yellow              string  `json:"yellow"`
+	Blue                string  `json:"blue"`
+	Magenta             string  `json:"magenta"`
+	Cyan                string  `json:"cyan"`
+	White               string  `json:"white"`
+	BrightBlack         string  `json:"brightBlack"`
+	BrightRed           string  `json:"brightRed"`
+	BrightGreen         string  `json:"brightGreen"`
+	BrightYellow        string  `json:"brightYellow"`
+	BrightBlue          string  `json:"brightBlue"`
+	BrightMagenta       string  `json:"brightMagenta"`
+	BrightCyan          string  `json:"brightCyan"`
+	BrightWhite         string  `json:"brightWhite"`
+	Gray                string  `json:"gray"`
+	CmdText             string  `json:"cmdtext"`
+	Foreground          string  `json:"foreground"`
+	SelectionBackground string  `json:"selectionBackground"`
+	Background          string  `json:"background"`
+	Cursor              string  `json:"cursor"`
+}
+
 type FullConfigType struct {
 	Settings       SettingsType                    `json:"settings" merge:"meta"`
 	MimeTypes      map[string]MimeTypeConfigType   `json:"mimetypes"`
@@ -880,60 +934,6 @@ func MigratePresetsBackgrounds() {
 		return
 	}
 	log.Printf("migrated %d background presets from presets/bg.json to backgrounds.json\n", len(filtered))
-}
-
-type WidgetConfigType struct {
-	DisplayOrder  float64          `json:"display:order,omitempty"`
-	DisplayHidden bool             `json:"display:hidden,omitempty"`
-	Icon          string           `json:"icon,omitempty"`
-	Color         string           `json:"color,omitempty"`
-	Label         string           `json:"label,omitempty"`
-	Description   string           `json:"description,omitempty"`
-	Workspaces    []string         `json:"workspaces,omitempty"`
-	Magnified     bool             `json:"magnified,omitempty"`
-	BlockDef      waveobj.BlockDef `json:"blockdef"`
-}
-
-type BackgroundConfigType struct {
-	Bg                  string  `json:"bg,omitempty" jsonschema_description:"CSS background property value"`
-	BgOpacity           float64 `json:"bg:opacity,omitempty" jsonschema_description:"Background opacity (0.0-1.0)"`
-	BgBlendMode         string  `json:"bg:blendmode,omitempty" jsonschema_description:"CSS background-blend-mode property value"`
-	BgBorderColor       string  `json:"bg:bordercolor,omitempty" jsonschema_description:"Block frame border color"`
-	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty" jsonschema_description:"Block frame focused border color"`
-	DisplayName         string  `json:"display:name" jsonschema_description:"The name shown in the context menu"`
-	DisplayOrder        float64 `json:"display:order,omitempty" jsonschema_description:"Determines the order of the background in the context menu"`
-}
-
-type MimeTypeConfigType struct {
-	Icon  string `json:"icon"`
-	Color string `json:"color"`
-}
-
-type TermThemeType struct {
-	DisplayName         string  `json:"display:name"`
-	DisplayOrder        float64 `json:"display:order"`
-	Black               string  `json:"black"`
-	Red                 string  `json:"red"`
-	Green               string  `json:"green"`
-	Yellow              string  `json:"yellow"`
-	Blue                string  `json:"blue"`
-	Magenta             string  `json:"magenta"`
-	Cyan                string  `json:"cyan"`
-	White               string  `json:"white"`
-	BrightBlack         string  `json:"brightBlack"`
-	BrightRed           string  `json:"brightRed"`
-	BrightGreen         string  `json:"brightGreen"`
-	BrightYellow        string  `json:"brightYellow"`
-	BrightBlue          string  `json:"brightBlue"`
-	BrightMagenta       string  `json:"brightMagenta"`
-	BrightCyan          string  `json:"brightCyan"`
-	BrightWhite         string  `json:"brightWhite"`
-	Gray                string  `json:"gray"`
-	CmdText             string  `json:"cmdtext"`
-	Foreground          string  `json:"foreground"`
-	SelectionBackground string  `json:"selectionBackground"`
-	Background          string  `json:"background"`
-	Cursor              string  `json:"cursor"`
 }
 
 // CountCustomWidgets returns the number of custom widgets the user has defined.
