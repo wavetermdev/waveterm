@@ -85,6 +85,18 @@ export function buildTabContextMenu(
     if (bgKeys.length > 0) {
         const submenu: ContextMenuItem[] = [];
         const oref = makeORef("tab", id);
+        submenu.push({
+            label: "Default",
+            click: () =>
+                fireAndForget(async () => {
+                    await env.rpc.SetMetaCommand(TabRpcClient, {
+                        oref,
+                        meta: { "bg:*": true, "tab:background": null },
+                    });
+                    env.rpc.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                    recordTEvent("action:settabtheme");
+                }),
+        });
         for (const bgKey of bgKeys) {
             const bg = backgrounds[bgKey];
             submenu.push({

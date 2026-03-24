@@ -101,6 +101,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	} else {
 		// Handle background setting
 		meta["bg:*"] = true
+		meta["tab:background"] = nil
 		if setBgOpacity < 0 || setBgOpacity > 1 {
 			return fmt.Errorf("opacity must be between 0.0 and 1.0")
 		}
