@@ -3,7 +3,7 @@
 
 import { BlockModel } from "@/app/block/block-model";
 import { BlockFrame_Header } from "@/app/block/blockframe-header";
-import { blockViewToIcon, getViewIconElem } from "@/app/block/blockutil";
+import { blockViewToIcon, getViewIconElem, useTabBackground } from "@/app/block/blockutil";
 import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
 import { getBlockComponentModel, globalStore, useBlockAtom } from "@/app/store/global";
@@ -36,14 +36,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
     );
     const frameBorderColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:bordercolor"));
-    const tabActiveBorderColorDirect = jotai.useAtomValue(
-        waveEnv.getTabMetaKeyAtom(tabModel.tabId, "bg:activebordercolor")
-    );
-    const tabBorderColorDirect = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabModel.tabId, "bg:bordercolor"));
-    const tabBg = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabModel.tabId, "tab:background"));
-    const configBg = jotai.useAtomValue(waveEnv.getConfigBackgroundAtom(tabBg));
-    const tabActiveBorderColor = tabActiveBorderColorDirect ?? configBg?.["bg:activebordercolor"];
-    const tabBorderColor = tabBorderColorDirect ?? configBg?.["bg:bordercolor"];
+    const [tabBorderColor, tabActiveBorderColor] = useTabBackground(waveEnv, tabModel.tabId);
     const style: React.CSSProperties = {};
     let showBlockMask = false;
 
