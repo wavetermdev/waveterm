@@ -224,7 +224,14 @@
     }
   },
   "additionalProperties": {
-    "$ref": "#/$defs/WidgetConfigType"
+    "anyOf": [
+      {
+        "$ref": "#/$defs/WidgetConfigType"
+      },
+      {
+        "type": "null"
+      }
+    ]
   },
   "type": "object"
 }

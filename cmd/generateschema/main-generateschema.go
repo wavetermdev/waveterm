@@ -105,8 +105,26 @@ type WidgetsMetaSchemaHints struct {
 	TermDurable             *bool    `json:"term:durable,omitempty"`
 }
 
-func generateSchema(template any, dir string) error {
+// allowNullValues wraps the top-level additionalProperties of a map schema with
+// anyOf: [originalSchema, {type: "null"}] so that setting a key to null is valid
+// (e.g. "bg@foo": null to remove a default entry).
+func allowNullValues(schema *jsonschema.Schema) {
+	if schema.AdditionalProperties != nil && schema.AdditionalProperties != jsonschema.TrueSchema && schema.AdditionalProperties != jsonschema.FalseSchema {
+		original := schema.AdditionalProperties
+		schema.AdditionalProperties = &jsonschema.Schema{
+			AnyOf: []*jsonschema.Schema{
+				original,
+				{Type: "null"},
+			},
+		}
+	}
+}
+
+func generateSchema(template any, dir string, allowNull bool) error {
 	settingsSchema := jsonschema.Reflect(template)
+	if allowNull {
+		allowNullValues(settingsSchema)
+	}
 
 	jsonSettingsSchema, err := json.MarshalIndent(settingsSchema, "", "  ")
 	if err != nil {
@@ -147,6 +165,7 @@ func generateWidgetsSchema(dir string) error {
 
 	widgetsTemplate := make(map[string]wconfig.WidgetConfigType)
 	widgetsSchema := r.Reflect(&widgetsTemplate)
+	allowNullValues(widgetsSchema)
 
 	jsonWidgetsSchema, err := json.MarshalIndent(widgetsSchema, "", "  ")
 	if err != nil {
@@ -163,19 +182,19 @@ func generateWidgetsSchema(dir string) error {
 }
 
 func main() {
-	err := generateSchema(&wconfig.SettingsType{}, WaveSchemaSettingsFileName)
+	err := generateSchema(&wconfig.SettingsType{}, WaveSchemaSettingsFileName, false)
 	if err != nil {
 		log.Fatalf("settings schema error: %v", err)
 	}
 
 	connectionTemplate := make(map[string]wconfig.ConnKeywords)
-	err = generateSchema(&connectionTemplate, WaveSchemaConnectionsFileName)
+	err = generateSchema(&connectionTemplate, WaveSchemaConnectionsFileName, false)
 	if err != nil {
 		log.Fatalf("connections schema error: %v", err)
 	}
 
 	aiPresetsTemplate := make(map[string]wconfig.AiSettingsType)
-	err = generateSchema(&aiPresetsTemplate, WaveSchemaAiPresetsFileName)
+	err = generateSchema(&aiPresetsTemplate, WaveSchemaAiPresetsFileName, false)
 	if err != nil {
 		log.Fatalf("ai presets schema error: %v", err)
 	}
@@ -186,13 +205,13 @@ func main() {
 	}
 
 	backgroundsTemplate := make(map[string]wconfig.BackgroundConfigType)
-	err = generateSchema(&backgroundsTemplate, WaveSchemaBackgroundsFileName)
+	err = generateSchema(&backgroundsTemplate, WaveSchemaBackgroundsFileName, true)
 	if err != nil {
 		log.Fatalf("backgrounds schema error: %v", err)
 	}
 
 	waveAITemplate := make(map[string]wconfig.AIModeConfigType)
-	err = generateSchema(&waveAITemplate, WaveSchemaWaveAIFileName)
+	err = generateSchema(&waveAITemplate, WaveSchemaWaveAIFileName, false)
 	if err != nil {
 		log.Fatalf("waveai schema error: %v", err)
 	}

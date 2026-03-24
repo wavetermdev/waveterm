@@ -40,7 +40,14 @@
     }
   },
   "additionalProperties": {
-    "$ref": "#/$defs/BackgroundConfigType"
+    "anyOf": [
+      {
+        "$ref": "#/$defs/BackgroundConfigType"
+      },
+      {
+        "type": "null"
+      }
+    ]
   },
   "type": "object"
 }
