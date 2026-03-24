@@ -212,6 +212,11 @@ export class WebViewModel implements ViewModel {
         });
     }
 
+    dispose() {
+        this.ctrlShiftUnsubFn?.();
+        this.ctrlShiftUnsubFn = null;
+    }
+
     get viewComponent(): ViewComponent {
         return WebView;
     }
