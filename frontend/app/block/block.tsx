@@ -35,6 +35,7 @@ import { atom, useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
+import { WIDGET_REGISTRY_ENTRIES } from "@/widgets/index";
 import "./block.scss";
 import { BlockEnv } from "./blockenv";
 import { BlockFrame } from "./blockframe";
@@ -54,6 +55,10 @@ BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
+// Register financial/DeFi widgets (defined in frontend/widgets/)
+for (const [viewType, cls] of WIDGET_REGISTRY_ENTRIES) {
+    BlockRegistry.set(viewType, cls);
+}
 
 function makeViewModel(
     blockId: string,
