@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BlockMetaKeyAtomFnType, SettingsKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
+import type { MetaKeyAtomFnType, SettingsKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 
 export type WebViewEnv = WaveEnvSubset<{
     electron: {
@@ -19,7 +19,7 @@ export type WebViewEnv = WaveEnvSubset<{
     wos: WaveEnv["wos"];
     createBlock: WaveEnv["createBlock"];
     getSettingsKeyAtom: SettingsKeyAtomFnType<"web:defaulturl" | "web:defaultsearch">;
-    getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<
+    getBlockMetaKeyAtom: MetaKeyAtomFnType<
         "web:hidenav" | "web:useragenttype" | "web:zoom" | "web:partition"
     >;
 }>;

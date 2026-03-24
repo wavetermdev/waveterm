@@ -132,6 +132,10 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return metaAtom;
 }
 
+function getTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): Atom<MetaType[T]> {
+    return getOrefMetaKeyAtom(WOS.makeORef("tab", tabId), key);
+}
+
 function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Atom<MetaType[T]> {
     const orefCache = getSingleOrefAtomCache(oref);
     const metaAtomName = "#meta-" + key;
@@ -231,8 +235,8 @@ function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): SettingsType[
 
 const configBackgroundAtomCache = new Map<string, Atom<BackgroundConfigType>>();
 
-function getConfigBackgroundAtom(bgKey: string): Atom<BackgroundConfigType> {
-    if (isPreviewWindow()) return NullAtom as Atom<BackgroundConfigType>;
+function getConfigBackgroundAtom(bgKey: string | null): Atom<BackgroundConfigType> {
+    if (isPreviewWindow() || bgKey == null) return NullAtom as Atom<BackgroundConfigType>;
     let bgAtom = configBackgroundAtomCache.get(bgKey);
     if (bgAtom == null) {
         bgAtom = atom((get) => {
@@ -681,6 +685,7 @@ export {
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
+    getTabMetaKeyAtom,
     getConfigBackgroundAtom,
     getConnConfigKeyAtom,
     getConnStatusAtom,

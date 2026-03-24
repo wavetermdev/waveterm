@@ -12,6 +12,7 @@ import {
     getConnStatusAtom,
     getLocalHostDisplayNameAtom,
     getSettingsKeyAtom,
+    getTabMetaKeyAtom,
     isDev,
     WOS,
 } from "@/app/store/global";
@@ -45,6 +46,7 @@ export function makeWaveEnvImpl(): WaveEnv {
             useWaveObjectValue: WOS.useWaveObjectValue,
         },
         getBlockMetaKeyAtom,
+        getTabMetaKeyAtom,
         getConfigBackgroundAtom,
         getConnConfigKeyAtom,
 

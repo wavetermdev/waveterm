@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { MetaKeyAtomFnType, useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import useResizeObserver from "@react-hook/resize-observer";
@@ -10,23 +11,19 @@ import { debounce } from "throttle-debounce";
 import { atoms, getApi, WOS } from "./store/global";
 import { useWaveObjectValue } from "./store/wos";
 
-function resolveTabBgMeta(tabMeta: MetaType, fullConfig: FullConfigType): BackgroundConfigType {
-    const tabBg = tabMeta?.["tab:background"];
-    if (tabBg) {
-        const bgMeta = fullConfig?.backgrounds?.[tabBg];
-        if (bgMeta) {
-            return bgMeta;
-        }
-    }
-    return tabMeta;
-}
+type AppBgEnv = WaveEnvSubset<{
+    getTabMetaKeyAtom: MetaKeyAtomFnType<"tab:background">;
+    getConfigBackgroundAtom: WaveEnv["getConfigBackgroundAtom"];
+}>;
 
 export function AppBackground() {
     const bgRef = useRef<HTMLDivElement>(null);
     const tabId = useAtomValue(atoms.staticTabId);
     const [tabData] = useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
-    const resolvedMeta = resolveTabBgMeta(tabData?.meta, fullConfig);
+    const env = useWaveEnv<AppBgEnv>();
+    const tabBg = useAtomValue(env.getTabMetaKeyAtom(tabId, "tab:background"));
+    const configBg = useAtomValue(env.getConfigBackgroundAtom(tabBg));
+    const resolvedMeta: BackgroundConfigType = tabBg && configBg ? configBg : tabData?.meta;
     const style: CSSProperties = computeBgStyleFromMeta(resolvedMeta, 0.5) ?? {};
     const getAvgColor = useCallback(
         debounce(30, () => {

@@ -8,6 +8,7 @@ import { handleWaveEvent } from "@/app/store/wps";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { PlatformLinux, PlatformMacOS, PlatformWindows } from "@/util/platformutil";
+import { NullAtom } from "@/util/util";
 import { Atom, atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { showPreviewContextMenu } from "../preview-contextmenu";
 import { MockSysinfoConnection } from "../previews/sysinfo.preview-util";
@@ -428,7 +429,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
     const connStatusAtomCache = new Map<string, PrimitiveAtom<ConnStatus>>();
     const waveObjectValueAtomCache = new Map<string, PrimitiveAtom<any>>();
     const waveObjectDerivedAtomCache = new Map<string, Atom<any>>();
-    const blockMetaKeyAtomCache = new Map<string, Atom<any>>();
+    const orefMetaKeyAtomCache = new Map<string, Atom<any>>();
     const connConfigKeyAtomCache = new Map<string, Atom<any>>();
     const configBackgroundAtomCache = new Map<string, Atom<BackgroundConfigType>>();
     const getWaveObjectAtom = <T extends WaveObj>(oref: string): PrimitiveAtom<T> => {
@@ -544,17 +545,36 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             },
         },
         getBlockMetaKeyAtom: <T extends keyof MetaType>(blockId: string, key: T) => {
-            const cacheKey = blockId + "#meta-" + key;
-            if (!blockMetaKeyAtomCache.has(cacheKey)) {
+            if (blockId == null) {
+                return NullAtom as Atom<MetaType[T]>;
+            }
+            const oref = "block:" + blockId;
+            const cacheKey = oref + "#meta-" + key;
+            if (!orefMetaKeyAtomCache.has(cacheKey)) {
                 const metaAtom = atom<MetaType[T]>((get) => {
-                    const blockORef = "block:" + blockId;
-                    const blockAtom = env.wos.getWaveObjectAtom<Block>(blockORef);
+                    const blockAtom = env.wos.getWaveObjectAtom<Block>(oref);
                     const blockData = get(blockAtom);
                     return blockData?.meta?.[key] as MetaType[T];
                 });
-                blockMetaKeyAtomCache.set(cacheKey, metaAtom);
+                orefMetaKeyAtomCache.set(cacheKey, metaAtom);
             }
-            return blockMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
+            return orefMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
+        },
+        getTabMetaKeyAtom: <T extends keyof MetaType>(tabId: string, key: T) => {
+            if (tabId == null) {
+                return NullAtom as Atom<MetaType[T]>;
+            }
+            const oref = "tab:" + tabId;
+            const cacheKey = oref + "#meta-" + key;
+            if (!orefMetaKeyAtomCache.has(cacheKey)) {
+                const metaAtom = atom<MetaType[T]>((get) => {
+                    const tabAtom = env.wos.getWaveObjectAtom<Tab>(oref);
+                    const tabData = get(tabAtom);
+                    return tabData?.meta?.[key] as MetaType[T];
+                });
+                orefMetaKeyAtomCache.set(cacheKey, metaAtom);
+            }
+            return orefMetaKeyAtomCache.get(cacheKey) as Atom<MetaType[T]>;
         },
         getConnConfigKeyAtom: <T extends keyof ConnKeywords>(connName: string, key: T) => {
             const cacheKey = connName + "#conn-" + key;
@@ -567,7 +587,8 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             }
             return connConfigKeyAtomCache.get(cacheKey) as Atom<ConnKeywords[T]>;
         },
-        getConfigBackgroundAtom: (bgKey: string) => {
+        getConfigBackgroundAtom: (bgKey: string | null) => {
+            if (bgKey == null) return NullAtom as Atom<BackgroundConfigType>;
             if (!configBackgroundAtomCache.has(bgKey)) {
                 configBackgroundAtomCache.set(
                     bgKey,

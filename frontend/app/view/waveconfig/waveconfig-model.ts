@@ -32,16 +32,6 @@ export type ConfigFile = {
 
 export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
 
-function validateBgJson(parsed: any): ValidationResult {
-    const keys = Object.keys(parsed);
-    for (const key of keys) {
-        if (!key.startsWith("bg@")) {
-            return { error: `Invalid key "${key}": all top-level keys must start with "bg@"` };
-        }
-    }
-    return { success: true };
-}
-
 function validateAiJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
     for (const key of keys) {
@@ -101,10 +91,9 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
         },
         {
             name: "Tab Backgrounds",
-            path: "presets/bg.json",
+            path: "backgrounds.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
-            validator: validateBgJson,
             hasJsonView: true,
         },
         {

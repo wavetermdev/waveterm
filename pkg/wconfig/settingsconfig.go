@@ -839,6 +839,49 @@ func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) err
 	return WriteWaveHomeConfigFile(ConnectionsFile, m)
 }
 
+func MigratePresetsBackgrounds() {
+	configDirAbsPath := wavebase.GetWaveConfigDir()
+	backgroundsFile := filepath.Join(configDirAbsPath, "backgrounds.json")
+	if _, err := os.Stat(backgroundsFile); err == nil {
+		return
+	} else if !os.IsNotExist(err) {
+		log.Printf("error checking backgrounds.json during migration: %v\n", err)
+		return
+	}
+	bgFile := filepath.Join(configDirAbsPath, "presets", "bg.json")
+	bgData, err := os.ReadFile(bgFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("error reading presets/bg.json for migration: %v\n", err)
+		}
+		return
+	}
+	var rawMap map[string]json.RawMessage
+	if err := json.Unmarshal(bgData, &rawMap); err != nil {
+		log.Printf("error parsing presets/bg.json for migration: %v\n", err)
+		return
+	}
+	filtered := make(map[string]json.RawMessage)
+	for k, v := range rawMap {
+		if strings.HasPrefix(k, "bg@") {
+			filtered[k] = v
+		}
+	}
+	if len(filtered) == 0 {
+		return
+	}
+	outBarr, err := json.MarshalIndent(filtered, "", "    ")
+	if err != nil {
+		log.Printf("error marshaling backgrounds.json during migration: %v\n", err)
+		return
+	}
+	if err := fileutil.AtomicWriteFile(backgroundsFile, outBarr, 0644); err != nil {
+		log.Printf("error writing backgrounds.json during migration: %v\n", err)
+		return
+	}
+	log.Printf("migrated %d background presets from presets/bg.json to backgrounds.json\n", len(filtered))
+}
+
 type WidgetConfigType struct {
 	DisplayOrder  float64          `json:"display:order,omitempty"`
 	DisplayHidden bool             `json:"display:hidden,omitempty"`

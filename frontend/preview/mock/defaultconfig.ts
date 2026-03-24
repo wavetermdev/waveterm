@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import backgroundsJson from "../../../pkg/wconfig/defaultconfig/backgrounds.json";
 import mimetypesJson from "../../../pkg/wconfig/defaultconfig/mimetypes.json";
 import presetsJson from "../../../pkg/wconfig/defaultconfig/presets.json";
 import settingsJson from "../../../pkg/wconfig/defaultconfig/settings.json";
@@ -18,5 +19,6 @@ export const DefaultFullConfig: FullConfigType = {
     connections: {},
     bookmarks: {},
     waveai: waveaiJson as unknown as { [key: string]: AIModeConfigType },
+    backgrounds: backgroundsJson as { [key: string]: BackgroundConfigType },
     configerrors: [],
 };
