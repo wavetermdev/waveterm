@@ -115,7 +115,7 @@ declare global {
         "bg:blendmode"?: string;
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
-        "display:name"?: string;
+        "display:name": string;
         "display:order"?: number;
     };
 

@@ -26,7 +26,7 @@ import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { WaveUIMessage } from "./aitypes";
-import { BYOKAnnouncement } from "./byokannouncement";	
+import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel } from "./waveai-model";
 

@@ -33,7 +33,10 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "display:name"
+      ]
     }
   },
   "additionalProperties": {

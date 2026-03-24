@@ -185,10 +185,10 @@ func main() {
 		log.Fatalf("widgets schema error: %v", err)
 	}
 
-	bgPresetsTemplate := make(map[string]wconfig.BackgroundConfigType)
-	err = generateSchema(&bgPresetsTemplate, WaveSchemaBackgroundsFileName)
+	backgroundsTemplate := make(map[string]wconfig.BackgroundConfigType)
+	err = generateSchema(&backgroundsTemplate, WaveSchemaBackgroundsFileName)
 	if err != nil {
-		log.Fatalf("bg presets schema error: %v", err)
+		log.Fatalf("backgrounds schema error: %v", err)
 	}
 
 	waveAITemplate := make(map[string]wconfig.AIModeConfigType)

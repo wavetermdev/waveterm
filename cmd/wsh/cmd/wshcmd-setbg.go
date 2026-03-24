@@ -124,12 +124,6 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		} else if cmd.Flags().Changed("opacity") {
 			meta["bg:opacity"] = setBgOpacity
 		}
-		if borderColorChanged {
-			meta["bg:bordercolor"] = setBgBorderColor
-		}
-		if activeBorderColorChanged {
-			meta["bg:activebordercolor"] = setBgActiveBorderColor
-		}
 	} else if len(args) > 1 {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("too many arguments")
