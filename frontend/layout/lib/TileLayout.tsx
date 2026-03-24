@@ -140,7 +140,7 @@ function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
     const [blockBlurAtom] = useState(() => getSettingsKeyAtom("window:magnifiedblockblursecondarypx"));
     const blockBlur = useAtomValue(blockBlurAtom);
     const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
-    const magnifiedNodeId = useAtomValue(layoutModel.treeStateAtom).magnifiedNodeId;
+    const magnifiedNodeId = useAtomValue(layoutModel.magnifiedNodeIdAtom);
 
     const [showMagnifiedBackdrop, setShowMagnifiedBackdrop] = useState(!!ephemeralNode);
     const [showEphemeralBackdrop, setShowEphemeralBackdrop] = useState(!!magnifiedNodeId);

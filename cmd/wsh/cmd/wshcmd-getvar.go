@@ -4,14 +4,9 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"fmt"
-	"io/fs"
-	"sort"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -113,39 +108,23 @@ func getVarRun(cmd *cobra.Command, args []string) error {
 }
 
 func getAllVariables(zoneId string) error {
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, getVarFileName)}}
-
-	data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-	err = convertNotFoundErr(err)
-	if err == fs.ErrNotExist {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("reading variables: %w", err)
-	}
-	envBytes, err := base64.StdEncoding.DecodeString(data.Data64)
-	if err != nil {
-		return fmt.Errorf("decoding variables: %w", err)
+	commandData := wshrpc.CommandVarData{
+		ZoneId:   zoneId,
+		FileName: getVarFileName,
 	}
 
-	envMap := envutil.EnvToMap(string(envBytes))
+	vars, err := wshclient.GetAllVarsCommand(RpcClient, commandData, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("getting variables: %w", err)
+	}
 
 	terminator := "\n"
 	if getVarNullTerminate {
 		terminator = "\x00"
 	}
 
-	// Sort keys for consistent output
-	keys := make([]string, 0, len(envMap))
-	for k := range envMap {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		WriteStdout("%s=%s%s", k, envMap[k], terminator)
+	for _, v := range vars {
+		WriteStdout("%s=%s%s", v.Key, v.Val, terminator)
 	}
 
 	return nil

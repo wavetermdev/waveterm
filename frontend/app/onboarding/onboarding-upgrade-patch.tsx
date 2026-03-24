@@ -1,0 +1,279 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+import Logo from "@/app/asset/logo.svg";
+import { Button } from "@/app/element/button";
+import { FlexiModal } from "@/app/modals/modal";
+import { CurrentOnboardingVersion, OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
+import { StarAskPage } from "@/app/onboarding/onboarding-starask";
+import { ClientModel } from "@/app/store/client-model";
+import { globalStore } from "@/app/store/global";
+import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
+import { modalsModel } from "@/app/store/modalmodel";
+import * as WOS from "@/app/store/wos";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useAtomValue } from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { useEffect, useRef, useState } from "react";
+import { debounce } from "throttle-debounce";
+import { UpgradeOnboardingModal_v0_12_1_Content } from "./onboarding-upgrade-v0121";
+import { UpgradeOnboardingModal_v0_12_2_Content } from "./onboarding-upgrade-v0122";
+import { UpgradeOnboardingModal_v0_12_3_Content } from "./onboarding-upgrade-v0123";
+import { UpgradeOnboardingModal_v0_13_0_Content } from "./onboarding-upgrade-v0130";
+import { UpgradeOnboardingModal_v0_13_1_Content } from "./onboarding-upgrade-v0131";
+import { UpgradeOnboardingModal_v0_14_0_Content } from "./onboarding-upgrade-v0140";
+import { UpgradeOnboardingModal_v0_14_1_Content } from "./onboarding-upgrade-v0141";
+import { UpgradeOnboardingModal_v0_14_2_Content } from "./onboarding-upgrade-v0142";
+
+interface VersionConfig {
+    version: string;
+    content: () => React.ReactNode;
+    prevText?: string;
+    nextText?: string;
+}
+
+interface UpgradeOnboardingPatchProps {
+    isReleaseNotes?: boolean;
+}
+
+interface UpgradeOnboardingFooterProps {
+    hasPrev: boolean;
+    hasNext: boolean;
+    prevText?: string;
+    nextText?: string;
+    onPrev?: () => void;
+    onNext?: () => void;
+    onClose: () => void;
+}
+
+export function UpgradeOnboardingFooter({
+    hasPrev,
+    hasNext,
+    prevText,
+    nextText,
+    onPrev,
+    onNext,
+    onClose,
+}: UpgradeOnboardingFooterProps) {
+    return (
+        <footer className="unselectable flex-shrink-0 mt-4">
+            <div className="flex flex-row items-center justify-between w-full">
+                <div className="flex-1 flex justify-start">
+                    {hasPrev && (
+                        <div className="text-sm text-secondary">
+                            <button
+                                onClick={onPrev}
+                                className="cursor-pointer hover:text-foreground transition-colors"
+                            >
+                                &lt; {prevText}
+                            </button>
+                        </div>
+                    )}
+                </div>
+                <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm">
+                    <Button className="font-[600]" onClick={onClose}>
+                        Continue
+                    </Button>
+                </div>
+                <div className="flex-1 flex justify-end">
+                    {hasNext && (
+                        <div className="text-sm text-secondary">
+                            <button
+                                onClick={onNext}
+                                className="cursor-pointer hover:text-foreground transition-colors"
+                            >
+                                {nextText} &gt;
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </footer>
+    );
+}
+
+export const UpgradeOnboardingVersions: VersionConfig[] = [
+    {
+        version: "v0.12.1",
+        content: () => <UpgradeOnboardingModal_v0_12_1_Content />,
+        nextText: "Next (v0.12.2)",
+    },
+    {
+        version: "v0.12.2",
+        content: () => <UpgradeOnboardingModal_v0_12_2_Content />,
+        prevText: "Prev (v0.12.1)",
+        nextText: "Next (v0.12.3)",
+    },
+    {
+        version: "v0.12.5",
+        content: () => <UpgradeOnboardingModal_v0_12_3_Content />,
+        prevText: "Prev (v0.12.2)",
+        nextText: "Next (v0.13.0)",
+    },
+    {
+        version: "v0.13.0",
+        content: () => <UpgradeOnboardingModal_v0_13_0_Content />,
+        prevText: "Prev (v0.12.5)",
+        nextText: "Next (v0.13.1)",
+    },
+    {
+        version: "v0.13.1",
+        content: () => <UpgradeOnboardingModal_v0_13_1_Content />,
+        prevText: "Prev (v0.13.0)",
+        nextText: "Next (v0.14.0)",
+    },
+    {
+        version: "v0.14.0",
+        content: () => <UpgradeOnboardingModal_v0_14_0_Content />,
+        prevText: "Prev (v0.13.1)",
+        nextText: "Next (v0.14.1)",
+    },
+    {
+        version: "v0.14.1",
+        content: () => <UpgradeOnboardingModal_v0_14_1_Content />,
+        prevText: "Prev (v0.14.0)",
+        nextText: "Next (v0.14.3)",
+    },
+    {
+        version: "v0.14.3",
+        content: () => <UpgradeOnboardingModal_v0_14_2_Content />,
+        prevText: "Prev (v0.14.1)",
+    },
+];
+
+const UpgradeOnboardingPatch = ({ isReleaseNotes = false }: UpgradeOnboardingPatchProps) => {
+    const modalRef = useRef<HTMLDivElement | null>(null);
+    const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
+    const [currentIndex, setCurrentIndex] = useState<number>(UpgradeOnboardingVersions.length - 1);
+    const [showStarAsk, setShowStarAsk] = useState<boolean>(false);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
+    const alreadyStarred = clientData?.meta?.["onboarding:githubstar"] === true;
+
+    const currentVersion = UpgradeOnboardingVersions[currentIndex];
+    const hasPrev = currentIndex > 0;
+    const hasNext = currentIndex < UpgradeOnboardingVersions.length - 1;
+
+    const updateModalHeight = () => {
+        const windowHeight = window.innerHeight;
+        setIsCompact(windowHeight < 800);
+        if (modalRef.current) {
+            const modalHeight = modalRef.current.offsetHeight;
+            const maxHeight = windowHeight * 0.9;
+            if (maxHeight < modalHeight) {
+                modalRef.current.style.height = `${maxHeight}px`;
+            } else {
+                modalRef.current.style.height = "auto";
+            }
+        }
+    };
+
+    useEffect(() => {
+        updateModalHeight();
+        const debouncedUpdateModalHeight = debounce(150, updateModalHeight);
+        window.addEventListener("resize", debouncedUpdateModalHeight);
+        return () => {
+            window.removeEventListener("resize", debouncedUpdateModalHeight);
+        };
+    }, []);
+
+    useEffect(() => {
+        disableGlobalKeybindings();
+        return () => {
+            enableGlobalKeybindings();
+        };
+    }, []);
+
+    const doClose = () => {
+        if (isReleaseNotes) {
+            modalsModel.popModal();
+        } else {
+            globalStore.set(modalsModel.upgradeOnboardingOpen, false);
+        }
+        setTimeout(() => {
+            globalRefocus();
+        }, 10);
+    };
+
+    const handleClose = () => {
+        if (isReleaseNotes) {
+            doClose();
+            return;
+        }
+        const clientId = ClientModel.getInstance().clientId;
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:lastversion": CurrentOnboardingVersion },
+        });
+        if (alreadyStarred) {
+            doClose();
+        } else {
+            setShowStarAsk(true);
+        }
+    };
+
+    const paddingClass = isCompact ? "!py-3 !px-[30px]" : "!p-[30px]";
+
+    const handlePrev = () => {
+        if (hasPrev) {
+            setCurrentIndex(currentIndex - 1);
+        }
+    };
+
+    const handleNext = () => {
+        if (hasNext) {
+            setCurrentIndex(currentIndex + 1);
+        }
+    };
+
+    if (showStarAsk) {
+        return (
+            <FlexiModal
+                className="w-[500px] rounded-[10px] !p-[30px] relative overflow-hidden bg-panel"
+                ref={modalRef}
+            >
+                <OnboardingGradientBg />
+                <div className="relative z-10 flex flex-col w-full h-full">
+                    <StarAskPage onClose={doClose} page="upgrade" />
+                </div>
+            </FlexiModal>
+        );
+    }
+
+    return (
+        <FlexiModal className={`w-[650px] rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
+            <OnboardingGradientBg />
+            <div className="flex flex-col w-full h-full relative z-10">
+                <div className="flex flex-col h-full">
+                    <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
+                        <div className="flex justify-center">
+                            <Logo />
+                        </div>
+                        <div className="text-center text-[25px] font-normal text-foreground">
+                            Wave {currentVersion.version} Update
+                        </div>
+                    </header>
+                    <OverlayScrollbarsComponent
+                        className="flex-1 overflow-y-auto min-h-0"
+                        options={{ scrollbars: { autoHide: "never" } }}
+                    >
+                        {currentVersion.content()}
+                    </OverlayScrollbarsComponent>
+                    <UpgradeOnboardingFooter
+                        hasPrev={hasPrev}
+                        hasNext={hasNext}
+                        prevText={currentVersion.prevText}
+                        nextText={currentVersion.nextText}
+                        onPrev={handlePrev}
+                        onNext={handleNext}
+                        onClose={handleClose}
+                    />
+                </div>
+            </div>
+        </FlexiModal>
+    );
+};
+
+UpgradeOnboardingPatch.displayName = "UpgradeOnboardingPatch";
+
+export { UpgradeOnboardingPatch };

@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@use "../mixins.scss";
-
 .block {
     display: flex;
     flex-direction: column;
@@ -80,7 +78,7 @@
                 max-height: var(--header-height);
                 min-height: var(--header-height);
                 display: flex;
-                padding: 4px 5px 4px 10px;
+                padding: 4px 5px 4px 7px;
                 align-items: center;
                 gap: 8px;
                 font: var(--header-font);
@@ -118,7 +116,6 @@
                 }
 
                 .block-frame-text {
-                    @include mixins.ellipsis();
                     font: var(--fixed-font);
                     font-size: 11px;
                     opacity: 0.7;
@@ -166,7 +163,6 @@
                         flex: 1 2 auto;
                         overflow: hidden;
                         padding-right: 4px;
-                        @include mixins.ellipsis();
                     }
 
                     .connecting-svg {
@@ -288,8 +284,8 @@
         .connstatus-overlay {
             position: absolute;
             top: calc(var(--header-height) + 6px);
-            left: 6px;
-            right: 6px;
+            left: 8px;
+            right: 8px;
             z-index: var(--zindex-block-mask-inner);
             display: flex;
             align-items: center;
@@ -300,6 +296,7 @@
             backdrop-filter: blur(50px);
             border-radius: 6px;
             box-shadow: 0px 13px 16px 0px rgb(from var(--block-bg-color) r g b / 40%);
+            opacity: 0.9;
 
             .connstatus-content {
                 display: flex;
@@ -328,7 +325,6 @@
                     }
 
                     .connstatus-status {
-                        @include mixins.ellipsis();
                         display: flex;
                         flex-direction: column;
                         align-items: flex-start;

@@ -85,6 +85,11 @@ func (c *WslCmd) ExitCode() int {
 	}
 	return state.ExitCode()
 }
+
+func (c *WslCmd) ExitSignal() string {
+	return ""
+}
+
 func (c *WslCmd) GetProcess() *os.Process {
 	return c.c.Process
 }
@@ -102,7 +107,7 @@ func (c *WslCmd) SetStdout(stdout io.Writer) {
 }
 
 func (c *WslCmd) SetStderr(stderr io.Writer) {
-	c.c.Stdout = stderr
+	c.c.Stderr = stderr
 }
 
 func GetDistroCmd(ctx context.Context, wslDistroName string, cmd string) (*WslCmd, error) {

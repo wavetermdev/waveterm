@@ -1,9 +1,12 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package fileutil
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"mime"
@@ -12,11 +15,41 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
+
+type ByteRangeType struct {
+	All     bool
+	Start   int64
+	End     int64 // inclusive; only valid when OpenEnd is false
+	OpenEnd bool  // true when range is "N-" (read from Start to EOF)
+}
+
+func ParseByteRange(rangeStr string) (ByteRangeType, error) {
+	if rangeStr == "" {
+		return ByteRangeType{All: true}, nil
+	}
+	// handle open-ended range "N-"
+	if len(rangeStr) > 0 && rangeStr[len(rangeStr)-1] == '-' {
+		var start int64
+		_, err := fmt.Sscanf(rangeStr, "%d-", &start)
+		if err != nil || start < 0 {
+			return ByteRangeType{}, errors.New("invalid byte range")
+		}
+		return ByteRangeType{Start: start, OpenEnd: true}, nil
+	}
+	var start, end int64
+	_, err := fmt.Sscanf(rangeStr, "%d-%d", &start, &end)
+	if err != nil {
+		return ByteRangeType{}, errors.New("invalid byte range")
+	}
+	if start < 0 || end < 0 || start > end {
+		return ByteRangeType{}, errors.New("invalid byte range")
+	}
+	// End is inclusive (HTTP byte range semantics: bytes=0-999 means 1000 bytes)
+	return ByteRangeType{Start: start, End: end}, nil
+}
 
 func FixPath(path string) (string, error) {
 	origPath := path
@@ -87,7 +120,7 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo.Mode()&os.ModeDevice == os.ModeDevice {
 		return "block-special"
 	}
-	ext := filepath.Ext(path)
+	ext := strings.ToLower(filepath.Ext(path))
 	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
 		return mimeType
 	}
@@ -136,20 +169,28 @@ func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
 			return "block-special"
 		}
 	}
-	ext := filepath.Ext(path)
+	ext := strings.ToLower(filepath.Ext(path))
 	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
 		return mimeType
 	}
 	return ""
 }
 
-func AddMimeTypeToFileInfo(path string, fileInfo *wshrpc.FileInfo) {
-	if fileInfo == nil {
-		return
+func AtomicWriteFile(fileName string, data []byte, perm os.FileMode) error {
+	tmpFileName := fileName + TempFileSuffix
+	if err := os.WriteFile(tmpFileName, data, perm); err != nil {
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to write temp file %q: %w (also failed to remove temp file: %v)", tmpFileName, err, removeErr)
+		}
+		return err
 	}
-	if fileInfo.MimeType == "" {
-		fileInfo.MimeType = DetectMimeType(path, ToFsFileInfo(fileInfo), false)
+	if err := os.Rename(tmpFileName, fileName); err != nil {
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to rename temp file %q to %q: %w (also failed to remove temp file: %v)", tmpFileName, fileName, err, removeErr)
+		}
+		return err
 	}
+	return nil
 }
 
 var (
@@ -201,51 +242,156 @@ func IsInitScriptPath(input string) bool {
 	return true
 }
 
-type FsFileInfo struct {
-	NameInternal    string
-	ModeInternal    os.FileMode
-	SizeInternal    int64
-	ModTimeInternal int64
-	IsDirInternal   bool
+const (
+	TempFileSuffix  = ".tmp"
+	MaxEditFileSize = 5 * 1024 * 1024 // 5MB
+)
+
+type EditSpec struct {
+	OldStr string `json:"old_str"`
+	NewStr string `json:"new_str"`
+	Desc   string `json:"desc,omitempty"`
 }
 
-func (f FsFileInfo) Name() string {
-	return f.NameInternal
+type EditResult struct {
+	Applied bool   `json:"applied"`
+	Desc    string `json:"desc"`
+	Error   string `json:"error,omitempty"`
 }
 
-func (f FsFileInfo) Size() int64 {
-	return f.SizeInternal
+// applyEdit applies a single edit to the content and returns the modified content and result.
+func applyEdit(content []byte, edit EditSpec, index int) ([]byte, EditResult) {
+	result := EditResult{
+		Desc: edit.Desc,
+	}
+	if result.Desc == "" {
+		result.Desc = fmt.Sprintf("Edit %d", index+1)
+	}
+
+	if edit.OldStr == "" {
+		result.Applied = false
+		result.Error = "old_str cannot be empty"
+		return content, result
+	}
+
+	oldBytes := []byte(edit.OldStr)
+	count := bytes.Count(content, oldBytes)
+	if count == 0 {
+		result.Applied = false
+		result.Error = "old_str not found in file"
+		return content, result
+	}
+	if count > 1 {
+		result.Applied = false
+		result.Error = fmt.Sprintf("old_str appears %d times, must appear exactly once", count)
+		return content, result
+	}
+
+	modifiedContent := bytes.Replace(content, oldBytes, []byte(edit.NewStr), 1)
+	result.Applied = true
+	return modifiedContent, result
 }
 
-func (f FsFileInfo) Mode() os.FileMode {
-	return f.ModeInternal
+// ApplyEdits applies a series of edits to the given content and returns the modified content.
+// This is atomic - all edits succeed or all fail.
+func ApplyEdits(originalContent []byte, edits []EditSpec) ([]byte, error) {
+	modifiedContents := originalContent
+
+	for i, edit := range edits {
+		var result EditResult
+		modifiedContents, result = applyEdit(modifiedContents, edit, i)
+		if !result.Applied {
+			return nil, fmt.Errorf("edit %d (%s): %s", i, result.Desc, result.Error)
+		}
+	}
+
+	return modifiedContents, nil
 }
 
-func (f FsFileInfo) ModTime() time.Time {
-	return time.Unix(0, f.ModTimeInternal)
+// ApplyEditsPartial applies edits incrementally, continuing until the first failure.
+// Returns the modified content (potentially partially applied) and results for each edit.
+func ApplyEditsPartial(originalContent []byte, edits []EditSpec) ([]byte, []EditResult) {
+	modifiedContents := originalContent
+	results := make([]EditResult, len(edits))
+	failed := false
+
+	for i, edit := range edits {
+		if failed {
+			results[i].Desc = edit.Desc
+			if results[i].Desc == "" {
+				results[i].Desc = fmt.Sprintf("Edit %d", i+1)
+			}
+			results[i].Applied = false
+			results[i].Error = "previous edit failed"
+			continue
+		}
+
+		modifiedContents, results[i] = applyEdit(modifiedContents, edit, i)
+		if !results[i].Applied {
+			failed = true
+		}
+	}
+
+	return modifiedContents, results
 }
 
-func (f FsFileInfo) IsDir() bool {
-	return f.IsDirInternal
-}
+func ReplaceInFile(filePath string, edits []EditSpec) error {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
 
-func (f FsFileInfo) Sys() interface{} {
+	if !fileInfo.Mode().IsRegular() {
+		return fmt.Errorf("not a regular file: %s", filePath)
+	}
+
+	if fileInfo.Size() > MaxEditFileSize {
+		return fmt.Errorf("file too large for editing: %d bytes (max: %d)", fileInfo.Size(), MaxEditFileSize)
+	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	modifiedContents, err := ApplyEdits(contents, edits)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filePath, modifiedContents, fileInfo.Mode()); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
 	return nil
 }
 
-var _ fs.FileInfo = FsFileInfo{}
+// ReplaceInFilePartial applies edits incrementally up to the first failure.
+// Returns the results for each edit and writes the partially modified content.
+func ReplaceInFilePartial(filePath string, edits []EditSpec) ([]EditResult, error) {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat file: %w", err)
+	}
 
-// ToFsFileInfo converts wshrpc.FileInfo to FsFileInfo.
-// It panics if fi is nil.
-func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
-	if fi == nil {
-		panic("ToFsFileInfo: nil FileInfo")
+	if !fileInfo.Mode().IsRegular() {
+		return nil, fmt.Errorf("not a regular file: %s", filePath)
 	}
-	return FsFileInfo{
-		NameInternal:    fi.Name,
-		ModeInternal:    fi.Mode,
-		SizeInternal:    fi.Size,
-		ModTimeInternal: fi.ModTime,
-		IsDirInternal:   fi.IsDir,
+
+	if fileInfo.Size() > MaxEditFileSize {
+		return nil, fmt.Errorf("file too large for editing: %d bytes (max: %d)", fileInfo.Size(), MaxEditFileSize)
 	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	modifiedContents, results := ApplyEditsPartial(contents, edits)
+
+	if err := os.WriteFile(filePath, modifiedContents, fileInfo.Mode()); err != nil {
+		return nil, fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return results, nil
 }

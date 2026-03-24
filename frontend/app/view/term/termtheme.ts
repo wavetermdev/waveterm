@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TermViewModel } from "@/app/view/term/term";
+import type { TermViewModel } from "@/app/view/term/term-model";
 import { computeTheme } from "@/app/view/term/termutil";
 import { TermWrap } from "@/app/view/term/termwrap";
 import { atoms } from "@/store/global";

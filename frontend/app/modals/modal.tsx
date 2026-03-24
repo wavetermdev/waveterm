@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { cn } from "@/util/util";
 import clsx from "clsx";
 import { forwardRef } from "react";
 import ReactDOM from "react-dom";
@@ -17,10 +18,26 @@ interface ModalProps {
     onOk?: () => void;
     onCancel?: () => void;
     onClose?: () => void;
+    okDisabled?: boolean;
+    cancelDisabled?: boolean;
 }
 
 const Modal = forwardRef<HTMLDivElement, ModalProps>(
-    ({ children, className, cancelLabel, okLabel, onCancel, onOk, onClose, onClickBackdrop }: ModalProps, ref) => {
+    (
+        {
+            children,
+            className,
+            cancelLabel,
+            okLabel,
+            onCancel,
+            onOk,
+            onClose,
+            onClickBackdrop,
+            okDisabled,
+            cancelDisabled,
+        }: ModalProps,
+        ref
+    ) => {
         const renderBackdrop = (onClick) => <div className="modal-backdrop" onClick={onClick}></div>;
 
         const renderFooter = () => {
@@ -38,7 +55,14 @@ const Modal = forwardRef<HTMLDivElement, ModalProps>(
                         <ModalContent>{children}</ModalContent>
                     </div>
                     {renderFooter() && (
-                        <ModalFooter onCancel={onCancel} onOk={onOk} cancelLabel={cancelLabel} okLabel={okLabel} />
+                        <ModalFooter
+                            onCancel={onCancel}
+                            onOk={onOk}
+                            cancelLabel={cancelLabel}
+                            okLabel={okLabel}
+                            okDisabled={okDisabled}
+                            cancelDisabled={cancelDisabled}
+                        />
                     )}
                 </div>
             </div>
@@ -61,17 +85,30 @@ interface ModalFooterProps {
     cancelLabel?: string;
     onOk?: () => void;
     onCancel?: () => void;
+    okDisabled?: boolean;
+    cancelDisabled?: boolean;
 }
 
-const ModalFooter = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }: ModalFooterProps) => {
+const ModalFooter = ({
+    onCancel,
+    onOk,
+    cancelLabel = "Cancel",
+    okLabel = "Ok",
+    okDisabled,
+    cancelDisabled,
+}: ModalFooterProps) => {
     return (
         <footer className="modal-footer">
             {onCancel && (
-                <Button className="grey ghost" onClick={onCancel}>
+                <Button className="grey ghost" onClick={onCancel} disabled={cancelDisabled}>
                     {cancelLabel}
                 </Button>
             )}
-            {onOk && <Button onClick={onOk}>{okLabel}</Button>}
+            {onOk && (
+                <Button onClick={onOk} disabled={okDisabled}>
+                    {okLabel}
+                </Button>
+            )}
         </footer>
     );
 };
@@ -82,8 +119,9 @@ interface FlexiModalProps {
     onClickBackdrop?: () => void;
 }
 
-interface FlexiModalComponent
-    extends React.ForwardRefExoticComponent<FlexiModalProps & React.RefAttributes<HTMLDivElement>> {
+interface FlexiModalComponent extends React.ForwardRefExoticComponent<
+    FlexiModalProps & React.RefAttributes<HTMLDivElement>
+> {
     Content: typeof ModalContent;
     Footer: typeof ModalFooter;
 }
@@ -95,7 +133,7 @@ const FlexiModal = forwardRef<HTMLDivElement, FlexiModalProps>(
         const renderModal = () => (
             <div className="modal-wrapper">
                 {renderBackdrop(onClickBackdrop)}
-                <div className={`modal ${className}`} ref={ref}>
+                <div className={cn("modal pt-6 px-4 pb-4", className)} ref={ref}>
                     {children}
                 </div>
             </div>

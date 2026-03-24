@@ -5,6 +5,48 @@ import * as electron from "electron";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
 export const WaveAppPathVarName = "WAVETERM_APP_PATH";
+export const WaveAppResourcesPathVarName = "WAVETERM_RESOURCES_PATH";
+export const WaveAppElectronExecPath = "WAVETERM_ELECTRONEXECPATH";
+
+const MinZoomLevel = 0.4;
+const MaxZoomLevel = 2.6;
+const ZoomDelta = 0.2;
+
+// Note: Chromium automatically syncs zoom factor across all WebContents
+// sharing the same origin/session, so we only need to notify renderers
+// to update their CSS/state — not call setZoomFactor on each one.
+// We broadcast to all WebContents (including devtools, webviews, etc.) but
+// that is safe because "zoom-factor-change" is a custom app-defined event
+// that only our renderers listen to; unrecognized IPC messages are ignored.
+function broadcastZoomFactorChanged(newZoomFactor: number): void {
+    for (const wc of electron.webContents.getAllWebContents()) {
+        if (wc.isDestroyed()) {
+            continue;
+        }
+        wc.send("zoom-factor-change", newZoomFactor);
+    }
+}
+
+export function increaseZoomLevel(webContents: electron.WebContents): void {
+    const newZoom = Math.min(MaxZoomLevel, webContents.getZoomFactor() + ZoomDelta);
+    webContents.setZoomFactor(newZoom);
+    broadcastZoomFactorChanged(newZoom);
+}
+
+export function decreaseZoomLevel(webContents: electron.WebContents): void {
+    const newZoom = Math.max(MinZoomLevel, webContents.getZoomFactor() - ZoomDelta);
+    webContents.setZoomFactor(newZoom);
+    broadcastZoomFactorChanged(newZoom);
+}
+
+export function resetZoomLevel(webContents: electron.WebContents): void {
+    webContents.setZoomFactor(1);
+    broadcastZoomFactorChanged(1);
+}
+
+export function getElectronExecPath(): string {
+    return process.execPath;
+}
 
 // not necessarily exact, but we use this to help get us unstuck in certain cases
 let lastCtrlShiftSate: boolean = false;
@@ -56,7 +98,14 @@ export function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: Wa
 }
 
 export function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
-    if (url.startsWith("http://127.0.0.1:5173/index.html") || url.startsWith("http://localhost:5173/index.html")) {
+    const isDev = !electron.app.isPackaged;
+    if (
+        isDev &&
+        (url.startsWith("http://127.0.0.1:5173/index.html") ||
+            url.startsWith("http://localhost:5173/index.html") ||
+            url.startsWith("http://127.0.0.1:5174/index.html") ||
+            url.startsWith("http://localhost:5174/index.html"))
+    ) {
         // this is a dev-mode hot-reload, ignore it
         console.log("allowing hot-reload of index.html");
         return;
@@ -68,6 +117,17 @@ export function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavig
     } else {
         console.log("navigation canceled", url);
     }
+}
+
+function frameOrAncestorHasName(frame: Electron.WebFrameMain, name: string): boolean {
+    let cur: Electron.WebFrameMain = frame;
+    while (cur != null) {
+        if (cur.name === name) {
+            return true;
+        }
+        cur = cur.parent;
+    }
+    return false;
 }
 
 export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
@@ -86,8 +146,9 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         return;
     }
     if (
-        event.frame.name == "pdfview" &&
+        frameOrAncestorHasName(event.frame, "pdfview") &&
         (url.startsWith("blob:file:///") ||
+            url.startsWith("chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-file?") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-file/") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-local-file?"))
@@ -95,8 +156,32 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         // allowed
         return;
     }
+    if (event.frame.name != null && event.frame.name.startsWith("tsunami:")) {
+        // Parse port from frame name: tsunami:[port]:[blockid]
+        const nameParts = event.frame.name.split(":");
+        const expectedPort = nameParts.length >= 2 ? nameParts[1] : null;
+
+        try {
+            const tsunamiUrl = new URL(url);
+            if (
+                tsunamiUrl.protocol === "http:" &&
+                tsunamiUrl.hostname === "localhost" &&
+                expectedPort &&
+                tsunamiUrl.port === expectedPort
+            ) {
+                // allowed
+                return;
+            }
+            // If navigation is not to expected port, open externally
+            event.preventDefault();
+            electron.shell.openExternal(url);
+            return;
+        } catch (e) {
+            // Invalid URL, fall through to prevent navigation
+        }
+    }
     event.preventDefault();
-    console.log("frame navigation canceled");
+    console.log("frame navigation canceled", event.frame.name, url);
 }
 
 function isWindowFullyVisible(bounds: electron.Rectangle): boolean {

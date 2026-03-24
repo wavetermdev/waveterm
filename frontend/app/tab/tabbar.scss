@@ -2,36 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .tab-bar-wrapper {
-    --default-indent: 10px;
-    --darwin-not-fullscreen-indent: 74px;
-}
-
-.darwin:not(.fullscreen) .tab-bar-wrapper {
-    .window-drag.left {
-        width: var(--darwin-not-fullscreen-indent);
-    }
-}
-
-.config-error-message {
-    max-width: 500px;
-
-    h3 {
-        font-weight: bold;
-        font-size: 16px;
-        margin-bottom: 10px;
-    }
-
-    margin-bottom: 20px;
-}
-
-.tab-bar-wrapper {
-    padding-top: 6px;
+    padding-top: 3px;
     position: relative;
     user-select: none;
     display: flex;
     flex-direction: row;
+    align-items: end;
     width: 100vw;
     -webkit-app-region: drag;
+    height: max(33px, calc(33px * var(--zoomfactor-inv)));
+    backdrop-filter: blur(20px);
+    background: rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
 
     button {
         -webkit-app-region: no-drag;
@@ -48,6 +30,7 @@
         flex-direction: row;
         height: 27px;
         -webkit-app-region: no-drag;
+        margin-bottom: 1px;
     }
 
     .pinned-tab-spacer {
@@ -57,57 +40,10 @@
         border: 1px solid var(--border-color);
     }
 
-    .dev-label,
-    .app-menu-button {
-        font-size: 26px;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 6px 0 0;
-    }
-
-    .app-menu-button {
-        cursor: pointer;
-        color: var(--secondary-text-color);
-
-        &:hover {
-            color: var(--main-text-color);
-        }
-    }
-
-    .dev-label {
-        color: var(--accent-color);
-    }
-
-    .tab-bar-right {
-        display: flex;
-        flex-direction: row;
-        gap: 6px;
-        &:not(:empty) {
-            margin-left: auto;
-            margin-right: 6px;
-        }
-    }
-
-    .config-error-button {
-        color: black;
-        padding: 0 6px;
-        flex: 0 0 fit-content;
-    }
-
     .add-tab {
         padding: 0 10px;
-    }
-
-    .window-drag {
-        height: 100%;
-        width: var(--default-indent);
-        flex-shrink: 0;
-
-        &.right {
-            flex-grow: 1;
-        }
+        height: 27px;
+        margin-bottom: 2px;
     }
 
     // Customize scrollbar styles

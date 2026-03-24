@@ -21,9 +21,7 @@ var waveSrvClient_Once = &sync.Once{}
 // returns the wavesrv main rpc client singleton
 func GetMainRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
-		inputCh := make(chan []byte, DefaultInputChSize)
-		outputCh := make(chan []byte, DefaultOutputChSize)
-		waveSrvClient_Singleton = wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, &WshServerImpl, "main-client")
+		waveSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "main-client")
 	})
 	return waveSrvClient_Singleton
 }

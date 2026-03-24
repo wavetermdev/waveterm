@@ -6,7 +6,7 @@ hide_title: true
 hide_table_of_contents: true
 ---
 
-import { Card, CardGroup } from "@site/src/components/card.tsx";
+import { Card, CardGroup } from "@site/src/components/card";
 
 # Welcome to Wave Terminal
 
@@ -19,6 +19,12 @@ Check out [Getting Started](./gettingstarted) for installation instructions.
 ![Wave Screenshot](./img/wave-screenshot.webp)
 
 <CardGroup>
+  <Card
+    href="./waveai"
+    icon="fa-sparkles"
+    title="Wave AI"
+    description="Context-aware terminal assistant with access to terminal output, widgets, and filesystem."
+  />
   <Card
     href="./customization"
     icon="fa-paintbrush"
@@ -79,8 +85,6 @@ Other References:
 </div>
 
 ## Roadmap
-
-Wave is constantly improving! Our roadmap will be continuously updated with our goals for each release. You can find it [here](https://github.com/wavetermdev/waveterm/blob/main/ROADMAP.md).
 
 Want to provide input to our future releases? Connect with us on [Discord](https://discord.gg/XfvZ334gwU) or open a [Feature Request](https://github.com/wavetermdev/waveterm/issues/new/choose)!
 

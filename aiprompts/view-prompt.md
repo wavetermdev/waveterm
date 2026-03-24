@@ -7,7 +7,6 @@ Wave Terminal uses a modular ViewModel system to define interactive blocks. Each
 ### Key Concepts
 
 1. **ViewModel Structure**
-
    - Implements the `ViewModel` interface.
    - Defines:
      - `viewType`: Unique block type identifier.
@@ -19,14 +18,12 @@ Wave Terminal uses a modular ViewModel system to define interactive blocks. Each
      - Lifecycle methods like `dispose()`, `giveFocus()`, `keyDownHandler()`.
 
 2. **ViewComponent Structure**
-
    - A **React function component** implementing `ViewComponentProps<T extends ViewModel>`.
    - Uses `blockId`, `blockRef`, `contentRef`, and `model` as props.
    - Retrieves ViewModel state using Jotai atoms.
    - Returns JSX for rendering.
 
 3. **Header Elements (`HeaderElem[]`)**
-
    - Can include:
      - **Icons (`IconButtonDecl`)**: Clickable buttons.
      - **Text (`HeaderText`)**: Metadata or status.
@@ -34,13 +31,11 @@ Wave Terminal uses a modular ViewModel system to define interactive blocks. Each
      - **Menu Buttons (`MenuButton`)**: Dropdowns.
 
 4. **Jotai Atoms for State Management**
-
    - Use `atom<T>`, `PrimitiveAtom<T>`, `WritableAtom<T>` for dynamic properties.
    - `splitAtom` for managing lists of atoms.
    - Read settings from `globalStore` and override with block metadata.
 
 5. **Metadata vs. Global Config**
-
    - **Block Metadata (`SetMetaCommand`)**: Each block persists its **own configuration** in its metadata (`blockAtom.meta`).
    - **Global Config (`SetConfigCommand`)**: Provides **default settings** for all blocks, stored in config files.
    - **Cascading Behavior**:
@@ -50,7 +45,6 @@ Wave Terminal uses a modular ViewModel system to define interactive blocks. Each
      - Updating a global setting is done via `SetConfigCommand` (applies globally unless overridden).
 
 6. **Useful Helper Functions**
-
    - To avoid repetitive boilerplate, use these global utilities from `global.ts`:
      - `useBlockMetaKeyAtom(blockId, key)`: Retrieves and updates block-specific metadata.
      - `useOverrideConfigAtom(blockId, key)`: Reads from global config but allows per-block overrides.
@@ -139,7 +133,7 @@ type HeaderTextButton = {
 type HeaderText = {
   elemtype: "text";
   text: string;
-  ref?: React.MutableRefObject<HTMLDivElement>;
+  ref?: React.RefObject<HTMLDivElement>;
   className?: string;
   noGrow?: boolean;
   onClick?: (e: React.MouseEvent<any>) => void;
@@ -150,7 +144,7 @@ type HeaderInput = {
   value: string;
   className?: string;
   isDisabled?: boolean;
-  ref?: React.MutableRefObject<HTMLInputElement>;
+  ref?: React.RefObject<HTMLInputElement>;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;

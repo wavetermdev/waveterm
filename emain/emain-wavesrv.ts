@@ -6,9 +6,9 @@ import * as child_process from "node:child_process";
 import * as readline from "readline";
 import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
 import { AuthKey, WaveAuthKeyEnv } from "./authkey";
-import { setForceQuit } from "./emain-activity";
-import { WaveAppPathVarName } from "./emain-util";
+import { setForceQuit, setUserConfirmedQuit } from "./emain-activity";
 import {
+    getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
     getWaveDataDir,
@@ -17,7 +17,13 @@ import {
     getXdgCurrentDesktop,
     WaveConfigHomeVarName,
     WaveDataHomeVarName,
-} from "./platform";
+} from "./emain-platform";
+import {
+    getElectronExecPath,
+    WaveAppElectronExecPath,
+    WaveAppPathVarName,
+    WaveAppResourcesPathVarName,
+} from "./emain-util";
 import { updater } from "./updater";
 
 let isWaveSrvDead = false;
@@ -59,6 +65,8 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
         envCopy["XDG_CURRENT_DESKTOP"] = xdgCurrentDesktop;
     }
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
+    envCopy[WaveAppResourcesPathVarName] = getElectronAppResourcesPath();
+    envCopy[WaveAppElectronExecPath] = getElectronExecPath();
     envCopy[WaveAuthKeyEnv] = AuthKey;
     envCopy[WaveDataHomeVarName] = getWaveDataDir();
     envCopy[WaveConfigHomeVarName] = getWaveConfigDir();
@@ -99,11 +107,12 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
     });
     rlStderr.on("line", (line) => {
         if (line.includes("WAVESRV-ESTART")) {
-            const startParams = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+) version:([a-z0-9.\-]+) buildtime:(\d+)/gm.exec(
+            const startParams = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+) version:([a-z0-9.-]+) buildtime:(\d+)/gm.exec(
                 line
             );
             if (startParams == null) {
                 console.log("error parsing WAVESRV-ESTART line", line);
+                setUserConfirmedQuit(true);
                 electron.app.quit();
                 return;
             }

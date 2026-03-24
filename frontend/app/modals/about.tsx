@@ -1,54 +1,58 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
+import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { modalsModel } from "@/app/store/modalmodel";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { isDev } from "@/util/isdev";
+import { fireAndForget } from "@/util/util";
+import { useEffect, useState } from "react";
+import { getApi } from "../store/global";
 import { Modal } from "./modal";
 
-import { isDev } from "@/util/isdev";
-import { useState } from "react";
-import { getApi } from "../store/global";
-import "./about.scss";
+interface AboutModalVProps {
+    versionString: string;
+    updaterChannel: string;
+    onClose: () => void;
+}
 
-interface AboutModalProps {}
-
-const AboutModal = ({}: AboutModalProps) => {
+const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProps) => {
     const currentDate = new Date();
-    const [details] = useState(() => getApi().getAboutModalDetails());
-    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
 
     return (
-        <Modal className="about-modal" onClose={() => modalsModel.popModal()}>
-            <div className="section-wrapper">
-                <div className="section logo-section">
+        <Modal className="pt-[34px] pb-[34px] overflow-hidden w-[450px]" onClose={onClose}>
+            <OnboardingGradientBg />
+            <div className="flex flex-col gap-[26px] w-full relative z-10">
+                <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
-                    <div className="app-name">Wave Terminal</div>
-                    <div className="text-standard">
-                        Open-Source AI-Native Terminal
+                    <div className="text-[25px]">Wave Terminal</div>
+                    <div className="leading-5">
+                        Open-Source AI-Integrated Terminal
                         <br />
                         Built for Seamless Workflows
                     </div>
                 </div>
-                <div className="section text-standard">
-                    Client Version {details.version} ({isDev() ? "dev-" : ""}
-                    {details.buildTime})
+                <div className="items-center gap-4 self-stretch w-full text-center">
+                    Client Version {versionString}
                     <br />
                     Update Channel: {updaterChannel}
                 </div>
-                <div className="section links">
+                <div className="grid grid-cols-2 gap-[10px] self-stretch w-full">
                     <a
-                        href="https://github.com/wavetermdev/waveterm"
+                        href="https://github.com/wavetermdev/waveterm?ref=about"
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-brands fa-github mr-2"></i>Github
+                        <i className="fa-brands fa-github mr-2"></i>GitHub
                     </a>
                     <a
-                        href="https://www.waveterm.dev/"
+                        href="https://www.waveterm.dev/?ref=about"
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
                         <i className="fa-sharp fa-light fa-globe mr-2"></i>Website
                     </a>
@@ -56,17 +60,53 @@ const AboutModal = ({}: AboutModalProps) => {
                         href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-heart mr-2"></i>Acknowledgements
+                        <i className="fa-sharp fa-light fa-book mr-2"></i>Open Source
+                    </a>
+                    <a
+                        href="https://github.com/sponsors/wavetermdev"
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
+                    >
+                        <i className="fa-sharp fa-light fa-heart mr-2"></i>Sponsor
                     </a>
                 </div>
-                <div className="section text-standard">&copy; {currentDate.getFullYear()} Command Line Inc.</div>
+                <div className="items-center gap-4 self-stretch w-full text-center">
+                    &copy; {currentDate.getFullYear()} Command Line Inc.
+                </div>
             </div>
         </Modal>
     );
 };
 
+AboutModalV.displayName = "AboutModalV";
+
+const AboutModal = () => {
+    const [details] = useState(() => getApi().getAboutModalDetails());
+    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
+    const versionString = `${details.version} (${isDev() ? "dev-" : ""}${details.buildTime})`;
+
+    useEffect(() => {
+        fireAndForget(async () => {
+            RpcApi.RecordTEventCommand(
+                TabRpcClient,
+                { event: "action:other", props: { "action:type": "about" } },
+                { noresponse: true }
+            );
+        });
+    }, []);
+
+    return (
+        <AboutModalV
+            versionString={versionString}
+            updaterChannel={updaterChannel}
+            onClose={() => modalsModel.popModal()}
+        />
+    );
+};
+
 AboutModal.displayName = "AboutModal";
 
-export { AboutModal };
+export { AboutModal, AboutModalV };

@@ -16,7 +16,6 @@ import (
 // strong typing and event types can be defined elsewhere
 
 const MaxPersist = 4096
-const ReMakeArrThreshold = 10 * 1024
 
 type Client interface {
 	SendEvent(routeId string, event WaveEvent)
@@ -34,8 +33,7 @@ type persistKey struct {
 }
 
 type persistEventWrap struct {
-	ArrTotalAdds int
-	Events       []*WaveEvent
+	Events []*WaveEvent
 }
 
 type BrokerType struct {
@@ -214,16 +212,13 @@ func (b *BrokerType) persistEvent(event WaveEvent) {
 		pe := b.PersistMap[key]
 		if pe == nil {
 			pe = &persistEventWrap{
-				ArrTotalAdds: 0,
-				Events:       make([]*WaveEvent, 0, event.Persist),
+				Events: make([]*WaveEvent, 0, numPersist),
 			}
 			b.PersistMap[key] = pe
 		}
 		pe.Events = append(pe.Events, &event)
-		pe.ArrTotalAdds++
-		if pe.ArrTotalAdds > ReMakeArrThreshold {
-			pe.Events = append([]*WaveEvent{}, pe.Events...)
-			pe.ArrTotalAdds = len(pe.Events)
+		if len(pe.Events) > numPersist {
+			pe.Events = pe.Events[len(pe.Events)-numPersist:]
 		}
 	}
 }

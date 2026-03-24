@@ -29,23 +29,28 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Get App Token
-              uses: actions/create-github-app-token@v1
+              uses: actions/create-github-app-token@v3
               id: app-token
               with:
                   app-id: ${{ vars.WAVE_BUILDER_APPID }}
                   private-key: ${{ secrets.WAVE_BUILDER_KEY }}
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}
 
             # General build dependencies
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v6
               with:
                   node-version: ${{env.NODE_VERSION}}
-            - name: Install Yarn
-              run: |
-                  corepack enable
-                  yarn install
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+            - uses: nick-fields/retry@v4
+              name: npm ci
+              with:
+                  command: npm ci --no-audit --no-fund
+                  retry_on: error
+                  max_attempts: 3
+                  timeout_minutes: 5
             - name: Install Task
               uses: arduino/setup-task@v2
               with:

@@ -1,4 +1,4 @@
-# Copyright 2024, Command Line Inc.
+# Copyright 2026, Command Line Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 version: "3"
@@ -8,9 +8,8 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue{{else}}rm -f{{end}}'
-    RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
-    DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
+    RMRF: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
+    DATE: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
     WINGET_PACKAGE: CommandLine.Wave
@@ -18,101 +17,145 @@ vars:
 tasks:
     electron:dev:
         desc: Run the Electron application via the Vite dev server (enables hot reloading).
-        cmd: yarn dev
+        cmd: npm run dev
         aliases:
             - dev
         deps:
-            - yarn
-            - docsite:build:embedded
+            - npm:install
             - build:backend
+            - build:tsunamiscaffold
         env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
+            WAVETERM_NOCONFIRMQUIT: "1"
 
     electron:start:
         desc: Run the Electron application directly.
-        cmd: yarn start
+        cmd: npm run start
         aliases:
             - start
         deps:
-            - yarn
-            - docsite:build:embedded
+            - npm:install
             - build:backend
         env:
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
-    storybook:
-        desc: Start the Storybook server.
-        cmd: yarn storybook
+    electron:quickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
+        cmd: npm run dev
         deps:
-            - yarn
+            - npm:install
+            - build:backend:quickdev
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+            WAVETERM_NOCONFIRMQUIT: "1"
 
-    storybook:build:
-        desc: Build the Storybook static site.
-        cmd: yarn build-storybook
-        generates:
-            - storybook-static/**/*
+    preview:
+        desc: Run the standalone component preview server with HMR (no Electron, no backend).
+        dir: frontend/preview
+        cmd: npx vite
         deps:
-            - yarn
+            - npm:install
+
+    build:preview:
+        desc: Build the component preview server for static deployment.
+        dir: frontend/preview
+        cmd: npx vite build
+        deps:
+            - npm:install
+
+    electron:winquickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - Windows amd64 only, no generate, no wsh).
+        cmd: npm run dev
+        deps:
+            - npm:install
+            - build:backend:quickdev:windows
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+
+    docs:npm:install:
+        desc: Runs `npm install` in docs directory
+        internal: true
+        generates:
+            - docs/node_modules/**/*
+            - docs/package-lock.json
+        sources:
+            - docs/package-lock.json
+            - docs/package.json
+        cmd: npm install
+        dir: docs
 
     docsite:start:
         desc: Start the docsite dev server.
-        cmd: yarn start
+        cmd: npm run start
         dir: docs
         aliases:
             - docsite
         deps:
-            - yarn
+            - docs:npm:install
 
     docsite:build:public:
         desc: Build the full docsite.
         cmds:
-            - cd docs && yarn build
-            - task: copyfiles:'storybook-static':'docs/build/storybook'
+            - cd docs && npm run build
+        env:
+            USE_SIMPLE_CSS_MINIFIER: "true"
         sources:
             - "docs/*"
             - "docs/src/**/*"
             - "docs/docs/**/*"
             - "docs/static/**/*"
-            - storybook-static/**/*
         generates:
             - "docs/build/**/*"
         deps:
-            - yarn
-            - storybook:build
-
-    docsite:build:embedded:
-        desc: Build the embedded docsite and copy it to dist/docsite
-        sources:
-            - "docs/*"
-            - "docs/src/**/*"
-            - "docs/docs/**/*"
-            - "docs/static/**/*"
-        generates:
-            - "dist/docsite/**/*"
-        cmds:
-            - cd docs && yarn build-embedded
-            - task: copyfiles:'docs/build/':'dist/docsite'
-        deps:
-            - yarn
+            - docs:npm:install
 
     package:
         desc: Package the application for the current platform.
         cmds:
-            - cmd: '{{.RMRF}} "make"'
-              ignore_error: true
-            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
+            - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
-            - yarn
-            - docsite:build:embedded
+            - clean
+            - npm:install
             - build:backend
+            - build:tsunamiscaffold
+
+    build:frontend:dev:
+        desc: Build the frontend in development mode.
+        cmd: npm run build:dev
+        deps:
+            - npm:install
 
     build:backend:
         desc: Build the wavesrv and wsh components.
         cmds:
             - task: build:server
             - task: build:wsh
+
+    build:backend:quickdev:
+        desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
+        cmds:
+            - task: build:server:quickdev
+        sources:
+            - go.mod
+            - go.sum
+            - pkg/**/*.go
+            - pkg/**/*.sh
+            - cmd/**/*.go
+            - tsunami/go.mod
+            - tsunami/go.sum
+            - tsunami/**/*.go
 
     build:schema:
         desc: Build the schema for configuration.
@@ -140,6 +183,8 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - tsunami/**/*.go
         generates:
             - dist/bin/wavesrv.*
 
@@ -147,17 +192,54 @@ tasks:
         desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: rm -f dist/bin/wavesrv*
               ignore_error: true
             - task: build:server:internal
               vars:
                   ARCHS: arm64,amd64
 
+    build:server:quickdev:
+        desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
+        platforms: [darwin]
+        cmds:
+            - task: build:server:internal
+              vars:
+                  ARCHS: arm64
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - "tsunami/**/*.go"
+        generates:
+            - dist/bin/wavesrv.*
+
+    build:backend:quickdev:windows:
+        desc: Build only the wavesrv component for quickdev (Windows amd64 only, no generate, no wsh).
+        platforms: [windows]
+        cmds:
+            - task: build:server:internal
+              vars:
+                  ARCHS: amd64
+                  GO_ENV_VARS: CC="zig cc -target x86_64-windows-gnu"
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - "tsunami/**/*.go"
+        generates:
+            - dist/bin/wavesrv.x64.exe
+
     build:server:windows:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
         platforms: [windows]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: powershell -NoProfile -NonInteractive -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -170,7 +252,7 @@ tasks:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
         platforms: [linux]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: rm -f dist/bin/wavesrv*
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -194,8 +276,24 @@ tasks:
     build:wsh:
         desc: Build the wsh component for all possible targets.
         cmds:
-            - cmd: "{{.RM}} dist/bin/wsh*"
+            - cmd: rm -f dist/bin/wsh*
+              platforms: [darwin, linux]
               ignore_error: true
+            - cmd: powershell -NoProfile -NonInteractive -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wsh*"
+              platforms: [windows]
+              ignore_error: true
+            - task: build:wsh:parallel
+        deps:
+            - go:mod:tidy
+            - generate
+        sources:
+            - "cmd/wsh/**/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - "dist/bin/wsh*"
+
+    build:wsh:parallel:
+        deps:
             - task: build:wsh:internal
               vars:
                   GOOS: darwin
@@ -228,12 +326,7 @@ tasks:
               vars:
                   GOOS: windows
                   GOARCH: arm64
-        deps:
-            - go:mod:tidy
-            - generate
-        sources:
-            - "cmd/wsh/**/*.go"
-            - "pkg/**/*.go"
+        internal: true
 
     build:wsh:internal:
         vars:
@@ -249,6 +342,21 @@ tasks:
         cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
 
+    build:tsunamiscaffold:
+        desc: Build and copy tsunami scaffold to dist directory.
+        cmds:
+            - cmd: "{{.RMRF}} dist/tsunamiscaffold"
+              ignore_error: true
+            - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
+            - cmd: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
+        deps:
+            - tsunami:scaffold
+        sources:
+            - "tsunami/frontend/dist/**/*"
+            - "tsunami/templates/**/*"
+        generates:
+            - "dist/tsunamiscaffold/**/*"
+
     generate:
         desc: Generate Typescript bindings for the Go backend.
         cmds:
@@ -261,6 +369,10 @@ tasks:
             - "cmd/generatets/*.go"
             - "pkg/**/*.go"
         # don't add generates key (otherwise will always execute)
+
+    outdated:
+        desc: Check for outdated packages using npm-check-updates.
+        cmd: npx npm-check-updates@latest
 
     version:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
@@ -344,12 +456,18 @@ tasks:
             - task: dev:cleardata:linux
             - task: dev:cleardata:macos
 
+    check:ts:
+        desc: Typecheck TypeScript code (frontend and electron).
+        cmd: npx tsc --noEmit
+        deps:
+            - npm:install
+
     init:
         desc: Initialize the project for development.
         cmds:
-            - yarn
+            - npm install
             - go mod tidy
-            - cd docs && yarn
+            - cd docs && npm install
 
     dev:cleardata:windows:
         internal: true
@@ -366,18 +484,16 @@ tasks:
         platforms: [darwin]
         cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
 
-    yarn:
-        desc: Runs `yarn`
+    npm:install:
+        desc: Runs `npm install`
         internal: true
         generates:
             - node_modules/**/*
-            - yarn.lock
-            - .yarn/*
+            - package-lock.json
         sources:
-            - yarn.lock
+            - package-lock.json
             - package.json
-            - .yarnrc.yml
-        cmd: yarn
+        cmd: npm install
 
     go:mod:tidy:
         desc: Runs `go mod tidy`
@@ -391,4 +507,150 @@ tasks:
     copyfiles:*:*:
         desc: Recursively copy directory and its contents.
         internal: true
-        cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+        cmd: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+
+    clean:
+        desc: clean make/dist directories
+        cmds:
+            - cmd: '{{.RMRF}} "make"'
+              ignore_error: true
+            - cmd: '{{.RMRF}} "dist"'
+              ignore_error: true
+
+    tsunami:demo:todo:
+        desc: Run the tsunami todo demo application
+        cmd: go run demo/todo/*.go
+        dir: tsunami
+        env:
+            TSUNAMI_LISTENADDR: "localhost:12026"
+
+    tsunami:frontend:dev:
+        desc: Run the tsunami frontend vite dev server
+        cmd: npm run dev
+        dir: tsunami/frontend
+
+    tsunami:frontend:build:
+        desc: Build the tsunami frontend
+        cmd: npm run build
+        dir: tsunami/frontend
+
+    tsunami:frontend:devbuild:
+        desc: Build the tsunami frontend in development mode (with source maps and symbols)
+        cmd: npm run build:dev
+        dir: tsunami/frontend
+
+    tsunami:scaffold:
+        desc: Build scaffold for tsunami frontend development
+        deps:
+            - tsunami:frontend:build
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:devscaffold:
+        desc: Build scaffold for tsunami frontend development (with source maps and symbols)
+        deps:
+            - tsunami:frontend:devbuild
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:scaffold:packagejson:
+        desc: Create package.json for tsunami scaffold using npm commands
+        dir: tsunami/frontend/scaffold
+        cmds:
+            - cmd: rm -f package.json
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -NoProfile -NonInteractive -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path package.json"
+              platforms: [windows]
+              ignore_error: true
+            - npm --no-workspaces init -y --init-license Apache-2.0
+            - npm pkg set name=tsunami-scaffold
+            - npm pkg delete author
+            - npm pkg set author.name="Command Line Inc"
+            - npm pkg set author.email="info@commandline.dev"
+            - npm --no-workspaces install tailwindcss@4.1.13 @tailwindcss/cli@4.1.13
+
+    tsunami:scaffold:internal:
+        desc: Internal task to create scaffold directory structure
+        internal: true
+        cmds:
+            - task: tsunami:scaffold:internal:unix
+            - task: tsunami:scaffold:internal:windows
+
+    tsunami:scaffold:internal:unix:
+        desc: Internal task to create scaffold directory structure (Unix)
+        dir: tsunami/frontend
+        internal: true
+        platforms: [darwin, linux]
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - mkdir -p scaffold
+            - cp ../templates/package.json.tmpl scaffold/package.json
+            - cd scaffold && npm install
+            - mv scaffold/node_modules scaffold/nm
+            - cp -r dist scaffold/
+            - mkdir -p scaffold/dist/tw
+            - cp ../templates/*.go.tmpl scaffold/
+            - cp ../templates/tailwind.css scaffold/
+            - cp ../templates/gitignore.tmpl scaffold/.gitignore
+            - cp src/element/*.tsx scaffold/dist/tw/
+            - cp ../ui/*.go scaffold/dist/tw/
+            - cp ../engine/errcomponent.go scaffold/dist/tw/
+
+    tsunami:scaffold:internal:windows:
+        desc: Internal task to create scaffold directory structure (Windows)
+        dir: tsunami/frontend
+        internal: true
+        platforms: [windows]
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - powershell -NoProfile -NonInteractive New-Item -ItemType Directory -Force -Path scaffold
+            - powershell -NoProfile -NonInteractive Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
+            - powershell -NoProfile -NonInteractive -Command "Set-Location scaffold; npm install"
+            - powershell -NoProfile -NonInteractive Move-Item -Path scaffold/node_modules -Destination scaffold/nm
+            - powershell -NoProfile -NonInteractive Copy-Item -Recurse -Force -Path dist -Destination scaffold/
+            - powershell -NoProfile -NonInteractive New-Item -ItemType Directory -Force -Path scaffold/dist/tw
+            - powershell -NoProfile -NonInteractive Copy-Item -Path '../templates/*.go.tmpl' -Destination scaffold/
+            - powershell -NoProfile -NonInteractive Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
+            - powershell -NoProfile -NonInteractive Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
+            - powershell -NoProfile -NonInteractive Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/
+            - powershell -NoProfile -NonInteractive Copy-Item -Path '../ui/*.go' -Destination scaffold/dist/tw/
+            - powershell -NoProfile -NonInteractive Copy-Item -Path ../engine/errcomponent.go -Destination scaffold/dist/tw/
+
+    tsunami:build:
+        desc: Build the tsunami binary.
+        cmds:
+            - cmd: rm -f bin/tsunami*
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -NoProfile -NonInteractive -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path bin/tsunami*"
+              platforms: [windows]
+              ignore_error: true
+            - mkdir -p bin
+            - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
+        sources:
+            - "tsunami/**/*.go"
+            - "tsunami/go.mod"
+            - "tsunami/go.sum"
+        generates:
+            - "bin/tsunami{{exeExt}}"
+
+    tsunami:clean:
+        desc: Clean tsunami frontend build artifacts
+        dir: tsunami/frontend
+        cmds:
+            - cmd: "{{.RMRF}} dist"
+              ignore_error: true
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+
+    godoc:
+        desc: Start the Go documentation server for the root module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+
+    tsunami:godoc:
+        desc: Start the Go documentation server for the tsunami module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+        dir: tsunami

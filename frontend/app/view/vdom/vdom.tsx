@@ -9,14 +9,12 @@ import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
 import {
     convertVDomId,
     getTextChildren,
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
-import "./vdom.scss";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
@@ -31,7 +29,7 @@ const VDomObjType_Func = "func";
 
 const dlog = debug("wave:vdom");
 
-type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => JSX.Element;
+type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => React.ReactElement;
 
 const WaveTagMap: Record<string, VDomReactTagType> = {
     "wave:markdown": WaveMarkdown,
@@ -169,7 +167,7 @@ function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, pro
     };
 }
 
-function convertElemToTag(elem: VDomElem, model: VDomModel): JSX.Element | string {
+function convertElemToTag(elem: VDomElem, model: VDomModel): React.ReactNode {
     if (elem == null) {
         return null;
     }
@@ -295,11 +293,11 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
     return [props, atomKeys];
 }
 
-function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
+function convertChildren(elem: VDomElem, model: VDomModel): React.ReactNode[] {
     if (elem.children == null || elem.children.length == 0) {
         return null;
     }
-    let childrenComps: (string | JSX.Element)[] = [];
+    let childrenComps: React.ReactNode[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;
@@ -476,10 +474,6 @@ function VDomRoot({ model }: { model: VDomModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-function makeVDomModel(blockId: string, nodeModel: BlockNodeModel): VDomModel {
-    return new VDomModel(blockId, nodeModel);
-}
-
 type VDomViewProps = {
     model: VDomModel;
     blockId: string;
@@ -506,10 +500,10 @@ function VDomView({ blockId, model }: VDomViewProps) {
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
+        <div className={clsx("overflow-auto w-full min-h-full", vdomClass)} ref={viewRef}>
             {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
 }
 
-export { makeVDomModel, VDomView };
+export { VDomView };

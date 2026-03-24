@@ -8,7 +8,22 @@
 
 import type { FitAddon as IFitApi } from "@xterm/addon-fit";
 import type { ITerminalAddon, Terminal } from "@xterm/xterm";
-import { IRenderDimensions } from "@xterm/xterm/src/browser/renderer/shared/Types";
+
+interface IDimensions {
+    width: number;
+    height: number;
+}
+
+interface IRenderDimensions {
+    css: {
+        canvas: IDimensions;
+        cell: IDimensions;
+    };
+    device: {
+        canvas: IDimensions;
+        cell: IDimensions;
+    };
+}
 
 interface ITerminalDimensions {
     /**
@@ -27,7 +42,7 @@ const MINIMUM_ROWS = 1;
 
 export class FitAddon implements ITerminalAddon, IFitApi {
     private _terminal: Terminal | undefined;
-    public noScrollbar: boolean = false;
+    public scrollbarWidth: number | null = null;
 
     public activate(terminal: Terminal): void {
         this._terminal = terminal;
@@ -68,12 +83,12 @@ export class FitAddon implements ITerminalAddon, IFitApi {
             return undefined;
         }
 
-        // UPDATED CODE (removed reliance on FALLBACK_SCROLL_BAR_WIDTH in viewport)
-        const measuredScrollBarWidth =
-            core.viewport._viewportElement.offsetWidth - core.viewport._scrollArea.offsetWidth;
-        let scrollbarWidth = this._terminal.options.scrollback === 0 ? 0 : measuredScrollBarWidth;
-        if (this.noScrollbar) {
-            scrollbarWidth = 0;
+        // UPDATED CODE (removed reliance on FALLBACK_SCROLL_BAR_WIDTH in viewport, allow just setting the scrollbar width when known)
+        let scrollbarWidth: number;
+        if (this.scrollbarWidth != null) {
+            scrollbarWidth = this.scrollbarWidth;
+        } else {
+            scrollbarWidth = core.viewport._viewportElement.offsetWidth - core.viewport._scrollArea.offsetWidth;
         }
         // END UPDATED CODE
 

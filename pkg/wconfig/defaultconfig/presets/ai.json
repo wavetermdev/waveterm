@@ -5,7 +5,7 @@
         "ai:*": true
     },
     "ai@wave": {
-        "display:name": "Wave Proxy - gpt-4o-mini",
+        "display:name": "Wave Proxy - gpt-5-mini",
         "display:order": 0,
         "ai:*": true,
         "ai:apitype": "",
@@ -13,8 +13,8 @@
         "ai:apitoken": "",
         "ai:name": "",
         "ai:orgid": "",
-        "ai:model": "gpt-4o-mini",
-        "ai:maxtokens": 2048,
+        "ai:model": "gpt-5-mini",
+        "ai:maxtokens": 4000,
         "ai:timeoutms": 60000
     }
 }

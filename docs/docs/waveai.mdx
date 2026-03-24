@@ -1,0 +1,110 @@
+---
+sidebar_position: 1.5
+id: "waveai"
+title: "Wave AI"
+---
+
+import { Kbd } from "@site/src/components/kbd";
+import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
+
+<PlatformProvider>
+
+<PlatformSelectorButton />
+
+<br/><br/>
+Context-aware terminal assistant with access to terminal output, widgets, and filesystem.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| <Kbd k="Cmd:Shift:a"/> | Toggle AI panel |
+| <Kbd k="Ctrl:Shift:0" windows="Alt:0"/> | Focus AI input |
+| <Kbd k="Cmd:k"/> | Clear chat / start new |
+| <Kbd k="Enter"/> | Send message |
+| <Kbd k="Shift:Enter"/> | New line |
+
+## Widget Context Toggle
+
+Controls AI's access to your workspace:
+
+**ON**: AI can read terminal output, capture widget screenshots, access files/directories (with approval), navigate web widgets, and use custom widget tools. Use for debugging, code analysis, and workspace tasks.
+
+**OFF**: AI only sees your messages and attached files. Standard chat mode for general questions.
+
+## File Attachments
+
+Drag files onto the AI panel to attach (not supported with all models):
+
+| Type | Formats | Size Limit | Notes |
+|------|---------|------------|-------|
+| Images | JPEG, PNG, GIF, WebP, SVG | 10 MB | Auto-resized to 4096px max, converted to WebP |
+| PDFs | `.pdf` | 5 MB | Text extraction for analysis |
+| Text/Code | `.js`, `.ts`, `.py`, `.go`, `.md`, `.json`, `.yaml`, etc. | 200 KB | All common languages and configs |
+
+## CLI Integration
+
+Use `wsh ai` to send files and prompts from the command line:
+
+```bash
+git diff | wsh ai -                          # Pipe to AI
+wsh ai main.go -m "find bugs"                # Attach files with message
+wsh ai $(tail -n 500 my.log) -m "review" -s  # Auto-submit with output
+```
+
+Supports text files, images, PDFs, and directories. Use `-n` for new chat, `-s` to auto-submit.
+
+## AI Tools (Widget Context Enabled)
+
+### Terminal
+- **Read Terminal Output**: Fetches scrollback from terminal widgets, supports line ranges
+
+### File System
+- **Read Files**: Reads text files with line range support (requires approval)
+- **List Directories**: Returns file info, sizes, permissions, timestamps (requires approval)
+- **Write Text Files**: Create or modify files with diff preview and approval (requires approval)
+
+### Web
+- **Navigate Web**: Changes URLs in web browser widgets
+
+### All Widgets
+- **Capture Screenshots**: Takes screenshots of any widget for visual analysis (not supported on all models)
+
+:::warning Security
+File system operations require explicit approval. You control all file access.
+:::
+
+## Local Models & BYOK
+
+Wave AI supports using your own AI models and API keys:
+
+- **Local Models**: Run AI models locally with [Ollama](https://ollama.ai), [LM Studio](https://lmstudio.ai), [vLLM](https://docs.vllm.ai), and other OpenAI-compatible servers
+- **BYOK (Bring Your Own Key)**: Use your own API keys with OpenAI, OpenRouter, Google AI (Gemini), Azure OpenAI, and other cloud providers
+- **Multiple Modes**: Configure and switch between multiple AI providers and models
+- **Privacy**: Keep your data local or use your preferred cloud provider
+
+See the [**Local Models & BYOK guide**](./waveai-modes.mdx) for complete configuration instructions, examples, and troubleshooting.
+
+## Privacy
+
+**Default Wave AI Service:**
+- Messages are proxied through the Wave Cloud AI service (powered by OpenAI's APIs). Please refer to OpenAI's privacy policy for details on how they handle your data.
+- Wave does not store your chats, attachments, or use them for training
+- Usage counters included in anonymous telemetry
+- File access requires explicit approval
+
+**Local Models & BYOK:**
+- When using local models, your chat data never leaves your machine
+- When using BYOK with cloud providers, requests are sent directly to your chosen provider
+- Refer to your provider's privacy policy for details on how they handle your data
+
+:::info Under Active Development
+Wave AI is in active beta with included AI credits while we refine the experience. Share feedback in our [Discord](https://discord.gg/XfvZ334gwU).
+
+**Coming Soon:**
+- **Remote File Access**: Read files on SSH-connected systems
+- **Command Execution**: Run terminal commands with approval
+- **Web Content**: Extract text from web pages (currently screenshots only)
+:::
+
+</PlatformProvider>

@@ -16,6 +16,10 @@ out/
 make/
 artifacts/
 mikework/
+aiplans/
+manifests/
+.env
+out
 
 # Yarn Modern
 .pnp.*
@@ -33,3 +37,5 @@ storybook-static/
 test-results.xml
 
 docsite/
+
+.kilo-format-temp-*

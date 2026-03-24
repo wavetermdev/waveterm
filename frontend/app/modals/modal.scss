@@ -14,7 +14,7 @@
 
     .modal-backdrop {
         position: fixed;
-        top: 0;
+        top: 36px;
         left: 0;
         right: 0;
         bottom: 0;
@@ -29,7 +29,6 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 24px 16px 16px;
     border-radius: 8px;
     border: 0.5px solid var(--modal-border-color);
     background: var(--modal-bg-color);

@@ -9,7 +9,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { clsx } from "clsx";
+import clsx from "clsx";
 import Papa from "papaparse";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -23,7 +23,7 @@ type CSVRow = {
 };
 
 interface CSVViewProps {
-    parentRef: React.MutableRefObject<HTMLDivElement>;
+    parentRef: React.RefObject<HTMLDivElement>;
     content: string;
     filename: string;
     readonly: boolean;
@@ -149,7 +149,7 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
     });
 
     return (
-        <div className={clsx("csv-view", { show: tableLoaded })} style={{ height: "auto" }}>
+        <div className={clsx("csv-view ellipsis", { show: tableLoaded })} style={{ height: "auto" }}>
             <table className="probe">
                 <tbody>
                     <tr ref={probeRef}>
@@ -173,7 +173,7 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
                                         <div
                                             {...{
                                                 className: header.column.getCanSort()
-                                                    ? "inner cursor-pointer select-none"
+                                                    ? "inner cursor-pointer select-none ellipsis"
                                                     : "",
                                                 onClick: header.column.getToggleSortingHandler(),
                                             }}
@@ -193,9 +193,16 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
                 </thead>
                 <tbody style={{ height: `${state.tbodyHeight}px` }} ref={tbodyRef}>
                     {table.getRowModel().rows.map((row, index) => (
-                        <tr key={row.id} ref={(el) => (rowRef.current[index] = el)} id={row.id} tabIndex={index}>
+                        <tr
+                            key={row.id}
+                            ref={(el) => {
+                                rowRef.current[index] = el;
+                            }}
+                            id={row.id}
+                            tabIndex={index}
+                        >
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id} id={cell.id} tabIndex={index}>
+                                <td className="ellipsis" key={cell.id} id={cell.id} tabIndex={index}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                 </td>
                             ))}

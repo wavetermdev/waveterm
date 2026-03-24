@@ -1,0 +1,201 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package cmd
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+)
+
+// secretNameRegex must match the validation in pkg/wconfig/secretstore.go
+var secretNameRegex = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+
+var secretUiMagnified bool
+
+var secretCmd = &cobra.Command{
+	Use:   "secret",
+	Short: "manage secrets",
+	Long:  "Manage secrets for Wave Terminal",
+}
+
+var secretGetCmd = &cobra.Command{
+	Use:     "get [name]",
+	Short:   "get a secret value",
+	Args:    cobra.ExactArgs(1),
+	RunE:    secretGetRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+var secretSetCmd = &cobra.Command{
+	Use:     "set [name]=[value]",
+	Short:   "set a secret value",
+	Args:    cobra.ExactArgs(1),
+	RunE:    secretSetRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+var secretListCmd = &cobra.Command{
+	Use:     "list",
+	Short:   "list all secret names",
+	Args:    cobra.NoArgs,
+	RunE:    secretListRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+var secretDeleteCmd = &cobra.Command{
+	Use:     "delete [name]",
+	Short:   "delete a secret",
+	Args:    cobra.ExactArgs(1),
+	RunE:    secretDeleteRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+var secretUiCmd = &cobra.Command{
+	Use:     "ui",
+	Short:   "open secrets UI",
+	Args:    cobra.NoArgs,
+	RunE:    secretUiRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
+func init() {
+	secretUiCmd.Flags().BoolVarP(&secretUiMagnified, "magnified", "m", false, "open secrets UI in magnified mode")
+	rootCmd.AddCommand(secretCmd)
+	secretCmd.AddCommand(secretGetCmd)
+	secretCmd.AddCommand(secretSetCmd)
+	secretCmd.AddCommand(secretListCmd)
+	secretCmd.AddCommand(secretDeleteCmd)
+	secretCmd.AddCommand(secretUiCmd)
+}
+
+func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	name := args[0]
+	if !secretNameRegex.MatchString(name) {
+		return fmt.Errorf("invalid secret name: must start with a letter and contain only letters, numbers, and underscores")
+	}
+
+	resp, err := wshclient.GetSecretsCommand(RpcClient, []string{name}, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("getting secret: %w", err)
+	}
+
+	value, ok := resp[name]
+	if !ok {
+		return fmt.Errorf("secret not found: %s", name)
+	}
+
+	WriteStdout("%s\n", value)
+	return nil
+}
+
+func secretSetRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	parts := strings.SplitN(args[0], "=", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid format: expected [name]=[value]")
+	}
+
+	name := parts[0]
+	value := parts[1]
+
+	if name == "" {
+		return fmt.Errorf("secret name cannot be empty")
+	}
+
+	backend, err := wshclient.GetSecretsLinuxStorageBackendCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("checking secret storage backend: %w", err)
+	}
+
+	if backend == "basic_text" || backend == "unknown" {
+		return fmt.Errorf("No appropriate secret manager found, cannot set secrets")
+	}
+
+	secrets := map[string]*string{name: &value}
+	err = wshclient.SetSecretsCommand(RpcClient, secrets, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("setting secret: %w", err)
+	}
+
+	WriteStdout("secret set: %s\n", name)
+	return nil
+}
+
+func secretListRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	names, err := wshclient.GetSecretsNamesCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("listing secrets: %w", err)
+	}
+
+	for _, name := range names {
+		WriteStdout("%s\n", name)
+	}
+	return nil
+}
+
+func secretDeleteRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	name := args[0]
+	if !secretNameRegex.MatchString(name) {
+		return fmt.Errorf("invalid secret name: must start with a letter and contain only letters, numbers, and underscores")
+	}
+
+	secrets := map[string]*string{name: nil}
+	err := wshclient.SetSecretsCommand(RpcClient, secrets, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("deleting secret: %w", err)
+	}
+
+	WriteStdout("secret deleted: %s\n", name)
+	return nil
+}
+
+func secretUiRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
+	wshCmd := &wshrpc.CommandCreateBlockData{
+		TabId: tabId,
+		BlockDef: &waveobj.BlockDef{
+			Meta: map[string]interface{}{
+				waveobj.MetaKey_View: "waveconfig",
+				waveobj.MetaKey_File: "secrets",
+			},
+		},
+		Magnified: secretUiMagnified,
+		Focused:   true,
+	}
+
+	_, err := wshclient.CreateBlockCommand(RpcClient, *wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("opening secrets UI: %w", err)
+	}
+	return nil
+}

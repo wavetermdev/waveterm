@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@use "../mixins.scss";
-
 .input {
     width: 100%;
     border: none;
@@ -26,13 +24,6 @@
     &.error {
         border-color: var(--form-element-error-color);
     }
-
-    // Include mixins
-    @include mixins.border-radius-mixin();
-    @include mixins.vertical-padding-mixin();
-    @include mixins.horizontal-padding-mixin();
-    @include mixins.font-size-mixin();
-    @include mixins.font-weight-mixin();
 }
 
 /* Styles when an InputGroup is present */
@@ -85,9 +76,4 @@
             border-color: transparent;
         }
     }
-
-    // Include mixins
-    @include mixins.border-radius-mixin();
-    @include mixins.font-size-mixin();
-    @include mixins.font-weight-mixin();
 }

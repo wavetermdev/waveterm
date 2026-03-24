@@ -105,7 +105,7 @@ const WorkspaceEditorComponent = ({
         <div className="workspace-editor">
             <Input
                 ref={inputRef}
-                className={clsx("vertical-padding-3", { error: title === "" })}
+                className={clsx("py-[3px]", { error: title === "" })}
                 onChange={onTitleChange}
                 value={title}
                 autoFocus
@@ -114,7 +114,7 @@ const WorkspaceEditorComponent = ({
             <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
             <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
             <div className="delete-ws-btn-wrapper">
-                <Button className="ghost red font-size-12 bold" onClick={onDeleteWorkspace}>
+                <Button className="ghost red text-[12px] bold" onClick={onDeleteWorkspace}>
                     Delete workspace
                 </Button>
             </div>

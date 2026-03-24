@@ -9,6 +9,7 @@ import YAML from "yaml";
 import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { isDev } from "../frontend/util/isdev";
 import { fireAndForget } from "../frontend/util/util";
+import { setUserConfirmedQuit } from "./emain-activity";
 import { delay } from "./emain-util";
 import { focusedWaveWindow, getAllWaveWindows } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
@@ -59,6 +60,7 @@ export class Updater {
 
         // Only update the release channel if it's specified, otherwise use the one configured in the updater.
         autoUpdater.channel = getUpdateChannel(settings);
+        autoUpdater.allowDowngrade = false;
 
         autoUpdater.removeAllListeners();
 
@@ -202,6 +204,7 @@ export class Updater {
         if (this.status == "ready") {
             this.status = "installing";
             await delay(1000);
+            setUserConfirmedQuit(true);
             autoUpdater.quitAndInstall();
         }
     }

@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@use "../mixins.scss";
-
 .menu {
     position: absolute;
     z-index: 1000;
@@ -23,6 +21,7 @@
 .menu-item {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 4px 6px;
     cursor: pointer;
     color: var(--main-text-color);
@@ -33,12 +32,12 @@
     letter-spacing: -0.12px;
     width: 100%;
     border-radius: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
 
     .label {
-        @include mixins.ellipsis();
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-decoration: none;
     }
 }

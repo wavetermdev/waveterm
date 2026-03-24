@@ -4,7 +4,6 @@
 package web
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,24 +15,22 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
-	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
@@ -220,6 +217,7 @@ func serveTransparentGIF(w http.ResponseWriter) {
 }
 
 func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, no404 bool) {
+	http.NewResponseController(w).SetWriteDeadline(time.Time{})
 	if no404 {
 		log.Printf("streaming file w/no404: %q\n", path)
 		// use the custom response writer
@@ -246,76 +244,84 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 	}
 }
 
-func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn string, path string, no404 bool) error {
-	client := wshserver.GetMainRpcClient()
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
-	route := wshutil.MakeConnectionRouteId(conn)
-	rpcOpts := &wshrpc.RpcOpts{Route: route, Timeout: 60 * 1000}
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, rpcOpts)
-	return handleRemoteStreamFileFromCh(w, req, path, rtnCh, rpcOpts.StreamCancelFn, no404)
-}
+func handleStreamFileFromReader(w http.ResponseWriter, r *http.Request, path string, no404 bool) error {
+	startTime := time.Now()
+	rangeHeader := r.Header.Get("Range")
+	log.Printf("stream-file path=%q range=%q\n", path, rangeHeader)
 
-func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(), no404 bool) error {
-	firstPk := true
-	var fileInfo *wshrpc.FileInfo
-	loopDone := false
-	defer func() {
-		if loopDone {
-			return
-		}
-		// if loop didn't finish naturally clear it out
-		utilfn.DrainChannelSafe(rtnCh, "handleRemoteStreamFile")
-	}()
-	ctx := req.Context()
-	for {
-		select {
-		case <-ctx.Done():
-			if streamCancelFn != nil {
-				streamCancelFn()
-			}
-			return ctx.Err()
-		case respUnion, ok := <-rtnCh:
-			if !ok {
-				loopDone = true
-				return nil
-			}
-			if respUnion.Error != nil {
-				return respUnion.Error
-			}
-			if firstPk {
-				firstPk = false
-				if respUnion.Response.Info == nil {
-					return fmt.Errorf("stream file protocol error, fileinfo is empty")
-				}
-				fileInfo = respUnion.Response.Info
-				if fileInfo.NotFound {
-					if no404 {
-						serveTransparentGIF(w)
-						return nil
-					} else {
-						return fmt.Errorf("file not found: %q", path)
-					}
-				}
-				if fileInfo.IsDir {
-					return fmt.Errorf("cannot stream directory: %q", path)
-				}
-				w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
-				w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
-				continue
-			}
-			if respUnion.Response.Data64 == "" {
-				continue
-			}
-			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
-			_, err := io.Copy(w, decoder)
-			if err != nil {
-				log.Printf("error streaming file %q: %v\n", path, err)
-				// not sure what to do here, the headers have already been sent.
-				// just return
-				return nil
-			}
-		}
+	writerRouteId, err := wshfs.GetConnectionRouteId(r.Context(), path)
+	if err != nil {
+		return err
 	}
+
+	byteRange := ""
+	if rangeHeader != "" {
+		stripped := strings.TrimPrefix(rangeHeader, "bytes=")
+		br, parseErr := fileutil.ParseByteRange(stripped)
+		if parseErr != nil || br.All {
+			http.Error(w, "invalid range", http.StatusRequestedRangeNotSatisfiable)
+			return nil
+		}
+		byteRange = stripped
+	}
+
+	bareRpc := wshclient.GetBareRpcClient()
+	readerRouteId := wshclient.GetBareRpcClientRouteId()
+	reader, streamMeta := bareRpc.StreamBroker.CreateStreamReader(readerRouteId, writerRouteId, 256*1024)
+	defer reader.Close()
+	go func() {
+		<-r.Context().Done()
+		reader.Close()
+	}()
+
+	data := wshrpc.CommandFileStreamData{
+		Info:       &wshrpc.FileInfo{Path: path},
+		ByteRange:  byteRange,
+		StreamMeta: *streamMeta,
+	}
+	fileInfo, err := wshfs.FileStream(r.Context(), data)
+	if err != nil {
+		if no404 {
+			serveTransparentGIF(w)
+			return nil
+		}
+		return err
+	}
+	if fileInfo.NotFound {
+		if no404 {
+			serveTransparentGIF(w)
+			return nil
+		}
+		http.Error(w, fmt.Sprintf("file not found: %q", path), http.StatusNotFound)
+		return nil
+	}
+	if fileInfo.IsDir {
+		http.Error(w, fmt.Sprintf("cannot stream directory: %q", path), http.StatusBadRequest)
+		return nil
+	}
+	log.Printf("stream-file headers-ready path=%q time-to-headers=%v\n", path, time.Since(startTime))
+	w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
+	w.Header().Set("Accept-Ranges", "bytes")
+	if byteRange != "" {
+		br, _ := fileutil.ParseByteRange(byteRange)
+		var rangeEnd int64
+		if br.OpenEnd {
+			rangeEnd = fileInfo.Size - 1
+		} else {
+			rangeEnd = br.End
+		}
+		w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", rangeEnd-br.Start+1))
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", br.Start, rangeEnd, fileInfo.Size))
+		w.WriteHeader(http.StatusPartialContent)
+	} else {
+		w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+	}
+	http.NewResponseController(w).SetWriteDeadline(time.Time{})
+	_, copyErr := io.Copy(w, reader)
+	if copyErr != nil && r.Context().Err() == nil {
+		log.Printf("error streaming file %q: %v\n", path, copyErr)
+	}
+	return nil
 }
 
 func handleStreamLocalFile(w http.ResponseWriter, r *http.Request) {
@@ -329,25 +335,16 @@ func handleStreamLocalFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {
-	conn := r.URL.Query().Get("connection")
-	if conn == "" {
-		conn = wshrpc.LocalConnName
-	}
 	path := r.URL.Query().Get("path")
 	if path == "" {
 		http.Error(w, "path is required", http.StatusBadRequest)
 		return
 	}
 	no404 := r.URL.Query().Get("no404")
-	data := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path,
-		},
-	}
-	rtnCh := fileshare.ReadStream(r.Context(), data)
-	err := handleRemoteStreamFileFromCh(w, r, path, rtnCh, nil, no404 != "")
+	// path should already be formatted as a wsh:// URI (e.g. wsh://local/path or wsh://connection/path)
+	err := handleStreamFileFromReader(w, r, path, no404 != "")
 	if err != nil {
-		log.Printf("error streaming file %q %q: %v\n", conn, path, err)
+		log.Printf("error streaming file %q: %v\n", path, err)
 		http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
 	}
 }
@@ -404,6 +401,13 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 			w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		}
 		w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo")
+
+		// Handle CORS preflight OPTIONS requests without auth validation
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		err := authkey.ValidateIncomingRequest(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -436,23 +440,54 @@ func MakeUnixListener() (net.Listener, error) {
 	return rtn, nil
 }
 
-const docsitePrefix = "/docsite/"
 const schemaPrefix = "/schema/"
 
 // blocking
 func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
+
+	// Streaming routes must be registered before the /wave/ prefix catch-all to bypass TimeoutHandler.
+	// http.TimeoutHandler buffers the entire response before flushing, which stalls streaming.
 	gr.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
 	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
-	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
-	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
-	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
+	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
+
+	// Non-streaming /wave/ routes get timeout protection
+	waveRouter := mux.NewRouter()
+	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
+	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
+	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
+
+	vdomRouter := mux.NewRouter()
+	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
+
+	gr.PathPrefix("/wave/").Handler(http.TimeoutHandler(waveRouter, HttpTimeoutDuration, "Timeout"))
+	gr.PathPrefix("/vdom/").Handler(http.TimeoutHandler(vdomRouter, HttpTimeoutDuration, "Timeout"))
+
+	// Other routes without timeout
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
-	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
+
+	handler := http.Handler(gr)
 	if wavebase.IsDevMode() {
-		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)
+		originalHandler := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept, x-vercel-ai-ui-message-stream")
+			w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type, x-vercel-ai-ui-message-stream")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(204)
+				return
+			}
+
+			originalHandler.ServeHTTP(w, r)
+		})
 	}
 	server := &http.Server{
 		ReadTimeout:    HttpReadTimeout,

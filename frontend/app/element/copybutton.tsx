@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { clsx } from "clsx";
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import "./copybutton.scss";
 import { IconButton } from "./iconbutton";

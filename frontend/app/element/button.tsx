@@ -9,7 +9,7 @@ import "./button.scss";
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     className?: string;
     children?: ReactNode;
-    as?: keyof JSX.IntrinsicElements | React.ComponentType<any>;
+    as?: keyof React.JSX.IntrinsicElements | React.ComponentType<any>;
 }
 
 const Button = memo(

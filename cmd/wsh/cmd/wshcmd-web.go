@@ -111,7 +111,14 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if replaceBlockORef != nil && webOpenMagnified {
 		return fmt.Errorf("cannot use --replace and --magnified together")
 	}
+
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	wshCmd := wshrpc.CommandCreateBlockData{
+		TabId: tabId,
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]any{
 				waveobj.MetaKey_View: "web",
@@ -119,6 +126,7 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: webOpenMagnified,
+		Focused:   true,
 	}
 	if replaceBlockORef != nil {
 		wshCmd.TargetBlockId = replaceBlockORef.OID

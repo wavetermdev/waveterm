@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -25,6 +27,25 @@ import (
 
 const MaxTzNameLen = 50
 const ActivityEventName = "app:activity"
+
+var cachedTosAgreedTs atomic.Int64
+
+func GetTosAgreedTs() int64 {
+	cached := cachedTosAgreedTs.Load()
+	if cached != 0 {
+		return cached
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil || client == nil || client.TosAgreed == 0 {
+		return 0
+	}
+
+	cachedTosAgreedTs.Store(client.TosAgreed)
+	return client.TosAgreed
+}
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -39,28 +60,30 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	ActiveMinutes int                          `json:"activeminutes"`
-	FgMinutes     int                          `json:"fgminutes"`
-	OpenMinutes   int                          `json:"openminutes"`
-	NumTabs       int                          `json:"numtabs"`
-	NumBlocks     int                          `json:"numblocks,omitempty"`
-	NumWindows    int                          `json:"numwindows,omitempty"`
-	NumWS         int                          `json:"numws,omitempty"`
-	NumWSNamed    int                          `json:"numwsnamed,omitempty"`
-	NumSSHConn    int                          `json:"numsshconn,omitempty"`
-	NumWSLConn    int                          `json:"numwslconn,omitempty"`
-	NumMagnify    int                          `json:"nummagnify,omitempty"`
-	NewTab        int                          `json:"newtab"`
-	NumStartup    int                          `json:"numstartup,omitempty"`
-	NumShutdown   int                          `json:"numshutdown,omitempty"`
-	NumPanics     int                          `json:"numpanics,omitempty"`
-	NumAIReqs     int                          `json:"numaireqs,omitempty"`
-	SetTabTheme   int                          `json:"settabtheme,omitempty"`
-	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int               `json:"renderers,omitempty"`
-	Blocks        map[string]int               `json:"blocks,omitempty"`
-	WshCmds       map[string]int               `json:"wshcmds,omitempty"`
-	Conn          map[string]int               `json:"conn,omitempty"`
+	ActiveMinutes       int                          `json:"activeminutes"`
+	FgMinutes           int                          `json:"fgminutes"`
+	OpenMinutes         int                          `json:"openminutes"`
+	WaveAIActiveMinutes int                          `json:"waveaiactiveminutes,omitempty"`
+	WaveAIFgMinutes     int                          `json:"waveaifgminutes,omitempty"`
+	NumTabs             int                          `json:"numtabs"`
+	NumBlocks           int                          `json:"numblocks,omitempty"`
+	NumWindows          int                          `json:"numwindows,omitempty"`
+	NumWS               int                          `json:"numws,omitempty"`
+	NumWSNamed          int                          `json:"numwsnamed,omitempty"`
+	NumSSHConn          int                          `json:"numsshconn,omitempty"`
+	NumWSLConn          int                          `json:"numwslconn,omitempty"`
+	NumMagnify          int                          `json:"nummagnify,omitempty"`
+	NewTab              int                          `json:"newtab"`
+	NumStartup          int                          `json:"numstartup,omitempty"`
+	NumShutdown         int                          `json:"numshutdown,omitempty"`
+	NumPanics           int                          `json:"numpanics,omitempty"`
+	NumAIReqs           int                          `json:"numaireqs,omitempty"`
+	SetTabTheme         int                          `json:"settabtheme,omitempty"`
+	Displays            []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
+	Renderers           map[string]int               `json:"renderers,omitempty"`
+	Blocks              map[string]int               `json:"blocks,omitempty"`
+	WshCmds             map[string]int               `json:"wshcmds,omitempty"`
+	Conn                map[string]int               `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -128,13 +151,23 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.ActiveMinutes += newActivity.ActiveMinutes
 	curActivity.FgMinutes += newActivity.FgMinutes
 	curActivity.OpenMinutes += newActivity.OpenMinutes
+	curActivity.WaveAIActiveMinutes += newActivity.WaveAIActiveMinutes
+	curActivity.WaveAIFgMinutes += newActivity.WaveAIFgMinutes
+	curActivity.TermCommandsRun += newActivity.TermCommandsRun
+	curActivity.TermCommandsRemote += newActivity.TermCommandsRemote
+	curActivity.TermCommandsDurable += newActivity.TermCommandsDurable
+	curActivity.TermCommandsWsl += newActivity.TermCommandsWsl
+	if newActivity.AppFirstDay {
+		curActivity.AppFirstDay = true
+	}
 }
 
 // ignores the timestamp in tevent, and uses the current time
 func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	eventTs := time.Now()
-	// compute to hour boundary, and round up to next hour
+	// compute to 1-hour boundary, and round up to next 1-hour boundary
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
+
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		// find event that matches this timestamp with event name "app:activity"
 		var hasRow bool
@@ -150,6 +183,7 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 			}
 		}
 		mergeActivity(&curActivity, tevent.Props)
+
 		if hasRow {
 			query := `UPDATE db_tevent SET props = ? WHERE uuid = ?`
 			tx.Exec(query, dbutil.QuickJson(curActivity), uuidStr)
@@ -209,6 +243,19 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 		return err
 	}
 	tevent.EnsureTimestamps()
+
+	// Set AppFirstDay if on same calendar day as TOS agreement
+	tosAgreedTs := GetTosAgreedTs()
+	if tosAgreedTs == 0 {
+		tevent.Props.AppFirstDay = true
+	} else {
+		tosYear, tosMonth, tosDay := time.UnixMilli(tosAgreedTs).Date()
+		nowYear, nowMonth, nowDay := time.Now().Date()
+		if tosYear == nowYear && tosMonth == nowMonth && tosDay == nowDay {
+			tevent.Props.AppFirstDay = true
+		}
+	}
+
 	if tevent.Event == ActivityEventName {
 		return updateActivityTEvent(ctx, tevent)
 	}
@@ -216,10 +263,13 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 }
 
 func CleanOldTEvents(ctx context.Context) error {
+	daysToKeep := 7
+	if !IsTelemetryEnabled() {
+		daysToKeep = 1
+	}
+	olderThan := time.Now().AddDate(0, 0, -daysToKeep).UnixMilli()
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		// delete events older than 28 days
 		query := `DELETE FROM db_tevent WHERE ts < ?`
-		olderThan := time.Now().AddDate(0, 0, -28).UnixMilli()
 		tx.Exec(query, olderThan)
 		return nil
 	})
@@ -271,6 +321,8 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 		tdata.FgMinutes += update.FgMinutes
 		tdata.ActiveMinutes += update.ActiveMinutes
 		tdata.OpenMinutes += update.OpenMinutes
+		tdata.WaveAIFgMinutes += update.WaveAIFgMinutes
+		tdata.WaveAIActiveMinutes += update.WaveAIActiveMinutes
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown

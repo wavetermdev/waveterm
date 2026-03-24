@@ -1,29 +1,24 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi, globalStore, WOS } from "@/app/store/global";
+import { globalStore, WOS } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
-import { fireAndForget } from "@/util/util";
-import { atom, useAtomValue } from "jotai";
-import { useCallback } from "react";
-import "./helpview.scss";
+import { atom } from "jotai";
 
-const docsiteWebUrl = "https://docs.waveterm.dev/";
-const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
+const docsiteUrl = "https://docs.waveterm.dev/?ref=app";
 
 class HelpViewModel extends WebViewModel {
     get viewComponent(): ViewComponent {
         return HelpView;
     }
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
-        super(blockId, nodeModel);
+    constructor(initOpts: ViewModelInitType) {
+        super(initOpts);
         this.viewText = atom((get) => {
             // force a dependency on meta.url so we re-render the buttons when the url changes
-            get(this.blockAtom)?.meta?.url || get(this.homepageUrl);
+            void (get(this.blockAtom)?.meta?.url || get(this.homepageUrl));
             return [
                 {
                     elemtype: "iconbutton",
@@ -45,24 +40,10 @@ class HelpViewModel extends WebViewModel {
                 },
             ];
         });
-        this.homepageUrl = atom(getApi().getDocsiteUrl());
+        this.homepageUrl = atom(docsiteUrl);
         this.viewType = "help";
         this.viewIcon = atom("circle-question");
         this.viewName = atom("Help");
-
-        /* 
-        Add callback to take the current embedded docsite url and return the equivalent page in the public docsite.
-        The port used by the embedded docsite changes every time the app runs and the current page may be cached from a previous run so we can't trust that it matches the current embedded url.
-        We have a regex at the top of this file that can extract the base part of the url (i.e. http://127.0.0.1:53288). We'll use this regex to strip the base part of the url from both the current
-        page and the embedded docsite url. Because we host the embedded docsite at a subdirectory, we also need to strip that (hence the second replace). Then, we can build the public url from whatever's left.
-        */
-        this.modifyExternalUrl = (url: string) => {
-            const strippedDocsiteUrl = getApi().getDocsiteUrl().replace(baseUrlRegex, "");
-            const strippedCurUrl = url.replace(baseUrlRegex, "").replace(strippedDocsiteUrl, "");
-            const newUrl = docsiteWebUrl + strippedCurUrl;
-            console.log("modify-external-url", url, newUrl);
-            return newUrl;
-        };
     }
 
     setZoomFactor(factor: number | null) {
@@ -90,6 +71,7 @@ class HelpViewModel extends WebViewModel {
         if (globalStore.get(this.domReady)) {
             curZoom = this.webviewRef.current?.getZoomFactor() || 1;
         }
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const model = this; // for the closure to work (this is getting unset)
         function makeZoomFactorMenuItem(label: string, factor: number): ContextMenuItem {
             return {
@@ -142,32 +124,9 @@ class HelpViewModel extends WebViewModel {
 }
 
 function HelpView(props: ViewComponentProps<HelpViewModel>) {
-    const model = props.model;
-    const homepageUrl = useAtomValue(model.homepageUrl);
-
-    // Effect to update the docsite base url when the app restarts, since the webserver port is dynamic
-    const onFailLoad = useCallback(
-        (url: string) =>
-            fireAndForget(async () => {
-                const newDocsiteUrl = getApi().getDocsiteUrl();
-
-                // Correct the homepage URL, if necessary
-                if (newDocsiteUrl !== homepageUrl) {
-                    await model.setHomepageUrl(newDocsiteUrl, "block");
-                }
-
-                // Correct the base URL of the current page, if necessary
-                const newBaseUrl = baseUrlRegex.exec(newDocsiteUrl)?.[0];
-                const curBaseUrl = baseUrlRegex.exec(url)?.[0];
-                if (curBaseUrl && newBaseUrl && curBaseUrl !== newBaseUrl) {
-                    model.loadUrl(url.replace(curBaseUrl, newBaseUrl), "fix-fail-load");
-                }
-            }),
-        [homepageUrl]
-    );
     return (
-        <div className="help-view">
-            <WebView {...props} onFailLoad={onFailLoad} />
+        <div className="w-full h-full">
+            <WebView {...props} />
         </div>
     );
 }

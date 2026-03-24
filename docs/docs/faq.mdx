@@ -4,13 +4,9 @@ id: "faq"
 title: "FAQ"
 ---
 
+import { VersionBadge } from "@site/src/components/versionbadge";
+
 # FAQ
-
-### How do I configure Wave to use different AI models/providers?
-
-Wave supports various AI providers including local LLMs (via Ollama), Azure OpenAI, Anthropic's Claude, and Perplexity. The recommended way to configure these is through AI presets, which let you set up and easily switch between different providers and models.
-
-See our [AI Presets documentation](/ai-presets) for detailed setup instructions for each provider.
 
 ### How can I see the block numbers?
 
@@ -23,7 +19,9 @@ and type the `[user]@[host]` that you wish to connect to.
 
 ### On Windows, how can I use Git Bash as my default shell?
 
-In order to make Git Bash your default shell you'll need to set the configuration variable `term:localshellpath` to
+Wave automatically detects Git Bash installations and adds them to the connection dropdown. Simply click the <i className="fa-sharp fa-laptop"/> or <i className="fa-sharp fa-arrow-right-arrow-left"/> button in the block header and select "Git Bash" from the list.
+
+Alternatively, you can manually set Git Bash as your default shell by setting the configuration variable `term:localshellpath` to
 the location of the Git Bash "bash.exe" binary. By default it is located at "C:\Program Files\Git\bin\bash.exe".
 Just remember in JSON, backslashes need to be escaped. So add this to your [settings.json](./config) file:
 
@@ -35,13 +33,14 @@ Just remember in JSON, backslashes need to be escaped. So add this to your [sett
 
 `wsh` is an internal CLI for extending control over Wave to the command line, you can learn more about it [here](./wsh). To prevent misuse by other applications, `wsh` requires an access token provided by Wave to work and will not function outside of the app.
 
+
 ## Why does Wave warn me about ARM64 translation when it launches?
 
 macOS and Windows both have compatibility layers that allow x64 applications to run on ARM computers. This helps more apps run on these systems while developers work to add native ARM support to their applications. However, it comes with significant performance tradeoffs.
 
 To get the best experience using Wave, it is recommended that you uninstall Wave and reinstall the version that is natively compiled for your computer. You can find the right version by consulting our [Installation Instructions](./gettingstarted#installation).
 
-You can disable this warning by setting `app:dismissarchitecturewarning=true` in [your configurations](./config.mdx).
+You can disable this warning by setting `app:dismissarchitecturewarning=true` in [your configurations](./config).
 
 ## How do I join the beta builds of Wave?
 
@@ -57,3 +56,15 @@ If you've installed via Snap, you can use the following command:
 ```sh
 sudo snap install waveterm --classic --beta
 ```
+
+## Can I use Wave AI without enabling telemetry?
+
+<VersionBadge version="v0.13.1" noLeftMargin={true}/>
+
+Yes! Wave AI is normally disabled when telemetry is not enabled. However, you can enable Wave AI features without telemetry by configuring your own custom AI model (either a local model or using your own API key).
+
+To enable Wave AI without telemetry:
+1. Configure a custom AI mode (see [Wave AI documentation](./waveai-modes))
+2. Set `waveai:defaultmode` to your custom mode's key in your Wave settings
+
+Once you've completed both steps, Wave AI will be enabled and you can use it completely privately without telemetry. This allows you to use local models like Ollama or your own API keys with providers like OpenAI, OpenRouter, or others.

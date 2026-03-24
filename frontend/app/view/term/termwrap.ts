@@ -1,14 +1,24 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { BlockNodeModel } from "@/app/block/blocktypes";
+import { setBadge } from "@/app/store/badge";
 import { getFileSubject } from "@/app/store/wps";
-import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
+import {
+    fetchWaveFile,
+    getOverrideConfigAtom,
+    getSettingsKeyAtom,
+    globalStore,
+    isDev,
+    openLink,
+    WOS,
+} from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
+import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -16,125 +26,47 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import debug from "debug";
+import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
-import { FitAddon } from "./fitaddon";
+import {
+    handleOsc16162Command,
+    handleOsc52Command,
+    handleOsc7Command,
+    type ShellIntegrationStatus,
+} from "./osc-handlers";
+import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
+export const SupportsImageInput = true;
+const MaxRepaintTransactionMs = 2000;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
     try {
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("webgl");
+        const ctx = canvas.getContext("webgl2");
         return !!ctx;
     } catch (e) {
         return false;
     }
 }
 
-const WebGLSupported = detectWebGLSupport();
+export const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
 
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
     sendDataHandler?: (data: string) => void;
+    nodeModel?: BlockNodeModel;
 };
 
-function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
-    if (!loaded) {
-        return false;
-    }
-    if (!data || data.length === 0) {
-        console.log("Invalid Wave OSC command received (empty)");
-        return false;
-    }
-
-    // Expected formats:
-    // "setmeta;{JSONDATA}"
-    // "setmeta;[wave-id];{JSONDATA}"
-    const parts = data.split(";");
-    if (parts[0] !== "setmeta") {
-        console.log("Invalid Wave OSC command received (bad command)", data);
-        return false;
-    }
-    let jsonPayload: string;
-    let waveId: string | undefined;
-    if (parts.length === 2) {
-        jsonPayload = parts[1];
-    } else if (parts.length >= 3) {
-        waveId = parts[1];
-        jsonPayload = parts.slice(2).join(";");
-    } else {
-        console.log("Invalid Wave OSC command received (1 part)", data);
-        return false;
-    }
-
-    let meta: any;
-    try {
-        meta = JSON.parse(jsonPayload);
-    } catch (e) {
-        console.error("Invalid JSON in Wave OSC command:", e);
-        return false;
-    }
-
-    if (waveId) {
-        // Resolve the wave id to an ORef using our ResolveIdsCommand.
-        fireAndForget(() => {
-            return RpcApi.ResolveIdsCommand(TabRpcClient, { blockid: blockId, ids: [waveId] })
-                .then((response: { resolvedids: { [key: string]: any } }) => {
-                    const oref = response.resolvedids[waveId];
-                    if (!oref) {
-                        console.error("Failed to resolve wave id:", waveId);
-                        return;
-                    }
-                    services.ObjectService.UpdateObjectMeta(oref, meta);
-                })
-                .catch((err: any) => {
-                    console.error("Error resolving wave id", waveId, err);
-                });
-        });
-    } else {
-        // No wave id provided; update using the current block id.
-        fireAndForget(() => {
-            return services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), meta);
-        });
-    }
-    return true;
-}
-
-function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
-    if (!loaded) {
-        return false;
-    }
-    if (data == null || data.length == 0) {
-        console.log("Invalid OSC 7 command received (empty)");
-        return false;
-    }
-    if (data.startsWith("file://")) {
-        data = data.substring(7);
-        const nextSlashIdx = data.indexOf("/");
-        if (nextSlashIdx == -1) {
-            console.log("Invalid OSC 7 command received (bad path)", data);
-            return false;
-        }
-        data = data.substring(nextSlashIdx);
-    }
-    setTimeout(() => {
-        fireAndForget(() =>
-            services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
-                "cmd:cwd": data,
-            })
-        );
-    }, 0);
-    return true;
-}
-
 export class TermWrap {
+    tabId: string;
     blockId: string;
     ptyOffset: number;
     dataBytesProcessed: number;
@@ -151,96 +83,248 @@ export class TermWrap {
     multiInputCallback: (data: string) => void;
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
-    private toDispose: TermTypes.IDisposable[] = [];
+    toDispose: TermTypes.IDisposable[] = [];
+    webglAddon: WebglAddon | null = null;
+    webglContextLossDisposable: TermTypes.IDisposable | null = null;
+    webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
+    lastUpdated: number;
+    promptMarkers: TermTypes.IMarker[] = [];
+    shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
+    lastCommandAtom: jotai.PrimitiveAtom<string | null>;
+    nodeModel: BlockNodeModel; // this can be null
+    hoveredLinkUri: string | null = null;
+    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
+
+    // Paste deduplication
+    // xterm.js paste() method triggers onData event, which can cause duplicate sends
+    lastPasteData: string = "";
+    lastPasteTime: number = 0;
+
+    // dev only (for debugging)
+    recentWrites: { idx: number; data: string; ts: number }[] = [];
+    recentWritesCounter: number = 0;
+
+    // for repaint transaction scrolling behavior
+    lastClearScrollbackTs: number = 0;
+    lastMode2026SetTs: number = 0;
+    lastMode2026ResetTs: number = 0;
+    inSyncTransaction: boolean = false;
+    inRepaintTransaction: boolean = false;
 
     constructor(
+        tabId: string,
         blockId: string,
         connectElem: HTMLDivElement,
         options: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions,
         waveOptions: TermWrapOptions
     ) {
         this.loaded = false;
+        this.tabId = tabId;
         this.blockId = blockId;
         this.sendDataHandler = waveOptions.sendDataHandler;
+        this.nodeModel = waveOptions.nodeModel;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
+        this.lastUpdated = Date.now();
+        this.promptMarkers = [];
+        this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
+        this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
-        this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
-            new WebLinksAddon((e, uri) => {
-                e.preventDefault();
-                switch (PLATFORM) {
-                    case PlatformMacOS:
-                        if (e.metaKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
-                    default:
-                        if (e.ctrlKey) {
-                            fireAndForget(() => openLink(uri));
-                        }
-                        break;
+            new WebLinksAddon(
+                (e, uri) => {
+                    e.preventDefault();
+                    switch (PLATFORM) {
+                        case PlatformMacOS:
+                            if (e.metaKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                        default:
+                            if (e.ctrlKey) {
+                                fireAndForget(() => openLink(uri));
+                            }
+                            break;
+                    }
+                },
+                {
+                    hover: (e, uri) => {
+                        this.hoveredLinkUri = uri;
+                        this.onLinkHover?.(uri, e.clientX, e.clientY);
+                    },
+                    leave: () => {
+                        this.hoveredLinkUri = null;
+                        this.onLinkHover?.(null, 0, 0);
+                    },
                 }
-            })
+            )
         );
-        if (WebGLSupported && waveOptions.useWebGl) {
-            const webglAddon = new WebglAddon();
-            this.toDispose.push(
-                webglAddon.onContextLoss(() => {
-                    webglAddon.dispose();
-                })
-            );
-            this.terminal.loadAddon(webglAddon);
-            if (!loggedWebGL) {
-                console.log("loaded webgl!");
-                loggedWebGL = true;
-            }
-        }
-        // Register OSC 9283 handler
-        this.terminal.parser.registerOscHandler(9283, (data: string) => {
-            return handleOscWaveCommand(data, this.blockId, this.loaded);
-        });
+        this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
+        // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
         });
-        this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
+        this.terminal.parser.registerOscHandler(52, (data: string) => {
+            return handleOsc52Command(data, this.blockId, this.loaded, this);
+        });
+        this.terminal.parser.registerOscHandler(16162, (data: string) => {
+            return handleOsc16162Command(data, this.blockId, this.loaded, this);
+        });
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {
+                if (params[0] === 3) {
+                    this.lastClearScrollbackTs = Date.now();
+                    if (this.inSyncTransaction) {
+                        console.log("[termwrap] repaint transaction starting");
+                        this.inRepaintTransaction = true;
+                    }
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params) => {
+                if (params[0] === 2026) {
+                    this.lastMode2026SetTs = Date.now();
+                    this.inSyncTransaction = true;
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
+                if (params[0] === 2026) {
+                    this.lastMode2026ResetTs = Date.now();
+                    this.inSyncTransaction = false;
+                    const wasRepaint = this.inRepaintTransaction;
+                    this.inRepaintTransaction = false;
+                    if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
+                        setTimeout(() => {
+                            console.log("[termwrap] repaint transaction complete, scrolling to bottom");
+                            this.terminal.scrollToBottom();
+                        }, 20);
+                    }
+                }
+                return false;
+            })
+        );
+        this.toDispose.push(
+            this.terminal.onBell(() => {
+                if (!this.loaded) {
+                    return true;
+                }
+                console.log("BEL received in terminal", this.blockId);
+                const bellSoundEnabled =
+                    globalStore.get(getOverrideConfigAtom(this.blockId, "term:bellsound")) ?? false;
+                if (bellSoundEnabled) {
+                    fireAndForget(() => RpcApi.ElectronSystemBellCommand(TabRpcClient, { route: "electron" }));
+                }
+                const bellIndicatorEnabled =
+                    globalStore.get(getOverrideConfigAtom(this.blockId, "term:bellindicator")) ?? false;
+                if (bellIndicatorEnabled) {
+                    setBadge(this.blockId, { icon: "bell", color: "#fbbf24", priority: 1 });
+                }
+                return true;
+            })
+        );
+        this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+            if (!waveOptions.keydownHandler) {
+                return true;
+            }
+            return waveOptions.keydownHandler(e);
+        });
         this.connectElem = connectElem;
         this.mainFileSubject = null;
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
-        let pasteEventHandler = () => {
-            this.pasteActive = true;
-            setTimeout(() => {
-                this.pasteActive = false;
-            }, 30);
-        };
-        pasteEventHandler = pasteEventHandler.bind(this);
-        this.connectElem.addEventListener("paste", pasteEventHandler, true);
+        const pasteHandler = this.pasteHandler.bind(this);
+        this.connectElem.addEventListener("paste", pasteHandler, true);
         this.toDispose.push({
             dispose: () => {
-                this.connectElem.removeEventListener("paste", pasteEventHandler, true);
+                this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
+    }
+
+    getZoneId(): string {
+        return this.blockId;
+    }
+
+    setCursorStyle(cursorStyle: string) {
+        this.terminal.options.cursorStyle = normalizeCursorStyle(cursorStyle);
+    }
+
+    setCursorBlink(cursorBlink: boolean) {
+        this.terminal.options.cursorBlink = cursorBlink ?? false;
+    }
+
+    setTermRenderer(renderer: "webgl" | "dom") {
+        if (renderer === "webgl") {
+            if (this.webglAddon != null) {
+                return;
+            }
+            if (!WebGLSupported) {
+                renderer = "dom";
+            }
+        } else {
+            if (this.webglAddon == null) {
+                return;
+            }
+        }
+        if (this.webglAddon != null) {
+            this.webglContextLossDisposable?.dispose();
+            this.webglContextLossDisposable = null;
+            this.webglAddon.dispose();
+            this.webglAddon = null;
+            globalStore.set(this.webglEnabledAtom, false);
+        }
+        if (renderer === "webgl") {
+            const addon = new WebglAddon();
+            this.webglContextLossDisposable = addon.onContextLoss(() => {
+                this.setTermRenderer("dom");
+            });
+            this.terminal.loadAddon(addon);
+            this.webglAddon = addon;
+            globalStore.set(this.webglEnabledAtom, true);
+            if (!loggedWebGL) {
+                console.log("loaded webgl!");
+                loggedWebGL = true;
+            }
+        }
+    }
+
+    getTermRenderer(): "webgl" | "dom" {
+        return this.webglAddon != null ? "webgl" : "dom";
+    }
+
+    isWebGlEnabled(): boolean {
+        return this.webglAddon != null;
     }
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
-        this.toDispose.push(this.terminal.onKey(this.onKeyHandler.bind(this)));
         this.toDispose.push(
             this.terminal.onSelectionChange(
                 debounce(50, () => {
                     if (!globalStore.get(copyOnSelectAtom)) {
+                        return;
+                    }
+                    // Don't copy-on-select when the search bar has focus — navigating
+                    // search results changes the terminal selection programmatically.
+                    const active = document.activeElement;
+                    if (active != null && active.closest(".search-container") != null) {
                         return;
                     }
                     const selectedText = this.terminal.getSelection();
@@ -253,8 +337,28 @@ export class TermWrap {
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
         }
-        this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
+
+        this.mainFileSubject = getFileSubject(this.getZoneId(), TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
+
+        try {
+            const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+            });
+
+            if (rtInfo && rtInfo["shell:integration"]) {
+                const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
+                globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
+            } else {
+                globalStore.set(this.shellIntegrationStatusAtom, null);
+            }
+
+            const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
+            globalStore.set(this.lastCommandAtom, lastCmd || null);
+        } catch (e) {
+            console.log("Error loading runtime info:", e);
+        }
+
         try {
             await this.loadInitialTerminalData();
         } finally {
@@ -264,6 +368,14 @@ export class TermWrap {
     }
 
     dispose() {
+        this.promptMarkers.forEach((marker) => {
+            try {
+                marker.dispose();
+            } catch (_) {}
+        });
+        this.promptMarkers = [];
+        this.webglContextLossDisposable?.dispose();
+        this.webglContextLossDisposable = null;
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {
@@ -277,19 +389,9 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
-        if (this.pasteActive) {
-            this.pasteActive = false;
-            if (this.multiInputCallback) {
-                this.multiInputCallback(data);
-            }
-        }
-        this.sendDataHandler?.(data);
-    }
 
-    onKeyHandler(data: { key: string; domEvent: KeyboardEvent }) {
-        if (this.multiInputCallback) {
-            this.multiInputCallback(data.key);
-        }
+        this.sendDataHandler?.(data);
+        this.multiInputCallback?.(data);
     }
 
     addFocusListener(focusFn: () => void) {
@@ -314,8 +416,15 @@ export class TermWrap {
     }
 
     doTerminalWrite(data: string | Uint8Array, setPtyOffset?: number): Promise<void> {
+        if (isDev() && this.loaded) {
+            const dataStr = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
+            this.recentWrites.push({ idx: this.recentWritesCounter++, ts: Date.now(), data: dataStr });
+            if (this.recentWrites.length > 50) {
+                this.recentWrites.shift();
+            }
+        }
         let resolve: () => void = null;
-        let prtn = new Promise<void>((presolve, _) => {
+        const prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
         this.terminal.write(data, () => {
@@ -325,14 +434,16 @@ export class TermWrap {
                 this.ptyOffset += data.length;
                 this.dataBytesProcessed += data.length;
             }
+            this.lastUpdated = Date.now();
             resolve();
         });
         return prtn;
     }
 
     async loadInitialTerminalData(): Promise<void> {
-        let startTs = Date.now();
-        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(this.blockId, TermCacheFileName);
+        const startTs = Date.now();
+        const zoneId = this.getZoneId();
+        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(zoneId, TermCacheFileName);
         let ptyOffset = 0;
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
@@ -354,7 +465,7 @@ export class TermWrap {
                 }
             }
         }
-        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, TermFileName, ptyOffset);
+        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(zoneId, TermFileName, ptyOffset);
         console.log(
             `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
         );
@@ -365,11 +476,10 @@ export class TermWrap {
 
     async resyncController(reason: string) {
         dlog("resync controller", this.blockId, reason);
-        const tabId = globalStore.get(atoms.staticTabId);
         const rtOpts: RuntimeOpts = { termsize: { rows: this.terminal.rows, cols: this.terminal.cols } };
         try {
             await RpcApi.ControllerResyncCommand(TabRpcClient, {
-                tabid: tabId,
+                tabid: this.tabId,
                 blockid: this.blockId,
                 rtopts: rtOpts,
             });
@@ -384,12 +494,13 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            const wsCommand: SetBlockTermSizeWSCommand = {
-                wscommand: "setblocktermsize",
-                blockid: this.blockId,
-                termsize: termSize,
-            };
-            sendWSCommand(wsCommand);
+            console.log(
+                "[termwrap] resize",
+                `${oldRows}x${oldCols}`,
+                "->",
+                `${this.terminal.rows}x${this.terminal.cols}`
+            );
+            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {
@@ -418,5 +529,44 @@ export class TermWrap {
                 this.runProcessIdleTimeout();
             });
         }, 5000);
+    }
+
+    async pasteHandler(e?: ClipboardEvent): Promise<void> {
+        this.pasteActive = true;
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        try {
+            const clipboardData = await extractAllClipboardData(e);
+            let firstImage = true;
+            for (const data of clipboardData) {
+                if (data.image && SupportsImageInput) {
+                    if (!firstImage) {
+                        await new Promise((r) => setTimeout(r, 150));
+                    }
+                    const tempPath = await createTempFileFromBlob(data.image);
+                    this.terminal.paste(tempPath + " ");
+                    firstImage = false;
+                }
+                if (data.text) {
+                    this.terminal.paste(data.text);
+                }
+            }
+        } catch (err) {
+            console.error("Paste error:", err);
+        } finally {
+            setTimeout(() => {
+                this.pasteActive = false;
+            }, 30);
+        }
+    }
+
+    getScrollbackContent(): string {
+        if (!this.terminal) {
+            return "";
+        }
+        const buffer = this.terminal.buffer.active;
+        const lines = bufferLinesToText(buffer, 0, buffer.length);
+        return lines.join("\n");
     }
 }

@@ -38,6 +38,11 @@
         "editor.insertSpaces": true,
         "editor.autoIndent": "keep"
     },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.insertSpaces": true,
+        "editor.autoIndent": "keep"
+    },
     "[go]": {
         "editor.defaultFormatter": "golang.go"
     },
@@ -49,5 +54,15 @@
     },
     "files.associations": {
         "*.css": "tailwindcss"
+    },
+    "gopls": {
+        "analyses": {
+            "QF1003": false
+        },
+        "directoryFilters": ["-tsunami/frontend/scaffold", "-dist", "-make"]
+    },
+    "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+    "go.coverageDecorator": {
+        "type": "gutter"
     }
 }

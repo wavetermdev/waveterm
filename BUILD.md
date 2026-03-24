@@ -71,24 +71,7 @@ Make sure you have a NodeJS 22 LTS installed.
 
 See NodeJS's website for platform-specific instructions: https://nodejs.org/en/download
 
-### Yarn Modern
-
-Once you have NodeJS installed, you'll need to enable Corepack so that Yarn Modern can work:
-
-```sh
-corepack enable
-```
-
-If your NodeJS distribution does not ship with Corepack, you can install it manually using NPM:
-
-```sh
-npm install -g corepack
-corepack enable
-```
-
-Corepack's official documentation says to uninstall Yarn and PnPM first, but this is probably overkill. If you have any issues, try removing them from your system before continuing.
-
-For more information on Corepack, check out [this link](https://yarnpkg.com/corepack).
+We now use `npm`, so you can just run an `npm install` to install node dependencies.
 
 ## Clone the Repo
 

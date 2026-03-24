@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
@@ -18,7 +19,7 @@ type PacketParser struct {
 	Ch     chan []byte
 }
 
-func ParseWithLinesChan(input chan utilfn.LineOutput, packetCh chan []byte, rawCh chan []byte) {
+func ParseWithLinesChan(input chan utilfn.LineOutput, packetCh chan baseds.RpcInputChType, rawCh chan []byte) {
 	defer close(packetCh)
 	defer close(rawCh)
 	for {
@@ -37,14 +38,14 @@ func ParseWithLinesChan(input chan utilfn.LineOutput, packetCh chan []byte, rawC
 		}
 		if bytes.HasPrefix([]byte(line.Line), []byte{'#', '#', 'N', '{'}) && bytes.HasSuffix([]byte(line.Line), []byte{'}'}) {
 			// strip off the leading "##"
-			packetCh <- []byte(line.Line[3:len(line.Line)])
+			packetCh <- baseds.RpcInputChType{MsgBytes: []byte(line.Line[3:len(line.Line)])}
 		} else {
 			rawCh <- []byte(line.Line)
 		}
 	}
 }
 
-func Parse(input io.Reader, packetCh chan []byte, rawCh chan []byte) error {
+func Parse(input io.Reader, packetCh chan baseds.RpcInputChType, rawCh chan []byte) error {
 	bufReader := bufio.NewReader(input)
 	defer close(packetCh)
 	defer close(rawCh)
@@ -63,7 +64,7 @@ func Parse(input io.Reader, packetCh chan []byte, rawCh chan []byte) error {
 		}
 		if bytes.HasPrefix(line, []byte{'#', '#', 'N', '{'}) && bytes.HasSuffix(line, []byte{'}', '\n'}) {
 			// strip off the leading "##" and trailing "\n" (single byte)
-			packetCh <- line[3 : len(line)-1]
+			packetCh <- baseds.RpcInputChType{MsgBytes: line[3 : len(line)-1]}
 		} else {
 			rawCh <- line
 		}

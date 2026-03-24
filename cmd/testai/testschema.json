@@ -1,0 +1,104 @@
+{
+    "config": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "description": "Application configuration settings",
+        "properties": {
+            "maxWorkflowRuns": {
+                "description": "Maximum number of workflow runs to fetch",
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+            },
+            "pollInterval": {
+                "description": "Polling interval for GitHub API requests",
+                "maximum": 300,
+                "minimum": 1,
+                "type": "integer",
+                "units": "s"
+            },
+            "repository": {
+                "description": "GitHub repository in owner/repo format",
+                "pattern": "^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$",
+                "type": "string"
+            },
+            "workflow": {
+                "description": "GitHub Actions workflow file name",
+                "pattern": "^.+\\.(yml|yaml)$",
+                "type": "string"
+            }
+        },
+        "title": "Application Configuration",
+        "type": "object"
+    },
+    "data": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "definitions": {
+            "WorkflowRun": {
+                "properties": {
+                    "conclusion": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    },
+                    "html_url": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "run_number": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "format": "date-time",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "status",
+                    "conclusion",
+                    "created_at",
+                    "updated_at",
+                    "html_url",
+                    "run_number"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "Application data schema",
+        "properties": {
+            "isLoading": {
+                "description": "Loading state for workflow data fetch",
+                "type": "boolean"
+            },
+            "lastError": {
+                "description": "Last error message from GitHub API",
+                "type": "string"
+            },
+            "lastRefreshTime": {
+                "description": "Timestamp of last successful data refresh",
+                "format": "date-time",
+                "type": "string"
+            },
+            "workflowRuns": {
+                "description": "List of GitHub Actions workflow runs",
+                "items": {
+                    "$ref": "#/definitions/WorkflowRun"
+                },
+                "type": "array"
+            }
+        },
+        "title": "Application Data",
+        "type": "object"
+    }
+}

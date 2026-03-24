@@ -34,16 +34,22 @@ func createBlockRun(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 {
 		metaSetStrs = args[1:]
 	}
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
 	meta, err := parseMetaSets(metaSetStrs)
 	if err != nil {
 		return err
 	}
 	meta["view"] = viewName
 	data := wshrpc.CommandCreateBlockData{
+		TabId: tabId,
 		BlockDef: &waveobj.BlockDef{
 			Meta: meta,
 		},
 		Magnified: createBlockMagnified,
+		Focused:   true,
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, data, nil)
 	if err != nil {

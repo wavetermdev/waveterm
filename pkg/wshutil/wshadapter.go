@@ -14,6 +14,7 @@ import (
 )
 
 var WshCommandDeclMap = wshrpc.GenerateWshCommandDeclMap()
+var multiArgRType = reflect.TypeOf(wshrpc.MultiArg{})
 
 func findCmdMethod(impl any, cmd string) *reflect.Method {
 	rtype := reflect.TypeOf(impl)
@@ -53,26 +54,19 @@ func noImplHandler(handler *RpcResponseHandler) bool {
 	return true
 }
 
-func recodeCommandData(command string, data any, rpcCtx *wshrpc.RpcContext) (any, error) {
-	// only applies to initial command packet
-	if command == "" {
+func recodeCommandData(command string, data any, commandDataType reflect.Type) (any, error) {
+	if command == "" || commandDataType == nil {
 		return data, nil
 	}
 	methodDecl := WshCommandDeclMap[command]
 	if methodDecl == nil {
 		return data, fmt.Errorf("command %q not found", command)
 	}
-	if methodDecl.CommandDataType == nil {
-		return data, nil
-	}
-	commandDataPtr := reflect.New(methodDecl.CommandDataType).Interface()
+	commandDataPtr := reflect.New(commandDataType).Interface()
 	if data != nil {
 		err := utilfn.ReUnmarshal(commandDataPtr, data)
 		if err != nil {
 			return data, fmt.Errorf("error re-marshalling command data: %w", err)
-		}
-		if rpcCtx != nil {
-			wshrpc.HackRpcContextIntoData(commandDataPtr, *rpcCtx)
 		}
 	}
 	return reflect.ValueOf(commandDataPtr).Elem().Interface(), nil
@@ -96,7 +90,7 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 		}
 		rmethod := findCmdMethod(impl, cmd)
 		if rmethod == nil {
-			if !handler.NeedsResponse() {
+			if !handler.NeedsResponse() && cmd != wshrpc.Command_Message {
 				// we also send an out of band message here since this is likely unexpected and will require debugging
 				handler.SendMessage(fmt.Sprintf("command %q method %q not found", handler.GetCommand(), methodDecl.MethodName))
 			}
@@ -106,14 +100,37 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 		implMethod := reflect.ValueOf(impl).MethodByName(rmethod.Name)
 		var callParams []reflect.Value
 		callParams = append(callParams, reflect.ValueOf(handler.Context()))
-		if methodDecl.CommandDataType != nil {
-			rpcCtx := handler.GetRpcContext()
-			cmdData, err := recodeCommandData(cmd, handler.GetCommandRawData(), &rpcCtx)
+		commandDataTypes := methodDecl.GetCommandDataTypes()
+		if len(commandDataTypes) == 1 {
+			cmdData, err := recodeCommandData(cmd, handler.GetCommandRawData(), commandDataTypes[0])
 			if err != nil {
 				handler.SendResponseError(err)
 				return true
 			}
 			callParams = append(callParams, reflect.ValueOf(cmdData))
+		} else if len(commandDataTypes) > 1 {
+			multiArgAny, err := recodeCommandData(cmd, handler.GetCommandRawData(), multiArgRType)
+			if err != nil {
+				handler.SendResponseError(err)
+				return true
+			}
+			multiArg, ok := multiArgAny.(wshrpc.MultiArg)
+			if !ok {
+				handler.SendResponseError(fmt.Errorf("command %q invalid multi arg payload", cmd))
+				return true
+			}
+			if len(multiArg.Args) != len(commandDataTypes) {
+				handler.SendResponseError(fmt.Errorf("command %q expected %d args, got %d", cmd, len(commandDataTypes), len(multiArg.Args)))
+				return true
+			}
+			for idx, commandDataType := range commandDataTypes {
+				cmdData, err := recodeCommandData(cmd, multiArg.Args[idx], commandDataType)
+				if err != nil {
+					handler.SendResponseError(err)
+					return true
+				}
+				callParams = append(callParams, reflect.ValueOf(cmdData))
+			}
 		}
 		if methodDecl.CommandType == wshrpc.RpcType_Call {
 			rtnVals := implMethod.Call(callParams)

@@ -19,7 +19,7 @@ import (
 )
 
 var setBgCmd = &cobra.Command{
-	Use:   "setbg [--opacity value] [--tile|--center] [--scale value] (image-path|\"#color\"|color-name)",
+	Use:   "setbg [--opacity value] [--tile|--center] [--scale value] [--border-color color] [--active-border-color color] (image-path|\"#color\"|color-name)",
 	Short: "set background image or color for a tab",
 	Long: `Set a background image or color for a tab. Colors can be specified as:
   - A quoted hex value like "#ff0000" (quotes required to prevent # being interpreted as a shell comment)
@@ -31,18 +31,22 @@ You can also:
   - Use --opacity without other arguments to change just the opacity
   - Use --center for centered images without scaling (good for logos)
   - Use --scale with --center to control image size
+  - Use --border-color to set the block frame border color
+  - Use --active-border-color to set the block frame focused border color
   - Use --print to see the metadata without applying it`,
 	RunE:    setBgRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
 var (
-	setBgOpacity float64
-	setBgTile    bool
-	setBgCenter  bool
-	setBgSize    string
-	setBgClear   bool
-	setBgPrint   bool
+	setBgOpacity           float64
+	setBgTile              bool
+	setBgCenter            bool
+	setBgSize              string
+	setBgClear             bool
+	setBgPrint             bool
+	setBgBorderColor       string
+	setBgActiveBorderColor string
 )
 
 func init() {
@@ -53,8 +57,9 @@ func init() {
 	setBgCmd.Flags().StringVar(&setBgSize, "size", "auto", "size for centered images (px, %, or auto)")
 	setBgCmd.Flags().BoolVar(&setBgClear, "clear", false, "clear the background")
 	setBgCmd.Flags().BoolVar(&setBgPrint, "print", false, "print the metadata without applying it")
+	setBgCmd.Flags().StringVar(&setBgBorderColor, "border-color", "", "block frame border color (#RRGGBB, #RRGGBBAA, or CSS color name)")
+	setBgCmd.Flags().StringVar(&setBgActiveBorderColor, "active-border-color", "", "block frame focused border color (#RRGGBB, #RRGGBBAA, or CSS color name)")
 
-	// Make tile and center mutually exclusive
 	setBgCmd.MarkFlagsMutuallyExclusive("tile", "center")
 }
 
@@ -73,17 +78,41 @@ func validateHexColor(color string) error {
 	return nil
 }
 
+func validateColor(color string) error {
+	if strings.HasPrefix(color, "#") {
+		return validateHexColor(color)
+	}
+	if !CssColorNames[strings.ToLower(color)] {
+		return fmt.Errorf("invalid color %q: must be a hex color (#RRGGBB or #RRGGBBAA) or a CSS color name", color)
+	}
+	return nil
+}
+
 func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("setbg", rtnErr == nil)
 	}()
+
+	borderColorChanged := cmd.Flags().Changed("border-color")
+	activeBorderColorChanged := cmd.Flags().Changed("active-border-color")
+
+	if borderColorChanged {
+		if err := validateColor(setBgBorderColor); err != nil {
+			return fmt.Errorf("--border-color: %v", err)
+		}
+	}
+	if activeBorderColorChanged {
+		if err := validateColor(setBgActiveBorderColor); err != nil {
+			return fmt.Errorf("--active-border-color: %v", err)
+		}
+	}
 
 	// Create base metadata
 	meta := map[string]interface{}{}
 
 	// Handle opacity-only change or clear
 	if len(args) == 0 {
-		if !cmd.Flags().Changed("opacity") && !setBgClear {
+		if !cmd.Flags().Changed("opacity") && !setBgClear && !borderColorChanged && !activeBorderColorChanged {
 			OutputHelpMessage(cmd)
 			return fmt.Errorf("setbg requires an image path or color value")
 		}
@@ -92,7 +121,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		}
 		if setBgClear {
 			meta["bg:*"] = true
-		} else {
+		} else if cmd.Flags().Changed("opacity") {
 			meta["bg:opacity"] = setBgOpacity
 		}
 	} else if len(args) > 1 {
@@ -101,6 +130,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	} else {
 		// Handle background setting
 		meta["bg:*"] = true
+		meta["tab:background"] = nil
 		if setBgOpacity < 0 || setBgOpacity > 1 {
 			return fmt.Errorf("opacity must be between 0.0 and 1.0")
 		}
@@ -157,6 +187,13 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		}
 
 		meta["bg"] = bgStyle
+	}
+
+	if borderColorChanged {
+		meta["bg:bordercolor"] = setBgBorderColor
+	}
+	if activeBorderColorChanged {
+		meta["bg:activebordercolor"] = setBgActiveBorderColor
 	}
 
 	if setBgPrint {

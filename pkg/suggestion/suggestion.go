@@ -373,17 +373,9 @@ func fetchFileSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData)
 	listingCtx, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
 
-	var entriesCh <-chan DirEntryResult
-	if strings.HasPrefix(data.FileConnection, "aws:") {
-		entriesCh, err = listS3Directory(listingCtx, data.WidgetId, data.FileConnection, baseDir, 1000)
-		if err != nil {
-			return nil, fmt.Errorf("error listing S3 directory: %w", err)
-		}
-	} else {
-		entriesCh, err = listDirectory(listingCtx, data.WidgetId, baseDir, 1000)
-		if err != nil {
-			return nil, fmt.Errorf("error listing directory: %w", err)
-		}
+	entriesCh, err := listDirectory(listingCtx, data.WidgetId, baseDir, 1000)
+	if err != nil {
+		return nil, fmt.Errorf("error listing directory: %w", err)
 	}
 
 	const maxEntries = MaxSuggestions // top-k entries

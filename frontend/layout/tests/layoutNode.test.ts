@@ -24,21 +24,24 @@ test("newLayoutNode", () => {
         undefined,
         "calls to the constructor with only data defined should succeed"
     );
-    assert.throws(() => newLayoutNode(FlexDirection.Column, undefined, [], undefined)),
+    assert.throws(
+        () => newLayoutNode(FlexDirection.Column, undefined, [], undefined),
         "Invalid node",
         undefined,
-        "calls to the constructor with empty children array should fail";
-    assert.doesNotThrow(() =>
-        newLayoutNode(
-            FlexDirection.Column,
-            undefined,
-            [newLayoutNode(FlexDirection.Column, undefined, undefined, { blockId: "hello" })],
-            undefined
-        )
-    ),
+        "calls to the constructor with empty children array should fail"
+    );
+    assert.doesNotThrow(
+        () =>
+            newLayoutNode(
+                FlexDirection.Column,
+                undefined,
+                [newLayoutNode(FlexDirection.Column, undefined, undefined, { blockId: "hello" })],
+                undefined
+            ),
         "Invalid node",
         undefined,
-        "calls to the constructor with children array containing at least one child should succeed";
+        "calls to the constructor with children array containing at least one child should succeed"
+    );
 });
 
 test("addIntermediateNode", () => {

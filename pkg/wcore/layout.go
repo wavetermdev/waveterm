@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -21,6 +22,7 @@ const (
 	LayoutActionDataType_Replace         = "replace"
 	LayoutActionDataType_SplitHorizontal = "splithorizontal"
 	LayoutActionDataType_SplitVertical   = "splitvertical"
+	LayoutActionDataType_CleanupOrphaned = "cleanuporphaned"
 )
 
 type PortableLayout []struct {
@@ -55,27 +57,6 @@ func GetStarterLayout() PortableLayout {
 				waveobj.MetaKey_File: "~",
 			},
 		}},
-		{IndexArr: []int{2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "tips",
-			},
-		}},
-		{IndexArr: []int{2, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "help",
-			},
-		}},
-		{IndexArr: []int{2, 2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "waveai",
-			},
-		}},
-		// {IndexArr: []int{2, 2}, BlockDef: &wstore.BlockDef{
-		// 	Meta: wstore.MetaMapType{
-		// 		waveobj.MetaKey_View: "web",
-		// 		waveobj.MetaKey_Url:  "https://www.youtube.com/embed/cKqsw_sAsU8",
-		// 	},
-		// }},
 	}
 }
 
@@ -104,6 +85,12 @@ func QueueLayoutAction(ctx context.Context, layoutStateId string, actions ...wav
 		return fmt.Errorf("unable to get layout state for given id %s: %w", layoutStateId, err)
 	}
 
+	for i := range actions {
+		if actions[i].ActionId == "" {
+			actions[i].ActionId = uuid.New().String()
+		}
+	}
+
 	if layoutStateObj.PendingBackendActions == nil {
 		layoutStateObj.PendingBackendActions = &actions
 	} else {
@@ -126,14 +113,13 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 	return QueueLayoutAction(ctx, layoutStateId, actions...)
 }
 
-func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout) error {
-	log.Printf("ApplyPortableLayout, tabId: %s, layout: %v\n", tabId, layout)
+func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
 	actions := make([]waveobj.LayoutActionData, len(layout)+1)
 	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
-		blockData, err := CreateBlock(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
+		blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
 		if err != nil {
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}
@@ -183,8 +169,7 @@ func BootstrapStarterLayout(ctx context.Context) error {
 	tabId := workspace.ActiveTabId
 
 	starterLayout := GetStarterLayout()
-
-	err = ApplyPortableLayout(ctx, tabId, starterLayout)
+	err = ApplyPortableLayout(ctx, tabId, starterLayout, false)
 	if err != nil {
 		return fmt.Errorf("error applying starter layout: %w", err)
 	}

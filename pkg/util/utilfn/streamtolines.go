@@ -56,7 +56,7 @@ func streamToLines_processBuf(lineBuf *lineBuf, readBuf []byte, lineFn func([]by
 	}
 }
 
-func StreamToLines(input io.Reader, lineFn func([]byte)) error {
+func StreamToLines(input io.Reader, lineFn func([]byte), readCallback func()) error {
 	var lineBuf lineBuf
 	readBuf := make([]byte, 64*1024)
 	for {
@@ -64,6 +64,9 @@ func StreamToLines(input io.Reader, lineFn func([]byte)) error {
 		streamToLines_processBuf(&lineBuf, readBuf[:n], lineFn)
 		if err != nil {
 			return err
+		}
+		if readCallback != nil {
+			readCallback()
 		}
 	}
 }
@@ -76,10 +79,39 @@ func StreamToLinesChan(input io.Reader) chan LineOutput {
 		defer close(ch)
 		err := StreamToLines(input, func(line []byte) {
 			ch <- LineOutput{Line: string(line)}
-		})
+		}, nil)
 		if err != nil && err != io.EOF {
 			ch <- LineOutput{Error: err}
 		}
 	}()
 	return ch
+}
+
+// LineWriter is an io.Writer that processes data line-by-line via a callback.
+// Lines do not include the trailing newline. Lines longer than maxLineLength are dropped.
+type LineWriter struct {
+	lineBuf lineBuf
+	lineFn  func([]byte)
+}
+
+// NewLineWriter creates a new LineWriter with the given callback function.
+func NewLineWriter(lineFn func([]byte)) *LineWriter {
+	return &LineWriter{
+		lineFn: lineFn,
+	}
+}
+
+// Write implements io.Writer, processing the data and calling the callback for each complete line.
+func (lw *LineWriter) Write(p []byte) (n int, err error) {
+	streamToLines_processBuf(&lw.lineBuf, p, lw.lineFn)
+	return len(p), nil
+}
+
+// Flush outputs any remaining buffered data as a final line.
+// Should be called when the input stream is complete (e.g., at EOF).
+func (lw *LineWriter) Flush() {
+	if len(lw.lineBuf.buf) > 0 && !lw.lineBuf.inLongLine {
+		lw.lineFn(lw.lineBuf.buf)
+		lw.lineBuf.buf = nil
+	}
 }

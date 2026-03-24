@@ -48,10 +48,17 @@ func launchRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		}
 	}
 
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	// Create block data from widget config
 	createBlockData := wshrpc.CommandCreateBlockData{
+		TabId:     tabId,
 		BlockDef:  &widget.BlockDef,
 		Magnified: magnifyBlock || widget.Magnified,
+		Focused:   true,
 	}
 
 	// Create the block

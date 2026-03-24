@@ -10,8 +10,9 @@ on:
             - "v[0-9]+.[0-9]+.[0-9]+*"
     workflow_dispatch:
 env:
-    GO_VERSION: "1.23"
+    GO_VERSION: "1.25.6"
     NODE_VERSION: 22
+    NODE_OPTIONS: --max-old-space-size=4096
 jobs:
     build-app:
         outputs:
@@ -31,7 +32,7 @@ jobs:
                     #   runner: "windows-11-arm64-16core"
         runs-on: ${{ matrix.runner }}
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
             - name: Install Linux Build Dependencies (Linux only)
               if: matrix.platform == 'linux'
               run: |
@@ -43,7 +44,7 @@ jobs:
                   sudo snap refresh
             - name: Install Zig (not Mac)
               if: matrix.platform != 'darwin'
-              uses: mlugg/setup-zig@v1
+              uses: mlugg/setup-zig@v2
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
@@ -59,22 +60,30 @@ jobs:
               run: gem install fpm
 
             # General build dependencies
-            - uses: actions/setup-go@v5
+            - uses: actions/setup-go@v6
               with:
                   go-version: ${{env.GO_VERSION}}
                   cache-dependency-path: |
                       go.sum
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v6
               with:
                   node-version: ${{env.NODE_VERSION}}
-            - name: Install Yarn
-              uses: nick-fields/retry@v3
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+            - name: Force git deps to HTTPS
+              run: |
+                  git config --global url.https://github.com/.insteadof ssh://git@github.com/
+                  git config --global url.https://github.com/.insteadof git@github.com:
+            - uses: nick-fields/retry@v4
+              name: npm ci
               with:
-                  command: |
-                      corepack enable
-                      yarn install
-                  timeout_minutes: 5
+                  command: npm ci --no-audit --no-fund
+                  retry_on: error
                   max_attempts: 3
+                  timeout_minutes: 5
+              env:
+                  GIT_ASKPASS: "echo"
+                  GIT_TERMINAL_PROMPT: "0"
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
@@ -123,7 +132,7 @@ jobs:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
                   SNAPCRAFT_BUILD_ENVIRONMENT: host
             # Retry Darwin build in case of notarization failures
-            - uses: nick-fields/retry@v3
+            - uses: nick-fields/retry@v4
               name: Build (Darwin)
               if: matrix.platform == 'darwin'
               with:
@@ -158,13 +167,13 @@ jobs:
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
             - name: Upload artifacts
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v5
               with:
                   name: ${{ matrix.runner }}
                   path: make
             - name: Upload Snapcraft logs on failure
               if: failure()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v5
               with:
                   name: ${{ matrix.runner }}-log
                   path: /home/runner/.local/state/snapcraft/log

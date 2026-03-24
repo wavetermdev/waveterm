@@ -1,0 +1,110 @@
+/* Copyright 2025, Command Line Inc. */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+@import "tailwindcss";
+
+@theme {
+    --color-background: rgb(34, 34, 34);
+    --color-foreground: #f7f7f7;
+    --color-white: #f7f7f7;
+    --color-secondary: rgba(215, 218, 224, 0.7);
+    --color-muted: rgba(215, 218, 224, 0.5);
+    --color-accent-50: rgb(236, 253, 232);
+    --color-accent-100: rgb(209, 250, 202);
+    --color-accent-200: rgb(167, 243, 168);
+    --color-accent-300: rgb(110, 231, 133);
+    --color-accent-400: rgb(88, 193, 66); /* main accent color */
+    --color-accent-500: rgb(63, 162, 51);
+    --color-accent-600: rgb(47, 133, 47);
+    --color-accent-700: rgb(34, 104, 43);
+    --color-accent-800: rgb(22, 81, 35);
+    --color-accent-900: rgb(15, 61, 29);
+    --color-error: rgb(229, 77, 46);
+    --color-warning: rgb(224, 185, 86);
+    --color-success: rgb(78, 154, 6);
+    --color-panel: rgba(31, 33, 31, 0.5);
+    --color-hover: rgba(255, 255, 255, 0.1);
+    --color-border: rgba(255, 255, 255, 0.16);
+    --color-modalbg: #232323;
+    --color-accentbg: rgba(88, 193, 66, 0.5);
+    --color-hoverbg: rgba(255, 255, 255, 0.2);
+    --color-accent: rgb(88, 193, 66);
+    --color-accenthover: rgb(118, 223, 96);
+
+    --font-sans: "Inter", sans-serif;
+    --font-mono: "Hack", monospace;
+    --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+
+    --text-xxs: 10px;
+    --text-title: 18px;
+    --text-default: 14px;
+
+    --radius: 8px;
+
+    /* ANSI Colors (Default Dark Palette) */
+    --ansi-black: #757575;
+    --ansi-red: #cc685c;
+    --ansi-green: #76c266;
+    --ansi-yellow: #cbca9b;
+    --ansi-blue: #85aacb;
+    --ansi-magenta: #cc72ca;
+    --ansi-cyan: #74a7cb;
+    --ansi-white: #c1c1c1;
+    --ansi-brightblack: #727272;
+    --ansi-brightred: #cc9d97;
+    --ansi-brightgreen: #a3dd97;
+    --ansi-brightyellow: #cbcaaa;
+    --ansi-brightblue: #9ab6cb;
+    --ansi-brightmagenta: #cc8ecb;
+    --ansi-brightcyan: #b7b8cb;
+    --ansi-brightwhite: #f0f0f0;
+}
+
+/* Disable overscroll behavior */
+html, body {
+    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+}
+
+/* Custom dark theme scrollbar */
+::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    width: 6px !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    width: 6px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+    width: 6px !important;
+}
+
+::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Force consistent scrollbar width across all states */
+::-webkit-scrollbar:horizontal {
+    height: 6px !important;
+}
+
+::-webkit-scrollbar:vertical {
+    width: 6px !important;
+}
+
+/* Firefox scrollbar styling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(0, 0, 0, 0.1);
+}

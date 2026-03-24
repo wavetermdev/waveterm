@@ -37,7 +37,7 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
                 }}
                 className={clsx("suggestion-item", { selected: selectIndex === index })}
             >
-                <div className="typeahead-item-name">
+                <div className="typeahead-item-name ellipsis">
                     {item.icon &&
                         renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
                     {item.label}
@@ -82,7 +82,7 @@ interface TypeAheadModalProps {
     onSelect?: (_: string) => void;
     onClickBackdrop?: () => void;
     onKeyDown?: (_) => void;
-    giveFocusRef?: React.MutableRefObject<() => boolean>;
+    giveFocusRef?: React.RefObject<() => boolean>;
     autoFocus?: boolean;
     selectIndex?: number;
 }
@@ -201,15 +201,15 @@ const TypeAheadModal = ({
     const renderBackdrop = (onClick) => <div className="type-ahead-modal-backdrop" onClick={onClick}></div>;
 
     const handleKeyDown = (e) => {
-        onKeyDown && onKeyDown(e);
+        onKeyDown?.(e);
     };
 
     const handleChange = (value) => {
-        onChange && onChange(value);
+        onChange?.(value);
     };
 
     const handleSelect = (value) => {
-        onSelect && onSelect(value);
+        onSelect?.(value);
     };
 
     const renderModal = () => (

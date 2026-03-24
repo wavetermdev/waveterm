@@ -14,21 +14,18 @@ interface PlatformContextProps {
 export const PlatformContext = createContext<PlatformContextProps | undefined>(undefined);
 
 function getOS(): Platform {
-    var platform = window.navigator.platform,
-        macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"],
-        windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"],
-        iosPlatforms = ["iPhone", "iPad", "iPod"],
-        os: Platform = null;
+    const platform = window.navigator.platform;
+    const macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"];
+    const windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"];
+    const iosPlatforms = ["iPhone", "iPad", "iPod"];
 
-    if (macosPlatforms.indexOf(platform) !== -1 || iosPlatforms.indexOf(platform) !== -1) {
-        os = "mac";
-    } else if (windowsPlatforms.indexOf(platform) !== -1) {
-        os = "windows";
+    if (macosPlatforms.includes(platform) || iosPlatforms.includes(platform)) {
+        return "mac";
+    } else if (windowsPlatforms.includes(platform)) {
+        return "windows";
     } else {
-        os = "linux";
+        return "linux";
     }
-
-    return os;
 }
 
 const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
@@ -46,13 +43,13 @@ const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
     );
 };
 
-export const PlatformProvider: React.FC = ({ children }: { children: ReactNode }) => {
+export function PlatformProvider({ children }: { children: ReactNode }) {
     return (
         <BrowserOnly fallback={<div />}>
             {() => <PlatformProviderInternal>{children}</PlatformProviderInternal>}
         </BrowserOnly>
     );
-};
+}
 
 export const usePlatform = (): PlatformContextProps => {
     const context = useContext(PlatformContext);
@@ -62,7 +59,7 @@ export const usePlatform = (): PlatformContextProps => {
     return context;
 };
 
-const PlatformSelectorButtonInternal: React.FC = () => {
+function PlatformSelectorButtonInternal() {
     const { platform, setPlatform } = usePlatform();
 
     return (
@@ -84,11 +81,11 @@ const PlatformSelectorButtonInternal: React.FC = () => {
             </button>
         </div>
     );
-};
+}
 
-export const PlatformSelectorButton: React.FC = () => {
+export function PlatformSelectorButton() {
     return <BrowserOnly fallback={<div />}>{() => <PlatformSelectorButtonInternal />}</BrowserOnly>;
-};
+}
 
 interface PlatformItemProps {
     children: ReactNode;

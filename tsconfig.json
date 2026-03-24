@@ -1,5 +1,6 @@
 {
     "include": ["frontend/**/*", "emain/**/*"],
+    "exclude": ["node_modules"],
     "compilerOptions": {
         "target": "es6",
         "module": "es2020",
@@ -7,7 +8,7 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "allowSyntheticDefaultImports": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
@@ -16,13 +17,18 @@
         "baseUrl": "./",
         "paths": {
             "@/app/*": ["frontend/app/*"],
+            "@/builder/*": ["frontend/builder/*"],
             "@/util/*": ["frontend/util/*"],
             "@/layout/*": ["frontend/layout/*"],
             "@/store/*": ["frontend/app/store/*"],
             "@/view/*": ["frontend/app/view/*"],
             "@/element/*": ["frontend/app/element/*"],
-            "@/shadcn/*": ["frontend/app/shadcn/*"]
+            "@/shadcn/*": ["frontend/app/shadcn/*"],
+            "@/preview/*": ["frontend/preview/*"]
         },
-        "types": ["vite/client", "vite-plugin-svgr/client"]
+        "lib": ["dom", "dom.iterable", "es6"],
+        "allowJs": true,
+        "strict": false,
+        "noEmit": true
     }
 }

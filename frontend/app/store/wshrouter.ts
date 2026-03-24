@@ -8,6 +8,7 @@ import debug from "debug";
 const dlog = debug("wave:router");
 
 const SysRouteName = "sys";
+const ControlRouteName = "$control";
 
 type RouteInfo = {
     rpcId: string;
@@ -21,6 +22,10 @@ function makeFeBlockRouteId(feBlockId: string): string {
 
 function makeTabRouteId(tabId: string): string {
     return `tab:${tabId}`;
+}
+
+function makeBuilderRouteId(builderId: string): string {
+    return `builder:${builderId}`;
 }
 
 class WshRouter {
@@ -43,6 +48,7 @@ class WshRouter {
                 command: "routeannounce",
                 data: routeId,
                 source: routeId,
+                route: ControlRouteName,
             };
             this.upstreamClient.recvRpcMessage(announceMsg);
         }
@@ -131,6 +137,7 @@ class WshRouter {
             command: "routeannounce",
             data: routeId,
             source: routeId,
+            route: ControlRouteName,
         };
         this.upstreamClient.recvRpcMessage(announceMsg);
         this.routeMap.set(routeId, client);
@@ -143,10 +150,11 @@ class WshRouter {
             command: "routeunannounce",
             data: routeId,
             source: routeId,
+            route: ControlRouteName,
         };
         this.upstreamClient?.recvRpcMessage(unannounceMsg);
         this.routeMap.delete(routeId);
     }
 }
 
-export { makeFeBlockRouteId, makeTabRouteId, WshRouter };
+export { makeBuilderRouteId, makeFeBlockRouteId, makeTabRouteId, WshRouter };

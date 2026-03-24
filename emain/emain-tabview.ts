@@ -2,16 +2,96 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
-import { adaptFromElectronKeyEvent } from "@/util/keyutil";
+import { adaptFromElectronKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { Rectangle, shell, WebContentsView } from "electron";
-import { getWaveWindowById } from "emain/emain-window";
+import { createNewWaveWindow, getWaveWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
-import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
+import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
+import {
+    decreaseZoomLevel,
+    handleCtrlShiftFocus,
+    handleCtrlShiftState,
+    increaseZoomLevel,
+    resetZoomLevel,
+    shFrameNavHandler,
+    shNavHandler,
+} from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
-import { getElectronAppBasePath, isDevVite } from "./platform";
+
+function handleWindowsMenuAccelerators(
+    waveEvent: WaveKeyboardEvent,
+    tabView: WaveTabView,
+    fullConfig: FullConfigType
+): boolean {
+    const waveWindow = getWaveWindowById(tabView.waveWindowId);
+
+    if (checkKeyPressed(waveEvent, "Ctrl:Shift:n")) {
+        createNewWaveWindow();
+        return true;
+    }
+
+    if (checkKeyPressed(waveEvent, "Ctrl:Shift:r")) {
+        tabView.webContents.reloadIgnoringCache();
+        return true;
+    }
+
+    if (checkKeyPressed(waveEvent, "Ctrl:v")) {
+        const ctrlVPaste = fullConfig?.settings?.["app:ctrlvpaste"];
+        const shouldPaste = ctrlVPaste ?? true;
+        if (!shouldPaste) {
+            return false;
+        }
+        tabView.webContents.paste();
+        return true;
+    }
+
+    if (checkKeyPressed(waveEvent, "Ctrl:0")) {
+        resetZoomLevel(tabView.webContents);
+        return true;
+    }
+
+    if (checkKeyPressed(waveEvent, "Ctrl:=") || checkKeyPressed(waveEvent, "Ctrl:Shift:=")) {
+        increaseZoomLevel(tabView.webContents);
+        return true;
+    }
+
+    if (checkKeyPressed(waveEvent, "Ctrl:-") || checkKeyPressed(waveEvent, "Ctrl:Shift:-")) {
+        decreaseZoomLevel(tabView.webContents);
+        return true;
+    }
+
+    if (checkKeyPressed(waveEvent, "F11")) {
+        if (waveWindow) {
+            waveWindow.setFullScreen(!waveWindow.isFullScreen());
+        }
+        return true;
+    }
+
+    for (let i = 1; i <= 9; i++) {
+        if (checkKeyPressed(waveEvent, `Alt:Ctrl:${i}`)) {
+            const workspaceNum = i - 1;
+            RpcApi.WorkspaceListCommand(ElectronWshClient).then((workspaceList) => {
+                if (workspaceList && workspaceNum < workspaceList.length) {
+                    const workspace = workspaceList[workspaceNum];
+                    if (waveWindow) {
+                        waveWindow.switchWorkspace(workspace.workspacedata.oid);
+                    }
+                }
+            });
+            return true;
+        }
+    }
+
+    if (checkKeyPressed(waveEvent, "Alt:Shift:i")) {
+        tabView.webContents.toggleDevTools();
+        return true;
+    }
+
+    return false;
+}
 
 function computeBgColor(fullConfig: FullConfigType): string {
     const settings = fullConfig?.settings;
@@ -29,12 +109,16 @@ function computeBgColor(fullConfig: FullConfigType): string {
 const wcIdToWaveTabMap = new Map<number, WaveTabView>();
 
 export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
+    if (webContentsId == null) {
+        return null;
+    }
     return wcIdToWaveTabMap.get(webContentsId);
 }
 
 export class WaveTabView extends WebContentsView {
     waveWindowId: string; // this will be set for any tabviews that are initialized. (unset for the hot spare)
     isActiveTab: boolean;
+    isWaveAIOpen: boolean;
     private _waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
     createdTs: number; // ts milliseconds
@@ -58,6 +142,7 @@ export class WaveTabView extends WebContentsView {
             },
         });
         this.createdTs = Date.now();
+        this.isWaveAIOpen = false;
         this.savedInitOpts = null;
         this.initPromise = new Promise((resolve, _) => {
             this.initResolve = resolve;
@@ -72,14 +157,15 @@ export class WaveTabView extends WebContentsView {
         this.waveReadyPromise.then(() => {
             this.isWaveReady = true;
         });
-        wcIdToWaveTabMap.set(this.webContents.id, this);
+        const wcId = this.webContents.id;
+        wcIdToWaveTabMap.set(wcId, this);
         if (isDevVite) {
-            this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html}`);
+            this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`);
         } else {
             this.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"));
         }
         this.webContents.on("destroyed", () => {
-            wcIdToWaveTabMap.delete(this.webContents.id);
+            wcIdToWaveTabMap.delete(wcId);
             removeWaveTabView(this.waveTabId);
             this.isDestroyed = true;
         });
@@ -201,7 +287,6 @@ function checkAndEvictCache(): void {
         // Otherwise, sort by lastUsedTs
         return a.lastUsedTs - b.lastUsedTs;
     });
-    const now = Date.now();
     for (let i = 0; i < sorted.length - MaxCacheSize; i++) {
         tryEvictEntry(sorted[i].waveTabId);
     }
@@ -231,6 +316,9 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
     tabView.webContents.on("did-attach-webview", (event, wc) => {
         wc.setWindowOpenHandler((details) => {
+            if (wc == null || wc.isDestroyed() || tabView.webContents == null || tabView.webContents.isDestroyed()) {
+                return { action: "deny" };
+            }
             tabView.webContents.send("webview-new-window", wc.id, details);
             return { action: "deny" };
         });
@@ -244,10 +332,15 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
             e.preventDefault();
             tabView.setKeyboardChordMode(false);
             tabView.webContents.send("reinject-key", waveEvent);
+            return;
         }
-    });
-    tabView.webContents.on("zoom-changed", (e) => {
-        tabView.webContents.send("zoom-changed");
+
+        if (unamePlatform === "win32" && input.type == "keyDown") {
+            if (handleWindowsMenuAccelerators(waveEvent, tabView, fullConfig)) {
+                e.preventDefault();
+                return;
+            }
+        }
     });
     tabView.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {

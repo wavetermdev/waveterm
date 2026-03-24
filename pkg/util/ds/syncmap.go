@@ -41,3 +41,35 @@ func (sm *SyncMap[T]) Delete(key string) {
 	defer sm.lock.Unlock()
 	delete(sm.m, key)
 }
+
+func (sm *SyncMap[T]) SetUnless(key string, value T) bool {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	if _, exists := sm.m[key]; exists {
+		return false
+	}
+	sm.m[key] = value
+	return true
+}
+
+func (sm *SyncMap[T]) TestAndSet(key string, newValue T, testFn func(T, bool) bool) bool {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	currentValue, exists := sm.m[key]
+	if testFn(currentValue, exists) {
+		sm.m[key] = newValue
+		return true
+	}
+	return false
+}
+
+func (sm *SyncMap[T]) GetOrCreate(key string, createFn func() T) T {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	if v, ok := sm.m[key]; ok {
+		return v
+	}
+	v := createFn()
+	sm.m[key] = v
+	return v
+}

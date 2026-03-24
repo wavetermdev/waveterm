@@ -10,7 +10,7 @@ const MenuButtonComponent = ({ items, className, text, title }: MenuButtonProps)
         <div className={clsx("menubutton", className)}>
             <FlyoutMenu items={items} onOpenChange={setIsOpen}>
                 <Button
-                    className="grey border-radius-3 vertical-padding-2 horizontal-padding-2"
+                    className="grey rounded-[3px] py-[2px] px-[2px]"
                     style={{ borderColor: isOpen ? "var(--accent-color)" : "transparent" }}
                     title={title}
                 >

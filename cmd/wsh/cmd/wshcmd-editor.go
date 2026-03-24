@@ -54,7 +54,14 @@ func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
 	}
+
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	wshCmd := wshrpc.CommandCreateBlockData{
+		TabId: tabId,
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]any{
 				waveobj.MetaKey_View: "preview",
@@ -63,6 +70,7 @@ func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: editMagnified,
+		Focused:   true,
 	}
 	if RpcContext.Conn != "" {
 		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn

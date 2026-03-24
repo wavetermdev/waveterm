@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -10,6 +10,16 @@ const (
 	ConfigKey_AppGlobalHotkey                = "app:globalhotkey"
 	ConfigKey_AppDismissArchitectureWarning  = "app:dismissarchitecturewarning"
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
+	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
+	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
+	ConfigKey_AppConfirmQuit                 = "app:confirmquit"
+	ConfigKey_AppHideAiButton                = "app:hideaibutton"
+	ConfigKey_AppDisableCtrlShiftArrows      = "app:disablectrlshiftarrows"
+	ConfigKey_AppDisableCtrlShiftDisplay     = "app:disablectrlshiftdisplay"
+	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
+	ConfigKey_AppTabBar                      = "app:tabbar"
+
+	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -22,8 +32,12 @@ const (
 	ConfigKey_AIApiVersion                   = "ai:apiversion"
 	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
 	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
+	ConfigKey_AiProxyUrl                     = "ai:proxyurl"
 	ConfigKey_AiFontSize                     = "ai:fontsize"
 	ConfigKey_AiFixedFontSize                = "ai:fixedfontsize"
+
+	ConfigKey_WaveAiShowCloudModes           = "waveai:showcloudmodes"
+	ConfigKey_WaveAiDefaultMode              = "waveai:defaultmode"
 
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
@@ -32,23 +46,30 @@ const (
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
+	ConfigKey_TermGitBashPath                = "term:gitbashpath"
 	ConfigKey_TermScrollback                 = "term:scrollback"
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 	ConfigKey_TermTransparency               = "term:transparency"
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
+	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
+	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
+	ConfigKey_TermCursor                     = "term:cursor"
+	ConfigKey_TermCursorBlink                = "term:cursorblink"
+	ConfigKey_TermBellSound                  = "term:bellsound"
+	ConfigKey_TermBellIndicator              = "term:bellindicator"
+	ConfigKey_TermOsc52                      = "term:osc52"
+	ConfigKey_TermDurable                    = "term:durable"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
 	ConfigKey_EditorWordWrap                 = "editor:wordwrap"
 	ConfigKey_EditorFontSize                 = "editor:fontsize"
+	ConfigKey_EditorInlineDiff               = "editor:inlinediff"
 
 	ConfigKey_WebClear                       = "web:*"
 	ConfigKey_WebOpenLinksInternally         = "web:openlinksinternally"
 	ConfigKey_WebDefaultUrl                  = "web:defaulturl"
 	ConfigKey_WebDefaultSearch               = "web:defaultsearch"
-
-	ConfigKey_BlockHeaderClear               = "blockheader:*"
-	ConfigKey_BlockHeaderShowBlockIds        = "blockheader:showblockids"
 
 	ConfigKey_AutoUpdateClear                = "autoupdate:*"
 	ConfigKey_AutoUpdateEnabled              = "autoupdate:enabled"
@@ -60,13 +81,17 @@ const (
 	ConfigKey_MarkdownFixedFontSize          = "markdown:fixedfontsize"
 
 	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
+	ConfigKey_PreviewDefaultSort             = "preview:defaultsort"
 
 	ConfigKey_TabPreset                      = "tab:preset"
+	ConfigKey_TabConfirmClose                = "tab:confirmclose"
+	ConfigKey_TabBackground                  = "tab:background"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
 
 	ConfigKey_WindowClear                    = "window:*"
+	ConfigKey_WindowFullscreenOnLaunch       = "window:fullscreenonlaunch"
 	ConfigKey_WindowTransparent              = "window:transparent"
 	ConfigKey_WindowBlur                     = "window:blur"
 	ConfigKey_WindowOpacity                  = "window:opacity"
@@ -92,5 +117,17 @@ const (
 	ConfigKey_ConnClear                      = "conn:*"
 	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
 	ConfigKey_ConnWshEnabled                 = "conn:wshenabled"
+	ConfigKey_ConnLocalHostnameDisplay       = "conn:localhostdisplayname"
+
+	ConfigKey_DebugClear                     = "debug:*"
+	ConfigKey_DebugPprofPort                 = "debug:pprofport"
+	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
+	ConfigKey_DebugWebGlStatus               = "debug:webglstatus"
+
+	ConfigKey_TsunamiClear                   = "tsunami:*"
+	ConfigKey_TsunamiScaffoldPath            = "tsunami:scaffoldpath"
+	ConfigKey_TsunamiSdkReplacePath          = "tsunami:sdkreplacepath"
+	ConfigKey_TsunamiSdkVersion              = "tsunami:sdkversion"
+	ConfigKey_TsunamiGoPath                  = "tsunami:gopath"
 )
 

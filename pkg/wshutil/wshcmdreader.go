@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 )
 
 const (
@@ -25,13 +27,13 @@ type PtyBuffer struct {
 	EscSeqBuf   []byte
 	OSCPrefix   string
 	InputReader io.Reader
-	MessageCh   chan []byte
+	MessageCh   chan baseds.RpcInputChType
 	AtEOF       bool
 	Err         error
 }
 
 // closes messageCh when input is closed (or error)
-func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan []byte) *PtyBuffer {
+func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan baseds.RpcInputChType) *PtyBuffer {
 	if len(oscPrefix) != WaveOSCPrefixLen {
 		panic(fmt.Sprintf("invalid OSC prefix length: %d", len(oscPrefix)))
 	}
@@ -64,7 +66,7 @@ func (b *PtyBuffer) setEOF() {
 }
 
 func (b *PtyBuffer) processWaveEscSeq(escSeq []byte) {
-	b.MessageCh <- escSeq
+	b.MessageCh <- baseds.RpcInputChType{MsgBytes: escSeq}
 }
 
 func (b *PtyBuffer) run() {

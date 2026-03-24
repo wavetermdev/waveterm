@@ -1,0 +1,11 @@
+version: 2
+
+linters:
+    disable:
+        - unused
+
+issues:
+    exclude-rules:
+        - linters:
+              - unused
+          text: "unused parameter"
