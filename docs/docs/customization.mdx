@@ -10,7 +10,9 @@ title: "Customization"
 
 Right click on any tab to bring up a menu which allows you to rename the tab and select different backgrounds.
 
-It is also possible to create your own themes using custom colors, gradients, images and more by editing your presets.json config file. To see how Wave's built in tab themes are defined, you can check out our [default presets file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/presets.json).
+It is also possible to create your own background themes using custom colors, gradients, images and more by editing your backgrounds.json config file. To see how Wave's built-in tab backgrounds are defined, you can check out the [default backgrounds.json file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/backgrounds.json).
+
+To apply a tab background to all new tabs by default, set the key `tab:background` in your [Wave Config File](/config) to one of the background preset keys (e.g. `"bg@ocean-depths"`). The available built-in background keys can be found in the [default backgrounds.json file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/backgrounds.json).
 
 ## Terminal Customization
 
@@ -25,8 +27,6 @@ You can set the default theme for all terminals (which haven't had their theme m
 in the [default termthemes.json file](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/termthemes.json).
 
 If you add your own termthemes.json file in the config directory, you can also add your own custom terminal themes (just follow the same format).
-
-You can set the key `tab:preset` in your [Wave Config File](/config) to apply a theme to all new tabs.
 
 #### Font Size
 
@@ -79,6 +79,6 @@ To preview the metadata for any background without applying it, use the `--print
 wsh setbg --print "#ff0000"
 ```
 
-For more advanced customization options including gradients, colors, and saving your own background presets, check out our [Background Configuration](/presets#background-configurations) documentation.
+For more advanced customization options including gradients, colors, and saving your own custom backgrounds, check out our [Tab Backgrounds](/tab-backgrounds) documentation.
 
 

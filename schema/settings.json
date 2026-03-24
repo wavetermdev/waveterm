@@ -232,6 +232,9 @@
         "tab:confirmclose": {
           "type": "boolean"
         },
+        "tab:background": {
+          "type": "string"
+        },
         "widget:*": {
           "type": "boolean"
         },

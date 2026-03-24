@@ -8,7 +8,22 @@
 
 import type { FitAddon as IFitApi } from "@xterm/addon-fit";
 import type { ITerminalAddon, Terminal } from "@xterm/xterm";
-import { IRenderDimensions } from "@xterm/xterm/src/browser/renderer/shared/Types";
+
+interface IDimensions {
+    width: number;
+    height: number;
+}
+
+interface IRenderDimensions {
+    css: {
+        canvas: IDimensions;
+        cell: IDimensions;
+    };
+    device: {
+        canvas: IDimensions;
+        cell: IDimensions;
+    };
+}
 
 interface ITerminalDimensions {
     /**

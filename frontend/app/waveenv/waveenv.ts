@@ -6,8 +6,8 @@ import { RpcApiType } from "@/app/store/wshclientapi";
 import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
 
-export type BlockMetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
-    blockId: string,
+export type MetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
+    id: string,
     key: T
 ) => Atom<MetaType[T]>;
 
@@ -74,8 +74,10 @@ export type WaveEnv = {
         useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
     };
     getSettingsKeyAtom: SettingsKeyAtomFnType;
-    getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
+    getBlockMetaKeyAtom: MetaKeyAtomFnType;
+    getTabMetaKeyAtom: MetaKeyAtomFnType;
     getConnConfigKeyAtom: ConnConfigKeyAtomFnType;
+    getConfigBackgroundAtom: (bgKey: string | null) => Atom<BackgroundConfigType>;
 
     // the mock fields are only usable in the preview server (may be be null or throw errors in production)
     mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;

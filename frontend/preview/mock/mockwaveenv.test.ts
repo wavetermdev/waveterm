@@ -1,4 +1,4 @@
-import { base64ToArray, base64ToString } from "@/util/util";
+import { base64ToString } from "@/util/util";
 import { describe, expect, it, vi } from "vitest";
 import { DefaultMockFilesystem } from "./mockfilesystem";
 
@@ -82,26 +82,19 @@ describe("makeMockWaveEnv", () => {
         }
         expect(listPackets).toHaveLength(1);
         expect(listPackets[0].fileinfo).toHaveLength(4);
-
-        const readPackets: FileData[] = [];
-        for await (const packet of env.rpc.FileReadStreamCommand(null as any, {
-            info: { path: "/Users/mike/Pictures/beach-sunrise.png" },
-        })) {
-            readPackets.push(packet);
-        }
-        expect(readPackets[0].info?.path).toBe("/Users/mike/Pictures/beach-sunrise.png");
-        const imageBytes = base64ToArray(readPackets[1].data64);
-        expect(Array.from(imageBytes.slice(0, 4))).toEqual([0x89, 0x50, 0x4e, 0x47]);
     });
 
     it("implements secrets commands with in-memory storage", async () => {
         const { makeMockWaveEnv } = await import("./mockwaveenv");
         const env = makeMockWaveEnv({ platform: "linux" });
 
-        await env.rpc.SetSecretsCommand(null as any, {
-            OPENAI_API_KEY: "sk-test",
-            ANTHROPIC_API_KEY: "anthropic-test",
-        } as any);
+        await env.rpc.SetSecretsCommand(
+            null as any,
+            {
+                OPENAI_API_KEY: "sk-test",
+                ANTHROPIC_API_KEY: "anthropic-test",
+            } as any
+        );
 
         expect(await env.rpc.GetSecretsLinuxStorageBackendCommand(null as any)).toBe("libsecret");
         expect(await env.rpc.GetSecretsNamesCommand(null as any)).toEqual(["ANTHROPIC_API_KEY", "OPENAI_API_KEY"]);

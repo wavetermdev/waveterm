@@ -388,10 +388,6 @@ func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) 
 	return wshfs.Read(ctx, data)
 }
 
-func (ws *WshServer) FileReadStreamCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	return wshfs.ReadStream(ctx, data)
-}
-
 func (ws *WshServer) FileStreamCommand(ctx context.Context, data wshrpc.CommandFileStreamData) (*wshrpc.FileInfo, error) {
 	return wshfs.FileStream(ctx, data)
 }
