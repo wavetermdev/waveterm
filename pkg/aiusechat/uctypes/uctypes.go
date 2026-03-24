@@ -32,6 +32,7 @@ const (
 	AIProvider_OpenAI      = "openai"
 	AIProvider_Azure       = "azure"
 	AIProvider_AzureLegacy = "azure-legacy"
+	AIProvider_Novita      = "novita"
 	AIProvider_Custom      = "custom"
 )
 
