@@ -36,8 +36,14 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
     );
     const frameBorderColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:bordercolor"));
-    const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
-    const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
+    const tabActiveBorderColorDirect = jotai.useAtomValue(
+        waveEnv.getTabMetaKeyAtom(tabModel.tabId, "bg:activebordercolor")
+    );
+    const tabBorderColorDirect = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabModel.tabId, "bg:bordercolor"));
+    const tabBg = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabModel.tabId, "tab:background"));
+    const configBg = jotai.useAtomValue(waveEnv.getConfigBackgroundAtom(tabBg));
+    const tabActiveBorderColor = tabActiveBorderColorDirect ?? configBg?.["bg:activebordercolor"];
+    const tabBorderColor = tabBorderColorDirect ?? configBg?.["bg:bordercolor"];
     const style: React.CSSProperties = {};
     let showBlockMask = false;
 

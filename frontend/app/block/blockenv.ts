@@ -46,4 +46,6 @@ export type BlockEnv = WaveEnvSubset<{
         | "frame:title"
         | "frame:icon"
     >;
+    getTabMetaKeyAtom: MetaKeyAtomFnType<"bg:activebordercolor" | "bg:bordercolor" | "tab:background">;
+    getConfigBackgroundAtom: WaveEnv["getConfigBackgroundAtom"];
 }>;
