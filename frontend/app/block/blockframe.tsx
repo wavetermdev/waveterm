@@ -3,7 +3,7 @@
 
 import { BlockModel } from "@/app/block/block-model";
 import { BlockFrame_Header } from "@/app/block/blockframe-header";
-import { blockViewToIcon, getViewIconElem } from "@/app/block/blockutil";
+import { blockViewToIcon, getViewIconElem, useTabBackground } from "@/app/block/blockutil";
 import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
 import { getBlockComponentModel, globalStore, useBlockAtom } from "@/app/store/global";
@@ -36,8 +36,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
     );
     const frameBorderColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:bordercolor"));
-    const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
-    const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
+    const [tabBorderColor, tabActiveBorderColor] = useTabBackground(waveEnv, tabModel.tabId);
     const style: React.CSSProperties = {};
     let showBlockMask = false;
 
@@ -107,9 +106,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connModalOpen = jotai.useAtomValue(changeConnModalAtom);
     const isMagnified = jotai.useAtomValue(nodeModel.isMagnified);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
-    const [magnifiedBlockBlurAtom] = React.useState(() => waveEnv.getSettingsKeyAtom("window:magnifiedblockblurprimarypx"));
+    const [magnifiedBlockBlurAtom] = React.useState(() =>
+        waveEnv.getSettingsKeyAtom("window:magnifiedblockblurprimarypx")
+    );
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
-    const [magnifiedBlockOpacityAtom] = React.useState(() => waveEnv.getSettingsKeyAtom("window:magnifiedblockopacity"));
+    const [magnifiedBlockOpacityAtom] = React.useState(() =>
+        waveEnv.getSettingsKeyAtom("window:magnifiedblockopacity")
+    );
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
@@ -141,7 +144,11 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
         if (!util.isLocalConnName(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
             waveEnv.rpc
-                .ConnEnsureCommand(TabRpcClient, { connname: connName, logblockid: nodeModel.blockId }, { timeout: 60000 })
+                .ConnEnsureCommand(
+                    TabRpcClient,
+                    { connname: connName, logblockid: nodeModel.blockId },
+                    { timeout: 60000 }
+                )
                 .catch((e) => {
                     console.log("error ensuring connection", nodeModel.blockId, connName, e);
                 });

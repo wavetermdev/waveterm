@@ -1,11 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "BgPresetsType": {
+    "BackgroundConfigType": {
       "properties": {
-        "bg:*": {
-          "type": "boolean"
-        },
         "bg": {
           "type": "string",
           "description": "CSS background property value"
@@ -36,11 +33,21 @@
         }
       },
       "additionalProperties": false,
-      "type": "object"
+      "type": "object",
+      "required": [
+        "display:name"
+      ]
     }
   },
   "additionalProperties": {
-    "$ref": "#/$defs/BgPresetsType"
+    "anyOf": [
+      {
+        "$ref": "#/$defs/BackgroundConfigType"
+      },
+      {
+        "type": "null"
+      }
+    ]
   },
   "type": "object"
 }

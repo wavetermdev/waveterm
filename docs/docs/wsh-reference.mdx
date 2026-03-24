@@ -200,7 +200,7 @@ wsh editconfig presets/ai.json
 The `setbg` command allows you to set a background image or color for the current tab with various customization options.
 
 ```sh
-wsh setbg [--opacity value] [--tile|--center] [--size value] (image-path|"#color"|color-name)
+wsh setbg [--opacity value] [--tile|--center] [--size value] [--border-color color] [--active-border-color color] (image-path|"#color"|color-name)
 ```
 
 You can set a background using:
@@ -216,6 +216,8 @@ Flags:
 - `--center` - center the image without scaling (good for logos)
 - `--size` - size for centered images (px, %, or auto)
 - `--clear` - remove the background
+- `--border-color color` - set the block frame border color (hex or CSS color name)
+- `--active-border-color color` - set the block frame focused border color (hex or CSS color name)
 - `--print` - show the metadata without applying it
 
 Supported image formats: JPEG, PNG, GIF, WebP, and SVG.
@@ -243,6 +245,10 @@ wsh setbg forestgreen        # CSS color name
 # Change just the opacity of current background
 wsh setbg --opacity 0.7
 
+# Set border colors alongside a background
+wsh setbg --border-color "#ff0000" --active-border-color "#00ff00" ~/pictures/background.jpg
+wsh setbg --border-color steelblue forestgreen
+
 # Remove background
 wsh setbg --clear
 
@@ -258,7 +264,7 @@ The command validates that:
 - The center and tile options are not used together
 
 :::tip
-Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background Preset](/presets#background-configurations)
+Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background entry](/tab-backgrounds)
 :::
 
 ---

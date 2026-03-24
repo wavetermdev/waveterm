@@ -108,6 +108,17 @@ declare global {
         iconcolor: string;
     };
 
+    // wconfig.BackgroundConfigType
+    type BackgroundConfigType = {
+        bg?: string;
+        "bg:opacity"?: number;
+        "bg:blendmode"?: string;
+        "bg:bordercolor"?: string;
+        "bg:activebordercolor"?: string;
+        "display:name": string;
+        "display:order"?: number;
+    };
+
     // baseds.Badge
     type Badge = {
         badgeid: string;
@@ -991,6 +1002,7 @@ declare global {
         defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
+        backgrounds: {[key: string]: BackgroundConfigType};
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
@@ -1129,6 +1141,7 @@ declare global {
         "graph:metrics"?: string[];
         "sysinfo:type"?: string;
         "tab:flagcolor"?: string;
+        "tab:background"?: string;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
@@ -1378,6 +1391,7 @@ declare global {
         "preview:defaultsort"?: string;
         "tab:preset"?: string;
         "tab:confirmclose"?: boolean;
+        "tab:background"?: string;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
