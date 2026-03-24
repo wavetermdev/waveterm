@@ -924,7 +924,7 @@ func MigratePresetsBackgrounds() {
 	if len(filtered) == 0 {
 		return
 	}
-	outBarr, err := json.MarshalIndent(filtered, "", "    ")
+	outBarr, err := json.MarshalIndent(filtered, "", "  ")
 	if err != nil {
 		log.Printf("error marshaling backgrounds.json during migration: %v\n", err)
 		return
