@@ -1,0 +1,1003 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.mlmodel-widget {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--block-bg-color, #0f0f12);
+    color: var(--main-text-color, #e2e8f0);
+    font-size: 12px;
+    overflow: hidden;
+
+    // ── Header ─────────────────────────────────────────────────────────────
+
+    &__header-bar {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px 6px;
+        border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+        background: rgba(168, 85, 247, 0.08);
+    }
+
+    &__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    &__icon {
+        font-size: 16px;
+    }
+
+    &__subtitle {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.7);
+        font-weight: 400;
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────
+
+    &__tabs {
+        display: flex;
+        gap: 2px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    &__tab {
+        padding: 4px 12px;
+        border: none;
+        background: transparent;
+        color: rgba(148, 163, 184, 0.7);
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 11px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(168, 85, 247, 0.15);
+            color: #e2e8f0;
+        }
+
+        &--active {
+            background: rgba(168, 85, 247, 0.3);
+            color: #d8b4fe;
+            font-weight: 600;
+        }
+    }
+
+    // ── Body ──────────────────────────────────────────────────────────────
+
+    &__body {
+        flex: 1;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(168, 85, 247, 0.3) transparent;
+    }
+}
+
+// ── Shared layout primitives ────────────────────────────────────────────────
+
+.ml-tab-content {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ml-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.ml-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(148, 163, 184, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ml-empty {
+    color: rgba(148, 163, 184, 0.4);
+    font-size: 11px;
+    padding: 12px 6px;
+    text-align: center;
+}
+
+// ── Buttons ──────────────────────────────────────────────────────────────────
+
+.ml-btn {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.15s;
+
+    &-primary {
+        background: rgba(168, 85, 247, 0.8);
+        color: #fff;
+
+        &:hover:not(:disabled) {
+            background: rgba(168, 85, 247, 1);
+        }
+    }
+
+    &-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.13);
+        }
+    }
+
+    &-disabled,
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    &-xs {
+        padding: 2px 6px;
+        font-size: 10px;
+        border-radius: 3px;
+    }
+
+    &-onnx {
+        background: rgba(168, 85, 247, 0.25);
+        color: #d8b4fe;
+        border: 1px solid rgba(168, 85, 247, 0.4);
+
+        &:hover {
+            background: rgba(168, 85, 247, 0.4);
+        }
+    }
+
+    &-joblib {
+        background: rgba(59, 130, 246, 0.2);
+        color: #93c5fd;
+        border: 1px solid rgba(59, 130, 246, 0.35);
+
+        &:hover {
+            background: rgba(59, 130, 246, 0.35);
+        }
+    }
+
+    &-retrain {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        font-size: 13px;
+        line-height: 1;
+
+        &:hover {
+            background: rgba(245, 158, 11, 0.35);
+        }
+    }
+
+    &-delete {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+
+        &:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+    }
+
+    &-export {
+        width: 100%;
+        margin-top: 8px;
+        padding: 6px;
+    }
+}
+
+// ── Shared table base ─────────────────────────────────────────────────────────
+
+.ml-table-header {
+    color: rgba(148, 163, 184, 0.5);
+    font-size: 10px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 2px;
+    display: grid;
+    align-items: center;
+    padding: 4px 6px;
+}
+
+.ml-table-row {
+    display: grid;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.04);
+    }
+}
+
+.ml-row-selected {
+    background: rgba(168, 85, 247, 0.1) !important;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+// ── Select ───────────────────────────────────────────────────────────────────
+
+.ml-select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #e2e8f0;
+    font-size: 11px;
+    padding: 3px 6px;
+    cursor: pointer;
+
+    &:focus {
+        outline: none;
+        border-color: rgba(168, 85, 247, 0.6);
+    }
+
+    &-model {
+        min-width: 160px;
+    }
+}
+
+// ── Input ────────────────────────────────────────────────────────────────────
+
+.ml-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #e2e8f0;
+    font-size: 11px;
+    padding: 4px 7px;
+    width: 100%;
+    box-sizing: border-box;
+
+    &:focus {
+        outline: none;
+        border-color: rgba(168, 85, 247, 0.5);
+    }
+
+    &::placeholder {
+        color: rgba(148, 163, 184, 0.35);
+    }
+}
+
+// ── Slider ───────────────────────────────────────────────────────────────────
+
+.ml-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    outline: none;
+
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #a855f7;
+        cursor: pointer;
+        transition: background 0.15s;
+
+        &:hover {
+            background: #c084fc;
+        }
+    }
+}
+
+// ── Status badges ─────────────────────────────────────────────────────────────
+
+.ml-status-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+
+    &.ml-status-trained {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    &.ml-status-training {
+        background: rgba(168, 85, 247, 0.15);
+        color: #c084fc;
+        border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    &.ml-status-failed {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+}
+
+// ── Models tab ────────────────────────────────────────────────────────────────
+
+.ml-models-table {
+    .ml-table-header,
+    .ml-table-row {
+        grid-template-columns: 1.8fr 1fr 0.8fr 0.7fr 0.9fr 0.9fr 1.5fr;
+        gap: 8px;
+    }
+
+    .ml-model-name {
+        font-weight: 600;
+        color: #d8b4fe;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ml-type-badge {
+        display: inline-block;
+        background: rgba(168, 85, 247, 0.15);
+        color: #c084fc;
+        border: 1px solid rgba(168, 85, 247, 0.3);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+
+    .ml-accuracy {
+        color: #a3e635;
+        font-weight: 600;
+    }
+
+    .ml-f1 {
+        color: #67e8f9;
+    }
+
+    .ml-date {
+        color: rgba(148, 163, 184, 0.6);
+        font-size: 10px;
+    }
+
+    .ml-actions {
+        display: flex;
+        gap: 3px;
+        flex-wrap: nowrap;
+    }
+}
+
+// ── Train tab ─────────────────────────────────────────────────────────────────
+
+.ml-train-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.ml-config-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ml-field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.7);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+.ml-split-label {
+    font-size: 11px;
+    color: #a855f7;
+    font-weight: 600;
+}
+
+.ml-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.ml-pill {
+    padding: 2px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: rgba(148, 163, 184, 0.7);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.15s;
+
+    &:hover,
+    &.ml-pill-active {
+        background: rgba(168, 85, 247, 0.3);
+        color: #d8b4fe;
+        border-color: rgba(168, 85, 247, 0.6);
+    }
+}
+
+.ml-hyperparams {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ml-hyperparam-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.ml-hyperparam-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.7);
+}
+
+.ml-hyperparam-val {
+    color: #a855f7;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+
+.ml-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.ml-progress-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.ml-progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #a855f7, #6366f1);
+    transition: width 0.2s ease;
+
+    &.ml-pulsing {
+        animation: ml-pulse-bar 1.4s ease-in-out infinite;
+    }
+}
+
+@keyframes ml-pulse-bar {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.ml-progress-pct {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a855f7;
+    min-width: 30px;
+    text-align: right;
+}
+
+.ml-train-log {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 6px 8px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(168, 85, 247, 0.3) transparent;
+}
+
+.ml-log-line {
+    color: rgba(148, 163, 184, 0.75);
+    line-height: 1.6;
+
+    &.ml-log-ok {
+        color: #4ade80;
+    }
+
+    &.ml-log-done {
+        color: #a855f7;
+        font-weight: 600;
+    }
+}
+
+// ── Evaluate tab ──────────────────────────────────────────────────────────────
+
+.ml-eval-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.7);
+}
+
+.ml-eval-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+// Confusion matrix
+
+.ml-cm-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.ml-cm-grid {
+    display: grid;
+    grid-template-columns: 28px repeat(2, 52px);
+    gap: 3px;
+}
+
+.ml-cm-corner {
+    // empty top-left
+}
+
+.ml-cm-head {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(148, 163, 184, 0.6);
+    text-align: center;
+    padding: 2px;
+    text-transform: uppercase;
+}
+
+.ml-cm-cell {
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 4px;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+
+    &.ml-cm-diag {
+        background: rgba(168, 85, 247, 0.4);
+        color: #d8b4fe;
+    }
+}
+
+.ml-cm-legend {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+
+    .ml-cm-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        color: rgba(148, 163, 184, 0.6);
+
+        &.diag {
+            color: #c084fc;
+        }
+
+        &.off {
+            color: #64748b;
+        }
+    }
+}
+
+// Metrics list
+
+.ml-metrics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ml-metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 4px;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+}
+
+.ml-metric-label {
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.6);
+}
+
+.ml-metric-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: #a855f7;
+}
+
+// Feature importance
+
+.ml-feat-importance {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ml-feat-row {
+    display: grid;
+    grid-template-columns: 90px 1fr 36px;
+    align-items: center;
+    gap: 6px;
+}
+
+.ml-feat-name {
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.7);
+    font-family: monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ml-feat-bar-bg {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ml-feat-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #a855f7, #6366f1);
+    transition: width 0.4s ease;
+}
+
+.ml-feat-val {
+    font-size: 10px;
+    color: #a855f7;
+    font-weight: 600;
+    text-align: right;
+}
+
+// Loss curve canvas
+
+.ml-loss-canvas {
+    width: 100%;
+    height: 100px;
+    border-radius: 4px;
+}
+
+.ml-chart-legend {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+
+    .ml-legend-train {
+        color: #a855f7;
+    }
+
+    .ml-legend-val {
+        color: #64748b;
+    }
+}
+
+// ── Data tab ──────────────────────────────────────────────────────────────────
+
+.ml-ds-tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+}
+
+.ml-ds-tab {
+    padding: 3px 10px;
+    border: none;
+    background: transparent;
+    color: rgba(148, 163, 184, 0.6);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 11px;
+    transition: all 0.12s;
+
+    &:hover {
+        background: rgba(168, 85, 247, 0.12);
+        color: #e2e8f0;
+    }
+
+    &.ml-ds-tab-active {
+        background: rgba(168, 85, 247, 0.25);
+        color: #d8b4fe;
+        font-weight: 600;
+    }
+}
+
+.ml-data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.ml-preview-table {
+    .ml-preview-header,
+    .ml-preview-row {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+    }
+}
+
+.ml-label-pos {
+    color: #4ade80;
+    font-weight: 700;
+}
+
+.ml-label-neg {
+    color: #f87171;
+    font-weight: 700;
+}
+
+.ml-paste-area {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    color: #e2e8f0;
+    font-size: 10px;
+    font-family: monospace;
+    padding: 5px 7px;
+    resize: vertical;
+    margin-top: 6px;
+
+    &:focus {
+        outline: none;
+        border-color: rgba(168, 85, 247, 0.4);
+    }
+
+    &::placeholder {
+        color: rgba(148, 163, 184, 0.3);
+    }
+}
+
+.ml-schema-table {
+    .ml-table-header,
+    .ml-table-row {
+        grid-template-columns: 1.2fr 0.9fr 0.5fr 0.7fr;
+        gap: 6px;
+    }
+
+    .ml-col-name {
+        font-family: monospace;
+        color: #d8b4fe;
+        font-size: 10px;
+    }
+
+    .ml-col-type {
+        color: #67e8f9;
+        font-size: 10px;
+    }
+
+    .ml-col-warn {
+        color: #fb923c;
+        font-weight: 700;
+    }
+
+    .ml-col-ok {
+        color: rgba(148, 163, 184, 0.5);
+    }
+}
+
+.ml-preprocess-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ml-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.8);
+    cursor: pointer;
+
+    input[type="checkbox"] {
+        accent-color: #a855f7;
+        width: 12px;
+        height: 12px;
+    }
+}
+
+// ── Export tab ────────────────────────────────────────────────────────────────
+
+.ml-export-info {
+    display: flex;
+    gap: 16px;
+    padding: 6px 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 10px;
+}
+
+.ml-export-info-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ml-info-key {
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.5);
+    text-transform: uppercase;
+}
+
+.ml-info-val {
+    font-size: 12px;
+    font-weight: 600;
+    color: #d8b4fe;
+}
+
+.ml-export-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.ml-export-card {
+    border-radius: 8px;
+    padding: 10px;
+
+    &-title {
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    &.ml-export-onnx {
+        background: rgba(168, 85, 247, 0.1);
+        border: 1px solid rgba(168, 85, 247, 0.3);
+
+        .ml-export-card-title {
+            color: #d8b4fe;
+        }
+    }
+
+    &.ml-export-joblib {
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+
+        .ml-export-card-title {
+            color: #93c5fd;
+        }
+    }
+}
+
+.ml-export-meta {
+    font-size: 10px;
+    color: rgba(148, 163, 184, 0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 4px;
+
+    label {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        color: rgba(148, 163, 184, 0.6);
+    }
+}
+
+.ml-cli-cmd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 5px;
+    padding: 6px 10px;
+}
+
+.ml-cmd-text {
+    flex: 1;
+    font-family: monospace;
+    font-size: 11px;
+    color: #a855f7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ml-copy-btn {
+    flex-shrink: 0;
+}
+
+.ml-export-history {
+    .ml-export-hist-header,
+    .ml-export-hist-row {
+        grid-template-columns: 1.1fr 0.6fr 0.6fr 2fr;
+        gap: 8px;
+    }
+
+    .ml-hist-ts {
+        color: rgba(148, 163, 184, 0.6);
+        font-size: 10px;
+        font-family: monospace;
+    }
+
+    .ml-hist-fmt {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 3px;
+
+        &.ml-hist-fmt-onnx {
+            background: rgba(168, 85, 247, 0.2);
+            color: #d8b4fe;
+        }
+
+        &.ml-hist-fmt-joblib {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+    }
+
+    .ml-hist-size {
+        color: rgba(148, 163, 184, 0.7);
+        font-size: 10px;
+    }
+
+    .ml-hist-path {
+        font-family: monospace;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.mlmodel-selected-name {
+    color: #a855f7;
+    font-size: 11px;
+    font-weight: 600;
+}
