@@ -3,6 +3,7 @@
 
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
+import { fetchTokenPrices } from "../services/coingecko";
 import { AmmLiquidity } from "./ammliquidity";
 
 export type LiquidityPool = {
@@ -279,11 +280,34 @@ export class AmmLiquidityViewModel implements ViewModel {
             return elems;
         });
 
+        // Try to seed pool prices from CoinGecko on load
+        void this.initLivePrices();
         this.startRefresh();
     }
 
     get viewComponent(): ViewComponent {
         return AmmLiquidity as ViewComponent;
+    }
+
+    /** Fetch live token prices for all pools and update their price fields. */
+    async initLivePrices() {
+        try {
+            const pools = globalStore.get(this.pools);
+            const symbols = [...new Set(pools.flatMap((p) => [p.token0, p.token1]))];
+            const prices = await fetchTokenPrices(symbols);
+            if (Object.keys(prices).length === 0) return;
+            const updated = pools.map((p) => {
+                const p0 = prices[p.token0];
+                const p1 = prices[p.token1];
+                if (p0 != null && p1 != null && p1 > 0) {
+                    return { ...p, price: p0 / p1 };
+                }
+                return p;
+            });
+            globalStore.set(this.pools, updated);
+        } catch (e) {
+            console.warn("[AmmLiquidity] CoinGecko unavailable – using mock prices", e);
+        }
     }
 
     refreshPools() {
@@ -299,8 +323,11 @@ export class AmmLiquidityViewModel implements ViewModel {
     }
 
     startRefresh() {
+        let tick = 0;
         this.refreshInterval = setInterval(() => {
             this.refreshPools();
+            tick++;
+            if (tick % 8 === 0) void this.initLivePrices();
         }, 4000);
     }
 

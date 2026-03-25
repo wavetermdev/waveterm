@@ -3,6 +3,7 @@
 
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
+import { fetchRecentOhlcv, getHlAllMids, getHlMeta, toCoin } from "../services/hyperliquid";
 import { TradingAlgoBot } from "./tradingalgobot";
 
 export type TradingPosition = {
@@ -130,6 +131,13 @@ export class TradingAlgoBotViewModel implements ViewModel {
     totalPnl = jotai.atom<number>(4823.5);
     portfolioValue = jotai.atom<number>(52340.75);
 
+    /** All perp symbols available on Hyperliquid (populated on load). */
+    availableSymbols = jotai.atom<string[]>(SYMBOLS);
+    /** "live" when Hyperliquid API is reachable, "demo" otherwise. */
+    dataSource = jotai.atom<"live" | "demo">("demo");
+    /** Timestamp of the last successful live data fetch. */
+    lastLiveUpdate = jotai.atom<number>(0);
+
     viewText: jotai.Atom<HeaderElem[]>;
 
     private refreshInterval: ReturnType<typeof setInterval> | null = null;
@@ -161,6 +169,8 @@ export class TradingAlgoBotViewModel implements ViewModel {
             ];
             return elems;
         });
+        // Try to connect to live Hyperliquid data; fall back to mock seamlessly
+        void this.initLiveData();
         this.startRefresh();
     }
 
@@ -168,12 +178,78 @@ export class TradingAlgoBotViewModel implements ViewModel {
         return TradingAlgoBot as ViewComponent;
     }
 
+    /** Bootstrap live data on first load. */
+    async initLiveData() {
+        try {
+            // Populate the full symbol list from Hyperliquid meta
+            const meta = await getHlMeta();
+            const syms = meta.universe.map((u) => `${u.name}-PERP`);
+            if (syms.length > 0) globalStore.set(this.availableSymbols, syms);
+
+            // Fetch real OHLCV for the default symbol
+            await this.fetchLiveOhlcv(globalStore.get(this.selectedSymbol));
+
+            // Fetch real mid prices and build positions
+            await this.fetchLivePositions();
+
+            globalStore.set(this.dataSource, "live");
+            globalStore.set(this.lastLiveUpdate, Date.now());
+        } catch (e) {
+            console.warn("[TradingAlgoBot] Hyperliquid unavailable – running in demo mode", e);
+            globalStore.set(this.dataSource, "demo");
+        }
+    }
+
+    /** Fetch real 1-min candles from Hyperliquid and replace priceHistory. */
+    async fetchLiveOhlcv(symbol: string) {
+        const candles = await fetchRecentOhlcv(symbol, 60);
+        if (candles.length === 0) return;
+        const history: PricePoint[] = candles.map((c) => ({
+            ts: c.t,
+            price: parseFloat(c.c),
+            signal: undefined,
+        }));
+        globalStore.set(this.priceHistory, history);
+    }
+
+    /** Fetch allMids and synthesise positions with real current prices. */
+    async fetchLivePositions() {
+        const mids = await getHlAllMids();
+        const syms = globalStore.get(this.availableSymbols).slice(0, 5);
+        const positions: TradingPosition[] = [];
+        syms.slice(0, 3).forEach((sym, i) => {
+            const coin = toCoin(sym);
+            const current = parseFloat(mids[coin] ?? "0");
+            if (current <= 0) return;
+            const side: "long" | "short" = i % 2 === 0 ? "long" : "short";
+            const size = 0.1 + i * 0.05;
+            const entryOffset = i === 1 ? -0.008 : 0.008;
+            const entry = current * (1 + entryOffset);
+            const pnl = side === "long" ? (current - entry) * size : (entry - current) * size;
+            positions.push({ symbol: sym, side, size, entryPrice: entry, currentPrice: current, unrealizedPnl: pnl, leverage: 5 });
+        });
+        if (positions.length > 0) {
+            globalStore.set(this.positions, positions);
+        }
+    }
+
     toggleBot() {
         const current = globalStore.get(this.botRunning);
         globalStore.set(this.botRunning, !current);
     }
 
-    refreshData() {
+    async refreshData() {
+        const source = globalStore.get(this.dataSource);
+        if (source === "live") {
+            try {
+                await this.fetchLiveOhlcv(globalStore.get(this.selectedSymbol));
+                await this.fetchLivePositions();
+                globalStore.set(this.lastLiveUpdate, Date.now());
+                return;
+            } catch {
+                // fall through to mock refresh
+            }
+        }
         globalStore.set(this.positions, generateMockPositions());
         globalStore.set(this.signals, generateMockSignals());
         globalStore.set(this.metrics, generatePerformanceMetrics());
@@ -186,25 +262,53 @@ export class TradingAlgoBotViewModel implements ViewModel {
             "AVAX-PERP": 38.5,
         };
         globalStore.set(this.priceHistory, generatePriceHistory(basePrices[sym] ?? 67450, 60));
-        const newPnl = 4000 + Math.random() * 2000;
-        globalStore.set(this.totalPnl, newPnl);
+        globalStore.set(this.totalPnl, 4000 + Math.random() * 2000);
+    }
+
+    /** Append a single live price tick to the chart. */
+    private async liveTick() {
+        try {
+            const sym = globalStore.get(this.selectedSymbol);
+            const mids = await getHlAllMids();
+            const newPrice = parseFloat(mids[toCoin(sym)] ?? "0");
+            if (newPrice <= 0) return;
+            const prev = globalStore.get(this.priceHistory);
+            const next: PricePoint[] = [...prev.slice(1), { ts: Date.now(), price: newPrice, signal: undefined }];
+            globalStore.set(this.priceHistory, next);
+            // Update P&L from live positions
+            await this.fetchLivePositions();
+            const positions = globalStore.get(this.positions);
+            const pnl = positions.reduce((s, p) => s + p.unrealizedPnl, 0) * 100;
+            globalStore.set(this.totalPnl, pnl);
+            globalStore.set(this.lastLiveUpdate, Date.now());
+        } catch {
+            this.mockTick();
+        }
+    }
+
+    /** Gaussian random-walk tick used in demo mode. */
+    private mockTick() {
+        const prev = globalStore.get(this.priceHistory);
+        if (prev.length === 0) return;
+        const last = prev[prev.length - 1];
+        const newPrice = last.price * (1 + randomGaussian(0, 0.0008));
+        const signal: "buy" | "sell" | undefined = Math.random() > 0.95 ? (Math.random() > 0.5 ? "buy" : "sell") : undefined;
+        globalStore.set(this.priceHistory, [...prev.slice(1), { ts: Date.now(), price: newPrice, signal }]);
+        const pnl = globalStore.get(this.totalPnl);
+        globalStore.set(this.totalPnl, pnl + randomGaussian(0, 8));
     }
 
     startRefresh() {
+        // 5 s interval — respects Hyperliquid public rate limits
         this.refreshInterval = setInterval(() => {
             const running = globalStore.get(this.botRunning);
             if (!running) return;
-            // Tick price and update P&L
-            const prev = globalStore.get(this.priceHistory);
-            const last = prev[prev.length - 1];
-            const newPrice = last.price * (1 + randomGaussian(0, 0.0008));
-            const signal: "buy" | "sell" | undefined = Math.random() > 0.95 ? (Math.random() > 0.5 ? "buy" : "sell") : undefined;
-            const next: PricePoint[] = [...prev.slice(1), { ts: Date.now(), price: newPrice, signal }];
-            globalStore.set(this.priceHistory, next);
-            // Drift P&L
-            const pnl = globalStore.get(this.totalPnl);
-            globalStore.set(this.totalPnl, pnl + randomGaussian(0, 8));
-        }, 2000);
+            if (globalStore.get(this.dataSource) === "live") {
+                void this.liveTick();
+            } else {
+                this.mockTick();
+            }
+        }, 5000);
     }
 
     dispose() {

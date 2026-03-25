@@ -3,6 +3,7 @@
 
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
+import { fetchTokenPrices } from "../services/coingecko";
 import { DeFiLending } from "./defilending";
 
 export type LendingAsset = {
@@ -253,11 +254,29 @@ export class DeFiLendingViewModel implements ViewModel {
             return elems;
         });
 
+        // Try to fetch real token prices on load
+        void this.initLivePrices();
         this.startRefresh();
     }
 
     get viewComponent(): ViewComponent {
         return DeFiLending as ViewComponent;
+    }
+
+    /** Update asset prices from CoinGecko, keeping APY rates as-is until Aave data is wired. */
+    async initLivePrices() {
+        try {
+            const symbols = globalStore.get(this.assets).map((a) => a.symbol);
+            const prices = await fetchTokenPrices(symbols);
+            if (Object.keys(prices).length === 0) return;
+            const updated = globalStore.get(this.assets).map((a) => {
+                const livePrice = prices[a.symbol];
+                return livePrice != null ? { ...a, price: livePrice } : a;
+            });
+            globalStore.set(this.assets, updated);
+        } catch (e) {
+            console.warn("[DeFiLending] CoinGecko unavailable – using mock prices", e);
+        }
     }
 
     refreshRates() {
@@ -272,9 +291,13 @@ export class DeFiLendingViewModel implements ViewModel {
     }
 
     startRefresh() {
+        // Refresh APY rates every 10 s; re-fetch live prices every 60 s
+        let tick = 0;
         this.refreshInterval = setInterval(() => {
             this.refreshRates();
-        }, 5000);
+            tick++;
+            if (tick % 6 === 0) void this.initLivePrices();
+        }, 10000);
     }
 
     dispose() {

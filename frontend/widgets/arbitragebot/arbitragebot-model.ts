@@ -3,6 +3,7 @@
 
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
+import { getHlAllMids, toCoin } from "../services/hyperliquid";
 import { ArbitrageBot } from "./arbitragebot";
 
 export type ArbitrageOpportunity = {
@@ -101,9 +102,15 @@ function generateStats(): ArbitrageStats {
     };
 }
 
-function generateDexPrices(): DexPrice[] {
+function generateDexPrices(livePrices?: Record<string, number>): DexPrice[] {
     const prices: DexPrice[] = [];
-    const base: Record<string, number> = { ETH: 3520, USDC: 1, ARB: 1.24, WBTC: 67450 };
+    // Use live prices when available, otherwise fall back to mock base prices
+    const base: Record<string, number> = {
+        ETH: livePrices?.ETH ?? 3520,
+        USDC: 1,
+        ARB: livePrices?.ARB ?? 1.24,
+        WBTC: livePrices?.BTC ?? 67450,
+    };
     Object.entries(base).forEach(([token, price]) => {
         DEX_NAMES.slice(0, 3).forEach((dex) => {
             prices.push({
@@ -150,21 +157,32 @@ export class ArbitrageBotViewModel implements ViewModel {
     botActive = jotai.atom<boolean>(true);
     scanInterval = jotai.atom<number>(500);
     lastScan = jotai.atom<number>(Date.now());
+    /** "live" when Hyperliquid mid prices are reachable. */
+    dataSource = jotai.atom<"live" | "demo">("demo");
 
     viewText: jotai.Atom<HeaderElem[]>;
 
     private refreshInterval: ReturnType<typeof setInterval> | null = null;
+    /** Last known live prices keyed by coin (e.g. "ETH", "BTC", "ARB"). */
+    private livePriceCache: Record<string, number> = {};
 
     constructor({ blockId }: ViewModelInitType) {
         this.blockId = blockId;
         this.viewText = jotai.atom((get) => {
             const active = get(this.botActive);
             const stats = get(this.stats);
+            const src = get(this.dataSource);
             const elems: HeaderElem[] = [
                 {
                     elemtype: "text",
                     text: `Profit: $${stats.totalProfitUsd.toFixed(0)}`,
                     className: "widget-pnl-positive",
+                    noGrow: true,
+                },
+                {
+                    elemtype: "text",
+                    text: src === "live" ? "● LIVE" : "○ DEMO",
+                    className: src === "live" ? "widget-source-live" : "widget-source-demo",
                     noGrow: true,
                 },
                 {
@@ -182,6 +200,7 @@ export class ArbitrageBotViewModel implements ViewModel {
             ];
             return elems;
         });
+        void this.initLivePrices();
         this.startScanning();
     }
 
@@ -189,14 +208,46 @@ export class ArbitrageBotViewModel implements ViewModel {
         return ArbitrageBot as ViewComponent;
     }
 
+    /** Fetch real mid prices from Hyperliquid to seed DEX price displays. */
+    async initLivePrices() {
+        try {
+            const mids = await getHlAllMids();
+            const targets = ["ETH", "BTC", "ARB", "SOL", "AVAX"];
+            let found = 0;
+            for (const coin of targets) {
+                const raw = mids[coin];
+                if (raw) {
+                    this.livePriceCache[coin] = parseFloat(raw);
+                    found++;
+                }
+            }
+            if (found > 0) {
+                globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
+                globalStore.set(this.dataSource, "live");
+            }
+        } catch (e) {
+            console.warn("[ArbitrageBot] Hyperliquid unavailable – running in demo mode", e);
+        }
+    }
+
     toggleBot() {
         const current = globalStore.get(this.botActive);
         globalStore.set(this.botActive, !current);
     }
 
-    forceScan() {
+    async forceScan() {
+        // Refresh live prices first, then regenerate opportunities
+        try {
+            const mids = await getHlAllMids();
+            for (const coin of ["ETH", "BTC", "ARB", "SOL", "AVAX"]) {
+                if (mids[coin]) this.livePriceCache[coin] = parseFloat(mids[coin]);
+            }
+            globalStore.set(this.dataSource, "live");
+        } catch {
+            // keep cached prices
+        }
         globalStore.set(this.opportunities, generateOpportunities());
-        globalStore.set(this.dexPrices, generateDexPrices());
+        globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
         globalStore.set(this.lastScan, Date.now());
     }
 
@@ -209,8 +260,8 @@ export class ArbitrageBotViewModel implements ViewModel {
         this.refreshInterval = setInterval(() => {
             const active = globalStore.get(this.botActive);
             if (!active) return;
-            // Refresh prices and opportunities
-            globalStore.set(this.dexPrices, generateDexPrices());
+            // Refresh DEX prices (with live base prices when available) and update opportunity status
+            globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
             const prev = globalStore.get(this.opportunities);
             const updated = prev.map((opp) => {
                 if (opp.status === "pending" && Math.random() > 0.8) {
