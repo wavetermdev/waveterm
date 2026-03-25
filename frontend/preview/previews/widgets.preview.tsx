@@ -59,20 +59,12 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
         "display:order": 2,
         blockdef: { meta: { view: "web", url: "https://waveterm.dev" } },
     },
-    "defwidget@ai": {
-        icon: "sparkles",
-        color: "#a78bfa",
-        label: "AI",
-        description: "Open Wave AI",
-        "display:order": 3,
-        blockdef: { meta: { view: "waveai" } },
-    },
     "defwidget@files": {
         icon: "folder",
         color: "#fbbf24",
         label: "Files",
         description: "Open file browser",
-        "display:order": 4,
+        "display:order": 3,
         blockdef: { meta: { view: "preview", connection: "local" } },
     },
     "defwidget@sysinfo": {
@@ -80,7 +72,7 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
         color: "#34d399",
         label: "Sysinfo",
         description: "Open system info",
-        "display:order": 5,
+        "display:order": 4,
         blockdef: { meta: { view: "sysinfo" } },
     },
 };
@@ -90,7 +82,6 @@ const fullConfigAtom = atom<FullConfigType>({ settings: {}, widgets: mockWidgets
 function makeWidgetsEnv(
     baseEnv: WaveEnv,
     isDev: boolean,
-    hasCustomAIPresets: boolean,
     apps?: AppInfo[],
     atomOverrides?: Partial<GlobalAtomsType>
 ) {
@@ -99,7 +90,6 @@ function makeWidgetsEnv(
         rpc: { ListAllAppsCommand: () => Promise.resolve(apps ?? []) },
         atoms: {
             fullConfigAtom,
-            hasCustomAIPresetsAtom: atom(hasCustomAIPresets),
             ...atomOverrides,
         },
     });
@@ -108,20 +98,18 @@ function makeWidgetsEnv(
 function WidgetsScenario({
     label,
     isDev = false,
-    hasCustomAIPresets = true,
     height,
     apps,
 }: {
     label: string;
     isDev?: boolean;
-    hasCustomAIPresets?: boolean;
     height?: number;
     apps?: AppInfo[];
 }) {
     const baseEnv = useWaveEnv();
     const envRef = useRef<WaveEnv>(null);
     if (envRef.current == null) {
-        envRef.current = makeWidgetsEnv(baseEnv, isDev, hasCustomAIPresets, apps, {
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, apps, {
             hasConfigErrors: hasConfigErrorsAtom,
         });
     }
@@ -149,7 +137,7 @@ function WidgetsResizable({ isDev }: { isDev: boolean }) {
     const baseEnv = useWaveEnv();
     const envRef = useRef<WaveEnv>(null);
     if (envRef.current == null) {
-        envRef.current = makeWidgetsEnv(baseEnv, isDev, true, mockApps, { hasConfigErrors: hasConfigErrorsAtom });
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, mockApps, { hasConfigErrors: hasConfigErrorsAtom });
     }
 
     return (
@@ -224,8 +212,7 @@ export function WidgetsPreview() {
             <PreviewControls />
             <div key={mockVersion} className="flex flex-col gap-8">
                 <div className="flex flex-row gap-8 items-start flex-wrap">
-                    <WidgetsScenario label="normal (with AI presets)" height={550} isDev={isDev} />
-                    <WidgetsScenario label="no custom AI presets" hasCustomAIPresets={false} height={550} isDev={isDev} />
+                    <WidgetsScenario label="normal" height={550} isDev={isDev} />
                     <WidgetsScenario label="dev mode (apps button)" height={550} isDev={isDev} apps={mockApps} />
                     <WidgetsScenario label="compact (200px)" height={200} isDev={isDev} apps={mockApps} />
                 </div>

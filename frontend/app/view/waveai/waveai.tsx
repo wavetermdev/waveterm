@@ -22,11 +22,9 @@ function WaveAiDeprecatedView() {
     }, []);
 
     return (
-        <div className="flex h-full items-center justify-center p-6">
-            <div className="flex w-full max-w-[680px] flex-col items-center rounded-xl border border-border bg-panel px-8 py-10 text-center shadow-md">
-                <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-accent/15 text-accent">
-                    <i className="fa-sharp fa-solid fa-sparkles text-3xl" />
-                </div>
+        <div className="flex h-full w-full flex-col px-6 text-center">
+            <div className="flex-[4]" />
+            <div className="mx-auto flex w-full max-w-[760px] flex-col items-center">
                 <h2 className="text-xl font-semibold text-primary">This legacy Wave AI block is no longer supported</h2>
                 <p className="mt-3 text-sm leading-6 text-secondary">
                     This older AI widget has been retired. Please use the modern Wave AI panel for AI chats, terminal
@@ -36,6 +34,7 @@ function WaveAiDeprecatedView() {
                     Open Wave AI panel
                 </Button>
             </div>
+            <div className="flex-[6]" />
         </div>
     );
 }

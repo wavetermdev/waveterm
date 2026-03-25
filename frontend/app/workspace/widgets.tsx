@@ -373,7 +373,6 @@ const Widgets = memo(() => {
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
     const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
     const workspaceId = useAtomValue(env.atoms.workspaceId);
-    const hasCustomAIPresets = useAtomValue(env.atoms.hasCustomAIPresetsAtom);
     const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
@@ -381,12 +380,7 @@ const Widgets = memo(() => {
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = Object.fromEntries(
-        Object.entries(widgetsMap).filter(([key, widget]) => {
-            if (!hasCustomAIPresets && key === "defwidget@ai") {
-                return false;
-            }
-            return shouldIncludeWidgetForWorkspace(widget, workspaceId);
-        })
+        Object.entries(widgetsMap).filter(([_key, widget]) => shouldIncludeWidgetForWorkspace(widget, workspaceId))
     );
     const widgets = sortByDisplayOrder(filteredWidgets);
 
