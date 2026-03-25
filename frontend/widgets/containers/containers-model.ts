@@ -35,6 +35,16 @@ export type ShellHistoryEntry = {
     ts: number;
 };
 
+export type DockerApiContainer = {
+    Id: string;
+    Names: string[];
+    Image: string;
+    State: string;
+    Status: string;
+    Ports: Array<{ IP?: string; PrivatePort: number; PublicPort?: number; Type: string }>;
+    Created: number;
+};
+
 const INITIAL_CONTAINERS: Container[] = [
     {
         id: "c1",
@@ -97,6 +107,24 @@ const INITIAL_CONTAINERS: Container[] = [
         created: Date.now() - 5 * 24 * 60 * 60 * 1000,
     },
 ];
+
+function mapDockerContainer(d: DockerApiContainer): Container {
+    const name = (d.Names[0] ?? d.Id.slice(0, 12)).replace(/^\//, "");
+    const status: ContainerStatus = d.State === "running" ? "running" : d.State === "exited" ? "stopped" : "error";
+    const ports = d.Ports.filter((p) => p.PublicPort != null)
+        .map((p) => `${p.PublicPort}:${p.PrivatePort}`)
+        .join(", ");
+    return {
+        id: d.Id.slice(0, 12),
+        name,
+        image: d.Image,
+        status,
+        cpu: 0,
+        memMB: 0,
+        ports,
+        created: d.Created * 1000,
+    };
+}
 
 function generateMockLogs(containerName: string): LogLine[] {
     const levels: Array<"INFO" | "WARN" | "ERROR"> = ["INFO", "INFO", "INFO", "WARN", "INFO", "ERROR", "INFO", "INFO"];
@@ -303,6 +331,9 @@ export class ContainerManagerViewModel implements ViewModel {
     shellOutput = jotai.atom<string>('Type a command and press Run, or click a quick command below.\n\nConnected to: wave-postgres\nType "help" for more information.\n');
     shellHistory = jotai.atom<ShellHistoryEntry[]>([]);
 
+    dockerAvailable = jotai.atom<boolean>(false);
+    dataSource = jotai.atom<"live" | "demo">("demo");
+
     viewText: jotai.Atom<HeaderElem[]>;
 
     private refreshInterval: ReturnType<typeof setInterval> | null = null;
@@ -313,11 +344,18 @@ export class ContainerManagerViewModel implements ViewModel {
             const containers = get(this.containers);
             const running = containers.filter((c) => c.status === "running").length;
             const total = containers.length;
+            const src = get(this.dataSource);
             const elems: HeaderElem[] = [
                 {
                     elemtype: "text",
                     text: `${running}/${total} running`,
                     className: "widget-containers-status",
+                    noGrow: true,
+                },
+                {
+                    elemtype: "text",
+                    text: src === "live" ? "● LIVE" : "○ DEMO",
+                    className: src === "live" ? "widget-containers-live" : "widget-containers-demo",
                     noGrow: true,
                 },
                 {
@@ -329,14 +367,56 @@ export class ContainerManagerViewModel implements ViewModel {
             ];
             return elems;
         });
-        this.startRefresh();
+        void this.initDockerData();
     }
 
     get viewComponent(): ViewComponent {
         return ContainerManager as ViewComponent;
     }
 
-    refreshContainers() {
+    async initDockerData() {
+        try {
+            const res = await fetch("http://localhost:2375/v1.43/containers/json?all=true", {
+                signal: AbortSignal.timeout(2000),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = (await res.json()) as DockerApiContainer[];
+            const containers = data.map(mapDockerContainer);
+            globalStore.set(this.containers, containers);
+            globalStore.set(this.dockerAvailable, true);
+            globalStore.set(this.dataSource, "live");
+            // Use first container for initial log/metrics view if available
+            if (containers.length > 0) {
+                globalStore.set(this.selectedLogContainer, containers[0].name);
+                globalStore.set(this.selectedMetricsContainer, containers[0].name);
+                void this.fetchContainerLogs(containers[0].id, containers[0].name);
+            }
+        } catch {
+            // Docker not accessible via TCP — fall back to mock data
+            globalStore.set(this.dockerAvailable, false);
+            globalStore.set(this.dataSource, "demo");
+        }
+        this.startRefresh();
+    }
+
+    async refreshContainers() {
+        const isLive = globalStore.get(this.dockerAvailable);
+        if (isLive) {
+            try {
+                const res = await fetch("http://localhost:2375/v1.43/containers/json?all=true", {
+                    signal: AbortSignal.timeout(3000),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = (await res.json()) as DockerApiContainer[];
+                globalStore.set(this.containers, data.map(mapDockerContainer));
+                return;
+            } catch {
+                // Docker became unavailable — fall back to mock drift
+                globalStore.set(this.dockerAvailable, false);
+                globalStore.set(this.dataSource, "demo");
+            }
+        }
+        // Mock drift for demo mode
         const prev = globalStore.get(this.containers);
         globalStore.set(
             this.containers,
@@ -347,9 +427,44 @@ export class ContainerManagerViewModel implements ViewModel {
         );
     }
 
+    async fetchContainerLogs(containerId: string, containerName: string) {
+        const isLive = globalStore.get(this.dockerAvailable);
+        if (isLive) {
+            try {
+                const res = await fetch(
+                    `http://localhost:2375/v1.43/containers/${containerId}/logs?stdout=1&stderr=1&tail=100&timestamps=1`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const raw = await res.text();
+                // Docker multiplexed stream: each frame has an 8-byte header; strip it
+                const lines = raw
+                    .split("\n")
+                    .map((l) => (l.length > 8 ? l.slice(8) : l).replace(/\r/g, "").trim())
+                    .filter(Boolean);
+                const logLines: LogLine[] = lines.map((msg) => ({
+                    ts: Date.now(),
+                    level: /error/i.test(msg) ? "ERROR" : /warn/i.test(msg) ? "WARN" : "INFO",
+                    message: msg,
+                }));
+                globalStore.set(this.logLines, logLines);
+                return;
+            } catch {
+                // Fall through to mock logs
+            }
+        }
+        globalStore.set(this.logLines, generateMockLogs(containerName));
+    }
+
     setLogContainer(name: string) {
+        const containers = globalStore.get(this.containers);
+        const container = containers.find((c) => c.name === name);
         globalStore.set(this.selectedLogContainer, name);
-        globalStore.set(this.logLines, generateMockLogs(name));
+        if (container) {
+            void this.fetchContainerLogs(container.id, name);
+        } else {
+            globalStore.set(this.logLines, generateMockLogs(name));
+        }
     }
 
     setMetricsContainer(name: string) {
@@ -410,17 +525,44 @@ export class ContainerManagerViewModel implements ViewModel {
     }
 
     startRefresh() {
-        this.refreshInterval = setInterval(() => {
-            // Drift CPU values for running containers
-            const prev = globalStore.get(this.containers);
-            globalStore.set(
-                this.containers,
-                prev.map((c) => {
-                    if (c.status !== "running") return c;
-                    const drift = (Math.random() - 0.5) * 2.5;
-                    return { ...c, cpu: Math.max(0, Math.min(100, c.cpu + drift)) };
-                })
-            );
+        this.refreshInterval = setInterval(async () => {
+            const isLive = globalStore.get(this.dockerAvailable);
+
+            if (isLive) {
+                // Attempt live container list refresh for status/CPU updates
+                try {
+                    const res = await fetch("http://localhost:2375/v1.43/containers/json?all=true", {
+                        signal: AbortSignal.timeout(2000),
+                    });
+                    if (res.ok) {
+                        const data = (await res.json()) as DockerApiContainer[];
+                        const updated = data.map(mapDockerContainer);
+                        // Preserve existing CPU readings (real CPU requires streaming stats)
+                        const prev = globalStore.get(this.containers);
+                        globalStore.set(
+                            this.containers,
+                            updated.map((c) => {
+                                const existing = prev.find((p) => p.id === c.id);
+                                return existing ? { ...c, cpu: existing.cpu } : c;
+                            })
+                        );
+                    }
+                } catch {
+                    // Ignore transient errors
+                }
+            } else {
+                // Mock CPU drift for demo mode
+                const prev = globalStore.get(this.containers);
+                globalStore.set(
+                    this.containers,
+                    prev.map((c) => {
+                        if (c.status !== "running") return c;
+                        const drift = (Math.random() - 0.5) * 2.5;
+                        return { ...c, cpu: Math.max(0, Math.min(100, c.cpu + drift)) };
+                    })
+                );
+            }
+
             // Append new cpu history point for metrics tab
             const selected = globalStore.get(this.selectedMetricsContainer);
             const containers = globalStore.get(this.containers);
@@ -431,9 +573,10 @@ export class ContainerManagerViewModel implements ViewModel {
                 const newVal = Math.max(0, Math.min(100, lastVal + (Math.random() - 0.5) * 3));
                 globalStore.set(this.cpuHistory, [...prevHistory.slice(1), { ts: Date.now(), value: newVal }]);
             }
-            // Append a new log line if following
+
+            // Append a new log line if following (demo mode only — live mode gets real logs)
             const follow = globalStore.get(this.followLogs);
-            if (follow) {
+            if (follow && !isLive) {
                 const logContainer = globalStore.get(this.selectedLogContainer);
                 const runningContainers = globalStore.get(this.containers);
                 const isRunning = runningContainers.find((c) => c.name === logContainer)?.status === "running";

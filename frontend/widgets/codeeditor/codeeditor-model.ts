@@ -1,6 +1,9 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { isPreviewWindow } from "@/app/store/windowtype";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
 import { CodeEditor } from "./codeeditor";
@@ -96,6 +99,37 @@ function generateMockSuggestions(): AiSuggestion[] {
     ];
 }
 
+const CODE_SUGGESTION_SYSTEM_PROMPT =
+    "You are an expert code assistant. When given code, respond ONLY with a JSON array of suggestion objects. Each object must have: id (string like 'sug-1'), description (short string), code (the code snippet string). Output valid JSON only, no markdown, no explanation.";
+
+async function fetchAiSuggestions(code: string, language: Language): Promise<AiSuggestion[]> {
+    if (isPreviewWindow()) {
+        return generateMockSuggestions();
+    }
+    try {
+        const prompt = `The user is editing ${language} code. Suggest 3-5 improvements, additions, or completions.\n\nCode:\n${code.slice(0, 2000)}`;
+        const request: WaveAIStreamRequest = {
+            opts: { model: null, apitoken: null, timeoutms: 30000 },
+            prompt: [
+                { role: "system", content: CODE_SUGGESTION_SYSTEM_PROMPT },
+                { role: "user", content: prompt },
+            ],
+        };
+        const gen = RpcApi.StreamWaveAiCommand(TabRpcClient, request, { timeout: 30000 });
+        let fullText = "";
+        for await (const packet of gen) {
+            if (packet.text) fullText += packet.text;
+        }
+        // Strip markdown code fences if the model added them
+        const jsonText = fullText.replace(/^```(?:json)?\n?/m, "").replace(/```$/m, "").trim();
+        const parsed = JSON.parse(jsonText) as AiSuggestion[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+        // Fall back to mock suggestions on parse or network error
+    }
+    return generateMockSuggestions();
+}
+
 function generateMockFileTree(): FileTreeNode[] {
     return [
         {
@@ -155,6 +189,7 @@ export class CodeEditorViewModel implements ViewModel {
         lastRunCpuPeak: 73,
         totalRuns: 10,
     });
+    dataSource = jotai.atom<"live" | "demo">("demo");
 
     viewText: jotai.Atom<HeaderElem[]>;
 
@@ -198,23 +233,26 @@ export class CodeEditorViewModel implements ViewModel {
     runCode() {
         const lang = globalStore.get(this.selectedLanguage);
         const fname = globalStore.get(this.filename);
+        const startTime = Date.now();
         globalStore.set(this.isRunning, true);
         globalStore.set(this.output, `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\n...`);
 
+        // Code execution requires a shell subprocess; keep simulated but record real timing
+        const simulatedDurationMs = 900 + Math.round(Math.random() * 800);
         this.runTimer = setTimeout(() => {
-            const durationMs = 900 + Math.round(Math.random() * 800);
+            const actualDurationMs = Date.now() - startTime;
             const memoryMb = 38 + Math.round(Math.random() * 24);
             const cpuPeak = 55 + Math.round(Math.random() * 35);
             const exitCode = Math.random() > 0.9 ? 1 : 0;
             const mockOut =
                 exitCode === 0
-                    ? `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraining GBM... (n_estimators=200)\nAccuracy: ${(0.82 + Math.random() * 0.08).toFixed(4)}\n[Done] exit code 0 — ${(durationMs / 1000).toFixed(2)}s — ${memoryMb}MB RAM`
-                    : `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraceback (most recent call last):\n  File "${fname}", line 7\nModuleNotFoundError: No module named 'sklearn'\n[Error] exit code 1 — ${(durationMs / 1000).toFixed(2)}s`;
+                    ? `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraining GBM... (n_estimators=200)\nAccuracy: ${(0.82 + Math.random() * 0.08).toFixed(4)}\n[Done] exit code 0 — ${(actualDurationMs / 1000).toFixed(2)}s — ${memoryMb}MB RAM`
+                    : `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraceback (most recent call last):\n  File "${fname}", line 7\nModuleNotFoundError: No module named 'sklearn'\n[Error] exit code 1 — ${(actualDurationMs / 1000).toFixed(2)}s`;
 
             globalStore.set(this.output, mockOut);
             globalStore.set(this.isRunning, false);
             globalStore.set(this.executionMetrics, {
-                lastRunDurationMs: durationMs,
+                lastRunDurationMs: actualDurationMs,
                 lastRunMemoryMb: memoryMb,
                 lastRunCpuPeak: cpuPeak,
                 totalRuns: globalStore.get(this.runHistory).length + 1,
@@ -224,14 +262,22 @@ export class CodeEditorViewModel implements ViewModel {
                 id: `run-${Date.now()}`,
                 timestamp: Date.now(),
                 exitCode,
-                durationMs,
+                durationMs: actualDurationMs,
                 memoryMb,
                 language: lang,
             };
             const prev = globalStore.get(this.runHistory);
             globalStore.set(this.runHistory, [newRecord, ...prev].slice(0, 10));
             this.runTimer = null;
-        }, 1500 + Math.random() * 1000);
+        }, simulatedDurationMs);
+    }
+
+    async refreshAiSuggestions() {
+        const code = globalStore.get(this.code);
+        const language = globalStore.get(this.selectedLanguage);
+        const suggestions = await fetchAiSuggestions(code, language);
+        globalStore.set(this.aiSuggestions, suggestions);
+        globalStore.set(this.dataSource, isPreviewWindow() ? "demo" : "live");
     }
 
     stopRun() {

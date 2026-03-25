@@ -185,6 +185,10 @@ export class MLModelViewModel implements ViewModel {
     featureColumns = jotai.atom<string>("feature1, feature2, feature3, feature4");
     trainTestSplit = jotai.atom<number>(80);
     dataSourceTab = jotai.atom<DataSourceType>("CSV");
+    dataSource = jotai.atom<"live" | "demo">("demo");
+    dataPreview = jotai.atom<string>("");
+    selectedDataPath = jotai.atom<string>("");
+    exportDir = jotai.atom<string>("/exports/wave-ml-models");
 
     viewText: jotai.Atom<HeaderElem[]>;
 
@@ -221,9 +225,96 @@ export class MLModelViewModel implements ViewModel {
         return MLModelWidget as ViewComponent;
     }
 
+    validateHyperparams(): string[] {
+        const hp = globalStore.get(this.hyperparams);
+        const modelType = globalStore.get(this.selectedModelType);
+        const errors: string[] = [];
+        if (modelType === "GBM") {
+            if (hp.gbm_n_estimators < 10) errors.push("n_estimators must be ≥ 10");
+            if (hp.gbm_learning_rate <= 0 || hp.gbm_learning_rate > 1) errors.push("learning_rate must be in (0, 1]");
+            if (hp.gbm_max_depth < 1 || hp.gbm_max_depth > 20) errors.push("max_depth must be between 1 and 20");
+            if (hp.gbm_subsample <= 0 || hp.gbm_subsample > 1) errors.push("subsample must be in (0, 1]");
+        } else if (modelType === "LR") {
+            if (hp.lr_C <= 0) errors.push("C (regularization) must be > 0");
+            if (hp.lr_max_iter < 100) errors.push("max_iter must be ≥ 100");
+        } else if (modelType === "NN-Adam") {
+            if (hp.nn_learning_rate <= 0) errors.push("learning_rate must be > 0");
+            if (hp.nn_epochs < 1) errors.push("epochs must be ≥ 1");
+            if (hp.nn_hidden_layers < 1 || hp.nn_hidden_layers > 10) errors.push("hidden_layers must be between 1 and 10");
+            if (hp.nn_hidden_size < 8) errors.push("hidden_size must be ≥ 8");
+            if (hp.nn_dropout < 0 || hp.nn_dropout >= 1) errors.push("dropout must be in [0, 1)");
+        } else if (modelType === "RF") {
+            if (hp.rf_n_estimators < 10) errors.push("n_estimators must be ≥ 10");
+            if (hp.rf_max_depth < 1) errors.push("max_depth must be ≥ 1");
+        } else if (modelType === "NumpyLogistics") {
+            if (hp.np_learning_rate <= 0) errors.push("learning_rate must be > 0");
+            if (hp.np_iterations < 100) errors.push("iterations must be ≥ 100");
+            if (hp.np_regularization < 0) errors.push("regularization must be ≥ 0");
+        }
+        return errors;
+    }
+
+    loadDataFile() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".csv,.json,.xml";
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                globalStore.set(this.selectedDataPath, file.name);
+                globalStore.set(this.dataSource, "live");
+                this.parseDataSource(text, file.name);
+            } catch (err) {
+                globalStore.set(this.dataPreview, `Error reading file: ${(err as Error).message}`);
+            }
+        };
+        input.click();
+    }
+
+    parseDataSource(content: string, filename: string) {
+        const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+        try {
+            if (ext === "json") {
+                const parsed = JSON.parse(content);
+                const preview = JSON.stringify(parsed, null, 2).slice(0, 2000);
+                globalStore.set(this.dataPreview, preview);
+                // Try to infer columns from first object
+                if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "object") {
+                    const cols = Object.keys(parsed[0]);
+                    globalStore.set(this.featureColumns, cols.slice(0, -1).join(", "));
+                    globalStore.set(this.targetColumn, cols[cols.length - 1]);
+                }
+            } else if (ext === "csv") {
+                const lines = content.split("\n").filter(Boolean);
+                const preview = lines.slice(0, 20).join("\n");
+                globalStore.set(this.dataPreview, preview);
+                if (lines.length > 0) {
+                    const cols = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+                    globalStore.set(this.featureColumns, cols.slice(0, -1).join(", "));
+                    globalStore.set(this.targetColumn, cols[cols.length - 1]);
+                }
+            } else {
+                globalStore.set(this.dataPreview, content.slice(0, 2000));
+            }
+        } catch (err) {
+            globalStore.set(this.dataPreview, `Parse error: ${(err as Error).message}\n\n${content.slice(0, 500)}`);
+        }
+    }
+
     startTraining() {
         const already = globalStore.get(this.isTraining);
         if (already) return;
+
+        const validationErrors = this.validateHyperparams();
+        if (validationErrors.length > 0) {
+            globalStore.set(this.trainLog, [
+                "[ERROR] Hyperparameter validation failed:",
+                ...validationErrors.map((e) => `  • ${e}`),
+            ]);
+            return;
+        }
 
         const modelType = globalStore.get(this.selectedModelType);
         this.trainingModelType = modelType;
@@ -235,7 +326,17 @@ export class MLModelViewModel implements ViewModel {
 
         const logLines = TRAIN_LOG_SNIPPETS[modelType];
         const totalSteps = 100;
-        const stepMs = 120;
+
+        // Different epoch counts / step speeds per model type
+        const stepMsMap: Record<MLModelType, number> = {
+            GBM: 120,
+            LR: 60,
+            "NN-Adam": 150,
+            TreeClassifier: 50,
+            RF: 100,
+            NumpyLogistics: 80,
+        };
+        const stepMs = stepMsMap[modelType] ?? 120;
 
         this.trainingInterval = setInterval(() => {
             const current = globalStore.get(this.trainingProgress);
@@ -285,11 +386,13 @@ export class MLModelViewModel implements ViewModel {
         const ext = format === "ONNX" ? "onnx" : "joblib";
         const size = `${(0.4 + Math.random() * 3).toFixed(1)} MB`;
         const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
+        const exportDir = globalStore.get(this.exportDir);
+        const path = `${exportDir}/${model.name}.${ext}`;
         const record: ExportRecord = {
             timestamp: ts,
             format,
             size,
-            path: `/exports/${model.name}.${ext}`,
+            path,
         };
         const prev = globalStore.get(this.exportHistory);
         globalStore.set(this.exportHistory, [record, ...prev].slice(0, 10));

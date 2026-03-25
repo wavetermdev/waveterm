@@ -5,6 +5,8 @@ import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
 import { ShellWorkflow } from "./shellworkflow";
 
+const WORKFLOWS_STORAGE_KEY = "wave:shellworkflows";
+
 export type StepType = "shell" | "python" | "http" | "condition";
 export type StepStatus = "pending" | "running" | "success" | "error";
 export type WorkflowStatus = "idle" | "running" | "success" | "error";
@@ -266,6 +268,20 @@ export class ShellWorkflowViewModel implements ViewModel {
 
     constructor({ blockId }: ViewModelInitType) {
         this.blockId = blockId;
+
+        // Restore persisted workflows if available
+        try {
+            const saved = localStorage.getItem(WORKFLOWS_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved) as WorkflowDef[];
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    globalStore.set(this.workflows, parsed);
+                }
+            }
+        } catch {
+            // localStorage unavailable or invalid JSON — use defaults
+        }
+
         this.viewText = jotai.atom((get) => {
             const wfId = get(this.selectedWorkflowId);
             const workflows = get(this.workflows);
@@ -295,6 +311,43 @@ export class ShellWorkflowViewModel implements ViewModel {
         return ShellWorkflow as ViewComponent;
     }
 
+    private substituteVariables(command: string): string {
+        const vars = globalStore.get(this.variables);
+        return command.replace(/\$([A-Z_][A-Z0-9_]*)/g, (match, name) => {
+            const v = vars.find((v) => v.name === name);
+            return v ? v.value : match;
+        });
+    }
+
+    private async executeHttpStep(step: WorkflowStep): Promise<{ success: boolean; output: string; durationMs: number }> {
+        const start = Date.now();
+        const command = this.substituteVariables(step.command);
+        const parts = command.trim().split(/\s+/);
+        const method = parts[0]?.toUpperCase() ?? "GET";
+        const url = parts[1] ?? "";
+        if (!url) {
+            return { success: false, output: "Error: HTTP step command must be 'METHOD URL'", durationMs: 0 };
+        }
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { Accept: "application/json, text/plain, */*" },
+                signal: AbortSignal.timeout(10000),
+            });
+            const body = await res.text();
+            const durationMs = Date.now() - start;
+            const success = res.status >= 200 && res.status < 400;
+            const output = `HTTP/${res.status} ${res.statusText}\nContent-Type: ${res.headers.get("content-type") ?? "unknown"}\n\n${body.slice(0, 2000)}`;
+            return { success, output, durationMs };
+        } catch (err) {
+            return {
+                success: false,
+                output: `Error: ${(err as Error).message}`,
+                durationMs: Date.now() - start,
+            };
+        }
+    }
+
     runAllSteps(workflowId: string) {
         const workflows = globalStore.get(this.workflows);
         const wf = workflows.find((w) => w.id === workflowId);
@@ -308,48 +361,82 @@ export class ShellWorkflowViewModel implements ViewModel {
 
         let delay = 0;
         wf.steps.forEach((step, idx) => {
-            const stepDuration = 1000 + Math.random() * 2000;
+            // HTTP steps use realistic durations; shell/python vary more
+            const stepDuration = step.type === "http"
+                ? 300 + Math.random() * 700
+                : 1200 + Math.random() * 1800;
 
             const runningTimer = setTimeout(() => {
                 this.updateStep(workflowId, step.id, { status: "running" });
             }, delay);
             this.runTimers.push(runningTimer);
 
+            const capturedDelay = delay + stepDuration;
+            if (step.type === "http") {
+                const startMs = delay;
+                const httpTimer = setTimeout(async () => {
+                    const { success, output, durationMs } = await this.executeHttpStep(step);
+                    const status: StepStatus = success ? "success" : "error";
+                    this.updateStep(workflowId, step.id, { status });
+                    const entry: OutputEntry = {
+                        id: `out-${Date.now()}-${idx}`,
+                        stepName: step.name,
+                        workflowName: wf.name,
+                        timestamp: Date.now(),
+                        duration: durationMs,
+                        exitCode: success ? 0 : 1,
+                        stdout: output,
+                        status,
+                        expanded: false,
+                    };
+                    const prev = globalStore.get(this.outputHistory);
+                    globalStore.set(this.outputHistory, [entry, ...prev]);
+                    if (idx === wf.steps.length - 1) {
+                        this.finalizeWorkflow(workflowId);
+                    }
+                }, startMs);
+                this.runTimers.push(httpTimer);
+            } else {
+                const doneTimer = setTimeout(() => {
+                    const success = Math.random() > 0.15;
+                    const status: StepStatus = success ? "success" : "error";
+                    this.updateStep(workflowId, step.id, { status });
+                    const resolvedCommand = this.substituteVariables(step.command);
+                    const entry: OutputEntry = {
+                        id: `out-${Date.now()}-${idx}`,
+                        stepName: step.name,
+                        workflowName: wf.name,
+                        timestamp: Date.now(),
+                        duration: Math.round(stepDuration),
+                        exitCode: success ? 0 : 1,
+                        stdout: success
+                            ? generateMockOutput(step.type, resolvedCommand)
+                            : `Error: command exited with code 1\nstderr: execution failed`,
+                        status,
+                        expanded: false,
+                    };
+                    const prev = globalStore.get(this.outputHistory);
+                    globalStore.set(this.outputHistory, [entry, ...prev]);
+                    if (idx === wf.steps.length - 1) {
+                        this.finalizeWorkflow(workflowId);
+                    }
+                }, capturedDelay);
+                this.runTimers.push(doneTimer);
+            }
+
             delay += stepDuration;
-
-            const doneTimer = setTimeout(() => {
-                const success = Math.random() > 0.15;
-                const status: StepStatus = success ? "success" : "error";
-                this.updateStep(workflowId, step.id, { status });
-
-                const entry: OutputEntry = {
-                    id: `out-${Date.now()}-${idx}`,
-                    stepName: step.name,
-                    workflowName: wf.name,
-                    timestamp: Date.now(),
-                    duration: Math.round(stepDuration),
-                    exitCode: success ? 0 : 1,
-                    stdout: success
-                        ? generateMockOutput(step.type, step.command)
-                        : `Error: command exited with code 1\nstderr: execution failed`,
-                    status,
-                    expanded: false,
-                };
-                const prev = globalStore.get(this.outputHistory);
-                globalStore.set(this.outputHistory, [entry, ...prev]);
-
-                if (idx === wf.steps.length - 1) {
-                    const updatedSteps = globalStore.get(this.workflows).find((w) => w.id === workflowId)?.steps ?? [];
-                    const hasError = updatedSteps.some((s) => s.status === "error");
-                    this.updateWorkflow(workflowId, (w) => ({
-                        ...w,
-                        status: hasError ? "error" : "success",
-                        lastRun: Date.now(),
-                    }));
-                }
-            }, delay);
-            this.runTimers.push(doneTimer);
         });
+    }
+
+    private finalizeWorkflow(workflowId: string) {
+        const updatedSteps = globalStore.get(this.workflows).find((w) => w.id === workflowId)?.steps ?? [];
+        const hasError = updatedSteps.some((s) => s.status === "error");
+        this.updateWorkflow(workflowId, (w) => ({
+            ...w,
+            status: hasError ? "error" : "success",
+            lastRun: Date.now(),
+        }));
+        this.saveWorkflows();
     }
 
     runSingleStep(workflowId: string, stepId: string) {
@@ -360,29 +447,64 @@ export class ShellWorkflowViewModel implements ViewModel {
 
         this.updateStep(workflowId, stepId, { status: "running" });
 
-        const duration = 1000 + Math.random() * 2000;
-        const t = setTimeout(() => {
-            const success = Math.random() > 0.1;
-            const status: StepStatus = success ? "success" : "error";
-            this.updateStep(workflowId, stepId, { status });
+        if (step.type === "http") {
+            const t = setTimeout(async () => {
+                const { success, output, durationMs } = await this.executeHttpStep(step);
+                const status: StepStatus = success ? "success" : "error";
+                this.updateStep(workflowId, stepId, { status });
+                const entry: OutputEntry = {
+                    id: `out-${Date.now()}`,
+                    stepName: step.name,
+                    workflowName: wf.name,
+                    timestamp: Date.now(),
+                    duration: durationMs,
+                    exitCode: success ? 0 : 1,
+                    stdout: output,
+                    status,
+                    expanded: false,
+                };
+                const prev = globalStore.get(this.outputHistory);
+                globalStore.set(this.outputHistory, [entry, ...prev]);
+            }, 0);
+            this.runTimers.push(t);
+        } else {
+            const duration = 1200 + Math.random() * 1800;
+            const t = setTimeout(() => {
+                const success = Math.random() > 0.1;
+                const status: StepStatus = success ? "success" : "error";
+                this.updateStep(workflowId, stepId, { status });
+                const resolvedCommand = this.substituteVariables(step.command);
+                const entry: OutputEntry = {
+                    id: `out-${Date.now()}`,
+                    stepName: step.name,
+                    workflowName: wf.name,
+                    timestamp: Date.now(),
+                    duration: Math.round(duration),
+                    exitCode: success ? 0 : 1,
+                    stdout: success
+                        ? generateMockOutput(step.type, resolvedCommand)
+                        : `Error: command exited with code 1\nstderr: execution failed`,
+                    status,
+                    expanded: false,
+                };
+                const prev = globalStore.get(this.outputHistory);
+                globalStore.set(this.outputHistory, [entry, ...prev]);
+            }, duration);
+            this.runTimers.push(t);
+        }
+    }
 
-            const entry: OutputEntry = {
-                id: `out-${Date.now()}`,
-                stepName: step.name,
-                workflowName: wf.name,
-                timestamp: Date.now(),
-                duration: Math.round(duration),
-                exitCode: success ? 0 : 1,
-                stdout: success
-                    ? generateMockOutput(step.type, step.command)
-                    : `Error: command exited with code 1\nstderr: execution failed`,
-                status,
-                expanded: false,
-            };
-            const prev = globalStore.get(this.outputHistory);
-            globalStore.set(this.outputHistory, [entry, ...prev]);
-        }, duration);
-        this.runTimers.push(t);
+    persistWorkflows() {
+        this.saveWorkflows();
+    }
+
+    private saveWorkflows() {
+        try {
+            const workflows = globalStore.get(this.workflows);
+            localStorage.setItem(WORKFLOWS_STORAGE_KEY, JSON.stringify(workflows));
+        } catch {
+            // localStorage may be unavailable
+        }
     }
 
     toggleStepExpanded(workflowId: string, stepId: string) {

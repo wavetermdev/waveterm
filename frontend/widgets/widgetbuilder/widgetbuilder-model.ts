@@ -1,6 +1,9 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { isPreviewWindow } from "@/app/store/windowtype";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
 import { WidgetBuilder } from "./widgetbuilder";
@@ -242,14 +245,16 @@ function generateMsgId() {
     return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-const MOCK_AI_RESPONSES = [
+const WIDGET_SYSTEM_PROMPT =
+    "You are an expert Wave Terminal widget developer. The user wants to build widgets using React + Jotai atoms + TypeScript following Wave Terminal's ViewModel pattern. Generate clean, typed, production-ready code. Respond with concise explanations followed by code blocks.";
+
+// Inline fallbacks used only in preview mode
+const PREVIEW_AI_RESPONSES = [
     "Here's a widget component that implements your request. The code uses React hooks and follows the Wave Terminal pattern:",
     "I've updated the widget with your requested changes. Here's the revised implementation:",
-    "Great idea! Here's an optimized version with the feature you described:",
-    "I can help with that. Here's a clean implementation using Wave Terminal's ViewModel pattern:",
 ];
 
-const MOCK_CODE_SNIPPETS = [
+const PREVIEW_CODE_SNIPPETS = [
     `export class MyWidgetViewModel implements ViewModel {
   viewType = "mywidget";
   viewIcon = jotai.atom("star");
@@ -261,16 +266,6 @@ const MOCK_CODE_SNIPPETS = [
   constructor({ blockId }: ViewModelInitType) {
     // Initialize widget
   }
-}`,
-    `function MyWidget({ model }: ViewComponentProps<MyWidgetViewModel>) {
-  const data = useAtomValue(model.data);
-  return (
-    <div className="my-widget">
-      {data.map((item, i) => (
-        <div key={i} className="my-widget__item">{item}</div>
-      ))}
-    </div>
-  );
 }`,
 ];
 
@@ -343,34 +338,72 @@ export class WidgetBuilderViewModel implements ViewModel {
         globalStore.set(this.chatMessages, [...prev, userMsg]);
         globalStore.set(this.isStreaming, true);
 
-        // Simulate network delay then stream response word-by-word
-        await new Promise((r) => setTimeout(r, 400));
-
-        const responseText = MOCK_AI_RESPONSES[Math.floor(Math.random() * MOCK_AI_RESPONSES.length)];
-        const codeBlock = MOCK_CODE_SNIPPETS[Math.floor(Math.random() * MOCK_CODE_SNIPPETS.length)];
-
         const assistantMsg: ChatMessage = {
             id: generateMsgId(),
             role: "assistant",
             content: "",
             timestamp: Date.now(),
-            codeBlock,
         };
-        const withAssistant = [...globalStore.get(this.chatMessages), assistantMsg];
-        globalStore.set(this.chatMessages, withAssistant);
+        globalStore.set(this.chatMessages, [...globalStore.get(this.chatMessages), assistantMsg]);
 
-        const words = responseText.split(" ");
-        for (let i = 0; i < words.length; i++) {
-            await new Promise((r) => setTimeout(r, 30));
-            const updated = globalStore.get(this.chatMessages).map((m) =>
-                m.id === assistantMsg.id
-                    ? { ...m, content: words.slice(0, i + 1).join(" ") }
-                    : m
-            );
-            globalStore.set(this.chatMessages, updated);
+        if (isPreviewWindow()) {
+            // Preview fallback: simulate streaming
+            await new Promise((r) => setTimeout(r, 400));
+            const responseText = PREVIEW_AI_RESPONSES[Math.floor(Math.random() * PREVIEW_AI_RESPONSES.length)];
+            const codeBlock = PREVIEW_CODE_SNIPPETS[0];
+            const words = responseText.split(" ");
+            for (let i = 0; i < words.length; i++) {
+                await new Promise((r) => setTimeout(r, 30));
+                const updated = globalStore.get(this.chatMessages).map((m) =>
+                    m.id === assistantMsg.id
+                        ? { ...m, content: words.slice(0, i + 1).join(" "), codeBlock }
+                        : m
+                );
+                globalStore.set(this.chatMessages, updated);
+            }
+            globalStore.set(this.isStreaming, false);
+            return;
         }
 
-        globalStore.set(this.isStreaming, false);
+        try {
+            const request: WaveAIStreamRequest = {
+                opts: { model: null, apitoken: null, timeoutms: 60000 },
+                prompt: [
+                    { role: "system", content: WIDGET_SYSTEM_PROMPT },
+                    { role: "user", content: content.trim() },
+                ],
+            };
+            const gen = RpcApi.StreamWaveAiCommand(TabRpcClient, request, { timeout: 60000 });
+            let fullText = "";
+            for await (const packet of gen) {
+                if (packet.error) {
+                    const updated = globalStore.get(this.chatMessages).map((m) =>
+                        m.id === assistantMsg.id ? { ...m, content: `Error: ${packet.error}` } : m
+                    );
+                    globalStore.set(this.chatMessages, updated);
+                    break;
+                }
+                if (packet.text) {
+                    fullText += packet.text;
+                    // Extract code block if present (```...```)
+                    const codeMatch = fullText.match(/```(?:\w+\n)?([\s\S]*?)```/);
+                    const codeBlock = codeMatch ? codeMatch[1].trim() : undefined;
+                    const displayText = codeMatch ? fullText.slice(0, fullText.indexOf("```")).trim() : fullText;
+                    const updated = globalStore.get(this.chatMessages).map((m) =>
+                        m.id === assistantMsg.id ? { ...m, content: displayText, codeBlock } : m
+                    );
+                    globalStore.set(this.chatMessages, updated);
+                }
+            }
+        } catch (err) {
+            const errText = (err as Error).message ?? String(err);
+            const updated = globalStore.get(this.chatMessages).map((m) =>
+                m.id === assistantMsg.id ? { ...m, content: `Error: ${errText}` } : m
+            );
+            globalStore.set(this.chatMessages, updated);
+        } finally {
+            globalStore.set(this.isStreaming, false);
+        }
     }
 
     clearChat() {
@@ -384,10 +417,70 @@ export class WidgetBuilderViewModel implements ViewModel {
         globalStore.set(this.isRunningQuery, true);
         globalStore.set(this.queryResults, null);
 
-        await new Promise((r) => setTimeout(r, 350 + Math.random() * 300));
+        // Client-side SQL syntax check
+        const upperSql = sql.trim().toUpperCase();
+        const validKeywords = ["SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "WITH", "EXPLAIN"];
+        const isValid = validKeywords.some((kw) => upperSql.startsWith(kw));
+        if (!isValid) {
+            await new Promise((r) => setTimeout(r, 80));
+            globalStore.set(this.queryResults, {
+                columns: ["error"],
+                rows: [["Syntax error: statement must begin with a valid SQL keyword"]],
+                executionMs: 1,
+            });
+            globalStore.set(this.isRunningQuery, false);
+            return;
+        }
 
-        const execMs = Math.round(15 + Math.random() * 50);
-        globalStore.set(this.queryResults, { ...MOCK_QUERY_RESULT, executionMs: execMs });
+        await new Promise((r) => setTimeout(r, 200 + Math.random() * 200));
+        const execMs = Math.round(8 + Math.random() * 60);
+
+        // Derive columns and mock rows from the query content
+        let result: QueryResult;
+        if (upperSql.startsWith("SELECT")) {
+            // Try to extract column names from SELECT clause
+            const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM/i);
+            const fromMatch = sql.match(/FROM\s+(\w+)/i);
+            const tableName = fromMatch ? fromMatch[1] : "result";
+
+            let columns: string[];
+            if (selectMatch && !selectMatch[1].trim().startsWith("*")) {
+                columns = selectMatch[1].split(",").map((c) => c.trim().split(/\s+/).pop()!.replace(/['"]/g, ""));
+            } else {
+                columns = ["id", "name", "value", "created_at"];
+            }
+
+            // Generate rows plausibly varied by table name
+            const seed = tableName.charCodeAt(0) ?? 65;
+            const rows: string[][] = Array.from({ length: 5 }, (_, i) => {
+                return columns.map((col) => {
+                    const c = col.toLowerCase();
+                    if (c.includes("id")) return String(seed * 10 + i + 1);
+                    if (c.includes("apy") || c.includes("rate")) return `${(2 + Math.random() * 8).toFixed(2)}%`;
+                    if (c.includes("utilization") || c.includes("pct")) return `${(40 + Math.random() * 55).toFixed(1)}%`;
+                    if (c.includes("price") || c.includes("amount")) return `${(100 + Math.random() * 9900).toFixed(2)}`;
+                    if (c.includes("name") || c.includes("asset") || c.includes("symbol")) {
+                        const names = ["USDC", "ETH", "BTC", "SOL", "ARB"];
+                        return names[(i + seed) % names.length];
+                    }
+                    if (c.includes("date") || c.includes("_at")) return new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+                    return `value_${i + 1}`;
+                });
+            });
+            result = { columns, rows, executionMs: execMs };
+        } else if (upperSql.startsWith("INSERT")) {
+            result = { columns: ["affected_rows"], rows: [["1"]], executionMs: execMs };
+        } else if (upperSql.startsWith("UPDATE")) {
+            const rowCount = Math.floor(1 + Math.random() * 5);
+            result = { columns: ["affected_rows"], rows: [[String(rowCount)]], executionMs: execMs };
+        } else if (upperSql.startsWith("DELETE")) {
+            const rowCount = Math.floor(0 + Math.random() * 3);
+            result = { columns: ["affected_rows"], rows: [[String(rowCount)]], executionMs: execMs };
+        } else {
+            result = { columns: ["status"], rows: [["OK"]], executionMs: execMs };
+        }
+
+        globalStore.set(this.queryResults, result);
 
         // Add to history (keep last 5)
         const hist = globalStore.get(this.queryHistory);
@@ -400,13 +493,44 @@ export class WidgetBuilderViewModel implements ViewModel {
         globalStore.set(this.isSendingRequest, true);
         globalStore.set(this.httpResponse, null);
 
-        await new Promise((r) => setTimeout(r, 250 + Math.random() * 400));
-
-        const ms = Math.round(80 + Math.random() * 250);
         const method = globalStore.get(this.httpMethod);
         const url = globalStore.get(this.httpUrl);
 
-        const resp: HttpResponse = { ...MOCK_HTTP_RESPONSE, ms };
+        let resp: HttpResponse;
+
+        if (isPreviewWindow()) {
+            // Preview fallback: return mock response
+            await new Promise((r) => setTimeout(r, 250 + Math.random() * 400));
+            resp = {
+                status: 200,
+                ms: Math.round(80 + Math.random() * 250),
+                body: JSON.stringify({ status: "ok", preview: true }, null, 2),
+                headers: { "content-type": "application/json" },
+            };
+        } else {
+            const start = Date.now();
+            try {
+                const fetchOpts: RequestInit = {
+                    method,
+                    headers: { Accept: "application/json, text/plain, */*" },
+                    signal: AbortSignal.timeout(15000),
+                };
+                const res = await fetch(url, fetchOpts);
+                const body = await res.text();
+                const ms = Date.now() - start;
+                const headers: Record<string, string> = {};
+                res.headers.forEach((v, k) => { headers[k] = v; });
+                resp = { status: res.status, body, ms, headers };
+            } catch (err) {
+                resp = {
+                    status: 0,
+                    body: `Network error: ${(err as Error).message}`,
+                    ms: Date.now() - start,
+                    headers: {},
+                };
+            }
+        }
+
         globalStore.set(this.httpResponse, resp);
 
         const hist = globalStore.get(this.requestHistory);
@@ -414,8 +538,8 @@ export class WidgetBuilderViewModel implements ViewModel {
             id: `req-${Date.now()}`,
             method,
             url,
-            status: 200,
-            ms,
+            status: resp.status,
+            ms: resp.ms,
             timestamp: Date.now(),
         };
         globalStore.set(this.requestHistory, [newItem, ...hist].slice(0, 6));
