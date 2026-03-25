@@ -280,7 +280,8 @@ export class MLModelViewModel implements ViewModel {
                 const parsed = JSON.parse(content);
                 const preview = JSON.stringify(parsed, null, 2).slice(0, 2000);
                 globalStore.set(this.dataPreview, preview);
-                // Try to infer columns from first object
+                // Heuristic: infer features as all-but-last columns, target as last column.
+                // Users can override targetColumn/featureColumns after loading.
                 if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "object") {
                     const cols = Object.keys(parsed[0]);
                     globalStore.set(this.featureColumns, cols.slice(0, -1).join(", "));
@@ -291,7 +292,10 @@ export class MLModelViewModel implements ViewModel {
                 const preview = lines.slice(0, 20).join("\n");
                 globalStore.set(this.dataPreview, preview);
                 if (lines.length > 0) {
+                    // Basic CSV header parsing (comma-separated, strips double quotes).
+                    // Does not handle escaped quotes or quoted commas — use a CSV library for complex formats.
                     const cols = lines[0].split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+                    // Heuristic: last column is target; all others are features. Override as needed.
                     globalStore.set(this.featureColumns, cols.slice(0, -1).join(", "));
                     globalStore.set(this.targetColumn, cols[cols.length - 1]);
                 }

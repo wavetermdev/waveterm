@@ -375,6 +375,9 @@ export class ContainerManagerViewModel implements ViewModel {
     }
 
     async initDockerData() {
+        // Requires Docker daemon to expose its API on TCP (--api-cors-header / -H tcp://localhost:2375).
+        // This is disabled by default; only enable in controlled/local dev environments.
+        // Falls back to demo mock data when Docker is not accessible via TCP.
         try {
             const res = await fetch("http://localhost:2375/v1.43/containers/json?all=true", {
                 signal: AbortSignal.timeout(2000),
@@ -437,7 +440,9 @@ export class ContainerManagerViewModel implements ViewModel {
                 );
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const raw = await res.text();
-                // Docker multiplexed stream: each frame has an 8-byte header; strip it
+                // Docker log stream uses a multiplexed framing format:
+                // each frame has an 8-byte header (stream type + 3 padding + 4-byte length).
+                // We strip the header bytes and keep the text payload.
                 const lines = raw
                     .split("\n")
                     .map((l) => (l.length > 8 ? l.slice(8) : l).replace(/\r/g, "").trim())

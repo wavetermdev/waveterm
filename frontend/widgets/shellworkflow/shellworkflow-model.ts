@@ -311,6 +311,8 @@ export class ShellWorkflowViewModel implements ViewModel {
         return ShellWorkflow as ViewComponent;
     }
 
+    /** Substitutes $VARIABLE_NAME tokens in command strings with values from the variables atom.
+     *  Variable names must be uppercase with underscores (e.g. $DB_URL, $S3_BUCKET). */
     private substituteVariables(command: string): string {
         const vars = globalStore.get(this.variables);
         return command.replace(/\$([A-Z_][A-Z0-9_]*)/g, (match, name) => {

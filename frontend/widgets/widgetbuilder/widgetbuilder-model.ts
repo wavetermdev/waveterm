@@ -450,8 +450,8 @@ export class WidgetBuilderViewModel implements ViewModel {
                 columns = ["id", "name", "value", "created_at"];
             }
 
-            // Generate rows plausibly varied by table name
-            const seed = tableName.charCodeAt(0) ?? 65;
+            // Use the table name's first char code as a deterministic seed for mock row values
+            const seed = tableName.charCodeAt(0) ?? 65; /* fallback: 'A' */
             const rows: string[][] = Array.from({ length: 5 }, (_, i) => {
                 return columns.map((col) => {
                     const c = col.toLowerCase();
@@ -519,7 +519,7 @@ export class WidgetBuilderViewModel implements ViewModel {
                 const body = await res.text();
                 const ms = Date.now() - start;
                 const headers: Record<string, string> = {};
-                res.headers.forEach((v, k) => { headers[k] = v; });
+                res.headers.forEach((value, key) => { headers[key] = value; });
                 resp = { status: res.status, body, ms, headers };
             } catch (err) {
                 resp = {

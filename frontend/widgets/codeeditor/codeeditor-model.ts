@@ -120,8 +120,8 @@ async function fetchAiSuggestions(code: string, language: Language): Promise<AiS
         for await (const packet of gen) {
             if (packet.text) fullText += packet.text;
         }
-        // Strip markdown code fences if the model added them
-        const jsonText = fullText.replace(/^```(?:json)?\n?/m, "").replace(/```$/m, "").trim();
+        // Strip markdown code fences if the model wrapped the JSON (handles trailing whitespace/newlines)
+        const jsonText = fullText.replace(/^```(?:json)?\n?/m, "").replace(/```\s*$/m, "").trim();
         const parsed = JSON.parse(jsonText) as AiSuggestion[];
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {
