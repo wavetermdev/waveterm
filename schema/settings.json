@@ -229,6 +229,28 @@
         "tab:preset": {
           "type": "string"
         },
+        "tab:newtablayout": {
+          "type": "array",
+          "description": "Custom block layout for new tabs. Each element defines a block with its position in the tile tree. If not set, defaults to a single terminal block.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "indexarr": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": "Path in the tile tree (e.g. [0] = first child, [1] = second child, [1,1] = second child of second child)"
+              },
+              "size": {"type": "integer", "description": "Relative size/weight of the block"},
+              "blockdef": {
+                "type": "object",
+                "properties": {"meta": {"type": "object"}},
+                "description": "Block definition with meta (view, controller, file, url, etc.)"
+              },
+              "focused": {"type": "boolean", "description": "Whether this block should receive focus"}
+            },
+            "required": ["indexarr", "blockdef"]
+          }
+        },
         "tab:confirmclose": {
           "type": "boolean"
         },
