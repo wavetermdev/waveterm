@@ -760,5 +760,11 @@ func tryGetPamEnvVars() map[string]string {
 	if runtime_dir, ok := envVars["XDG_RUNTIME_DIR"]; !ok || runtime_dir == "" {
 		envVars["XDG_RUNTIME_DIR"] = "/run/user/" + fmt.Sprint(os.Getuid())
 	}
+	if configDirs, ok := envVars["XDG_CONFIG_DIRS"]; !ok || configDirs == "" {
+		envVars["XDG_CONFIG_DIRS"] = "/etc/xdg"
+	}
+	if dataDirs, ok := envVars["XDG_DATA_DIRS"]; !ok || dataDirs == "" {
+		envVars["XDG_DATA_DIRS"] = "/usr/local/share:/usr/share"
+	}
 	return envVars
 }
