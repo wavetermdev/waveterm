@@ -27,6 +27,11 @@ export const ArbitrageBotBlockId = crypto.randomUUID();
 export const DeFiLendingBlockId = crypto.randomUUID();
 export const FlashLoanBlockId = crypto.randomUUID();
 export const AmmLiquidityBlockId = crypto.randomUUID();
+export const CodeEditorBlockId = crypto.randomUUID();
+export const ContainersBlockId = crypto.randomUUID();
+export const ShellWorkflowBlockId = crypto.randomUUID();
+export const MLModelBlockId = crypto.randomUUID();
+export const WidgetBuilderBlockId = crypto.randomUUID();
 
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
 //
@@ -396,7 +401,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             oid: PreviewTabId,
             version: 1,
             name: "Preview Tab",
-            blockids: [WebBlockId, SysinfoBlockId, TradingAlgoBotBlockId, ArbitrageBotBlockId, DeFiLendingBlockId, FlashLoanBlockId, AmmLiquidityBlockId],
+            blockids: [WebBlockId, SysinfoBlockId, TradingAlgoBotBlockId, ArbitrageBotBlockId, DeFiLendingBlockId, FlashLoanBlockId, AmmLiquidityBlockId, CodeEditorBlockId, ContainersBlockId, ShellWorkflowBlockId, MLModelBlockId, WidgetBuilderBlockId],
             meta: {},
         } as Tab,
         [`block:${WebBlockId}`]: {
@@ -447,6 +452,36 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             oid: AmmLiquidityBlockId,
             version: 1,
             meta: { view: "ammliquidity" },
+        } as Block,
+        [`block:${CodeEditorBlockId}`]: {
+            otype: "block",
+            oid: CodeEditorBlockId,
+            version: 1,
+            meta: { view: "codeeditor" },
+        } as Block,
+        [`block:${ContainersBlockId}`]: {
+            otype: "block",
+            oid: ContainersBlockId,
+            version: 1,
+            meta: { view: "containers" },
+        } as Block,
+        [`block:${ShellWorkflowBlockId}`]: {
+            otype: "block",
+            oid: ShellWorkflowBlockId,
+            version: 1,
+            meta: { view: "shellworkflow" },
+        } as Block,
+        [`block:${MLModelBlockId}`]: {
+            otype: "block",
+            oid: MLModelBlockId,
+            version: 1,
+            meta: { view: "mlmodel" },
+        } as Block,
+        [`block:${WidgetBuilderBlockId}`]: {
+            otype: "block",
+            oid: WidgetBuilderBlockId,
+            version: 1,
+            meta: { view: "widgetbuilder" },
         } as Block,
     };
     const defaultAtoms: Partial<GlobalAtomsType> = {

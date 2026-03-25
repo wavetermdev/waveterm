@@ -110,5 +110,65 @@
                 "view": "ammliquidity"
             }
         }
+    },
+    "defwidget@codeeditor": {
+        "display:order": 6,
+        "icon": "code",
+        "color": "#06b6d4",
+        "label": "Code Editor",
+        "description": "AI-assisted code editor with multi-language support and autocompletion",
+        "blockdef": {
+            "meta": {
+                "view": "codeeditor"
+            }
+        }
+    },
+    "defwidget@containers": {
+        "display:order": 7,
+        "icon": "cube",
+        "color": "#0db7ed",
+        "label": "Containers",
+        "description": "Docker/K8s container manager with logs, metrics, and exec shell",
+        "blockdef": {
+            "meta": {
+                "view": "containers"
+            }
+        }
+    },
+    "defwidget@shellworkflow": {
+        "display:order": 8,
+        "icon": "diagram-project",
+        "color": "#22c55e",
+        "label": "Shell Workflows",
+        "description": "Programmable shell workflows with button-triggered pipeline steps",
+        "blockdef": {
+            "meta": {
+                "view": "shellworkflow"
+            }
+        }
+    },
+    "defwidget@mlmodel": {
+        "display:order": 9,
+        "icon": "brain",
+        "color": "#a855f7",
+        "label": "ML Model",
+        "description": "ML model training, evaluation, retrain with ONNX/Joblib export",
+        "blockdef": {
+            "meta": {
+                "view": "mlmodel"
+            }
+        }
+    },
+    "defwidget@widgetbuilder": {
+        "display:order": 10,
+        "icon": "wand-magic-sparkles",
+        "color": "#f59e0b",
+        "label": "Widget Builder",
+        "description": "Custom widget builder with AI chat, storage, DB queries, HTTP requests",
+        "blockdef": {
+            "meta": {
+                "view": "widgetbuilder"
+            }
+        }
     }
 }

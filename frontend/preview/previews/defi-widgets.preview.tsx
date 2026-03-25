@@ -7,9 +7,14 @@ import { makeMockNodeModel } from "../mock/mock-node-model";
 import {
     AmmLiquidityBlockId,
     ArbitrageBotBlockId,
+    CodeEditorBlockId,
+    ContainersBlockId,
     DeFiLendingBlockId,
     FlashLoanBlockId,
+    MLModelBlockId,
+    ShellWorkflowBlockId,
     TradingAlgoBotBlockId,
+    WidgetBuilderBlockId,
 } from "../mock/mockwaveenv";
 
 type WidgetEntry = {
@@ -50,6 +55,36 @@ const WIDGETS: WidgetEntry[] = [
         width: "1100px",
         height: "640px",
     },
+    {
+        label: "Code Editor — AI-Assisted, Multi-Language + Autocompletion",
+        blockId: CodeEditorBlockId,
+        width: "1100px",
+        height: "660px",
+    },
+    {
+        label: "Containers — Docker/K8s Manager with Logs, Metrics, Shell Exec",
+        blockId: ContainersBlockId,
+        width: "1100px",
+        height: "640px",
+    },
+    {
+        label: "Shell Workflows — Programmable Button-Triggered Pipelines",
+        blockId: ShellWorkflowBlockId,
+        width: "1100px",
+        height: "640px",
+    },
+    {
+        label: "ML Model — Training / Eval / Retrain (GBM, LR, NN, RF, NumpyLogistics) + ONNX/Joblib",
+        blockId: MLModelBlockId,
+        width: "1100px",
+        height: "680px",
+    },
+    {
+        label: "Widget Builder — AI Chat + Storage + DB Query + HTTP Station",
+        blockId: WidgetBuilderBlockId,
+        width: "1100px",
+        height: "660px",
+    },
 ];
 
 function WidgetPreviewBlock({ entry }: { entry: WidgetEntry }) {
@@ -79,7 +114,7 @@ export default function DeFiWidgetsPreview() {
     return (
         <div className="flex flex-col gap-12 py-8 items-center w-full">
             <div className="text-sm text-foreground font-mono font-semibold">
-                DeFi / Financial Widgets — Preview
+                DeFi / Financial + Platform Widgets — Preview
             </div>
             {WIDGETS.map((entry) => (
                 <WidgetPreviewBlock key={entry.blockId} entry={entry} />
