@@ -50,5 +50,65 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@tradingalgobot": {
+        "display:order": 1,
+        "icon": "robot",
+        "color": "#6366f1",
+        "label": "Trading Bot",
+        "description": "Hyperliquid trading algobot with ONNX/joblib ML models",
+        "blockdef": {
+            "meta": {
+                "view": "tradingalgobot"
+            }
+        }
+    },
+    "defwidget@arbitragebot": {
+        "display:order": 2,
+        "icon": "shuffle",
+        "color": "#10b981",
+        "label": "Arbitrage Bot",
+        "description": "Triangular arbitrage on Arbitrum with ML scoring",
+        "blockdef": {
+            "meta": {
+                "view": "arbitragebot"
+            }
+        }
+    },
+    "defwidget@defilending": {
+        "display:order": 3,
+        "icon": "bank",
+        "color": "#f59e0b",
+        "label": "DeFi Lending",
+        "description": "Supply, borrow, and collateralized swap repay with ML APY prediction",
+        "blockdef": {
+            "meta": {
+                "view": "defilending"
+            }
+        }
+    },
+    "defwidget@flashloan": {
+        "display:order": 4,
+        "icon": "bolt",
+        "color": "#8b5cf6",
+        "label": "Flash Loan",
+        "description": "Flash loan arbitrage rebalance portfolio",
+        "blockdef": {
+            "meta": {
+                "view": "flashloan"
+            }
+        }
+    },
+    "defwidget@ammliquidity": {
+        "display:order": 5,
+        "icon": "droplet",
+        "color": "#0ea5e9",
+        "label": "AMM Pools",
+        "description": "AMM liquidity pools – Uniswap V3, Camelot, Curve, Balancer",
+        "blockdef": {
+            "meta": {
+                "view": "ammliquidity"
+            }
+        }
     }
 }

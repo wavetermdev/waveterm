@@ -22,6 +22,11 @@ export const PreviewWorkspaceId = crypto.randomUUID();
 export const PreviewClientId = crypto.randomUUID();
 export const WebBlockId = crypto.randomUUID();
 export const SysinfoBlockId = crypto.randomUUID();
+export const TradingAlgoBotBlockId = crypto.randomUUID();
+export const ArbitrageBotBlockId = crypto.randomUUID();
+export const DeFiLendingBlockId = crypto.randomUUID();
+export const FlashLoanBlockId = crypto.randomUUID();
+export const AmmLiquidityBlockId = crypto.randomUUID();
 
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
 //
@@ -391,7 +396,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             oid: PreviewTabId,
             version: 1,
             name: "Preview Tab",
-            blockids: [WebBlockId, SysinfoBlockId],
+            blockids: [WebBlockId, SysinfoBlockId, TradingAlgoBotBlockId, ArbitrageBotBlockId, DeFiLendingBlockId, FlashLoanBlockId, AmmLiquidityBlockId],
             meta: {},
         } as Tab,
         [`block:${WebBlockId}`]: {
@@ -412,6 +417,36 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 "sysinfo:type": "CPU + Mem",
                 "graph:numpoints": 90,
             },
+        } as Block,
+        [`block:${TradingAlgoBotBlockId}`]: {
+            otype: "block",
+            oid: TradingAlgoBotBlockId,
+            version: 1,
+            meta: { view: "tradingalgobot" },
+        } as Block,
+        [`block:${ArbitrageBotBlockId}`]: {
+            otype: "block",
+            oid: ArbitrageBotBlockId,
+            version: 1,
+            meta: { view: "arbitragebot" },
+        } as Block,
+        [`block:${DeFiLendingBlockId}`]: {
+            otype: "block",
+            oid: DeFiLendingBlockId,
+            version: 1,
+            meta: { view: "defilending" },
+        } as Block,
+        [`block:${FlashLoanBlockId}`]: {
+            otype: "block",
+            oid: FlashLoanBlockId,
+            version: 1,
+            meta: { view: "flashloan" },
+        } as Block,
+        [`block:${AmmLiquidityBlockId}`]: {
+            otype: "block",
+            oid: AmmLiquidityBlockId,
+            version: 1,
+            meta: { view: "ammliquidity" },
         } as Block,
     };
     const defaultAtoms: Partial<GlobalAtomsType> = {
