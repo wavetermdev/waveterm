@@ -161,7 +161,7 @@ export class MLModelViewModel implements ViewModel {
 
     activeTab = jotai.atom<"models" | "train" | "evaluate" | "data" | "export">("models");
     models = jotai.atom<MLModel[]>([]);
-    selectedModelId = jotai.atom<string | null>(null);
+    selectedModelId = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
     selectedModelType = jotai.atom<MLModelType>("GBM");
     selectedDataSource = jotai.atom<DataSourceType>("CSV");
     hyperparams = jotai.atom<Hyperparams>({ ...DEFAULT_HYPERPARAMS });

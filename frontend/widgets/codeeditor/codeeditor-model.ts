@@ -3,7 +3,6 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { isPreviewWindow } from "@/app/store/windowtype";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
 import { CodeEditor } from "./codeeditor";
@@ -69,43 +68,10 @@ Training GBM... (n_estimators=200)
 Accuracy: 0.8850
 [Done] exit code 0 — 1.24s — 48MB RAM`;
 
-function generateMockSuggestions(): AiSuggestion[] {
-    return [
-        {
-            id: "sug-1",
-            description: "Add cross-validation with StratifiedKFold",
-            code: `from sklearn.model_selection import StratifiedKFold, cross_val_score\ncv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)\nscores = cross_val_score(model, X_train, y_train, cv=cv, scoring="accuracy")\nprint(f"CV Accuracy: {scores.mean():.4f} ± {scores.std():.4f}")`,
-        },
-        {
-            id: "sug-2",
-            description: "Plot feature importances",
-            code: `import matplotlib.pyplot as plt\nimportances = model.feature_importances_\nindices = np.argsort(importances)[::-1]\nplt.bar(range(X_train.shape[1]), importances[indices])\nplt.title("Feature Importances")\nplt.show()`,
-        },
-        {
-            id: "sug-3",
-            description: "Hyperparameter grid search",
-            code: `from sklearn.model_selection import GridSearchCV\nparam_grid = {"n_estimators": [100, 200], "max_depth": [3, 4, 5]}\ngrid = GridSearchCV(model, param_grid, cv=3, n_jobs=-1)\ngrid.fit(X_train, y_train)\nprint(f"Best params: {grid.best_params_}")`,
-        },
-        {
-            id: "sug-4",
-            description: "Save model with joblib",
-            code: `import joblib\njoblib.dump(model, "gbm_model.pkl")\nloaded = joblib.load("gbm_model.pkl")\nprint(f"Loaded model accuracy: {accuracy_score(y_test, loaded.predict(X_test)):.4f}")`,
-        },
-        {
-            id: "sug-5",
-            description: "Confusion matrix & classification report",
-            code: `from sklearn.metrics import confusion_matrix, classification_report\nprint(confusion_matrix(y_test, preds))\nprint(classification_report(y_test, preds))`,
-        },
-    ];
-}
-
 const CODE_SUGGESTION_SYSTEM_PROMPT =
     "You are an expert code assistant. When given code, respond ONLY with a JSON array of suggestion objects. Each object must have: id (string like 'sug-1'), description (short string), code (the code snippet string). Output valid JSON only, no markdown, no explanation.";
 
 async function fetchAiSuggestions(code: string, language: Language): Promise<AiSuggestion[]> {
-    if (isPreviewWindow()) {
-        return generateMockSuggestions();
-    }
     try {
         const prompt = `The user is editing ${language} code. Suggest 3-5 improvements, additions, or completions.\n\nCode:\n${code.slice(0, 2000)}`;
         const request: WaveAIStreamRequest = {
@@ -125,33 +91,9 @@ async function fetchAiSuggestions(code: string, language: Language): Promise<AiS
         const parsed = JSON.parse(jsonText) as AiSuggestion[];
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {
-        // Fall back to mock suggestions on parse or network error
+        // Return empty on parse or network error
     }
-    return generateMockSuggestions();
-}
-
-function generateMockFileTree(): FileTreeNode[] {
-    return [
-        {
-            name: "ml_project",
-            type: "folder",
-            children: [
-                { name: "model.py", type: "file", active: true },
-                { name: "data_utils.py", type: "file" },
-                { name: "config.json", type: "file" },
-            ],
-        },
-        {
-            name: "notebooks",
-            type: "folder",
-            children: [
-                { name: "exploration.ipynb", type: "file" },
-                { name: "evaluation.ipynb", type: "file" },
-            ],
-        },
-        { name: "requirements.txt", type: "file" },
-        { name: "README.md", type: "file" },
-    ];
+    return [];
 }
 
 function generateRunHistory(): RunRecord[] {
@@ -182,8 +124,8 @@ export class CodeEditorViewModel implements ViewModel {
     code = jotai.atom<string>(DEFAULT_CODE);
     output = jotai.atom<string>(DEFAULT_OUTPUT);
     isRunning = jotai.atom<boolean>(false);
-    aiSuggestions = jotai.atom<AiSuggestion[]>(generateMockSuggestions());
-    fileTree = jotai.atom<FileTreeNode[]>(generateMockFileTree());
+    aiSuggestions = jotai.atom<AiSuggestion[]>([]);
+    fileTree = jotai.atom<FileTreeNode[]>([]);
     runHistory = jotai.atom<RunRecord[]>(generateRunHistory());
     executionMetrics = jotai.atom<ExecutionMetrics>({
         lastRunDurationMs: 1240,
@@ -276,7 +218,7 @@ export class CodeEditorViewModel implements ViewModel {
         const language = globalStore.get(this.selectedLanguage);
         const suggestions = await fetchAiSuggestions(code, language);
         globalStore.set(this.aiSuggestions, suggestions);
-        globalStore.set(this.dataSource, isPreviewWindow() ? "demo" : "live");
+        globalStore.set(this.dataSource, "live");
     }
 
     stopRun() {

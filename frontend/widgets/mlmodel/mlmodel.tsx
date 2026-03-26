@@ -33,8 +33,11 @@ function LossCurveCanvas() {
         const valLoss: number[] = [];
         for (let i = 0; i < epochs; i++) {
             const t = i / (epochs - 1);
-            trainLoss.push(0.72 * Math.exp(-2.8 * t) + 0.04 + Math.random() * 0.01);
-            valLoss.push(0.75 * Math.exp(-2.5 * t) + 0.07 + Math.random() * 0.015);
+            // Deterministic small noise using sine at a high frequency (no Math.random)
+            const noise1 = 0.005 * Math.sin(i * 2.371 + 0.7);
+            const noise2 = 0.007 * Math.sin(i * 3.149 + 1.3);
+            trainLoss.push(0.72 * Math.exp(-2.8 * t) + 0.04 + noise1);
+            valLoss.push(0.75 * Math.exp(-2.5 * t) + 0.07 + noise2);
         }
 
         const allVals = [...trainLoss, ...valLoss];
@@ -587,22 +590,6 @@ function EvaluateTab({ model }: { model: import("./mlmodel-model").MLModelViewMo
 
 // ─── Tab: Data ────────────────────────────────────────────────────────────────
 
-const MOCK_DATA_ROWS = [
-    { f1: "0.823", f2: "-0.124", f3: "1.442", f4: "0.012", label: "1" },
-    { f1: "-0.441", f2: "0.882", f3: "0.201", f4: "-0.334", label: "0" },
-    { f1: "1.102", f2: "0.033", f3: "-1.877", f4: "0.721", label: "1" },
-    { f1: "0.009", f2: "-1.241", f3: "0.554", f4: "1.003", label: "0" },
-    { f1: "-0.773", f2: "0.562", f3: "0.033", f4: "-0.891", label: "1" },
-];
-
-const MOCK_SCHEMA = [
-    { col: "feature1", type: "float64", nulls: 0, unique: 342 },
-    { col: "feature2", type: "float64", nulls: 2, unique: 338 },
-    { col: "feature3", type: "float64", nulls: 0, unique: 340 },
-    { col: "feature4", type: "float64", nulls: 1, unique: 337 },
-    { col: "label", type: "int64", nulls: 0, unique: 2 },
-];
-
 function DataTab({ model }: { model: import("./mlmodel-model").MLModelViewModel }) {
     const [dsTab, setDsTab] = useAtom(model.dataSourceTab);
     const [pasteVal, setPasteVal] = React.useState("");
@@ -640,17 +627,7 @@ function DataTab({ model }: { model: import("./mlmodel-model").MLModelViewModel 
                             <span>feature4</span>
                             <span>label</span>
                         </div>
-                        {MOCK_DATA_ROWS.map((row, i) => (
-                            <div key={i} className="ml-table-row ml-preview-row">
-                                <span>{row.f1}</span>
-                                <span>{row.f2}</span>
-                                <span>{row.f3}</span>
-                                <span>{row.f4}</span>
-                                <span className={row.label === "1" ? "ml-label-pos" : "ml-label-neg"}>
-                                    {row.label}
-                                </span>
-                            </div>
-                        ))}
+                        <div className="ml-table-row ml-empty-state">Upload or paste data to preview</div>
                     </div>
                     <textarea
                         className="ml-paste-area"
@@ -670,14 +647,7 @@ function DataTab({ model }: { model: import("./mlmodel-model").MLModelViewModel 
                             <span>Nulls</span>
                             <span>Unique</span>
                         </div>
-                        {MOCK_SCHEMA.map((s) => (
-                            <div key={s.col} className="ml-table-row">
-                                <span className="ml-col-name">{s.col}</span>
-                                <span className="ml-col-type">{s.type}</span>
-                                <span className={s.nulls > 0 ? "ml-col-warn" : "ml-col-ok"}>{s.nulls}</span>
-                                <span>{s.unique}</span>
-                            </div>
-                        ))}
+                        <div className="ml-table-row ml-empty-state">No schema loaded</div>
                     </div>
 
                     <div className="ml-section-header" style={{ marginTop: 10 }}>Preprocessing</div>

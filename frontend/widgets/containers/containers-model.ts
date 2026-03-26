@@ -45,6 +45,26 @@ export type DockerApiContainer = {
     Created: number;
 };
 
+function mapDockerContainer(d: DockerApiContainer): Container {
+    const name = (d.Names?.[0] ?? "").replace(/^\//, "");
+    const ports = d.Ports
+        ? d.Ports.filter((p) => p.PublicPort)
+              .map((p) => `${p.PublicPort}:${p.PrivatePort}`)
+              .join(", ")
+        : "";
+    const status = d.State === "running" ? "running" : d.State === "exited" ? "stopped" : "error";
+    return {
+        id: d.Id.slice(0, 12),
+        name,
+        image: d.Image,
+        status: status as ContainerStatus,
+        cpu: 0, // real CPU requires streaming /stats endpoint
+        memMB: 0,
+        ports,
+        created: d.Created * 1000,
+    };
+}
+
 function generateCpuHistory(baseCpu: number, count: number): CpuPoint[] {
     const now = Date.now();
     const points: CpuPoint[] = [];
@@ -170,7 +190,7 @@ export class ContainerManagerViewModel implements ViewModel {
                 globalStore.set(this.dataSource, "demo");
             }
         }
-        // Mock drift for demo mode — stable values, no random
+        // Demo mode — keep existing containers stable (no random drift)
         const prev = globalStore.get(this.containers);
         globalStore.set(
             this.containers,
@@ -178,7 +198,10 @@ export class ContainerManagerViewModel implements ViewModel {
                 ...c,
                 cpu: c.status === "running" ? c.cpu : 0,
             }))
-        );(containerId: string, containerName: string) {
+        );
+    }
+
+    async fetchContainerLogs(containerId: string, containerName: string) {
         const isLive = globalStore.get(this.dockerAvailable);
         if (isLive) {
             try {

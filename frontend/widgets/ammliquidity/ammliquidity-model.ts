@@ -4,6 +4,7 @@
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
 import { fetchTokenPrices } from "../services/coingecko";
+import { fetchBalancerPools, balancerImpliedPrice, BalancerPool as BalancerSubgraphPool } from "../services/balancer";
 import { AmmLiquidity } from "./ammliquidity";
 
 export type LiquidityPool = {
@@ -53,121 +54,56 @@ export type PriceImpact = {
     effectivePrice: number;
 };
 
-function generatePools(): LiquidityPool[] {
-    return [
-        {
-            id: "pool-1",
-            token0: "ETH",
-            token1: "USDC",
-            icon0: "💎",
-            icon1: "💵",
-            protocol: "Uniswap V3",
-            fee: 0.05,
-            tvl: 184500000,
-            volume24h: 42300000,
-            apy: 18.4,
-            feesEarned24h: 21150,
-            price: 3520,
-            reserves0: 28000,
-            reserves1: 98560000,
-        },
-        {
-            id: "pool-2",
-            token0: "WBTC",
-            token1: "ETH",
-            icon0: "₿",
-            icon1: "💎",
-            protocol: "Uniswap V3",
-            fee: 0.05,
-            tvl: 87200000,
-            volume24h: 18400000,
-            apy: 12.7,
-            feesEarned24h: 9200,
-            price: 19.15,
-            reserves0: 648,
-            reserves1: 12402,
-        },
-        {
-            id: "pool-3",
-            token0: "ARB",
-            token1: "ETH",
-            icon0: "🔵",
-            icon1: "💎",
-            protocol: "Camelot",
-            fee: 0.3,
-            tvl: 42100000,
-            volume24h: 8700000,
-            apy: 34.2,
-            feesEarned24h: 26100,
-            price: 0.000352,
-            reserves0: 17000000,
-            reserves1: 5984,
-        },
-        {
-            id: "pool-4",
-            token0: "USDC",
-            token1: "DAI",
-            icon0: "💵",
-            icon1: "🟡",
-            protocol: "Curve",
-            fee: 0.04,
-            tvl: 234000000,
-            volume24h: 81000000,
-            apy: 4.8,
-            feesEarned24h: 32400,
-            price: 1.0,
-            reserves0: 117000000,
-            reserves1: 117000000,
-        },
-        {
-            id: "pool-5",
-            token0: "GMX",
-            token1: "ETH",
-            icon0: "🎯",
-            icon1: "💎",
-            protocol: "Balancer",
-            fee: 0.3,
-            tvl: 28300000,
-            volume24h: 5400000,
-            apy: 22.1,
-            feesEarned24h: 16200,
-            price: 0.012,
-            reserves0: 180000,
-            reserves1: 2160,
-        },
-    ];
+const TOKEN_ICONS: Record<string, string> = {
+    ETH: "💎", WETH: "💎", WBTC: "₿", BTC: "₿",
+    USDC: "💵", USDT: "💵", DAI: "🟡",
+    ARB: "🔵", GMX: "🎯", BAL: "⚖️", LINK: "🔗",
+    MATIC: "🟣", SOL: "◎", AVAX: "🔺",
+};
+
+function tokenIcon(symbol: string): string {
+    return TOKEN_ICONS[symbol?.toUpperCase() ?? ""] ?? "🔷";
 }
 
-function generateUserPositions(): UserLpPosition[] {
-    return [
-        {
-            poolId: "pool-1",
-            liquidityTokens: 0.00842,
-            token0Amount: 1.42,
-            token1Amount: 4998,
-            valueUsd: 9997,
-            feesEarned: 48.32,
-            impermanentLoss: -1.24,
-            entryPrice: 3480,
-        },
-        {
-            poolId: "pool-3",
-            liquidityTokens: 12400,
-            token0Amount: 8200,
-            token1Amount: 2.88,
-            valueUsd: 3758,
-            feesEarned: 22.14,
-            impermanentLoss: -0.87,
-            entryPrice: 0.000348,
-        },
-    ];
+/** Convert a BalancerPool subgraph record into the widget's LiquidityPool shape. */
+function balancerToLiquidityPool(bp: BalancerSubgraphPool): LiquidityPool {
+    const t0 = bp.tokens[0];
+    const t1 = bp.tokens[1] ?? bp.tokens[0];
+
+    // Compute implied price from Balancer weighted pool formula when weights are available
+    let price = 0;
+    if (t0 && t1) {
+        if (t0.weight != null && t1.weight != null && t0.weight > 0 && t1.weight > 0) {
+            price = balancerImpliedPrice(t0.balance, t0.weight, t1.balance, t1.weight);
+        } else if (t1.balance > 0 && t0.balance > 0) {
+            price = t0.balance / t1.balance;
+        }
+    }
+
+    return {
+        id: bp.id,
+        token0: t0?.symbol ?? "?",
+        token1: t1?.symbol ?? "?",
+        icon0: tokenIcon(t0?.symbol ?? ""),
+        icon1: tokenIcon(t1?.symbol ?? ""),
+        protocol: "Balancer",
+        // swapFee from subgraph is a fraction (e.g. 0.003); convert to percent
+        fee: (bp.swapFee ?? 0) * 100,
+        tvl: bp.tvlUsd,
+        volume24h: bp.volume24hUsd,
+        apy: bp.apr,
+        feesEarned24h: bp.volume24hUsd * (bp.swapFee ?? 0),
+        price,
+        reserves0: t0?.balance ?? 0,
+        reserves1: t1?.balance ?? 0,
+    };
 }
 
 function calcPoolStats(positions: UserLpPosition[]): PoolStats {
     const totalTvl = positions.reduce((s, p) => s + p.valueUsd, 0);
     const totalFeesEarned = positions.reduce((s, p) => s + p.feesEarned, 0);
     const totalIL = positions.reduce((s, p) => s + p.impermanentLoss * p.valueUsd, 0) / (totalTvl || 1);
-    const avgApy = positions.length > 0 ? 21.3 : 0;
+    const avgApy = positions.length > 0 ? positions.reduce((s, p) => s + p.feesEarned, 0) / (totalTvl || 1) * 100 : 0;
     return { totalTvl, totalFeesEarned, totalIL, avgApy };
 }
 
@@ -222,13 +158,16 @@ export class AmmLiquidityViewModel implements ViewModel {
     noPadding = jotai.atom<boolean>(true);
 
     activeTab = jotai.atom<"pools" | "positions" | "swap" | "add">("pools");
-    pools = jotai.atom<LiquidityPool[]>(generatePools());
-    userPositions = jotai.atom<UserLpPosition[]>(generateUserPositions());
-    selectedPoolId = jotai.atom<string>("pool-1");
+    /** Populated from Balancer V2 subgraph on mount; empty until first fetch. */
+    pools = jotai.atom<LiquidityPool[]>([]);
+    userPositions = jotai.atom<UserLpPosition[]>([]);
+    selectedPoolId = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
     swapInputToken = jotai.atom<string>("ETH");
     swapInputAmount = jotai.atom<string>("");
     addLiquidityToken0 = jotai.atom<string>("");
     addLiquidityToken1 = jotai.atom<string>("");
+    /** "live" once Balancer subgraph responds, "loading" during fetch, "error" if unavailable. */
+    dataSource = jotai.atom<"live" | "loading" | "error">("loading");
 
     poolStats: jotai.Atom<PoolStats>;
     swapPreview: jotai.Atom<PriceImpact | null>;
@@ -250,7 +189,6 @@ export class AmmLiquidityViewModel implements ViewModel {
             const amountStr = get(this.swapInputAmount);
             const pools = get(this.pools);
             const pool = pools.find((p) => p.id === poolId);
-            if (!pool || !amountStr) return null;
             const inputAmount = parseFloat(amountStr);
             if (isNaN(inputAmount) || inputAmount <= 0) return null;
             return calcPriceImpact(pool, inputAmount, inputToken);
@@ -258,30 +196,30 @@ export class AmmLiquidityViewModel implements ViewModel {
 
         this.viewText = jotai.atom((get) => {
             const stats = get(this.poolStats);
+            const src = get(this.dataSource);
+            const pools = get(this.pools);
             const elems: HeaderElem[] = [
                 {
                     elemtype: "text",
-                    text: `LP Value: $${stats.totalTvl.toLocaleString()}`,
+                    text: src === "live" ? `${pools.length} pools` : src === "loading" ? "Loading…" : "Balancer unavailable",
                     noGrow: true,
                 },
                 {
                     elemtype: "text",
-                    text: `Fees: $${stats.totalFeesEarned.toFixed(2)}`,
-                    className: "widget-fees-earned",
+                    text: stats.totalTvl > 0 ? `LP: $${stats.totalTvl.toLocaleString()}` : "",
                     noGrow: true,
                 },
                 {
                     elemtype: "iconbutton",
                     icon: "rotate-right",
                     title: "Refresh pool data",
-                    click: () => this.refreshPools(),
+                    click: () => void this.initFromBalancer(),
                 },
             ];
             return elems;
         });
 
-        // Try to seed pool prices from CoinGecko on load
-        void this.initLivePrices();
+        void this.initFromBalancer();
         this.startRefresh();
     }
 
@@ -289,39 +227,58 @@ export class AmmLiquidityViewModel implements ViewModel {
         return AmmLiquidity as ViewComponent;
     }
 
-    /** Fetch live token prices for all pools and update their price fields. */
-    async initLivePrices() {
+    /**
+     * Fetch live pool data from the Balancer V2 Arbitrum subgraph.
+     * Maps subgraph records to LiquidityPool and enriches prices via CoinGecko.
+     */
+    async initFromBalancer() {
+        globalStore.set(this.dataSource, "loading");
         try {
-            const pools = globalStore.get(this.pools);
-            const symbols = [...new Set(pools.flatMap((p) => [p.token0, p.token1]))];
-            const prices = await fetchTokenPrices(symbols);
-            if (Object.keys(prices).length === 0) return;
-            const updated = pools.map((p) => {
-                const p0 = prices[p.token0];
-                const p1 = prices[p.token1];
-                if (p0 != null && p1 != null && p1 > 0) {
-                    return { ...p, price: p0 / p1 };
-                }
-                return p;
-            });
-            globalStore.set(this.pools, updated);
+            const balancerPools = await fetchBalancerPools(100_000, 20);
+            if (balancerPools.length === 0) {
+                globalStore.set(this.dataSource, "error");
+                return;
+            }
+
+            // Map subgraph records to LiquidityPool
+            let liquidityPools: LiquidityPool[] = balancerPools.map(balancerToLiquidityPool);
+
+            // Enrich prices using CoinGecko for any pool where implied price is 0
+            const symbols = [...new Set(liquidityPools.flatMap((p) => [p.token0, p.token1]))];
+            const cgPrices = await fetchTokenPrices(symbols).catch(() => ({} as Record<string, number>));
+            if (Object.keys(cgPrices).length > 0) {
+                liquidityPools = liquidityPools.map((p) => {
+                    if (p.price > 0) return p;
+                    const p0 = cgPrices[p.token0];
+                    const p1 = cgPrices[p.token1];
+                    if (p0 != null && p1 != null && p1 > 0) {
+                        return { ...p, price: p0 / p1 };
+                    }
+                    return p;
+                });
+            }
+
+            globalStore.set(this.pools, liquidityPools);
+            // Auto-select first pool if nothing selected yet
+            if (globalStore.get(this.selectedPoolId) == null && liquidityPools.length > 0) {
+                globalStore.set(this.selectedPoolId, liquidityPools[0].id);
+            }
+            globalStore.set(this.dataSource, "live");
         } catch (e) {
-            console.warn("[AmmLiquidity] CoinGecko unavailable – using mock prices", e);
+            console.warn("[AmmLiquidity] Balancer subgraph unavailable", e);
+            globalStore.set(this.dataSource, "error");
         }
     }
 
     refreshPools() {
-        // Pool metrics (volume, APY, fees) are not available from a public API;
-        // values remain stable and prices are updated via initLivePrices.
+        // Delegated to initFromBalancer; called periodically by startRefresh.
     }
 
     startRefresh() {
-        let tick = 0;
+        // Re-fetch from Balancer every 60 s to pick up TVL/volume changes.
         this.refreshInterval = setInterval(() => {
-            this.refreshPools();
-            tick++;
-            if (tick % 8 === 0) void this.initLivePrices();
-        }, 4000);
+            void this.initFromBalancer();
+        }, 60000);
     }
 
     dispose() {

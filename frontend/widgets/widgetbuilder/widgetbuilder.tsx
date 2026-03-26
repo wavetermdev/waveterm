@@ -573,19 +573,9 @@ function BuilderTab() {
                         onChange={(e) => setWidgetDesc(e.target.value)}
                     />
 
-                    {selectedComp && (
-                        <>
-                            <div className="widgetbuilder-widget__section-title" style={{ marginTop: 12 }}>
-                                Selected: {selectedComp.type}
-                            </div>
-                            <label className="widgetbuilder-widget__prop-label">Label</label>
-                            <input className="widgetbuilder-widget__input" defaultValue={selectedComp.label} />
-                            <label className="widgetbuilder-widget__prop-label">Width</label>
-                            <input className="widgetbuilder-widget__input" defaultValue={selectedComp.w} type="number" />
-                            <label className="widgetbuilder-widget__prop-label">Height</label>
-                            <input className="widgetbuilder-widget__input" defaultValue={selectedComp.h} type="number" />
-                        </>
-                    )}
+                    <div className="widgetbuilder-widget__empty-state" style={{ marginTop: 12 }}>
+                        Select a component on the canvas to edit its properties.
+                    </div>
 
                     <div className="widgetbuilder-widget__builder-actions">
                         <button

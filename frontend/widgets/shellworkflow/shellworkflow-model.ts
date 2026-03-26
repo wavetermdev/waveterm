@@ -69,7 +69,7 @@ export class ShellWorkflowViewModel implements ViewModel {
 
     activeTab = jotai.atom<"workflows" | "steps" | "output" | "variables">("workflows");
     workflows = jotai.atom<WorkflowDef[]>([]);
-    selectedWorkflowId = jotai.atom<string | null>(null);
+    selectedWorkflowId = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
     outputHistory = jotai.atom<OutputEntry[]>([]);
     variables = jotai.atom<WorkflowVariable[]>([]);
 

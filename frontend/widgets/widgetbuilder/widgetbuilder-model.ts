@@ -84,7 +84,7 @@ export class WidgetBuilderViewModel implements ViewModel {
 
     httpMethod = jotai.atom<string>("GET");
     httpUrl = jotai.atom<string>("https://api.hyperliquid.xyz/info");
-    httpResponse = jotai.atom<HttpResponse | null>(null);
+    httpResponse = jotai.atom<HttpResponse | null>(null) as jotai.PrimitiveAtom<HttpResponse | null>;
     requestHistory = jotai.atom<RequestHistoryItem[]>([]);
     isSendingRequest = jotai.atom<boolean>(false);
 
