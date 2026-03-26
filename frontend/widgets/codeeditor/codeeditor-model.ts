@@ -156,12 +156,14 @@ function generateMockFileTree(): FileTreeNode[] {
 
 function generateRunHistory(): RunRecord[] {
     const now = Date.now();
+    const durations = [1240, 1380, 940, 1150, 1820, 1070, 1340, 890, 1620, 1110];
+    const memories =  [48,   52,   41,  45,   58,   43,   50,  39,  55,   46];
     return Array.from({ length: 10 }, (_, i) => ({
         id: `run-${i}`,
         timestamp: now - i * 180_000,
         exitCode: i === 2 || i === 7 ? 1 : 0,
-        durationMs: 900 + Math.round(Math.random() * 800),
-        memoryMb: 38 + Math.round(Math.random() * 24),
+        durationMs: durations[i],
+        memoryMb: memories[i],
         language: "python",
     }));
 }
@@ -238,16 +240,13 @@ export class CodeEditorViewModel implements ViewModel {
         globalStore.set(this.output, `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\n...`);
 
         // Code execution requires a shell subprocess; keep simulated but record real timing
-        const simulatedDurationMs = 900 + Math.round(Math.random() * 800);
+        const FIXED_DURATION_MS = 1400;
         this.runTimer = setTimeout(() => {
             const actualDurationMs = Date.now() - startTime;
-            const memoryMb = 38 + Math.round(Math.random() * 24);
-            const cpuPeak = 55 + Math.round(Math.random() * 35);
-            const exitCode = Math.random() > 0.9 ? 1 : 0;
-            const mockOut =
-                exitCode === 0
-                    ? `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraining GBM... (n_estimators=200)\nAccuracy: ${(0.82 + Math.random() * 0.08).toFixed(4)}\n[Done] exit code 0 — ${(actualDurationMs / 1000).toFixed(2)}s — ${memoryMb}MB RAM`
-                    : `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraceback (most recent call last):\n  File "${fname}", line 7\nModuleNotFoundError: No module named 'sklearn'\n[Error] exit code 1 — ${(actualDurationMs / 1000).toFixed(2)}s`;
+            const memoryMb = 48;
+            const cpuPeak = 72;
+            const exitCode = 0;
+            const mockOut = `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraining GBM... (n_estimators=200)\nAccuracy: 0.8714\n[Done] exit code 0 — ${(actualDurationMs / 1000).toFixed(2)}s — ${memoryMb}MB RAM`;
 
             globalStore.set(this.output, mockOut);
             globalStore.set(this.isRunning, false);
@@ -269,7 +268,7 @@ export class CodeEditorViewModel implements ViewModel {
             const prev = globalStore.get(this.runHistory);
             globalStore.set(this.runHistory, [newRecord, ...prev].slice(0, 10));
             this.runTimer = null;
-        }, simulatedDurationMs);
+        }, FIXED_DURATION_MS);
     }
 
     async refreshAiSuggestions() {

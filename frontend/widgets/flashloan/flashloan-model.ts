@@ -145,14 +145,13 @@ function generateRebalanceTrades(portfolio: PortfolioAsset[]): RebalanceTrade[] 
 }
 
 function simulateExecution(): SimulationResult {
-    const success = Math.random() > 0.05;
     return {
         startBalance: 48800,
-        endBalance: success ? 49123.8 : 48800,
-        profit: success ? 323.8 : 0,
+        endBalance: 49123.8,
+        profit: 323.8,
         gasUsed: 18.7,
-        executionTime: 187 + Math.random() * 50,
-        success,
+        executionTime: 187,
+        success: true,
         trace: [
             "[0ms] Initiating flash loan: 50,000 USDC from Aave",
             "[12ms] Flash loan received",
@@ -235,15 +234,7 @@ export class FlashLoanViewModel implements ViewModel {
     }
 
     refreshPortfolio() {
-        const current = globalStore.get(this.portfolio);
-        const updated = current.map((a) => ({
-            ...a,
-            price: a.price * (1 + (Math.random() - 0.5) * 0.02),
-            value: a.value * (1 + (Math.random() - 0.5) * 0.02),
-        }));
-        globalStore.set(this.portfolio, updated);
-        const total = updated.reduce((s, a) => s + a.value, 0);
-        globalStore.set(this.totalPortfolioValue, total);
+        // Portfolio prices remain stable until a live price source is connected.
     }
 
     async runSimulation() {

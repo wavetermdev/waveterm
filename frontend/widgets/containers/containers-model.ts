@@ -275,9 +275,10 @@ function generateMockLogs(containerName: string): LogLine[] {
 function generateCpuHistory(baseCpu: number, count: number): CpuPoint[] {
     const now = Date.now();
     const points: CpuPoint[] = [];
-    let val = baseCpu;
+    // Use a fixed sawtooth pattern rather than random walk
     for (let i = count; i >= 0; i--) {
-        val = Math.max(0, Math.min(100, val + (Math.random() - 0.5) * 4));
+        const phase = (count - i) % 20;
+        const val = Math.max(0, Math.min(100, baseCpu + (phase < 10 ? phase * 0.4 : (20 - phase) * 0.4)));
         points.push({ ts: now - i * 3000, value: val });
     }
     return points;
@@ -419,18 +420,15 @@ export class ContainerManagerViewModel implements ViewModel {
                 globalStore.set(this.dataSource, "demo");
             }
         }
-        // Mock drift for demo mode
+        // Mock drift for demo mode — stable values, no random
         const prev = globalStore.get(this.containers);
         globalStore.set(
             this.containers,
             prev.map((c) => ({
                 ...c,
-                cpu: c.status === "running" ? Math.max(0, Math.min(100, c.cpu + (Math.random() - 0.5) * 3)) : 0,
+                cpu: c.status === "running" ? c.cpu : 0,
             }))
-        );
-    }
-
-    async fetchContainerLogs(containerId: string, containerName: string) {
+        );(containerId: string, containerName: string) {
         const isLive = globalStore.get(this.dockerAvailable);
         if (isLive) {
             try {
@@ -556,27 +554,24 @@ export class ContainerManagerViewModel implements ViewModel {
                     // Ignore transient errors
                 }
             } else {
-                // Mock CPU drift for demo mode
+                // Mock CPU drift for demo mode — stable, no random
                 const prev = globalStore.get(this.containers);
                 globalStore.set(
                     this.containers,
                     prev.map((c) => {
                         if (c.status !== "running") return c;
-                        const drift = (Math.random() - 0.5) * 2.5;
-                        return { ...c, cpu: Math.max(0, Math.min(100, c.cpu + drift)) };
+                        return c;
                     })
                 );
             }
 
-            // Append new cpu history point for metrics tab
+            // Append new cpu history point for metrics tab (use current container cpu — no random walk)
             const selected = globalStore.get(this.selectedMetricsContainer);
             const containers = globalStore.get(this.containers);
             const selectedContainer = containers.find((c) => c.name === selected);
             if (selectedContainer) {
                 const prevHistory = globalStore.get(this.cpuHistory);
-                const lastVal = prevHistory[prevHistory.length - 1]?.value ?? selectedContainer.cpu;
-                const newVal = Math.max(0, Math.min(100, lastVal + (Math.random() - 0.5) * 3));
-                globalStore.set(this.cpuHistory, [...prevHistory.slice(1), { ts: Date.now(), value: newVal }]);
+                globalStore.set(this.cpuHistory, [...prevHistory.slice(1), { ts: Date.now(), value: selectedContainer.cpu }]);
             }
 
             // Append a new log line if following (demo mode only — live mode gets real logs)
@@ -586,20 +581,18 @@ export class ContainerManagerViewModel implements ViewModel {
                 const runningContainers = globalStore.get(this.containers);
                 const isRunning = runningContainers.find((c) => c.name === logContainer)?.status === "running";
                 if (isRunning) {
-                    const levels: Array<"INFO" | "WARN" | "ERROR"> = ["INFO", "INFO", "INFO", "WARN"];
-                    const level = levels[Math.floor(Math.random() * levels.length)];
-                    const liveMsgs = [
-                        "heartbeat OK",
-                        "processed 1 request",
-                        "cache hit",
-                        "connection pool: 3/10 active",
-                        "GC pause: 2ms",
-                        "metrics exported",
-                        "health check passed",
+                    const DEMO_LOG_CYCLE: Array<{ level: "INFO" | "WARN" | "ERROR"; message: string }> = [
+                        { level: "INFO",  message: "heartbeat OK" },
+                        { level: "INFO",  message: "processed 1 request" },
+                        { level: "INFO",  message: "cache hit" },
+                        { level: "INFO",  message: "connection pool: 3/10 active" },
+                        { level: "WARN",  message: "GC pause: 2ms" },
+                        { level: "INFO",  message: "metrics exported" },
+                        { level: "INFO",  message: "health check passed" },
                     ];
-                    const msg = liveMsgs[Math.floor(Math.random() * liveMsgs.length)];
                     const prevLogs = globalStore.get(this.logLines);
-                    globalStore.set(this.logLines, [...prevLogs, { ts: Date.now(), level, message: msg }]);
+                    const entry = DEMO_LOG_CYCLE[prevLogs.length % DEMO_LOG_CYCLE.length];
+                    globalStore.set(this.logLines, [...prevLogs, { ts: Date.now(), level: entry.level, message: entry.message }]);
                 }
             }
         }, 2500);

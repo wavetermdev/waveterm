@@ -173,20 +173,14 @@ function calcHealthData(positions: UserPosition[], assets: LendingAsset[]): Heal
 function generateRateHistory(baseSupply: number, baseBorrow: number, count = 48): RateHistory[] {
     const now = Date.now();
     const history: RateHistory[] = [];
-    let supply = baseSupply;
-    let borrow = baseBorrow;
-    let util = 65 + Math.random() * 15;
+    const baseUtil = 72;
     for (let i = count; i >= 0; i--) {
-        supply += (Math.random() - 0.5) * 0.2;
-        borrow += (Math.random() - 0.5) * 0.2;
-        util += (Math.random() - 0.5) * 2;
-        util = Math.max(30, Math.min(95, util));
-        history.push({
-            ts: now - i * 3600000,
-            supplyApy: Math.max(0.1, supply),
-            borrowApy: Math.max(supply + 0.5, borrow),
-            utilization: util,
-        });
+        // Deterministic oscillation: subtle sine waves for a realistic-looking chart
+        const phase = ((count - i) / count) * 2 * Math.PI;
+        const supplyApy = Math.max(0.1, baseSupply + Math.sin(phase * 1.3) * 0.15);
+        const borrowApy = Math.max(supplyApy + 0.5, baseBorrow + Math.sin(phase * 0.9) * 0.15);
+        const utilization = Math.max(30, Math.min(95, baseUtil + Math.sin(phase * 1.7) * 3.5));
+        history.push({ ts: now - i * 3600000, supplyApy, borrowApy, utilization });
     }
     return history;
 }
@@ -280,14 +274,8 @@ export class DeFiLendingViewModel implements ViewModel {
     }
 
     refreshRates() {
-        const current = globalStore.get(this.assets);
-        const updated = current.map((a) => ({
-            ...a,
-            supplyApy: Math.max(0.1, a.supplyApy + (Math.random() - 0.5) * 0.3),
-            borrowApy: Math.max(a.supplyApy + 0.5, a.borrowApy + (Math.random() - 0.5) * 0.3),
-            utilization: Math.max(20, Math.min(98, a.utilization + (Math.random() - 0.5) * 3)),
-        }));
-        globalStore.set(this.assets, updated);
+        // Rates are updated from live CoinGecko prices; APY and utilization remain stable
+        // until a real on-chain data source is connected.
     }
 
     startRefresh() {

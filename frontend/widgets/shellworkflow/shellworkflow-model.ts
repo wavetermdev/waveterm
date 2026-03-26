@@ -361,12 +361,17 @@ export class ShellWorkflowViewModel implements ViewModel {
             steps: w.steps.map((s) => ({ ...s, status: "pending" as StepStatus })),
         }));
 
+        // Fixed durations per step type — realistic but deterministic
+        const STEP_DURATIONS: Record<StepType, number> = {
+            shell: 1400,
+            python: 2200,
+            http: 450,
+            condition: 200,
+        };
+
         let delay = 0;
         wf.steps.forEach((step, idx) => {
-            // HTTP steps use realistic durations; shell/python vary more
-            const stepDuration = step.type === "http"
-                ? 300 + Math.random() * 700
-                : 1200 + Math.random() * 1800;
+            const stepDuration = STEP_DURATIONS[step.type];
 
             const runningTimer = setTimeout(() => {
                 this.updateStep(workflowId, step.id, { status: "running" });
@@ -400,20 +405,19 @@ export class ShellWorkflowViewModel implements ViewModel {
                 this.runTimers.push(httpTimer);
             } else {
                 const doneTimer = setTimeout(() => {
-                    const success = Math.random() > 0.15;
-                    const status: StepStatus = success ? "success" : "error";
-                    this.updateStep(workflowId, step.id, { status });
                     const resolvedCommand = this.substituteVariables(step.command);
+                    const output = generateMockOutput(step.type, resolvedCommand);
+                    const exitCode = 0;
+                    const status: StepStatus = "success";
+                    this.updateStep(workflowId, step.id, { status });
                     const entry: OutputEntry = {
                         id: `out-${Date.now()}-${idx}`,
                         stepName: step.name,
                         workflowName: wf.name,
                         timestamp: Date.now(),
-                        duration: Math.round(stepDuration),
-                        exitCode: success ? 0 : 1,
-                        stdout: success
-                            ? generateMockOutput(step.type, resolvedCommand)
-                            : `Error: command exited with code 1\nstderr: execution failed`,
+                        duration: stepDuration,
+                        exitCode,
+                        stdout: output,
                         status,
                         expanded: false,
                     };
@@ -470,25 +474,22 @@ export class ShellWorkflowViewModel implements ViewModel {
             }, 0);
             this.runTimers.push(t);
         } else {
-            const duration = 1200 + Math.random() * 1800;
+            const STEP_DURATIONS: Record<StepType, number> = { shell: 1400, python: 2200, http: 450, condition: 200 };
+            const duration = STEP_DURATIONS[step.type];
             const t = setTimeout(() => {
-                const success = Math.random() > 0.1;
-                const status: StepStatus = success ? "success" : "error";
-                this.updateStep(workflowId, stepId, { status });
                 const resolvedCommand = this.substituteVariables(step.command);
                 const entry: OutputEntry = {
                     id: `out-${Date.now()}`,
                     stepName: step.name,
                     workflowName: wf.name,
                     timestamp: Date.now(),
-                    duration: Math.round(duration),
-                    exitCode: success ? 0 : 1,
-                    stdout: success
-                        ? generateMockOutput(step.type, resolvedCommand)
-                        : `Error: command exited with code 1\nstderr: execution failed`,
-                    status,
+                    duration,
+                    exitCode: 0,
+                    stdout: generateMockOutput(step.type, resolvedCommand),
+                    status: "success",
                     expanded: false,
                 };
+                this.updateStep(workflowId, stepId, { status: "success" });
                 const prev = globalStore.get(this.outputHistory);
                 globalStore.set(this.outputHistory, [entry, ...prev]);
             }, duration);

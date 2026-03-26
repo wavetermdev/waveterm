@@ -311,15 +311,8 @@ export class AmmLiquidityViewModel implements ViewModel {
     }
 
     refreshPools() {
-        const current = globalStore.get(this.pools);
-        const updated = current.map((p) => ({
-            ...p,
-            volume24h: p.volume24h * (1 + (Math.random() - 0.5) * 0.05),
-            apy: Math.max(0.1, p.apy + (Math.random() - 0.5) * 0.5),
-            price: p.price * (1 + (Math.random() - 0.5) * 0.003),
-            feesEarned24h: p.feesEarned24h * (1 + (Math.random() - 0.5) * 0.03),
-        }));
-        globalStore.set(this.pools, updated);
+        // Pool metrics (volume, APY, fees) are not available from a public API;
+        // values remain stable and prices are updated via initLivePrices.
     }
 
     startRefresh() {

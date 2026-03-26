@@ -49,52 +49,59 @@ function randomGaussian(mean: number, std: number): number {
     return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
+// Fixed initial positions (deterministic, realistic per symbol)
+const INITIAL_POSITIONS: TradingPosition[] = [
+    { symbol: "BTC-PERP",  side: "long",  size: 0.14, entryPrice: 66820, currentPrice: 67450, unrealizedPnl: 88.2,  leverage: 5 },
+    { symbol: "ETH-PERP",  side: "short", size: 1.20, entryPrice: 3560,  currentPrice: 3520,  unrealizedPnl: 48.0,  leverage: 5 },
+    { symbol: "SOL-PERP",  side: "long",  size: 5.50, entryPrice: 178,   currentPrice: 182,   unrealizedPnl: 22.0,  leverage: 5 },
+];
+
 function generateMockPositions(): TradingPosition[] {
-    const basePrices: Record<string, number> = {
-        "BTC-PERP": 67450,
-        "ETH-PERP": 3520,
-        "SOL-PERP": 182,
-        "ARB-PERP": 1.24,
-        "AVAX-PERP": 38.5,
-    };
-    return SYMBOLS.slice(0, 3).map((symbol) => {
-        const entry = basePrices[symbol] * (1 + randomGaussian(0, 0.02));
-        const current = basePrices[symbol];
-        const size = Math.random() * 2 + 0.1;
-        const side: "long" | "short" = Math.random() > 0.4 ? "long" : "short";
-        const pnl = side === "long" ? (current - entry) * size : (entry - current) * size;
-        return { symbol, side, size, entryPrice: entry, currentPrice: current, unrealizedPnl: pnl, leverage: 5 };
-    });
+    return INITIAL_POSITIONS;
 }
 
+// Fixed initial signals (deterministic per symbol)
+const INITIAL_SIGNALS: TradeSignal[] = [
+    {
+        id: "sig-init-0", symbol: "BTC-PERP",  action: "buy",  confidence: 0.82,
+        modelType: "onnx",   timestamp: Date.now() - 0 * 15000,
+        features: { rsi: 41.2, macd: 0.31, volume_ratio: 1.15, bollinger_pct: 0.38 }, prediction: 0.012,
+    },
+    {
+        id: "sig-init-1", symbol: "ETH-PERP",  action: "sell", confidence: 0.71,
+        modelType: "joblib", timestamp: Date.now() - 1 * 15000,
+        features: { rsi: 62.4, macd: -0.18, volume_ratio: 0.94, bollinger_pct: 0.72 }, prediction: -0.009,
+    },
+    {
+        id: "sig-init-2", symbol: "SOL-PERP",  action: "hold", confidence: 0.58,
+        modelType: "onnx",   timestamp: Date.now() - 2 * 15000,
+        features: { rsi: 51.7, macd: 0.05, volume_ratio: 1.02, bollinger_pct: 0.51 }, prediction: 0.001,
+    },
+    {
+        id: "sig-init-3", symbol: "ARB-PERP",  action: "buy",  confidence: 0.76,
+        modelType: "joblib", timestamp: Date.now() - 3 * 15000,
+        features: { rsi: 35.8, macd: 0.22, volume_ratio: 1.32, bollinger_pct: 0.29 }, prediction: 0.018,
+    },
+    {
+        id: "sig-init-4", symbol: "AVAX-PERP", action: "hold", confidence: 0.64,
+        modelType: "onnx",   timestamp: Date.now() - 4 * 15000,
+        features: { rsi: 48.1, macd: -0.04, volume_ratio: 0.88, bollinger_pct: 0.55 }, prediction: -0.003,
+    },
+];
+
 function generateMockSignals(): TradeSignal[] {
-    return SYMBOLS.map((symbol, i) => {
-        const actions: Array<"buy" | "sell" | "hold"> = ["buy", "sell", "hold", "buy", "hold"];
-        return {
-            id: `sig-${Date.now()}-${i}`,
-            symbol,
-            action: actions[i],
-            confidence: 0.55 + Math.random() * 0.4,
-            modelType: i % 2 === 0 ? "onnx" : "joblib",
-            timestamp: Date.now() - i * 15000,
-            features: {
-                rsi: 30 + Math.random() * 40,
-                macd: randomGaussian(0, 0.5),
-                volume_ratio: 0.8 + Math.random() * 0.8,
-                bollinger_pct: Math.random(),
-            },
-            prediction: randomGaussian(0, 0.015),
-        };
-    });
+    return INITIAL_SIGNALS;
 }
 
 function generatePriceHistory(basePrice: number, count: number): PricePoint[] {
     const now = Date.now();
     const points: PricePoint[] = [];
-    let price = basePrice;
+    // Deterministic sine-wave price history
     for (let i = count; i >= 0; i--) {
-        price = price * (1 + randomGaussian(0, 0.002));
-        const signal = Math.random() > 0.92 ? (Math.random() > 0.5 ? "buy" : "sell") : undefined;
+        const t = (count - i) / count;
+        const price = basePrice * (1 + 0.015 * Math.sin(t * 2 * Math.PI * 1.5) + 0.005 * Math.sin(t * 2 * Math.PI * 4.3));
+        const signal: "buy" | "sell" | undefined =
+            i === Math.floor(count * 0.25) ? "buy" : i === Math.floor(count * 0.65) ? "sell" : undefined;
         points.push({ ts: now - i * 60000, price, signal });
     }
     return points;
@@ -262,7 +269,7 @@ export class TradingAlgoBotViewModel implements ViewModel {
             "AVAX-PERP": 38.5,
         };
         globalStore.set(this.priceHistory, generatePriceHistory(basePrices[sym] ?? 67450, 60));
-        globalStore.set(this.totalPnl, 4000 + Math.random() * 2000);
+        globalStore.set(this.totalPnl, 4823.5);
     }
 
     /** Append a single live price tick to the chart. */
@@ -286,16 +293,19 @@ export class TradingAlgoBotViewModel implements ViewModel {
         }
     }
 
-    /** Gaussian random-walk tick used in demo mode. */
+    /** Deterministic oscillating tick used in demo mode. */
     private mockTick() {
         const prev = globalStore.get(this.priceHistory);
         if (prev.length === 0) return;
         const last = prev[prev.length - 1];
-        const newPrice = last.price * (1 + randomGaussian(0, 0.0008));
-        const signal: "buy" | "sell" | undefined = Math.random() > 0.95 ? (Math.random() > 0.5 ? "buy" : "sell") : undefined;
-        globalStore.set(this.priceHistory, [...prev.slice(1), { ts: Date.now(), price: newPrice, signal }]);
+        // Use a fixed micro-oscillation based on elapsed time so the chart moves but is reproducible
+        const tick = prev.length;
+        const phase = (tick / 60) * 2 * Math.PI;
+        const delta = last.price * 0.0006 * Math.sin(phase * 3.7 + 1.2);
+        const newPrice = last.price + delta;
+        globalStore.set(this.priceHistory, [...prev.slice(1), { ts: Date.now(), price: newPrice, signal: undefined }]);
         const pnl = globalStore.get(this.totalPnl);
-        globalStore.set(this.totalPnl, pnl + randomGaussian(0, 8));
+        globalStore.set(this.totalPnl, pnl + delta * 0.05);
     }
 
     startRefresh() {

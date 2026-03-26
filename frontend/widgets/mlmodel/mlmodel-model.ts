@@ -361,14 +361,25 @@ export class MLModelViewModel implements ViewModel {
                 this.trainingInterval = null;
                 globalStore.set(this.isTraining, false);
 
+                // Deterministic metrics keyed by model type
+                const METRICS: Record<MLModelType, { accuracy: number; f1: number }> = {
+                    GBM:            { accuracy: 87.1, f1: 0.864 },
+                    LR:             { accuracy: 79.4, f1: 0.788 },
+                    "NN-Adam":      { accuracy: 91.2, f1: 0.907 },
+                    TreeClassifier: { accuracy: 83.6, f1: 0.831 },
+                    RF:             { accuracy: 88.5, f1: 0.879 },
+                    NumpyLogistics: { accuracy: 78.1, f1: 0.774 },
+                };
+                const metrics = METRICS[modelType] ?? { accuracy: 82.0, f1: 0.815 };
+
                 // Add new model to list
                 const existing = globalStore.get(this.models);
                 const newModel: MLModel = {
                     id: `m${Date.now()}`,
                     name: `${modelType}_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`,
                     type: modelType,
-                    accuracy: 75 + Math.random() * 20,
-                    f1: 0.74 + Math.random() * 0.2,
+                    accuracy: metrics.accuracy,
+                    f1: metrics.f1,
                     trainedDate: new Date().toISOString().slice(0, 10),
                     status: "trained",
                 };
@@ -388,7 +399,7 @@ export class MLModelViewModel implements ViewModel {
         if (!model) return;
 
         const ext = format === "ONNX" ? "onnx" : "joblib";
-        const size = `${(0.4 + Math.random() * 3).toFixed(1)} MB`;
+        const size = format === "ONNX" ? "1.8 MB" : "0.6 MB";
         const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
         const exportDir = globalStore.get(this.exportDir);
         const path = `${exportDir}/${model.name}.${ext}`;

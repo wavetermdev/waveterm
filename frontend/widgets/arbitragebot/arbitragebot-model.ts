@@ -57,14 +57,23 @@ const TOKEN_PAIRS = [
     ["MAGIC", "ETH", "USDC"],
 ];
 
-function randomBetween(a: number, b: number): number {
-    return a + Math.random() * (b - a);
-}
+// Per-pair fixed opportunity data (index-stable, deterministic)
+const OPPORTUNITY_DATA: Array<{ profit: number; profitPct: number; gas: number; confidence: number; amounts: number[] }> = [
+    { profit: 142.5, profitPct: 0.62, gas: 18.3, confidence: 0.89, amounts: [25000, 7.1, 1250] },
+    { profit: 87.2,  profitPct: 0.38, gas: 22.1, confidence: 0.74, amounts: [0.38, 25000, 1820] },
+    { profit: 213.8, profitPct: 0.94, gas: 31.4, confidence: 0.82, amounts: [12000, 3.4, 4200] },
+    { profit: 56.1,  profitPct: 0.24, gas: 14.7, confidence: 0.91, amounts: [18000, 5.1, 14500] },
+    { profit: 175.3, profitPct: 0.77, gas: 26.8, confidence: 0.68, amounts: [3400, 0.97, 2800] },
+];
+
+// Fixed DEX liquidity and spread offsets (dex index → spread fraction)
+const DEX_SPREAD: number[] = [0.0018, -0.0012, 0.0025];
+const DEX_LIQUIDITY: number[] = [2400000, 3800000, 1600000];
+const DEX_FEES: number[] = [0.05, 0.3, 0.25];
 
 function generateOpportunities(): ArbitrageOpportunity[] {
     return TOKEN_PAIRS.map((path, i) => {
-        const profit = randomBetween(5, 280);
-        const gas = randomBetween(8, 45);
+        const d = OPPORTUNITY_DATA[i];
         const statuses: ArbitrageOpportunity["status"][] = [
             "pending",
             "executing",
@@ -73,18 +82,18 @@ function generateOpportunities(): ArbitrageOpportunity[] {
             "expired",
         ];
         return {
-            id: `arb-${Date.now()}-${i}`,
+            id: `arb-init-${i}`,
             path,
             dexes: [DEX_NAMES[i % DEX_NAMES.length], DEX_NAMES[(i + 1) % DEX_NAMES.length]],
-            profitUsd: profit,
-            profitPct: randomBetween(0.08, 1.8),
-            gasEstimate: gas,
-            netProfit: profit - gas,
-            confidence: randomBetween(0.6, 0.97),
+            profitUsd: d.profit,
+            profitPct: d.profitPct,
+            gasEstimate: d.gas,
+            netProfit: d.profit - d.gas,
+            confidence: d.confidence,
             detected: Date.now() - i * 3000,
             status: statuses[i],
             tokens: path,
-            amounts: path.map(() => randomBetween(1000, 50000)),
+            amounts: d.amounts,
         };
     });
 }
@@ -112,13 +121,13 @@ function generateDexPrices(livePrices?: Record<string, number>): DexPrice[] {
         WBTC: livePrices?.BTC ?? 67450,
     };
     Object.entries(base).forEach(([token, price]) => {
-        DEX_NAMES.slice(0, 3).forEach((dex) => {
+        DEX_NAMES.slice(0, 3).forEach((dex, dexIdx) => {
             prices.push({
                 dex,
                 token,
-                price: price * (1 + randomBetween(-0.003, 0.003)),
-                liquidity: randomBetween(500000, 5000000),
-                fee: [0.05, 0.3, 0.25][Math.floor(Math.random() * 3)],
+                price: price * (1 + DEX_SPREAD[dexIdx]),
+                liquidity: DEX_LIQUIDITY[dexIdx],
+                fee: DEX_FEES[dexIdx],
             });
         });
     });
@@ -132,12 +141,12 @@ function generateMlPrediction(opp: ArbitrageOpportunity): MlPrediction {
         profitability: opp.profitPct / 2,
         riskScore: 1 - opp.confidence,
         features: {
-            price_spread: randomBetween(0.001, 0.02),
-            liquidity_ratio: randomBetween(0.3, 1.0),
-            gas_price_gwei: randomBetween(0.01, 0.5),
-            time_window_ms: randomBetween(50, 500),
-            historical_success: randomBetween(0.7, 0.98),
-            volatility: randomBetween(0.01, 0.15),
+            price_spread: 0.0072,
+            liquidity_ratio: 0.68,
+            gas_price_gwei: 0.14,
+            time_window_ms: 210,
+            historical_success: 0.87,
+            volatility: 0.048,
         },
     };
 }
@@ -257,18 +266,21 @@ export class ArbitrageBotViewModel implements ViewModel {
     }
 
     startScanning() {
+        // Deterministic tick counter drives status transitions: pending→executing (tick 3), executing→completed (tick 6)
+        let tick = 0;
         this.refreshInterval = setInterval(() => {
             const active = globalStore.get(this.botActive);
             if (!active) return;
+            tick++;
             // Refresh DEX prices (with live base prices when available) and update opportunity status
             globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
             const prev = globalStore.get(this.opportunities);
             const updated = prev.map((opp) => {
-                if (opp.status === "pending" && Math.random() > 0.8) {
+                if (opp.status === "pending" && tick % 3 === 0) {
                     return { ...opp, status: "executing" as const };
                 }
-                if (opp.status === "executing" && Math.random() > 0.6) {
-                    return { ...opp, status: (Math.random() > 0.05 ? "completed" : "failed") as ArbitrageOpportunity["status"] };
+                if (opp.status === "executing" && tick % 3 === 2) {
+                    return { ...opp, status: "completed" as ArbitrageOpportunity["status"] };
                 }
                 return opp;
             });
