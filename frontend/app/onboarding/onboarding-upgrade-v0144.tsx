@@ -55,6 +55,9 @@ const UpgradeOnboardingModal_v0_14_4_Content = () => {
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
                             <li>
+                                <strong>macOS First Click</strong> - First click now focuses the clicked widget
+                            </li>
+                            <li>
                                 <strong>
                                     <code>backgrounds.json</code>
                                 </strong>{" "}
@@ -66,6 +69,7 @@ const UpgradeOnboardingModal_v0_14_4_Content = () => {
                             </li>
                             <li>WaveConfig now warns on Unsaved Changes</li>
                             <li>Preview streaming fixes for images/videos</li>
+                            <li>Deprecated legacy AI widget has been removed</li>
                             <li>[bugfix] Fixed focus bug for newly created blocks</li>
                         </ul>
                     </div>
