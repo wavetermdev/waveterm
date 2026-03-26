@@ -174,16 +174,34 @@ export class TermWrap {
         this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
-            return handleOsc7Command(data, this.blockId, this.loaded);
+            try {
+                return handleOsc7Command(data, this.blockId, this.loaded);
+            } catch (e) {
+                console.error("[termwrap] osc 7 handler error", this.blockId, e);
+                return false;
+            }
         });
         this.terminal.parser.registerOscHandler(52, (data: string) => {
-            return handleOsc52Command(data, this.blockId, this.loaded, this);
+            try {
+                return handleOsc52Command(data, this.blockId, this.loaded, this);
+            } catch (e) {
+                console.error("[termwrap] osc 52 handler error", this.blockId, e);
+                return false;
+            }
         });
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
-            return handleOsc16162Command(data, this.blockId, this.loaded, this);
+            try {
+                return handleOsc16162Command(data, this.blockId, this.loaded, this);
+            } catch (e) {
+                console.error("[termwrap] osc 16162 handler error", this.blockId, e);
+                return false;
+            }
         });
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {
+                if (params == null || params.length < 1) {
+                    return false;
+                }
                 if (params[0] === 3) {
                     this.lastClearScrollbackTs = Date.now();
                     if (this.inSyncTransaction) {
@@ -196,6 +214,9 @@ export class TermWrap {
         );
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params) => {
+                if (params == null || params.length < 1) {
+                    return false;
+                }
                 if (params[0] === 2026) {
                     this.lastMode2026SetTs = Date.now();
                     this.inSyncTransaction = true;
@@ -205,6 +226,9 @@ export class TermWrap {
         );
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
+                if (params == null || params.length < 1) {
+                    return false;
+                }
                 if (params[0] === 2026) {
                     this.lastMode2026ResetTs = Date.now();
                     this.inSyncTransaction = false;
