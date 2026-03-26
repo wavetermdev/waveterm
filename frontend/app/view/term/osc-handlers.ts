@@ -47,8 +47,8 @@ type Osc16162Command =
 
 function normalizeCmd(decodedCmd: string): string {
     let normalizedCmd = decodedCmd.trim();
-    normalizedCmd = normalizedCmd.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
     normalizedCmd = normalizedCmd.replace(/^env\s+/, "");
+    normalizedCmd = normalizedCmd.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
     return normalizedCmd;
 }
 
