@@ -238,10 +238,9 @@ function MetricsTab({ model }: { model: ContainerManagerViewModel }) {
 
     const networkIO = React.useMemo(
         () => ({
-            rx: (Math.random() * 50 + 10).toFixed(1),
-            tx: (Math.random() * 20 + 5).toFixed(1),
+            rx: "0.0",
+            tx: "0.0",
         }),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         [selectedContainer]
     );
 

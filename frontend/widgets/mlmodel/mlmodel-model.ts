@@ -58,13 +58,7 @@ export type Hyperparams = {
     np_regularization: number;
 };
 
-const INITIAL_MODELS: MLModel[] = [
-    { id: "m1", name: "GBM_v2", type: "GBM", accuracy: 88.5, f1: 0.882, trainedDate: "2024-01-15", status: "trained" },
-    { id: "m2", name: "LogReg_baseline", type: "LR", accuracy: 81.2, f1: 0.809, trainedDate: "2024-01-14", status: "trained" },
-    { id: "m3", name: "NeuralNet_adam", type: "NN-Adam", accuracy: 91.3, f1: 0.911, trainedDate: "2024-01-16", status: "trained" },
-    { id: "m4", name: "RandomForest_v1", type: "RF", accuracy: 86.7, f1: 0.863, trainedDate: "2024-01-13", status: "trained" },
-    { id: "m5", name: "NumpyLogistic_v1", type: "NumpyLogistics", accuracy: 79.4, f1: 0.788, trainedDate: "2024-01-12", status: "trained" },
-];
+
 
 const DEFAULT_HYPERPARAMS: Hyperparams = {
     gbm_n_estimators: 200,
@@ -90,13 +84,7 @@ const DEFAULT_HYPERPARAMS: Hyperparams = {
     np_regularization: 0.1,
 };
 
-const MOCK_EXPORT_HISTORY: ExportRecord[] = [
-    { timestamp: "2024-01-16 14:32", format: "ONNX", size: "2.4 MB", path: "/exports/NeuralNet_adam.onnx" },
-    { timestamp: "2024-01-16 11:15", format: "Joblib", size: "1.1 MB", path: "/exports/GBM_v2.joblib" },
-    { timestamp: "2024-01-15 09:44", format: "ONNX", size: "0.8 MB", path: "/exports/GBM_v2.onnx" },
-    { timestamp: "2024-01-14 17:22", format: "Joblib", size: "0.6 MB", path: "/exports/LogReg_baseline.joblib" },
-    { timestamp: "2024-01-13 13:08", format: "ONNX", size: "1.7 MB", path: "/exports/RandomForest_v1.onnx" },
-];
+
 
 const TRAIN_LOG_SNIPPETS: Record<MLModelType, string[]> = {
     GBM: [
@@ -172,15 +160,15 @@ export class MLModelViewModel implements ViewModel {
     noPadding = jotai.atom<boolean>(true);
 
     activeTab = jotai.atom<"models" | "train" | "evaluate" | "data" | "export">("models");
-    models = jotai.atom<MLModel[]>(INITIAL_MODELS);
-    selectedModelId = jotai.atom<string | null>("m3");
+    models = jotai.atom<MLModel[]>([]);
+    selectedModelId = jotai.atom<string | null>(null);
     selectedModelType = jotai.atom<MLModelType>("GBM");
     selectedDataSource = jotai.atom<DataSourceType>("CSV");
     hyperparams = jotai.atom<Hyperparams>({ ...DEFAULT_HYPERPARAMS });
     isTraining = jotai.atom<boolean>(false);
     trainingProgress = jotai.atom<number>(0);
     trainLog = jotai.atom<string[]>([]);
-    exportHistory = jotai.atom<ExportRecord[]>([...MOCK_EXPORT_HISTORY]);
+    exportHistory = jotai.atom<ExportRecord[]>([]);
     targetColumn = jotai.atom<string>("label");
     featureColumns = jotai.atom<string>("feature1, feature2, feature3, feature4");
     trainTestSplit = jotai.atom<number>(80);
