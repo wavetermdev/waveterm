@@ -19,6 +19,7 @@ import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
+import { ImageAddon } from "@xterm/addon-image";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -61,6 +62,7 @@ let loggedWebGL = false;
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
+    useSixel?: boolean;
     sendDataHandler?: (data: string) => void;
     nodeModel?: BlockNodeModel;
 };
@@ -145,6 +147,20 @@ export class TermWrap {
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
+        if (waveOptions.useSixel !== false) {
+            try {
+                this.terminal.loadAddon(
+                    new ImageAddon({
+                        enableSizeReports: true,
+                        sixelSupport: true,
+                        iipSupport: false,
+                        kittySupport: false,
+                    })
+                );
+            } catch (e) {
+                console.log("error loading image addon", e);
+            }
+        }
         this.terminal.loadAddon(
             new WebLinksAddon(
                 (e, uri) => {
