@@ -25,7 +25,7 @@ const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace
 // See aiprompts/wave-osc-16162.md for full documentation
 export type ShellIntegrationStatus = "ready" | "running-command";
 
-const ClaudeCodeRegex = /(?:^|\/)claude\b/;
+const ClaudeCodeRegex = /^claude\b/;
 
 type Osc16162Command =
     | { command: "A"; data: Record<string, never> }
