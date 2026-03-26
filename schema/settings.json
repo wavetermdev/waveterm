@@ -43,6 +43,13 @@
             "term"
           ]
         },
+        "app:tabbar": {
+          "type": "string",
+          "enum": [
+            "top",
+            "left"
+          ]
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },
@@ -212,11 +219,21 @@
         "preview:showhiddenfiles": {
           "type": "boolean"
         },
+        "preview:defaultsort": {
+          "type": "string",
+          "enum": [
+            "name",
+            "modtime"
+          ]
+        },
         "tab:preset": {
           "type": "string"
         },
         "tab:confirmclose": {
           "type": "boolean"
+        },
+        "tab:background": {
+          "type": "string"
         },
         "widget:*": {
           "type": "boolean"
@@ -310,6 +327,9 @@
         },
         "debug:pprofmemprofilerate": {
           "type": "integer"
+        },
+        "debug:webglstatus": {
+          "type": "boolean"
         },
         "tsunami:*": {
           "type": "boolean"

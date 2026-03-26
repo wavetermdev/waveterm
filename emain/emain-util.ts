@@ -119,6 +119,17 @@ export function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavig
     }
 }
 
+function frameOrAncestorHasName(frame: Electron.WebFrameMain, name: string): boolean {
+    let cur: Electron.WebFrameMain = frame;
+    while (cur != null) {
+        if (cur.name === name) {
+            return true;
+        }
+        cur = cur.parent;
+    }
+    return false;
+}
+
 export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
     if (!event.frame?.parent) {
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
@@ -135,8 +146,9 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         return;
     }
     if (
-        event.frame.name == "pdfview" &&
+        frameOrAncestorHasName(event.frame, "pdfview") &&
         (url.startsWith("blob:file:///") ||
+            url.startsWith("chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-file?") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-file/") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-local-file?"))
@@ -169,7 +181,7 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         }
     }
     event.preventDefault();
-    console.log("frame navigation canceled");
+    console.log("frame navigation canceled", event.frame.name, url);
 }
 
 function isWindowFullyVisible(bounds: electron.Rectangle): boolean {

@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
@@ -314,11 +314,12 @@ export const WaveStreamdown = ({
                 table: false,
                 mermaid: true,
             }}
-            mermaidConfig={{
-                theme: "dark",
-                darkMode: true,
+            mermaid={{
+                config: {
+                    theme: "dark",
+                    darkMode: true,
+                },
             }}
-            defaultOrigin="http://localhost"
             components={components}
         >
             {text}

@@ -22,9 +22,9 @@ import (
 
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/buildercontroller"
@@ -158,6 +158,26 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 		return nil, fmt.Errorf("object not found: %s", data.ORef)
 	}
 	return waveobj.GetMeta(obj), nil
+}
+
+func (ws *WshServer) UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}
+	err := wstore.UpdateTabName(ctx, tabId, newName)
+	if err != nil {
+		return fmt.Errorf("error updating tab name: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
+func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Workspace, OID: workspaceId}
+	err := wcore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	if err != nil {
+		return fmt.Errorf("error updating workspace tab ids: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
@@ -368,8 +388,8 @@ func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) 
 	return wshfs.Read(ctx, data)
 }
 
-func (ws *WshServer) FileReadStreamCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	return wshfs.ReadStream(ctx, data)
+func (ws *WshServer) FileStreamCommand(ctx context.Context, data wshrpc.CommandFileStreamData) (*wshrpc.FileInfo, error) {
+	return wshfs.FileStream(ctx, data)
 }
 
 func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
@@ -856,6 +876,10 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 		ConfigDir: wavebase.GetWaveConfigDir(),
 		DataDir:   wavebase.GetWaveDataDir(),
 	}, nil
+}
+
+func (ws *WshServer) MacOSVersionCommand(ctx context.Context) (string, error) {
+	return wavebase.ClientMacOSVersion(), nil
 }
 
 // BlocksListCommand returns every block visible in the requested

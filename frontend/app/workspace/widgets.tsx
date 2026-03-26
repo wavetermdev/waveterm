@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
@@ -30,7 +30,8 @@ export type WidgetsEnv = WaveEnvSubset<{
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
-        workspace: WaveEnv["atoms"]["workspace"];
+        hasConfigErrors: WaveEnv["atoms"]["hasConfigErrors"];
+        workspaceId: WaveEnv["atoms"]["workspaceId"];
         hasCustomAIPresetsAtom: WaveEnv["atoms"]["hasCustomAIPresetsAtom"];
     };
     createBlock: WaveEnv["createBlock"];
@@ -107,10 +108,26 @@ function calculateGridSize(appCount: number): number {
     return 6;
 }
 
+function SettingsTooltipContent({ hasConfigErrors }: { hasConfigErrors: boolean }) {
+    if (!hasConfigErrors) {
+        return "Settings & Help";
+    }
+    return (
+        <div className="flex flex-col p-1">
+            <div className="mb-1">Settings &amp; Help</div>
+            <div className="flex items-center gap-1 mt-0.5 text-error">
+                <i className="fa fa-solid fa-circle-exclamation"></i>
+                <span>Config Errors</span>
+            </div>
+        </div>
+    );
+}
+
 type FloatingWindowPropsType = {
     isOpen: boolean;
     onClose: () => void;
     referenceElement: HTMLElement;
+    hasConfigErrors?: boolean;
 };
 
 const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowPropsType) => {
@@ -236,119 +253,126 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
     );
 });
 
-const SettingsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowPropsType) => {
-    const env = useWaveEnv<WidgetsEnv>();
-    const { refs, floatingStyles, context } = useFloating({
-        open: isOpen,
-        onOpenChange: onClose,
-        placement: "left-start",
-        middleware: [offset(-2), shift({ padding: 12 })],
-        whileElementsMounted: autoUpdate,
-        elements: {
-            reference: referenceElement,
-        },
-    });
+const SettingsFloatingWindow = memo(
+    ({ isOpen, onClose, referenceElement, hasConfigErrors }: FloatingWindowPropsType) => {
+        const env = useWaveEnv<WidgetsEnv>();
+        const { refs, floatingStyles, context } = useFloating({
+            open: isOpen,
+            onOpenChange: onClose,
+            placement: "left-start",
+            middleware: [offset(-2), shift({ padding: 12 })],
+            whileElementsMounted: autoUpdate,
+            elements: {
+                reference: referenceElement,
+            },
+        });
 
-    const dismiss = useDismiss(context);
-    const { getFloatingProps } = useInteractions([dismiss]);
+        const dismiss = useDismiss(context);
+        const { getFloatingProps } = useInteractions([dismiss]);
 
-    if (!isOpen) return null;
+        if (!isOpen) return null;
 
-    const menuItems = [
-        {
-            icon: "gear",
-            label: "Settings",
-            onClick: () => {
-                const blockDef: BlockDef = {
-                    meta: {
-                        view: "waveconfig",
-                    },
-                };
-                env.createBlock(blockDef, false, true);
-                onClose();
+        const menuItems = [
+            {
+                icon: "gear",
+                label: "Settings",
+                hasError: hasConfigErrors,
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "waveconfig",
+                        },
+                    };
+                    env.createBlock(blockDef, false, true);
+                    onClose();
+                },
             },
-        },
-        {
-            icon: "lightbulb",
-            label: "Tips",
-            onClick: () => {
-                const blockDef: BlockDef = {
-                    meta: {
-                        view: "tips",
-                    },
-                };
-                env.createBlock(blockDef, true, true);
-                onClose();
+            {
+                icon: "lightbulb",
+                label: "Tips",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "tips",
+                        },
+                    };
+                    env.createBlock(blockDef, true, true);
+                    onClose();
+                },
             },
-        },
-        {
-            icon: "lock",
-            label: "Secrets",
-            onClick: () => {
-                const blockDef: BlockDef = {
-                    meta: {
-                        view: "waveconfig",
-                        file: "secrets",
-                    },
-                };
-                env.createBlock(blockDef, false, true);
-                onClose();
+            {
+                icon: "lock",
+                label: "Secrets",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "waveconfig",
+                            file: "secrets",
+                        },
+                    };
+                    env.createBlock(blockDef, false, true);
+                    onClose();
+                },
             },
-        },
-        {
-            icon: "book-open",
-            label: "Release Notes",
-            onClick: () => {
-                modalsModel.pushModal("UpgradeOnboardingPatch", { isReleaseNotes: true });
-                onClose();
+            {
+                icon: "book-open",
+                label: "Release Notes",
+                onClick: () => {
+                    modalsModel.pushModal("UpgradeOnboardingPatch", { isReleaseNotes: true });
+                    onClose();
+                },
             },
-        },
-        {
-            icon: "circle-question",
-            label: "Help",
-            onClick: () => {
-                const blockDef: BlockDef = {
-                    meta: {
-                        view: "help",
-                    },
-                };
-                env.createBlock(blockDef);
-                onClose();
+            {
+                icon: "circle-question",
+                label: "Help",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "help",
+                        },
+                    };
+                    env.createBlock(blockDef);
+                    onClose();
+                },
             },
-        },
-    ];
+        ];
 
-    return (
-        <FloatingPortal>
-            <div
-                ref={refs.setFloating}
-                style={floatingStyles}
-                {...getFloatingProps()}
-                className="bg-modalbg border border-border rounded-lg shadow-xl p-2 z-50"
-            >
-                {menuItems.map((item, idx) => (
-                    <div
-                        key={idx}
-                        className="flex items-center gap-3 px-3 py-2 rounded hover:bg-hoverbg cursor-pointer transition-colors text-secondary hover:text-white"
-                        onClick={item.onClick}
-                    >
-                        <div className="text-lg w-5 flex justify-center">
-                            <i className={makeIconClass(item.icon, false)}></i>
+        return (
+            <FloatingPortal>
+                <div
+                    ref={refs.setFloating}
+                    style={floatingStyles}
+                    {...getFloatingProps()}
+                    className="bg-modalbg border border-border rounded-lg shadow-xl p-2 z-50"
+                >
+                    {menuItems.map((item, idx) => (
+                        <div
+                            key={idx}
+                            className="flex items-center gap-3 px-3 py-2 rounded hover:bg-hoverbg cursor-pointer transition-colors text-secondary hover:text-white"
+                            onClick={item.onClick}
+                        >
+                            <div className="text-lg w-5 flex justify-center">
+                                <i className={makeIconClass(item.icon, false)}></i>
+                            </div>
+                            <div className="text-sm whitespace-nowrap">{item.label}</div>
+                            {item.hasError && (
+                                <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] ml-auto"></i>
+                            )}
                         </div>
-                        <div className="text-sm whitespace-nowrap">{item.label}</div>
-                    </div>
-                ))}
-            </div>
-        </FloatingPortal>
-    );
-});
+                    ))}
+                </div>
+            </FloatingPortal>
+        );
+    }
+);
 
 SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
 
 const Widgets = memo(() => {
     const env = useWaveEnv<WidgetsEnv>();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
-    const workspace = useAtomValue(env.atoms.workspace);
+    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
+    const workspaceId = useAtomValue(env.atoms.workspaceId);
     const hasCustomAIPresets = useAtomValue(env.atoms.hasCustomAIPresetsAtom);
     const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
@@ -361,7 +385,7 @@ const Widgets = memo(() => {
             if (!hasCustomAIPresets && key === "defwidget@ai") {
                 return false;
             }
-            return shouldIncludeWidgetForWorkspace(widget, workspace?.oid);
+            return shouldIncludeWidgetForWorkspace(widget, workspaceId);
         })
     );
     const widgets = sortByDisplayOrder(filteredWidgets);
@@ -471,9 +495,16 @@ const Widgets = memo(() => {
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                             >
-                                <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
-                                    <div>
+                                <Tooltip
+                                    content={<SettingsTooltipContent hasConfigErrors={hasConfigErrors} />}
+                                    placement="left"
+                                    disable={isSettingsOpen}
+                                >
+                                    <div className="relative">
                                         <i className={makeIconClass("gear", true)}></i>
+                                        {hasConfigErrors && (
+                                            <i className="fa fa-solid fa-circle-exclamation text-error absolute top-0 right-0 text-[10px] pointer-events-none"></i>
+                                        )}
                                     </div>
                                 </Tooltip>
                             </div>
@@ -510,9 +541,25 @@ const Widgets = memo(() => {
                             className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                         >
-                            <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
-                                <div>
-                                    <i className={makeIconClass("gear", true)}></i>
+                            <Tooltip
+                                content={<SettingsTooltipContent hasConfigErrors={hasConfigErrors} />}
+                                placement="left"
+                                disable={isSettingsOpen}
+                            >
+                                <div className="flex flex-col items-center w-full">
+                                    <div className="relative">
+                                        <i className={makeIconClass("gear", true)}></i>
+                                        {hasConfigErrors && (
+                                            <i
+                                                className={`fa fa-solid fa-circle-exclamation text-error absolute top-0 right-[-4px] pointer-events-none ${mode === "normal" ? "text-[14px]" : "text-[12px]"}`}
+                                            ></i>
+                                        )}
+                                    </div>
+                                    {mode === "normal" && (
+                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                            settings
+                                        </div>
+                                    )}
                                 </div>
                             </Tooltip>
                         </div>
@@ -539,6 +586,7 @@ const Widgets = memo(() => {
                     isOpen={isSettingsOpen}
                     onClose={() => setIsSettingsOpen(false)}
                     referenceElement={settingsButtonRef.current}
+                    hasConfigErrors={hasConfigErrors}
                 />
             )}
 

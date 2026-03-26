@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
@@ -129,11 +129,11 @@ function getStaticTabBlockCount(): number {
 }
 
 function simpleCloseStaticTab() {
-    const ws = globalStore.get(atoms.workspace);
+    const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
     const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
     getApi()
-        .closeTab(ws.oid, tabId, confirmClose)
+        .closeTab(workspaceId, tabId, confirmClose)
         .then((didClose) => {
             if (didClose) {
                 deleteLayoutModelForTab(tabId);
@@ -490,7 +490,7 @@ function tryReinjectKey(event: WaveKeyboardEvent): boolean {
 function countTermBlocks(): number {
     const allBCMs = getAllBlockComponentModels();
     let count = 0;
-    let gsGetBound = globalStore.get.bind(globalStore);
+    const gsGetBound = globalStore.get.bind(globalStore);
     for (const bcm of allBCMs) {
         const viewModel = bcm.viewModel;
         if (viewModel.viewType == "term" && viewModel.isBasicTerm?.(gsGetBound)) {

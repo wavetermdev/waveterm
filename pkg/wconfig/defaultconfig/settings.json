@@ -4,6 +4,7 @@
     "ai:maxtokens": 4000,
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
+    "app:tabbar": "top",
     "app:confirmquit": true,
     "app:hideaibutton": false,
     "app:disablectrlshiftarrows": false,
@@ -36,5 +37,6 @@
     "term:copyonselect": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,
-    "waveai:defaultmode": "waveai@balanced"
+    "waveai:defaultmode": "waveai@balanced",
+    "preview:defaultsort": "name"
 }

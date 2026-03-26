@@ -3,12 +3,14 @@
 
 import { useWaveEnv, WaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
 import { Widgets } from "@/app/workspace/widgets";
-import { atom, useAtom } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 import { useRef } from "react";
 import { applyMockEnvOverrides } from "../mock/mockwaveenv";
 
-const workspaceAtom = atom<Workspace>(null as Workspace);
 const resizableHeightAtom = atom(250);
+const hasConfigErrorsAtom = atom(false);
+const isDevAtom = atom(true);
+const mockVersionAtom = atom(0);
 
 function makeMockApp(name: string, icon: string, iconcolor: string): AppInfo {
     return {
@@ -85,14 +87,20 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
 
 const fullConfigAtom = atom<FullConfigType>({ settings: {}, widgets: mockWidgets } as unknown as FullConfigType);
 
-function makeWidgetsEnv(baseEnv: WaveEnv, isDev: boolean, hasCustomAIPresets: boolean, apps?: AppInfo[]) {
+function makeWidgetsEnv(
+    baseEnv: WaveEnv,
+    isDev: boolean,
+    hasCustomAIPresets: boolean,
+    apps?: AppInfo[],
+    atomOverrides?: Partial<GlobalAtomsType>
+) {
     return applyMockEnvOverrides(baseEnv, {
         isDev,
         rpc: { ListAllAppsCommand: () => Promise.resolve(apps ?? []) },
         atoms: {
             fullConfigAtom,
-            workspace: workspaceAtom,
             hasCustomAIPresetsAtom: atom(hasCustomAIPresets),
+            ...atomOverrides,
         },
     });
 }
@@ -113,7 +121,9 @@ function WidgetsScenario({
     const baseEnv = useWaveEnv();
     const envRef = useRef<WaveEnv>(null);
     if (envRef.current == null) {
-        envRef.current = makeWidgetsEnv(baseEnv, isDev, hasCustomAIPresets, apps);
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, hasCustomAIPresets, apps, {
+            hasConfigErrors: hasConfigErrorsAtom,
+        });
     }
 
     return (
@@ -134,18 +144,18 @@ function WidgetsScenario({
     );
 }
 
-function WidgetsResizable() {
+function WidgetsResizable({ isDev }: { isDev: boolean }) {
     const [height, setHeight] = useAtom(resizableHeightAtom);
     const baseEnv = useWaveEnv();
     const envRef = useRef<WaveEnv>(null);
     if (envRef.current == null) {
-        envRef.current = makeWidgetsEnv(baseEnv, true, true, mockApps);
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, true, mockApps, { hasConfigErrors: hasConfigErrorsAtom });
     }
 
     return (
         <div className="flex flex-col gap-2 items-start">
             <div className="flex items-center gap-2 text-xs text-muted font-mono">
-                <span>compact/supercompact — resizable (dev mode, height: {height}px)</span>
+                <span>compact/supercompact — resizable (height: {height}px)</span>
                 <input
                     type="range"
                     min={80}
@@ -170,16 +180,57 @@ function WidgetsResizable() {
     );
 }
 
+function PreviewControls() {
+    const [hasConfigErrors, setHasConfigErrors] = useAtom(hasConfigErrorsAtom);
+    const [isDev, setIsDev] = useAtom(isDevAtom);
+    const [, setMockVersion] = useAtom(mockVersionAtom);
+
+    function applyAndBump(fn: () => void) {
+        fn();
+        setMockVersion((v) => v + 1);
+    }
+
+    return (
+        <div className="flex items-center gap-4 text-xs text-muted font-mono">
+            <span className="font-semibold">preview controls:</span>
+            <label className="flex items-center gap-1 cursor-pointer select-none">
+                <input
+                    type="checkbox"
+                    checked={hasConfigErrors}
+                    onChange={(e) => applyAndBump(() => setHasConfigErrors(e.target.checked))}
+                    className="cursor-pointer"
+                />
+                hasConfigErrors
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer select-none">
+                <input
+                    type="checkbox"
+                    checked={isDev}
+                    onChange={(e) => applyAndBump(() => setIsDev(e.target.checked))}
+                    className="cursor-pointer"
+                />
+                isDev
+            </label>
+        </div>
+    );
+}
+
 export function WidgetsPreview() {
+    const isDev = useAtomValue(isDevAtom);
+    const mockVersion = useAtomValue(mockVersionAtom);
+
     return (
         <div className="flex flex-col gap-8 p-6">
-            <div className="flex flex-row gap-8 items-start flex-wrap">
-                <WidgetsScenario label="normal (with AI presets)" height={550} />
-                <WidgetsScenario label="no custom AI presets" hasCustomAIPresets={false} />
-                <WidgetsScenario label="dev mode (apps button)" isDev={true} apps={mockApps} />
-                <WidgetsScenario label="compact (200px)" height={200} isDev={true} apps={mockApps} />
+            <PreviewControls />
+            <div key={mockVersion} className="flex flex-col gap-8">
+                <div className="flex flex-row gap-8 items-start flex-wrap">
+                    <WidgetsScenario label="normal (with AI presets)" height={550} isDev={isDev} />
+                    <WidgetsScenario label="no custom AI presets" hasCustomAIPresets={false} height={550} isDev={isDev} />
+                    <WidgetsScenario label="dev mode (apps button)" height={550} isDev={isDev} apps={mockApps} />
+                    <WidgetsScenario label="compact (200px)" height={200} isDev={isDev} apps={mockApps} />
+                </div>
+                <WidgetsResizable isDev={isDev} />
             </div>
-            <WidgetsResizable />
         </div>
     );
 }

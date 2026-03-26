@@ -1,24 +1,28 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
+import { WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { createContext, useContext } from "react";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
+
+export type TabModelEnv = WaveEnvSubset<{
+    wos: WaveEnv["wos"];
+}>;
 
 const tabModelCache = new Map<string, TabModel>();
 export const activeTabIdAtom = atom<string>(null) as PrimitiveAtom<string>;
 
 export class TabModel {
     tabId: string;
-    waveEnv: WaveEnv;
+    waveEnv: TabModelEnv;
     tabAtom: Atom<Tab>;
     tabNumBlocksAtom: Atom<number>;
     isTermMultiInput = atom(false) as PrimitiveAtom<boolean>;
     metaCache: Map<string, Atom<any>> = new Map();
 
-    constructor(tabId: string, waveEnv?: WaveEnv) {
+    constructor(tabId: string, waveEnv?: TabModelEnv) {
         this.tabId = tabId;
         this.waveEnv = waveEnv;
         this.tabAtom = atom((get) => {
@@ -46,16 +50,25 @@ export class TabModel {
     }
 }
 
-export function getTabModelByTabId(tabId: string, waveEnv?: WaveEnv): TabModel {
-    let model = tabModelCache.get(tabId);
+export function getTabModelByTabId(tabId: string, waveEnv?: TabModelEnv): TabModel {
+    if (!waveEnv?.isMock) {
+        let model = tabModelCache.get(tabId);
+        if (model == null) {
+            model = new TabModel(tabId, waveEnv);
+            tabModelCache.set(tabId, model);
+        }
+        return model;
+    }
+    const key = `TabModel:${tabId}`;
+    let model = waveEnv.mockModels.get(key);
     if (model == null) {
         model = new TabModel(tabId, waveEnv);
-        tabModelCache.set(tabId, model);
+        waveEnv.mockModels.set(key, model);
     }
     return model;
 }
 
-export function getActiveTabModel(waveEnv?: WaveEnv): TabModel | null {
+export function getActiveTabModel(waveEnv?: TabModelEnv): TabModel | null {
     const activeTabId = globalStore.get(activeTabIdAtom);
     if (activeTabId == null) {
         return null;
@@ -66,11 +79,7 @@ export function getActiveTabModel(waveEnv?: WaveEnv): TabModel | null {
 export const TabModelContext = createContext<TabModel | undefined>(undefined);
 
 export function useTabModel(): TabModel {
-    const waveEnv = useWaveEnv();
     const ctxModel = useContext(TabModelContext);
-    if (waveEnv?.mockTabModel != null) {
-        return waveEnv.mockTabModel;
-    }
     if (ctxModel == null) {
         throw new Error("useTabModel must be used within a TabModelProvider");
     }
@@ -78,10 +87,5 @@ export function useTabModel(): TabModel {
 }
 
 export function useTabModelMaybe(): TabModel {
-    const waveEnv = useWaveEnv();
-    const ctxModel = useContext(TabModelContext);
-    if (waveEnv?.mockTabModel != null) {
-        return waveEnv.mockTabModel;
-    }
-    return ctxModel;
+    return useContext(TabModelContext);
 }

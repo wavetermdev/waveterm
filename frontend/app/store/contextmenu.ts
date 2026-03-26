@@ -74,11 +74,11 @@ class ContextMenuModel {
         this.activeOpts = opts;
         const electronMenuItems = this._convertAndRegisterMenu(menu);
         
-        const workspace = globalStore.get(atoms.workspace);
+        const workspaceId = globalStore.get(atoms.workspaceId);
         let oid: string;
         
-        if (workspace != null) {
-            oid = workspace.oid;
+        if (workspaceId != null) {
+            oid = workspaceId;
         } else {
             oid = globalStore.get(atoms.builderId);
         }

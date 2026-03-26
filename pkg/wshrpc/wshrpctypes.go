@@ -83,6 +83,7 @@ type WshRpcInterface interface {
 	DebugTermCommand(ctx context.Context, data CommandDebugTermData) (*CommandDebugTermRtnData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
+	MacOSVersionCommand(ctx context.Context) (string, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
 	RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error
@@ -94,6 +95,8 @@ type WshRpcInterface interface {
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
+	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
+	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions

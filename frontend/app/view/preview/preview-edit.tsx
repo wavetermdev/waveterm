@@ -1,14 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { globalStore } from "@/app/store/jotaiStore";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
-import { globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue, useSetAtom } from "jotai";
-import * as monaco from "monaco-editor";
 import type * as MonacoTypes from "monaco-editor";
+import * as monaco from "monaco-editor";
 import { useEffect } from "react";
 import type { SpecializedViewProps } from "./preview";
 

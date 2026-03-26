@@ -26,7 +26,7 @@ RPC commands in Wave Terminal follow these conventions:
 
 - **Method names** must end with `Command`
 - **First parameter** must be `context.Context`
-- **Second parameter** (optional) is the command data structure
+- **Remaining parameters** are a regular Go parameter list (zero or more typed args)
 - **Return values** can be either just an error, or one return value plus an error
 - **Streaming commands** return a channel instead of a direct value
 
@@ -49,7 +49,7 @@ type WshRpcInterface interface {
 
 - Method name must end with `Command`
 - First parameter must be `ctx context.Context`
-- Optional second parameter for input data
+- Remaining parameters are a regular Go parameter list (zero or more)
 - Return either `error` or `(ReturnType, error)`
 - For streaming, return `chan RespOrErrorUnion[T]`
 

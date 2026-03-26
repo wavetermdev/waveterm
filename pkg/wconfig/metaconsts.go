@@ -17,6 +17,7 @@ const (
 	ConfigKey_AppDisableCtrlShiftArrows      = "app:disablectrlshiftarrows"
 	ConfigKey_AppDisableCtrlShiftDisplay     = "app:disablectrlshiftdisplay"
 	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
+	ConfigKey_AppTabBar                      = "app:tabbar"
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
@@ -80,9 +81,11 @@ const (
 	ConfigKey_MarkdownFixedFontSize          = "markdown:fixedfontsize"
 
 	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
+	ConfigKey_PreviewDefaultSort             = "preview:defaultsort"
 
 	ConfigKey_TabPreset                      = "tab:preset"
 	ConfigKey_TabConfirmClose                = "tab:confirmclose"
+	ConfigKey_TabBackground                  = "tab:background"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
@@ -119,6 +122,7 @@ const (
 	ConfigKey_DebugClear                     = "debug:*"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
+	ConfigKey_DebugWebGlStatus               = "debug:webglstatus"
 
 	ConfigKey_TsunamiClear                   = "tsunami:*"
 	ConfigKey_TsunamiScaffoldPath            = "tsunami:scaffoldpath"

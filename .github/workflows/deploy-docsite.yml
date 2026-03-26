@@ -43,7 +43,7 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - uses: nick-fields/retry@v3
+            - uses: nick-fields/retry@v4
               name: npm ci
               with:
                   command: npm ci --no-audit --no-fund

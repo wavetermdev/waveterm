@@ -72,23 +72,6 @@ func (svc *ObjectService) GetObjects(orefStrArr []string) ([]waveobj.WaveObj, er
 	return wstore.DBSelectORefs(ctx, orefArr)
 }
 
-func (svc *ObjectService) UpdateTabName_Meta() tsgenmeta.MethodMeta {
-	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"uiContext", "tabId", "name"},
-	}
-}
-
-func (svc *ObjectService) UpdateTabName(uiContext waveobj.UIContext, tabId, name string) (waveobj.UpdatesRtnType, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	ctx = waveobj.ContextWithUpdates(ctx)
-	err := wstore.UpdateTabName(ctx, tabId, name)
-	if err != nil {
-		return nil, fmt.Errorf("error updating tab name: %w", err)
-	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
-}
-
 func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"uiContext", "blockDef", "rtOpts"},

@@ -89,6 +89,7 @@ export default [
     {
         files: ["frontend/app/store/services.ts"],
         rules: {
+            "@typescript-eslint/no-unused-vars": "off",
             "prefer-rest-params": "off",
         },
     },

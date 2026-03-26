@@ -6,12 +6,13 @@ import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { NullErrorBoundary } from "@/app/element/errorboundary";
 import { Search, useSearch } from "@/app/element/search";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { globalStore } from "@/app/store/jotaiStore";
 import { useTabModel } from "@/app/store/tab-model";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { TermViewModel } from "@/app/view/term/term-model";
-import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
+import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
@@ -299,6 +300,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 macOptionIsMeta: termMacOptionIsMeta,
                 cursorStyle: termCursorStyle,
                 cursorBlink: termCursorBlink,
+                overviewRuler: { width: 6 },
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
@@ -311,9 +313,6 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         model.termRef.current = termWrap;
         setTermWrapInst(termWrap);
         const rszObs = new ResizeObserver(() => {
-            if (termWrap.cachedAtBottomForResize == null) {
-                termWrap.cachedAtBottomForResize = termWrap.wasRecentlyAtBottom();
-            }
             termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);

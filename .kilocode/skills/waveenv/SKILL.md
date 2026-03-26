@@ -30,7 +30,7 @@ Create a narrowing whenever you are writing a component (or group of components)
 
 ```ts
 import {
-  BlockMetaKeyAtomFnType, // only if you use getBlockMetaKeyAtom
+  MetaKeyAtomFnType, // only if you use getBlockMetaKeyAtom or getTabMetaKeyAtom
   ConnConfigKeyAtomFnType, // only if you use getConnConfigKeyAtom
   SettingsKeyAtomFnType, // only if you use getSettingsKeyAtom
   WaveEnv,
@@ -69,16 +69,32 @@ export type MyEnv = WaveEnvSubset<{
   // --- wos: always take the whole thing, no sub-typing needed ---
   wos: WaveEnv["wos"];
 
+  // --- services: list only the services you call; no method-level narrowing ---
+  services: {
+    block: WaveEnv["services"]["block"];
+    workspace: WaveEnv["services"]["workspace"];
+  };
+
   // --- key-parameterized atom factories: enumerate the keys you use ---
   getSettingsKeyAtom: SettingsKeyAtomFnType<"app:focusfollowscursor" | "window:magnifiedblockopacity">;
-  getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<"view" | "frame:title" | "connection">;
+  getBlockMetaKeyAtom: MetaKeyAtomFnType<"view" | "frame:title" | "connection">;
+  getTabMetaKeyAtom: MetaKeyAtomFnType<"tabid" | "name">;
   getConnConfigKeyAtom: ConnConfigKeyAtomFnType<"conn:wshenabled">;
 
   // --- other atom helpers: copy verbatim ---
   getConnStatusAtom: WaveEnv["getConnStatusAtom"];
   getLocalHostDisplayNameAtom: WaveEnv["getLocalHostDisplayNameAtom"];
+  getConfigBackgroundAtom: WaveEnv["getConfigBackgroundAtom"];
 }>;
 ```
+
+### Automatically Included Fields
+
+Every `WaveEnvSubset<T>` automatically includes the mock fields — you never need to declare them:
+
+- `isMock: boolean`
+- `mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void`
+- `mockModels?: Map<any, any>`
 
 ### Rules for Each Section
 
@@ -88,8 +104,10 @@ export type MyEnv = WaveEnvSubset<{
 | `rpc`                      | `rpc: { Cmd: WaveEnv["rpc"]["Cmd"]; }`                 | List every RPC command called; omit the rest.                                                      |
 | `atoms`                    | `atoms: { atom: WaveEnv["atoms"]["atom"]; }`           | List every atom read; omit the rest.                                                               |
 | `wos`                      | `wos: WaveEnv["wos"]`                                  | Take the whole `wos` object (no sub-typing needed), but **only add it if `wos` is actually used**. |
+| `services`                 | `services: { svc: WaveEnv["services"]["svc"]; }`       | List each service used; take the whole service object (no method-level narrowing).                 |
 | `getSettingsKeyAtom`       | `SettingsKeyAtomFnType<"key1" \| "key2">`              | Union all settings keys accessed.                                                                  |
-| `getBlockMetaKeyAtom`      | `BlockMetaKeyAtomFnType<"key1" \| "key2">`             | Union all block meta keys accessed.                                                                |
+| `getBlockMetaKeyAtom`      | `MetaKeyAtomFnType<"key1" \| "key2">`                  | Union all block meta keys accessed.                                                                |
+| `getTabMetaKeyAtom`        | `MetaKeyAtomFnType<"key1" \| "key2">`                  | Union all tab meta keys accessed.                                                                  |
 | `getConnConfigKeyAtom`     | `ConnConfigKeyAtomFnType<"key1">`                      | Union all conn config keys accessed.                                                               |
 | All other `WaveEnv` fields | `WaveEnv["fieldName"]`                                 | Copy type verbatim.                                                                                |
 

@@ -3,7 +3,7 @@
 
 import { Button } from "@/app/element/button";
 import { CenteredDiv } from "@/app/element/quickelems";
-import { globalStore } from "@/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { formatRemoteUri } from "@/util/waveutil";
 import { useAtomValue } from "jotai";
@@ -72,18 +72,14 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     if (fileInfo.mimetype.startsWith("video/")) {
         return (
             <div className="flex flex-row h-full overflow-hidden items-center justify-center">
-                <video controls className="w-full h-full p-[10px] object-contain">
-                    <source src={streamingUrl} />
-                </video>
+                <video controls src={streamingUrl} className="w-full h-full p-[10px] object-contain" />
             </div>
         );
     }
     if (fileInfo.mimetype.startsWith("audio/")) {
         return (
             <div className="flex flex-row h-full overflow-hidden items-center justify-center">
-                <audio controls className="w-full h-full p-[10px] object-contain">
-                    <source src={streamingUrl} />
-                </audio>
+                <audio controls src={streamingUrl} className="w-full h-full p-[10px] object-contain" />
             </div>
         );
     }

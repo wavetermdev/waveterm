@@ -1,13 +1,13 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { TabModel } from "@/app/store/tab-model";
+import type { AllServiceImpls } from "@/app/store/services";
 import { RpcApiType } from "@/app/store/wshclientapi";
 import { Atom, PrimitiveAtom } from "jotai";
 import React from "react";
 
-export type BlockMetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
-    blockId: string,
+export type MetaKeyAtomFnType<Keys extends keyof MetaType = keyof MetaType> = <T extends Keys>(
+    id: string,
     key: T
 ) => Atom<MetaType[T]>;
 
@@ -33,18 +33,27 @@ type ComplexWaveEnvKeys = {
     electron: WaveEnv["electron"];
     atoms: WaveEnv["atoms"];
     wos: WaveEnv["wos"];
+    services: WaveEnv["services"];
 };
 
-export type WaveEnvSubset<T> = OmitNever<{
-    [K in keyof T]: K extends keyof ComplexWaveEnvKeys
-        ? Subset<T[K], ComplexWaveEnvKeys[K]>
-        : K extends keyof WaveEnv
-          ? T[K]
-          : never;
-}>;
+type WaveEnvMockFields = {
+    isMock: WaveEnv["isMock"];
+    mockSetWaveObj: WaveEnv["mockSetWaveObj"];
+    mockModels: WaveEnv["mockModels"];
+};
+
+export type WaveEnvSubset<T> = WaveEnvMockFields &
+    OmitNever<{
+        [K in keyof T]: K extends keyof ComplexWaveEnvKeys
+            ? Subset<T[K], ComplexWaveEnvKeys[K]>
+            : K extends keyof WaveEnv
+              ? T[K]
+              : never;
+    }>;
 
 // default implementation for production is in ./waveenvimpl.ts
 export type WaveEnv = {
+    isMock: boolean;
     electron: ElectronApi;
     rpc: RpcApiType;
     platform: NodeJS.Platform;
@@ -53,6 +62,8 @@ export type WaveEnv = {
     isMacOS: () => boolean;
     atoms: GlobalAtomsType;
     createBlock: (blockDef: BlockDef, magnified?: boolean, ephemeral?: boolean) => Promise<string>;
+    services: typeof AllServiceImpls;
+    callBackendService: (service: string, method: string, args: any[], noUIContext?: boolean) => Promise<any>;
     showContextMenu: (menu: ContextMenuItem[], e: React.MouseEvent) => void;
     getConnStatusAtom: (conn: string) => PrimitiveAtom<ConnStatus>;
     getLocalHostDisplayNameAtom: () => Atom<string>;
@@ -63,9 +74,14 @@ export type WaveEnv = {
         useWaveObjectValue: <T extends WaveObj>(oref: string) => [T, boolean];
     };
     getSettingsKeyAtom: SettingsKeyAtomFnType;
-    getBlockMetaKeyAtom: BlockMetaKeyAtomFnType;
+    getBlockMetaKeyAtom: MetaKeyAtomFnType;
+    getTabMetaKeyAtom: MetaKeyAtomFnType;
     getConnConfigKeyAtom: ConnConfigKeyAtomFnType;
-    mockTabModel?: TabModel;
+    getConfigBackgroundAtom: (bgKey: string | null) => Atom<BackgroundConfigType>;
+
+    // the mock fields are only usable in the preview server (may be be null or throw errors in production)
+    mockSetWaveObj: <T extends WaveObj>(oref: string, obj: T) => void;
+    mockModels: Map<any, any>;
 };
 
 export const WaveEnvContext = React.createContext<WaveEnv>(null);

@@ -366,16 +366,16 @@ export class RpcApiType {
         return client.wshRpcCall("fileread", data, opts);
     }
 
-    // command "filereadstream" [responsestream]
-	FileReadStreamCommand(client: WshClient, data: FileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "filereadstream", data, opts);
-        return client.wshRpcStream("filereadstream", data, opts);
-    }
-
     // command "filerestorebackup" [call]
     FileRestoreBackupCommand(client: WshClient, data: CommandFileRestoreBackupData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "filerestorebackup", data, opts);
         return client.wshRpcCall("filerestorebackup", data, opts);
+    }
+
+    // command "filestream" [call]
+    FileStreamCommand(client: WshClient, data: CommandFileStreamData, opts?: RpcOpts): Promise<FileInfo> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "filestream", data, opts);
+        return client.wshRpcCall("filestream", data, opts);
     }
 
     // command "filewrite" [call]
@@ -618,6 +618,12 @@ export class RpcApiType {
         return client.wshRpcCall("listalleditableapps", null, opts);
     }
 
+    // command "macosversion" [call]
+    MacOSVersionCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "macosversion", null, opts);
+        return client.wshRpcCall("macosversion", null, opts);
+    }
+
     // command "makedraftfromlocal" [call]
     MakeDraftFromLocalCommand(client: WshClient, data: CommandMakeDraftFromLocalData, opts?: RpcOpts): Promise<CommandMakeDraftFromLocalRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "makedraftfromlocal", data, opts);
@@ -714,6 +720,12 @@ export class RpcApiType {
         return client.wshRpcCall("remotefilemultiinfo", data, opts);
     }
 
+    // command "remotefilestream" [call]
+    RemoteFileStreamCommand(client: WshClient, data: CommandRemoteFileStreamData, opts?: RpcOpts): Promise<FileInfo> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotefilestream", data, opts);
+        return client.wshRpcCall("remotefilestream", data, opts);
+    }
+
     // command "remotefiletouch" [call]
     RemoteFileTouchCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotefiletouch", data, opts);
@@ -760,12 +772,6 @@ export class RpcApiType {
 	RemoteStreamCpuDataCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "remotestreamcpudata", null, opts);
         return client.wshRpcStream("remotestreamcpudata", null, opts);
-    }
-
-    // command "remotestreamfile" [responsestream]
-	RemoteStreamFileCommand(client: WshClient, data: CommandRemoteStreamFileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "remotestreamfile", data, opts);
-        return client.wshRpcStream("remotestreamfile", data, opts);
     }
 
     // command "remoteterminatejobmanager" [call]
@@ -928,6 +934,18 @@ export class RpcApiType {
     TestMultiArgCommand(client: WshClient, arg1: string, arg2: number, arg3: boolean, opts?: RpcOpts): Promise<string> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "testmultiarg", { args: [arg1, arg2, arg3] }, opts);
         return client.wshRpcCall("testmultiarg", { args: [arg1, arg2, arg3] }, opts);
+    }
+
+    // command "updatetabname" [call]
+    UpdateTabNameCommand(client: WshClient, arg1: string, arg2: string, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "updatetabname", { args: [arg1, arg2] }, opts);
+        return client.wshRpcCall("updatetabname", { args: [arg1, arg2] }, opts);
+    }
+
+    // command "updateworkspacetabids" [call]
+    UpdateWorkspaceTabIdsCommand(client: WshClient, arg1: string, arg2: string[], opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "updateworkspacetabids", { args: [arg1, arg2] }, opts);
+        return client.wshRpcCall("updateworkspacetabids", { args: [arg1, arg2] }, opts);
     }
 
     // command "vdomasyncinitiation" [call]

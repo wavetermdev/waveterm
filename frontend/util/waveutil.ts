@@ -69,7 +69,7 @@ export function processBackgroundUrls(cssText: string): string {
     return rtnStyle.replace(/^background:\s*/, "");
 }
 
-export function computeBgStyleFromMeta(meta: MetaType, defaultOpacity: number = null): React.CSSProperties {
+export function computeBgStyleFromMeta(meta: Omit<BackgroundConfigType, "display:name">, defaultOpacity: number = null): React.CSSProperties {
     const bgAttr = meta?.["bg"];
     if (isBlank(bgAttr)) {
         return null;
