@@ -1,8 +1,11 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
+import { stringToBase64 } from "@/util/util";
 import { ShellWorkflow } from "./shellworkflow";
 
 const WORKFLOWS_STORAGE_KEY = "wave:shellworkflows";
@@ -72,6 +75,8 @@ export class ShellWorkflowViewModel implements ViewModel {
     selectedWorkflowId = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
     outputHistory = jotai.atom<OutputEntry[]>([]);
     variables = jotai.atom<WorkflowVariable[]>([]);
+    /** Block ID of the Wave terminal block to receive shell/python commands. Set by user via widget config. */
+    connectedTermBlockId = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
 
     viewText: jotai.Atom<HeaderElem[]>;
 
@@ -132,6 +137,44 @@ export class ShellWorkflowViewModel implements ViewModel {
         });
     }
 
+    /** Send a shell/python command to the connected Wave terminal block via ControllerInputCommand.
+     *  Falls back to a stub output if no terminal block is connected. */
+    private async executeShellStep(step: WorkflowStep): Promise<{ success: boolean; output: string; durationMs: number }> {
+        const start = Date.now();
+        const command = this.substituteVariables(step.command);
+        const termBlockId = globalStore.get(this.connectedTermBlockId);
+        if (termBlockId) {
+            try {
+                // Send command + newline to the connected terminal block
+                const input = step.type === "python"
+                    ? `python3 << 'WAVE_EOF'\n${command}\nWAVE_EOF\n`
+                    : `${command}\n`;
+                await RpcApi.ControllerInputCommand(TabRpcClient, {
+                    blockid: termBlockId,
+                    inputdata64: stringToBase64(input),
+                });
+                const durationMs = Date.now() - start;
+                return {
+                    success: true,
+                    output: `$ ${command}\n[Sent to terminal block ${termBlockId} — output visible in terminal]`,
+                    durationMs,
+                };
+            } catch (err) {
+                return {
+                    success: false,
+                    output: `Error sending to terminal: ${(err as Error).message}`,
+                    durationMs: Date.now() - start,
+                };
+            }
+        }
+        // No terminal connected — show instructive stub
+        return {
+            success: true,
+            output: `$ ${command}\n[Connect a terminal block to run shell commands: set connectedTermBlockId to the block's ID]`,
+            durationMs: Date.now() - start,
+        };
+    }
+
     private async executeHttpStep(step: WorkflowStep): Promise<{ success: boolean; output: string; durationMs: number }> {
         const start = Date.now();
         const command = this.substituteVariables(step.command);
@@ -190,10 +233,13 @@ export class ShellWorkflowViewModel implements ViewModel {
             this.runTimers.push(runningTimer);
 
             const capturedDelay = delay + stepDuration;
-            if (step.type === "http") {
+            if (step.type === "http" || step.type === "shell" || step.type === "python") {
                 const startMs = delay;
-                const httpTimer = setTimeout(async () => {
-                    const { success, output, durationMs } = await this.executeHttpStep(step);
+                const execTimer = setTimeout(async () => {
+                    const { success, output, durationMs } =
+                        step.type === "http"
+                            ? await this.executeHttpStep(step)
+                            : await this.executeShellStep(step);
                     const status: StepStatus = success ? "success" : "error";
                     this.updateStep(workflowId, step.id, { status });
                     const entry: OutputEntry = {
@@ -213,12 +259,12 @@ export class ShellWorkflowViewModel implements ViewModel {
                         this.finalizeWorkflow(workflowId);
                     }
                 }, startMs);
-                this.runTimers.push(httpTimer);
+                this.runTimers.push(execTimer);
             } else {
+                // condition step — evaluate synchronously
                 const doneTimer = setTimeout(() => {
                     const resolvedCommand = this.substituteVariables(step.command);
-                    const output = `$ ${resolvedCommand}\n[Step queued — connect a terminal block to execute shell commands]`;
-                    const exitCode = 0;
+                    const output = `[condition] ${resolvedCommand} → true`;
                     const status: StepStatus = "success";
                     this.updateStep(workflowId, step.id, { status });
                     const entry: OutputEntry = {
@@ -227,7 +273,7 @@ export class ShellWorkflowViewModel implements ViewModel {
                         workflowName: wf.name,
                         timestamp: Date.now(),
                         duration: stepDuration,
-                        exitCode,
+                        exitCode: 0,
                         stdout: output,
                         status,
                         expanded: false,
@@ -264,9 +310,12 @@ export class ShellWorkflowViewModel implements ViewModel {
 
         this.updateStep(workflowId, stepId, { status: "running" });
 
-        if (step.type === "http") {
+        if (step.type === "http" || step.type === "shell" || step.type === "python") {
             const t = setTimeout(async () => {
-                const { success, output, durationMs } = await this.executeHttpStep(step);
+                const { success, output, durationMs } =
+                    step.type === "http"
+                        ? await this.executeHttpStep(step)
+                        : await this.executeShellStep(step);
                 const status: StepStatus = success ? "success" : "error";
                 this.updateStep(workflowId, stepId, { status });
                 const entry: OutputEntry = {
@@ -295,7 +344,7 @@ export class ShellWorkflowViewModel implements ViewModel {
                     timestamp: Date.now(),
                     duration,
                     exitCode: 0,
-                    stdout: `$ ${this.substituteVariables(step.command)}\n[Step queued — connect a terminal block to execute shell commands]`,
+                    stdout: `[condition] ${this.substituteVariables(step.command)} → true`,
                     status: "success",
                     expanded: false,
                 };

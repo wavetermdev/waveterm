@@ -52,106 +52,69 @@ export type MlPrediction = {
     features: Record<string, number>;
 };
 
-const DEX_NAMES = ["Uniswap V3", "SushiSwap", "Camelot", "GMX", "Balancer"];
-const TOKEN_PAIRS = [
-    ["USDC", "ETH", "ARB"],
-    ["WBTC", "USDC", "ARB"],
-    ["ETH", "USDT", "GMX"],
-    ["ARB", "ETH", "USDC"],
-    ["MAGIC", "ETH", "USDC"],
-];
+const ZERO_STATS: ArbitrageStats = {
+    totalOpportunities: 0,
+    executed: 0,
+    successful: 0,
+    totalProfitUsd: 0,
+    avgProfitPct: 0,
+    avgExecutionMs: 0,
+    gasSpent: 0,
+    winRate: 0,
+};
 
-// Per-pair fixed opportunity data (index-stable, deterministic)
-const OPPORTUNITY_DATA: Array<{ profit: number; profitPct: number; gas: number; confidence: number; amounts: number[] }> = [
-    { profit: 142.5, profitPct: 0.62, gas: 18.3, confidence: 0.89, amounts: [25000, 7.1, 1250] },
-    { profit: 87.2,  profitPct: 0.38, gas: 22.1, confidence: 0.74, amounts: [0.38, 25000, 1820] },
-    { profit: 213.8, profitPct: 0.94, gas: 31.4, confidence: 0.82, amounts: [12000, 3.4, 4200] },
-    { profit: 56.1,  profitPct: 0.24, gas: 14.7, confidence: 0.91, amounts: [18000, 5.1, 14500] },
-    { profit: 175.3, profitPct: 0.77, gas: 26.8, confidence: 0.68, amounts: [3400, 0.97, 2800] },
-];
-
-// Fixed DEX liquidity and spread offsets (dex index → spread fraction)
-const DEX_SPREAD: number[] = [0.0018, -0.0012, 0.0025];
-const DEX_LIQUIDITY: number[] = [2400000, 3800000, 1600000];
-const DEX_FEES: number[] = [0.05, 0.3, 0.25];
-
-function generateOpportunities(): ArbitrageOpportunity[] {
-    return TOKEN_PAIRS.map((path, i) => {
-        const d = OPPORTUNITY_DATA[i];
-        const statuses: ArbitrageOpportunity["status"][] = [
-            "pending",
-            "executing",
-            "completed",
-            "completed",
-            "expired",
-        ];
-        return {
-            id: `arb-init-${i}`,
-            path,
-            dexes: [DEX_NAMES[i % DEX_NAMES.length], DEX_NAMES[(i + 1) % DEX_NAMES.length]],
-            profitUsd: d.profit,
-            profitPct: d.profitPct,
-            gasEstimate: d.gas,
-            netProfit: d.profit - d.gas,
-            confidence: d.confidence,
-            detected: Date.now() - i * 3000,
-            status: statuses[i],
-            tokens: path,
-            amounts: d.amounts,
-        };
-    });
-}
-
-function generateStats(): ArbitrageStats {
+/** Convert a live ArbRoute from the arbitrage engine to an ArbitrageOpportunity for the UI. */
+function arbRouteToOpportunity(route: ArbRoute, idx: number): ArbitrageOpportunity {
+    const id = `arb-live-${route.tokens.join("-")}-${idx}`;
     return {
-        totalOpportunities: 847,
-        executed: 312,
-        successful: 289,
-        totalProfitUsd: 14823.5,
-        avgProfitPct: 0.34,
-        avgExecutionMs: 187,
-        gasSpent: 2341.2,
-        winRate: 92.6,
+        id,
+        path: [...route.tokens],
+        dexes: [...route.dexes],
+        profitUsd: route.netProfitUsd,
+        profitPct: route.grossProfitPct * 100,
+        gasEstimate: route.gasEstimateUsd,
+        netProfit: route.netProfitUsd,
+        confidence: route.mlScore,
+        detected: Date.now(),
+        status: "pending",
+        tokens: [...route.tokens],
+        amounts: route.rates.map((r) => r * 10000), // scale rate fractions to USD basis (10k notional)
     };
 }
 
-function generateDexPrices(livePrices?: Record<string, number>): DexPrice[] {
+/** Build DexPrice[] from live price cache (only populated when prices are available). */
+function dexPricesFromCache(cache: Record<string, number>): DexPrice[] {
+    if (Object.keys(cache).length === 0) return [];
     const prices: DexPrice[] = [];
-    // Use live prices when available, otherwise fall back to mock base prices
-    const base: Record<string, number> = {
-        ETH: livePrices?.ETH ?? 3520,
+    const DEX_CONFIG = [
+        { dex: "Hyperliquid", spread: 0.0000, liquidity: 5_000_000, fee: 0.025 },
+        { dex: "Uniswap V3",  spread: 0.0018, liquidity: 3_800_000, fee: 0.05 },
+        { dex: "Balancer",    spread: -0.0012, liquidity: 2_400_000, fee: 0.1 },
+    ];
+    const tokenMap: Record<string, number> = {
+        ETH: cache["ETH"] ?? 0,
+        WBTC: cache["BTC"] ?? 0,
+        ARB: cache["ARB"] ?? 0,
+        SOL: cache["SOL"] ?? 0,
         USDC: 1,
-        ARB: livePrices?.ARB ?? 1.24,
-        WBTC: livePrices?.BTC ?? 67450,
     };
-    Object.entries(base).forEach(([token, price]) => {
-        DEX_NAMES.slice(0, 3).forEach((dex, dexIdx) => {
-            prices.push({
-                dex,
-                token,
-                price: price * (1 + DEX_SPREAD[dexIdx]),
-                liquidity: DEX_LIQUIDITY[dexIdx],
-                fee: DEX_FEES[dexIdx],
-            });
-        });
-    });
+    for (const [token, base] of Object.entries(tokenMap)) {
+        if (base === 0) continue;
+        for (const cfg of DEX_CONFIG) {
+            prices.push({ dex: cfg.dex, token, price: base * (1 + cfg.spread), liquidity: cfg.liquidity, fee: cfg.fee });
+        }
+    }
     return prices;
 }
 
-function generateMlPrediction(opp: ArbitrageOpportunity): MlPrediction {
+function mlPredictionFromRoute(route: ArbRoute, idx: number): MlPrediction {
+    const id = `arb-live-${route.tokens.join("-")}-${idx}`;
     return {
-        opportunityId: opp.id,
-        score: opp.confidence,
-        profitability: opp.profitPct / 2,
-        riskScore: 1 - opp.confidence,
-        features: {
-            price_spread: 0.0072,
-            liquidity_ratio: 0.68,
-            gas_price_gwei: 0.14,
-            time_window_ms: 210,
-            historical_success: 0.87,
-            volatility: 0.048,
-        },
+        opportunityId: id,
+        score: route.mlScore,
+        profitability: route.grossProfitPct * 50,
+        riskScore: 1 - route.mlScore,
+        features: route.features,
     };
 }
 
@@ -164,9 +127,9 @@ export class ArbitrageBotViewModel implements ViewModel {
     noPadding = jotai.atom<boolean>(true);
 
     activeTab = jotai.atom<"live" | "history" | "prices" | "model">("live");
-    opportunities = jotai.atom<ArbitrageOpportunity[]>(generateOpportunities());
-    stats = jotai.atom<ArbitrageStats>(generateStats());
-    dexPrices = jotai.atom<DexPrice[]>(generateDexPrices());
+    opportunities = jotai.atom<ArbitrageOpportunity[]>([]);
+    stats = jotai.atom<ArbitrageStats>({ ...ZERO_STATS });
+    dexPrices = jotai.atom<DexPrice[]>([]);
     botActive = jotai.atom<boolean>(true);
     scanInterval = jotai.atom<number>(500);
     lastScan = jotai.atom<number>(Date.now());
@@ -241,7 +204,7 @@ export class ArbitrageBotViewModel implements ViewModel {
                 }
             }
             if (found > 0) {
-                globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
+                globalStore.set(this.dexPrices, dexPricesFromCache(this.livePriceCache));
                 globalStore.set(this.dataSource, "live");
             }
         } catch (e) {
@@ -272,11 +235,15 @@ export class ArbitrageBotViewModel implements ViewModel {
         // 4. Build DexPriceMap from all available prices
         const dexPriceMap = this.buildDexPriceMap(onChain, poolTokens);
 
-        // 5. Run arbitrage engine
+        // 5. Run arbitrage engine and populate opportunities
         if (Object.keys(dexPriceMap).length >= 3) {
             const graph = buildTokenGraph(dexPriceMap);
             const routes = findArbRoutes(graph, 10000);
             globalStore.set(this.arbRoutes, routes);
+            if (routes.length > 0) {
+                globalStore.set(this.opportunities, routes.map(arbRouteToOpportunity));
+                globalStore.set(this.dexPrices, dexPricesFromCache(this.livePriceCache));
+            }
         }
     }
 
@@ -361,7 +328,7 @@ export class ArbitrageBotViewModel implements ViewModel {
     }
 
     async forceScan() {
-        // Refresh live prices first, then regenerate opportunities
+        // Refresh live prices first
         try {
             const mids = await getHlAllMids();
             for (const coin of ["ETH", "BTC", "ARB", "SOL", "AVAX"]) {
@@ -373,18 +340,30 @@ export class ArbitrageBotViewModel implements ViewModel {
         }
         // Refresh on-chain prices and arbitrage routes
         await this.refreshOnChainPrices();
-        globalStore.set(this.opportunities, generateOpportunities());
-        globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
+        // Populate opportunities exclusively from live arb routes
+        const routes = globalStore.get(this.arbRoutes);
+        const opps = routes.map(arbRouteToOpportunity);
+        globalStore.set(this.opportunities, opps);
+        globalStore.set(this.dexPrices, dexPricesFromCache(this.livePriceCache));
+        // Update cumulative stats from live routes
+        if (opps.length > 0) {
+            const prev = globalStore.get(this.stats);
+            const newTotal = prev.totalOpportunities + opps.length;
+            globalStore.set(this.stats, {
+                ...prev,
+                totalOpportunities: newTotal,
+                avgProfitPct: opps.reduce((s, o) => s + o.profitPct, 0) / opps.length,
+            });
+        }
         globalStore.set(this.lastScan, Date.now());
     }
 
     getMlPredictions(): MlPrediction[] {
-        const opps = globalStore.get(this.opportunities);
-        return opps.map(generateMlPrediction);
+        const routes = globalStore.get(this.arbRoutes);
+        return routes.map(mlPredictionFromRoute);
     }
 
     startScanning() {
-        // Deterministic tick counter drives status transitions: pending→executing (tick 3), executing→completed (tick 6)
         let tick = 0;
         this.refreshInterval = setInterval(() => {
             const active = globalStore.get(this.botActive);
@@ -394,19 +373,14 @@ export class ArbitrageBotViewModel implements ViewModel {
             if (tick % 4 === 0) {
                 void this.refreshOnChainPrices();
             }
-            // Refresh DEX prices (with live base prices when available) and update opportunity status
-            globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
-            const prev = globalStore.get(this.opportunities);
-            const updated = prev.map((opp) => {
-                if (opp.status === "pending" && tick % 3 === 0) {
-                    return { ...opp, status: "executing" as const };
-                }
-                if (opp.status === "executing" && tick % 3 === 2) {
-                    return { ...opp, status: "completed" as ArbitrageOpportunity["status"] };
-                }
-                return opp;
-            });
-            globalStore.set(this.opportunities, updated);
+            // Rebuild dex prices from live cache only
+            globalStore.set(this.dexPrices, dexPricesFromCache(this.livePriceCache));
+            // Populate opportunities from live arb routes (updated by refreshOnChainPrices)
+            const routes = globalStore.get(this.arbRoutes);
+            if (routes.length > 0) {
+                const opps = routes.map(arbRouteToOpportunity);
+                globalStore.set(this.opportunities, opps);
+            }
             globalStore.set(this.lastScan, Date.now());
         }, 1500);
     }

@@ -51,89 +51,28 @@ export type RateHistory = {
     utilization: number;
 };
 
-function generateAssets(): LendingAsset[] {
-    return [
-        {
-            symbol: "USDC",
-            name: "USD Coin",
-            supplyApy: 4.82,
-            borrowApy: 7.14,
-            totalSupply: 184500000,
-            totalBorrow: 127300000,
-            utilization: 69.0,
-            price: 1.0,
-            ltv: 0.87,
-            liquidationThreshold: 0.9,
-            icon: "💵",
-            mlPredictedApy: 5.1,
-        },
-        {
-            symbol: "ETH",
-            name: "Ethereum",
-            supplyApy: 2.14,
-            borrowApy: 3.87,
-            totalSupply: 48200,
-            totalBorrow: 29100,
-            utilization: 60.4,
-            price: 3520,
-            ltv: 0.8,
-            liquidationThreshold: 0.825,
-            icon: "💎",
-            mlPredictedApy: 2.45,
-        },
-        {
-            symbol: "WBTC",
-            name: "Wrapped Bitcoin",
-            supplyApy: 0.48,
-            borrowApy: 2.15,
-            totalSupply: 2840,
-            totalBorrow: 1120,
-            utilization: 39.4,
-            price: 67450,
-            ltv: 0.7,
-            liquidationThreshold: 0.75,
-            icon: "₿",
-            mlPredictedApy: 0.62,
-        },
-        {
-            symbol: "ARB",
-            name: "Arbitrum",
-            supplyApy: 6.34,
-            borrowApy: 11.2,
-            totalSupply: 45200000,
-            totalBorrow: 32100000,
-            utilization: 71.0,
-            price: 1.24,
-            ltv: 0.65,
-            liquidationThreshold: 0.7,
-            icon: "🔵",
-            mlPredictedApy: 7.2,
-        },
-        {
-            symbol: "DAI",
-            name: "Dai Stablecoin",
-            supplyApy: 4.41,
-            borrowApy: 6.89,
-            totalSupply: 98700000,
-            totalBorrow: 67400000,
-            utilization: 68.3,
-            price: 1.0,
-            ltv: 0.86,
-            liquidationThreshold: 0.88,
-            icon: "🟡",
-            mlPredictedApy: 4.8,
-        },
-    ];
-}
+const ASSET_ICONS: Record<string, string> = {
+    USDC: "💵", ETH: "💎", WETH: "💎", WBTC: "₿", ARB: "🔵", DAI: "🟡",
+    USDT: "💚", OP: "🔴", GNO: "🦉", cbETH: "🔷", rETH: "🔶", wstETH: "🌊",
+};
 
-function generateUserPosition(): UserPosition[] {
-    return [
-        { symbol: "USDC", supplied: 10000, borrowed: 0, collateralEnabled: true },
-        { symbol: "ETH", supplied: 2.5, borrowed: 0.8, collateralEnabled: true },
-        { symbol: "WBTC", supplied: 0, borrowed: 0, collateralEnabled: false },
-        { symbol: "ARB", supplied: 5000, borrowed: 2000, collateralEnabled: true },
-        { symbol: "DAI", supplied: 0, borrowed: 3500, collateralEnabled: false },
-    ];
+/** Map a Morpho Blue market to a LendingAsset for the UI.  */
+function morphoToAsset(m: MorphoMarket): LendingAsset {
+    const sym = m.loanToken.symbol;
+    return {
+        symbol: sym,
+        name: sym,
+        supplyApy: m.supplyApyPercent,
+        borrowApy: m.borrowApyPercent,
+        totalSupply: m.totalSupplyUsd,
+        totalBorrow: m.totalBorrowUsd,
+        utilization: m.utilizationPct,
+        price: 1, // enriched later by CoinGecko
+        ltv: m.lltv,
+        liquidationThreshold: Math.min(m.lltv + 0.025, 0.95), // 2.5% buffer above LLTV, capped at 95%
+        icon: ASSET_ICONS[sym] ?? "🪙",
+        mlPredictedApy: m.supplyApyPercent * 1.08,
+    };
 }
 
 function calcHealthData(positions: UserPosition[], assets: LendingAsset[]): HealthData {
@@ -171,21 +110,6 @@ function calcHealthData(positions: UserPosition[], assets: LendingAsset[]): Heal
     };
 }
 
-function generateRateHistory(baseSupply: number, baseBorrow: number, count = 48): RateHistory[] {
-    const now = Date.now();
-    const history: RateHistory[] = [];
-    const baseUtil = 72;
-    for (let i = count; i >= 0; i--) {
-        // Deterministic oscillation: subtle sine waves for a realistic-looking chart
-        const phase = ((count - i) / count) * 2 * Math.PI;
-        const supplyApy = Math.max(0.1, baseSupply + Math.sin(phase * 1.3) * 0.15);
-        const borrowApy = Math.max(supplyApy + 0.5, baseBorrow + Math.sin(phase * 0.9) * 0.15);
-        const utilization = Math.max(30, Math.min(95, baseUtil + Math.sin(phase * 1.7) * 3.5));
-        history.push({ ts: now - i * 3600000, supplyApy, borrowApy, utilization });
-    }
-    return history;
-}
-
 export class DeFiLendingViewModel implements ViewModel {
     viewType = "defilending";
     blockId: string;
@@ -195,19 +119,19 @@ export class DeFiLendingViewModel implements ViewModel {
     noPadding = jotai.atom<boolean>(true);
 
     activeTab = jotai.atom<"markets" | "position" | "actions" | "model">("markets");
-    assets = jotai.atom<LendingAsset[]>(generateAssets());
-    userPositions = jotai.atom<UserPosition[]>(generateUserPosition());
+    assets = jotai.atom<LendingAsset[]>([]);
+    userPositions = jotai.atom<UserPosition[]>([]);
     selectedAction = jotai.atom<"supply" | "borrow" | "repay" | "withdraw" | "collateral-swap-repay">("supply");
     selectedAsset = jotai.atom<string>("USDC");
     actionAmount = jotai.atom<string>("");
     swapRepaySteps = jotai.atom<SwapRepayStep[]>([
-        { id: 1, label: "Flash loan USDC", status: "done", txHash: "0xabc...123" },
-        { id: 2, label: "Swap collateral → debt token", status: "done", txHash: "0xdef...456" },
-        { id: 3, label: "Repay debt position", status: "active" },
+        { id: 1, label: "Flash loan", status: "pending" },
+        { id: 2, label: "Swap collateral → debt token", status: "pending" },
+        { id: 3, label: "Repay debt position", status: "pending" },
         { id: 4, label: "Return flash loan", status: "pending" },
         { id: 5, label: "Withdraw freed collateral", status: "pending" },
     ]);
-    rateHistory = jotai.atom<RateHistory[]>(generateRateHistory(4.82, 7.14));
+    rateHistory = jotai.atom<RateHistory[]>([]);
     /** Morpho Blue lending markets. */
     morphoMarkets = jotai.atom<MorphoMarket[]>([]);
     /** "live" once Morpho data has been fetched successfully. */
@@ -262,30 +186,44 @@ export class DeFiLendingViewModel implements ViewModel {
         return DeFiLending as ViewComponent;
     }
 
-    /** Update asset prices from CoinGecko, keeping APY rates as-is until Aave data is wired. */
+    /** Fetch Morpho Blue markets (primary) and enrich prices from CoinGecko. */
     async initLivePrices() {
-        try {
-            const symbols = globalStore.get(this.assets).map((a) => a.symbol);
-            const prices = await fetchTokenPrices(symbols);
-            if (Object.keys(prices).length === 0) return;
-            const updated = globalStore.get(this.assets).map((a) => {
-                const livePrice = prices[a.symbol];
-                return livePrice != null ? { ...a, price: livePrice } : a;
-            });
-            globalStore.set(this.assets, updated);
-        } catch (e) {
-            console.warn("[DeFiLending] CoinGecko unavailable – using mock prices", e);
-        }
-
-        // Fetch Morpho Blue markets for Arbitrum
+        // 1. Fetch Morpho Blue lending markets — these are the authoritative APY/utilization source
         try {
             const markets = await fetchMorphoMarkets(42161);
             if (markets.length > 0) {
                 globalStore.set(this.morphoMarkets, markets);
+                // Map Morpho markets to LendingAsset[]
+                const seen = new Set<string>();
+                const assets: LendingAsset[] = [];
+                for (const m of markets) {
+                    const sym = m.loanToken.symbol;
+                    if (seen.has(sym)) continue; // deduplicate by loan token
+                    seen.add(sym);
+                    assets.push(morphoToAsset(m));
+                }
+                globalStore.set(this.assets, assets);
                 globalStore.set(this.dataSource, "live");
             }
         } catch (e) {
             console.warn("[DeFiLending] Morpho unavailable", e);
+        }
+
+        // 2. Enrich asset prices from CoinGecko
+        try {
+            const currentAssets = globalStore.get(this.assets);
+            if (currentAssets.length === 0) return;
+            const symbols = currentAssets.map((a) => a.symbol);
+            const prices = await fetchTokenPrices(symbols);
+            if (Object.keys(prices).length > 0) {
+                const enriched = currentAssets.map((a) => {
+                    const livePrice = prices[a.symbol];
+                    return livePrice != null ? { ...a, price: livePrice } : a;
+                });
+                globalStore.set(this.assets, enriched);
+            }
+        } catch (e) {
+            console.warn("[DeFiLending] CoinGecko unavailable – prices remain at placeholder", e);
         }
     }
 

@@ -5,6 +5,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
+import { stringToBase64 } from "@/util/util";
 import { CodeEditor } from "./codeeditor";
 
 export type Language = "python" | "typescript" | "javascript" | "go" | "rust" | "sql" | "shell" | "json";
@@ -96,20 +97,6 @@ async function fetchAiSuggestions(code: string, language: Language): Promise<AiS
     return [];
 }
 
-function generateRunHistory(): RunRecord[] {
-    const now = Date.now();
-    const durations = [1240, 1380, 940, 1150, 1820, 1070, 1340, 890, 1620, 1110];
-    const memories =  [48,   52,   41,  45,   58,   43,   50,  39,  55,   46];
-    return Array.from({ length: 10 }, (_, i) => ({
-        id: `run-${i}`,
-        timestamp: now - i * 180_000,
-        exitCode: i === 2 || i === 7 ? 1 : 0,
-        durationMs: durations[i],
-        memoryMb: memories[i],
-        language: "python",
-    }));
-}
-
 export class CodeEditorViewModel implements ViewModel {
     viewType = "codeeditor";
     blockId: string;
@@ -126,14 +113,16 @@ export class CodeEditorViewModel implements ViewModel {
     isRunning = jotai.atom<boolean>(false);
     aiSuggestions = jotai.atom<AiSuggestion[]>([]);
     fileTree = jotai.atom<FileTreeNode[]>([]);
-    runHistory = jotai.atom<RunRecord[]>(generateRunHistory());
+    runHistory = jotai.atom<RunRecord[]>([]);
     executionMetrics = jotai.atom<ExecutionMetrics>({
-        lastRunDurationMs: 1240,
-        lastRunMemoryMb: 48,
-        lastRunCpuPeak: 73,
-        totalRuns: 10,
+        lastRunDurationMs: 0,
+        lastRunMemoryMb: 0,
+        lastRunCpuPeak: 0,
+        totalRuns: 0,
     });
     dataSource = jotai.atom<"live" | "demo">("demo");
+    /** Block ID of the Wave terminal block that executes code via the shell runtime. */
+    connectedTermBlockId = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
 
     viewText: jotai.Atom<HeaderElem[]>;
 
@@ -174,23 +163,57 @@ export class CodeEditorViewModel implements ViewModel {
         return CodeEditor as ViewComponent;
     }
 
-    runCode() {
+    async runCode() {
         const lang = globalStore.get(this.selectedLanguage);
         const fname = globalStore.get(this.filename);
+        const code = globalStore.get(this.code);
         const startTime = Date.now();
         globalStore.set(this.isRunning, true);
         globalStore.set(this.output, `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\n...`);
 
-        // Code execution requires a shell subprocess; keep simulated but record real timing
+        const termBlockId = globalStore.get(this.connectedTermBlockId);
+        if (termBlockId) {
+            // Send code to the connected terminal block via Wave's shell runtime
+            try {
+                const cmd = lang === "python"
+                    ? `python3 << 'WAVE_EOF'\n${code}\nWAVE_EOF\n`
+                    : lang === "shell"
+                    ? `${code}\n`
+                    : `# ${lang} — run via connected terminal\n${code}\n`;
+                await RpcApi.ControllerInputCommand(TabRpcClient, {
+                    blockid: termBlockId,
+                    inputdata64: stringToBase64(cmd),
+                });
+                const actualDurationMs = Date.now() - startTime;
+                globalStore.set(this.output, `[Sent to terminal] ${fname}\n[Output visible in terminal block ${termBlockId}]`);
+                globalStore.set(this.isRunning, false);
+                const newRecord: RunRecord = {
+                    id: `run-${Date.now()}`,
+                    timestamp: Date.now(),
+                    exitCode: 0,
+                    durationMs: actualDurationMs,
+                    memoryMb: 0,
+                    language: lang,
+                };
+                const prev = globalStore.get(this.runHistory);
+                globalStore.set(this.runHistory, [newRecord, ...prev].slice(0, 10));
+            } catch (err) {
+                globalStore.set(this.output, `[Error] Could not send to terminal: ${(err as Error).message}`);
+                globalStore.set(this.isRunning, false);
+            }
+            return;
+        }
+
+        // No terminal connected — show instructive output
         const FIXED_DURATION_MS = 1400;
         this.runTimer = setTimeout(() => {
             const actualDurationMs = Date.now() - startTime;
-            const memoryMb = 48;
-            const cpuPeak = 72;
+            const memoryMb = 0;
+            const cpuPeak = 0;
             const exitCode = 0;
-            const mockOut = `[Running] ${fname} (${lang === "python" ? "Python 3.11" : lang})\nTraining GBM... (n_estimators=200)\nAccuracy: 0.8714\n[Done] exit code 0 — ${(actualDurationMs / 1000).toFixed(2)}s — ${memoryMb}MB RAM`;
+            const out = `[${fname}] Connect a terminal block to execute code in the shell runtime.\nSet connectedTermBlockId to the block's ID to enable live execution.`;
 
-            globalStore.set(this.output, mockOut);
+            globalStore.set(this.output, out);
             globalStore.set(this.isRunning, false);
             globalStore.set(this.executionMetrics, {
                 lastRunDurationMs: actualDurationMs,
