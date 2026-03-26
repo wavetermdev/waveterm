@@ -266,7 +266,7 @@ export class ArbitrageBotViewModel implements ViewModel {
         if (pools.length > 0) globalStore.set(this.balancerPools, pools);
 
         // 3. Read Balancer pool token balances for the ETH/USDC 50/50 pool
-        const ETH_USDC_POOL_ID = "0x64541216bAFFFEec8ea535BB71Fbc927831d0595000200000000000000000047";
+        const ETH_USDC_POOL_ID = "0x64541216bAFFEec8ea535BB71Fbc927831d0595000200000000000000000047";
         const poolTokens = await readBalancerPoolTokens(ETH_USDC_POOL_ID);
 
         // 4. Build DexPriceMap from all available prices
