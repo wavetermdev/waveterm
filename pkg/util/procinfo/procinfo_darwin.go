@@ -12,7 +12,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-
 // darwinStatStatus maps P_stat from ExternProc to a human-readable name.
 // Values from sys/proc.h: SIDL=1, SRUN=2, SSLEEP=3, SSTOP=4, SZOMB=5, SDEAD=6.
 var darwinStatStatus = map[int8]string{
