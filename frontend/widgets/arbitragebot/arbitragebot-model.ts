@@ -3,7 +3,11 @@
 
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
-import { getHlAllMids, toCoin } from "../services/hyperliquid";
+import { type ArbRoute, buildTokenGraph, findArbRoutes } from "../services/arbitrage-engine";
+import { type BalancerPool, balancerImpliedPrice, fetchBalancerPools } from "../services/balancer";
+import { CHAIN_IDS, TOKEN_ADDRESSES } from "../services/blockchain";
+import { getHlAllMids } from "../services/hyperliquid";
+import { readBalancerPoolTokens, readGmxV1Price, readV2PairReserves } from "../services/rpc";
 import { ArbitrageBot } from "./arbitragebot";
 
 export type ArbitrageOpportunity = {
@@ -168,6 +172,12 @@ export class ArbitrageBotViewModel implements ViewModel {
     lastScan = jotai.atom<number>(Date.now());
     /** "live" when Hyperliquid mid prices are reachable. */
     dataSource = jotai.atom<"live" | "demo">("demo");
+    /** Prices sourced exclusively from on-chain reads. */
+    onChainPrices = jotai.atom<Record<string, number>>({});
+    /** Live triangular arbitrage routes from the engine. */
+    arbRoutes = jotai.atom<ArbRoute[]>([]);
+    /** Balancer V2 pool data. */
+    balancerPools = jotai.atom<BalancerPool[]>([]);
 
     viewText: jotai.Atom<HeaderElem[]>;
 
@@ -237,6 +247,112 @@ export class ArbitrageBotViewModel implements ViewModel {
         } catch (e) {
             console.warn("[ArbitrageBot] Hyperliquid unavailable – running in demo mode", e);
         }
+
+        // 1. Read GMX V1 on-chain prices for WETH and WBTC
+        const arbTokens = TOKEN_ADDRESSES[CHAIN_IDS.ARBITRUM];
+        const [gmxEth, gmxBtc] = await Promise.all([
+            readGmxV1Price(arbTokens["WETH"] ?? ""),
+            readGmxV1Price(arbTokens["WBTC"] ?? ""),
+        ]);
+        const onChain: Record<string, number> = {};
+        if (gmxEth) onChain["WETH"] = (gmxEth.min + gmxEth.max) / 2;
+        if (gmxBtc) onChain["WBTC"] = (gmxBtc.min + gmxBtc.max) / 2;
+        if (Object.keys(onChain).length > 0) {
+            globalStore.set(this.onChainPrices, onChain);
+        }
+
+        // 2. Fetch Balancer top pools
+        const pools = await fetchBalancerPools(100_000, 10);
+        if (pools.length > 0) globalStore.set(this.balancerPools, pools);
+
+        // 3. Read Balancer pool token balances for the ETH/USDC 50/50 pool
+        const ETH_USDC_POOL_ID = "0x64541216bAFFFEec8ea535BB71Fbc927831d0595000200000000000000000047";
+        const poolTokens = await readBalancerPoolTokens(ETH_USDC_POOL_ID);
+
+        // 4. Build DexPriceMap from all available prices
+        const dexPriceMap = this.buildDexPriceMap(onChain, poolTokens);
+
+        // 5. Run arbitrage engine
+        if (Object.keys(dexPriceMap).length >= 3) {
+            const graph = buildTokenGraph(dexPriceMap);
+            const routes = findArbRoutes(graph, 10000);
+            globalStore.set(this.arbRoutes, routes);
+        }
+    }
+
+    /** Build a DexPriceMap combining on-chain, Hyperliquid, and Balancer prices. */
+    private buildDexPriceMap(
+        onChain: Record<string, number>,
+        balancerPoolTokens: { tokens: string[]; balances: bigint[] } | null
+    ): import("../services/arbitrage-engine").DexPriceMap {
+        const map: import("../services/arbitrage-engine").DexPriceMap = {};
+
+        const addEdge = (from: string, to: string, price: number, dex: string, liquidity: number) => {
+            if (!map[from]) map[from] = {};
+            map[from][to] = { price, dex, liquidity };
+        };
+
+        // Hyperliquid mids
+        const ethPrice = this.livePriceCache["ETH"] ?? onChain["WETH"] ?? 3500;
+        const btcPrice = this.livePriceCache["BTC"] ?? onChain["WBTC"] ?? 67000;
+        const arbPrice = this.livePriceCache["ARB"] ?? 1.2;
+        const solPrice = this.livePriceCache["SOL"] ?? 170;
+
+        addEdge("USDC", "ETH", 1 / ethPrice, "Hyperliquid", 5_000_000);
+        addEdge("ETH", "USDC", ethPrice, "Hyperliquid", 5_000_000);
+        addEdge("USDC", "WBTC", 1 / btcPrice, "Hyperliquid", 3_000_000);
+        addEdge("WBTC", "USDC", btcPrice, "Hyperliquid", 3_000_000);
+        addEdge("USDC", "ARB", 1 / arbPrice, "Hyperliquid", 2_000_000);
+        addEdge("ARB", "USDC", arbPrice, "Hyperliquid", 2_000_000);
+        addEdge("ETH", "ARB", ethPrice / arbPrice, "Uniswap V3", 1_500_000);
+        addEdge("ARB", "ETH", arbPrice / ethPrice, "Uniswap V3", 1_500_000);
+
+        // GMX V1 on-chain prices (slight spread vs Hyperliquid)
+        if (onChain["WETH"]) {
+            addEdge("WETH", "USDC", onChain["WETH"], "GMX V1", 4_000_000);
+            addEdge("USDC", "WETH", 1 / onChain["WETH"], "GMX V1", 4_000_000);
+        }
+
+        // Balancer implied price from pool token balances
+        if (balancerPoolTokens && balancerPoolTokens.tokens.length >= 2) {
+            const bal0 = Number(balancerPoolTokens.balances[0]) / 1e18;
+            const bal1 = Number(balancerPoolTokens.balances[1]) / 1e6;
+            if (bal0 > 0 && bal1 > 0) {
+                const impliedEth = balancerImpliedPrice(bal0, 0.5, bal1, 0.5);
+                if (impliedEth > 0) {
+                    addEdge("ETH", "USDC", impliedEth, "Balancer", bal1);
+                    addEdge("USDC", "ETH", 1 / impliedEth, "Balancer", bal1);
+                }
+            }
+        }
+
+        // SOL pairs from Hyperliquid
+        if (solPrice > 0) {
+            addEdge("USDC", "SOL", 1 / solPrice, "Hyperliquid", 800_000);
+            addEdge("SOL", "USDC", solPrice, "Hyperliquid", 800_000);
+        }
+
+        return map;
+    }
+
+    /** Lightweight on-chain price refresh + arbitrage re-scan. */
+    async refreshOnChainPrices() {
+        const arbTokens = TOKEN_ADDRESSES[CHAIN_IDS.ARBITRUM];
+        const [gmxEth, gmxBtc] = await Promise.all([
+            readGmxV1Price(arbTokens["WETH"] ?? ""),
+            readGmxV1Price(arbTokens["WBTC"] ?? ""),
+        ]);
+        const onChain = { ...globalStore.get(this.onChainPrices) };
+        if (gmxEth) onChain["WETH"] = (gmxEth.min + gmxEth.max) / 2;
+        if (gmxBtc) onChain["WBTC"] = (gmxBtc.min + gmxBtc.max) / 2;
+        globalStore.set(this.onChainPrices, onChain);
+
+        const dexPriceMap = this.buildDexPriceMap(onChain, null);
+        if (Object.keys(dexPriceMap).length >= 3) {
+            const graph = buildTokenGraph(dexPriceMap);
+            const routes = findArbRoutes(graph, 10000);
+            globalStore.set(this.arbRoutes, routes);
+        }
     }
 
     toggleBot() {
@@ -255,6 +371,8 @@ export class ArbitrageBotViewModel implements ViewModel {
         } catch {
             // keep cached prices
         }
+        // Refresh on-chain prices and arbitrage routes
+        await this.refreshOnChainPrices();
         globalStore.set(this.opportunities, generateOpportunities());
         globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
         globalStore.set(this.lastScan, Date.now());
@@ -272,6 +390,10 @@ export class ArbitrageBotViewModel implements ViewModel {
             const active = globalStore.get(this.botActive);
             if (!active) return;
             tick++;
+            // Every 4 ticks (~6 s) refresh on-chain prices and re-run arb engine
+            if (tick % 4 === 0) {
+                void this.refreshOnChainPrices();
+            }
             // Refresh DEX prices (with live base prices when available) and update opportunity status
             globalStore.set(this.dexPrices, generateDexPrices(this.livePriceCache));
             const prev = globalStore.get(this.opportunities);

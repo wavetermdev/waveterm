@@ -147,7 +147,35 @@ export const HYPERLIQUID = {
 
 // ---- Helpers ---------------------------------------------------------------
 
-/** Look up a token address on a given chain; returns null if unknown. */
+/** GMX V1 contracts on Arbitrum. */
+export const GMX_V1 = {
+    vault: "0x489ee077994B6658eAfA855C308275EAd8097C4E",
+    router: "0xaBBc5F99639c9B6bCb58544ddf04EFA6802F4064",
+    reader: "0x22199a49A999c351eF7927602CFB625b98446Dc2",
+    glpManager: "0x321F653eED006AD1C29D174e17d96351BDe22649",
+} as const;
+
+/** DFYN AMM on Polygon (Uniswap V2 fork) — pair addresses. */
+export const DFYN: Record<string, { pair: string; token0: string; token1: string }> = {
+    "WETH/USDC": { pair: "0x8E4B45bF1aC3c75b2A3f4F9F87Bc87Aeed18D13A", token0: "WETH", token1: "USDC" },
+    "WBTC/USDC": { pair: "0x9e7E36CF4b3f15C2b60f3F1CC51D9b5fAb7dF6a5", token0: "WBTC", token1: "USDC" },
+};
+
+/** Hop Protocol AMM pools on Arbitrum (Saddle-style stable swap). */
+export const HOP_AMM: Record<string, { pool: string; hToken: string; canonical: string }> = {
+    ETH:  { pool: "0x33ceb27b39d2Bb7D2e61F7564d3Df29344020417", hToken: "hETH",  canonical: "WETH" },
+    USDC: { pool: "0x10541b07d8Ad2647Dc6cD67abd4c03575dade261", hToken: "hUSDC", canonical: "USDC" },
+    USDT: { pool: "0x18f7402B673Ba6Fb5EA4B95768aABB8aaD7ef18F", hToken: "hUSDT", canonical: "USDT" },
+};
+
+TOKEN_ADDRESSES[CHAIN_IDS.POLYGON] = {
+    WETH:  "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+    WBTC:  "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
+    USDC:  "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+    USDT:  "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    DFYN:  "0xC168E40227E4ebD8C1caE80F7a55a4F0e6D66C97",
+    MATIC: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+};
 export function getTokenAddress(symbol: string, chainId: number = CHAIN_IDS.ARBITRUM): string | null {
     return TOKEN_ADDRESSES[chainId]?.[symbol.toUpperCase()] ?? null;
 }

@@ -4,6 +4,7 @@
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
 import { fetchTokenPrices } from "../services/coingecko";
+import { type MorphoMarket, fetchMorphoMarkets } from "../services/morpho";
 import { DeFiLending } from "./defilending";
 
 export type LendingAsset = {
@@ -207,6 +208,10 @@ export class DeFiLendingViewModel implements ViewModel {
         { id: 5, label: "Withdraw freed collateral", status: "pending" },
     ]);
     rateHistory = jotai.atom<RateHistory[]>(generateRateHistory(4.82, 7.14));
+    /** Morpho Blue lending markets. */
+    morphoMarkets = jotai.atom<MorphoMarket[]>([]);
+    /** "live" once Morpho data has been fetched successfully. */
+    dataSource = jotai.atom<"live" | "demo">("demo");
 
     healthData: jotai.Atom<HealthData>;
     viewText: jotai.Atom<HeaderElem[]>;
@@ -270,6 +275,17 @@ export class DeFiLendingViewModel implements ViewModel {
             globalStore.set(this.assets, updated);
         } catch (e) {
             console.warn("[DeFiLending] CoinGecko unavailable – using mock prices", e);
+        }
+
+        // Fetch Morpho Blue markets for Arbitrum
+        try {
+            const markets = await fetchMorphoMarkets(42161);
+            if (markets.length > 0) {
+                globalStore.set(this.morphoMarkets, markets);
+                globalStore.set(this.dataSource, "live");
+            }
+        } catch (e) {
+            console.warn("[DeFiLending] Morpho unavailable", e);
         }
     }
 
