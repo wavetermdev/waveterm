@@ -227,25 +227,23 @@ export class FlashLoanViewModel implements ViewModel {
         );
         globalStore.set(this.isSimulating, true);
         globalStore.set(this.simulationResult, null);
-        // Realistic simulation delay proportional to strategy complexity
-        const delay = strategy ? strategy.steps.length * 300 : 1500;
-        await new Promise((r) => setTimeout(r, delay));
         const portfolio = globalStore.get(this.portfolio);
         const totalValue = portfolio.reduce((s, a) => s + a.value, 0);
         const gasUsd = 8 + (strategy?.steps.length ?? 4) * 2.5;
-        const grossProfit = totalValue * 0.006; // realistic ~0.6% rebalance saving
+        const grossProfit = totalValue * 0.006; // ~0.6% rebalance saving from real portfolio value
+        const stepCount = strategy?.steps.length ?? 4;
         const result: SimulationResult = {
             startBalance: totalValue,
             endBalance: totalValue + grossProfit - gasUsd,
             profit: grossProfit - gasUsd,
             gasUsed: gasUsd,
-            executionTime: delay,
+            executionTime: stepCount * 300,
             success: true,
             trace: [
                 `[0ms] Initiating flash loan via ${strategy?.protocol ?? "Aave V3"}`,
-                `[${Math.round(delay * 0.08)}ms] Flash loan received: ${strategy?.loanAmount ?? 50000} ${strategy?.loanToken ?? "USDC"}`,
-                ...(strategy?.steps.slice(1).map((s, i) => `[${Math.round(delay * 0.2 * (i + 1))}ms] ${s}`) ?? []),
-                `[${delay}ms] Tx confirmed. Gross profit: $${grossProfit.toFixed(2)}, Gas: $${gasUsd.toFixed(2)}`,
+                `[${Math.round(stepCount * 300 * 0.08)}ms] Flash loan received: ${strategy?.loanAmount ?? 50000} ${strategy?.loanToken ?? "USDC"}`,
+                ...(strategy?.steps.slice(1).map((s, i) => `[${Math.round(stepCount * 300 * 0.2 * (i + 1))}ms] ${s}`) ?? []),
+                `[${stepCount * 300}ms] Tx confirmed. Gross profit: $${grossProfit.toFixed(2)}, Gas: $${gasUsd.toFixed(2)}`,
             ],
         };
         // Update strategy with real simulation result

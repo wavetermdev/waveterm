@@ -178,7 +178,8 @@ function PricesTab({ model }: { model: ArbitrageBotViewModel }) {
 }
 
 function ModelTab({ model }: { model: ArbitrageBotViewModel }) {
-    const predictions = React.useMemo(() => model.getMlPredictions(), []);
+    const arbRoutes = useAtomValue(model.arbRoutes);
+    const predictions = React.useMemo(() => model.getMlPredictions(), [arbRoutes]);
 
     return (
         <div className="widget-tab-content">

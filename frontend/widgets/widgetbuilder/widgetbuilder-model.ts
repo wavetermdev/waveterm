@@ -54,7 +54,7 @@ LIMIT 10;`;
 
 
 function generateMsgId() {
-    return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    return `msg-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
 const WIDGET_SYSTEM_PROMPT =
@@ -204,59 +204,18 @@ export class WidgetBuilderViewModel implements ViewModel {
             return;
         }
 
-        await new Promise((r) => setTimeout(r, 200));
-        const execMs = 28;
-
-        // Derive columns and mock rows from the query content
-        let result: QueryResult;
-        if (upperSql.startsWith("SELECT")) {
-            // Try to extract column names from SELECT clause
-            const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM/i);
-            const fromMatch = sql.match(/FROM\s+(\w+)/i);
-            const tableName = fromMatch ? fromMatch[1] : "result";
-
-            let columns: string[];
-            if (selectMatch && !selectMatch[1].trim().startsWith("*")) {
-                columns = selectMatch[1].split(",").map((c) => c.trim().split(/\s+/).pop()!.replace(/['"]/g, ""));
-            } else {
-                columns = ["id", "name", "value", "created_at"];
-            }
-
-            // Use the table name's first char code as a deterministic seed for mock row values
-            const seed = tableName.charCodeAt(0) ?? 65; /* fallback: 'A' */
-            const rows: string[][] = Array.from({ length: 5 }, (_, i) => {
-                return columns.map((col) => {
-                    const c = col.toLowerCase();
-                    if (c.includes("id")) return String(seed * 10 + i + 1);
-                    if (c.includes("apy") || c.includes("rate")) return `${(4.82 + i * 0.31).toFixed(2)}%`;
-                    if (c.includes("utilization") || c.includes("pct")) return `${(72 + i * 3).toFixed(1)}%`;
-                    if (c.includes("price") || c.includes("amount")) return `${(1000 + seed * 10 + i * 250).toFixed(2)}`;
-                    if (c.includes("name") || c.includes("asset") || c.includes("symbol")) {
-                        const names = ["USDC", "ETH", "BTC", "SOL", "ARB"];
-                        return names[(i + seed) % names.length];
-                    }
-                    if (c.includes("date") || c.includes("_at")) return new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-                    return `value_${i + 1}`;
-                });
-            });
-            result = { columns, rows, executionMs: execMs };
-        } else if (upperSql.startsWith("INSERT")) {
-            result = { columns: ["affected_rows"], rows: [["1"]], executionMs: execMs };
-        } else if (upperSql.startsWith("UPDATE")) {
-            result = { columns: ["affected_rows"], rows: [["3"]], executionMs: execMs };
-        } else if (upperSql.startsWith("DELETE")) {
-            result = { columns: ["affected_rows"], rows: [["1"]], executionMs: execMs };
-        } else {
-            result = { columns: ["status"], rows: [["OK"]], executionMs: execMs };
-        }
-
-        globalStore.set(this.queryResults, result);
+        await new Promise((r) => setTimeout(r, 80));
+        globalStore.set(this.queryResults, {
+            columns: ["status"],
+            rows: [["No database connection — set a connectedDbUrl to execute queries"]],
+            executionMs: 0,
+        });
+        globalStore.set(this.isRunningQuery, false);
 
         // Add to history (keep last 5)
         const hist = globalStore.get(this.queryHistory);
         const next = [sql, ...hist.filter((q) => q !== sql)].slice(0, 5);
         globalStore.set(this.queryHistory, next);
-        globalStore.set(this.isRunningQuery, false);
     }
 
     async sendHttpRequest() {

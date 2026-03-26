@@ -39,29 +39,7 @@ export type ExecutionMetrics = {
     totalRuns: number;
 };
 
-const DEFAULT_CODE = `import numpy as np
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import accuracy_score
-
-# Load and prepare data
-X_train = np.random.randn(1000, 10)
-y_train = (X_train[:, 0] + X_train[:, 1] > 0).astype(int)
-X_test  = np.random.randn(200, 10)
-y_test  = (X_test[:, 0] + X_test[:, 1] > 0).astype(int)
-
-# Train GBM model
-model = GradientBoostingClassifier(
-    n_estimators=200,
-    learning_rate=0.05,
-    max_depth=4,
-    subsample=0.8,
-)
-model.fit(X_train, y_train)
-
-# Evaluate
-preds  = model.predict(X_test)
-acc    = accuracy_score(y_test, preds)
-print(f"Accuracy: {acc:.4f}")
+const DEFAULT_CODE = `# Connect a terminal block via connectedTermBlockId to run code
 `;
 
 const DEFAULT_OUTPUT = `[Running] model.py (Python 3.11)

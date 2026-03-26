@@ -80,8 +80,8 @@ function OverviewTab({ model }: { model: TradingAlgoBotViewModel }) {
     const [selectedSymbol, setSelectedSymbol] = useAtom(model.selectedSymbol);
 
     const lastPrice = priceHistory[priceHistory.length - 1]?.price ?? 0;
-    const prevPrice = priceHistory[priceHistory.length - 2]?.price ?? lastPrice;
-    const priceDelta = ((lastPrice - prevPrice) / prevPrice) * 100;
+    const prevPrice = priceHistory[priceHistory.length - 2]?.price ?? 0;
+    const priceDelta = prevPrice > 0 ? ((lastPrice - prevPrice) / prevPrice) * 100 : 0;
 
     return (
         <div className="widget-tab-content">

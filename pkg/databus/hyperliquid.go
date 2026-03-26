@@ -18,7 +18,6 @@ import (
 
 const (
 	hlRestBase = "https://api.hyperliquid.xyz/info"
-	hlWsBase   = "wss://api.hyperliquid.xyz/ws"
 )
 
 // ---- Shared types ----------------------------------------------------------

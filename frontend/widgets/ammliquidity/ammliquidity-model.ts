@@ -76,7 +76,8 @@ function balancerToLiquidityPool(bp: BalancerSubgraphPool): LiquidityPool {
         if (t0.weight != null && t1.weight != null && t0.weight > 0 && t1.weight > 0) {
             price = balancerImpliedPrice(t0.balance, t0.weight, t1.balance, t1.weight);
         } else if (t1.balance > 0 && t0.balance > 0) {
-            price = t0.balance / t1.balance;
+            // Fallback for unweighted pools: price is token1 per token0
+            price = t1.balance / t0.balance;
         }
     }
 
@@ -191,6 +192,7 @@ export class AmmLiquidityViewModel implements ViewModel {
             const pool = pools.find((p) => p.id === poolId);
             const inputAmount = parseFloat(amountStr);
             if (isNaN(inputAmount) || inputAmount <= 0) return null;
+            if (!pool) return null;
             return calcPriceImpact(pool, inputAmount, inputToken);
         });
 

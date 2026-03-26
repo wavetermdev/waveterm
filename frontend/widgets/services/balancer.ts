@@ -134,9 +134,9 @@ export async function fetchBalancerPools(
 }
 
 /**
- * Compute the implied price of token0 in terms of token1 from a Balancer
- * weighted pool using the spot price formula:
- *   spotPrice = (balance0 / weight0) / (balance1 / weight1)
+ * Compute the implied price of token1 per token0 from a Balancer weighted pool.
+ * Spot price formula (token1 per token0):
+ *   spotPrice = (balance1 / weight1) / (balance0 / weight0)
  */
 export function balancerImpliedPrice(
     balance0: number,
@@ -144,6 +144,6 @@ export function balancerImpliedPrice(
     balance1: number,
     weight1: number
 ): number {
-    if (weight0 === 0 || balance1 === 0 || weight1 === 0) return 0;
-    return balance0 / weight0 / (balance1 / weight1);
+    if (weight0 === 0 || balance0 === 0 || weight1 === 0) return 0;
+    return balance1 / weight1 / (balance0 / weight0);
 }

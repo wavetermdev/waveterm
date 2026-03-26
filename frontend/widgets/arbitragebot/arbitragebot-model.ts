@@ -66,12 +66,13 @@ const ZERO_STATS: ArbitrageStats = {
 /** Convert a live ArbRoute from the arbitrage engine to an ArbitrageOpportunity for the UI. */
 function arbRouteToOpportunity(route: ArbRoute, idx: number): ArbitrageOpportunity {
     const id = `arb-live-${route.tokens.join("-")}-${idx}`;
+    const grossProfitUsd = route.netProfitUsd + route.gasEstimateUsd;
     return {
         id,
         path: [...route.tokens],
         dexes: [...route.dexes],
-        profitUsd: route.netProfitUsd,
-        profitPct: route.grossProfitPct * 100,
+        profitUsd: grossProfitUsd,
+        profitPct: route.grossProfitPct,
         gasEstimate: route.gasEstimateUsd,
         netProfit: route.netProfitUsd,
         confidence: route.mlScore,
