@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { modalsModel } from "@/app/store/modalmodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
+import { isMacOSTahoeOrLater } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -20,6 +20,9 @@ import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TabDefaultWidth = 130;
 const TabMinWidth = 100;
+const MacOSTrafficLightsWidth = 74;
+const MacOSTahoeTrafficLightsWidth = 80;
+
 const OSOptions = {
     overflow: {
         x: "scroll",
@@ -39,6 +42,7 @@ const OSOptions = {
 
 interface TabBarProps {
     workspace: Workspace;
+    noTabs?: boolean;
 }
 
 const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
@@ -71,68 +75,6 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
 });
 WaveAIButton.displayName = "WaveAIButton";
 
-const ConfigErrorMessage = () => {
-    const env = useWaveEnv<TabBarEnv>();
-    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
-
-    if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
-        return (
-            <div className="max-w-[500px] p-5">
-                <h3 className="font-bold text-base mb-2.5">Configuration Clean</h3>
-                <p>There are no longer any errors detected in your config.</p>
-            </div>
-        );
-    }
-    if (fullConfig?.configerrors.length == 1) {
-        const singleError = fullConfig.configerrors[0];
-        return (
-            <div className="max-w-[500px] p-5">
-                <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
-                <div>
-                    {singleError.file}: {singleError.err}
-                </div>
-            </div>
-        );
-    }
-    return (
-        <div className="max-w-[500px] p-5">
-            <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
-            <ul>
-                {fullConfig.configerrors.map((error, index) => (
-                    <li key={index}>
-                        {error.file}: {error.err}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-};
-
-const ConfigErrorIcon = () => {
-    const env = useWaveEnv<TabBarEnv>();
-    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
-
-    const handleClick = useCallback(() => {
-        modalsModel.pushModal("MessageModal", { children: <ConfigErrorMessage /> });
-    }, []);
-
-    if (!hasConfigErrors) {
-        return null;
-    }
-    return (
-        <Tooltip
-            content="Configuration Error"
-            placement="bottom"
-            hideOnClick
-            divClassName="flex h-[22px] px-2 mb-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-error"
-            divStyle={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            divOnClick={handleClick}
-        >
-            <i className="fa fa-solid fa-triangle-exclamation" />
-        </Tooltip>
-    );
-};
-
 function strArrayIsEqual(a: string[], b: string[]) {
     // null check
     if (a == null && b == null) {
@@ -152,7 +94,7 @@ function strArrayIsEqual(a: string[], b: string[]) {
     return true;
 }
 
-const TabBar = memo(({ workspace }: TabBarProps) => {
+const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const env = useWaveEnv<TabBarEnv>();
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
@@ -192,7 +134,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
     const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
     const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
-    const hasConfigErrors = useAtomValue(env.atoms.hasConfigErrors);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -330,7 +271,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         };
     }, [handleResizeTabs]);
 
-    // update layout on changed tabIds, tabsLoaded, newTabId, hideAiButton, appUpdateStatus, hasConfigErrors, or zoomFactor
+    // update layout on changed tabIds, tabsLoaded, newTabId, hideAiButton, appUpdateStatus, or zoomFactor
     useEffect(() => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
@@ -348,7 +289,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         saveTabsPosition,
         hideAiButton,
         appUpdateStatus,
-        hasConfigErrors,
         zoomFactor,
         showMenuBar,
     ]);
@@ -635,10 +575,13 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     // Calculate window drag left width based on platform and state
     let windowDragLeftWidth = 10;
     if (env.isMacOS() && !isFullScreen) {
+        const trafficLightsWidth = isMacOSTahoeOrLater()
+            ? MacOSTahoeTrafficLightsWidth
+            : MacOSTrafficLightsWidth;
         if (zoomFactor > 0) {
-            windowDragLeftWidth = 74 / zoomFactor;
+            windowDragLeftWidth = trafficLightsWidth / zoomFactor;
         } else {
-            windowDragLeftWidth = 74;
+            windowDragLeftWidth = trafficLightsWidth;
         }
     }
 
@@ -680,33 +623,41 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <WorkspaceSwitcher />
             </Tooltip>
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
-                <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
-                    {tabIds.map((tabId, index) => {
-                        const isActive = activeTabId === tabId;
-                        const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
-                        return (
-                            <Tab
-                                key={tabId}
-                                ref={tabRefs.current[index]}
-                                id={tabId}
-                                showDivider={showDivider}
-                                onSelect={() => handleSelectTab(tabId)}
-                                active={isActive}
-                                onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
-                                onClose={(event) => handleCloseTab(event, tabId)}
-                                onLoaded={() => handleTabLoaded(tabId)}
-                                isDragging={draggingTab === tabId}
-                                tabWidth={tabWidthRef.current}
-                                isNew={tabId === newTabId}
-                            />
-                        );
-                    })}
+                <div
+                    className="tabs-wrapper"
+                    ref={tabsWrapperRef}
+                    style={{
+                        width: noTabs ? 0 : tabsWrapperWidth,
+                        ...(noTabs ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : {}),
+                    }}
+                >
+                    {!noTabs &&
+                        tabIds.map((tabId, index) => {
+                            const isActive = activeTabId === tabId;
+                            const showDivider = index !== 0 && !isActive && index !== activeTabIndex + 1;
+                            return (
+                                <Tab
+                                    key={tabId}
+                                    ref={tabRefs.current[index]}
+                                    id={tabId}
+                                    showDivider={showDivider}
+                                    onSelect={() => handleSelectTab(tabId)}
+                                    active={isActive}
+                                    onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
+                                    onClose={(event) => handleCloseTab(event, tabId)}
+                                    onLoaded={() => handleTabLoaded(tabId)}
+                                    isDragging={draggingTab === tabId}
+                                    tabWidth={tabWidthRef.current}
+                                    isNew={tabId === newTabId}
+                                />
+                            );
+                        })}
                 </div>
             </div>
             <button
                 ref={addBtnRef}
                 title="Add Tab"
-                className="flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary"
+                className={`flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary${noTabs ? " invisible" : ""}`}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                 onClick={handleAddTab}
             >
@@ -715,7 +666,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div className="flex-1" />
             <div ref={rightContainerRef} className="flex flex-row gap-1 items-end">
                 <UpdateStatusBanner />
-                <ConfigErrorIcon />
                 <div
                     className="h-full shrink-0 z-window-drag"
                     style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as any}
@@ -725,4 +675,4 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     );
 });
 
-export { ConfigErrorIcon, ConfigErrorMessage, TabBar, WaveAIButton };
+export { TabBar, WaveAIButton };

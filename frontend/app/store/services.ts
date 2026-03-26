@@ -24,18 +24,18 @@ export class BlockServiceType {
     // queue a layout action to cleanup orphaned blocks in the tab
     // @returns object updates
     CleanupOrphanedBlocks(tabId: string): Promise<void> {
-        return callBackendService(this.waveEnv, "block", "CleanupOrphanedBlocks", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "block", "CleanupOrphanedBlocks", Array.from(arguments))
     }
     GetControllerStatus(arg2: string): Promise<BlockControllerRuntimeStatus> {
-        return callBackendService(this.waveEnv, "block", "GetControllerStatus", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "block", "GetControllerStatus", Array.from(arguments))
     }
 
     // save the terminal state to a blockfile
     SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
-        return callBackendService(this.waveEnv, "block", "SaveTerminalState", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "block", "SaveTerminalState", Array.from(arguments))
     }
     SaveWaveAiData(arg2: string, arg3: WaveAIPromptMessageType[]): Promise<void> {
-        return callBackendService(this.waveEnv, "block", "SaveWaveAiData", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "block", "SaveWaveAiData", Array.from(arguments))
     }
 }
 
@@ -51,22 +51,22 @@ export class ClientServiceType {
 
     // @returns object updates
     AgreeTos(): Promise<void> {
-        return callBackendService(this.waveEnv, "client", "AgreeTos", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "client", "AgreeTos", Array.from(arguments))
     }
     FocusWindow(arg2: string): Promise<void> {
-        return callBackendService(this.waveEnv, "client", "FocusWindow", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "client", "FocusWindow", Array.from(arguments))
     }
     GetAllConnStatus(): Promise<ConnStatus[]> {
-        return callBackendService(this.waveEnv, "client", "GetAllConnStatus", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "client", "GetAllConnStatus", Array.from(arguments))
     }
     GetClientData(): Promise<Client> {
-        return callBackendService(this.waveEnv, "client", "GetClientData", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "client", "GetClientData", Array.from(arguments))
     }
     GetTab(arg1: string): Promise<Tab> {
-        return callBackendService(this.waveEnv, "client", "GetTab", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "client", "GetTab", Array.from(arguments))
     }
     TelemetryUpdate(arg2: boolean): Promise<void> {
-        return callBackendService(this.waveEnv, "client", "TelemetryUpdate", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "client", "TelemetryUpdate", Array.from(arguments))
     }
 }
 
@@ -82,32 +82,32 @@ export class ObjectServiceType {
 
     // @returns blockId (and object updates)
     CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<string> {
-        return callBackendService(this.waveEnv, "object", "CreateBlock", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "object", "CreateBlock", Array.from(arguments))
     }
 
     // @returns object updates
     DeleteBlock(blockId: string): Promise<void> {
-        return callBackendService(this.waveEnv, "object", "DeleteBlock", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "object", "DeleteBlock", Array.from(arguments))
     }
 
     // get wave object by oref
     GetObject(oref: string): Promise<WaveObj> {
-        return callBackendService(this.waveEnv, "object", "GetObject", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "object", "GetObject", Array.from(arguments))
     }
 
     // @returns objects
     GetObjects(orefs: string[]): Promise<WaveObj[]> {
-        return callBackendService(this.waveEnv, "object", "GetObjects", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "object", "GetObjects", Array.from(arguments))
     }
 
     // @returns object updates
     UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<void> {
-        return callBackendService(this.waveEnv, "object", "UpdateObject", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "object", "UpdateObject", Array.from(arguments))
     }
 
     // @returns object updates
     UpdateObjectMeta(oref: string, meta: MetaType): Promise<void> {
-        return callBackendService(this.waveEnv, "object", "UpdateObjectMeta", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "object", "UpdateObjectMeta", Array.from(arguments))
     }
 }
 
@@ -122,7 +122,7 @@ export class UserInputServiceType {
     }
 
     SendUserInputResponse(arg1: UserInputResponse): Promise<void> {
-        return callBackendService(this.waveEnv, "userinput", "SendUserInputResponse", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "userinput", "SendUserInputResponse", Array.from(arguments))
     }
 }
 
@@ -137,22 +137,22 @@ export class WindowServiceType {
     }
 
     CloseWindow(windowId: string, fromElectron: boolean): Promise<void> {
-        return callBackendService(this.waveEnv, "window", "CloseWindow", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "window", "CloseWindow", Array.from(arguments))
     }
     CreateWindow(winSize: WinSize, workspaceId: string): Promise<WaveWindow> {
-        return callBackendService(this.waveEnv, "window", "CreateWindow", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "window", "CreateWindow", Array.from(arguments))
     }
     GetWindow(windowId: string): Promise<WaveWindow> {
-        return callBackendService(this.waveEnv, "window", "GetWindow", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "window", "GetWindow", Array.from(arguments))
     }
 
     // set window position and size
     // @returns object updates
     SetWindowPosAndSize(windowId: string, pos: Point, size: WinSize): Promise<void> {
-        return callBackendService(this.waveEnv, "window", "SetWindowPosAndSize", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "window", "SetWindowPosAndSize", Array.from(arguments))
     }
     SwitchWorkspace(windowId: string, workspaceId: string): Promise<Workspace> {
-        return callBackendService(this.waveEnv, "window", "SwitchWorkspace", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "window", "SwitchWorkspace", Array.from(arguments))
     }
 }
 
@@ -168,50 +168,50 @@ export class WorkspaceServiceType {
 
     // @returns CloseTabRtn (and object updates)
     CloseTab(workspaceId: string, tabId: string, fromElectron: boolean): Promise<CloseTabRtnType> {
-        return callBackendService(this.waveEnv, "workspace", "CloseTab", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "CloseTab", Array.from(arguments))
     }
 
     // @returns tabId (and object updates)
     CreateTab(workspaceId: string, tabName: string, activateTab: boolean): Promise<string> {
-        return callBackendService(this.waveEnv, "workspace", "CreateTab", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "CreateTab", Array.from(arguments))
     }
 
     // @returns workspaceId
     CreateWorkspace(name: string, icon: string, color: string, applyDefaults: boolean): Promise<string> {
-        return callBackendService(this.waveEnv, "workspace", "CreateWorkspace", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "CreateWorkspace", Array.from(arguments))
     }
 
     // @returns object updates
     DeleteWorkspace(workspaceId: string): Promise<string> {
-        return callBackendService(this.waveEnv, "workspace", "DeleteWorkspace", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "DeleteWorkspace", Array.from(arguments))
     }
 
     // @returns colors
     GetColors(): Promise<string[]> {
-        return callBackendService(this.waveEnv, "workspace", "GetColors", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "GetColors", Array.from(arguments))
     }
 
     // @returns icons
     GetIcons(): Promise<string[]> {
-        return callBackendService(this.waveEnv, "workspace", "GetIcons", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "GetIcons", Array.from(arguments))
     }
 
     // @returns workspace
     GetWorkspace(workspaceId: string): Promise<Workspace> {
-        return callBackendService(this.waveEnv, "workspace", "GetWorkspace", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "GetWorkspace", Array.from(arguments))
     }
     ListWorkspaces(): Promise<WorkspaceListEntry[]> {
-        return callBackendService(this.waveEnv, "workspace", "ListWorkspaces", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "ListWorkspaces", Array.from(arguments))
     }
 
     // @returns object updates
     SetActiveTab(workspaceId: string, tabId: string): Promise<void> {
-        return callBackendService(this.waveEnv, "workspace", "SetActiveTab", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "SetActiveTab", Array.from(arguments))
     }
 
     // @returns object updates
     UpdateWorkspace(workspaceId: string, name: string, icon: string, color: string, applyDefaults: boolean): Promise<void> {
-        return callBackendService(this.waveEnv, "workspace", "UpdateWorkspace", Array.from(arguments))
+        return callBackendService(this?.waveEnv, "workspace", "UpdateWorkspace", Array.from(arguments))
     }
 }
 

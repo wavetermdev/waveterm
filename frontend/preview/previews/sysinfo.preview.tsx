@@ -2,14 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block } from "@/app/block/block";
-import { globalStore } from "@/app/store/jotaiStore";
-import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { handleWaveEvent } from "@/app/store/wps";
-import { useWaveEnv, WaveEnvContext } from "@/app/waveenv/waveenv";
-import type { NodeModel } from "@/layout/index";
-import { atom } from "jotai";
 import * as React from "react";
-import { applyMockEnvOverrides, MockWaveEnv } from "../mock/mockwaveenv";
+import { makeMockNodeModel } from "../mock/mock-node-model";
+import { SysinfoBlockId } from "../mock/mockwaveenv";
+import { useRpcOverride } from "../mock/use-rpc-override";
 import {
     DefaultSysinfoHistoryPoints,
     makeMockSysinfoEvent,
@@ -17,112 +14,22 @@ import {
     MockSysinfoConnection,
 } from "./sysinfo.preview-util";
 
-const PreviewWorkspaceId = "preview-sysinfo-workspace";
-const PreviewTabId = "preview-sysinfo-tab";
 const PreviewNodeId = "preview-sysinfo-node";
-const PreviewBlockId = "preview-sysinfo-block";
 
-function makeMockWorkspace(): Workspace {
-    return {
-        otype: "workspace",
-        oid: PreviewWorkspaceId,
-        version: 1,
-        name: "Preview Workspace",
-        tabids: [PreviewTabId],
-        activetabid: PreviewTabId,
-        meta: {},
-    } as Workspace;
-}
-
-function makeMockTab(): Tab {
-    return {
-        otype: "tab",
-        oid: PreviewTabId,
-        version: 1,
-        name: "Sysinfo Preview",
-        blockids: [PreviewBlockId],
-        meta: {},
-    } as Tab;
-}
-
-function makeMockBlock(): Block {
-    return {
-        otype: "block",
-        oid: PreviewBlockId,
-        version: 1,
-        meta: {
-            view: "sysinfo",
-            connection: MockSysinfoConnection,
-            "sysinfo:type": "CPU + Mem",
-            "graph:numpoints": 90,
-        },
-    } as Block;
-}
-
-function makePreviewNodeModel(): NodeModel {
-    const isFocusedAtom = atom(true);
-    const isMagnifiedAtom = atom(false);
-
-    return {
-        additionalProps: atom({} as any),
-        innerRect: atom({ width: "920px", height: "560px" }),
-        blockNum: atom(1),
-        numLeafs: atom(2),
-        nodeId: PreviewNodeId,
-        blockId: PreviewBlockId,
-        addEphemeralNodeToLayout: () => {},
-        animationTimeS: atom(0),
-        isResizing: atom(false),
-        isFocused: isFocusedAtom,
-        isMagnified: isMagnifiedAtom,
-        anyMagnified: atom(false),
-        isEphemeral: atom(false),
-        ready: atom(true),
-        disablePointerEvents: atom(false),
-        toggleMagnify: () => {
-            globalStore.set(isMagnifiedAtom, !globalStore.get(isMagnifiedAtom));
-        },
-        focusNode: () => {
-            globalStore.set(isFocusedAtom, true);
-        },
-        onClose: () => {},
-        dragHandleRef: { current: null },
-        displayContainerRef: { current: null },
-    };
-}
-
-function SysinfoPreviewInner() {
-    const baseEnv = useWaveEnv();
+export default function SysinfoPreview() {
     const historyRef = React.useRef(makeMockSysinfoHistory());
-    const nodeModel = React.useMemo(() => makePreviewNodeModel(), []);
+    const nodeModel = React.useMemo(
+        () => makeMockNodeModel({ nodeId: PreviewNodeId, blockId: SysinfoBlockId, innerRect: { width: "920px", height: "560px" }, numLeafs: 2 }),
+        []
+    );
 
-    const env = React.useMemo<MockWaveEnv>(() => {
-        const mockWaveObjs: Record<string, WaveObj> = {
-            [`workspace:${PreviewWorkspaceId}`]: makeMockWorkspace(),
-            [`tab:${PreviewTabId}`]: makeMockTab(),
-            [`block:${PreviewBlockId}`]: makeMockBlock(),
-        };
-
-        return applyMockEnvOverrides(baseEnv, {
-            tabId: PreviewTabId,
-            mockWaveObjs,
-            atoms: {
-                workspaceId: atom(PreviewWorkspaceId),
-                staticTabId: atom(PreviewTabId),
-            },
-            rpc: {
-                EventReadHistoryCommand: async (_client, data) => {
-                    if (data.event !== "sysinfo" || data.scope !== MockSysinfoConnection) {
-                        return [];
-                    }
-                    const maxItems = data.maxitems ?? historyRef.current.length;
-                    return historyRef.current.slice(-maxItems);
-                },
-            },
-        });
-    }, [baseEnv]);
-
-    const tabModel = React.useMemo(() => getTabModelByTabId(PreviewTabId, env), [env]);
+    useRpcOverride("EventReadHistoryCommand", async (_client, data) => {
+        if (data.event !== "sysinfo" || data.scope !== MockSysinfoConnection) {
+            return [];
+        }
+        const maxItems = data.maxitems ?? historyRef.current.length;
+        return historyRef.current.slice(-maxItems);
+    });
 
     React.useEffect(() => {
         let nextStep = historyRef.current.length;
@@ -141,21 +48,13 @@ function SysinfoPreviewInner() {
     }, []);
 
     return (
-        <WaveEnvContext.Provider value={env}>
-            <TabModelContext.Provider value={tabModel}>
-                <div className="flex w-full max-w-[980px] flex-col gap-2 px-6 py-6">
-                    <div className="text-xs text-muted font-mono">full sysinfo block (mock WOS + FE-only WPS events)</div>
-                    <div className="rounded-md border border-border bg-panel p-4">
-                        <div className="h-[620px]">
-                            <Block preview={false} nodeModel={nodeModel} />
-                        </div>
-                    </div>
+        <div className="flex w-full max-w-[980px] flex-col gap-2 px-6 py-6">
+            <div className="text-xs text-muted font-mono">full sysinfo block (mock WOS + FE-only WPS events)</div>
+            <div className="rounded-md border border-border bg-panel p-4">
+                <div className="h-[620px]">
+                    <Block preview={false} nodeModel={nodeModel} />
                 </div>
-            </TabModelContext.Provider>
-        </WaveEnvContext.Provider>
+            </div>
+        </div>
     );
-}
-
-export default function SysinfoPreview() {
-    return <SysinfoPreviewInner />;
 }

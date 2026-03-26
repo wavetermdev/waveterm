@@ -4,6 +4,7 @@
     "ai:maxtokens": 4000,
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
+    "app:tabbar": "top",
     "app:confirmquit": true,
     "app:hideaibutton": false,
     "app:disablectrlshiftarrows": false,

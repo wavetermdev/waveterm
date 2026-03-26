@@ -1,8 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom, globalStore } from "@/app/store/global";
-import { RpcApi } from "@/app/store/wshclientapi";
+import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget, isBlank } from "@/util/util";
 import dayjs from "dayjs";
@@ -95,7 +94,7 @@ export function handleRename(
             if (isDir) {
                 srcuri += "/";
             }
-            await RpcApi.FileMoveCommand(TabRpcClient, {
+            await model.env.rpc.FileMoveCommand(TabRpcClient, {
                 srcuri,
                 desturi: await model.formatRemoteUri(newPath, globalStore.get),
             });
@@ -121,7 +120,7 @@ export function handleFileDelete(
     fireAndForget(async () => {
         const formattedPath = await model.formatRemoteUri(path, globalStore.get);
         try {
-            await RpcApi.FileDeleteCommand(TabRpcClient, {
+            await model.env.rpc.FileDeleteCommand(TabRpcClient, {
                 path: formattedPath,
                 recursive,
             });
@@ -154,7 +153,7 @@ export function handleFileDelete(
 }
 
 export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuItem[] {
-    const defaultSort = globalStore.get(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
+    const defaultSort = globalStore.get(model.env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const showHiddenFiles = globalStore.get(model.showHiddenFiles) ?? true;
     return [
         {
@@ -165,7 +164,9 @@ export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuI
                     type: "checkbox",
                     checked: defaultSort === "name",
                     click: () =>
-                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "name" })),
+                        fireAndForget(() =>
+                            model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "name" })
+                        ),
                 },
                 {
                     label: "Last Modified",
@@ -173,7 +174,7 @@ export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuI
                     checked: defaultSort === "modtime",
                     click: () =>
                         fireAndForget(() =>
-                            RpcApi.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "modtime" })
+                            model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:defaultsort": "modtime" })
                         ),
                 },
             ],
@@ -187,7 +188,9 @@ export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuI
                     checked: showHiddenFiles,
                     click: () => {
                         globalStore.set(model.showHiddenFiles, true);
-                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": true }));
+                        fireAndForget(() =>
+                            model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": true })
+                        );
                     },
                 },
                 {
@@ -197,7 +200,7 @@ export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuI
                     click: () => {
                         globalStore.set(model.showHiddenFiles, false);
                         fireAndForget(() =>
-                            RpcApi.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": false })
+                            model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": false })
                         );
                     },
                 },

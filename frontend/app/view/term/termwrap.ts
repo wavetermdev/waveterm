@@ -18,6 +18,7 @@ import {
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
+import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -27,7 +28,6 @@ import { Terminal } from "@xterm/xterm";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
-import { FitAddon } from "./fitaddon";
 import {
     handleOsc16162Command,
     handleOsc52Command,
@@ -43,21 +43,20 @@ const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
-const IMEDedupWindowMs = 20;
 const MaxRepaintTransactionMs = 2000;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
     try {
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("webgl");
+        const ctx = canvas.getContext("webgl2");
         return !!ctx;
     } catch (e) {
         return false;
     }
 }
 
-const WebGLSupported = detectWebGLSupport();
+export const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
 
 type TermWrapOptions = {
@@ -85,7 +84,10 @@ export class TermWrap {
     multiInputCallback: (data: string) => void;
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
-    private toDispose: TermTypes.IDisposable[] = [];
+    toDispose: TermTypes.IDisposable[] = [];
+    webglAddon: WebglAddon | null = null;
+    webglContextLossDisposable: TermTypes.IDisposable | null = null;
+    webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
@@ -96,23 +98,10 @@ export class TermWrap {
     hoveredLinkUri: string | null = null;
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
 
-    // IME composition state tracking
-    isComposing: boolean = false;
-    composingData: string = "";
-    lastCompositionEnd: number = 0;
-    lastComposedText: string = "";
-    firstDataAfterCompositionSent: boolean = false;
-
     // Paste deduplication
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
-
-    // for scrollToBottom support during a resize
-    lastAtBottomTime: number = Date.now();
-    lastScrollAtBottom: boolean = true;
-    cachedAtBottomForResize: boolean | null = null;
-    viewportScrollTop: number = 0;
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -145,9 +134,9 @@ export class TermWrap {
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.claudeCodeActiveAtom = jotai.atom(false);
+        this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
-        this.fitAddon.scrollbarWidth = 6; // this needs to match scrollbar width in term.scss
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
@@ -182,19 +171,7 @@ export class TermWrap {
                 }
             )
         );
-        if (WebGLSupported && waveOptions.useWebGl) {
-            const webglAddon = new WebglAddon();
-            this.toDispose.push(
-                webglAddon.onContextLoss(() => {
-                    webglAddon.dispose();
-                })
-            );
-            this.terminal.loadAddon(webglAddon);
-            if (!loggedWebGL) {
-                console.log("loaded webgl!");
-                loggedWebGL = true;
-            }
-        }
+        this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
@@ -263,9 +240,6 @@ export class TermWrap {
             })
         );
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-            if (e.isComposing && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                return true;
-            }
             if (!waveOptions.keydownHandler) {
                 return true;
             }
@@ -284,18 +258,6 @@ export class TermWrap {
                 this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
-        const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
-        if (viewportElem) {
-            const scrollHandler = (e: any) => {
-                this.handleViewportScroll(viewportElem);
-            };
-            viewportElem.addEventListener("scroll", scrollHandler);
-            this.toDispose.push({
-                dispose: () => {
-                    viewportElem.removeEventListener("scroll", scrollHandler);
-                },
-            });
-        }
     }
 
     getZoneId(): string {
@@ -310,32 +272,48 @@ export class TermWrap {
         this.terminal.options.cursorBlink = cursorBlink ?? false;
     }
 
-    resetCompositionState() {
-        this.isComposing = false;
-        this.composingData = "";
-        this.lastComposedText = "";
-        this.lastCompositionEnd = 0;
-        this.firstDataAfterCompositionSent = false;
+    setTermRenderer(renderer: "webgl" | "dom") {
+        if (renderer === "webgl") {
+            if (this.webglAddon != null) {
+                return;
+            }
+            if (!WebGLSupported) {
+                renderer = "dom";
+            }
+        } else {
+            if (this.webglAddon == null) {
+                return;
+            }
+        }
+        if (this.webglAddon != null) {
+            this.webglContextLossDisposable?.dispose();
+            this.webglContextLossDisposable = null;
+            this.webglAddon.dispose();
+            this.webglAddon = null;
+            globalStore.set(this.webglEnabledAtom, false);
+        }
+        if (renderer === "webgl") {
+            const addon = new WebglAddon();
+            this.webglContextLossDisposable = addon.onContextLoss(() => {
+                this.setTermRenderer("dom");
+            });
+            this.terminal.loadAddon(addon);
+            this.webglAddon = addon;
+            globalStore.set(this.webglEnabledAtom, true);
+            if (!loggedWebGL) {
+                console.log("loaded webgl!");
+                loggedWebGL = true;
+            }
+        }
     }
 
-    private handleCompositionStart = (e: CompositionEvent) => {
-        dlog("compositionstart", e.data);
-        this.isComposing = true;
-        this.composingData = "";
-    };
+    getTermRenderer(): "webgl" | "dom" {
+        return this.webglAddon != null ? "webgl" : "dom";
+    }
 
-    private handleCompositionUpdate = (e: CompositionEvent) => {
-        dlog("compositionupdate", e.data);
-        this.composingData = e.data || "";
-    };
-
-    private handleCompositionEnd = (e: CompositionEvent) => {
-        dlog("compositionend", e.data);
-        this.isComposing = false;
-        this.lastComposedText = e.data || "";
-        this.lastCompositionEnd = Date.now();
-        this.firstDataAfterCompositionSent = false;
-    };
+    isWebGlEnabled(): boolean {
+        return this.webglAddon != null;
+    }
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
@@ -361,32 +339,6 @@ export class TermWrap {
         );
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
-        }
-
-        // Register IME composition event listeners on the xterm.js textarea
-        const textareaElem = this.connectElem.querySelector("textarea");
-        if (textareaElem) {
-            textareaElem.addEventListener("compositionstart", this.handleCompositionStart);
-            textareaElem.addEventListener("compositionupdate", this.handleCompositionUpdate);
-            textareaElem.addEventListener("compositionend", this.handleCompositionEnd);
-
-            // Handle blur during composition - reset state to avoid stale data
-            const blurHandler = () => {
-                if (this.isComposing) {
-                    dlog("Terminal lost focus during composition, resetting IME state");
-                    this.resetCompositionState();
-                }
-            };
-            textareaElem.addEventListener("blur", blurHandler);
-
-            this.toDispose.push({
-                dispose: () => {
-                    textareaElem.removeEventListener("compositionstart", this.handleCompositionStart);
-                    textareaElem.removeEventListener("compositionupdate", this.handleCompositionUpdate);
-                    textareaElem.removeEventListener("compositionend", this.handleCompositionEnd);
-                    textareaElem.removeEventListener("blur", blurHandler);
-                },
-            });
         }
 
         this.mainFileSubject = getFileSubject(this.getZoneId(), TermFileName);
@@ -430,6 +382,8 @@ export class TermWrap {
             }
         });
         this.promptMarkers = [];
+        this.webglContextLossDisposable?.dispose();
+        this.webglContextLossDisposable = null;
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {
@@ -444,17 +398,6 @@ export class TermWrap {
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
-        }
-
-        // IME fix: suppress isComposing=true events unless they immediately follow
-        // a compositionend (within 20ms). This handles CapsLock input method switching
-        // where the composition buffer gets flushed as a spurious isComposing=true event
-        if (this.isComposing) {
-            const timeSinceCompositionEnd = Date.now() - this.lastCompositionEnd;
-            if (timeSinceCompositionEnd > IMEDedupWindowMs) {
-                dlog("Suppressed IME data (composing, not near compositionend):", data);
-                return;
-            }
         }
 
         this.sendDataHandler?.(data);
@@ -555,43 +498,9 @@ export class TermWrap {
         }
     }
 
-    setAtBottom(atBottom: boolean) {
-        if (this.lastScrollAtBottom && !atBottom) {
-            this.lastAtBottomTime = Date.now();
-        }
-        this.lastScrollAtBottom = atBottom;
-        if (atBottom) {
-            this.lastAtBottomTime = Date.now();
-        }
-    }
-
-    wasRecentlyAtBottom(): boolean {
-        if (this.lastScrollAtBottom) {
-            return true;
-        }
-        return Date.now() - this.lastAtBottomTime <= 1000;
-    }
-
-    handleViewportScroll(viewportElem: HTMLElement) {
-        const { scrollTop, scrollHeight, clientHeight } = viewportElem;
-        const atBottom = scrollTop + clientHeight >= scrollHeight - clientHeight * 0.5;
-        this.setAtBottom(atBottom);
-        const delta = this.viewportScrollTop - scrollTop;
-        if (isDev() && delta >= 500) {
-            console.log(
-                `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${atBottom}`
-            );
-        }
-        this.viewportScrollTop = scrollTop;
-    }
-
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
-        const atBottom = this.cachedAtBottomForResize ?? this.wasRecentlyAtBottom();
-        if (!atBottom) {
-            this.cachedAtBottomForResize = null;
-        }
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
@@ -599,9 +508,7 @@ export class TermWrap {
                 "[termwrap] resize",
                 `${oldRows}x${oldCols}`,
                 "->",
-                `${this.terminal.rows}x${this.terminal.cols}`,
-                "atBottom:",
-                atBottom
+                `${this.terminal.rows}x${this.terminal.cols}`
             );
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
@@ -609,14 +516,6 @@ export class TermWrap {
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
-        }
-        if (atBottom) {
-            setTimeout(() => {
-                console.log("[termwrap] resize scroll-to-bottom");
-                this.cachedAtBottomForResize = null;
-                this.terminal.scrollToBottom();
-                this.setAtBottom(true);
-            }, 20);
         }
     }
 

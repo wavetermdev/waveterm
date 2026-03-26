@@ -161,7 +161,7 @@ export default defineConfig({
                     "**/*.md",
                     "**/*.mdx",
                     "**/*.json",
-                    "emain/**",
+                    "**/emain/**",
                     "**/*.txt",
                     "**/*.log",
                 ],

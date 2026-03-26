@@ -10,7 +10,8 @@ const UpgradeOnboardingModal_v0_14_2_Content = () => {
             <div className="text-secondary leading-relaxed mb-4">
                 <p className="mb-0">
                     Wave v0.14.2 introduces a new block badge system for at-a-glance status, along with directory
-                    preview improvements and bug fixes.
+                    preview improvements and bug fixes. v0.14.3 is a patch release fixing a showstopper bug in
+                    onboarding.
                 </p>
             </div>
 
@@ -62,6 +63,9 @@ const UpgradeOnboardingModal_v0_14_2_Content = () => {
                     <div className="text-foreground text-base font-semibold leading-[18px]">Other Changes</div>
                     <div className="text-secondary leading-5">
                         <ul className="list-disc list-outside space-y-1 pl-5">
+                            <li>
+                                <strong>[v0.14.3] </strong>[bugfix] Fixed a showstopper onboarding bug
+                            </li>
                             <li>
                                 <strong>Directory Preview</strong> - Improved mod time formatting, zebra-striped rows,
                                 better default sort, and YAML file support

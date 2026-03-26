@@ -41,7 +41,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
 import { computeTheme, DefaultTermTheme } from "./termutil";
-import { TermWrap } from "./termwrap";
+import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
@@ -293,6 +293,13 @@ export class TermViewModel implements ViewModel {
                 }
             }
 
+            if (get(getSettingsKeyAtom("debug:webglstatus"))) {
+                const webglButton = this.getWebGlIconButton(get);
+                if (webglButton) {
+                    rtn.push(webglButton);
+                }
+            }
+
             if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
                 return rtn;
             }
@@ -442,6 +449,38 @@ export class TermViewModel implements ViewModel {
         return null;
     }
 
+    getWebGlIconButton(get: jotai.Getter): IconButtonDecl | null {
+        if (!WebGLSupported) {
+            return {
+                elemtype: "iconbutton",
+                icon: "microchip",
+                iconColor: "var(--error-color)",
+                title: "WebGL not supported",
+                noAction: true,
+            };
+        }
+        if (!this.termRef.current?.webglEnabledAtom) {
+            return null;
+        }
+        const webglEnabled = get(this.termRef.current.webglEnabledAtom);
+        if (webglEnabled) {
+            return {
+                elemtype: "iconbutton",
+                icon: "microchip",
+                iconColor: "var(--success-color)",
+                title: "WebGL enabled (click to disable)",
+                click: () => this.toggleWebGl(),
+            };
+        }
+        return {
+            elemtype: "iconbutton",
+            icon: "microchip",
+            iconColor: "var(--secondary-text-color)",
+            title: "WebGL disabled (click to enable)",
+            click: () => this.toggleWebGl(),
+        };
+    }
+
     get viewComponent(): ViewComponent {
         return TerminalView as ViewComponent;
     }
@@ -480,6 +519,22 @@ export class TermViewModel implements ViewModel {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:mode": mode },
         });
+    }
+
+    getTermRenderer(): "webgl" | "dom" {
+        return this.termRef.current?.getTermRenderer() ?? "dom";
+    }
+
+    isWebGlEnabled(): boolean {
+        return this.termRef.current?.isWebGlEnabled() ?? false;
+    }
+
+    toggleWebGl() {
+        if (!this.termRef.current) {
+            return;
+        }
+        const renderer = this.termRef.current.getTermRenderer() === "webgl" ? "dom" : "webgl";
+        this.termRef.current.setTermRenderer(renderer);
     }
 
     triggerRestartAtom() {
@@ -645,14 +700,6 @@ export class TermViewModel implements ViewModel {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (waveEvent.type != "keydown") {
             return true;
-        }
-
-        // Handle Escape key during IME composition
-        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
-            if (this.termRef.current?.isComposing) {
-                // Reset composition state when Escape is pressed during composition
-                this.termRef.current.resetCompositionState();
-            }
         }
 
         if (this.keyDownHandler(waveEvent)) {

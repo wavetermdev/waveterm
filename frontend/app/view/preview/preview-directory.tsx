@@ -1,10 +1,10 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, getApi, getSettingsKeyAtom, globalStore } from "@/app/store/global";
-import { RpcApi } from "@/app/store/wshclientapi";
+import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { addOpenMenuItems } from "@/util/previewutil";
@@ -44,6 +44,7 @@ import {
     overwriteError,
 } from "./preview-directory-utils";
 import { type PreviewModel } from "./preview-model";
+import type { PreviewEnv } from "./previewenv";
 
 const PageJumpSize = 20;
 
@@ -110,9 +111,9 @@ function DirectoryTable({
     newFile,
     newDirectory,
 }: DirectoryTableProps) {
-    const searchActive = useAtomValue(model.directorySearchActive);
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
-    const defaultSort = useAtomValue(getSettingsKeyAtom("preview:defaultsort")) ?? "name";
+    const env = useWaveEnv<PreviewEnv>();
+    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
+    const defaultSort = useAtomValue(env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
@@ -560,6 +561,7 @@ interface DirectoryPreviewProps {
 }
 
 function DirectoryPreview({ model }: DirectoryPreviewProps) {
+    const env = useWaveEnv<PreviewEnv>();
     const [searchText, setSearchText] = useState("");
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
@@ -584,28 +586,26 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     useEffect(
         () =>
             fireAndForget(async () => {
-                let entries: FileInfo[];
+                const entries: FileInfo[] = [];
                 try {
-                    const file = await RpcApi.FileReadCommand(
-                        TabRpcClient,
-                        {
-                            info: {
-                                path: await model.formatRemoteUri(dirPath, globalStore.get),
-                            },
-                        },
-                        null
-                    );
-                    entries = file.entries ?? [];
-                    if (file?.info && file.info.dir && file.info?.path !== file.info?.dir) {
+                    const remotePath = await model.formatRemoteUri(dirPath, globalStore.get);
+                    const stream = env.rpc.FileListStreamCommand(TabRpcClient, { path: remotePath }, null);
+                    for await (const chunk of stream) {
+                        if (chunk?.fileinfo) {
+                            entries.push(...chunk.fileinfo);
+                        }
+                    }
+                    if (finfo?.dir && finfo?.path !== finfo?.dir) {
                         entries.unshift({
                             name: "..",
-                            path: file?.info?.dir,
+                            path: finfo.dir,
                             isdir: true,
                             modtime: new Date().getTime(),
                             mimetype: "directory",
                         });
                     }
                 } catch (e) {
+                    console.error("Directory Read Error", e);
                     setErrorMsg({
                         status: "Cannot Read Directory",
                         text: `${e}`,
@@ -680,7 +680,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 PLATFORM == PlatformMacOS &&
                 !blockData?.meta?.connection
             ) {
-                getApi().onQuicklook(selectedPath);
+                env.electron.onQuicklook(selectedPath);
                 return true;
             }
             if (isCharacterKeyEvent(waveEvent)) {
@@ -714,7 +714,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const handleDropCopy = useCallback(
         async (data: CommandFileCopyData, isDir: boolean) => {
             try {
-                await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
+                await env.rpc.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
             } catch (e) {
                 console.warn("Copy failed:", e);
                 const copyError = `${e}`;
@@ -801,7 +801,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
-                    await RpcApi.FileCreateCommand(
+                    await env.rpc.FileCreateCommand(
                         TabRpcClient,
                         {
                             info: {
@@ -822,7 +822,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    await RpcApi.FileMkdirCommand(TabRpcClient, {
+                    await env.rpc.FileMkdirCommand(TabRpcClient, {
                         info: {
                             path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
                         },

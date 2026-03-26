@@ -108,6 +108,17 @@ declare global {
         iconcolor: string;
     };
 
+    // wconfig.BackgroundConfigType
+    type BackgroundConfigType = {
+        bg?: string;
+        "bg:opacity"?: number;
+        "bg:blendmode"?: string;
+        "bg:bordercolor"?: string;
+        "bg:activebordercolor"?: string;
+        "display:name": string;
+        "display:order"?: number;
+    };
+
     // baseds.Badge
     type Badge = {
         badgeid: string;
@@ -380,6 +391,13 @@ declare global {
         restoretofilename: string;
     };
 
+    // wshrpc.CommandFileStreamData
+    type CommandFileStreamData = {
+        info: FileInfo;
+        byterange?: string;
+        streammeta: StreamMeta;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -521,6 +539,13 @@ declare global {
         paths: string[];
     };
 
+    // wshrpc.CommandRemoteFileStreamData
+    type CommandRemoteFileStreamData = {
+        path: string;
+        byterange?: string;
+        streammeta: StreamMeta;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -560,12 +585,6 @@ declare global {
         mainserverjwttoken: string;
         clientid: string;
         publickeybase64: string;
-    };
-
-    // wshrpc.CommandRemoteStreamFileData
-    type CommandRemoteStreamFileData = {
-        path: string;
-        byterange?: string;
     };
 
     // wshrpc.CommandRemoteTerminateJobManagerData
@@ -977,6 +996,7 @@ declare global {
         defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
+        backgrounds: {[key: string]: BackgroundConfigType};
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
@@ -1115,12 +1135,14 @@ declare global {
         "graph:metrics"?: string[];
         "sysinfo:type"?: string;
         "tab:flagcolor"?: string;
+        "tab:background"?: string;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
         "bg:blendmode"?: string;
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
+        "layout:vtabbarwidth"?: number;
         "waveai:panelopen"?: boolean;
         "waveai:panelwidth"?: number;
         "waveai:model"?: string;
@@ -1305,6 +1327,7 @@ declare global {
         "app:disablectrlshiftarrows"?: boolean;
         "app:disablectrlshiftdisplay"?: boolean;
         "app:focusfollowscursor"?: string;
+        "app:tabbar"?: string;
         "feature:waveappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
@@ -1362,6 +1385,7 @@ declare global {
         "preview:defaultsort"?: string;
         "tab:preset"?: string;
         "tab:confirmclose"?: boolean;
+        "tab:background"?: string;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
@@ -1393,6 +1417,7 @@ declare global {
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
+        "debug:webglstatus"?: boolean;
         "tsunami:*"?: boolean;
         "tsunami:scaffoldpath"?: string;
         "tsunami:sdkreplacepath"?: string;

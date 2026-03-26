@@ -43,6 +43,13 @@
             "term"
           ]
         },
+        "app:tabbar": {
+          "type": "string",
+          "enum": [
+            "top",
+            "left"
+          ]
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },
@@ -225,6 +232,9 @@
         "tab:confirmclose": {
           "type": "boolean"
         },
+        "tab:background": {
+          "type": "string"
+        },
         "widget:*": {
           "type": "boolean"
         },
@@ -317,6 +327,9 @@
         },
         "debug:pprofmemprofilerate": {
           "type": "integer"
+        },
+        "debug:webglstatus": {
+          "type": "boolean"
         },
         "tsunami:*": {
           "type": "boolean"

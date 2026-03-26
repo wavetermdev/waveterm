@@ -1,5 +1,6 @@
 {
     "include": ["frontend/**/*", "emain/**/*"],
+    "exclude": ["node_modules"],
     "compilerOptions": {
         "target": "es6",
         "module": "es2020",
