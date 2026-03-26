@@ -25,6 +25,8 @@ const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace
 // See aiprompts/wave-osc-16162.md for full documentation
 export type ShellIntegrationStatus = "ready" | "running-command";
 
+const ClaudeCodeRegex = /^claude\b/;
+
 type Osc16162Command =
     | { command: "A"; data: Record<string, never> }
     | { command: "C"; data: { cmd64?: string } }
@@ -43,39 +45,54 @@ type Osc16162Command =
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: Record<string, never> };
 
+function normalizeCmd(decodedCmd: string): string {
+    let normalizedCmd = decodedCmd.trim();
+    normalizedCmd = normalizedCmd.replace(/^env\s+/, "");
+    normalizedCmd = normalizedCmd.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
+    return normalizedCmd;
+}
+
 function checkCommandForTelemetry(decodedCmd: string) {
     if (!decodedCmd) {
         return;
     }
 
-    if (decodedCmd.startsWith("ssh ")) {
+    const normalizedCmd = normalizeCmd(decodedCmd);
+
+    if (normalizedCmd.startsWith("ssh ")) {
         recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
         return;
     }
 
     const editorsRegex = /^(vim|vi|nano|nvim)\b/;
-    if (editorsRegex.test(decodedCmd)) {
+    if (editorsRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "cli-edit" });
         return;
     }
 
     const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
-    if (tailFollowRegex.test(decodedCmd)) {
+    if (tailFollowRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "cli-tailf" });
         return;
     }
 
-    const claudeRegex = /^claude\b/;
-    if (claudeRegex.test(decodedCmd)) {
+    if (ClaudeCodeRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "claude" });
         return;
     }
 
     const opencodeRegex = /^opencode\b/;
-    if (opencodeRegex.test(decodedCmd)) {
+    if (opencodeRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "opencode" });
         return;
     }
+}
+
+export function isClaudeCodeCommand(decodedCmd: string): boolean {
+    if (!decodedCmd) {
+        return false;
+    }
+    return ClaudeCodeRegex.test(normalizeCmd(decodedCmd));
 }
 
 function handleShellIntegrationCommandStart(
@@ -101,16 +118,20 @@ function handleShellIntegrationCommandStart(
                 const decodedCmd = base64ToString(cmd.data.cmd64);
                 rtInfo["shell:lastcmd"] = decodedCmd;
                 globalStore.set(termWrap.lastCommandAtom, decodedCmd);
+                const isCC = isClaudeCodeCommand(decodedCmd);
+                globalStore.set(termWrap.claudeCodeActiveAtom, isCC);
                 checkCommandForTelemetry(decodedCmd);
             } catch (e) {
                 console.error("Error decoding cmd64:", e);
                 rtInfo["shell:lastcmd"] = null;
                 globalStore.set(termWrap.lastCommandAtom, null);
+                globalStore.set(termWrap.claudeCodeActiveAtom, false);
             }
         }
     } else {
         rtInfo["shell:lastcmd"] = null;
         globalStore.set(termWrap.lastCommandAtom, null);
+        globalStore.set(termWrap.claudeCodeActiveAtom, false);
     }
     rtInfo["shell:lastcmdexitcode"] = null;
 }
@@ -287,6 +308,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
         case "A": {
             rtInfo["shell:state"] = "ready";
             globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
@@ -324,6 +346,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             }
             break;
         case "D":
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             if (cmd.data.exitcode != null) {
                 rtInfo["shell:lastcmdexitcode"] = cmd.data.exitcode;
             } else {
@@ -337,6 +360,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             break;
         case "R":
             globalStore.set(termWrap.shellIntegrationStatusAtom, null);
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
