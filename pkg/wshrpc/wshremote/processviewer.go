@@ -212,7 +212,7 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 			if prev, ok := s.lastCPUSamples[ri.pid]; ok {
 				elapsed := sampleTime.Sub(prev.SampledAt).Seconds()
 				if elapsed > 0 {
-					cpuPcts[ri.pid] = computeCPUPct(prev.CPUSec, curCPUSec, elapsed, numCPU)
+					cpuPcts[ri.pid] = computeCPUPct(prev.CPUSec, curCPUSec, elapsed)
 				}
 			}
 		}
@@ -230,6 +230,7 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 		totalMem = vm.Total
 	}
 
+	var cpuSum float64
 	infos := make([]wshrpc.ProcessInfo, 0, len(rawInfos))
 	for _, ri := range rawInfos {
 		if ri.info == nil {
@@ -252,6 +253,7 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 			if cpu, ok := cpuPcts[pi.Pid]; ok {
 				v := cpu
 				info.Cpu = &v
+				cpuSum += cpu
 			}
 		}
 		infos = append(infos, info)
@@ -264,7 +266,7 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 				summaryCh <- wshrpc.ProcessSummary{Total: len(procs)}
 			}
 		}()
-		summaryCh <- buildProcessSummary(ctx, len(procs))
+		summaryCh <- buildProcessSummary(ctx, len(procs), numCPU, cpuSum)
 	}()
 	summary := <-summaryCh
 
@@ -277,16 +279,16 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 	}
 }
 
-func computeCPUPct(t1, t2, elapsedSec float64, numCPU int) float64 {
-	delta := (t2 - t1) / elapsedSec / float64(numCPU) * 100
+func computeCPUPct(t1, t2, elapsedSec float64) float64 {
+	delta := (t2 - t1) / elapsedSec * 100
 	if delta < 0 {
 		delta = 0
 	}
 	return delta
 }
 
-func buildProcessSummary(ctx context.Context, total int) wshrpc.ProcessSummary {
-	summary := wshrpc.ProcessSummary{Total: total}
+func buildProcessSummary(ctx context.Context, total int, numCPU int, cpuSum float64) wshrpc.ProcessSummary {
+	summary := wshrpc.ProcessSummary{Total: total, NumCPU: numCPU, CpuSum: cpuSum}
 	if avg, err := load.AvgWithContext(ctx); err == nil {
 		summary.Load1 = avg.Load1
 		summary.Load5 = avg.Load5
@@ -330,16 +332,16 @@ func sortAndLimitProcesses(processes []wshrpc.ProcessInfo, sortBy string, sortDe
 				cj = *processes[j].Cpu
 			}
 			if sortDesc {
-				return ci < cj
+				return ci > cj
 			}
-			return ci > cj
+			return ci < cj
 		})
 	case "mem":
 		sort.Slice(processes, func(i, j int) bool {
 			if sortDesc {
-				return processes[i].Mem < processes[j].Mem
+				return processes[i].Mem > processes[j].Mem
 			}
-			return processes[i].Mem > processes[j].Mem
+			return processes[i].Mem < processes[j].Mem
 		})
 	case "command":
 		sort.Slice(processes, func(i, j int) bool {
@@ -354,6 +356,20 @@ func sortAndLimitProcesses(processes []wshrpc.ProcessInfo, sortBy string, sortDe
 				return processes[i].User > processes[j].User
 			}
 			return processes[i].User < processes[j].User
+		})
+	case "status":
+		sort.Slice(processes, func(i, j int) bool {
+			if sortDesc {
+				return processes[i].Status > processes[j].Status
+			}
+			return processes[i].Status < processes[j].Status
+		})
+	case "threads":
+		sort.Slice(processes, func(i, j int) bool {
+			if sortDesc {
+				return processes[i].NumThreads > processes[j].NumThreads
+			}
+			return processes[i].NumThreads < processes[j].NumThreads
 		})
 	default: // "pid"
 		sort.Slice(processes, func(i, j int) bool {
@@ -376,6 +392,33 @@ func sortAndLimitProcesses(processes []wshrpc.ProcessInfo, sortBy string, sortDe
 }
 
 func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrpc.CommandRemoteProcessListData) (*wshrpc.ProcessListResponse, error) {
+	raw, err := procCache.requestAndWait(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Pids overrides all other request fields; when set we skip sort/limit/start/textsearch
+	// and return only the exact pids requested.
+	if len(data.Pids) > 0 {
+		pidSet := make(map[int32]struct{}, len(data.Pids))
+		for _, pid := range data.Pids {
+			pidSet[pid] = struct{}{}
+		}
+		processes := make([]wshrpc.ProcessInfo, 0, len(data.Pids))
+		for _, p := range raw.Processes {
+			if _, ok := pidSet[p.Pid]; ok {
+				processes = append(processes, p)
+			}
+		}
+		return &wshrpc.ProcessListResponse{
+			Processes: processes,
+			Summary:   raw.Summary,
+			Ts:        raw.Ts,
+			HasCPU:    raw.HasCPU,
+			IsWindows: raw.IsWindows,
+		}, nil
+	}
+
 	sortBy := data.SortBy
 	if sortBy == "" {
 		sortBy = "cpu"
@@ -385,23 +428,23 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 		limit = 50
 	}
 
-	raw, err := procCache.requestAndWait(ctx)
-	if err != nil {
-		return nil, err
-	}
+	totalCount := len(raw.Processes)
 
 	// Copy processes so we can sort/limit without mutating the cache.
 	processes := make([]wshrpc.ProcessInfo, len(raw.Processes))
 	copy(processes, raw.Processes)
 	processes = filterProcesses(processes, data.TextSearch)
+	filteredCount := len(processes)
 	processes = sortAndLimitProcesses(processes, sortBy, data.SortDesc, data.Start, limit)
 
 	return &wshrpc.ProcessListResponse{
-		Processes: processes,
-		Summary:   raw.Summary,
-		Ts:        raw.Ts,
-		HasCPU:    raw.HasCPU,
-		IsWindows: raw.IsWindows,
+		Processes:     processes,
+		Summary:       raw.Summary,
+		Ts:            raw.Ts,
+		HasCPU:        raw.HasCPU,
+		IsWindows:     raw.IsWindows,
+		TotalCount:    totalCount,
+		FilteredCount: filteredCount,
 	}, nil
 }
 

@@ -931,14 +931,18 @@ type ProcessSummary struct {
 	MemTotal uint64  `json:"memtotal,omitempty"`
 	MemUsed  uint64  `json:"memused,omitempty"`
 	MemFree  uint64  `json:"memfree,omitempty"`
+	NumCPU   int     `json:"numcpu,omitempty"`
+	CpuSum   float64 `json:"cpusum,omitempty"`
 }
 
 type ProcessListResponse struct {
-	Processes []ProcessInfo  `json:"processes"`
-	Summary   ProcessSummary `json:"summary"`
-	Ts        int64          `json:"ts"`
-	HasCPU    bool           `json:"hascpu,omitempty"`
-	IsWindows bool           `json:"iswindows,omitempty"`
+	Processes     []ProcessInfo  `json:"processes"`
+	Summary       ProcessSummary `json:"summary"`
+	Ts            int64          `json:"ts"`
+	HasCPU        bool           `json:"hascpu,omitempty"`
+	IsWindows     bool           `json:"iswindows,omitempty"`
+	TotalCount    int            `json:"totalcount,omitempty"`
+	FilteredCount int            `json:"filteredcount,omitempty"`
 }
 
 type CommandRemoteProcessListData struct {
@@ -947,6 +951,8 @@ type CommandRemoteProcessListData struct {
 	Start      int    `json:"start,omitempty"`
 	Limit      int    `json:"limit,omitempty"`
 	TextSearch string `json:"textsearch,omitempty"`
+	// Pids overrides all other fields; when set, returns only the specified pids (no sort/limit/start/textsearch).
+	Pids []int32 `json:"pids,omitempty"`
 }
 
 type CommandRemoteProcessSignalData struct {

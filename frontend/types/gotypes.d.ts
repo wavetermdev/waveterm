@@ -564,6 +564,7 @@ declare global {
         start?: number;
         limit?: number;
         textsearch?: string;
+        pids?: number[];
     };
 
     // wshrpc.CommandRemoteProcessSignalData
@@ -1279,6 +1280,8 @@ declare global {
         ts: number;
         hascpu?: boolean;
         iswindows?: boolean;
+        totalcount?: number;
+        filteredcount?: number;
     };
 
     // wshrpc.ProcessSummary
@@ -1290,6 +1293,8 @@ declare global {
         memtotal?: number;
         memused?: number;
         memfree?: number;
+        numcpu?: number;
+        cpusum?: number;
     };
 
     // uctypes.RateLimitInfo
