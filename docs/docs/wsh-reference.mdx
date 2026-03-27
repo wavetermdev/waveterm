@@ -287,7 +287,10 @@ Flags:
 - `--color string` - set the badge color (CSS color name or hex)
 - `--priority float` - set the badge priority (default 10; higher priority badges take precedence)
 - `--clear` - remove the badge from the block or tab
-- `--beep` - play the system bell sound when setting the badge
+- `--sound string` - play a sound when setting the badge. Built-in presets: `system`, `chime`, `ping`, `gentle`. Also accepts a custom `.mp3` filename from `~/.waveterm/sounds/`
+- `--beep` - alias for `--sound system` (plays the OS system bell)
+- `--border` - show a persistent border highlight on the block (clears when the block is focused)
+- `--border-color string` - border color override (defaults to `--color` value, then amber `#fbbf24`)
 - `--pid int` - watch a PID and automatically clear the badge when it exits (sets default priority to 5)
 - `-b, --block` - target a specific block or tab (same format as `getmeta`)
 
@@ -306,8 +309,14 @@ wsh badge triangle-exclamation --color red --priority 20 -b 2
 # Set a badge that clears when a process exits
 wsh badge --pid 12345
 
-# Play the bell and set a badge when done
+# Play the system bell and set a badge
 wsh badge circle-check --beep
+
+# Play a chime sound and highlight the block border
+wsh badge circle-check --color green --sound chime --border
+
+# Play a custom sound with a red border
+wsh badge bell --sound mysound.mp3 --border --border-color '#ef4444'
 
 # Clear the badge on the current block
 wsh badge --clear
@@ -318,6 +327,10 @@ wsh badge --clear -b tab
 
 :::note
 The `--pid` flag is not supported on Windows.
+:::
+
+:::note
+Custom sounds must be `.mp3` files placed in `~/.waveterm/sounds/`. Built-in presets (`system`, `chime`, `ping`, `gentle`) are always available.
 :::
 
 ---
