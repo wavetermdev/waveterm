@@ -396,13 +396,12 @@ func sortProcesses(processes []wshrpc.ProcessInfo, sortBy string, sortDesc bool)
 		sort.Slice(processes, func(i, j int) bool {
 			ci := processes[i].Cpu
 			cj := processes[j].Cpu
-			if ci < 0 {
-				ci = 0
+			iNull := ci < 0
+			jNull := cj < 0
+			if iNull != jNull {
+				return !iNull
 			}
-			if cj < 0 {
-				cj = 0
-			}
-			if ci != cj {
+			if !iNull && ci != cj {
 				if sortDesc {
 					return ci > cj
 				}
@@ -412,11 +411,18 @@ func sortProcesses(processes []wshrpc.ProcessInfo, sortBy string, sortDesc bool)
 		})
 	case "mem":
 		sort.Slice(processes, func(i, j int) bool {
-			if processes[i].Mem != processes[j].Mem {
+			mi := processes[i].Mem
+			mj := processes[j].Mem
+			iNull := mi < 0
+			jNull := mj < 0
+			if iNull != jNull {
+				return !iNull
+			}
+			if !iNull && mi != mj {
 				if sortDesc {
-					return processes[i].Mem > processes[j].Mem
+					return mi > mj
 				}
-				return processes[i].Mem < processes[j].Mem
+				return mi < mj
 			}
 			return processes[i].Pid < processes[j].Pid
 		})
@@ -452,11 +458,18 @@ func sortProcesses(processes []wshrpc.ProcessInfo, sortBy string, sortDesc bool)
 		})
 	case "threads":
 		sort.Slice(processes, func(i, j int) bool {
-			if processes[i].NumThreads != processes[j].NumThreads {
+			ti := processes[i].NumThreads
+			tj := processes[j].NumThreads
+			iNull := ti < 0
+			jNull := tj < 0
+			if iNull != jNull {
+				return !iNull
+			}
+			if !iNull && ti != tj {
 				if sortDesc {
-					return processes[i].NumThreads > processes[j].NumThreads
+					return ti > tj
 				}
-				return processes[i].NumThreads < processes[j].NumThreads
+				return ti < tj
 			}
 			return processes[i].Pid < processes[j].Pid
 		})

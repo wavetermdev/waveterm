@@ -598,6 +598,26 @@ const ProcessRow = React.memo(function ProcessRow({
     const gridTemplate = getGridTemplate(platform);
     const showStatus = platform !== "windows" && platform !== "darwin";
     const showThreads = platform !== "windows";
+    if (proc.gone) {
+        return (
+            <div
+                className={`grid w-full text-xs transition-colors cursor-pointer ${selected ? "bg-accentbg" : "hover:bg-white/5"}`}
+                style={{ gridTemplateColumns: gridTemplate, height: RowHeight }}
+                onClick={() => onSelect(proc.pid)}
+                onContextMenu={(e) => onContextMenu(proc.pid, e)}
+            >
+                <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
+                    {proc.pid}
+                </div>
+                <div className="px-2 flex items-center truncate text-muted italic">(gone)</div>
+                {showStatus && <div className="px-2 flex items-center truncate" />}
+                <div className="px-2 flex items-center truncate" />
+                {showThreads && <div className="px-2 flex items-center truncate" />}
+                <div className="px-2 flex items-center truncate" />
+                <div className="px-2 flex items-center truncate" />
+            </div>
+        );
+    }
     return (
         <div
             className={`grid w-full text-xs transition-colors cursor-pointer ${selected ? "bg-accentbg" : "hover:bg-white/5"}`}
