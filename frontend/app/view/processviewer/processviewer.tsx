@@ -26,17 +26,28 @@ const OverscanRows = 100;
 
 // ---- format helpers ----
 
+function formatNumber4(n: number): string {
+    if (n < 10) return n.toFixed(2);
+    if (n < 100) return n.toFixed(1);
+    return Math.floor(n).toString().padStart(4);
+}
+
 function fmtMem(bytes: number): string {
     if (bytes == null) return "";
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " K";
-    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " M";
-    return (bytes / 1024 / 1024 / 1024).toFixed(2) + " G";
+    if (bytes < 1024) return formatNumber4(bytes) + " B";
+    if (bytes < 1024 * 1024) return formatNumber4(bytes / 1024) + " K";
+    if (bytes < 1024 * 1024 * 1024) return formatNumber4(bytes / 1024 / 1024) + " M";
+    return formatNumber4(bytes / 1024 / 1024 / 1024) + " G";
 }
 
 function fmtCpu(cpu: number): string {
     if (cpu == null) return "";
     return cpu.toFixed(1) + "%";
+}
+
+function fmtLoad(load: number): string {
+    if (load == null) return "    ";
+    return formatNumber4(load);
 }
 
 // ---- model ----
@@ -434,52 +445,62 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const paddingTop = startIdx * RowHeight;
 
         const summary = data?.summary;
-        const memUsedGb = summary?.memused != null ? (summary.memused / 1024 / 1024 / 1024).toFixed(1) : null;
-        const memTotalGb = summary?.memtotal != null ? (summary.memtotal / 1024 / 1024 / 1024).toFixed(1) : null;
+        const memUsedFmt = summary?.memused != null ? fmtMem(summary.memused) : null;
+        const memTotalFmt = summary?.memtotal != null ? fmtMem(summary.memtotal) : null;
         const cpuPct =
             summary?.cpusum != null && summary?.numcpu != null && summary.numcpu > 0
-                ? (summary.cpusum / summary.numcpu).toFixed(1).padStart(5, " ")
+                ? (summary.cpusum / summary.numcpu).toFixed(1).padStart(6, " ")
                 : null;
+
+        const procCountValue =
+            totalCount > 0
+                ? filteredCount < totalCount
+                    ? `${filteredCount} / ${totalCount}`
+                    : String(totalCount).padStart(5, " ")
+                : loading
+                  ? "…"
+                  : error
+                    ? "Err"
+                    : "";
+
+        const hasSummaryLoad = summary != null && summary.load1 != null;
+        const hasSummaryMem = summary != null && memUsedFmt != null;
+        const hasSummaryCpu = summary != null && cpuPct != null;
 
         return (
             <div className="flex flex-col w-full h-full overflow-hidden" ref={containerRef}>
                 {/* status bar */}
-                <div className="flex shrink-0 items-center gap-4 px-2 py-1 text-xs text-secondary border-b border-white/10 bg-panel">
-                    <StatusIndicator model={model} />
-                    {summary != null && (
-                        <>
-                            {summary.load1 != null && (
-                                <span>
-                                    Load:{" "}
-                                    <span className="font-mono">
-                                        {summary.load1.toFixed(2)} {summary.load5.toFixed(2)}{" "}
-                                        {summary.load15.toFixed(2)}
-                                    </span>
+                <div className="shrink-0 text-xs text-secondary border-b border-white/10 bg-panel">
+                    <div className="flex items-center gap-4 px-2 pt-1 pb-0">
+                        <StatusIndicator model={model} />
+                        {hasSummaryLoad && <span className="w-[120px] shrink-0">Load</span>}
+                        {hasSummaryMem && <span className="w-[120px] shrink-0">Mem</span>}
+                        {hasSummaryCpu && (
+                            <Tooltip content={`${summary.numcpu} cores`} placement="bottom">
+                                <span className="w-[70px] shrink-0 cursor-default">
+                                    CPU<span className="font-mono text-[11px]">x{summary.numcpu}</span>
                                 </span>
-                            )}
-                            {memUsedGb != null && (
-                                <span>
-                                    Mem: <span className="font-mono">{memUsedGb}G / {memTotalGb}G</span>
-                                </span>
-                            )}
-                            {cpuPct != null && (
-                                <span>
-                                    CPU: <span className="font-mono whitespace-pre">{cpuPct}% ({summary.numcpu} cores)</span>
-                                </span>
-                            )}
-                        </>
-                    )}
-                    <span className="ml-auto font-mono">
-                        {totalCount > 0
-                            ? filteredCount < totalCount
-                                ? `${filteredCount} / ${totalCount} processes`
-                                : `${totalCount} processes`
-                            : loading
-                              ? "Loading…"
-                              : error
-                                ? "Error"
-                                : ""}
-                    </span>
+                            </Tooltip>
+                        )}
+                        <span className="ml-auto">Procs</span>
+                    </div>
+                    <div className="flex items-center gap-4 px-2 pb-1 pt-0">
+                        <div className="w-4 shrink-0" />
+                        {hasSummaryLoad && (
+                            <span className="font-mono text-[11px] w-[120px] shrink-0 whitespace-pre">
+                                {fmtLoad(summary.load1)} {fmtLoad(summary.load5)} {fmtLoad(summary.load15)}
+                            </span>
+                        )}
+                        {hasSummaryMem && (
+                            <span className="font-mono text-[11px] w-[120px] shrink-0 whitespace-pre">
+                                {memUsedFmt} / {memTotalFmt}
+                            </span>
+                        )}
+                        {hasSummaryCpu && (
+                            <span className="font-mono text-[11px] w-[70px] shrink-0 whitespace-pre">{cpuPct}%</span>
+                        )}
+                        <span className="ml-auto font-mono text-[11px] whitespace-pre">{procCountValue}</span>
+                    </div>
                 </div>
 
                 {/* error */}
