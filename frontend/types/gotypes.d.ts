@@ -135,6 +135,9 @@ declare global {
         clearall?: boolean;
         clearbyid?: string;
         badge?: Badge;
+        sound?: string;
+        border?: boolean;
+        bordercolor?: string;
     };
 
     // waveobj.Block
