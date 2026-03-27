@@ -51,9 +51,12 @@ type ChordActionDef = {
     handler: KeyHandler;
 };
 
+type KeyMapEntry<T = KeyHandler> = { key: string; handler: T };
+type ChordEntry = { key: string; subKeys: KeyMapEntry[] };
+
 const simpleControlShiftAtom = jotai.atom(false);
-const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
-const globalChordMap = new Map<string, Map<string, KeyHandler>>();
+let globalKeyBindings: KeyMapEntry[] = [];
+let globalChordBindings: ChordEntry[] = [];
 let globalKeybindingsDisabled = false;
 
 // track current chord state and timeout (for resetting)
@@ -420,12 +423,12 @@ async function handleSplitVertical(position: "before" | "after") {
 
 let lastHandledEvent: KeyboardEvent | null = null;
 
-// returns [keymatch, T]
-function checkKeyMap<T>(waveEvent: WaveKeyboardEvent, keyMap: Map<string, T>): [string, T] {
-    for (const key of keyMap.keys()) {
-        if (keyutil.checkKeyPressed(waveEvent, key)) {
-            const val = keyMap.get(key);
-            return [key, val];
+// returns [keymatch, T] — iterates in reverse so later entries (user overrides) win
+function checkKeyArray<T>(waveEvent: WaveKeyboardEvent, entries: KeyMapEntry<T>[]): [string, T] {
+    for (let i = entries.length - 1; i >= 0; i--) {
+        const entry = entries[i];
+        if (keyutil.checkKeyPressed(waveEvent, entry.key)) {
+            return [entry.key, entry.handler];
         }
     }
     return [null, null];
@@ -442,25 +445,28 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     lastHandledEvent = nativeEvent;
     if (activeChord) {
         console.log("handle activeChord", activeChord);
-        // If we're in chord mode, look for the second key.
-        const chordBindings = globalChordMap.get(activeChord);
-        const [, handler] = checkKeyMap(waveEvent, chordBindings);
-        if (handler) {
-            resetChord();
-            return handler(waveEvent);
-        } else {
-            // invalid chord; reset state and consume key
-            resetChord();
+        // If we're in chord mode, look for the second key in the matching chord's sub-keys.
+        const chordEntry = globalChordBindings.find((c) => c.key === activeChord);
+        if (chordEntry) {
+            const [, handler] = checkKeyArray(waveEvent, chordEntry.subKeys);
+            if (handler) {
+                resetChord();
+                return handler(waveEvent);
+            }
+        }
+        // invalid chord; reset state and consume key
+        resetChord();
+        return true;
+    }
+    // Check if this key initiates a chord
+    for (const chord of globalChordBindings) {
+        if (keyutil.checkKeyPressed(waveEvent, chord.key)) {
+            setActiveChord(chord.key);
             return true;
         }
     }
-    const [chordKeyMatch] = checkKeyMap(waveEvent, globalChordMap);
-    if (chordKeyMatch) {
-        setActiveChord(chordKeyMatch);
-        return true;
-    }
 
-    const [, globalHandler] = checkKeyMap(waveEvent, globalKeyMap);
+    const [, globalHandler] = checkKeyArray(waveEvent, globalKeyBindings);
     if (globalHandler) {
         const handled = globalHandler(waveEvent);
         if (handled) {
@@ -832,13 +838,35 @@ const defaultChordActions: ChordActionDef[] = [
 ];
 
 function buildKeyMaps(userOverrides: KeybindingEntry[]): void {
-    // 1. Build resolved map: actionId -> { keys, handler }
-    const resolvedActions = new Map<string, { keys: string[]; handler: KeyHandler }>();
+    // 1. Start with default bindings as array entries (key -> handler)
+    const bindings: KeyMapEntry[] = [];
+    const chordBindings: ChordEntry[] = [];
+
+    // Track which action IDs map to which handler (for user overrides)
+    const actionHandlers = new Map<string, KeyHandler>();
     for (const action of defaultActions) {
-        resolvedActions.set(action.id, { keys: [...action.defaultKeys], handler: action.handler });
+        actionHandlers.set(action.id, action.handler);
+        for (const key of action.defaultKeys) {
+            bindings.push({ key, handler: action.handler });
+        }
     }
 
-    // 2. Apply user overrides in order (last wins)
+    // 2. Build chord bindings from defaults
+    const chordInitiatorAction = defaultActions.find((a) => a.id === "block:splitChord");
+    if (chordInitiatorAction) {
+        const subKeys: KeyMapEntry[] = [];
+        for (const chordDef of defaultChordActions) {
+            if (chordDef.parentId === "block:splitChord") {
+                actionHandlers.set(chordDef.id, chordDef.handler);
+                subKeys.push({ key: chordDef.defaultKey, handler: chordDef.handler });
+            }
+        }
+        for (const key of chordInitiatorAction.defaultKeys) {
+            chordBindings.push({ key, subKeys: [...subKeys] });
+        }
+    }
+
+    // 3. Apply user overrides — append to array (last wins via reverse iteration)
     for (const override of userOverrides) {
         if (!override.command || typeof override.command !== "string") {
             console.warn("Skipping keybinding entry with missing/invalid command");
@@ -848,75 +876,26 @@ function buildKeyMaps(userOverrides: KeybindingEntry[]): void {
             console.warn(`Skipping keybinding entry with invalid key type for command: ${override.command}`);
             continue;
         }
-        const commandId = override.command.startsWith("-") ? override.command.substring(1) : override.command;
-        if (override.command.startsWith("-") || override.key == null) {
-            // Unbind: remove the action
-            resolvedActions.delete(commandId);
+        const commandId = override.command;
+        if (override.key == null) {
+            continue; // null key = no binding, handled by reverse iteration skipping
+        }
+        const handler = actionHandlers.get(commandId);
+        if (handler) {
+            bindings.push({ key: override.key, handler });
         } else {
-            // Override: replace that action's keys
-            const existing = resolvedActions.get(commandId);
-            if (existing) {
-                existing.keys = [override.key];
-            } else {
-                console.warn(`Unknown keybinding action: ${commandId}`);
-            }
+            console.warn(`Unknown keybinding action: ${commandId}`);
         }
     }
 
-    // 3. Clear and rebuild maps
-    globalKeyMap.clear();
-    globalChordMap.clear();
+    // 4. Assign to globals
+    globalKeyBindings = bindings;
+    globalChordBindings = chordBindings;
 
-    // 4. Find chord initiator keys
-    const chordInitiatorKeys = new Map<string, string[]>(); // parentId -> keys
-    const chordAction = resolvedActions.get("block:splitChord");
-    if (chordAction) {
-        chordInitiatorKeys.set("block:splitChord", chordAction.keys);
-        resolvedActions.delete("block:splitChord"); // don't add to globalKeyMap
-    }
-
-    // 5. Build chord sub-key maps
-    for (const [parentId, initiatorKeys] of chordInitiatorKeys) {
-        const subKeyMap = new Map<string, KeyHandler>();
-        for (const chordDef of defaultChordActions) {
-            if (chordDef.parentId === parentId) {
-                // Check if user overrode this chord sub-action
-                let subKey: string | null = chordDef.defaultKey;
-                for (const override of userOverrides) {
-                    const cmdId = override.command.startsWith("-")
-                        ? override.command.substring(1)
-                        : override.command;
-                    if (cmdId === chordDef.id) {
-                        if (override.command.startsWith("-") || override.key == null) {
-                            subKey = null; // unbind
-                        } else {
-                            subKey = override.key;
-                        }
-                    }
-                }
-                if (subKey != null) {
-                    subKeyMap.set(subKey, chordDef.handler);
-                }
-            }
-        }
-        if (subKeyMap.size > 0) {
-            for (const key of initiatorKeys) {
-                globalChordMap.set(key, subKeyMap);
-            }
-        }
-    }
-
-    // 6. Populate globalKeyMap from resolved simple actions
-    for (const [, actionData] of resolvedActions) {
-        for (const key of actionData.keys) {
-            globalKeyMap.set(key, actionData.handler);
-        }
-    }
-
-    // 7. Re-register with Electron
-    const allKeys = Array.from(globalKeyMap.keys());
-    for (const keys of chordInitiatorKeys.values()) {
-        allKeys.push(...keys);
+    // 5. Re-register with Electron
+    const allKeys = globalKeyBindings.map((e) => e.key);
+    for (const chord of globalChordBindings) {
+        allKeys.push(chord.key);
     }
     // Special web view keys
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");
@@ -934,17 +913,19 @@ function initKeybindingsWatcher() {
 }
 
 function registerBuilderGlobalKeys() {
-    globalKeyMap.set("Cmd:w", () => {
-        getApi().closeBuilderWindow();
-        return true;
+    globalKeyBindings.push({
+        key: "Cmd:w",
+        handler: () => {
+            getApi().closeBuilderWindow();
+            return true;
+        },
     });
-    const allKeys = Array.from(globalKeyMap.keys());
+    const allKeys = globalKeyBindings.map((e) => e.key);
     getApi().registerGlobalWebviewKeys(allKeys);
 }
 
 function getAllGlobalKeyBindings(): string[] {
-    const allKeys = Array.from(globalKeyMap.keys());
-    return allKeys;
+    return globalKeyBindings.map((e) => e.key);
 }
 
 export {
