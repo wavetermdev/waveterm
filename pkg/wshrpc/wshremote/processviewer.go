@@ -40,6 +40,7 @@ type cpuSample struct {
 // widgetPidOrder stores the ordered pid list from the last non-LastPidOrder request for a widget.
 type widgetPidOrder struct {
 	pids        []int32
+	totalCount  int
 	lastRequest time.Time
 }
 
@@ -116,7 +117,7 @@ func (s *procCacheState) touchWidgetPidOrder(widgetId string) {
 	}
 }
 
-func (s *procCacheState) storeWidgetPidOrder(widgetId string, pids []int32) {
+func (s *procCacheState) storeWidgetPidOrder(widgetId string, pids []int32, totalCount int) {
 	if widgetId == "" {
 		return
 	}
@@ -127,28 +128,29 @@ func (s *procCacheState) storeWidgetPidOrder(widgetId string, pids []int32) {
 	}
 	s.widgetPidOrders[widgetId] = &widgetPidOrder{
 		pids:        pids,
+		totalCount:  totalCount,
 		lastRequest: time.Now(),
 	}
 }
 
-func (s *procCacheState) getWidgetPidOrder(widgetId string) []int32 {
+func (s *procCacheState) getWidgetPidOrder(widgetId string) ([]int32, int) {
 	if widgetId == "" {
-		return nil
+		return nil, 0
 	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if s.widgetPidOrders == nil {
-		return nil
+		return nil, 0
 	}
 	entry, ok := s.widgetPidOrders[widgetId]
 	if !ok {
-		return nil
+		return nil, 0
 	}
 	if time.Since(entry.lastRequest) >= ProcCacheIdleTimeout {
 		delete(s.widgetPidOrders, widgetId)
-		return nil
+		return nil, 0
 	}
-	return entry.pids
+	return entry.pids, entry.totalCount
 }
 
 func (s *procCacheState) runLoop(firstReadyCh chan struct{}) {
@@ -505,7 +507,12 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 	var pidOrder []int32
 	var filteredCount int
 	if data.LastPidOrder {
-		pidOrder = procCache.getWidgetPidOrder(data.WidgetId)
+		var cachedTotal int
+		pidOrder, cachedTotal = procCache.getWidgetPidOrder(data.WidgetId)
+		if pidOrder != nil {
+			filteredCount = len(pidOrder)
+			totalCount = cachedTotal
+		}
 	}
 	if pidOrder == nil {
 		sortBy := data.SortBy
@@ -524,7 +531,7 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 			pidOrder[i] = p.Pid
 		}
 		if data.WidgetId != "" {
-			procCache.storeWidgetPidOrder(data.WidgetId, pidOrder)
+			procCache.storeWidgetPidOrder(data.WidgetId, pidOrder, totalCount)
 		}
 	}
 

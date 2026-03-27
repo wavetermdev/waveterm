@@ -90,6 +90,7 @@ func GetProcInfo(ctx context.Context, _ any, pid int32) (*ProcInfo, error) {
 	info.CpuUser = -1
 	info.CpuSys = -1
 	info.VmRSS = -1
+	info.NumThreads = -1
 	if ti, terr := getDarwinProcTaskInfo(pid); terr == nil {
 		if darwinTimeScale > 0 {
 			info.CpuUser = float64(ti.TotalUser) * darwinTimeScale / 1e9

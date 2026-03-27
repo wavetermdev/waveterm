@@ -118,7 +118,7 @@ func readStat(pid int32) (*ProcInfo, error) {
 	if numThreads, err := strconv.ParseInt(rest[17], 10, 32); err == nil {
 		info.NumThreads = int32(numThreads)
 	}
-	if rssPages, err := strconv.ParseInt(rest[21], 10, 64); err == nil && rssPages > 0 {
+	if rssPages, err := strconv.ParseInt(rest[21], 10, 64); err == nil {
 		info.VmRSS = rssPages * pageSize
 	}
 
