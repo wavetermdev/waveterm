@@ -147,7 +147,6 @@ export class ProcessViewerViewModel implements ViewModel {
 
         const route = makeConnRoute(conn);
         try {
-            console.log("RemoteProcessList", sortBy, sortDesc, start, limit, textSearch);
             const resp = await this.env.rpc.RemoteProcessListCommand(
                 TabRpcClient,
                 { sortby: sortBy, sortdesc: sortDesc, start, limit, textsearch: textSearch || undefined },
@@ -223,7 +222,11 @@ export class ProcessViewerViewModel implements ViewModel {
 
     setTextSearch(text: string) {
         globalStore.set(this.textSearchAtom, text);
-        this.triggerRefresh();
+        if (globalStore.get(this.pausedAtom)) {
+            this.doOneFetch();
+        } else {
+            this.triggerRefresh();
+        }
     }
 
     openSearch() {
@@ -585,7 +588,10 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 {hasSummaryCpu && (
                     <>
                         <div className="w-px self-stretch bg-white/10 shrink-0" />
-                        <Tooltip content={`100% per core · ${summary.numcpu} cores = ${summary.numcpu * 100}% max`} placement="bottom">
+                        <Tooltip
+                            content={`100% per core · ${summary.numcpu} cores = ${summary.numcpu * 100}% max`}
+                            placement="bottom"
+                        >
                             <span className="shrink-0 cursor-default whitespace-pre">
                                 CPU<span className="font-mono text-[11px]">x{summary.numcpu}</span>{" "}
                                 <span className="font-mono text-[11px]">{cpuPct}%</span>
@@ -635,7 +641,10 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 {hasSummaryMem && <div className="flex-1 max-w-3" />}
                 {hasSummaryCpu && (
                     <div className="flex flex-col shrink-0 w-[55px] mr-1">
-                        <Tooltip content={`100% per core · ${summary.numcpu} cores = ${summary.numcpu * 100}% max`} placement="bottom">
+                        <Tooltip
+                            content={`100% per core · ${summary.numcpu} cores = ${summary.numcpu * 100}% max`}
+                            placement="bottom"
+                        >
                             <div className="cursor-default">
                                 CPU<span className="font-mono text-[11px]">x{summary.numcpu}</span>
                             </div>
@@ -769,6 +778,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const platform = data?.platform ?? "";
         const startIdx = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
         const totalCount = data?.totalcount ?? 0;
+        const filteredCount = data?.filteredcount ?? totalCount;
         const processes = data?.processes ?? [];
         const hasCpu = data?.hascpu ?? false;
 
@@ -793,7 +803,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
             model.setScrollTop(el.scrollTop);
         }, [model]);
 
-        const totalHeight = totalCount * RowHeight;
+        const totalHeight = filteredCount * RowHeight;
         const paddingTop = startIdx * RowHeight;
 
         return (

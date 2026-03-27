@@ -27,6 +27,7 @@ import (
 const (
 	ProcCacheIdleTimeout  = 10 * time.Second
 	ProcCachePollInterval = 1 * time.Second
+	ProcViewerMaxLimit    = 500
 )
 
 // cpuSample records a single CPU time measurement for a process.
@@ -425,8 +426,8 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 		sortBy = "cpu"
 	}
 	limit := data.Limit
-	if limit <= 0 || limit > 500 {
-		limit = 50
+	if limit <= 0 || limit > ProcViewerMaxLimit {
+		limit = ProcViewerMaxLimit
 	}
 
 	totalCount := len(raw.Processes)
