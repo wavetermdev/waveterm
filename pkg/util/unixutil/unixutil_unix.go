@@ -80,3 +80,15 @@ func IsPidRunning(pid int) bool {
 	}
 	return false
 }
+
+func SendSignalByName(pid int, sigName string) error {
+	sig := ParseSignal(sigName)
+	if sig == nil {
+		return fmt.Errorf("unsupported or invalid signal %q", sigName)
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("process %d not found: %w", pid, err)
+	}
+	return p.Signal(sig)
+}
