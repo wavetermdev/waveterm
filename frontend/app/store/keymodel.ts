@@ -260,6 +260,24 @@ function switchBlockByBlockNum(index: number) {
     }, 10);
 }
 
+function cycleBlockFocus(delta: 1 | -1) {
+    const layoutModel = getLayoutModelForStaticTab();
+    if (!layoutModel) {
+        return;
+    }
+    const leafOrder = globalStore.get(layoutModel.leafOrder);
+    if (leafOrder.length === 0) {
+        return;
+    }
+    const focusedNodeId = layoutModel.focusedNodeId;
+    const curIdx = leafOrder.findIndex((e) => e.nodeid === focusedNodeId);
+    const nextIdx = (curIdx + delta + leafOrder.length) % leafOrder.length;
+    layoutModel.focusNode(leafOrder[nextIdx].nodeid);
+    setTimeout(() => {
+        globalRefocus();
+    }, 10);
+}
+
 function switchBlockInDirection(direction: NavigateDirection) {
     const layoutModel = getLayoutModelForStaticTab();
     const focusType = FocusManager.getInstance().getFocusType();
@@ -591,7 +609,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "block:splitRight",
+        id: "block:splitright",
         defaultKeys: ["Cmd:d"],
         handler: () => {
             handleSplitHorizontal("after");
@@ -599,7 +617,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "block:splitDown",
+        id: "block:splitdown",
         defaultKeys: ["Shift:Cmd:d"],
         handler: () => {
             handleSplitVertical("after");
@@ -651,27 +669,43 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "block:navUp",
+        id: "block:navup",
         defaultKeys: ["Ctrl:Shift:ArrowUp", "Ctrl:Shift:k"],
         handler: makeBlockNavHandler(NavigateDirection.Up),
     },
     {
-        id: "block:navDown",
+        id: "block:navdown",
         defaultKeys: ["Ctrl:Shift:ArrowDown", "Ctrl:Shift:j"],
         handler: makeBlockNavHandler(NavigateDirection.Down),
     },
     {
-        id: "block:navLeft",
+        id: "block:navleft",
         defaultKeys: ["Ctrl:Shift:ArrowLeft", "Ctrl:Shift:h"],
         handler: makeBlockNavHandler(NavigateDirection.Left),
     },
     {
-        id: "block:navRight",
+        id: "block:navright",
         defaultKeys: ["Ctrl:Shift:ArrowRight", "Ctrl:Shift:l"],
         handler: makeBlockNavHandler(NavigateDirection.Right),
     },
     {
-        id: "block:replaceWithLauncher",
+        id: "block:focusnext",
+        defaultKeys: ["Ctrl:Shift:]"],
+        handler: () => {
+            cycleBlockFocus(1);
+            return true;
+        },
+    },
+    {
+        id: "block:focusprev",
+        defaultKeys: ["Ctrl:Shift:["],
+        handler: () => {
+            cycleBlockFocus(-1);
+            return true;
+        },
+    },
+    {
+        id: "block:replacewithlauncher",
         defaultKeys: ["Ctrl:Shift:x"],
         handler: () => {
             const blockId = getFocusedBlockId();
@@ -691,7 +725,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "app:openConnection",
+        id: "app:openconnection",
         defaultKeys: ["Cmd:g"],
         handler: () => {
             const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
@@ -704,7 +738,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "term:toggleMultiInput",
+        id: "term:togglemultiinput",
         defaultKeys: ["Ctrl:Shift:i"],
         handler: () => {
             const tabModel = getActiveTabModel();
@@ -740,7 +774,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "app:toggleAIPanel",
+        id: "app:toggleaipanel",
         defaultKeys: ["Cmd:Shift:a"],
         handler: () => {
             const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
@@ -749,7 +783,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "app:toggleWidgetsSidebar",
+        id: "app:togglewidgetssidebar",
         defaultKeys: ["Cmd:b"],
         handler: () => {
             const current = WorkspaceLayoutModel.getInstance().getWidgetsSidebarVisible();
@@ -762,7 +796,7 @@ const defaultActions: ActionDef[] = [
         const idx = i + 1;
         return [
             {
-                id: `tab:switchTo${idx}`,
+                id: `tab:switchto${idx}`,
                 defaultKeys: [`Cmd:${idx}`],
                 handler: () => {
                     switchTabAbs(idx);
@@ -770,7 +804,7 @@ const defaultActions: ActionDef[] = [
                 },
             } as ActionDef,
             {
-                id: `block:switchTo${idx}`,
+                id: `block:switchto${idx}`,
                 defaultKeys: [`Ctrl:Shift:c{Digit${idx}}`, `Ctrl:Shift:c{Numpad${idx}}`],
                 handler: () => {
                     switchBlockByBlockNum(idx);
@@ -781,7 +815,7 @@ const defaultActions: ActionDef[] = [
     }).flat(),
     // AI focus (block 0) — platform-dependent keys
     {
-        id: "block:switchToAI",
+        id: "block:switchtoai",
         defaultKeys: isWindows()
             ? ["Alt:c{Digit0}", "Alt:c{Numpad0}"]
             : ["Ctrl:Shift:c{Digit0}", "Ctrl:Shift:c{Numpad0}"],
@@ -792,7 +826,7 @@ const defaultActions: ActionDef[] = [
     },
     // Chord initiator for block splitting
     {
-        id: "block:splitChord",
+        id: "block:splitchord",
         defaultKeys: ["Ctrl:Shift:s"],
         handler: () => true,
     },
@@ -800,8 +834,8 @@ const defaultActions: ActionDef[] = [
 
 const defaultChordActions: ChordActionDef[] = [
     {
-        id: "block:splitChordUp",
-        parentId: "block:splitChord",
+        id: "block:splitchordup",
+        parentId: "block:splitchord",
         defaultKey: "ArrowUp",
         handler: () => {
             handleSplitVertical("before");
@@ -809,8 +843,8 @@ const defaultChordActions: ChordActionDef[] = [
         },
     },
     {
-        id: "block:splitChordDown",
-        parentId: "block:splitChord",
+        id: "block:splitchorddown",
+        parentId: "block:splitchord",
         defaultKey: "ArrowDown",
         handler: () => {
             handleSplitVertical("after");
@@ -818,8 +852,8 @@ const defaultChordActions: ChordActionDef[] = [
         },
     },
     {
-        id: "block:splitChordLeft",
-        parentId: "block:splitChord",
+        id: "block:splitchordleft",
+        parentId: "block:splitchord",
         defaultKey: "ArrowLeft",
         handler: () => {
             handleSplitHorizontal("before");
@@ -827,8 +861,8 @@ const defaultChordActions: ChordActionDef[] = [
         },
     },
     {
-        id: "block:splitChordRight",
-        parentId: "block:splitChord",
+        id: "block:splitchordright",
+        parentId: "block:splitchord",
         defaultKey: "ArrowRight",
         handler: () => {
             handleSplitHorizontal("after");
@@ -852,11 +886,11 @@ function buildKeyMaps(userOverrides: KeybindingEntry[]): void {
     }
 
     // 2. Build chord bindings from defaults
-    const chordInitiatorAction = defaultActions.find((a) => a.id === "block:splitChord");
+    const chordInitiatorAction = defaultActions.find((a) => a.id === "block:splitchord");
     if (chordInitiatorAction) {
         const subKeys: KeyMapEntry[] = [];
         for (const chordDef of defaultChordActions) {
-            if (chordDef.parentId === "block:splitChord") {
+            if (chordDef.parentId === "block:splitchord") {
                 actionHandlers.set(chordDef.id, chordDef.handler);
                 subKeys.push({ key: chordDef.defaultKey, handler: chordDef.handler });
             }

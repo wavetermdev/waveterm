@@ -43,6 +43,8 @@ Chords are shown with a + between the keys. You have 2 seconds to hit the 2nd ch
 | <Kbd k="Ctrl:Shift:0"/>                           | Focus WaveAI input                                                                                                                                     |
 | <Kbd k="Ctrl:Shift:1-9"/>                         | Switch to block number                                                                                                                                 |
 | <Kbd k="Ctrl:Shift:Arrows"/> / <Kbd k="Ctrl:Shift:h/j/k/l"/> | Move left, right, up, down between blocks                                                                                                              |
+| <Kbd k="Ctrl:Shift:]"/>                            | Cycle block focus forward (CW)                                                                                                                         |
+| <Kbd k="Ctrl:Shift:["/>                            | Cycle block focus backward (CCW)                                                                                                                        |
 | <Kbd k="Ctrl:Shift:x"/>                           | Replace the current block with a launcher block                                                                                                        |
 | <Kbd k="Cmd:1-9"/>                                | Switch to tab number                                                                                                                                   |
 | <Kbd k="Cmd:["/> / <Kbd k="Shift:Cmd:["/>         | Switch tab left                                                                                                                                        |
@@ -131,15 +133,15 @@ Key combinations use colon-separated format:
 **Disable a keybinding:** Remove <Kbd k="Cmd:w"/> close block:
 ```json
 [
-  { "key": null, "command": "-block:close" }
+  { "key": null, "command": "block:close" }
 ]
 ```
 
 **Swap two keys:**
 ```json
 [
-  { "key": "Cmd:d", "command": "block:splitDown" },
-  { "key": "Cmd:Shift:d", "command": "block:splitRight" }
+  { "key": "Cmd:d", "command": "block:splitdown" },
+  { "key": "Cmd:Shift:d", "command": "block:splitright" }
 ]
 ```
 
@@ -151,24 +153,26 @@ Key combinations use colon-separated format:
 | `tab:close` | <Kbd k="Cmd:Shift:w"/> | Close the current tab |
 | `tab:prev` | <Kbd k="Cmd:["/> | Switch to previous tab |
 | `tab:next` | <Kbd k="Cmd:]"/> | Switch to next tab |
-| `tab:switchTo1`–`tab:switchTo9` | <Kbd k="Cmd:1"/>–<Kbd k="Cmd:9"/> | Switch to tab N |
+| `tab:switchto1`–`tab:switchto9` | <Kbd k="Cmd:1"/>–<Kbd k="Cmd:9"/> | Switch to tab N |
 | `block:new` | <Kbd k="Cmd:n"/> | Open a new block |
 | `block:close` | <Kbd k="Cmd:w"/> | Close the current block |
-| `block:splitRight` | <Kbd k="Cmd:d"/> | Split right |
-| `block:splitDown` | <Kbd k="Cmd:Shift:d"/> | Split down |
+| `block:splitright` | <Kbd k="Cmd:d"/> | Split right |
+| `block:splitdown` | <Kbd k="Cmd:Shift:d"/> | Split down |
 | `block:magnify` | <Kbd k="Cmd:m"/> | Magnify/unmagnify block |
 | `block:refocus` | <Kbd k="Cmd:i"/> | Refocus the current block |
-| `block:navUp/Down/Left/Right` | <Kbd k="Ctrl:Shift:Arrows"/> | Navigate between blocks |
-| `block:switchTo1`–`block:switchTo9` | <Kbd k="Ctrl:Shift:1"/>–<Kbd k="Ctrl:Shift:9"/> | Switch to block N |
-| `block:switchToAI` | <Kbd k="Ctrl:Shift:0"/> | Focus WaveAI input |
-| `block:replaceWithLauncher` | <Kbd k="Ctrl:Shift:x"/> | Replace block with launcher |
+| `block:navup/navdown/navleft/navright` | <Kbd k="Ctrl:Shift:Arrows"/> | Navigate between blocks |
+| `block:focusnext` | <Kbd k="Ctrl:Shift:]"/> | Cycle block focus forward (CW) |
+| `block:focusprev` | <Kbd k="Ctrl:Shift:["/> | Cycle block focus backward (CCW) |
+| `block:switchto1`–`block:switchto9` | <Kbd k="Ctrl:Shift:1"/>–<Kbd k="Ctrl:Shift:9"/> | Switch to block N |
+| `block:switchtoai` | <Kbd k="Ctrl:Shift:0"/> | Focus WaveAI input |
+| `block:replacewithlauncher` | <Kbd k="Ctrl:Shift:x"/> | Replace block with launcher |
 | `app:search` | <Kbd k="Cmd:f"/> | Find/search |
-| `app:openConnection` | <Kbd k="Cmd:g"/> | Open connection switcher |
-| `app:toggleAIPanel` | <Kbd k="Cmd:Shift:a"/> | Toggle WaveAI panel |
-| `app:toggleWidgetsSidebar` | <Kbd k="Cmd:b"/> | Toggle widgets sidebar |
-| `term:toggleMultiInput` | <Kbd k="Ctrl:Shift:i"/> | Toggle terminal multi-input |
+| `app:openconnection` | <Kbd k="Cmd:g"/> | Open connection switcher |
+| `app:toggleaipanel` | <Kbd k="Cmd:Shift:a"/> | Toggle WaveAI panel |
+| `app:togglewidgetssidebar` | <Kbd k="Cmd:b"/> | Toggle widgets sidebar |
+| `term:togglemultiinput` | <Kbd k="Ctrl:Shift:i"/> | Toggle terminal multi-input |
 | `generic:cancel` | <Kbd k="Escape"/> | Close modals/search |
-| `block:splitChord` | <Kbd k="Ctrl:Shift:s"/> | Initiate split chord |
+| `block:splitchord` | <Kbd k="Ctrl:Shift:s"/> | Initiate split chord |
 
 Changes take effect immediately — no restart required.
 
