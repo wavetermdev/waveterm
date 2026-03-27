@@ -30,6 +30,61 @@ export type TabBadgesEnv = WaveEnvSubset<{
 const BadgeMap = new Map<string, PrimitiveAtom<Badge>>();
 const TabBadgeAtomCache = new Map<string, Atom<Badge[]>>();
 
+type BlockBorder = {
+    color: string;
+};
+
+const BorderMap = new Map<string, PrimitiveAtom<BlockBorder | null>>();
+
+function getBorderAtom(oref: string): PrimitiveAtom<BlockBorder | null> {
+    if (oref == null) {
+        return NullAtom as PrimitiveAtom<BlockBorder | null>;
+    }
+    let rtn = BorderMap.get(oref);
+    if (rtn == null) {
+        rtn = atom(null) as PrimitiveAtom<BlockBorder | null>;
+        BorderMap.set(oref, rtn);
+    }
+    return rtn;
+}
+
+function getBlockBorderAtom(blockId: string): Atom<BlockBorder | null> {
+    if (blockId == null) {
+        return NullAtom as Atom<BlockBorder | null>;
+    }
+    const oref = WOS.makeORef("block", blockId);
+    return getBorderAtom(oref);
+}
+
+const BUILTIN_SOUND_PRESETS = new Set(["chime", "ping", "gentle"]);
+
+function playBadgeSound(sound: string): void {
+    if (!sound) {
+        return;
+    }
+    if (sound === "system") {
+        fireAndForget(() => RpcApi.ElectronSystemBellCommand(TabRpcClient, { route: "electron" }));
+        return;
+    }
+    let audioPath: string;
+    if (BUILTIN_SOUND_PRESETS.has(sound)) {
+        audioPath = `/sounds/${sound}.mp3`;
+    } else {
+        // Custom sound from ~/.waveterm/sounds/
+        const electronApi = (window as any).api as ElectronApi;
+        const configDir = electronApi?.getConfigDir?.();
+        if (!configDir) {
+            console.warn(`[badge] cannot resolve config dir for custom sound: ${sound}`);
+            return;
+        }
+        audioPath = `file://${configDir}/sounds/${sound}`;
+    }
+    const audio = new Audio(audioPath);
+    audio.play().catch((e) => {
+        console.warn(`[badge] failed to play sound "${sound}":`, e);
+    });
+}
+
 function publishBadgeEvent(eventData: WaveEvent, env?: BadgeEnv) {
     if (env != null) {
         fireAndForget(() => env.rpc.EventPublishCommand(TabRpcClient, eventData));
@@ -56,6 +111,11 @@ function clearBadgesForBlockOnFocus(blockId: string, env?: BadgeEnv) {
     const badge = badgeAtom != null ? globalStore.get(badgeAtom) : null;
     if (badge != null && !badge.pidlinked) {
         clearBadgeInternal(oref, env);
+    }
+    // Always clear border on focus
+    const borderAtom = BorderMap.get(oref);
+    if (borderAtom != null && globalStore.get(borderAtom) != null) {
+        globalStore.set(borderAtom, null);
     }
 }
 
@@ -199,6 +259,9 @@ function setupBadgesSubscription() {
                 for (const atom of BadgeMap.values()) {
                     globalStore.set(atom, null);
                 }
+                for (const atom of BorderMap.values()) {
+                    globalStore.set(atom, null);
+                }
                 return;
             }
             if (data?.oref == null) {
@@ -214,14 +277,25 @@ function setupBadgesSubscription() {
             }
             if (data.clear) {
                 globalStore.set(curAtom, null);
+                const borderAtom = getBorderAtom(data.oref);
+                globalStore.set(borderAtom, null);
                 return;
             }
-            if (data.badge == null) {
-                return;
+            if (data.badge != null) {
+                const existing = globalStore.get(curAtom);
+                if (existing == null || cmpBadge(data.badge, existing) > 0) {
+                    globalStore.set(curAtom, data.badge);
+                }
             }
-            const existing = globalStore.get(curAtom);
-            if (existing == null || cmpBadge(data.badge, existing) > 0) {
-                globalStore.set(curAtom, data.badge);
+            // Play sound if requested
+            if (data.sound) {
+                playBadgeSound(data.sound);
+            }
+            // Set border highlight if requested
+            if (data.border) {
+                const borderColor = data.bordercolor || data.badge?.color || "#fbbf24";
+                const borderAtom = getBorderAtom(data.oref);
+                globalStore.set(borderAtom, { color: borderColor });
             }
         },
     });
@@ -258,6 +332,7 @@ export {
     clearBadgesForTabOnFocus,
     getBadgeAtom,
     getBlockBadgeAtom,
+    getBlockBorderAtom,
     getTabBadgeAtom,
     loadBadges,
     setBadge,
