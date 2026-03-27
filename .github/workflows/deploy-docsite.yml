@@ -53,7 +53,7 @@ jobs:
             - name: Build docsite
               run: task docsite:build:public
             - name: Build preview app
-              run: npx --no-install vite build --base /preview/ --outDir ../../docs/build/preview
+              run: npx --no-install vite build --base /${{ github.event.repository.name }}/preview/ --outDir ../../docs/build/preview
               working-directory: frontend/preview
             - name: Upload Build Artifact
               # Only upload the build artifact when pushed to the main branch
