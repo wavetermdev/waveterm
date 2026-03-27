@@ -180,13 +180,18 @@ export class ProcessViewerViewModel implements ViewModel {
 
                 await new Promise<void>((resolve) => {
                     const timer = setTimeout(resolve, 1000);
-                    const origCancel = this.cancelPoll;
                     this.cancelPoll = () => {
                         clearTimeout(timer);
-                        if (origCancel) origCancel();
+                        cancelled = true;
                         resolve();
                     };
                 });
+
+                if (!cancelled) {
+                    this.cancelPoll = () => {
+                        cancelled = true;
+                    };
+                }
             }
         };
 
