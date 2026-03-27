@@ -34,10 +34,10 @@ function formatNumber4(n: number): string {
 
 function fmtMem(bytes: number): string {
     if (bytes == null) return "";
-    if (bytes < 1024) return formatNumber4(bytes) + " B";
-    if (bytes < 1024 * 1024) return formatNumber4(bytes / 1024) + " K";
-    if (bytes < 1024 * 1024 * 1024) return formatNumber4(bytes / 1024 / 1024) + " M";
-    return formatNumber4(bytes / 1024 / 1024 / 1024) + " G";
+    if (bytes < 1024) return formatNumber4(bytes) + "B";
+    if (bytes < 1024 * 1024) return formatNumber4(bytes / 1024) + "K";
+    if (bytes < 1024 * 1024 * 1024) return formatNumber4(bytes / 1024 / 1024) + "M";
+    return formatNumber4(bytes / 1024 / 1024 / 1024) + "G";
 }
 
 function fmtCpu(cpu: number): string {
@@ -251,7 +251,7 @@ const Columns: ColDef[] = [
     { key: "command", label: "Command", width: "minmax(120px, 4fr)" },
     { key: "status", label: "Status", width: "75px", hideOnPlatform: ["windows", "darwin"] },
     { key: "user", label: "User", width: "80px" },
-    { key: "threads", label: "NT", tooltip: "Num Threads", width: "55px", align: "right", hideOnPlatform: ["windows"] },
+    { key: "threads", label: "NT", tooltip: "Num Threads", width: "40px", align: "right", hideOnPlatform: ["windows"] },
     { key: "cpu", label: "CPU%", width: "70px", align: "right" },
     { key: "mem", label: "Memory", width: "90px", align: "right" },
 ];
@@ -403,6 +403,130 @@ const ProcessRow = React.memo(function ProcessRow({
 });
 ProcessRow.displayName = "ProcessRow";
 
+type StatusBarProps = {
+    model: ProcessViewerViewModel;
+    data: ProcessListResponse;
+    loading: boolean;
+    error: string;
+    wide: boolean;
+};
+
+const StatusBar = React.memo(function StatusBar({ model, data, loading, error, wide }: StatusBarProps) {
+    const totalCount = data?.totalcount ?? 0;
+    const filteredCount = data?.filteredcount ?? 0;
+    const summary = data?.summary;
+    const memUsedFmt = summary?.memused != null ? fmtMem(summary.memused) : null;
+    const memTotalFmt = summary?.memtotal != null ? fmtMem(summary.memtotal) : null;
+    const cpuPct =
+        summary?.cpusum != null && summary?.numcpu != null && summary.numcpu > 0
+            ? (summary.cpusum / summary.numcpu).toFixed(1).padStart(6, " ")
+            : null;
+
+    const procCountValue =
+        totalCount > 0
+            ? filteredCount < totalCount
+                ? `${filteredCount} / ${totalCount}`
+                : String(totalCount).padStart(5, " ")
+            : loading
+              ? "…"
+              : error
+                ? "Err"
+                : "";
+
+    const hasSummaryLoad = summary != null && summary.load1 != null;
+    const hasSummaryMem = summary != null && memUsedFmt != null;
+    const hasSummaryCpu = summary != null && cpuPct != null;
+
+    if (wide) {
+        return (
+            <div className="shrink-0 text-xs text-secondary border-b border-white/10 bg-panel flex items-center gap-2 px-2 py-1">
+                <div className="shrink-0 flex items-center">
+                    <StatusIndicator model={model} />
+                </div>
+                {hasSummaryLoad && (
+                    <span className="shrink-0 whitespace-pre">
+                        Load{" "}
+                        <span className="font-mono text-[11px]">
+                            {fmtLoad(summary.load1)} {fmtLoad(summary.load5)} {fmtLoad(summary.load15)}
+                        </span>
+                    </span>
+                )}
+                {hasSummaryMem && (
+                    <>
+                        <div className="w-px self-stretch bg-white/10 shrink-0" />
+                        <span className="shrink-0 whitespace-pre">
+                            Mem{" "}
+                            <span className="font-mono text-[11px]">
+                                {memUsedFmt} / {memTotalFmt}
+                            </span>
+                        </span>
+                    </>
+                )}
+                {hasSummaryCpu && (
+                    <>
+                        <div className="w-px self-stretch bg-white/10 shrink-0" />
+                        <Tooltip content={`${summary.numcpu} cores`} placement="bottom">
+                            <span className="shrink-0 cursor-default whitespace-pre">
+                                CPU<span className="font-mono text-[11px]">x{summary.numcpu}</span>{" "}
+                                <span className="font-mono text-[11px]">{cpuPct}%</span>
+                            </span>
+                        </Tooltip>
+                    </>
+                )}
+                <span className="ml-auto whitespace-pre">
+                    Procs <span className="font-mono text-[11px]">{procCountValue}</span>
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="shrink-0 text-xs text-secondary border-b border-white/10 bg-panel flex items-center px-2 py-1">
+            <div className="shrink-0 flex items-center mr-1">
+                <StatusIndicator model={model} />
+            </div>
+            <div className="flex-1 max-w-3" />
+            <div className="flex flex-row flex-1 min-w-0">
+                {hasSummaryLoad && (
+                    <div className="flex flex-col shrink-0 w-[100px] mr-1">
+                        <div>Load</div>
+                        <div className="font-mono text-[11px] whitespace-pre">
+                            {fmtLoad(summary.load1)} {fmtLoad(summary.load5)} {fmtLoad(summary.load15)}
+                        </div>
+                    </div>
+                )}
+                {hasSummaryLoad && <div className="flex-1 max-w-3" />}
+                {hasSummaryMem && (
+                    <div className="flex flex-col shrink-0 w-[95px] mr-1">
+                        <div>Mem</div>
+                        <div className="font-mono text-[11px] whitespace-pre">
+                            {memUsedFmt} / {memTotalFmt}
+                        </div>
+                    </div>
+                )}
+                {hasSummaryMem && <div className="flex-1 max-w-3" />}
+                {hasSummaryCpu && (
+                    <div className="flex flex-col shrink-0 w-[55px] mr-1">
+                        <Tooltip content={`${summary.numcpu} cores`} placement="bottom">
+                            <div className="cursor-default">
+                                CPU<span className="font-mono text-[11px]">x{summary.numcpu}</span>
+                            </div>
+                        </Tooltip>
+                        <div className="font-mono text-[11px] whitespace-pre">{cpuPct}%</div>
+                    </div>
+                )}
+                {hasSummaryCpu && <div className="flex-1 max-w-3" />}
+                <div className="flex-1" />
+                <div className="flex flex-col w-[38px] shrink-0">
+                    <div>Procs</div>
+                    <div className="font-mono text-[11px] whitespace-pre">{procCountValue}</div>
+                </div>
+            </div>
+        </div>
+    );
+});
+StatusBar.displayName = "StatusBar";
+
 export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewModel>> = React.memo(
     function ProcessViewerView({ blockId: _blockId, blockRef: _blockRef, contentRef: _contentRef, model }) {
         const data = jotai.useAtomValue(model.dataAtom);
@@ -411,32 +535,33 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const loading = jotai.useAtomValue(model.loadingAtom);
         const error = jotai.useAtomValue(model.errorAtom);
         const scrollTop = jotai.useAtomValue(model.scrollTopAtom);
-        const scrollRef = React.useRef<HTMLDivElement>(null);
+        const bodyScrollRef = React.useRef<HTMLDivElement>(null);
         const containerRef = React.useRef<HTMLDivElement>(null);
+        const [wide, setWide] = React.useState(false);
 
-        const totalCount = data?.totalcount ?? 0;
-        const filteredCount = data?.filteredcount ?? 0;
-        const processes = data?.processes ?? [];
-        const hasCpu = data?.hascpu ?? false;
         const platform = data?.platform ?? "";
         const startIdx = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
+        const totalCount = data?.totalcount ?? 0;
+        const processes = data?.processes ?? [];
+        const hasCpu = data?.hascpu ?? false;
 
-        // track container height
         React.useEffect(() => {
             const el = containerRef.current;
             if (!el) return;
             const ro = new ResizeObserver((entries) => {
                 for (const entry of entries) {
                     model.setContainerHeight(entry.contentRect.height);
+                    setWide(entry.contentRect.width >= 600);
                 }
             });
             ro.observe(el);
             model.setContainerHeight(el.clientHeight);
+            setWide(el.clientWidth >= 600);
             return () => ro.disconnect();
         }, [model]);
 
         const handleScroll = React.useCallback(() => {
-            const el = scrollRef.current;
+            const el = bodyScrollRef.current;
             if (!el) return;
             model.setScrollTop(el.scrollTop);
         }, [model]);
@@ -444,78 +569,32 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const totalHeight = totalCount * RowHeight;
         const paddingTop = startIdx * RowHeight;
 
-        const summary = data?.summary;
-        const memUsedFmt = summary?.memused != null ? fmtMem(summary.memused) : null;
-        const memTotalFmt = summary?.memtotal != null ? fmtMem(summary.memtotal) : null;
-        const cpuPct =
-            summary?.cpusum != null && summary?.numcpu != null && summary.numcpu > 0
-                ? (summary.cpusum / summary.numcpu).toFixed(1).padStart(6, " ")
-                : null;
-
-        const procCountValue =
-            totalCount > 0
-                ? filteredCount < totalCount
-                    ? `${filteredCount} / ${totalCount}`
-                    : String(totalCount).padStart(5, " ")
-                : loading
-                  ? "…"
-                  : error
-                    ? "Err"
-                    : "";
-
-        const hasSummaryLoad = summary != null && summary.load1 != null;
-        const hasSummaryMem = summary != null && memUsedFmt != null;
-        const hasSummaryCpu = summary != null && cpuPct != null;
-
         return (
             <div className="flex flex-col w-full h-full overflow-hidden" ref={containerRef}>
-                {/* status bar */}
-                <div className="shrink-0 text-xs text-secondary border-b border-white/10 bg-panel">
-                    <div className="flex items-center gap-4 px-2 pt-1 pb-0">
-                        <StatusIndicator model={model} />
-                        {hasSummaryLoad && <span className="w-[120px] shrink-0">Load</span>}
-                        {hasSummaryMem && <span className="w-[120px] shrink-0">Mem</span>}
-                        {hasSummaryCpu && (
-                            <Tooltip content={`${summary.numcpu} cores`} placement="bottom">
-                                <span className="w-[70px] shrink-0 cursor-default">
-                                    CPU<span className="font-mono text-[11px]">x{summary.numcpu}</span>
-                                </span>
-                            </Tooltip>
-                        )}
-                        <span className="ml-auto">Procs</span>
-                    </div>
-                    <div className="flex items-center gap-4 px-2 pb-1 pt-0">
-                        <div className="w-4 shrink-0" />
-                        {hasSummaryLoad && (
-                            <span className="font-mono text-[11px] w-[120px] shrink-0 whitespace-pre">
-                                {fmtLoad(summary.load1)} {fmtLoad(summary.load5)} {fmtLoad(summary.load15)}
-                            </span>
-                        )}
-                        {hasSummaryMem && (
-                            <span className="font-mono text-[11px] w-[120px] shrink-0 whitespace-pre">
-                                {memUsedFmt} / {memTotalFmt}
-                            </span>
-                        )}
-                        {hasSummaryCpu && (
-                            <span className="font-mono text-[11px] w-[70px] shrink-0 whitespace-pre">{cpuPct}%</span>
-                        )}
-                        <span className="ml-auto font-mono text-[11px] whitespace-pre">{procCountValue}</span>
-                    </div>
-                </div>
+                <StatusBar model={model} data={data} loading={loading} error={error} wide={wide} />
 
                 {/* error */}
                 {error != null && <div className="px-3 py-2 text-xs text-error shrink-0">{error}</div>}
 
-                {/* header */}
-                <TableHeader model={model} sortBy={sortBy} sortDesc={sortDesc} platform={platform} />
+                {/* outer h-scroll wrapper */}
+                <div className="flex-1 overflow-x-auto overflow-y-hidden">
+                    {/* inner column — expands to header's natural width, rows match */}
+                    <div className="flex flex-col h-full min-w-full w-max">
+                        <TableHeader model={model} sortBy={sortBy} sortDesc={sortDesc} platform={platform} />
 
-                {/* virtualized rows */}
-                <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto" onScroll={handleScroll}>
-                    <div style={{ height: totalHeight, position: "relative", minWidth: "100%" }}>
-                        <div style={{ position: "absolute", top: paddingTop, left: 0, right: 0, minWidth: "100%" }}>
-                            {processes.map((proc) => (
-                                <ProcessRow key={proc.pid} proc={proc} hasCpu={hasCpu} platform={platform} />
-                            ))}
+                        {/* virtualized rows — same width as header, scrolls vertically */}
+                        <div
+                            ref={bodyScrollRef}
+                            className="flex-1 overflow-y-auto overflow-x-hidden w-full"
+                            onScroll={handleScroll}
+                        >
+                            <div style={{ height: totalHeight, position: "relative" }}>
+                                <div style={{ position: "absolute", top: paddingTop, left: 0, right: 0 }}>
+                                    {processes.map((proc) => (
+                                        <ProcessRow key={proc.pid} proc={proc} hasCpu={hasCpu} platform={platform} />
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
