@@ -6,6 +6,7 @@ package wshremote
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/user"
 	"runtime"
 	"sort"
@@ -449,5 +450,20 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 }
 
 func (impl *ServerImpl) RemoteProcessSignalCommand(ctx context.Context, data wshrpc.CommandRemoteProcessSignalData) error {
+	if runtime.GOOS == "windows" {
+		// special case handling for windows. SIGTERM is mapped to "Kill Process" context menu so will do a proc.Kill() on windows
+		proc, err := os.FindProcess(int(data.Pid))
+		if err != nil {
+			return fmt.Errorf("process %d not found: %w", data.Pid, err)
+		}
+		sig := strings.ToUpper(data.Signal)
+		if sig == "SIGINT" {
+			return proc.Signal(os.Interrupt)
+		}
+		if sig == "SIGTERM" || sig == "SIGKILL" {
+			return proc.Kill()
+		}
+		return fmt.Errorf("signal %q is not supported on Windows", data.Signal)
+	}
 	return unixutil.SendSignalByName(int(data.Pid), data.Signal)
 }

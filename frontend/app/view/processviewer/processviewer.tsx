@@ -2,18 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { MetaKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
+import * as keyutil from "@/util/keyutil";
 import { isBlank, makeConnRoute } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 
 // ---- types ----
 
+type ActionStatus = {
+    pid: number;
+    message: string;
+    isError: boolean;
+};
+
 type ProcessViewerEnv = WaveEnvSubset<{
     rpc: {
         RemoteProcessListCommand: WaveEnv["rpc"]["RemoteProcessListCommand"];
+        RemoteProcessSignalCommand: WaveEnv["rpc"]["RemoteProcessSignalCommand"];
     };
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
     getBlockMetaKeyAtom: MetaKeyAtomFnType<"connection">;
@@ -73,6 +82,9 @@ export class ProcessViewerViewModel implements ViewModel {
     lastSuccessAtom: jotai.PrimitiveAtom<number>;
     pausedAtom: jotai.PrimitiveAtom<boolean>;
     selectedPidAtom: jotai.PrimitiveAtom<number>;
+    actionStatusAtom: jotai.PrimitiveAtom<ActionStatus>;
+    textSearchAtom: jotai.PrimitiveAtom<string>;
+    searchOpenAtom: jotai.PrimitiveAtom<boolean>;
 
     connection: jotai.Atom<string>;
     connStatus: jotai.Atom<ConnStatus>;
@@ -95,6 +107,9 @@ export class ProcessViewerViewModel implements ViewModel {
         this.lastSuccessAtom = jotai.atom<number>(0) as jotai.PrimitiveAtom<number>;
         this.pausedAtom = jotai.atom<boolean>(false) as jotai.PrimitiveAtom<boolean>;
         this.selectedPidAtom = jotai.atom<number>(null) as jotai.PrimitiveAtom<number>;
+        this.actionStatusAtom = jotai.atom<ActionStatus>(null) as jotai.PrimitiveAtom<ActionStatus>;
+        this.textSearchAtom = jotai.atom<string>("") as jotai.PrimitiveAtom<string>;
+        this.searchOpenAtom = jotai.atom<boolean>(false) as jotai.PrimitiveAtom<boolean>;
 
         this.connection = jotai.atom((get) => {
             const connValue = get(this.env.getBlockMetaKeyAtom(blockId, "connection"));
@@ -116,6 +131,41 @@ export class ProcessViewerViewModel implements ViewModel {
         return ProcessViewerView;
     }
 
+    async doOneFetch(cancelledFn?: () => boolean) {
+        if (this.disposed) return;
+        const sortBy = globalStore.get(this.sortByAtom);
+        const sortDesc = globalStore.get(this.sortDescAtom);
+        const scrollTop = globalStore.get(this.scrollTopAtom);
+        const containerHeight = globalStore.get(this.containerHeightAtom);
+        const conn = globalStore.get(this.connection);
+        const textSearch = globalStore.get(this.textSearchAtom);
+
+        const start = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
+        const visibleRows = containerHeight > 0 ? Math.ceil(containerHeight / RowHeight) : 50;
+        const limit = visibleRows + OverscanRows * 2;
+
+        const route = makeConnRoute(conn);
+        try {
+            console.log("RemoteProcessList", sortBy, sortDesc, start, limit, textSearch);
+            const resp = await this.env.rpc.RemoteProcessListCommand(
+                TabRpcClient,
+                { sortby: sortBy, sortdesc: sortDesc, start, limit, textsearch: textSearch || undefined },
+                { route }
+            );
+            if (!this.disposed && !cancelledFn?.()) {
+                globalStore.set(this.dataAtom, resp);
+                globalStore.set(this.loadingAtom, false);
+                globalStore.set(this.errorAtom, null);
+                globalStore.set(this.lastSuccessAtom, Date.now());
+            }
+        } catch (e) {
+            if (!this.disposed && !cancelledFn?.()) {
+                globalStore.set(this.loadingAtom, false);
+                globalStore.set(this.errorAtom, String(e));
+            }
+        }
+    }
+
     startPolling() {
         let cancelled = false;
         this.cancelPoll = () => {
@@ -124,43 +174,7 @@ export class ProcessViewerViewModel implements ViewModel {
 
         const poll = async () => {
             while (!cancelled && !this.disposed) {
-                const sortBy = globalStore.get(this.sortByAtom);
-                const sortDesc = globalStore.get(this.sortDescAtom);
-                const scrollTop = globalStore.get(this.scrollTopAtom);
-                const containerHeight = globalStore.get(this.containerHeightAtom);
-                const conn = globalStore.get(this.connection);
-
-                const start = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
-                const visibleRows = containerHeight > 0 ? Math.ceil(containerHeight / RowHeight) : 50;
-                const limit = visibleRows + OverscanRows * 2;
-
-                const route = makeConnRoute(conn);
-
-                try {
-                    console.log("RemoteProcessList", sortBy, sortDesc, start, limit);
-                    const resp = await this.env.rpc.RemoteProcessListCommand(
-                        TabRpcClient,
-                        {
-                            sortby: sortBy,
-                            sortdesc: sortDesc,
-                            start,
-                            limit,
-                        },
-                        { route }
-                    );
-                    if (!cancelled && !this.disposed) {
-                        globalStore.set(this.dataAtom, resp);
-                        globalStore.set(this.loadingAtom, false);
-                        globalStore.set(this.errorAtom, null);
-                        globalStore.set(this.lastSuccessAtom, Date.now());
-                    }
-                    (window as any).RPL = resp; // debugging (remove before commit)
-                } catch (e) {
-                    if (!cancelled && !this.disposed) {
-                        globalStore.set(this.loadingAtom, false);
-                        globalStore.set(this.errorAtom, String(e));
-                    }
-                }
+                await this.doOneFetch(() => cancelled);
 
                 if (cancelled || this.disposed) break;
 
@@ -201,6 +215,29 @@ export class ProcessViewerViewModel implements ViewModel {
         }
     }
 
+    setTextSearch(text: string) {
+        globalStore.set(this.textSearchAtom, text);
+        this.triggerRefresh();
+    }
+
+    openSearch() {
+        globalStore.set(this.searchOpenAtom, true);
+    }
+
+    closeSearch() {
+        globalStore.set(this.searchOpenAtom, false);
+        globalStore.set(this.textSearchAtom, "");
+        this.triggerRefresh();
+    }
+
+    keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:f")) {
+            this.openSearch();
+            return true;
+        }
+        return false;
+    }
+
     setSort(col: SortCol) {
         const curSort = globalStore.get(this.sortByAtom);
         const curDesc = globalStore.get(this.sortDescAtom);
@@ -211,7 +248,11 @@ export class ProcessViewerViewModel implements ViewModel {
             globalStore.set(this.sortByAtom, col);
             globalStore.set(this.sortDescAtom, numericCols.includes(col));
         }
-        this.triggerRefresh();
+        if (globalStore.get(this.pausedAtom)) {
+            this.doOneFetch();
+        } else {
+            this.triggerRefresh();
+        }
     }
 
     setScrollTop(scrollTop: number) {
@@ -226,6 +267,34 @@ export class ProcessViewerViewModel implements ViewModel {
         if (cur === height) return;
         globalStore.set(this.containerHeightAtom, height);
         this.triggerRefresh();
+    }
+
+    async sendSignal(pid: number, signal: string, killLabel?: boolean) {
+        const conn = globalStore.get(this.connection);
+        const route = makeConnRoute(conn);
+        const label = killLabel ? "Killed" : `sent ${signal}`;
+        try {
+            await this.env.rpc.RemoteProcessSignalCommand(TabRpcClient, { pid, signal }, { route });
+            this.setActionStatus({ pid, message: `Process #${pid} ${label}`, isError: false });
+        } catch (e) {
+            this.setActionStatus({ pid, message: String(e), isError: true });
+        }
+    }
+
+    setActionStatus(status: ActionStatus) {
+        globalStore.set(this.actionStatusAtom, status);
+        if (!status.isError) {
+            setTimeout(() => {
+                const cur = globalStore.get(this.actionStatusAtom);
+                if (cur === status) {
+                    globalStore.set(this.actionStatusAtom, null);
+                }
+            }, 3000);
+        }
+    }
+
+    clearActionStatus() {
+        globalStore.set(this.actionStatusAtom, null);
     }
 
     dispose() {
@@ -376,12 +445,14 @@ const ProcessRow = React.memo(function ProcessRow({
     platform,
     selected,
     onSelect,
+    onContextMenu,
 }: {
     proc: ProcessInfo;
     hasCpu: boolean;
     platform: string;
     selected: boolean;
     onSelect: (pid: number) => void;
+    onContextMenu: (pid: number, e: React.MouseEvent) => void;
 }) {
     const gridTemplate = getGridTemplate(platform);
     const showStatus = platform !== "windows" && platform !== "darwin";
@@ -391,10 +462,15 @@ const ProcessRow = React.memo(function ProcessRow({
             className={`grid w-full text-xs transition-colors cursor-pointer ${selected ? "bg-accentbg" : "hover:bg-white/5"}`}
             style={{ gridTemplateColumns: gridTemplate, height: RowHeight }}
             onClick={() => onSelect(proc.pid)}
+            onContextMenu={(e) => onContextMenu(proc.pid, e)}
         >
-            <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">{proc.pid}</div>
+            <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
+                {proc.pid}
+            </div>
             <div className="px-2 flex items-center truncate">{proc.command}</div>
-            {showStatus && <div className="px-2 flex items-center truncate text-secondary text-[11px]">{proc.status}</div>}
+            {showStatus && (
+                <div className="px-2 flex items-center truncate text-secondary text-[11px]">{proc.status}</div>
+            )}
             <div className="px-2 flex items-center truncate text-secondary">{proc.user}</div>
             {showThreads && (
                 <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
@@ -409,6 +485,30 @@ const ProcessRow = React.memo(function ProcessRow({
     );
 });
 ProcessRow.displayName = "ProcessRow";
+
+const ActionStatusBar = React.memo(function ActionStatusBar({ model }: { model: ProcessViewerViewModel }) {
+    const actionStatus = jotai.useAtomValue(model.actionStatusAtom);
+    if (actionStatus == null) return null;
+
+    return (
+        <div
+            className={`shrink-0 flex items-center px-3 py-1 text-xs border-t border-white/10 ${actionStatus.isError ? "text-error" : "text-secondary"}`}
+        >
+            <span className="flex-1 truncate">
+                {actionStatus.isError ? `Error: ${actionStatus.message}` : actionStatus.message}
+            </span>
+            {actionStatus.isError && (
+                <button
+                    className="ml-2 shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-white/10 transition-colors cursor-pointer text-secondary hover:text-primary"
+                    onClick={() => model.clearActionStatus()}
+                >
+                    <i className="fa-sharp fa-solid fa-xmark text-[10px]" />
+                </button>
+            )}
+        </div>
+    );
+});
+ActionStatusBar.displayName = "ActionStatusBar";
 
 type StatusBarProps = {
     model: ProcessViewerViewModel;
@@ -432,7 +532,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
     const procCountValue =
         totalCount > 0
             ? filteredCount < totalCount
-                ? `${filteredCount} / ${totalCount}`
+                ? `${filteredCount}/${totalCount}`
                 : String(totalCount).padStart(5, " ")
             : loading
               ? "…"
@@ -534,6 +634,47 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
 });
 StatusBar.displayName = "StatusBar";
 
+const SearchBar = React.memo(function SearchBar({ model }: { model: ProcessViewerViewModel }) {
+    const searchOpen = jotai.useAtomValue(model.searchOpenAtom);
+    const textSearch = jotai.useAtomValue(model.textSearchAtom);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
+    React.useEffect(() => {
+        if (searchOpen && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [searchOpen]);
+
+    if (!searchOpen) return null;
+
+    return (
+        <div className="shrink-0 flex items-center gap-1 px-2 py-1 border-b border-white/10 bg-panel">
+            <input
+                ref={inputRef}
+                type="text"
+                value={textSearch}
+                placeholder="Filter processes…"
+                className="flex-1 bg-transparent text-xs text-primary placeholder-secondary outline-none min-w-0"
+                onChange={(e) => model.setTextSearch(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                        e.preventDefault();
+                        model.closeSearch();
+                    }
+                }}
+            />
+            <button
+                className="shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-white/10 transition-colors cursor-pointer text-secondary hover:text-primary"
+                onClick={() => model.closeSearch()}
+            >
+                <i className="fa-sharp fa-solid fa-xmark text-[10px]" />
+            </button>
+        </div>
+    );
+});
+SearchBar.displayName = "SearchBar";
+
 export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewModel>> = React.memo(
     function ProcessViewerView({ blockId: _blockId, blockRef: _blockRef, contentRef: _contentRef, model }) {
         const data = jotai.useAtomValue(model.dataAtom);
@@ -552,6 +693,48 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                 setSelectedPid((cur) => (cur === pid ? null : pid));
             },
             [setSelectedPid]
+        );
+
+        const handleContextMenu = React.useCallback(
+            (pid: number, e: React.MouseEvent) => {
+                e.preventDefault();
+                model.setPaused(true);
+                setSelectedPid(pid);
+
+                const platform = globalStore.get(model.dataAtom)?.platform ?? "";
+                const isWindows = platform === "windows";
+
+                const menu: ContextMenuItem[] = [
+                    {
+                        label: "Copy PID",
+                        click: () => navigator.clipboard.writeText(String(pid)),
+                    },
+                    { type: "separator" },
+                ];
+
+                if (!isWindows) {
+                    menu.push({
+                        label: "Signal",
+                        type: "submenu",
+                        submenu: [
+                            { label: "SIGTERM", click: () => model.sendSignal(pid, "SIGTERM") },
+                            { label: "SIGINT", click: () => model.sendSignal(pid, "SIGINT") },
+                            { label: "SIGHUP", click: () => model.sendSignal(pid, "SIGHUP") },
+                            { label: "SIGKILL", click: () => model.sendSignal(pid, "SIGKILL") },
+                            { label: "SIGUSR1", click: () => model.sendSignal(pid, "SIGUSR1") },
+                            { label: "SIGUSR2", click: () => model.sendSignal(pid, "SIGUSR2") },
+                        ],
+                    });
+                    menu.push({ type: "separator" });
+                    menu.push({
+                        label: "Kill Process",
+                        click: () => model.sendSignal(pid, "SIGTERM", true),
+                    });
+                }
+
+                ContextMenuModel.getInstance().showContextMenu(menu, e);
+            },
+            [model, setSelectedPid]
         );
 
         const platform = data?.platform ?? "";
@@ -587,6 +770,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         return (
             <div className="flex flex-col w-full h-full overflow-hidden" ref={containerRef}>
                 <StatusBar model={model} data={data} loading={loading} error={error} wide={wide} />
+                <SearchBar model={model} />
 
                 {/* error */}
                 {error != null && <div className="px-3 py-2 text-xs text-error shrink-0">{error}</div>}
@@ -613,6 +797,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                                             platform={platform}
                                             selected={selectedPid === proc.pid}
                                             onSelect={handleSelectPid}
+                                            onContextMenu={handleContextMenu}
                                         />
                                     ))}
                                 </div>
@@ -620,6 +805,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                         </div>
                     </div>
                 </div>
+                <ActionStatusBar model={model} />
             </div>
         );
     }
