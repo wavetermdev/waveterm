@@ -22,6 +22,7 @@ export const PreviewWorkspaceId = crypto.randomUUID();
 export const PreviewClientId = crypto.randomUUID();
 export const WebBlockId = crypto.randomUUID();
 export const SysinfoBlockId = crypto.randomUUID();
+export const ProcessViewerBlockId = crypto.randomUUID();
 
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
 //
@@ -388,7 +389,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             oid: PreviewTabId,
             version: 1,
             name: "Preview Tab",
-            blockids: [WebBlockId, SysinfoBlockId],
+            blockids: [WebBlockId, SysinfoBlockId, ProcessViewerBlockId],
             meta: {},
         } as Tab,
         [`block:${WebBlockId}`]: {
@@ -408,6 +409,14 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 connection: MockSysinfoConnection,
                 "sysinfo:type": "CPU + Mem",
                 "graph:numpoints": 90,
+            },
+        } as Block,
+        [`block:${ProcessViewerBlockId}`]: {
+            otype: "block",
+            oid: ProcessViewerBlockId,
+            version: 1,
+            meta: {
+                view: "processviewer",
             },
         } as Block,
     };

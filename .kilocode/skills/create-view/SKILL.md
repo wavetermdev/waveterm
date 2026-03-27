@@ -203,9 +203,11 @@ export const MyView: React.FC<ViewComponentProps<MyViewModel>> = ({
 
 ### 3. Register the View
 
-Add your view to the `BlockRegistry` in `frontend/app/block/block.tsx`:
+Add your view to the `BlockRegistry` in `frontend/app/block/blockregistry.ts`:
 
 ```typescript
+import { MyViewModel } from "@/app/view/myview/myview-model";
+
 const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
 BlockRegistry.set("preview", PreviewModel);

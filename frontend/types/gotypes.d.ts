@@ -557,6 +557,22 @@ declare global {
         fileinfo?: FileInfo[];
     };
 
+    // wshrpc.CommandRemoteProcessListData
+    type CommandRemoteProcessListData = {
+        sortby?: string;
+        sortdesc?: boolean;
+        start?: number;
+        limit?: number;
+        textsearch?: string;
+        pids?: number[];
+    };
+
+    // wshrpc.CommandRemoteProcessSignalData
+    type CommandRemoteProcessSignalData = {
+        pid: number;
+        signal: string;
+    };
+
     // wshrpc.CommandRemoteReconnectToJobManagerData
     type CommandRemoteReconnectToJobManagerData = {
         jobid: string;
@@ -1243,6 +1259,43 @@ declare global {
     type Point = {
         x: number;
         y: number;
+    };
+
+    // wshrpc.ProcessInfo
+    type ProcessInfo = {
+        pid: number;
+        ppid?: number;
+        command?: string;
+        status?: string;
+        user?: string;
+        mem?: number;
+        mempct?: number;
+        cpu?: number;
+        numthreads?: number;
+    };
+
+    // wshrpc.ProcessListResponse
+    type ProcessListResponse = {
+        processes: ProcessInfo[];
+        summary: ProcessSummary;
+        ts: number;
+        hascpu?: boolean;
+        platform?: string;
+        totalcount?: number;
+        filteredcount?: number;
+    };
+
+    // wshrpc.ProcessSummary
+    type ProcessSummary = {
+        total: number;
+        load1?: number;
+        load5?: number;
+        load15?: number;
+        memtotal?: number;
+        memused?: number;
+        memfree?: number;
+        numcpu?: number;
+        cpusum?: number;
     };
 
     // uctypes.RateLimitInfo
