@@ -11,7 +11,6 @@ import (
 	"unsafe"
 
 	"github.com/ebitengine/purego"
-	goproc "github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/sys/unix"
 )
 
@@ -88,22 +87,16 @@ func GetProcInfo(ctx context.Context, _ any, pid int32) (*ProcInfo, error) {
 		Uid:     k.Eproc.Ucred.Uid,
 	}
 
+	info.CpuUser = -1
+	info.CpuSys = -1
+	info.VmRSS = -1
 	if ti, terr := getDarwinProcTaskInfo(pid); terr == nil {
 		if darwinTimeScale > 0 {
 			info.CpuUser = float64(ti.TotalUser) * darwinTimeScale / 1e9
 			info.CpuSys = float64(ti.TotalSystem) * darwinTimeScale / 1e9
 		}
-		info.VmRSS = ti.ResidentSize
+		info.VmRSS = int64(ti.ResidentSize)
 		info.NumThreads = ti.Threadnum
-	} else {
-		if p, gerr := goproc.NewProcessWithContext(ctx, pid); gerr == nil {
-			if mi, merr := p.MemoryInfoWithContext(ctx); merr == nil {
-				info.VmRSS = mi.RSS
-			}
-			if nt, nerr := p.NumThreadsWithContext(ctx); nerr == nil {
-				info.NumThreads = nt
-			}
-		}
 	}
 
 	return info, nil
