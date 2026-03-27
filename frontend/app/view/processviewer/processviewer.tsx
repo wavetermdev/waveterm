@@ -484,7 +484,7 @@ const ProcessRow = React.memo(function ProcessRow({
             <div className="px-2 flex items-center truncate text-secondary">{proc.user}</div>
             {showThreads && (
                 <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
-                    {proc.numthreads > 1 ? proc.numthreads : ""}
+                    {proc.numthreads >= 1 ? proc.numthreads : ""}
                 </div>
             )}
             <div className="px-2 flex items-center truncate justify-end font-mono text-[11px]">
