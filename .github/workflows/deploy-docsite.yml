@@ -52,6 +52,9 @@ jobs:
                   timeout_minutes: 5
             - name: Build docsite
               run: task docsite:build:public
+            - name: Build preview app
+              run: npx vite build --base /preview/ --outDir ../../docs/build/preview
+              working-directory: frontend/preview
             - name: Upload Build Artifact
               # Only upload the build artifact when pushed to the main branch
               if: github.event_name == 'push' && github.ref == 'refs/heads/main'
