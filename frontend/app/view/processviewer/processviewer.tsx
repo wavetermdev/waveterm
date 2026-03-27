@@ -7,6 +7,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { MetaKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import * as keyutil from "@/util/keyutil";
+import { isMacOS } from "@/util/platformutil";
 import { isBlank, makeConnRoute } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -238,6 +239,10 @@ export class ProcessViewerViewModel implements ViewModel {
     keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:f")) {
             this.openSearch();
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Space") && !globalStore.get(this.searchOpenAtom)) {
+            this.setPaused(!globalStore.get(this.pausedAtom));
             return true;
         }
         return false;
@@ -524,6 +529,7 @@ type StatusBarProps = {
 };
 
 const StatusBar = React.memo(function StatusBar({ model, data, loading, error, wide }: StatusBarProps) {
+    const searchOpen = jotai.useAtomValue(model.searchOpenAtom);
     const totalCount = data?.totalcount ?? 0;
     const filteredCount = data?.filteredcount ?? 0;
     const summary = data?.summary;
@@ -548,6 +554,8 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
     const hasSummaryLoad = summary != null && summary.load1 != null;
     const hasSummaryMem = summary != null && memUsedFmt != null;
     const hasSummaryCpu = summary != null && cpuPct != null;
+
+    const searchTooltip = isMacOS() ? "Search (Cmd-F)" : "Search (Alt-F)";
 
     if (wide) {
         return (
@@ -588,6 +596,14 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 <span className="ml-auto whitespace-pre">
                     Procs <span className="font-mono text-[11px]">{procCountValue}</span>
                 </span>
+                <Tooltip content={searchTooltip} placement="bottom">
+                    <button
+                        className={`shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-white/10 transition-colors cursor-pointer hover:text-primary ${searchOpen ? "text-primary" : "text-secondary"}`}
+                        onClick={() => (searchOpen ? model.closeSearch() : model.openSearch())}
+                    >
+                        <i className="fa-sharp fa-solid fa-magnifying-glass text-[10px]" />
+                    </button>
+                </Tooltip>
             </div>
         );
     }
@@ -598,7 +614,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 <StatusIndicator model={model} />
             </div>
             <div className="flex-1 max-w-3" />
-            <div className="flex flex-row flex-1 min-w-0">
+            <div className="flex flex-row flex-1 min-w-0 items-center">
                 {hasSummaryLoad && (
                     <div className="flex flex-col shrink-0 w-[100px] mr-1">
                         <div>Load</div>
@@ -633,6 +649,14 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                     <div>Procs</div>
                     <div className="font-mono text-[11px] whitespace-pre">{procCountValue}</div>
                 </div>
+                <Tooltip content={searchTooltip} placement="bottom">
+                    <button
+                        className={`shrink-0 ml-1 flex items-center justify-center w-4 h-4 rounded hover:bg-white/10 transition-colors cursor-pointer hover:text-primary ${searchOpen ? "text-primary" : "text-secondary"}`}
+                        onClick={() => (searchOpen ? model.closeSearch() : model.openSearch())}
+                    >
+                        <i className="fa-sharp fa-solid fa-magnifying-glass text-[10px]" />
+                    </button>
+                </Tooltip>
             </div>
         </div>
     );
