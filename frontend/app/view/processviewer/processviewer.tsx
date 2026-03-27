@@ -59,6 +59,8 @@ export class ProcessViewerViewModel implements ViewModel {
     containerHeightAtom: jotai.PrimitiveAtom<number>;
     loadingAtom: jotai.PrimitiveAtom<boolean>;
     errorAtom: jotai.PrimitiveAtom<string>;
+    lastSuccessAtom: jotai.PrimitiveAtom<number>;
+    pausedAtom: jotai.PrimitiveAtom<boolean>;
 
     connection: jotai.Atom<string>;
     connStatus: jotai.Atom<ConnStatus>;
@@ -78,6 +80,8 @@ export class ProcessViewerViewModel implements ViewModel {
         this.containerHeightAtom = jotai.atom<number>(0);
         this.loadingAtom = jotai.atom<boolean>(true);
         this.errorAtom = jotai.atom<string>(null) as jotai.PrimitiveAtom<string>;
+        this.lastSuccessAtom = jotai.atom<number>(0) as jotai.PrimitiveAtom<number>;
+        this.pausedAtom = jotai.atom<boolean>(false) as jotai.PrimitiveAtom<boolean>;
 
         this.connection = jotai.atom((get) => {
             const connValue = get(this.env.getBlockMetaKeyAtom(blockId, "connection"));
@@ -135,6 +139,7 @@ export class ProcessViewerViewModel implements ViewModel {
                         globalStore.set(this.dataAtom, resp);
                         globalStore.set(this.loadingAtom, false);
                         globalStore.set(this.errorAtom, null);
+                        globalStore.set(this.lastSuccessAtom, Date.now());
                     }
                     (window as any).RPL = resp; // debugging (remove before commit)
                 } catch (e) {
@@ -166,7 +171,21 @@ export class ProcessViewerViewModel implements ViewModel {
             this.cancelPoll();
         }
         this.cancelPoll = null;
-        this.startPolling();
+        if (!globalStore.get(this.pausedAtom)) {
+            this.startPolling();
+        }
+    }
+
+    setPaused(paused: boolean) {
+        globalStore.set(this.pausedAtom, paused);
+        if (paused) {
+            if (this.cancelPoll) {
+                this.cancelPoll();
+            }
+            this.cancelPoll = null;
+        } else {
+            this.startPolling();
+        }
     }
 
     setSort(col: SortCol) {
@@ -243,6 +262,65 @@ const SortIndicator = React.memo(function SortIndicator({ active, desc }: { acti
     return <span className="ml-1 text-[10px]">{desc ? "↓" : "↑"}</span>;
 });
 SortIndicator.displayName = "SortIndicator";
+
+const StatusIndicator = React.memo(function StatusIndicator({ model }: { model: ProcessViewerViewModel }) {
+    const paused = jotai.useAtomValue(model.pausedAtom);
+    const error = jotai.useAtomValue(model.errorAtom);
+    const lastSuccess = jotai.useAtomValue(model.lastSuccessAtom);
+    const [now, setNow] = React.useState(() => Date.now());
+
+    React.useEffect(() => {
+        if (paused) return;
+        const id = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, [paused]);
+
+    if (paused) {
+        const tooltipContent = (
+            <div className="flex flex-col gap-0.5">
+                <span>Paused</span>
+                <span className="text-muted">Click to resume</span>
+            </div>
+        );
+        return (
+            <Tooltip content={tooltipContent} placement="bottom">
+                <div
+                    className="flex items-center justify-center w-4 h-4 cursor-pointer text-warning hover:opacity-80 transition-opacity"
+                    onClick={() => model.setPaused(false)}
+                >
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                        <rect x="2" y="2" width="4" height="12" rx="1" />
+                        <rect x="10" y="2" width="4" height="12" rx="1" />
+                    </svg>
+                </div>
+            </Tooltip>
+        );
+    }
+
+    const stalled = lastSuccess > 0 && now - lastSuccess > 5000;
+    const circleColor = error != null ? "text-error" : stalled ? "text-warning" : "text-success";
+    const statusLabel = error != null ? "Error" : stalled ? "Stalled" : "Updating";
+    const tooltipContent = (
+        <div className="flex flex-col gap-0.5">
+            <span>{statusLabel}</span>
+            <span className="text-muted">Click to pause</span>
+        </div>
+    );
+
+    return (
+        <Tooltip content={tooltipContent} placement="bottom">
+            <div
+                className={`flex items-center justify-center w-4 h-4 cursor-pointer ${circleColor} hover:opacity-80 transition-opacity`}
+                onClick={() => model.setPaused(true)}
+            >
+                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
+                    <circle cx="8" cy="8" r="6" />
+                </svg>
+            </div>
+        </Tooltip>
+    );
+});
+StatusIndicator.displayName = "StatusIndicator";
 
 const TableHeader = React.memo(function TableHeader({
     model,
@@ -358,33 +436,40 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const summary = data?.summary;
         const memUsedGb = summary?.memused != null ? (summary.memused / 1024 / 1024 / 1024).toFixed(1) : null;
         const memTotalGb = summary?.memtotal != null ? (summary.memtotal / 1024 / 1024 / 1024).toFixed(1) : null;
-        const cpuPct = summary?.cpusum != null && summary?.numcpu != null && summary.numcpu > 0 ? (summary.cpusum / summary.numcpu).toFixed(1) : null;
+        const cpuPct =
+            summary?.cpusum != null && summary?.numcpu != null && summary.numcpu > 0
+                ? (summary.cpusum / summary.numcpu).toFixed(1).padStart(5, " ")
+                : null;
 
         return (
             <div className="flex flex-col w-full h-full overflow-hidden" ref={containerRef}>
                 {/* status bar */}
                 <div className="flex shrink-0 items-center gap-4 px-2 py-1 text-xs text-secondary border-b border-white/10 bg-panel">
+                    <StatusIndicator model={model} />
                     {summary != null && (
                         <>
                             {summary.load1 != null && (
                                 <span>
-                                    Load: {summary.load1.toFixed(2)} {summary.load5.toFixed(2)}{" "}
-                                    {summary.load15.toFixed(2)}
+                                    Load:{" "}
+                                    <span className="font-mono">
+                                        {summary.load1.toFixed(2)} {summary.load5.toFixed(2)}{" "}
+                                        {summary.load15.toFixed(2)}
+                                    </span>
                                 </span>
                             )}
                             {memUsedGb != null && (
                                 <span>
-                                    Mem: {memUsedGb}G / {memTotalGb}G
+                                    Mem: <span className="font-mono">{memUsedGb}G / {memTotalGb}G</span>
                                 </span>
                             )}
                             {cpuPct != null && (
                                 <span>
-                                    CPU: {cpuPct}% ({summary.numcpu} cores)
+                                    CPU: <span className="font-mono whitespace-pre">{cpuPct}% ({summary.numcpu} cores)</span>
                                 </span>
                             )}
                         </>
                     )}
-                    <span className="ml-auto">
+                    <span className="ml-auto font-mono">
                         {totalCount > 0
                             ? filteredCount < totalCount
                                 ? `${filteredCount} / ${totalCount} processes`
