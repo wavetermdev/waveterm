@@ -6,6 +6,7 @@ import { BlockFrame_Header } from "@/app/block/blockframe-header";
 import { blockViewToIcon, getViewIconElem, useTabBackground } from "@/app/block/blockutil";
 import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
+import { getBlockBorderAtom } from "@/app/store/badge";
 import { getBlockComponentModel, globalStore, useBlockAtom } from "@/app/store/global";
 import { useTabModel } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -32,6 +33,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isLayoutMode = jotai.useAtomValue(waveEnv.atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(waveEnv.getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
+    const badgeBorder = jotai.useAtomValue(getBlockBorderAtom(nodeModel.blockId));
     const frameActiveBorderColor = jotai.useAtomValue(
         waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
     );
@@ -63,6 +65,10 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         style.borderColor = "rgb(59, 130, 246)";
     }
 
+    if (badgeBorder) {
+        style["--badge-border-color" as any] = badgeBorder.color;
+    }
+
     let innerElem = null;
     if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
@@ -83,7 +89,11 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
 
     return (
         <div
-            className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })}
+            className={clsx("block-mask", {
+                "show-block-mask": showBlockMask,
+                "bg-blue-500/10": blockHighlight,
+                "badge-border-highlight": !!badgeBorder,
+            })}
             style={style}
         >
             {innerElem}

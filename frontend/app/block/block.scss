@@ -444,5 +444,10 @@
                 }
             }
         }
+
+        // Badge border highlight overrides all other border states
+        .block-mask.badge-border-highlight {
+            border: 2px solid var(--badge-border-color) !important;
+        }
     }
 }
