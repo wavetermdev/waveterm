@@ -72,6 +72,7 @@ export class ProcessViewerViewModel implements ViewModel {
     errorAtom: jotai.PrimitiveAtom<string>;
     lastSuccessAtom: jotai.PrimitiveAtom<number>;
     pausedAtom: jotai.PrimitiveAtom<boolean>;
+    selectedPidAtom: jotai.PrimitiveAtom<number>;
 
     connection: jotai.Atom<string>;
     connStatus: jotai.Atom<ConnStatus>;
@@ -93,6 +94,7 @@ export class ProcessViewerViewModel implements ViewModel {
         this.errorAtom = jotai.atom<string>(null) as jotai.PrimitiveAtom<string>;
         this.lastSuccessAtom = jotai.atom<number>(0) as jotai.PrimitiveAtom<number>;
         this.pausedAtom = jotai.atom<boolean>(false) as jotai.PrimitiveAtom<boolean>;
+        this.selectedPidAtom = jotai.atom<number>(null) as jotai.PrimitiveAtom<number>;
 
         this.connection = jotai.atom((get) => {
             const connValue = get(this.env.getBlockMetaKeyAtom(blockId, "connection"));
@@ -372,32 +374,37 @@ const ProcessRow = React.memo(function ProcessRow({
     proc,
     hasCpu,
     platform,
+    selected,
+    onSelect,
 }: {
     proc: ProcessInfo;
     hasCpu: boolean;
     platform: string;
+    selected: boolean;
+    onSelect: (pid: number) => void;
 }) {
     const gridTemplate = getGridTemplate(platform);
     const showStatus = platform !== "windows" && platform !== "darwin";
     const showThreads = platform !== "windows";
     return (
         <div
-            className="grid w-full text-xs hover:bg-white/5 transition-colors"
+            className={`grid w-full text-xs transition-colors cursor-pointer ${selected ? "bg-accentbg" : "hover:bg-white/5"}`}
             style={{ gridTemplateColumns: gridTemplate, height: RowHeight }}
+            onClick={() => onSelect(proc.pid)}
         >
-            <div className="px-2 py-[3px] truncate text-right text-secondary font-mono text-[11px]">{proc.pid}</div>
-            <div className="px-2 py-[3px] truncate">{proc.command}</div>
-            {showStatus && <div className="px-2 py-[3px] truncate text-secondary text-[11px]">{proc.status}</div>}
-            <div className="px-2 py-[3px] truncate text-secondary">{proc.user}</div>
+            <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">{proc.pid}</div>
+            <div className="px-2 flex items-center truncate">{proc.command}</div>
+            {showStatus && <div className="px-2 flex items-center truncate text-secondary text-[11px]">{proc.status}</div>}
+            <div className="px-2 flex items-center truncate text-secondary">{proc.user}</div>
             {showThreads && (
-                <div className="px-2 py-[3px] truncate text-right text-secondary font-mono text-[11px]">
+                <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
                     {proc.numthreads > 1 ? proc.numthreads : ""}
                 </div>
             )}
-            <div className="px-2 py-[3px] truncate text-right font-mono text-[11px]">
+            <div className="px-2 flex items-center truncate justify-end font-mono text-[11px]">
                 {hasCpu && proc.cpu != null ? fmtCpu(proc.cpu) : ""}
             </div>
-            <div className="px-2 py-[3px] truncate text-right font-mono text-[11px]">{fmtMem(proc.mem)}</div>
+            <div className="px-2 flex items-center truncate justify-end font-mono text-[11px]">{fmtMem(proc.mem)}</div>
         </div>
     );
 });
@@ -535,9 +542,17 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const loading = jotai.useAtomValue(model.loadingAtom);
         const error = jotai.useAtomValue(model.errorAtom);
         const scrollTop = jotai.useAtomValue(model.scrollTopAtom);
+        const [selectedPid, setSelectedPid] = jotai.useAtom(model.selectedPidAtom);
         const bodyScrollRef = React.useRef<HTMLDivElement>(null);
         const containerRef = React.useRef<HTMLDivElement>(null);
         const [wide, setWide] = React.useState(false);
+
+        const handleSelectPid = React.useCallback(
+            (pid: number) => {
+                setSelectedPid((cur) => (cur === pid ? null : pid));
+            },
+            [setSelectedPid]
+        );
 
         const platform = data?.platform ?? "";
         const startIdx = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
@@ -591,7 +606,14 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                             <div style={{ height: totalHeight, position: "relative" }}>
                                 <div style={{ position: "absolute", top: paddingTop, left: 0, right: 0 }}>
                                     {processes.map((proc) => (
-                                        <ProcessRow key={proc.pid} proc={proc} hasCpu={hasCpu} platform={platform} />
+                                        <ProcessRow
+                                            key={proc.pid}
+                                            proc={proc}
+                                            hasCpu={hasCpu}
+                                            platform={platform}
+                                            selected={selectedPid === proc.pid}
+                                            onSelect={handleSelectPid}
+                                        />
                                     ))}
                                 </div>
                             </div>
