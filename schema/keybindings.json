@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wavetermdev/waveterm/schema/keybindings",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "key": {
+        "oneOf": [
+          { "type": "string" },
+          { "type": "null" }
+        ],
+        "description": "Key combination using colon-separated format. Modifiers: Cmd, Ctrl, Shift, Alt, Meta. Special keys: ArrowUp/Down/Left/Right, Home, End, Escape, Enter, Tab, Space, Backspace, Delete. Set to null to unbind."
+      },
+      "command": {
+        "type": "string",
+        "description": "Action ID. Prefix with - to unbind a default keybinding.",
+        "enum": [
+          "tab:new", "tab:close", "tab:prev", "tab:next",
+          "tab:switchTo1", "tab:switchTo2", "tab:switchTo3", "tab:switchTo4", "tab:switchTo5",
+          "tab:switchTo6", "tab:switchTo7", "tab:switchTo8", "tab:switchTo9",
+          "block:new", "block:close", "block:splitRight", "block:splitDown",
+          "block:magnify", "block:refocus",
+          "block:navUp", "block:navDown", "block:navLeft", "block:navRight",
+          "block:switchTo1", "block:switchTo2", "block:switchTo3", "block:switchTo4", "block:switchTo5",
+          "block:switchTo6", "block:switchTo7", "block:switchTo8", "block:switchTo9", "block:switchToAI",
+          "block:replaceWithLauncher",
+          "block:splitChord", "block:splitChordUp", "block:splitChordDown", "block:splitChordLeft", "block:splitChordRight",
+          "app:search", "app:openConnection", "app:toggleAIPanel", "app:toggleWidgetsSidebar",
+          "term:toggleMultiInput",
+          "generic:cancel",
+          "-tab:new", "-tab:close", "-tab:prev", "-tab:next",
+          "-tab:switchTo1", "-tab:switchTo2", "-tab:switchTo3", "-tab:switchTo4", "-tab:switchTo5",
+          "-tab:switchTo6", "-tab:switchTo7", "-tab:switchTo8", "-tab:switchTo9",
+          "-block:new", "-block:close", "-block:splitRight", "-block:splitDown",
+          "-block:magnify", "-block:refocus",
+          "-block:navUp", "-block:navDown", "-block:navLeft", "-block:navRight",
+          "-block:switchTo1", "-block:switchTo2", "-block:switchTo3", "-block:switchTo4", "-block:switchTo5",
+          "-block:switchTo6", "-block:switchTo7", "-block:switchTo8", "-block:switchTo9", "-block:switchToAI",
+          "-block:replaceWithLauncher",
+          "-block:splitChord", "-block:splitChordUp", "-block:splitChordDown", "-block:splitChordLeft", "-block:splitChordRight",
+          "-app:search", "-app:openConnection", "-app:toggleAIPanel", "-app:toggleWidgetsSidebar",
+          "-term:toggleMultiInput",
+          "-generic:cancel"
+        ]
+      }
+    },
+    "required": ["command"],
+    "additionalProperties": false
+  }
+}

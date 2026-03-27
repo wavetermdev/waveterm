@@ -170,6 +170,17 @@ function makeMockGlobalAtoms(
         fullConfigAtom,
         waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
+        keybindingsAtom: atom((get) => {
+            const fullConfig = get(fullConfigAtom);
+            if (!fullConfig?.keybindings) return [];
+            try {
+                const raw = fullConfig.keybindings;
+                const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        }),
         hasCustomAIPresetsAtom: atom(false),
         hasConfigErrors: atom((get) => {
             const c = get(fullConfigAtom);

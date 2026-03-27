@@ -65,6 +65,13 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
             hasJsonView: true,
         },
         {
+            name: "Keybindings",
+            path: "keybindings.json",
+            language: "json",
+            description: "Custom keyboard shortcuts",
+            docsUrl: "https://docs.waveterm.dev/keybindings",
+        },
+        {
             name: "Connections",
             path: "connections.json",
             language: "json",

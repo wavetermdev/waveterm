@@ -105,7 +105,74 @@ Chords are shown with a + between the keys. You have 2 seconds to hit the 2nd ch
 | <Kbd k="Shift:PageUp"/> | Scroll up one page           |
 | <Kbd k="Shift:PageDown"/>| Scroll down one page        |
 
-## Customizeable Systemwide Global Hotkey
+## Customizing Keybindings
+
+You can override, remap, or disable any default keybinding by editing `keybindings.json` in the Wave config directory (`~/.config/waveterm/keybindings.json`). You can also edit this file from within Wave by opening the Config editor and selecting "Keybindings" in the sidebar.
+
+The file uses a VS Code-style array format. Each entry maps a key combination to an action ID. Only overrides are needed — all defaults apply automatically.
+
+### Key Syntax
+
+Key combinations use colon-separated format:
+
+- **Modifiers:** `Cmd` (macOS Command / Windows-Linux Meta), `Ctrl`, `Shift`, `Alt` (macOS Option), `Meta`
+- **Special keys:** `ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `Escape`, `Enter`, `Tab`, `Space`, `Backspace`, `Delete`
+- **Letters and digits:** Lowercase (`a`–`z`), digits (`0`–`9`)
+
+### Examples
+
+**Rebind a key:** Change "new tab" from <Kbd k="Cmd:t"/> to <Kbd k="Cmd:Shift:t"/>:
+```json
+[
+  { "key": "Cmd:Shift:t", "command": "tab:new" }
+]
+```
+
+**Disable a keybinding:** Remove <Kbd k="Cmd:w"/> close block:
+```json
+[
+  { "key": null, "command": "-block:close" }
+]
+```
+
+**Swap two keys:**
+```json
+[
+  { "key": "Cmd:d", "command": "block:splitDown" },
+  { "key": "Cmd:Shift:d", "command": "block:splitRight" }
+]
+```
+
+### Action IDs
+
+| Action ID | Default Key | Description |
+| --- | --- | --- |
+| `tab:new` | <Kbd k="Cmd:t"/> | Open a new tab |
+| `tab:close` | <Kbd k="Cmd:Shift:w"/> | Close the current tab |
+| `tab:prev` | <Kbd k="Cmd:["/> | Switch to previous tab |
+| `tab:next` | <Kbd k="Cmd:]"/> | Switch to next tab |
+| `tab:switchTo1`–`tab:switchTo9` | <Kbd k="Cmd:1"/>–<Kbd k="Cmd:9"/> | Switch to tab N |
+| `block:new` | <Kbd k="Cmd:n"/> | Open a new block |
+| `block:close` | <Kbd k="Cmd:w"/> | Close the current block |
+| `block:splitRight` | <Kbd k="Cmd:d"/> | Split right |
+| `block:splitDown` | <Kbd k="Cmd:Shift:d"/> | Split down |
+| `block:magnify` | <Kbd k="Cmd:m"/> | Magnify/unmagnify block |
+| `block:refocus` | <Kbd k="Cmd:i"/> | Refocus the current block |
+| `block:navUp/Down/Left/Right` | <Kbd k="Ctrl:Shift:Arrows"/> | Navigate between blocks |
+| `block:switchTo1`–`block:switchTo9` | <Kbd k="Ctrl:Shift:1"/>–<Kbd k="Ctrl:Shift:9"/> | Switch to block N |
+| `block:switchToAI` | <Kbd k="Ctrl:Shift:0"/> | Focus WaveAI input |
+| `block:replaceWithLauncher` | <Kbd k="Ctrl:Shift:x"/> | Replace block with launcher |
+| `app:search` | <Kbd k="Cmd:f"/> | Find/search |
+| `app:openConnection` | <Kbd k="Cmd:g"/> | Open connection switcher |
+| `app:toggleAIPanel` | <Kbd k="Cmd:Shift:a"/> | Toggle WaveAI panel |
+| `app:toggleWidgetsSidebar` | <Kbd k="Cmd:b"/> | Toggle widgets sidebar |
+| `term:toggleMultiInput` | <Kbd k="Ctrl:Shift:i"/> | Toggle terminal multi-input |
+| `generic:cancel` | <Kbd k="Escape"/> | Close modals/search |
+| `block:splitChord` | <Kbd k="Ctrl:Shift:s"/> | Initiate split chord |
+
+Changes take effect immediately — no restart required.
+
+## Customizable Systemwide Global Hotkey
 
 Wave allows setting a custom global hotkey to focus your most recent window from anywhere in your computer. For more information on this, see [the config docs](./config#customizable-systemwide-global-hotkey).
 

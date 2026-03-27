@@ -374,6 +374,7 @@ type FullConfigType struct {
 	Connections    map[string]ConnKeywords         `json:"connections"`
 	Bookmarks      map[string]WebBookmark          `json:"bookmarks"`
 	WaveAIModes    map[string]AIModeConfigType     `json:"waveai"`
+	Keybindings    json.RawMessage                 `json:"keybindings" configfile:"-"`
 	ConfigErrors   []ConfigError                   `json:"configerrors" configfile:"-"`
 }
 
@@ -665,6 +666,22 @@ func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []C
 	return mergeMetaMap(rtn, homeConfigs, simpleMerge), allErrs
 }
 
+func readKeybindingsConfig() (json.RawMessage, []ConfigError) {
+	configDir := wavebase.GetWaveConfigDir()
+	filePath := filepath.Join(configDir, "keybindings.json")
+	barr, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, []ConfigError{{File: "keybindings.json", Err: fmt.Sprintf("error reading keybindings.json: %v", err)}}
+	}
+	if !json.Valid(barr) {
+		return nil, []ConfigError{{File: "keybindings.json", Err: "invalid JSON in keybindings.json"}}
+	}
+	return json.RawMessage(barr), nil
+}
+
 // this function should only be called by the wconfig code.
 // in golang code, the best way to get the current config is via the watcher -- wconfig.GetWatcher().GetFullConfig()
 func ReadFullConfig() FullConfigType {
@@ -695,6 +712,9 @@ func ReadFullConfig() FullConfigType {
 			utilfn.ReUnmarshal(fieldPtr, configPart)
 		}
 	}
+	keybindings, keybindingErrs := readKeybindingsConfig()
+	fullConfig.Keybindings = keybindings
+	fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, keybindingErrs...)
 	return fullConfig
 }
 

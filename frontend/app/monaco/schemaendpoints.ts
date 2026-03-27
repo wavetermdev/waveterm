@@ -4,6 +4,7 @@
 import aipresetsSchema from "../../../schema/aipresets.json";
 import backgroundsSchema from "../../../schema/backgrounds.json";
 import connectionsSchema from "../../../schema/connections.json";
+import keybindingsSchema from "../../../schema/keybindings.json";
 import settingsSchema from "../../../schema/settings.json";
 import waveaiSchema from "../../../schema/waveai.json";
 import widgetsSchema from "../../../schema/widgets.json";
@@ -44,6 +45,11 @@ const MonacoSchemas: SchemaInfo[] = [
         uri: "wave://schema/widgets.json",
         fileMatch: ["*/WAVECONFIGPATH/widgets.json"],
         schema: widgetsSchema,
+    },
+    {
+        uri: "wave://schema/keybindings.json",
+        fileMatch: ["*/WAVECONFIGPATH/keybindings.json"],
+        schema: keybindingsSchema,
     },
 ];
 
