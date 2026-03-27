@@ -23,6 +23,7 @@ export type CgMarketData = {
     id: string;
     symbol: string;
     name: string;
+    image?: string;
     current_price: number;
     price_change_percentage_24h: number;
     market_cap: number;
@@ -101,11 +102,25 @@ export async function getCgMarkets(symbols: string[], perPage = 50): Promise<CgM
     return cgGet<CgMarketData[]>(`/coins/markets?${qs}`);
 }
 
-// ---- Convenience helpers ---------------------------------------------------
-
 /**
- * Look up a single token's USD price.  Returns null if unavailable.
+ * Fetch CoinGecko token icon URLs for a list of symbols.
+ * Returns a Record<SYMBOL, imageUrl> using the `image` field from /coins/markets.
+ * Falls back to an empty object on error or unknown symbols.
  */
+export async function fetchTokenImages(symbols: string[]): Promise<Record<string, string>> {
+    try {
+        const markets = await getCgMarkets(symbols, 250);
+        const result: Record<string, string> = {};
+        for (const m of markets) {
+            if (m.image) {
+                result[m.symbol.toUpperCase()] = m.image;
+            }
+        }
+        return result;
+    } catch {
+        return {};
+    }
+}
 export async function fetchTokenPrice(symbol: string): Promise<number | null> {
     try {
         const map = await getCgPrices([symbol]);

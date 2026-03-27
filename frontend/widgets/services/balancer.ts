@@ -1,10 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// Balancer V2 subgraph + vault data for Arbitrum.
+// Balancer V2 REST API client for Arbitrum.
+// Uses the Balancer public REST API (GET) instead of The Graph GraphQL.
 
-const BALANCER_SUBGRAPH =
-    "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer-arbitrum-v2";
+const BALANCER_API = "https://api.balancer.fi/pools/arbitrum";
 
 export type BalancerPoolToken = {
     symbol: string;
@@ -25,32 +25,33 @@ export type BalancerPool = {
     swapFee: number;
 };
 
-type SubgraphToken = {
-    symbol: string;
+type ApiPoolToken = {
     address: string;
-    weight: string | null;
-    balance: string;
+    symbol?: string;
+    name?: string;
+    decimals?: number;
+    balance?: string | number;
+    weight?: string | number | null;
 };
 
-type SubgraphPool = {
+type ApiPool = {
     id: string;
-    name: string;
-    poolType: string;
-    totalLiquidity: string;
-    totalSwapVolume: string;
-    swapFee: string;
-    tokens: SubgraphToken[];
-};
-
-type SubgraphResponse = {
-    data?: {
-        pools?: SubgraphPool[];
-    };
-    errors?: Array<{ message: string }>;
+    address?: string;
+    name?: string;
+    poolType?: string;
+    swapFee?: string | number;
+    totalLiquidity?: string | number;
+    // volume field names differ across API versions
+    volume24h?: string | number;
+    totalSwapVolume24h?: string | number;
+    totalSwapVolume?: string | number;
+    // APR
+    aprItems?: Array<{ apr?: { total?: number } | number }>;
+    apr?: number;
+    tokens?: ApiPoolToken[];
 };
 
 function estimateTokenPriceUsd(symbol: string): number {
-    // Simple price map for common tokens — subgraph doesn't return USD prices
     const prices: Record<string, number> = {
         WETH: 3500,
         ETH: 3500,
@@ -65,69 +66,64 @@ function estimateTokenPriceUsd(symbol: string): number {
     return prices[symbol.toUpperCase()] ?? 1;
 }
 
+function parseNum(v: string | number | null | undefined): number {
+    if (v == null) return 0;
+    const n = typeof v === "number" ? v : parseFloat(v);
+    return isNaN(n) ? 0 : n;
+}
+
 export async function fetchBalancerPools(
     minTvlUsd: number = 100_000,
     limit: number = 20
 ): Promise<BalancerPool[]> {
-    const query = `{
-  pools(
-    first: ${limit}
-    orderBy: totalLiquidity
-    orderDirection: desc
-    where: { totalLiquidity_gt: "${minTvlUsd}" }
-  ) {
-    id
-    name
-    poolType
-    totalLiquidity
-    totalSwapVolume
-    swapFee
-    tokens {
-      symbol
-      address
-      weight
-      balance
-    }
-  }
-}`;
-
     try {
-        const resp = await fetch(BALANCER_SUBGRAPH, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query }),
+        const resp = await fetch(BALANCER_API, {
+            headers: { Accept: "application/json" },
         });
         if (!resp.ok) return [];
-        const json = (await resp.json()) as SubgraphResponse;
-        if (json.errors || !json.data?.pools) return [];
+        const json = (await resp.json()) as ApiPool[];
+        if (!Array.isArray(json)) return [];
 
-        return json.data.pools.map((p) => {
-            const tvlUsd = parseFloat(p.totalLiquidity) || 0;
-            const totalSwapVolume = parseFloat(p.totalSwapVolume) || 0;
-            const swapFee = parseFloat(p.swapFee) || 0;
-            // We don't have 24h volume directly; use total as proxy (subgraph v2 lacks it)
-            const volume24hUsd = totalSwapVolume * 0.001; // rough daily estimate
-            const apr = tvlUsd > 0 ? (volume24hUsd * swapFee * 365) / tvlUsd * 100 : 0;
+        return json
+            .filter((p) => parseNum(p.totalLiquidity) >= minTvlUsd)
+            .sort((a, b) => parseNum(b.totalLiquidity) - parseNum(a.totalLiquidity))
+            .slice(0, limit)
+            .map((p): BalancerPool => {
+                const tvlUsd = parseNum(p.totalLiquidity);
+                const swapFee = parseNum(p.swapFee);
+                const volume24hUsd =
+                    parseNum(p.volume24h) ||
+                    parseNum(p.totalSwapVolume24h) ||
+                    parseNum(p.totalSwapVolume) * 0.001;
+                let apr = 0;
+                if (p.apr != null) {
+                    apr = parseNum(p.apr);
+                } else if (Array.isArray(p.aprItems) && p.aprItems.length > 0) {
+                    const first = p.aprItems[0].apr;
+                    apr = typeof first === "number" ? first : parseNum(first?.total) ?? 0;
+                } else if (tvlUsd > 0) {
+                    apr = (volume24hUsd * swapFee * 365) / tvlUsd * 100;
+                }
 
-            const tokens: BalancerPoolToken[] = (p.tokens ?? []).map((t) => ({
-                symbol: t.symbol,
-                address: t.address,
-                weight: t.weight != null ? parseFloat(t.weight) : null,
-                balance: parseFloat(t.balance) || 0,
-                priceUsd: estimateTokenPriceUsd(t.symbol),
-            }));
+                const tokens: BalancerPoolToken[] = (p.tokens ?? []).map((t) => ({
+                    symbol: t.symbol ?? t.address.slice(0, 6),
+                    address: t.address,
+                    weight: t.weight != null ? parseNum(t.weight) : null,
+                    balance: parseNum(t.balance),
+                    priceUsd: estimateTokenPriceUsd(t.symbol ?? ""),
+                }));
 
-            return {
-                id: p.id,
-                name: p.name ?? p.id.slice(0, 10),
-                poolType: p.poolType ?? "Unknown",
-                tvlUsd,
-                volume24hUsd,
-                apr,
-                tokens,
-                swapFee,
-            };
-        });
+                return {
+                    id: p.id,
+                    name: p.name ?? p.id.slice(0, 10),
+                    poolType: p.poolType ?? "Unknown",
+                    tvlUsd,
+                    volume24hUsd,
+                    apr,
+                    tokens,
+                    swapFee,
+                };
+            });
     } catch {
         return [];
     }

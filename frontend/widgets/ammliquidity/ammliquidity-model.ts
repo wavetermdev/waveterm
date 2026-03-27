@@ -3,7 +3,7 @@
 
 import { globalStore } from "@/app/store/jotaiStore";
 import * as jotai from "jotai";
-import { fetchTokenPrices } from "../services/coingecko";
+import { fetchTokenPrices, fetchTokenImages } from "../services/coingecko";
 import { fetchBalancerPools, balancerImpliedPrice, BalancerPool as BalancerSubgraphPool } from "../services/balancer";
 import { AmmLiquidity } from "./ammliquidity";
 
@@ -54,19 +54,16 @@ export type PriceImpact = {
     effectivePrice: number;
 };
 
-const TOKEN_ICONS: Record<string, string> = {
-    ETH: "💎", WETH: "💎", WBTC: "₿", BTC: "₿",
-    USDC: "💵", USDT: "💵", DAI: "🟡",
-    ARB: "🔵", GMX: "🎯", BAL: "⚖️", LINK: "🔗",
-    MATIC: "🟣", SOL: "◎", AVAX: "🔺",
-};
+const TOKEN_ICONS: Record<string, string> = {};
 
-function tokenIcon(symbol: string): string {
-    return TOKEN_ICONS[symbol?.toUpperCase() ?? ""] ?? "🔷";
+/** Returns the CoinGecko image URL for a symbol, or a CSS data-URI fallback. */
+function tokenIcon(symbol: string, imageMap?: Record<string, string>): string {
+    const key = symbol?.toUpperCase() ?? "";
+    return imageMap?.[key] ?? TOKEN_ICONS[key] ?? "";
 }
 
 /** Convert a BalancerPool subgraph record into the widget's LiquidityPool shape. */
-function balancerToLiquidityPool(bp: BalancerSubgraphPool): LiquidityPool {
+function balancerToLiquidityPool(bp: BalancerSubgraphPool, imageMap?: Record<string, string>): LiquidityPool {
     const t0 = bp.tokens[0];
     const t1 = bp.tokens[1] ?? bp.tokens[0];
 
@@ -85,8 +82,8 @@ function balancerToLiquidityPool(bp: BalancerSubgraphPool): LiquidityPool {
         id: bp.id,
         token0: t0?.symbol ?? "?",
         token1: t1?.symbol ?? "?",
-        icon0: tokenIcon(t0?.symbol ?? ""),
-        icon1: tokenIcon(t1?.symbol ?? ""),
+        icon0: tokenIcon(t0?.symbol ?? "", imageMap),
+        icon1: tokenIcon(t1?.symbol ?? "", imageMap),
         protocol: "Balancer",
         // swapFee from subgraph is a fraction (e.g. 0.003); convert to percent
         fee: (bp.swapFee ?? 0) * 100,
@@ -230,8 +227,9 @@ export class AmmLiquidityViewModel implements ViewModel {
     }
 
     /**
-     * Fetch live pool data from the Balancer V2 Arbitrum subgraph.
-     * Maps subgraph records to LiquidityPool and enriches prices via CoinGecko.
+     * Fetch live pool data from the Balancer REST API.
+     * Maps API records to LiquidityPool, enriches prices via CoinGecko, and
+     * uses CoinGecko token icons (PNG) instead of emoji fallbacks.
      */
     async initFromBalancer() {
         globalStore.set(this.dataSource, "loading");
@@ -242,12 +240,19 @@ export class AmmLiquidityViewModel implements ViewModel {
                 return;
             }
 
-            // Map subgraph records to LiquidityPool
-            let liquidityPools: LiquidityPool[] = balancerPools.map(balancerToLiquidityPool);
+            // Collect all token symbols to fetch CoinGecko prices and icons in parallel
+            const allSymbols = [...new Set(balancerPools.flatMap((bp) => bp.tokens.map((t) => t.symbol)))];
+            const [cgPrices, imageMap] = await Promise.all([
+                fetchTokenPrices(allSymbols).catch(() => ({} as Record<string, number>)),
+                fetchTokenImages(allSymbols).catch(() => ({} as Record<string, string>)),
+            ]);
+
+            // Map API records to LiquidityPool, injecting CoinGecko icons
+            let liquidityPools: LiquidityPool[] = balancerPools.map((bp) =>
+                balancerToLiquidityPool(bp, imageMap)
+            );
 
             // Enrich prices using CoinGecko for any pool where implied price is 0
-            const symbols = [...new Set(liquidityPools.flatMap((p) => [p.token0, p.token1]))];
-            const cgPrices = await fetchTokenPrices(symbols).catch(() => ({} as Record<string, number>));
             if (Object.keys(cgPrices).length > 0) {
                 liquidityPools = liquidityPools.map((p) => {
                     if (p.price > 0) return p;
@@ -267,7 +272,7 @@ export class AmmLiquidityViewModel implements ViewModel {
             }
             globalStore.set(this.dataSource, "live");
         } catch (e) {
-            console.warn("[AmmLiquidity] Balancer subgraph unavailable", e);
+            console.warn("[AmmLiquidity] Balancer API unavailable", e);
             globalStore.set(this.dataSource, "error");
         }
     }

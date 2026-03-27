@@ -21,13 +21,20 @@ function ProtocolBadge({ protocol }: { protocol: string }) {
     );
 }
 
+function TokenIcon({ icon, symbol }: { icon: string; symbol: string }) {
+    if (icon.startsWith("http")) {
+        return <img className="token-icon-img" src={icon} alt={symbol} width={18} height={18} />;
+    }
+    return <span className="token-icon-emoji">{icon || symbol.slice(0, 1)}</span>;
+}
+
 function PoolCard({ pool, selected, onClick }: { pool: LiquidityPool; selected?: boolean; onClick?: () => void }) {
     return (
         <div className={`pool-card ${selected ? "selected" : ""}`} onClick={onClick}>
             <div className="pool-top">
                 <div className="pool-pair">
-                    <span>{pool.icon0}</span>
-                    <span>{pool.icon1}</span>
+                    <TokenIcon icon={pool.icon0} symbol={pool.token0} />
+                    <TokenIcon icon={pool.icon1} symbol={pool.token1} />
                     <span className="pair-label">
                         {pool.token0}/{pool.token1}
                     </span>
