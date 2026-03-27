@@ -56,6 +56,9 @@ class WorkspaceLayoutModel {
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     private debouncedPersistAIWidth: () => void;
     private debouncedPersistVTabWidth: () => void;
+    private widgetsSidebarVisible: boolean;
+    widgetsSidebarVisibleAtom: jotai.PrimitiveAtom<boolean>;
+    private debouncedPersistWidgetsSidebarVisible: () => void;
 
     private constructor() {
         this.aiPanelRef = null;
@@ -71,6 +74,8 @@ class WorkspaceLayoutModel {
         this.vtabWidth = VTabBar_DefaultWidth;
         this.vtabVisible = false;
         this.panelVisibleAtom = jotai.atom(false);
+        this.widgetsSidebarVisible = true;
+        this.widgetsSidebarVisibleAtom = jotai.atom(true);
         this.initializeFromMeta();
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
@@ -104,6 +109,17 @@ class WorkspaceLayoutModel {
                 console.warn("Failed to persist vtabbar width:", e);
             }
         }, 300);
+
+        this.debouncedPersistWidgetsSidebarVisible = debounce(() => {
+            try {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("workspace", this.getWorkspaceId()),
+                    meta: { "layout:widgetsvisible": this.widgetsSidebarVisible },
+                });
+            } catch (e) {
+                console.warn("Failed to persist widgets sidebar visibility:", e);
+            }
+        }, 300);
     }
 
     static getInstance(): WorkspaceLayoutModel {
@@ -135,6 +151,10 @@ class WorkspaceLayoutModel {
         return getOrefMetaKeyAtom(WOS.makeORef("workspace", this.getWorkspaceId()), "layout:vtabbarwidth");
     }
 
+    private getWidgetsSidebarVisibleAtom(): jotai.Atom<boolean | undefined> {
+        return getOrefMetaKeyAtom(WOS.makeORef("workspace", this.getWorkspaceId()), "layout:widgetsvisible");
+    }
+
     private initializeFromMeta(): void {
         try {
             const savedVisible = globalStore.get(this.getPanelOpenAtom());
@@ -149,6 +169,11 @@ class WorkspaceLayoutModel {
             }
             if (savedVTabWidth != null && savedVTabWidth > 0) {
                 this.vtabWidth = savedVTabWidth;
+            }
+            const savedWidgetsSidebarVisible = globalStore.get(this.getWidgetsSidebarVisibleAtom());
+            if (savedWidgetsSidebarVisible != null) {
+                this.widgetsSidebarVisible = savedWidgetsSidebarVisible;
+                globalStore.set(this.widgetsSidebarVisibleAtom, savedWidgetsSidebarVisible);
             }
             const tabBarPosition = globalStore.get(getSettingsKeyAtom("app:tabbar")) ?? "top";
             const showLeftTabBar = tabBarPosition === "left" && !isBuilderWindow();
@@ -350,6 +375,17 @@ class WorkspaceLayoutModel {
 
     getAIPanelWidth(): number {
         return this.getResolvedAIWidth(window.innerWidth);
+    }
+
+    getWidgetsSidebarVisible(): boolean {
+        return this.widgetsSidebarVisible;
+    }
+
+    setWidgetsSidebarVisible(visible: boolean): void {
+        if (this.widgetsSidebarVisible === visible) return;
+        this.widgetsSidebarVisible = visible;
+        globalStore.set(this.widgetsSidebarVisibleAtom, visible);
+        this.debouncedPersistWidgetsSidebarVisible();
     }
 
     // ---- Initial percentage helpers (used by workspace.tsx for defaultSize) ----
