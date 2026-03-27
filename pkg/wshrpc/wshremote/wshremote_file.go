@@ -18,7 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fspath"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -31,153 +31,6 @@ import (
 const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
 
 var DisableRecursiveFileOpts = true
-
-
-func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, byteRange fileutil.ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
-	innerFilesEntries, err := os.ReadDir(path)
-	if err != nil {
-		return fmt.Errorf("cannot open dir %q: %w", path, err)
-	}
-	if byteRange.All {
-		if len(innerFilesEntries) > wshrpc.MaxDirSize {
-			innerFilesEntries = innerFilesEntries[:wshrpc.MaxDirSize]
-		}
-	} else {
-		if byteRange.Start < int64(len(innerFilesEntries)) {
-			var realEnd int64
-			if byteRange.OpenEnd {
-				realEnd = int64(len(innerFilesEntries))
-			} else {
-				realEnd = byteRange.End + 1
-				if realEnd > int64(len(innerFilesEntries)) {
-					realEnd = int64(len(innerFilesEntries))
-				}
-			}
-			innerFilesEntries = innerFilesEntries[byteRange.Start:realEnd]
-		} else {
-			innerFilesEntries = []os.DirEntry{}
-		}
-	}
-	var fileInfoArr []*wshrpc.FileInfo
-	for _, innerFileEntry := range innerFilesEntries {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		innerFileInfoInt, err := innerFileEntry.Info()
-		if err != nil {
-			continue
-		}
-		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
-		fileInfoArr = append(fileInfoArr, innerFileInfo)
-		if len(fileInfoArr) >= wshrpc.DirChunkSize {
-			dataCallback(fileInfoArr, nil, byteRange)
-			fileInfoArr = nil
-		}
-	}
-	if len(fileInfoArr) > 0 {
-		dataCallback(fileInfoArr, nil, byteRange)
-	}
-	return nil
-}
-
-func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange fileutil.ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
-	fd, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("cannot open file %q: %w", path, err)
-	}
-	defer utilfn.GracefulClose(fd, "remoteStreamFileRegular", path)
-	var filePos int64
-	if !byteRange.All && byteRange.Start > 0 {
-		_, err := fd.Seek(byteRange.Start, io.SeekStart)
-		if err != nil {
-			return fmt.Errorf("seeking file %q: %w", path, err)
-		}
-		filePos = byteRange.Start
-	}
-	buf := make([]byte, wshrpc.FileChunkSize)
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		n, err := fd.Read(buf)
-		if n > 0 {
-			if !byteRange.All && !byteRange.OpenEnd && filePos+int64(n) > byteRange.End+1 {
-				n = int(byteRange.End + 1 - filePos)
-			}
-			filePos += int64(n)
-			dataCallback(nil, buf[:n], byteRange)
-		}
-		if !byteRange.All && !byteRange.OpenEnd && filePos >= byteRange.End+1 {
-			break
-		}
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("reading file %q: %w", path, err)
-		}
-	}
-	return nil
-}
-
-func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType)) error {
-	byteRange, err := fileutil.ParseByteRange(data.ByteRange)
-	if err != nil {
-		return err
-	}
-	path, err := wavebase.ExpandHomeDir(data.Path)
-	if err != nil {
-		return err
-	}
-	finfo, err := impl.fileInfoInternal(path, true)
-	if err != nil {
-		return fmt.Errorf("cannot stat file %q: %w", path, err)
-	}
-	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
-	if finfo.NotFound {
-		return nil
-	}
-	if finfo.IsDir {
-		return impl.remoteStreamFileDir(ctx, path, byteRange, dataCallback)
-	} else {
-		if finfo.Size > RemoteFileTransferSizeLimit {
-			return fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", path, finfo.Size, RemoteFileTransferSizeLimit)
-		}
-		return impl.remoteStreamFileRegular(ctx, path, byteRange, dataCallback)
-	}
-}
-
-func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("RemoteStreamFileCommand", recover())
-		}()
-		defer close(ch)
-		firstPk := true
-		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange fileutil.ByteRangeType) {
-			resp := wshrpc.FileData{}
-			fileInfoLen := len(fileInfo)
-			if fileInfoLen > 1 || !firstPk {
-				resp.Entries = fileInfo
-			} else if fileInfoLen == 1 {
-				resp.Info = fileInfo[0]
-			}
-			if firstPk {
-				firstPk = false
-			}
-			if len(data) > 0 {
-				resp.Data64 = base64.StdEncoding.EncodeToString(data)
-				resp.At = &wshrpc.FileDataAt{Offset: byteRange.Start, Size: len(data)}
-			}
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: resp}
-		})
-		if err != nil {
-			ch <- wshutil.RespErr[wshrpc.FileData](err)
-		}
-	}()
-	return ch
-}
 
 // prepareDestForCopy resolves the final destination path and handles overwrite logic.
 // destPath is the raw destination path (may be a directory or file path).
@@ -304,7 +157,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		return false, fmt.Errorf("file %q size %d exceeds transfer limit of %d bytes", data.SrcUri, srcFileInfo.Size, RemoteFileTransferSizeLimit)
 	}
 
-	destFilePath, err := prepareDestForCopy(destPathCleaned, filepath.Base(srcConn.Path), destHasSlash, opts.Overwrite)
+	destFilePath, err := prepareDestForCopy(destPathCleaned, fspath.Base(srcConn.Path), destHasSlash, opts.Overwrite)
 	if err != nil {
 		return false, err
 	}
@@ -315,8 +168,25 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	}
 	defer destFile.Close()
 
-	streamChan := wshclient.RemoteStreamFileCommand(wshfs.RpcClient, wshrpc.CommandRemoteStreamFileData{Path: srcConn.Path}, &wshrpc.RpcOpts{Timeout: opts.Timeout, Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
-	if err = fsutil.ReadFileStreamToWriter(readCtx, streamChan, destFile); err != nil {
+	if wshfs.RpcClientRouteId == "" {
+		return false, fmt.Errorf("stream broker route id not available for file copy")
+	}
+	writerRouteId := wshutil.MakeConnectionRouteId(srcConn.Host)
+	reader, streamMeta := wshfs.RpcClient.StreamBroker.CreateStreamReader(wshfs.RpcClientRouteId, writerRouteId, 256*1024)
+	log.Printf("RemoteFileCopyCommand: readroute=%s writeroute=%s", streamMeta.ReaderRouteId, streamMeta.WriterRouteId)
+	defer reader.Close()
+	go func() {
+		<-readCtx.Done()
+		reader.Close()
+	}()
+	streamData := wshrpc.CommandRemoteFileStreamData{
+		Path:       srcConn.Path,
+		StreamMeta: *streamMeta,
+	}
+	if _, err = wshclient.RemoteFileStreamCommand(wshfs.RpcClient, streamData, &wshrpc.RpcOpts{Route: writerRouteId}); err != nil {
+		return false, fmt.Errorf("error starting file stream for %q: %w", data.SrcUri, err)
+	}
+	if _, err = io.Copy(destFile, reader); err != nil {
 		return false, fmt.Errorf("error copying file %q to %q: %w", data.SrcUri, data.DestUri, err)
 	}
 
@@ -341,6 +211,9 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 		if err != nil {
 			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
+		}
+		if data.Opts == nil {
+			data.Opts = &wshrpc.FileListOpts{}
 		}
 		innerFilesEntries := []os.DirEntry{}
 		seen := 0

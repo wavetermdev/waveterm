@@ -31,18 +31,8 @@
             }
         }
     },
-    "defwidget@ai": {
-        "display:order": -2,
-        "icon": "sparkles",
-        "label": "ai",
-        "blockdef": {
-            "meta": {
-                "view": "waveai"
-            }
-        }
-    },
     "defwidget@sysinfo": {
-        "display:order": -1,
+        "display:order": -2,
         "icon": "chart-line",
         "label": "sysinfo",
         "blockdef": {

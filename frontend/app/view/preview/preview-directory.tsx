@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { addOpenMenuItems } from "@/util/previewutil";
@@ -112,7 +112,6 @@ function DirectoryTable({
     newDirectory,
 }: DirectoryTableProps) {
     const env = useWaveEnv<PreviewEnv>();
-    const searchActive = useAtomValue(model.directorySearchActive);
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
     const defaultSort = useAtomValue(env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
@@ -587,28 +586,26 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     useEffect(
         () =>
             fireAndForget(async () => {
-                let entries: FileInfo[];
+                const entries: FileInfo[] = [];
                 try {
-                    const file = await env.rpc.FileReadCommand(
-                        TabRpcClient,
-                        {
-                            info: {
-                                path: await model.formatRemoteUri(dirPath, globalStore.get),
-                            },
-                        },
-                        null
-                    );
-                    entries = file.entries ?? [];
-                    if (file?.info && file.info.dir && file.info?.path !== file.info?.dir) {
+                    const remotePath = await model.formatRemoteUri(dirPath, globalStore.get);
+                    const stream = env.rpc.FileListStreamCommand(TabRpcClient, { path: remotePath }, null);
+                    for await (const chunk of stream) {
+                        if (chunk?.fileinfo) {
+                            entries.push(...chunk.fileinfo);
+                        }
+                    }
+                    if (finfo?.dir && finfo?.path !== finfo?.dir) {
                         entries.unshift({
                             name: "..",
-                            path: file?.info?.dir,
+                            path: finfo.dir,
                             isdir: true,
                             modtime: new Date().getTime(),
                             mimetype: "directory",
                         });
                     }
                 } catch (e) {
+                    console.error("Directory Read Error", e);
                     setErrorMsg({
                         status: "Cannot Read Directory",
                         text: `${e}`,

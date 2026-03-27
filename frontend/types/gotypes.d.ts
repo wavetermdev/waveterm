@@ -587,12 +587,6 @@ declare global {
         publickeybase64: string;
     };
 
-    // wshrpc.CommandRemoteStreamFileData
-    type CommandRemoteStreamFileData = {
-        path: string;
-        byterange?: string;
-    };
-
     // wshrpc.CommandRemoteTerminateJobManagerData
     type CommandRemoteTerminateJobManagerData = {
         jobid: string;

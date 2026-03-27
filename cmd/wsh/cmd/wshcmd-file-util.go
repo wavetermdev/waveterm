@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -12,10 +12,10 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 func convertNotFoundErr(err error) error {
@@ -91,8 +91,38 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 }
 
 func streamReadFromFile(ctx context.Context, fileData wshrpc.FileData, writer io.Writer) error {
-	ch := wshclient.FileReadStreamCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
-	return fsutil.ReadFileStreamToWriter(ctx, ch, writer)
+	broker := RpcClient.StreamBroker
+	if broker == nil {
+		return fmt.Errorf("stream broker not available")
+	}
+	if fileData.Info == nil {
+		return fmt.Errorf("file info is required")
+	}
+	readerRouteId := RpcClientRouteId
+	if readerRouteId == "" {
+		return fmt.Errorf("no route id available")
+	}
+	conn, err := connparse.ParseURI(fileData.Info.Path)
+	if err != nil {
+		return fmt.Errorf("parsing file path: %w", err)
+	}
+	writerRouteId := wshutil.MakeConnectionRouteId(conn.Host)
+	reader, streamMeta := broker.CreateStreamReader(readerRouteId, writerRouteId, 256*1024)
+	defer reader.Close()
+	go func() {
+		<-ctx.Done()
+		reader.Close()
+	}()
+	data := wshrpc.CommandFileStreamData{
+		Info:       fileData.Info,
+		StreamMeta: *streamMeta,
+	}
+	_, err = wshclient.FileStreamCommand(RpcClient, data, nil)
+	if err != nil {
+		return fmt.Errorf("starting file stream: %w", err)
+	}
+	_, err = io.Copy(writer, reader)
+	return err
 }
 
 func fixRelativePaths(path string) (string, error) {
