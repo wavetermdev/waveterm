@@ -24,7 +24,7 @@ export function AppBackground() {
     const tabBg = useAtomValue(env.getTabMetaKeyAtom(tabId, "tab:background"));
     const configBg = useAtomValue(env.getConfigBackgroundAtom(tabBg));
     const resolvedMeta: Omit<BackgroundConfigType, "display:name"> = tabBg && configBg ? configBg : tabData?.meta;
-    const style: CSSProperties = computeBgStyleFromMeta(resolvedMeta, 0.5) ?? {};
+    const style: CSSProperties = computeBgStyleFromMeta(resolvedMeta, 1) ?? {};
     const getAvgColor = useCallback(
         debounce(30, () => {
             if (
