@@ -66,6 +66,11 @@ function playBadgeSound(sound: string): void {
         fireAndForget(() => RpcApi.ElectronSystemBellCommand(TabRpcClient, { route: "electron" }));
         return;
     }
+    // Reject sounds with path components (security: prevent path traversal)
+    if (sound.includes("/") || sound.includes("\\") || sound.includes("..")) {
+        console.warn(`[badge] rejecting sound with path components: ${sound}`);
+        return;
+    }
     let audioPath: string;
     if (BUILTIN_SOUND_PRESETS.has(sound)) {
         audioPath = `/sounds/${sound}.mp3`;

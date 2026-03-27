@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -66,6 +67,13 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		resolvedSound = "system"
 	}
 
+	// Validate custom sound filename (no path traversal)
+	if resolvedSound != "" && resolvedSound != "system" {
+		if strings.Contains(resolvedSound, "/") || strings.Contains(resolvedSound, "\\") || strings.Contains(resolvedSound, "..") {
+			return fmt.Errorf("custom sound filename must not contain path separators or '..'")
+		}
+	}
+
 	oref, err := resolveBlockArg()
 	if err != nil {
 		return fmt.Errorf("resolving block: %v", err)
@@ -76,13 +84,14 @@ func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	var eventData baseds.BadgeEvent
 	eventData.ORef = oref.String()
-	eventData.Sound = resolvedSound
-	eventData.Border = badgeBorder
-	eventData.BorderColor = badgeBorderColor
 
 	if badgeClear {
 		eventData.Clear = true
 	} else {
+		eventData.Sound = resolvedSound
+		eventData.Border = badgeBorder
+		eventData.BorderColor = badgeBorderColor
+
 		icon := "circle-small"
 		if len(args) > 0 {
 			icon = args[0]
