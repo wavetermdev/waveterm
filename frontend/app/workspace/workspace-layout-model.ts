@@ -56,9 +56,7 @@ class WorkspaceLayoutModel {
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     private debouncedPersistAIWidth: () => void;
     private debouncedPersistVTabWidth: () => void;
-    private widgetsSidebarVisible: boolean;
-    widgetsSidebarVisibleAtom: jotai.PrimitiveAtom<boolean>;
-    private debouncedPersistWidgetsSidebarVisible: () => void;
+    widgetsSidebarVisibleAtom: jotai.Atom<boolean>;
 
     private constructor() {
         this.aiPanelRef = null;
@@ -74,8 +72,7 @@ class WorkspaceLayoutModel {
         this.vtabWidth = VTabBar_DefaultWidth;
         this.vtabVisible = false;
         this.panelVisibleAtom = jotai.atom(false);
-        this.widgetsSidebarVisible = true;
-        this.widgetsSidebarVisibleAtom = jotai.atom(true);
+        this.widgetsSidebarVisibleAtom = jotai.atom((get) => get(this.getWidgetsSidebarVisibleAtom()) ?? true);
         this.initializeFromMeta();
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
@@ -107,17 +104,6 @@ class WorkspaceLayoutModel {
                 });
             } catch (e) {
                 console.warn("Failed to persist vtabbar width:", e);
-            }
-        }, 300);
-
-        this.debouncedPersistWidgetsSidebarVisible = debounce(() => {
-            try {
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("workspace", this.getWorkspaceId()),
-                    meta: { "layout:widgetsvisible": this.widgetsSidebarVisible },
-                });
-            } catch (e) {
-                console.warn("Failed to persist widgets sidebar visibility:", e);
             }
         }, 300);
     }
@@ -169,11 +155,6 @@ class WorkspaceLayoutModel {
             }
             if (savedVTabWidth != null && savedVTabWidth > 0) {
                 this.vtabWidth = savedVTabWidth;
-            }
-            const savedWidgetsSidebarVisible = globalStore.get(this.getWidgetsSidebarVisibleAtom());
-            if (savedWidgetsSidebarVisible != null) {
-                this.widgetsSidebarVisible = savedWidgetsSidebarVisible;
-                globalStore.set(this.widgetsSidebarVisibleAtom, savedWidgetsSidebarVisible);
             }
             const tabBarPosition = globalStore.get(getSettingsKeyAtom("app:tabbar")) ?? "top";
             const showLeftTabBar = tabBarPosition === "left" && !isBuilderWindow();
@@ -378,14 +359,15 @@ class WorkspaceLayoutModel {
     }
 
     getWidgetsSidebarVisible(): boolean {
-        return this.widgetsSidebarVisible;
+        return globalStore.get(this.widgetsSidebarVisibleAtom);
     }
 
     setWidgetsSidebarVisible(visible: boolean): void {
-        if (this.widgetsSidebarVisible === visible) return;
-        this.widgetsSidebarVisible = visible;
-        globalStore.set(this.widgetsSidebarVisibleAtom, visible);
-        this.debouncedPersistWidgetsSidebarVisible();
+        if (globalStore.get(this.widgetsSidebarVisibleAtom) === visible) return;
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("workspace", this.getWorkspaceId()),
+            meta: { "layout:widgetsvisible": visible },
+        });
     }
 
     // ---- Initial percentage helpers (used by workspace.tsx for defaultSize) ----
