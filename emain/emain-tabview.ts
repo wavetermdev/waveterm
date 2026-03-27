@@ -12,6 +12,7 @@ import { setWasActive } from "./emain-activity";
 import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
 import {
     decreaseZoomLevel,
+    getWebviewKeys,
     handleCtrlShiftFocus,
     handleCtrlShiftState,
     increaseZoomLevel,
@@ -321,6 +322,20 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
             }
             tabView.webContents.send("webview-new-window", wc.id, details);
             return { action: "deny" };
+        });
+        wc.on("before-input-event", (e, input) => {
+            if (input.type != "keyDown") {
+                return;
+            }
+            const waveEvent = adaptFromElectronKeyEvent(input);
+            handleCtrlShiftState(tabView.webContents, waveEvent);
+            for (const keyDesc of getWebviewKeys()) {
+                if (checkKeyPressed(waveEvent, keyDesc)) {
+                    e.preventDefault();
+                    tabView.webContents.send("reinject-key", waveEvent);
+                    return;
+                }
+            }
         });
     });
     tabView.webContents.on("before-input-event", (e, input) => {
