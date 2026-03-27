@@ -51,7 +51,7 @@ type ChordActionDef = {
     handler: KeyHandler;
 };
 
-type KeyMapEntry<T = KeyHandler> = { key: string; handler: T };
+type KeyMapEntry<T = KeyHandler> = { key: string; handler: T | null };
 type ChordEntry = { key: string; subKeys: KeyMapEntry[] };
 
 const simpleControlShiftAtom = jotai.atom(false);
@@ -442,10 +442,14 @@ async function handleSplitVertical(position: "before" | "after") {
 let lastHandledEvent: KeyboardEvent | null = null;
 
 // returns [keymatch, T] — iterates in reverse so later entries (user overrides) win
+// a null handler means the key was explicitly unbound (via -command)
 function checkKeyArray<T>(waveEvent: WaveKeyboardEvent, entries: KeyMapEntry<T>[]): [string, T] {
     for (let i = entries.length - 1; i >= 0; i--) {
         const entry = entries[i];
         if (keyutil.checkKeyPressed(waveEvent, entry.key)) {
+            if (entry.handler == null) {
+                return [null, null]; // unbound
+            }
             return [entry.key, entry.handler];
         }
     }
@@ -910,9 +914,28 @@ function buildKeyMaps(userOverrides: KeybindingEntry[]): void {
             console.warn(`Skipping keybinding entry with invalid key type for command: ${override.command}`);
             continue;
         }
+        // Handle -command unbinding (VSCode convention)
+        if (override.command.startsWith("-")) {
+            const commandId = override.command.substring(1);
+            const action = defaultActions.find((a) => a.id === commandId);
+            if (action) {
+                // Append null-handler entries for all default keys to shadow them
+                for (const key of action.defaultKeys) {
+                    bindings.push({ key, handler: null });
+                }
+            }
+            continue;
+        }
         const commandId = override.command;
         if (override.key == null) {
-            continue; // null key = no binding, handled by reverse iteration skipping
+            // null key = unbind all default keys for this command
+            const action = defaultActions.find((a) => a.id === commandId);
+            if (action) {
+                for (const key of action.defaultKeys) {
+                    bindings.push({ key, handler: null });
+                }
+            }
+            continue;
         }
         const handler = actionHandlers.get(commandId);
         if (handler) {

@@ -14,7 +14,7 @@
       },
       "command": {
         "type": "string",
-        "description": "Action ID to bind.",
+        "description": "Action ID to bind. Prefix with '-' to unbind all default keys for that action.",
         "enum": [
           "tab:new", "tab:close", "tab:prev", "tab:next",
           "tab:switchto1", "tab:switchto2", "tab:switchto3", "tab:switchto4", "tab:switchto5",
@@ -29,7 +29,21 @@
           "block:splitchord", "block:splitchordup", "block:splitchorddown", "block:splitchordleft", "block:splitchordright",
           "app:search", "app:openconnection", "app:toggleaipanel", "app:togglewidgetssidebar",
           "term:togglemultiinput",
-          "generic:cancel"
+          "generic:cancel",
+          "-tab:new", "-tab:close", "-tab:prev", "-tab:next",
+          "-tab:switchto1", "-tab:switchto2", "-tab:switchto3", "-tab:switchto4", "-tab:switchto5",
+          "-tab:switchto6", "-tab:switchto7", "-tab:switchto8", "-tab:switchto9",
+          "-block:new", "-block:close", "-block:splitright", "-block:splitdown",
+          "-block:magnify", "-block:refocus",
+          "-block:navup", "-block:navdown", "-block:navleft", "-block:navright",
+          "-block:focusnext", "-block:focusprev",
+          "-block:switchto1", "-block:switchto2", "-block:switchto3", "-block:switchto4", "-block:switchto5",
+          "-block:switchto6", "-block:switchto7", "-block:switchto8", "-block:switchto9", "-block:switchtoai",
+          "-block:replacewithlauncher",
+          "-block:splitchord", "-block:splitchordup", "-block:splitchorddown", "-block:splitchordleft", "-block:splitchordright",
+          "-app:search", "-app:openconnection", "-app:toggleaipanel", "-app:togglewidgetssidebar",
+          "-term:togglemultiinput",
+          "-generic:cancel"
         ]
       }
     },

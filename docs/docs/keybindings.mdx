@@ -133,6 +133,13 @@ Key combinations use colon-separated format:
 **Disable a keybinding:** Remove <Kbd k="Cmd:w"/> close block:
 ```json
 [
+  { "command": "-block:close" }
+]
+```
+
+You can also set `key` to `null` to unbind:
+```json
+[
   { "key": null, "command": "block:close" }
 ]
 ```
