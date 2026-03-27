@@ -1,0 +1,658 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+$line-numbers-width: 40px;
+
+.code-editor-widget {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--block-bg-color, #0f0f12);
+    color: var(--main-text-color, #e2e8f0);
+    font-size: 12px;
+    overflow: hidden;
+
+    // ── header bar ────────────────────────────────────────────────────────────
+
+    &__header-bar {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px 6px;
+        border-bottom: 1px solid rgba(6, 182, 212, 0.25);
+        background: rgba(6, 182, 212, 0.07);
+        flex-shrink: 0;
+    }
+
+    &__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    &__title-icon {
+        font-size: 16px;
+    }
+
+    &__title-sub {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.65);
+        font-weight: 400;
+    }
+
+    // ── tabs ──────────────────────────────────────────────────────────────────
+
+    &__tabs {
+        display: flex;
+        gap: 2px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        flex-shrink: 0;
+    }
+
+    &__tab {
+        padding: 4px 12px;
+        border: none;
+        background: transparent;
+        color: rgba(148, 163, 184, 0.7);
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 11px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(6, 182, 212, 0.14);
+            color: #e2e8f0;
+        }
+
+        &.active {
+            background: rgba(6, 182, 212, 0.28);
+            color: #67e8f9;
+            font-weight: 600;
+        }
+    }
+
+    // ── body / scroll ─────────────────────────────────────────────────────────
+
+    &__body {
+        flex: 1;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(6, 182, 212, 0.3) transparent;
+        display: flex;
+        flex-direction: column;
+    }
+
+    &__tab-content {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1;
+    }
+
+    // ── editor toolbar ────────────────────────────────────────────────────────
+
+    &__editor-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    &__select {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        color: #e2e8f0;
+        font-size: 11px;
+        padding: 3px 6px;
+        cursor: pointer;
+        outline: none;
+
+        &:focus {
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+
+        option {
+            background: #1a1a22;
+        }
+    }
+
+    &__filename-input {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        color: #e2e8f0;
+        font-size: 11px;
+        padding: 3px 8px;
+        font-family: monospace;
+        width: 140px;
+        outline: none;
+
+        &:focus {
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+    }
+
+    &__toolbar-spacer {
+        flex: 1;
+    }
+
+    // ── buttons ───────────────────────────────────────────────────────────────
+
+    &__btn {
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: #e2e8f0;
+        transition: all 0.15s;
+
+        &:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        &:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        &--run {
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #86efac;
+
+            &:hover:not(:disabled) {
+                background: rgba(34, 197, 94, 0.18);
+            }
+        }
+
+        &--save {
+            border-color: rgba(6, 182, 212, 0.4);
+            color: #67e8f9;
+
+            &:hover {
+                background: rgba(6, 182, 212, 0.14);
+            }
+        }
+
+        &--primary {
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(6, 182, 212, 0.18);
+            color: #67e8f9;
+
+            &:hover:not(:disabled) {
+                background: rgba(6, 182, 212, 0.28);
+            }
+        }
+
+        &--sm {
+            padding: 2px 8px;
+            font-size: 10px;
+        }
+    }
+
+    // ── code area ─────────────────────────────────────────────────────────────
+
+    &__code-area {
+        position: relative;
+        display: flex;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+        background: #0d0d14;
+        flex: 1;
+        min-height: 240px;
+        max-height: 380px;
+    }
+
+    &__line-numbers {
+        display: flex;
+        flex-direction: column;
+        padding: 10px 6px 10px 8px;
+        background: rgba(255, 255, 255, 0.02);
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        user-select: none;
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    &__line-num {
+        font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        color: rgba(148, 163, 184, 0.3);
+        min-width: 22px;
+    }
+
+    &__highlight-layer {
+        position: absolute;
+        top: 0;
+        left: $line-numbers-width;
+        right: 0;
+        bottom: 0;
+        padding: 10px 10px 10px 12px;
+        pointer-events: none;
+        font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-all;
+        overflow: hidden;
+        color: #e2e8f0;
+    }
+
+    &__hl-line {
+        min-height: 1.6em;
+    }
+
+    &__textarea {
+        position: absolute;
+        top: 0;
+        left: $line-numbers-width;
+        right: 0;
+        bottom: 0;
+        padding: 10px 10px 10px 12px;
+        background: transparent;
+        border: none;
+        outline: none;
+        resize: none;
+        font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        color: transparent;
+        caret-color: #67e8f9;
+        white-space: pre;
+        overflow: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(6, 182, 212, 0.2) transparent;
+    }
+
+    // ── syntax colors ─────────────────────────────────────────────────────────
+
+    .syntax-keyword {
+        color: #60a5fa;
+        font-weight: 600;
+    }
+
+    .syntax-string {
+        color: #4ade80;
+    }
+
+    .syntax-number {
+        color: #fbbf24;
+    }
+
+    .syntax-comment {
+        color: #64748b;
+        font-style: italic;
+    }
+
+    // ── output pane ───────────────────────────────────────────────────────────
+
+    &__output-pane {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        background: #080810;
+        flex-shrink: 0;
+    }
+
+    &__output-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 10px;
+        font-weight: 600;
+        color: rgba(148, 163, 184, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    &__spinner {
+        color: #06b6d4;
+        animation: ce-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes ce-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.2; }
+    }
+
+    &__output-text {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        padding: 8px 10px;
+        margin: 0;
+        white-space: pre-wrap;
+        color: #a3e635;
+        min-height: 60px;
+    }
+
+    // ── sections ──────────────────────────────────────────────────────────────
+
+    &__section {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    &__section-header {
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(148, 163, 184, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 8px;
+    }
+
+    // ── AI prompt ─────────────────────────────────────────────────────────────
+
+    &__ai-prompt-row {
+        display: flex;
+        gap: 6px;
+    }
+
+    &__ai-prompt-input {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        color: #e2e8f0;
+        font-size: 11px;
+        padding: 4px 8px;
+        outline: none;
+
+        &:focus {
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+
+        &::placeholder {
+            color: rgba(148, 163, 184, 0.4);
+        }
+    }
+
+    // ── context summary ───────────────────────────────────────────────────────
+
+    &__context-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__context-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 3px 6px;
+        border-radius: 4px;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+    }
+
+    &__context-key {
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.6);
+        min-width: 130px;
+        flex-shrink: 0;
+    }
+
+    &__context-val {
+        font-size: 11px;
+        color: #e2e8f0;
+        font-family: monospace;
+    }
+
+    // ── AI suggestions ────────────────────────────────────────────────────────
+
+    &__suggestions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__suggestion-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 6px;
+        padding: 8px 10px;
+        border-left: 3px solid rgba(6, 182, 212, 0.5);
+    }
+
+    &__suggestion-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    &__suggestion-desc {
+        font-size: 11px;
+        color: #e2e8f0;
+        flex: 1;
+    }
+
+    &__suggestion-actions {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    &__diff-preview {
+        margin-top: 6px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        padding-top: 6px;
+    }
+
+    &__diff-code {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 10px;
+        line-height: 1.6;
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.05);
+        border: 1px solid rgba(34, 197, 94, 0.15);
+        border-radius: 4px;
+        padding: 6px 8px;
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    // ── file tree ─────────────────────────────────────────────────────────────
+
+    &__files-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    &__search-input {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        color: #e2e8f0;
+        font-size: 11px;
+        padding: 3px 8px;
+        outline: none;
+
+        &:focus {
+            border-color: rgba(6, 182, 212, 0.5);
+        }
+
+        &::placeholder {
+            color: rgba(148, 163, 184, 0.4);
+        }
+    }
+
+    &__file-tree {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 6px;
+        padding: 6px 0;
+    }
+
+    &__file-node {
+        // Container, no extra styles needed
+    }
+
+    &__file-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 11px;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        &.active {
+            background: rgba(6, 182, 212, 0.18);
+            color: #67e8f9;
+        }
+    }
+
+    &__file-icon {
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    &__file-name {
+        color: #e2e8f0;
+    }
+
+    // ── metrics stats row ─────────────────────────────────────────────────────
+
+    &__stat-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    &__stat-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 8px 10px;
+    }
+
+    &__stat-label {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.6);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    &__stat-value {
+        font-size: 15px;
+        font-weight: 700;
+        color: #67e8f9;
+    }
+
+    // ── language breakdown chart ──────────────────────────────────────────────
+
+    &__lang-chart {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__lang-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+    }
+
+    &__lang-name {
+        min-width: 80px;
+        color: rgba(148, 163, 184, 0.8);
+    }
+
+    &__lang-bar-bg {
+        flex: 1;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    &__lang-bar-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.4s ease;
+    }
+
+    &__lang-pct {
+        min-width: 30px;
+        text-align: right;
+        color: rgba(148, 163, 184, 0.6);
+        font-size: 10px;
+    }
+
+    // ── execution history table ───────────────────────────────────────────────
+
+    &__history-table {
+        // container
+    }
+
+    &__history-header,
+    &__history-row {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr 0.7fr 0.9fr 0.9fr;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+
+    &__history-header {
+        color: rgba(148, 163, 184, 0.5);
+        font-size: 10px;
+        text-transform: uppercase;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: 2px;
+    }
+
+    &__history-row {
+        border-radius: 4px;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+    }
+
+    &__lang-badge {
+        padding: 1px 5px;
+        background: rgba(6, 182, 212, 0.15);
+        border: 1px solid rgba(6, 182, 212, 0.3);
+        border-radius: 3px;
+        color: #67e8f9;
+        font-size: 10px;
+        display: inline-block;
+    }
+
+    &__exit-ok {
+        color: #22c55e;
+        font-weight: 600;
+    }
+
+    &__exit-err {
+        color: #ef4444;
+        font-weight: 600;
+    }
+}

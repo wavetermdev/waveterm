@@ -908,3 +908,41 @@ type FocusedBlockData struct {
 	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
 	TermLastCommand            string              `json:"termlastcommand,omitempty"`
 }
+
+// ---- Financial data types (databus) -----------------------------------------
+
+// PriceTickerData is published on the WPS Event_PriceTicker event.
+// It carries the latest mid price for a single symbol from a data source.
+type PriceTickerData struct {
+	Symbol string  `json:"symbol"`
+	Price  float64 `json:"price"`
+	Source string  `json:"source"`
+	Ts     int64   `json:"ts"`
+}
+
+// OhlcvCandle is a single OHLCV candle (e.g. from Hyperliquid candleSnapshot).
+type OhlcvCandle struct {
+	OpenTime  int64  `json:"t"`
+	CloseTime int64  `json:"T"`
+	Symbol    string `json:"s"`
+	Interval  string `json:"i"`
+	Open      string `json:"o"`
+	Close     string `json:"c"`
+	High      string `json:"h"`
+	Low       string `json:"l"`
+	Volume    string `json:"v"`
+	NumTrades int    `json:"n"`
+}
+
+// OhlcvUpdateData is published on the WPS Event_OhlcvUpdate event.
+type OhlcvUpdateData struct {
+	Symbol  string        `json:"symbol"`
+	Candles []OhlcvCandle `json:"candles"`
+}
+
+// HyperliquidSymbol describes a single tradable perpetual on Hyperliquid.
+type HyperliquidSymbol struct {
+	Name        string `json:"name"`
+	SzDecimals  int    `json:"szDecimals"`
+	MaxLeverage int    `json:"maxLeverage"`
+}

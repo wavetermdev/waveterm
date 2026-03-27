@@ -34,6 +34,9 @@ const (
 	Event_AIModeConfig        = "waveai:modeconfig"    // type: wconfig.AIModeConfigUpdate
 	Event_BlockJobStatus      = "block:jobstatus"      // type: wshrpc.BlockJobStatusData
 	Event_Badge               = "badge"                // type: baseds.BadgeEvent
+	// Financial data events (databus)
+	Event_PriceTicker = "price:ticker" // type: wshrpc.PriceTickerData
+	Event_OhlcvUpdate = "price:ohlcv"  // type: wshrpc.OhlcvUpdateData
 )
 
 var AllEvents []string = []string{
@@ -56,6 +59,8 @@ var AllEvents []string = []string{
 	Event_AIModeConfig,
 	Event_BlockJobStatus,
 	Event_Badge,
+	Event_PriceTicker,
+	Event_OhlcvUpdate,
 }
 
 type WaveEvent struct {

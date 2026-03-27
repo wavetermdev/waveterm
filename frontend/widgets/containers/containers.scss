@@ -1,0 +1,630 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.containers-widget {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--block-bg-color, #0f0f12);
+    color: var(--main-text-color, #e2e8f0);
+    font-size: 12px;
+    overflow: hidden;
+
+    &__header-bar {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px 6px;
+        border-bottom: 1px solid rgba(13, 183, 237, 0.25);
+        background: rgba(13, 183, 237, 0.07);
+    }
+
+    &__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    &__icon {
+        font-size: 16px;
+    }
+
+    &__subtitle {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.7);
+        font-weight: 400;
+    }
+
+    &__tabs {
+        display: flex;
+        gap: 2px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    &__tab {
+        padding: 4px 12px;
+        border: none;
+        background: transparent;
+        color: rgba(148, 163, 184, 0.7);
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 11px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(13, 183, 237, 0.12);
+            color: #e2e8f0;
+        }
+
+        &--active {
+            background: rgba(13, 183, 237, 0.25);
+            color: #7dd3fc;
+            font-weight: 600;
+        }
+    }
+
+    &__body {
+        flex: 1;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(13, 183, 237, 0.3) transparent;
+    }
+
+    &__tab-content {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    // ── Toolbar ──────────────────────────────────────────────────────────────
+    &__toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    &__search {
+        flex: 1;
+        min-width: 120px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        padding: 4px 8px;
+        color: #e2e8f0;
+        font-size: 11px;
+        outline: none;
+
+        &::placeholder {
+            color: rgba(148, 163, 184, 0.4);
+        }
+
+        &:focus {
+            border-color: rgba(13, 183, 237, 0.5);
+        }
+    }
+
+    &__select {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 6px;
+        padding: 4px 8px;
+        color: #e2e8f0;
+        font-size: 11px;
+        outline: none;
+        cursor: pointer;
+
+        &:focus {
+            border-color: rgba(13, 183, 237, 0.5);
+        }
+
+        option {
+            background: #1e1e2a;
+        }
+    }
+
+    &__btn {
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(148, 163, 184, 0.85);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+        }
+
+        &--primary {
+            background: rgba(13, 183, 237, 0.2);
+            border-color: rgba(13, 183, 237, 0.45);
+            color: #7dd3fc;
+
+            &:hover {
+                background: rgba(13, 183, 237, 0.35);
+                color: #bae6fd;
+            }
+        }
+    }
+
+    &__toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.75);
+        cursor: pointer;
+        user-select: none;
+    }
+
+    &__line-count {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.45);
+        margin-left: auto;
+    }
+
+    // ── Section ───────────────────────────────────────────────────────────────
+    &__section {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    &__section-header {
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(148, 163, 184, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 8px;
+    }
+
+    // ── Containers table ──────────────────────────────────────────────────────
+    &__table-header,
+    &__table-row {
+        display: grid;
+        grid-template-columns: 1.4fr 1.5fr 0.8fr 0.5fr 0.6fr 1fr 0.4fr 1fr;
+        gap: 6px;
+        align-items: center;
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+
+    &__table-header {
+        color: rgba(148, 163, 184, 0.5);
+        font-size: 10px;
+        text-transform: uppercase;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: 2px;
+    }
+
+    &__table-row {
+        border-radius: 4px;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+    }
+
+    &__container-name {
+        font-weight: 600;
+        color: #7dd3fc;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &__container-image {
+        font-family: monospace;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.7);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &__cpu {
+        font-family: monospace;
+
+        &--high {
+            color: #f59e0b;
+        }
+    }
+
+    &__ports {
+        font-family: monospace;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.7);
+    }
+
+    &__age {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+    }
+
+    &__empty {
+        text-align: center;
+        padding: 16px;
+        color: rgba(148, 163, 184, 0.4);
+        font-size: 11px;
+    }
+
+    // ── Status badge ──────────────────────────────────────────────────────────
+    &__status-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: lowercase;
+
+        &--running {
+            background: rgba(34, 197, 94, 0.18);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        &--stopped {
+            background: rgba(100, 116, 139, 0.18);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        &--error {
+            background: rgba(239, 68, 68, 0.18);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    }
+
+    // ── Action buttons ────────────────────────────────────────────────────────
+    &__actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    &__action-btn {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(148, 163, 184, 0.7);
+        font-size: 11px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+
+        &:hover {
+            color: #e2e8f0;
+        }
+
+        &--start:hover {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
+            color: #22c55e;
+        }
+
+        &--stop:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        &--restart:hover {
+            background: rgba(13, 183, 237, 0.2);
+            border-color: rgba(13, 183, 237, 0.4);
+            color: #7dd3fc;
+        }
+
+        &--remove:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #ef4444;
+        }
+    }
+
+    // ── Logs ──────────────────────────────────────────────────────────────────
+    &__log-pane {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 6px;
+        padding: 8px;
+        height: 300px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 11px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(13, 183, 237, 0.2) transparent;
+    }
+
+    &__log-line {
+        display: flex;
+        gap: 8px;
+        padding: 1px 0;
+        line-height: 1.5;
+
+        &--info .containers-widget__log-level {
+            color: #38bdf8;
+        }
+
+        &--warn {
+            background: rgba(245, 158, 11, 0.05);
+
+            .containers-widget__log-level {
+                color: #f59e0b;
+            }
+
+            .containers-widget__log-msg {
+                color: #fcd34d;
+            }
+        }
+
+        &--error {
+            background: rgba(239, 68, 68, 0.07);
+
+            .containers-widget__log-level {
+                color: #ef4444;
+            }
+
+            .containers-widget__log-msg {
+                color: #fca5a5;
+            }
+        }
+    }
+
+    &__log-ts {
+        color: rgba(148, 163, 184, 0.4);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    &__log-level {
+        font-weight: 700;
+        min-width: 38px;
+        flex-shrink: 0;
+    }
+
+    &__log-msg {
+        color: rgba(226, 232, 240, 0.85);
+        word-break: break-word;
+    }
+
+    // ── Metrics ───────────────────────────────────────────────────────────────
+    &__stat-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    &__stat-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 8px 10px;
+
+        .containers-widget__stat-label {
+            font-size: 10px;
+            color: rgba(148, 163, 184, 0.6);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .containers-widget__stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #e2e8f0;
+
+            &--green {
+                color: #22c55e;
+            }
+        }
+    }
+
+    &__cpu-sparkline {
+        width: 100%;
+        height: 60px;
+        border-radius: 4px;
+        display: block;
+    }
+
+    &__metric-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+        font-size: 11px;
+    }
+
+    &__metric-label {
+        color: rgba(148, 163, 184, 0.6);
+    }
+
+    &__metric-val {
+        font-weight: 700;
+        font-family: monospace;
+
+        &--ok {
+            color: #22c55e;
+        }
+
+        &--warn {
+            color: #f59e0b;
+        }
+    }
+
+    &__mem-bar-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__mem-bar-bg {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    &__mem-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #0db7ed, #0ea5e9);
+        border-radius: 4px;
+        transition: width 0.5s;
+    }
+
+    &__mem-label {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.6);
+        font-family: monospace;
+    }
+
+    &__io-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    &__io-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    &__io-label {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    &__io-val {
+        font-size: 13px;
+        font-weight: 700;
+        font-family: monospace;
+        color: #7dd3fc;
+    }
+
+    // ── Shell ─────────────────────────────────────────────────────────────────
+    &__quick-cmds {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    &__quick-btn {
+        padding: 3px 10px;
+        border: 1px solid rgba(13, 183, 237, 0.3);
+        background: rgba(13, 183, 237, 0.08);
+        color: #7dd3fc;
+        border-radius: 6px;
+        font-size: 11px;
+        font-family: monospace;
+        cursor: pointer;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(13, 183, 237, 0.22);
+            border-color: rgba(13, 183, 237, 0.55);
+            color: #bae6fd;
+        }
+    }
+
+    &__shell-input-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        padding: 4px 8px;
+    }
+
+    &__shell-prompt {
+        color: #0db7ed;
+        font-family: monospace;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    &__shell-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #e2e8f0;
+        font-family: monospace;
+        font-size: 12px;
+        outline: none;
+
+        &::placeholder {
+            color: rgba(148, 163, 184, 0.3);
+        }
+    }
+
+    &__shell-output {
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 6px;
+        padding: 8px 10px;
+        height: 200px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(13, 183, 237, 0.2) transparent;
+
+        pre {
+            margin: 0;
+            font-family: monospace;
+            font-size: 11px;
+            color: rgba(226, 232, 240, 0.85);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    }
+
+    &__history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    &__history-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 3px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+
+        &:hover {
+            background: rgba(13, 183, 237, 0.1);
+        }
+    }
+
+    &__history-cmd {
+        font-family: monospace;
+        font-size: 11px;
+        color: #7dd3fc;
+    }
+
+    &__history-time {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.4);
+    }
+
+    // ── Header text atom styles ───────────────────────────────────────────────
+    .widget-containers-status {
+        font-size: 11px;
+        font-weight: 600;
+        color: #22c55e;
+    }
+}

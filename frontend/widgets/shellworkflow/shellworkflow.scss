@@ -1,0 +1,659 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.shellworkflow-widget {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--block-bg-color, #0f0f12);
+    color: var(--main-text-color, #e2e8f0);
+    font-size: 12px;
+    overflow: hidden;
+
+    &__header-bar {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px 6px;
+        border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.06);
+    }
+
+    &__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 13px;
+
+        &-icon {
+            font-size: 16px;
+            color: #22c55e;
+        }
+
+        &-sub {
+            font-size: 10px;
+            color: rgba(148, 163, 184, 0.6);
+            font-weight: 400;
+        }
+    }
+
+    &__tabs {
+        display: flex;
+        gap: 2px;
+        padding: 4px 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    &__tab {
+        padding: 4px 12px;
+        border: none;
+        background: transparent;
+        color: rgba(148, 163, 184, 0.7);
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 11px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(34, 197, 94, 0.12);
+            color: #e2e8f0;
+        }
+
+        &--active {
+            background: rgba(34, 197, 94, 0.22);
+            color: #86efac;
+            font-weight: 600;
+        }
+    }
+
+    &__body {
+        flex: 1;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(34, 197, 94, 0.25) transparent;
+    }
+
+    &__tab-content {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        &--empty {
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(148, 163, 184, 0.5);
+            font-size: 12px;
+        }
+    }
+
+    &__section {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    &__section-header {
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(148, 163, 184, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    &__header-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+    &__action-btn {
+        padding: 3px 10px;
+        border: 1px solid rgba(34, 197, 94, 0.35);
+        background: transparent;
+        color: #86efac;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 10px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(34, 197, 94, 0.18);
+            border-color: #22c55e;
+        }
+
+        &--primary {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: #22c55e;
+            color: #4ade80;
+            font-weight: 600;
+
+            &:hover {
+                background: rgba(34, 197, 94, 0.35);
+            }
+        }
+    }
+
+    // ---- Workflow list ----
+
+    &__workflow-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__workflow-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 6px;
+        padding: 8px 10px;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+
+        &:hover {
+            background: rgba(34, 197, 94, 0.05);
+            border-color: rgba(34, 197, 94, 0.25);
+        }
+
+        &--selected {
+            border-color: rgba(34, 197, 94, 0.5);
+            background: rgba(34, 197, 94, 0.07);
+        }
+    }
+
+    &__workflow-card-header {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 4px;
+    }
+
+    &__workflow-name {
+        font-weight: 600;
+        font-size: 12px;
+        color: #e2e8f0;
+        flex: 1;
+    }
+
+    &__workflow-desc {
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.6);
+        margin-bottom: 4px;
+    }
+
+    &__workflow-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+    }
+
+    &__wf-badge {
+        padding: 1px 7px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+
+        &--idle {
+            background: rgba(148, 163, 184, 0.12);
+            color: rgba(148, 163, 184, 0.7);
+        }
+
+        &--running {
+            background: rgba(234, 179, 8, 0.18);
+            color: #fbbf24;
+        }
+
+        &--success {
+            background: rgba(34, 197, 94, 0.18);
+            color: #22c55e;
+        }
+
+        &--error {
+            background: rgba(239, 68, 68, 0.18);
+            color: #ef4444;
+        }
+    }
+
+    &__delete-btn {
+        border: none;
+        background: transparent;
+        color: rgba(148, 163, 184, 0.4);
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 2px;
+        border-radius: 3px;
+        transition: color 0.15s, background 0.15s;
+
+        &:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.12);
+        }
+    }
+
+    // ---- Steps ----
+
+    &__steps-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__step-wrapper {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    &__step-index {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+        margin-top: 8px;
+    }
+
+    &__step {
+        flex: 1;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        overflow: hidden;
+        transition: border-color 0.15s;
+
+        &--pending {
+            border-left: 3px solid rgba(148, 163, 184, 0.3);
+        }
+
+        &--running {
+            border-left: 3px solid #fbbf24;
+            background: rgba(234, 179, 8, 0.04);
+        }
+
+        &--success {
+            border-left: 3px solid #22c55e;
+        }
+
+        &--error {
+            border-left: 3px solid #ef4444;
+            background: rgba(239, 68, 68, 0.04);
+        }
+    }
+
+    &__step-header {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        cursor: pointer;
+        user-select: none;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+    }
+
+    &__step-name {
+        flex: 1;
+        font-size: 12px;
+        font-weight: 500;
+        color: #e2e8f0;
+    }
+
+    &__step-chevron {
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.5);
+    }
+
+    &__step-body {
+        padding: 0 10px 10px 10px;
+    }
+
+    // ---- Step type badge ----
+
+    &__type-badge {
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+
+        &--shell {
+            background: rgba(99, 102, 241, 0.18);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        &--python {
+            background: rgba(234, 179, 8, 0.15);
+            color: #fde68a;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+
+        &--http {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        &--condition {
+            background: rgba(244, 114, 182, 0.15);
+            color: #f9a8d4;
+            border: 1px solid rgba(244, 114, 182, 0.3);
+        }
+    }
+
+    // ---- Run button ----
+
+    &__run-btn {
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        background: transparent;
+        color: #22c55e;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        padding: 2px 6px;
+        line-height: 1;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(34, 197, 94, 0.2);
+        }
+    }
+
+    // ---- Code block ----
+
+    &__code-block {
+        margin: 0;
+        padding: 8px 10px;
+        background: #0a0a0d;
+        border: 1px solid rgba(34, 197, 94, 0.15);
+        border-radius: 5px;
+        font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+        font-size: 11px;
+        color: #a3e635;
+        white-space: pre-wrap;
+        word-break: break-all;
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.08);
+        line-height: 1.5;
+    }
+
+    // ---- Status dot ----
+
+    &__status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: inline-block;
+
+        &--pending {
+            background: rgba(148, 163, 184, 0.4);
+        }
+
+        &--running {
+            background: #fbbf24;
+            box-shadow: 0 0 5px rgba(251, 191, 36, 0.7);
+            animation: shellworkflow-pulse 1s infinite;
+        }
+
+        &--success {
+            background: #22c55e;
+        }
+
+        &--error {
+            background: #ef4444;
+        }
+
+        &--idle {
+            background: rgba(148, 163, 184, 0.4);
+        }
+    }
+
+    // ---- Output ----
+
+    &__output-list {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    &__output-entry {
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        overflow: hidden;
+
+        &--success {
+            border-left: 3px solid #22c55e;
+        }
+
+        &--error {
+            border-left: 3px solid #ef4444;
+        }
+
+        &--running {
+            border-left: 3px solid #fbbf24;
+        }
+    }
+
+    &__output-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+        user-select: none;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+    }
+
+    &__output-step {
+        font-weight: 600;
+        font-size: 12px;
+        color: #e2e8f0;
+        flex: 0 0 auto;
+        max-width: 130px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__output-wf {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__output-time {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.5);
+        flex-shrink: 0;
+    }
+
+    &__output-dur {
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.6);
+        flex-shrink: 0;
+        min-width: 40px;
+        text-align: right;
+    }
+
+    &__output-exit {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 5px;
+        border-radius: 3px;
+        flex-shrink: 0;
+
+        &--ok {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        &--err {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+    }
+
+    &__output-stdout {
+        margin: 0;
+        padding: 8px 12px;
+        background: #0a0a0d;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 11px;
+        color: #94a3b8;
+        white-space: pre-wrap;
+        word-break: break-all;
+        line-height: 1.5;
+        max-height: 160px;
+        overflow-y: auto;
+    }
+
+    &__empty-state {
+        text-align: center;
+        padding: 24px;
+        color: rgba(148, 163, 184, 0.4);
+        font-size: 12px;
+    }
+
+    // ---- Variables ----
+
+    &__var-table-header {
+        display: grid;
+        grid-template-columns: 1.1fr 1.4fr 1.6fr 60px;
+        gap: 8px;
+        padding: 4px 8px;
+        font-size: 10px;
+        color: rgba(148, 163, 184, 0.45);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: 4px;
+    }
+
+    &__var-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    &__var-row {
+        display: grid;
+        grid-template-columns: 1.1fr 1.4fr 1.6fr 60px;
+        gap: 8px;
+        align-items: center;
+        padding: 5px 8px;
+        border-radius: 4px;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+    }
+
+    &__var-name {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 11px;
+        color: #86efac;
+        font-weight: 600;
+    }
+
+    &__var-value {
+        font-family: "JetBrains Mono", "Fira Code", monospace;
+        font-size: 11px;
+        color: #94a3b8;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__var-masked-icon {
+        font-size: 10px;
+    }
+
+    &__var-desc {
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.5);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__var-actions {
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+    }
+
+    &__icon-btn {
+        border: none;
+        background: transparent;
+        color: rgba(148, 163, 184, 0.5);
+        cursor: pointer;
+        font-size: 12px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: all 0.15s;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: #e2e8f0;
+        }
+
+        &--danger {
+            &:hover {
+                background: rgba(239, 68, 68, 0.12);
+                color: #ef4444;
+            }
+        }
+    }
+
+    &__var-hint {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: rgba(34, 197, 94, 0.06);
+        border: 1px solid rgba(34, 197, 94, 0.15);
+        border-radius: 5px;
+        font-size: 11px;
+        color: rgba(148, 163, 184, 0.6);
+
+        code {
+            font-family: "JetBrains Mono", "Fira Code", monospace;
+            color: #86efac;
+            background: rgba(34, 197, 94, 0.1);
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+    }
+}
+
+@keyframes shellworkflow-pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.85);
+    }
+}
