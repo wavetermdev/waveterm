@@ -15,17 +15,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// darwinStatStatus maps P_stat from ExternProc to a human-readable name.
-// Values from sys/proc.h: SIDL=1, SRUN=2, SSLEEP=3, SSTOP=4, SZOMB=5, SDEAD=6.
-var darwinStatStatus = map[int8]string{
-	1: "idle",
-	2: "running",
-	3: "sleeping",
-	4: "stopped",
-	5: "zombie",
-	6: "dead",
-}
-
 const (
 	systemLibPath   = "/usr/lib/libSystem.B.dylib"
 	procPidInfoSym  = "proc_pidinfo"
@@ -92,16 +81,10 @@ func GetProcInfo(ctx context.Context, _ any, pid int32) (*ProcInfo, error) {
 		return nil, fmt.Errorf("procinfo: SysctlKinfoProc pid %d: %w", pid, err)
 	}
 
-	status, ok := darwinStatStatus[k.Proc.P_stat]
-	if !ok {
-		status = "unknown"
-	}
-
 	info := &ProcInfo{
 		Pid:     int32(k.Proc.P_pid),
 		Ppid:    k.Eproc.Ppid,
 		Command: unix.ByteSliceToString(k.Proc.P_comm[:]),
-		Status:  status,
 		Uid:     k.Eproc.Ucred.Uid,
 	}
 

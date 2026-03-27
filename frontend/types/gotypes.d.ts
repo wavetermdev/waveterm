@@ -1279,7 +1279,7 @@ declare global {
         summary: ProcessSummary;
         ts: number;
         hascpu?: boolean;
-        iswindows?: boolean;
+        platform?: string;
         totalcount?: number;
         filteredcount?: number;
     };

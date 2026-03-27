@@ -940,7 +940,7 @@ type ProcessListResponse struct {
 	Summary       ProcessSummary `json:"summary"`
 	Ts            int64          `json:"ts"`
 	HasCPU        bool           `json:"hascpu,omitempty"`
-	IsWindows     bool           `json:"iswindows,omitempty"`
+	Platform      string         `json:"platform,omitempty"`
 	TotalCount    int            `json:"totalcount,omitempty"`
 	FilteredCount int            `json:"filteredcount,omitempty"`
 }

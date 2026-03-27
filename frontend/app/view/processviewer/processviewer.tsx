@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Tooltip } from "@/app/element/tooltip";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { MetaKeyAtomFnType, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
@@ -212,26 +213,25 @@ type ColDef = {
     tooltip?: string;
     width: string;
     align?: "right";
-    hideOnWindows?: boolean;
+    hideOnPlatform?: string[];
 };
 
 const Columns: ColDef[] = [
     { key: "pid", label: "PID", width: "70px", align: "right" },
     { key: "command", label: "Command", width: "minmax(120px, 4fr)" },
-    { key: "status", label: "Status", width: "75px", hideOnWindows: true },
+    { key: "status", label: "Status", width: "75px", hideOnPlatform: ["windows", "darwin"] },
     { key: "user", label: "User", width: "80px" },
-    { key: "threads", label: "NT", tooltip: "Num Threads", width: "55px", align: "right", hideOnWindows: true },
+    { key: "threads", label: "NT", tooltip: "Num Threads", width: "55px", align: "right", hideOnPlatform: ["windows"] },
     { key: "cpu", label: "CPU%", width: "70px", align: "right" },
     { key: "mem", label: "Memory", width: "90px", align: "right" },
 ];
 
-function getColumns(isWindows: boolean): ColDef[] {
-    if (!isWindows) return Columns;
-    return Columns.filter((c) => !c.hideOnWindows);
+function getColumns(platform: string): ColDef[] {
+    return Columns.filter((c) => !c.hideOnPlatform?.includes(platform));
 }
 
-function getGridTemplate(isWindows: boolean): string {
-    return getColumns(isWindows)
+function getGridTemplate(platform: string): string {
+    return getColumns(platform)
         .map((c) => c.width)
         .join(" ");
 }
@@ -248,30 +248,31 @@ const TableHeader = React.memo(function TableHeader({
     model,
     sortBy,
     sortDesc,
-    isWindows,
+    platform,
 }: {
     model: ProcessViewerViewModel;
     sortBy: SortCol;
     sortDesc: boolean;
-    isWindows: boolean;
+    platform: string;
 }) {
-    const cols = getColumns(isWindows);
-    const gridTemplate = getGridTemplate(isWindows);
+    const cols = getColumns(platform);
+    const gridTemplate = getGridTemplate(platform);
     return (
         <div
             className="grid w-full shrink-0 border-b border-white/10 bg-panel text-xs text-secondary font-medium select-none"
             style={{ gridTemplateColumns: gridTemplate }}
         >
             {cols.map((col) => (
-                <div
+                <Tooltip
                     key={col.key}
-                    title={col.tooltip}
-                    className={`px-2 py-1 cursor-pointer hover:text-primary hover:bg-white/5 transition-colors truncate flex items-center${col.align === "right" ? " justify-end" : ""}`}
-                    onClick={() => model.setSort(col.key)}
+                    content={col.tooltip}
+                    disable={!col.tooltip}
+                    divClassName={`px-2 py-1 cursor-pointer hover:text-primary hover:bg-white/5 transition-colors truncate flex items-center${col.align === "right" ? " justify-end" : ""}`}
+                    divOnClick={() => model.setSort(col.key)}
                 >
                     <span className="truncate">{col.label}</span>
                     <SortIndicator active={sortBy === col.key} desc={sortDesc} />
-                </div>
+                </Tooltip>
             ))}
         </div>
     );
@@ -281,13 +282,15 @@ TableHeader.displayName = "TableHeader";
 const ProcessRow = React.memo(function ProcessRow({
     proc,
     hasCpu,
-    isWindows,
+    platform,
 }: {
     proc: ProcessInfo;
     hasCpu: boolean;
-    isWindows: boolean;
+    platform: string;
 }) {
-    const gridTemplate = getGridTemplate(isWindows);
+    const gridTemplate = getGridTemplate(platform);
+    const showStatus = platform !== "windows" && platform !== "darwin";
+    const showThreads = platform !== "windows";
     return (
         <div
             className="grid w-full text-xs hover:bg-white/5 transition-colors"
@@ -295,9 +298,9 @@ const ProcessRow = React.memo(function ProcessRow({
         >
             <div className="px-2 py-[3px] truncate text-right text-secondary font-mono text-[11px]">{proc.pid}</div>
             <div className="px-2 py-[3px] truncate">{proc.command}</div>
-            {!isWindows && <div className="px-2 py-[3px] truncate text-secondary text-[11px]">{proc.status}</div>}
+            {showStatus && <div className="px-2 py-[3px] truncate text-secondary text-[11px]">{proc.status}</div>}
             <div className="px-2 py-[3px] truncate text-secondary">{proc.user}</div>
-            {!isWindows && (
+            {showThreads && (
                 <div className="px-2 py-[3px] truncate text-right text-secondary font-mono text-[11px]">
                     {proc.numthreads > 1 ? proc.numthreads : ""}
                 </div>
@@ -326,7 +329,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const filteredCount = data?.filteredcount ?? 0;
         const processes = data?.processes ?? [];
         const hasCpu = data?.hascpu ?? false;
-        const isWindows = data?.iswindows ?? false;
+        const platform = data?.platform ?? "";
         const startIdx = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
 
         // track container height
@@ -355,6 +358,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const summary = data?.summary;
         const memUsedGb = summary?.memused != null ? (summary.memused / 1024 / 1024 / 1024).toFixed(1) : null;
         const memTotalGb = summary?.memtotal != null ? (summary.memtotal / 1024 / 1024 / 1024).toFixed(1) : null;
+        const cpuPct = summary?.cpusum != null && summary?.numcpu != null && summary.numcpu > 0 ? (summary.cpusum / summary.numcpu).toFixed(1) : null;
 
         return (
             <div className="flex flex-col w-full h-full overflow-hidden" ref={containerRef}>
@@ -371,6 +375,11 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                             {memUsedGb != null && (
                                 <span>
                                     Mem: {memUsedGb}G / {memTotalGb}G
+                                </span>
+                            )}
+                            {cpuPct != null && (
+                                <span>
+                                    CPU: {cpuPct}% ({summary.numcpu} cores)
                                 </span>
                             )}
                         </>
@@ -392,14 +401,14 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                 {error != null && <div className="px-3 py-2 text-xs text-error shrink-0">{error}</div>}
 
                 {/* header */}
-                <TableHeader model={model} sortBy={sortBy} sortDesc={sortDesc} isWindows={isWindows} />
+                <TableHeader model={model} sortBy={sortBy} sortDesc={sortDesc} platform={platform} />
 
                 {/* virtualized rows */}
                 <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto" onScroll={handleScroll}>
                     <div style={{ height: totalHeight, position: "relative", minWidth: "100%" }}>
                         <div style={{ position: "absolute", top: paddingTop, left: 0, right: 0, minWidth: "100%" }}>
                             {processes.map((proc) => (
-                                <ProcessRow key={proc.pid} proc={proc} hasCpu={hasCpu} isWindows={isWindows} />
+                                <ProcessRow key={proc.pid} proc={proc} hasCpu={hasCpu} platform={platform} />
                             ))}
                         </div>
                     </div>

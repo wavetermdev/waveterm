@@ -275,7 +275,7 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 		Summary:   summary,
 		Ts:        time.Now().UnixMilli(),
 		HasCPU:    hasCPU,
-		IsWindows: runtime.GOOS == "windows",
+		Platform:  runtime.GOOS,
 	}
 }
 
@@ -415,7 +415,7 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 			Summary:   raw.Summary,
 			Ts:        raw.Ts,
 			HasCPU:    raw.HasCPU,
-			IsWindows: raw.IsWindows,
+			Platform:  raw.Platform,
 		}, nil
 	}
 
@@ -442,7 +442,7 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 		Summary:       raw.Summary,
 		Ts:            raw.Ts,
 		HasCPU:        raw.HasCPU,
-		IsWindows:     raw.IsWindows,
+		Platform:      raw.Platform,
 		TotalCount:    totalCount,
 		FilteredCount: filteredCount,
 	}, nil
