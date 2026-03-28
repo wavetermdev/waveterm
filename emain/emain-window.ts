@@ -4,6 +4,7 @@
 import { ClientService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
+import { execFileSync } from "child_process";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
 import { globalEvents } from "emain/emain-events";
 import path from "path";
@@ -100,6 +101,9 @@ export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindow
 // on blur we do not set this to null (but on destroy we do), so this tracks the *last* focused window
 // e.g. it persists when the app itself is not focused
 export let focusedWaveWindow: WaveBrowserWindow = null;
+
+// quake window for toggle hotkey (show/hide behavior)
+let quakeWindow: WaveBrowserWindow | null = null;
 
 let cachedClientId: string = null;
 let hasCompletedFirstRelaunch = false;
@@ -331,6 +335,9 @@ export class WaveBrowserWindow extends BaseWindow {
             waveWindowMap.delete(this.waveWindowId);
             if (focusedWaveWindow == this) {
                 focusedWaveWindow = null;
+            }
+            if (quakeWindow == this) {
+                quakeWindow = null;
             }
             this.removeAllChildViews();
             if (getGlobalIsRelaunching()) {
@@ -704,6 +711,12 @@ export async function createBrowserWindow(
     }
     console.log("createBrowserWindow", waveWindow.oid, workspace.oid, workspace);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
+
+    // designate the first created window as the quake window, which is used for the global toggle hotkey (show/hide behavior)
+    if (quakeWindow == null) {
+        quakeWindow = bwin;
+        console.log("designated quake window", bwin.waveWindowId);
+    }
     if (workspace.activetabid) {
         await bwin.setActiveTab(workspace.activetabid, false, opts.isPrimaryStartupWindow ?? false);
     }
@@ -895,20 +908,152 @@ export async function relaunchBrowserWindows() {
     }
 }
 
+function getDisplayForQuakeToggle() {
+    if (unamePlatform === "linux") {
+        // const linuxActiveDisplay = getLinuxActiveWindowDisplay();
+        // if (linuxActiveDisplay) {
+        //     return linuxActiveDisplay;
+        // }
+
+        // const linuxMouseDisplay = getLinuxMouseDisplay();
+        // if (linuxMouseDisplay) {
+        //     return linuxMouseDisplay;
+        // }
+    }
+
+    // We cannot reliably query the OS-wide active window in Electron.
+    // Cursor position is the best cross-platform proxy for the user's active display.
+    const cursorPoint = screen.getCursorScreenPoint();
+    const displayAtCursor = screen
+        .getAllDisplays()
+        .find(
+            (display) =>
+                cursorPoint.x >= display.bounds.x &&
+                cursorPoint.x < display.bounds.x + display.bounds.width &&
+                cursorPoint.y >= display.bounds.y &&
+                cursorPoint.y < display.bounds.y + display.bounds.height
+        );
+    return displayAtCursor ?? screen.getDisplayNearestPoint(cursorPoint);
+}
+
+function getLinuxActiveWindowDisplay(): Electron.Display | null {
+    try {
+        // Wayland will not properly report window geometry to Electron, so we have to fallback to xdotool to get it directly from the X server.
+        // Not ideal, but it should work on both X11 and Wayland, and we don't have a better option for Wayland at the moment.
+        const shellOutput = execFileSync("xdotool", ["getactivewindow", "getwindowgeometry", "--shell"], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+        const xMatch = shellOutput.match(/^X=(-?\d+)$/m);
+        const yMatch = shellOutput.match(/^Y=(-?\d+)$/m);
+        const widthMatch = shellOutput.match(/^WIDTH=(\d+)$/m);
+        const heightMatch = shellOutput.match(/^HEIGHT=(\d+)$/m);
+        if (!xMatch || !yMatch || !widthMatch || !heightMatch) {
+            return null;
+        }
+        const x = parseInt(xMatch[1], 10);
+        const y = parseInt(yMatch[1], 10);
+        const width = parseInt(widthMatch[1], 10);
+        const height = parseInt(heightMatch[1], 10);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
+            return null;
+        }
+        const centerPoint = {
+            x: Math.floor(x + width / 2),
+            y: Math.floor(y + height / 2),
+        };
+        return screen.getDisplayNearestPoint(centerPoint);
+    } catch {
+        return null;
+    }
+}
+
+function getLinuxMouseDisplay(): Electron.Display | null {
+    try {
+        // Wayland will not properly report the curser position to Electron, so we again fallback to xdotool
+        const shellOutput = execFileSync("xdotool", ["getmouselocation", "--shell"], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+        });
+        const xMatch = shellOutput.match(/^X=(-?\d+)$/m);
+        const yMatch = shellOutput.match(/^Y=(-?\d+)$/m);
+        if (!xMatch || !yMatch) {
+            return null;
+        }
+        const point = {
+            x: parseInt(xMatch[1], 10),
+            y: parseInt(yMatch[1], 10),
+        };
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+            return null;
+        }
+        return screen.getDisplayNearestPoint(point);
+    } catch {
+        return null;
+    }
+}
+
+function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Display) {
+    if (!targetDisplay || win.isDestroyed()) {
+        return;
+    }
+    const curBounds = win.getBounds();
+    const sourceDisplay = screen.getDisplayMatching(curBounds);
+    if (sourceDisplay.id === targetDisplay.id) {
+        return;
+    }
+
+    const sourceArea = sourceDisplay.workArea;
+    const targetArea = targetDisplay.workArea;
+    const maxXOffset = Math.max(0, targetArea.width - curBounds.width);
+    const maxYOffset = Math.max(0, targetArea.height - curBounds.height);
+    const sourceXOffset = curBounds.x - sourceArea.x;
+    const sourceYOffset = curBounds.y - sourceArea.y;
+    const nextX = targetArea.x + Math.min(Math.max(sourceXOffset, 0), maxXOffset);
+    const nextY = targetArea.y + Math.min(Math.max(sourceYOffset, 0), maxYOffset);
+
+    win.setBounds({ ...curBounds, x: nextX, y: nextY });
+}
+
 export function registerGlobalHotkey(rawGlobalHotKey: string) {
     try {
         const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
         console.log("registering globalhotkey of ", electronHotKey);
         globalShortcut.register(electronHotKey, () => {
-            const selectedWindow = focusedWaveWindow;
-            const firstWaveWindow = getAllWaveWindows()[0];
-            if (focusedWaveWindow) {
-                selectedWindow.focus();
-            } else if (firstWaveWindow) {
-                firstWaveWindow.focus();
-            } else {
-                fireAndForget(createNewWaveWindow);
-            }
+            fireAndForget(async () => {
+                // quake mode: toggle visibility of the designated quake window
+                if (quakeWindow && !quakeWindow.isDestroyed()) {
+                    if (quakeWindow.isVisible()) {
+                        quakeWindow.hide();
+                    } else {
+                        const targetDisplay = getDisplayForQuakeToggle();
+                        // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
+                        const wasFullscreen = quakeWindow.isFullScreen();
+                        if (wasFullscreen) {
+                            quakeWindow.setFullScreen(false);
+                            await delay(120);
+                        }
+                        moveWindowToDisplay(quakeWindow, targetDisplay);
+                        quakeWindow.show();
+                        if (wasFullscreen) {
+                            await delay(80);
+                            moveWindowToDisplay(quakeWindow, targetDisplay);
+                            quakeWindow.setFullScreen(true);
+                        }
+                        quakeWindow.focus();
+                        if (quakeWindow.activeTabView?.webContents) {
+                            quakeWindow.activeTabView.webContents.focus();
+                        }
+                    }
+                } else if (quakeWindow == null) {
+                    // no quake window yet, create one
+                    await createNewWaveWindow();
+                } else {
+                    // quake window was destroyed, clear it
+                    quakeWindow = null;
+                    await createNewWaveWindow();
+                }
+            });
         });
     } catch (e) {
         console.log("error registering global hotkey: ", e);
