@@ -27,6 +27,7 @@ export type ConfigFile = {
     validator?: ConfigValidator;
     isSecrets?: boolean;
     hasJsonView?: boolean;
+    allowArray?: boolean;
     visualComponent?: React.ComponentType<{ model: WaveConfigViewModel }>;
 };
 
@@ -70,6 +71,7 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
             language: "json",
             description: "Custom keyboard shortcuts",
             docsUrl: "https://docs.waveterm.dev/keybindings",
+            allowArray: true,
         },
         {
             name: "Connections",
@@ -366,7 +368,12 @@ export class WaveConfigViewModel implements ViewModel {
         try {
             const parsed = JSON.parse(fileContent);
 
-            if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
+            if (selectedFile.allowArray) {
+                if (!Array.isArray(parsed)) {
+                    globalStore.set(this.validationErrorAtom, "JSON must be an array");
+                    return;
+                }
+            } else if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
                 globalStore.set(this.validationErrorAtom, "JSON must be an object, not an array, primitive, or null");
                 return;
             }

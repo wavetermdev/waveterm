@@ -27,7 +27,7 @@
           "block:switchto6", "block:switchto7", "block:switchto8", "block:switchto9", "block:switchtoai",
           "block:replacewithlauncher",
           "block:splitchord", "block:splitchordup", "block:splitchorddown", "block:splitchordleft", "block:splitchordright",
-          "app:search", "app:openconnection", "app:toggleaipanel", "app:togglewidgetssidebar",
+          "app:search", "app:openconnection", "app:toggleaipanel", "app:togglewidgetssidebar", "app:settings",
           "term:togglemultiinput",
           "generic:cancel",
           "-tab:new", "-tab:close", "-tab:prev", "-tab:next",
@@ -41,7 +41,7 @@
           "-block:switchto6", "-block:switchto7", "-block:switchto8", "-block:switchto9", "-block:switchtoai",
           "-block:replacewithlauncher",
           "-block:splitchord", "-block:splitchordup", "-block:splitchorddown", "-block:splitchordleft", "-block:splitchordright",
-          "-app:search", "-app:openconnection", "-app:toggleaipanel", "-app:togglewidgetssidebar",
+          "-app:search", "-app:openconnection", "-app:toggleaipanel", "-app:togglewidgetssidebar", "-app:settings",
           "-term:togglemultiinput",
           "-generic:cancel"
         ]

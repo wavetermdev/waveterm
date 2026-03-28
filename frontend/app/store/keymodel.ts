@@ -795,6 +795,16 @@ const defaultActions: ActionDef[] = [
             return true;
         },
     },
+    {
+        id: "app:settings",
+        defaultKeys: ["Cmd:,"],
+        handler: () => {
+            fireAndForget(async () => {
+                await createBlock({ meta: { view: "waveconfig" } }, false, true);
+            });
+            return true;
+        },
+    },
     // Numbered tab/block switch keys (1-9)
     ...Array.from({ length: 9 }, (_, i) => {
         const idx = i + 1;
