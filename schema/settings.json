@@ -168,6 +168,9 @@
         "term:durable": {
           "type": "boolean"
         },
+        "term:closeonlasttermclose": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },

@@ -59,6 +59,7 @@ const (
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
 	ConfigKey_TermOsc52                      = "term:osc52"
 	ConfigKey_TermDurable                    = "term:durable"
+	ConfigKey_TermCloseOnLastTermClose       = "term:closeonlasttermclose"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

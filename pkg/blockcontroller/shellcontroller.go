@@ -647,6 +647,45 @@ func (union *ConnUnion) getRemoteInfoAndShellType(blockMeta waveobj.MetaMapType)
 	return nil
 }
 
+func isLastShellBlockInWorkspace(ctx context.Context, blockId string) bool {
+	tabId, err := wstore.DBFindTabForBlockId(ctx, blockId)
+	if err != nil || tabId == "" {
+		return false
+	}
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil || workspaceId == "" {
+		return false
+	}
+	workspace, err := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if err != nil || workspace == nil {
+		return false
+	}
+	shellBlockCount := 0
+	for _, wsTabId := range workspace.TabIds {
+		tab, err := wstore.DBGet[*waveobj.Tab](ctx, wsTabId)
+		if err != nil {
+			return false
+		}
+		if tab == nil {
+			continue
+		}
+		for _, wsBlockId := range tab.BlockIds {
+			block, err := wstore.DBGet[*waveobj.Block](ctx, wsBlockId)
+			if err != nil {
+				return false
+			}
+			if block == nil {
+				continue
+			}
+			controller := block.Meta.GetString(waveobj.MetaKey_Controller, "")
+			if controller == BlockController_Shell || controller == BlockController_Cmd {
+				shellBlockCount++
+			}
+		}
+	}
+	return shellBlockCount == 1
+}
+
 func checkCloseOnExit(blockId string, exitCode int) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
@@ -657,10 +696,19 @@ func checkCloseOnExit(blockId string, exitCode int) {
 	}
 	closeOnExit := blockData.Meta.GetBool(waveobj.MetaKey_CmdCloseOnExit, false)
 	closeOnExitForce := blockData.Meta.GetBool(waveobj.MetaKey_CmdCloseOnExitForce, false)
+	defaultDelayMs := 2000.0
 	if !closeOnExitForce && !(closeOnExit && exitCode == 0) {
-		return
+		// Check global setting: close when last terminal exits
+		settings := wconfig.GetWatcher().GetFullConfig().Settings
+		if !settings.TermCloseOnLastTermClose {
+			return
+		}
+		if !isLastShellBlockInWorkspace(ctx, blockId) {
+			return
+		}
+		defaultDelayMs = 0
 	}
-	delayMs := blockData.Meta.GetFloat(waveobj.MetaKey_CmdCloseOnExitDelay, 2000)
+	delayMs := blockData.Meta.GetFloat(waveobj.MetaKey_CmdCloseOnExitDelay, defaultDelayMs)
 	if delayMs < 0 {
 		delayMs = 0
 	}
