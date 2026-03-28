@@ -693,7 +693,7 @@ const defaultActions: ActionDef[] = [
         handler: makeBlockNavHandler(NavigateDirection.Right),
     },
     {
-        id: "block:focusnext",
+        id: "block:navcw",
         defaultKeys: ["Ctrl:Shift:]"],
         handler: () => {
             cycleBlockFocus(1);
@@ -701,7 +701,7 @@ const defaultActions: ActionDef[] = [
         },
     },
     {
-        id: "block:focusprev",
+        id: "block:navccw",
         defaultKeys: ["Ctrl:Shift:["],
         handler: () => {
             cycleBlockFocus(-1);
