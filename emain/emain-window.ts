@@ -909,18 +909,6 @@ export async function relaunchBrowserWindows() {
 }
 
 function getDisplayForQuakeToggle() {
-    if (unamePlatform === "linux") {
-        // const linuxActiveDisplay = getLinuxActiveWindowDisplay();
-        // if (linuxActiveDisplay) {
-        //     return linuxActiveDisplay;
-        // }
-
-        // const linuxMouseDisplay = getLinuxMouseDisplay();
-        // if (linuxMouseDisplay) {
-        //     return linuxMouseDisplay;
-        // }
-    }
-
     // We cannot reliably query the OS-wide active window in Electron.
     // Cursor position is the best cross-platform proxy for the user's active display.
     const cursorPoint = screen.getCursorScreenPoint();
@@ -934,63 +922,6 @@ function getDisplayForQuakeToggle() {
                 cursorPoint.y < display.bounds.y + display.bounds.height
         );
     return displayAtCursor ?? screen.getDisplayNearestPoint(cursorPoint);
-}
-
-function getLinuxActiveWindowDisplay(): Electron.Display | null {
-    try {
-        // Wayland will not properly report window geometry to Electron, so we have to fallback to xdotool to get it directly from the X server.
-        // Not ideal, but it should work on both X11 and Wayland, and we don't have a better option for Wayland at the moment.
-        const shellOutput = execFileSync("xdotool", ["getactivewindow", "getwindowgeometry", "--shell"], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "ignore"],
-        });
-        const xMatch = shellOutput.match(/^X=(-?\d+)$/m);
-        const yMatch = shellOutput.match(/^Y=(-?\d+)$/m);
-        const widthMatch = shellOutput.match(/^WIDTH=(\d+)$/m);
-        const heightMatch = shellOutput.match(/^HEIGHT=(\d+)$/m);
-        if (!xMatch || !yMatch || !widthMatch || !heightMatch) {
-            return null;
-        }
-        const x = parseInt(xMatch[1], 10);
-        const y = parseInt(yMatch[1], 10);
-        const width = parseInt(widthMatch[1], 10);
-        const height = parseInt(heightMatch[1], 10);
-        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
-            return null;
-        }
-        const centerPoint = {
-            x: Math.floor(x + width / 2),
-            y: Math.floor(y + height / 2),
-        };
-        return screen.getDisplayNearestPoint(centerPoint);
-    } catch {
-        return null;
-    }
-}
-
-function getLinuxMouseDisplay(): Electron.Display | null {
-    try {
-        // Wayland will not properly report the curser position to Electron, so we again fallback to xdotool
-        const shellOutput = execFileSync("xdotool", ["getmouselocation", "--shell"], {
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "ignore"],
-        });
-        const xMatch = shellOutput.match(/^X=(-?\d+)$/m);
-        const yMatch = shellOutput.match(/^Y=(-?\d+)$/m);
-        if (!xMatch || !yMatch) {
-            return null;
-        }
-        const point = {
-            x: parseInt(xMatch[1], 10),
-            y: parseInt(yMatch[1], 10),
-        };
-        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-            return null;
-        }
-        return screen.getDisplayNearestPoint(point);
-    } catch {
-        return null;
-    }
 }
 
 function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Display) {
