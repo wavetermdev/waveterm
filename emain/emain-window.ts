@@ -924,7 +924,7 @@ function getDisplayForQuakeToggle() {
 }
 
 function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Display) {
-    if (!targetDisplay || win.isDestroyed()) {
+    if (!win || !targetDisplay || win.isDestroyed()) {
         return;
     }
     const curBounds = win.getBounds();
@@ -963,30 +963,33 @@ export function registerGlobalHotkey(rawGlobalHotKey: string) {
                 quakeToggleInProgress = true;
                 try {
                     // quake mode: toggle visibility of the designated quake window
-                    if (quakeWindow && !quakeWindow.isDestroyed()) {
-                        if (quakeWindow.isVisible()) {
-                            quakeWindow.hide();
+                    const window = quakeWindow;
+                    if (window && !window.isDestroyed()) {
+                        if (window.isVisible()) {
+                            window.hide();
                         } else {
                             const targetDisplay = getDisplayForQuakeToggle();
                             // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
-                            const wasFullscreen = quakeWindow.isFullScreen();
+                            const wasFullscreen = window.isFullScreen();
                             if (wasFullscreen) {
-                                quakeWindow.setFullScreen(false);
+                                window.setFullScreen(false);
                                 await delay(PRE_QUAKE_FULLSCREEN_DELAY_MS);
+                                if (window.isDestroyed()) { return; }
                             }
-                            moveWindowToDisplay(quakeWindow, targetDisplay);
-                            quakeWindow.show();
+                            moveWindowToDisplay(window, targetDisplay);
+                            window.show();
                             if (wasFullscreen) {
                                 await delay(POST_QUAKE_FULLSCREEN_DELAY_MS);
-                                moveWindowToDisplay(quakeWindow, targetDisplay);
-                                quakeWindow.setFullScreen(true);
+                                if (window.isDestroyed()) { return; }
+                                moveWindowToDisplay(window, targetDisplay);
+                                window.setFullScreen(true);
                             }
-                            quakeWindow.focus();
-                            if (quakeWindow.activeTabView?.webContents) {
-                                quakeWindow.activeTabView.webContents.focus();
+                            window.focus();
+                            if (window.activeTabView?.webContents) {
+                                window.activeTabView.webContents.focus();
                             }
                         }
-                    } else if (quakeWindow == null) {
+                    } else if (window == null) {
                         // no quake window yet, create one
                         await createNewWaveWindow();
                     } else {
