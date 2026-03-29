@@ -935,6 +935,8 @@ function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Dis
 
     const sourceArea = sourceDisplay.workArea;
     const targetArea = targetDisplay.workArea;
+    const nextHeight = Math.min(curBounds.height, targetArea.height);
+    const nextWidth = Math.min(curBounds.width, targetArea.width);
     const maxXOffset = Math.max(0, targetArea.width - curBounds.width);
     const maxYOffset = Math.max(0, targetArea.height - curBounds.height);
     const sourceXOffset = curBounds.x - sourceArea.x;
@@ -942,7 +944,7 @@ function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Dis
     const nextX = targetArea.x + Math.min(Math.max(sourceXOffset, 0), maxXOffset);
     const nextY = targetArea.y + Math.min(Math.max(sourceYOffset, 0), maxYOffset);
 
-    win.setBounds({ ...curBounds, x: nextX, y: nextY });
+    win.setBounds({ ...curBounds, x: nextX, y: nextY, width: nextWidth, height: nextHeight });
 }
 
 // small delay on fullscreen toggle to ensure that the OS has finished the fullscreen transition on its end
