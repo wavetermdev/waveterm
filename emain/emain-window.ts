@@ -937,8 +937,8 @@ function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Dis
     const targetArea = targetDisplay.workArea;
     const nextHeight = Math.min(curBounds.height, targetArea.height);
     const nextWidth = Math.min(curBounds.width, targetArea.width);
-    const maxXOffset = Math.max(0, targetArea.width - curBounds.width);
-    const maxYOffset = Math.max(0, targetArea.height - curBounds.height);
+    const maxXOffset = Math.max(0, targetArea.width - nextWidth);
+    const maxYOffset = Math.max(0, targetArea.height - nextHeight);
     const sourceXOffset = curBounds.x - sourceArea.x;
     const sourceYOffset = curBounds.y - sourceArea.y;
     const nextX = targetArea.x + Math.min(Math.max(sourceXOffset, 0), maxXOffset);
