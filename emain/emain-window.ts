@@ -945,43 +945,58 @@ function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Dis
     win.setBounds({ ...curBounds, x: nextX, y: nextY });
 }
 
+// small delay on fullscreen toggle to ensure that the OS has finished the fullscreen transition on its end
+const PRE_QUAKE_FULLSCREEN_DELAY_MS = 120;
+const POST_QUAKE_FULLSCREEN_DELAY_MS = 80;
+
+// handles a theoretical race condition where the user spams the hotkey before the toggle finishes
+let quakeToggleInProgress = false;
 export function registerGlobalHotkey(rawGlobalHotKey: string) {
     try {
         const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
         console.log("registering globalhotkey of ", electronHotKey);
         globalShortcut.register(electronHotKey, () => {
             fireAndForget(async () => {
-                // quake mode: toggle visibility of the designated quake window
-                if (quakeWindow && !quakeWindow.isDestroyed()) {
-                    if (quakeWindow.isVisible()) {
-                        quakeWindow.hide();
-                    } else {
-                        const targetDisplay = getDisplayForQuakeToggle();
-                        // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
-                        const wasFullscreen = quakeWindow.isFullScreen();
-                        if (wasFullscreen) {
-                            quakeWindow.setFullScreen(false);
-                            await delay(120);
-                        }
-                        moveWindowToDisplay(quakeWindow, targetDisplay);
-                        quakeWindow.show();
-                        if (wasFullscreen) {
-                            await delay(80);
+                if (quakeToggleInProgress) {
+                    return;
+                }
+                quakeToggleInProgress = true;
+                try {
+                    // quake mode: toggle visibility of the designated quake window
+                    if (quakeWindow && !quakeWindow.isDestroyed()) {
+                        if (quakeWindow.isVisible()) {
+                            quakeWindow.hide();
+                        } else {
+                            const targetDisplay = getDisplayForQuakeToggle();
+                            // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
+                            const wasFullscreen = quakeWindow.isFullScreen();
+                            if (wasFullscreen) {
+                                quakeWindow.setFullScreen(false);
+                                await delay(PRE_QUAKE_FULLSCREEN_DELAY_MS);
+                            }
                             moveWindowToDisplay(quakeWindow, targetDisplay);
-                            quakeWindow.setFullScreen(true);
+                            quakeWindow.show();
+                            if (wasFullscreen) {
+                                await delay(POST_QUAKE_FULLSCREEN_DELAY_MS);
+                                moveWindowToDisplay(quakeWindow, targetDisplay);
+                                quakeWindow.setFullScreen(true);
+                            }
+                            quakeWindow.focus();
+                            if (quakeWindow.activeTabView?.webContents) {
+                                quakeWindow.activeTabView.webContents.focus();
+                            }
                         }
-                        quakeWindow.focus();
-                        if (quakeWindow.activeTabView?.webContents) {
-                            quakeWindow.activeTabView.webContents.focus();
-                        }
+                    } else if (quakeWindow == null) {
+                        // no quake window yet, create one
+                        await createNewWaveWindow();
+                    } else {
+                        // quake window was destroyed, clear it
+                        quakeWindow = null;
+                        await createNewWaveWindow();
                     }
-                } else if (quakeWindow == null) {
-                    // no quake window yet, create one
-                    await createNewWaveWindow();
-                } else {
-                    // quake window was destroyed, clear it
-                    quakeWindow = null;
-                    await createNewWaveWindow();
+                }
+                finally {
+                    quakeToggleInProgress = false;
                 }
             });
         });
