@@ -49,6 +49,7 @@ import {
     getQuakeWindow,
     getWaveWindowById,
     getWaveWindowByWorkspaceId,
+    initGlobalHotkeyEventSubscription,
     registerGlobalHotkey,
     relaunchBrowserWindows,
     WaveBrowserWindow,
@@ -456,6 +457,7 @@ async function appMain() {
     if (rawGlobalHotKey) {
         registerGlobalHotkey(rawGlobalHotKey);
     }
+    initGlobalHotkeyEventSubscription();
 }
 
 appMain().catch((e) => {

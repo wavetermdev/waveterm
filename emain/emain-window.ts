@@ -3,6 +3,7 @@
 
 import { ClientService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
 import { globalEvents } from "emain/emain-events";
@@ -1020,12 +1021,16 @@ export function registerGlobalHotkey(rawGlobalHotKey: string) {
     if (rawGlobalHotKey === currentRawGlobalHotKey) {
         return;
     }
+    if (currentGlobalHotKey != null) {
+        globalShortcut.unregister(currentGlobalHotKey);
+        currentGlobalHotKey = null;
+        currentRawGlobalHotKey = null;
+    }
+    if (!rawGlobalHotKey) {
+        return;
+    }
     try {
         const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
-        if (currentGlobalHotKey != null) {
-            globalShortcut.unregister(currentGlobalHotKey);
-            currentGlobalHotKey = null;
-        }
         const ok = globalShortcut.register(electronHotKey, () => {
             fireAndForget(quakeToggle);
         });
@@ -1035,4 +1040,18 @@ export function registerGlobalHotkey(rawGlobalHotKey: string) {
     } catch (e) {
         console.log("error registering global hotkey", rawGlobalHotKey, ":", e);
     }
+}
+
+export function initGlobalHotkeyEventSubscription() {
+    waveEventSubscribeSingle({
+        eventType: "config",
+        handler: (event) => {
+            try {
+                const hotkey = event?.data?.fullconfig?.settings?.["app:globalhotkey"];
+                registerGlobalHotkey(hotkey ?? null);
+            } catch (e) {
+                console.log("error handling config event for globalhotkey", e);
+            }
+        },
+    });
 }
