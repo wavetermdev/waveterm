@@ -3,13 +3,14 @@
 
 .workspace-switcher-button {
     display: flex;
-    height: 26px;
+    height: 22px;
     padding: 0px 12px;
     justify-content: flex-end;
     align-items: center;
     gap: 12px;
     border-radius: 6px;
     margin-right: 6px;
+    margin-bottom: 4px;
     box-sizing: border-box;
     background-color: rgb(from var(--main-text-color) r g b / 0.1) !important;
 

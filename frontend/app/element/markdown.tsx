@@ -54,7 +54,7 @@ const Link = ({
         }
     };
     return (
-        <a href={props.href} onClick={onClick}>
+        <a href={props.href} onClick={onClick} className="text-accent hover:underline">
             {props.children}
         </a>
     );
@@ -391,7 +391,7 @@ const Markdown = ({
                     return (
                         <a
                             key={item.href}
-                            className="toc-item"
+                            className="toc-item text-accent hover:underline"
                             style={{ "--indent-factor": item.depth } as React.CSSProperties}
                             onClick={() => setFocusedHeading(item.href)}
                         >

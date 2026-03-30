@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0s
 
 import base64 from "base64-js";
@@ -108,7 +108,7 @@ function jsonDeepEqual(v1: any, v2: any): boolean {
             if (keys1.length !== keys2.length) {
                 return false;
             }
-            for (let key of keys1) {
+            for (const key of keys1) {
                 if (!jsonDeepEqual(v1[key], v2[key])) {
                     return false;
                 }
@@ -534,6 +534,7 @@ export {
     makeExternLink,
     makeIconClass,
     mergeMeta,
+    NullAtom,
     parseDataUrl,
     sleep,
     sortByDisplayOrder,

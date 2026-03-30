@@ -166,6 +166,7 @@ type VDomRefUpdate struct {
 	RefId      string                `json:"refid"`
 	HasCurrent bool                  `json:"hascurrent"`
 	Position   *vdom.VDomRefPosition `json:"position,omitempty"`
+	TermSize   *vdom.VDomTermSize    `json:"termsize,omitempty"`
 }
 
 type VDomBackendOpts struct {
@@ -205,4 +206,9 @@ type ModalConfig struct {
 type ModalResult struct {
 	ModalId string `json:"modalid"` // ID of the modal
 	Confirm bool   `json:"confirm"` // true = confirmed/ok, false = cancelled
+}
+
+type TermWritePacket struct {
+	RefId  string `json:"refid"`
+	Data64 string `json:"data64"`
 }

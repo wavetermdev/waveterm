@@ -113,6 +113,7 @@ const stateToClasses = (state: InternalStateType) => {
     return classes.join(" ");
 };
 
+// eslint-disable-next-line no-control-regex
 const ansiRegex = /\x1b\[([0-9;]+)m/g;
 
 const AnsiLine = ({ line }) => {

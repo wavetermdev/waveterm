@@ -6,6 +6,7 @@ title: "wsh reference"
 
 import { Kbd } from "@site/src/components/kbd";
 import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
+import { VersionBadge } from "@site/src/components/versionbadge";
 
 <PlatformProvider>
 
@@ -23,6 +24,7 @@ You can open a preview block with the contents of any file or directory by runni
 
 ```sh
 wsh view [path]
+wsh view -m [path]           # opens in magnified block
 ```
 
 You can use this command to easily preview images, markdown files, and directories. For code/text files this will open
@@ -34,9 +36,29 @@ a codeedit block which you can use to quickly edit the file using Wave's embedde
 
 ```sh
 wsh edit [path]
+wsh edit -m [path]           # opens in magnified block
 ```
 
-This will open up codeedit for the specified file. This is useful for quickly editing files on a local or remote machine in our graphical editor. This command will wait until the file is closed before exiting (unlike `view`) so you can set your `$EDITOR` to `wsh editor` for a seamless experience. You can combine this with a `-m` flag to open the editor in magnified mode.
+This will open up a codeedit block for the specified file. This is useful for quickly editing files on a local or remote machine in Wave's graphical editor. This command returns immediately after opening the block. 
+
+For `$EDITOR` integration (e.g. with `git commit`), see [`wsh editor`](#editor) which blocks until the editor is closed.
+
+---
+
+## editor
+
+```sh
+wsh editor [path]
+wsh editor -m [path]         # opens in magnified block
+```
+
+This opens a codeedit block for the specified file and **blocks until the editor is closed**. This is useful for setting your `$EDITOR` environment variable so that CLI tools (e.g. `git commit`, `crontab -e`) open files in Wave's graphical editor:
+
+```sh
+export EDITOR="wsh editor"
+```
+
+The file must already exist. Use `-m` to open the editor in magnified mode.
 
 ---
 
@@ -178,7 +200,7 @@ wsh editconfig presets/ai.json
 The `setbg` command allows you to set a background image or color for the current tab with various customization options.
 
 ```sh
-wsh setbg [--opacity value] [--tile|--center] [--size value] (image-path|"#color"|color-name)
+wsh setbg [--opacity value] [--tile|--center] [--size value] [--border-color color] [--active-border-color color] (image-path|"#color"|color-name)
 ```
 
 You can set a background using:
@@ -194,6 +216,8 @@ Flags:
 - `--center` - center the image without scaling (good for logos)
 - `--size` - size for centered images (px, %, or auto)
 - `--clear` - remove the background
+- `--border-color color` - set the block frame border color (hex or CSS color name)
+- `--active-border-color color` - set the block frame focused border color (hex or CSS color name)
 - `--print` - show the metadata without applying it
 
 Supported image formats: JPEG, PNG, GIF, WebP, and SVG.
@@ -221,6 +245,10 @@ wsh setbg forestgreen        # CSS color name
 # Change just the opacity of current background
 wsh setbg --opacity 0.7
 
+# Set border colors alongside a background
+wsh setbg --border-color "#ff0000" --active-border-color "#00ff00" ~/pictures/background.jpg
+wsh setbg --border-color steelblue forestgreen
+
 # Remove background
 wsh setbg --clear
 
@@ -236,7 +264,60 @@ The command validates that:
 - The center and tile options are not used together
 
 :::tip
-Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background Preset](/presets#background-configurations)
+Use `--print` to preview the metadata for any background configuration without applying it. You can then copy this JSON representation to use as a [Background entry](/tab-backgrounds)
+:::
+
+---
+
+## badge
+
+<VersionBadge version="v0.14.2" />
+
+The `badge` command sets or clears a visual badge indicator on a block or tab header.
+
+```sh
+wsh badge [icon]
+wsh badge --clear
+```
+
+Badges are used to draw attention to a block or tab, such as indicating a process has completed or needs attention. If no icon is provided, it defaults to `circle-small`. Icon names are [Font Awesome](https://fontawesome.com/icons) icon names (without the `fa-` prefix).
+
+Flags:
+
+- `--color string` - set the badge color (CSS color name or hex)
+- `--priority float` - set the badge priority (default 10; higher priority badges take precedence)
+- `--clear` - remove the badge from the block or tab
+- `--beep` - play the system bell sound when setting the badge
+- `--pid int` - watch a PID and automatically clear the badge when it exits (sets default priority to 5)
+- `-b, --block` - target a specific block or tab (same format as `getmeta`)
+
+Examples:
+
+```sh
+# Set a default badge on the current block
+wsh badge
+
+# Set a badge with a custom icon and color
+wsh badge circle-check --color green
+
+# Set a high-priority badge on a specific block
+wsh badge triangle-exclamation --color red --priority 20 -b 2
+
+# Set a badge that clears when a process exits
+wsh badge --pid 12345
+
+# Play the bell and set a badge when done
+wsh badge circle-check --beep
+
+# Clear the badge on the current block
+wsh badge --clear
+
+# Clear the badge on a specific tab
+wsh badge --clear -b tab
+```
+
+:::note
+The `--pid` flag is not supported on Windows.
 :::
 
 ---
@@ -791,6 +872,57 @@ wsh setvar -b client MYVAR=value
 ```
 
 Variables set with these commands persist across sessions and can be used to store configuration values, secrets, or any other string data that needs to be accessible across blocks or tabs.
+
+---
+
+## termscrollback
+
+Get the terminal scrollback from a terminal block. This is useful for capturing terminal output for processing or archiving.
+
+```sh
+wsh termscrollback [-b blockid] [flags]
+```
+
+By default, retrieves all lines from the current terminal block. You can specify line ranges or get only the output of the last command.
+
+Flags:
+
+- `-b, --block <blockid>` - specify target terminal block (default: current block)
+- `--start <line>` - starting line number (0 = beginning, default: 0)
+- `--end <line>` - ending line number (0 = all lines, default: 0)
+- `--lastcommand` - get output of last command (requires shell integration)
+- `-o, --output <file>` - write output to file instead of stdout
+
+Examples:
+
+```sh
+# Get all scrollback from current terminal
+wsh termscrollback
+
+# Get scrollback from a specific terminal block
+wsh termscrollback -b 2
+
+# Get only the last command's output
+wsh termscrollback --lastcommand
+
+# Get a specific line range (lines 100-200)
+wsh termscrollback --start 100 --end 200
+
+# Save scrollback to a file
+wsh termscrollback -o terminal-log.txt
+
+# Save last command output to a file
+wsh termscrollback --lastcommand -o last-output.txt
+
+# Process last command output with grep
+wsh termscrollback --lastcommand | grep "ERROR"
+```
+
+:::note
+The `--lastcommand` flag requires shell integration to be enabled. This feature allows you to capture just the output from the most recent command, which is particularly useful for scripting and automation.
+:::
+
+---
 
 ## wavepath
 

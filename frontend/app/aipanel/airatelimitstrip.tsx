@@ -19,7 +19,7 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
               ? "hover:has-[.close:hover]:bg-red-900/30"
               : "";
 
-    if (true) {
+    if (true as boolean) {
         // disable now until we have modal
         return null;
     }

@@ -18,20 +18,21 @@ type WshRpcFileInterface interface {
 	FileAppendCommand(ctx context.Context, data FileData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
-	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+	FileStreamCommand(ctx context.Context, data CommandFileStreamData) (*FileInfo, error)
 }
 
 type WshRpcRemoteFileInterface interface {
-	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
+	RemoteFileStreamCommand(ctx context.Context, data CommandRemoteFileStreamData) (*FileInfo, error)
 	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
+	RemoteFileMultiInfoCommand(ctx context.Context, data CommandRemoteFileMultiInfoData) (map[string]FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
@@ -56,6 +57,7 @@ type FileInfo struct {
 	Path          string      `json:"path"`          // cleaned path (may have "~")
 	Dir           string      `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
 	Name          string      `json:"name,omitempty"`
+	StatError     string      `json:"staterror,omitempty"`
 	NotFound      bool        `json:"notfound,omitempty"`
 	Opts          *FileOpts   `json:"opts,omitempty"`
 	Size          int64       `json:"size,omitempty"`
@@ -128,9 +130,26 @@ type CommandRemoteStreamFileData struct {
 	ByteRange string `json:"byterange,omitempty"`
 }
 
+type CommandRemoteFileStreamData struct {
+	Path       string     `json:"path"`
+	ByteRange  string     `json:"byterange,omitempty"`
+	StreamMeta StreamMeta `json:"streammeta"`
+}
+
+type CommandFileStreamData struct {
+	Info       *FileInfo  `json:"info"`
+	ByteRange  string     `json:"byterange,omitempty"`
+	StreamMeta StreamMeta `json:"streammeta"`
+}
+
 type CommandRemoteListEntriesData struct {
 	Path string        `json:"path"`
 	Opts *FileListOpts `json:"opts,omitempty"`
+}
+
+type CommandRemoteFileMultiInfoData struct {
+	Cwd   string   `json:"cwd"`
+	Paths []string `json:"paths"`
 }
 
 type CommandRemoteListEntriesRtnData struct {

@@ -183,7 +183,7 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 	}
 }
 
-func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName string) (*wshutil.WshRpc, error) {
+func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName string) (*wshutil.WshRpc, string, error) {
 	routeId := wshutil.MakeConnectionRouteId(connServerConnName)
 	rpcCtx := wshrpc.RpcContext{
 		RouteId: routeId,
@@ -196,7 +196,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName stri
 
 	connServerClient := wshutil.MakeWshRpc(rpcCtx, wshremote.MakeRemoteRpcServerImpl(os.Stdout, router, bareClient, false, connServerInitialEnv, sockName), routeId)
 	router.RegisterTrustedLeaf(connServerClient, routeId)
-	return connServerClient, nil
+	return connServerClient, routeId, nil
 }
 
 func serverRunRouter() error {
@@ -236,11 +236,12 @@ func serverRunRouter() error {
 	sockName := getRemoteDomainSocketName()
 
 	// setup the connserver rpc client first
-	client, err := setupConnServerRpcClientWithRouter(router, sockName)
+	client, bareRouteId, err := setupConnServerRpcClientWithRouter(router, sockName)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
 	wshfs.RpcClient = client
+	wshfs.RpcClientRouteId = bareRouteId
 
 	log.Printf("trying to get JWT public key")
 
@@ -360,11 +361,12 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 	log.Printf("got JWT public key")
 
 	// now setup the connserver rpc client
-	client, err := setupConnServerRpcClientWithRouter(router, sockName)
+	client, bareRouteId, err := setupConnServerRpcClientWithRouter(router, sockName)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
 	wshfs.RpcClient = client
+	wshfs.RpcClientRouteId = bareRouteId
 
 	// set up the local domain socket listener for local wsh commands
 	unixListener, err := MakeRemoteUnixListener()
@@ -402,6 +404,7 @@ func serverRunNormal(jwtToken string) error {
 		return err
 	}
 	wshfs.RpcClient = RpcClient
+	wshfs.RpcClientRouteId = RpcClientRouteId
 	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
 	go func() {
 		defer func() {

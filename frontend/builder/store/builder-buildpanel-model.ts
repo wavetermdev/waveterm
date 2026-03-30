@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { globalStore } from "@/app/store/jotaiStore";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, WOS } from "@/store/global";
@@ -36,7 +36,7 @@ export class BuilderBuildPanelModel {
             this.outputUnsubFn();
         }
 
-        this.outputUnsubFn = waveEventSubscribe({
+        this.outputUnsubFn = waveEventSubscribeSingle({
             eventType: "builderoutput",
             scope: WOS.makeORef("builder", builderId),
             handler: (event) => {

@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { CopyButton } from "@/app/element/copybutton";
@@ -291,7 +291,7 @@ export const WaveStreamdown = ({
             },
             summary: () => null, // Don't render summary separately
             a: (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-                <a {...props} className="text-primary underline hover:text-primary/80" />
+                <a {...props} className="text-accent hover:underline" />
             ),
             strong: (props: React.HTMLAttributes<HTMLElement>) => (
                 <strong {...props} className="font-semibold text-secondary" />
@@ -314,11 +314,12 @@ export const WaveStreamdown = ({
                 table: false,
                 mermaid: true,
             }}
-            mermaidConfig={{
-                theme: "dark",
-                darkMode: true,
+            mermaid={{
+                config: {
+                    theme: "dark",
+                    darkMode: true,
+                },
             }}
-            defaultOrigin="http://localhost"
             components={components}
         >
             {text}

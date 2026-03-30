@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { TsunamiTermElem } from "@/element/tsunamiterm";
+
 const TextTag = "#text";
 
 // TODO support binding
@@ -79,6 +81,22 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
     });
 }
 
+export function isTsunamiTermElem(elem: HTMLElement): elem is TsunamiTermElem {
+    return elem != null && typeof (elem as TsunamiTermElem).__termWrite === "function";
+}
+
+export function applyTermOp(elem: TsunamiTermElem, termOp: VDomRefOperation) {
+    const { op, params } = termOp;
+    if (op === "termwrite") {
+        const data64 = params?.[0];
+        if (typeof data64 === "string" && data64 !== "") {
+            elem.__termWrite(data64);
+        }
+    } else if (op === "focus") {
+        elem.__termFocus();
+    }
+}
+
 export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperation, refStore: Map<string, any>) {
     const ctx = canvas.getContext("2d");
     if (!ctx) {
@@ -118,7 +136,7 @@ export function applyCanvasOp(canvas: HTMLCanvasElement, canvasOp: VDomRefOperat
     } else if (op === "addRef" && outputref) {
         refStore.set(outputref, resolvedParams[0]);
     } else if (typeof ctx[op as keyof CanvasRenderingContext2D] === "function") {
-        (ctx[op as keyof CanvasRenderingContext2D] as Function).apply(ctx, resolvedParams);
+        (ctx[op as keyof CanvasRenderingContext2D] as (...args: unknown[]) => unknown).apply(ctx, resolvedParams);
     } else if (op in ctx) {
         (ctx as any)[op] = resolvedParams[0];
     } else {

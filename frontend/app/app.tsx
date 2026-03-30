@@ -1,21 +1,23 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientModel } from "@/app/store/client-model";
-import { GlobalModel } from "@/app/store/global-model";
-import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
-import { Workspace } from "@/app/workspace/workspace";
-import { ContextMenuModel } from "@/store/contextmenu";
 import {
-    atoms,
-    clearTabIndicatorFromFocus,
-    createBlock,
-    getSettingsPrefixAtom,
-    getTabIndicatorAtom,
-    globalStore,
-    isDev,
-    removeFlashError,
-} from "@/store/global";
+    clearBadgesForBlockOnFocus,
+    clearBadgesForTabOnFocus,
+    getBadgeAtom,
+    getBlockBadgeAtom,
+} from "@/app/store/badge";
+import { ClientModel } from "@/app/store/client-model";
+import { FocusManager } from "@/app/store/focusManager";
+import { GlobalModel } from "@/app/store/global-model";
+import { globalStore } from "@/app/store/jotaiStore";
+import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
+import { WaveEnvContext } from "@/app/waveenv/waveenv";
+import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
+import { Workspace } from "@/app/workspace/workspace";
+import { getLayoutModelForStaticTab } from "@/layout/index";
+import { ContextMenuModel } from "@/store/contextmenu";
+import { atoms, createBlock, getSettingsPrefixAtom, refocusNode } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -25,12 +27,11 @@ import clsx from "clsx";
 import debug from "debug";
 import { Provider, useAtomValue } from "jotai";
 import "overlayscrollbars/overlayscrollbars.css";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
-import { NotificationBubbles } from "./notification/notificationbubbles";
 
 import "./app.scss";
 
@@ -42,14 +43,17 @@ const focusLog = debug("wave:focus");
 
 const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
     const tabId = useAtomValue(atoms.staticTabId);
+    const waveEnvRef = useRef(makeWaveEnvImpl());
     useEffect(() => {
         onFirstRender();
     }, []);
     return (
         <Provider store={globalStore}>
-            <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
-                <AppInner />
-            </TabModelContext.Provider>
+            <WaveEnvContext.Provider value={waveEnvRef.current}>
+                <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
+                    <AppInner />
+                </TabModelContext.Provider>
+            </WaveEnvContext.Provider>
         </Provider>
     );
 };
@@ -106,7 +110,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     if (!canPaste && !canCopy && !canCut && !clipboardURL) {
         return;
     }
-    let menu: ContextMenuItem[] = [];
+    const menu: ContextMenuItem[] = [];
     if (canCut) {
         menu.push({ label: "Cut", role: "cut" });
     }
@@ -130,7 +134,7 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
             },
         });
     }
-    ContextMenuModel.showContextMenu(menu, e);
+    ContextMenuModel.getInstance().showContextMenu(menu, e);
 }
 
 function AppSettingsUpdater() {
@@ -200,113 +204,154 @@ function AppFocusHandler() {
     return null;
 }
 
-const AppKeyHandlers = () => {
+const MacOSFirstClickHandler = () => {
     useEffect(() => {
-        const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
-        document.addEventListener("keydown", staticKeyDownHandler);
-        document.addEventListener("mousedown", keyboardMouseDownHandler);
-
+        if (PLATFORM !== "darwin") {
+            return;
+        }
+        let windowFocusTime: number = null;
+        let cancelNextClick = false;
+        const handleWindowFocus = (e: FocusEvent) => {
+            windowFocusTime = Date.now();
+        };
+        const getBlockIdFromTarget = (target: EventTarget): string => {
+            let elem = target as HTMLElement;
+            while (elem != null) {
+                const blockId = elem.dataset?.blockid;
+                if (blockId) {
+                    return blockId;
+                }
+                elem = elem.parentElement;
+            }
+            return null;
+        };
+        const isAIPanelTarget = (target: EventTarget): boolean => {
+            let elem = target as HTMLElement;
+            while (elem != null) {
+                if (elem.dataset?.aipanel) {
+                    return true;
+                }
+                elem = elem.parentElement;
+            }
+            return false;
+        };
+        const handleMouseDown = (e: MouseEvent) => {
+            const timeDiff = Date.now() - windowFocusTime;
+            if (windowFocusTime != null && timeDiff < 50) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                cancelNextClick = true;
+                const blockId = getBlockIdFromTarget(e.target);
+                if (blockId != null) {
+                    setTimeout(() => {
+                        console.log("macos first-click, focusing block", blockId);
+                        refocusNode(blockId);
+                    }, 10);
+                } else if (isAIPanelTarget(e.target)) {
+                    setTimeout(() => {
+                        console.log("macos first-click, focusing AI panel");
+                        FocusManager.getInstance().setWaveAIFocused(true);
+                    }, 10);
+                }
+                console.log("macos first-click detected, canceled", timeDiff + "ms");
+                return;
+            }
+            cancelNextClick = false;
+        };
+        const handleClick = (e: MouseEvent) => {
+            if (!cancelNextClick) {
+                return;
+            }
+            cancelNextClick = false;
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log("macos first-click (click event) canceled");
+        };
+        window.addEventListener("focus", handleWindowFocus);
+        window.addEventListener("mousedown", handleMouseDown, true);
+        window.addEventListener("click", handleClick, true);
         return () => {
-            document.removeEventListener("keydown", staticKeyDownHandler);
-            document.removeEventListener("mousedown", keyboardMouseDownHandler);
+            window.removeEventListener("focus", handleWindowFocus);
+            window.removeEventListener("mousedown", handleMouseDown, true);
+            window.removeEventListener("click", handleClick, true);
         };
     }, []);
     return null;
 };
 
-const TabIndicatorAutoClearing = () => {
-    const tabId = useAtomValue(atoms.staticTabId);
-    const indicator = useAtomValue(getTabIndicatorAtom(tabId));
-    const documentHasFocus = useAtomValue(atoms.documentHasFocus);
-
+const AppKeyHandlers = () => {
     useEffect(() => {
-        if (!indicator || !documentHasFocus || !indicator.clearonfocus) {
-            return;
-        }
+        const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
+        const staticMouseDownHandler = (e: MouseEvent) => {
+            keyboardMouseDownHandler(e);
+            GlobalModel.getInstance().setIsActive();
+        };
+        document.addEventListener("keydown", staticKeyDownHandler);
+        document.addEventListener("mousedown", staticMouseDownHandler);
 
-        const timeoutId = setTimeout(() => {
-            const currentIndicator = globalStore.get(getTabIndicatorAtom(tabId));
-            if (globalStore.get(atoms.documentHasFocus) && currentIndicator?.clearonfocus) {
-                clearTabIndicatorFromFocus(tabId);
-            }
-        }, 3000);
-
-        return () => clearTimeout(timeoutId);
-    }, [tabId, indicator, documentHasFocus]);
-
+        return () => {
+            document.removeEventListener("keydown", staticKeyDownHandler);
+            document.removeEventListener("mousedown", staticMouseDownHandler);
+        };
+    }, []);
     return null;
 };
 
-const FlashError = () => {
-    const flashErrors = useAtomValue(atoms.flashErrors);
-    const [hoveredId, setHoveredId] = useState<string>(null);
-    const [ticker, setTicker] = useState<number>(0);
+const BadgeAutoClearing = () => {
+    const tabId = useAtomValue(atoms.staticTabId);
+    const documentHasFocus = useAtomValue(atoms.documentHasFocus);
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedNode = useAtomValue(layoutModel.focusedNode);
+    const focusedBlockId = focusedNode?.data?.blockId;
+    const badge = useAtomValue(getBlockBadgeAtom(focusedBlockId));
+    const tabTransientBadge = useAtomValue(getBadgeAtom(tabId != null ? `tab:${tabId}` : null));
+    const prevFocusedBlockIdRef = useRef<string>(null);
+    const prevDocHasFocusRef = useRef<boolean>(false);
+    const prevTabDocHasFocusRef = useRef<boolean>(false);
 
     useEffect(() => {
-        if (flashErrors.length == 0 || hoveredId != null) {
+        if (!focusedBlockId || !badge || !documentHasFocus) {
+            prevFocusedBlockIdRef.current = focusedBlockId;
+            prevDocHasFocusRef.current = documentHasFocus;
             return;
         }
-        const now = Date.now();
-        for (let ferr of flashErrors) {
-            if (ferr.expiration == null || ferr.expiration < now) {
-                removeFlashError(ferr.id);
+        const focusSwitched =
+            prevFocusedBlockIdRef.current !== focusedBlockId || prevDocHasFocusRef.current !== documentHasFocus;
+        prevFocusedBlockIdRef.current = focusedBlockId;
+        prevDocHasFocusRef.current = documentHasFocus;
+        const delay = focusSwitched ? 500 : 3000;
+        const timeoutId = setTimeout(() => {
+            if (!document.hasFocus()) {
+                return;
             }
-        }
-        setTimeout(() => setTicker(ticker + 1), 1000);
-    }, [flashErrors, ticker, hoveredId]);
+            const currentFocusedNode = globalStore.get(layoutModel.focusedNode);
+            if (currentFocusedNode?.data?.blockId === focusedBlockId) {
+                clearBadgesForBlockOnFocus(focusedBlockId);
+            }
+        }, delay);
+        return () => clearTimeout(timeoutId);
+    }, [focusedBlockId, badge, documentHasFocus]);
 
-    if (flashErrors.length == 0) {
-        return null;
-    }
-
-    function copyError(id: string) {
-        const ferr = flashErrors.find((f) => f.id === id);
-        if (ferr == null) {
+    useEffect(() => {
+        if (!tabId || !tabTransientBadge || !documentHasFocus) {
+            prevTabDocHasFocusRef.current = documentHasFocus;
             return;
         }
-        let text = "";
-        if (ferr.title != null) {
-            text += ferr.title;
-        }
-        if (ferr.message != null) {
-            if (text.length > 0) {
-                text += "\n";
+        const focusSwitched = prevTabDocHasFocusRef.current !== documentHasFocus;
+        prevTabDocHasFocusRef.current = documentHasFocus;
+        const delay = focusSwitched ? 500 : 3000;
+        const timeoutId = setTimeout(() => {
+            if (!document.hasFocus()) {
+                return;
             }
-            text += ferr.message;
-        }
-        navigator.clipboard.writeText(text);
-    }
+            clearBadgesForTabOnFocus(tabId);
+        }, delay);
+        return () => clearTimeout(timeoutId);
+    }, [tabId, tabTransientBadge, documentHasFocus]);
 
-    function convertNewlinesToBreaks(text) {
-        return text.split("\n").map((part, index) => (
-            <Fragment key={index}>
-                {part}
-                <br />
-            </Fragment>
-        ));
-    }
-
-    return (
-        <div className="flash-error-container">
-            {flashErrors.map((err, idx) => (
-                <div
-                    key={idx}
-                    className={clsx("flash-error", { hovered: hoveredId === err.id })}
-                    onClick={() => copyError(err.id)}
-                    onMouseEnter={() => setHoveredId(err.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    title="Click to Copy Error Message"
-                >
-                    <div className="flash-error-scroll">
-                        {err.title != null ? <div className="flash-error-title">{err.title}</div> : null}
-                        {err.message != null ? (
-                            <div className="flash-error-message">{convertNewlinesToBreaks(err.message)}</div>
-                        ) : null}
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
+    return null;
 };
 
 const AppInner = () => {
@@ -333,15 +378,14 @@ const AppInner = () => {
             onContextMenu={handleContextMenu}
         >
             <AppBackground />
+            <MacOSFirstClickHandler />
             <AppKeyHandlers />
             <AppFocusHandler />
             <AppSettingsUpdater />
-            <TabIndicatorAutoClearing />
+            <BadgeAutoClearing />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
-            <FlashError />
-            {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );
 };

@@ -13,7 +13,7 @@ import (
 )
 
 func GenerateBoilerplate(buf *strings.Builder, pkgName string, imports []string) {
-	buf.WriteString("// Copyright 2025, Command Line Inc.\n")
+	buf.WriteString("// Copyright 2026, Command Line Inc.\n")
 	buf.WriteString("// SPDX-License-Identifier: Apache-2.0\n")
 	buf.WriteString("\n// Generated Code. DO NOT EDIT.\n\n")
 	buf.WriteString(fmt.Sprintf("package %s\n\n", pkgName))
@@ -75,12 +75,7 @@ func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype refle
 
 func GenMethod_Call(buf *strings.Builder, methodDecl *wshrpc.WshRpcMethodDecl) {
 	fmt.Fprintf(buf, "// command %q, wshserver.%s\n", methodDecl.Command, methodDecl.MethodName)
-	var dataType string
-	dataVarName := "nil"
-	if methodDecl.CommandDataType != nil {
-		dataType = ", data " + methodDecl.CommandDataType.String()
-		dataVarName = "data"
-	}
+	dataType, dataVarName := getWshMethodDataParamsAndExpr(methodDecl)
 	returnType := "error"
 	respName := "_"
 	tParamVal := "any"
@@ -101,12 +96,7 @@ func GenMethod_Call(buf *strings.Builder, methodDecl *wshrpc.WshRpcMethodDecl) {
 
 func GenMethod_ResponseStream(buf *strings.Builder, methodDecl *wshrpc.WshRpcMethodDecl) {
 	fmt.Fprintf(buf, "// command %q, wshserver.%s\n", methodDecl.Command, methodDecl.MethodName)
-	var dataType string
-	dataVarName := "nil"
-	if methodDecl.CommandDataType != nil {
-		dataType = ", data " + methodDecl.CommandDataType.String()
-		dataVarName = "data"
-	}
+	dataType, dataVarName := getWshMethodDataParamsAndExpr(methodDecl)
 	respType := "any"
 	if methodDecl.DefaultResponseDataType != nil {
 		respType = methodDecl.DefaultResponseDataType.String()
@@ -114,4 +104,28 @@ func GenMethod_ResponseStream(buf *strings.Builder, methodDecl *wshrpc.WshRpcMet
 	fmt.Fprintf(buf, "func %s(w *wshutil.WshRpc%s, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[%s] {\n", methodDecl.MethodName, dataType, respType)
 	fmt.Fprintf(buf, "\treturn sendRpcRequestResponseStreamHelper[%s](w, %q, %s, opts)\n", respType, methodDecl.Command, dataVarName)
 	fmt.Fprintf(buf, "}\n\n")
+}
+
+func getWshMethodDataParamsAndExpr(methodDecl *wshrpc.WshRpcMethodDecl) (string, string) {
+	dataTypes := methodDecl.GetCommandDataTypes()
+	if len(dataTypes) == 0 {
+		return "", "nil"
+	}
+	if len(dataTypes) == 1 {
+		return ", data " + dataTypes[0].String(), "data"
+	}
+	var paramBuilder strings.Builder
+	var argBuilder strings.Builder
+	for idx, dataType := range dataTypes {
+		argName := fmt.Sprintf("arg%d", idx+1)
+		paramBuilder.WriteString(", ")
+		paramBuilder.WriteString(argName)
+		paramBuilder.WriteString(" ")
+		paramBuilder.WriteString(dataType.String())
+		if idx > 0 {
+			argBuilder.WriteString(", ")
+		}
+		argBuilder.WriteString(argName)
+	}
+	return paramBuilder.String(), fmt.Sprintf("wshrpc.MultiArg{Args: []any{%s}}", argBuilder.String())
 }

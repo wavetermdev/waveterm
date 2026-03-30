@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ClientModel } from "@/app/store/client-model";
-import { atoms, globalStore } from "@/app/store/global";
+import { globalStore } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";

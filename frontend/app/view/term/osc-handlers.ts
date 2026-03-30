@@ -1,18 +1,17 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     getApi,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
+    getOverrideConfigAtom,
     globalStore,
     recordTEvent,
     WOS,
 } from "@/store/global";
-import * as services from "@/store/services";
 import { base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/util/util";
 import debug from "debug";
 import type { TermWrap } from "./termwrap";
@@ -26,47 +25,74 @@ const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace
 // See aiprompts/wave-osc-16162.md for full documentation
 export type ShellIntegrationStatus = "ready" | "running-command";
 
+const ClaudeCodeRegex = /^claude\b/;
+
 type Osc16162Command =
-    | { command: "A"; data: {} }
+    | { command: "A"; data: Record<string, never> }
     | { command: "C"; data: { cmd64?: string } }
-    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string; integration?: boolean } }
+    | {
+          command: "M";
+          data: {
+              shell?: string;
+              shellversion?: string;
+              uname?: string;
+              integration?: boolean;
+              omz?: boolean;
+              comp?: string;
+          };
+      }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
-    | { command: "R"; data: {} };
+    | { command: "R"; data: Record<string, never> };
+
+function normalizeCmd(decodedCmd: string): string {
+    let normalizedCmd = decodedCmd.trim();
+    normalizedCmd = normalizedCmd.replace(/^env\s+/, "");
+    normalizedCmd = normalizedCmd.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
+    return normalizedCmd;
+}
 
 function checkCommandForTelemetry(decodedCmd: string) {
     if (!decodedCmd) {
         return;
     }
 
-    if (decodedCmd.startsWith("ssh ")) {
+    const normalizedCmd = normalizeCmd(decodedCmd);
+
+    if (normalizedCmd.startsWith("ssh ")) {
         recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
         return;
     }
 
     const editorsRegex = /^(vim|vi|nano|nvim)\b/;
-    if (editorsRegex.test(decodedCmd)) {
+    if (editorsRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "cli-edit" });
         return;
     }
 
     const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
-    if (tailFollowRegex.test(decodedCmd)) {
+    if (tailFollowRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "cli-tailf" });
         return;
     }
 
-    const claudeRegex = /^claude\b/;
-    if (claudeRegex.test(decodedCmd)) {
+    if (ClaudeCodeRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "claude" });
         return;
     }
 
     const opencodeRegex = /^opencode\b/;
-    if (opencodeRegex.test(decodedCmd)) {
+    if (opencodeRegex.test(normalizedCmd)) {
         recordTEvent("action:term", { "action:type": "opencode" });
         return;
     }
+}
+
+export function isClaudeCodeCommand(decodedCmd: string): boolean {
+    if (!decodedCmd) {
+        return false;
+    }
+    return ClaudeCodeRegex.test(normalizeCmd(decodedCmd));
 }
 
 function handleShellIntegrationCommandStart(
@@ -92,16 +118,20 @@ function handleShellIntegrationCommandStart(
                 const decodedCmd = base64ToString(cmd.data.cmd64);
                 rtInfo["shell:lastcmd"] = decodedCmd;
                 globalStore.set(termWrap.lastCommandAtom, decodedCmd);
+                const isCC = isClaudeCodeCommand(decodedCmd);
+                globalStore.set(termWrap.claudeCodeActiveAtom, isCC);
                 checkCommandForTelemetry(decodedCmd);
             } catch (e) {
                 console.error("Error decoding cmd64:", e);
                 rtInfo["shell:lastcmd"] = null;
                 globalStore.set(termWrap.lastCommandAtom, null);
+                globalStore.set(termWrap.claudeCodeActiveAtom, false);
             }
         }
     } else {
         rtInfo["shell:lastcmd"] = null;
         globalStore.set(termWrap.lastCommandAtom, null);
+        globalStore.set(termWrap.claudeCodeActiveAtom, false);
     }
     rtInfo["shell:lastcmdexitcode"] = null;
 }
@@ -112,10 +142,13 @@ export function handleOsc52Command(data: string, blockId: string, loaded: boolea
     if (!loaded) {
         return true;
     }
-    const isBlockFocused = termWrap.nodeModel ? globalStore.get(termWrap.nodeModel.isFocused) : false;
-    if (!document.hasFocus() || !isBlockFocused) {
-        console.log("OSC 52: rejected, window or block not focused");
-        return true;
+    const osc52Mode = globalStore.get(getOverrideConfigAtom(blockId, "term:osc52")) ?? "always";
+    if (osc52Mode === "focus") {
+        const isBlockFocused = termWrap.nodeModel ? globalStore.get(termWrap.nodeModel.isFocused) : false;
+        if (!document.hasFocus() || !isBlockFocused) {
+            console.log("OSC 52: rejected, window or block not focused");
+            return true;
+        }
     }
     if (!data || data.length === 0) {
         console.log("OSC 52: empty data received");
@@ -230,8 +263,9 @@ export function handleOsc7Command(data: string, blockId: string, loaded: boolean
 
     setTimeout(() => {
         fireAndForget(async () => {
-            await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
-                "cmd:cwd": pathPart,
+            await RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", blockId),
+                meta: { "cmd:cwd": pathPart },
             });
 
             const rtInfo = { "shell:hascurcwd": true };
@@ -271,9 +305,10 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
     const cmd: Osc16162Command = { command: commandStr, data: parsedData } as Osc16162Command;
     const rtInfo: ObjRTInfo = {};
     switch (cmd.command) {
-        case "A":
+        case "A": {
             rtInfo["shell:state"] = "ready";
             globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
@@ -286,6 +321,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
                 });
             }
             break;
+        }
         case "C":
             handleShellIntegrationCommandStart(termWrap, blockId, cmd, rtInfo);
             break;
@@ -302,8 +338,15 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             if (cmd.data.integration != null) {
                 rtInfo["shell:integration"] = cmd.data.integration;
             }
+            if (cmd.data.omz != null) {
+                rtInfo["shell:omz"] = cmd.data.omz;
+            }
+            if (cmd.data.comp != null) {
+                rtInfo["shell:comp"] = cmd.data.comp;
+            }
             break;
         case "D":
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             if (cmd.data.exitcode != null) {
                 rtInfo["shell:lastcmdexitcode"] = cmd.data.exitcode;
             } else {
@@ -317,6 +360,7 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             break;
         case "R":
             globalStore.set(termWrap.shellIntegrationStatusAtom, null);
+            globalStore.set(termWrap.claudeCodeActiveAtom, false);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }

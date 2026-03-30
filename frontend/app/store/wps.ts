@@ -1,8 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { isPreviewWindow } from "@/app/store/windowtype";
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
 
@@ -12,17 +13,19 @@ function setWpsRpcClient(client: WshClient) {
     WpsRpcClient = client;
 }
 
-type WaveEventSubject = {
-    handler: (event: WaveEvent) => void;
+type WaveEventSubject<T extends WaveEventName = WaveEventName> = {
+    handler: (event: Extract<WaveEvent, { event: T }>) => void;
     scope?: string;
 };
 
-type WaveEventSubjectContainer = WaveEventSubject & {
+type WaveEventSubjectContainer = {
+    handler: (event: WaveEvent) => void;
+    scope?: string;
     id: string;
 };
 
-type WaveEventSubscription = WaveEventSubject & {
-    eventType: string;
+type WaveEventSubscription<T extends WaveEventName = WaveEventName> = WaveEventSubject<T> & {
+    eventType: T;
 };
 
 type WaveEventUnsubscribe = {
@@ -41,6 +44,9 @@ function wpsReconnectHandler() {
 }
 
 function updateWaveEventSub(eventType: string) {
+    if (isPreviewWindow()) {
+        return;
+    }
     const subjects = waveEventSubjects.get(eventType);
     if (subjects == null) {
         RpcApi.EventUnsubCommand(WpsRpcClient, eventType, { noresponse: true });
@@ -58,35 +64,31 @@ function updateWaveEventSub(eventType: string) {
     RpcApi.EventSubCommand(WpsRpcClient, subreq, { noresponse: true });
 }
 
-function waveEventSubscribe(...subscriptions: WaveEventSubscription[]): () => void {
-    const unsubs: WaveEventUnsubscribe[] = [];
-    const eventTypeSet = new Set<string>();
-    for (const subscription of subscriptions) {
-        // console.log("waveEventSubscribe", subscription);
-        if (subscription.handler == null) {
-            return;
-        }
-        const id: string = crypto.randomUUID();
-        let subjects = waveEventSubjects.get(subscription.eventType);
-        if (subjects == null) {
-            subjects = [];
-            waveEventSubjects.set(subscription.eventType, subjects);
-        }
-        const subcont: WaveEventSubjectContainer = { id, handler: subscription.handler, scope: subscription.scope };
-        subjects.push(subcont);
-        unsubs.push({ id, eventType: subscription.eventType });
-        eventTypeSet.add(subscription.eventType);
+function waveEventSubscribeSingle<T extends WaveEventName>(subscription: WaveEventSubscription<T>): () => void {
+    // console.log("waveEventSubscribeSingle", subscription);
+    if (subscription.handler == null) {
+        return () => {};
     }
-    for (const eventType of eventTypeSet) {
-        updateWaveEventSub(eventType);
+    const id: string = crypto.randomUUID();
+    let subjects = waveEventSubjects.get(subscription.eventType);
+    if (subjects == null) {
+        subjects = [];
+        waveEventSubjects.set(subscription.eventType, subjects);
     }
-    return () => waveEventUnsubscribe(...unsubs);
+    const subcont: WaveEventSubjectContainer = {
+        id,
+        handler: subscription.handler as (event: WaveEvent) => void,
+        scope: subscription.scope,
+    };
+    subjects.push(subcont);
+    updateWaveEventSub(subscription.eventType);
+    return () => waveEventUnsubscribe({ id, eventType: subscription.eventType });
 }
 
 function waveEventUnsubscribe(...unsubscribes: WaveEventUnsubscribe[]) {
     const eventTypeSet = new Set<string>();
     for (const unsubscribe of unsubscribes) {
-        let subjects = waveEventSubjects.get(unsubscribe.eventType);
+        const subjects = waveEventSubjects.get(unsubscribe.eventType);
         if (subjects == null) {
             return;
         }
@@ -149,7 +151,7 @@ export {
     getFileSubject,
     handleWaveEvent,
     setWpsRpcClient,
-    waveEventSubscribe,
+    waveEventSubscribeSingle,
     waveEventUnsubscribe,
     wpsReconnectHandler,
 };

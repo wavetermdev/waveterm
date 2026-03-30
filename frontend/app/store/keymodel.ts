@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
@@ -29,6 +29,7 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
+import { isBuilderWindow, isTabWindow } from "./windowtype";
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -64,7 +65,7 @@ export function keyboardMouseDownHandler(e: MouseEvent) {
     }
 }
 
-function getFocusedBlockInStaticTab() {
+function getFocusedBlockInStaticTab(): string {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     return focusedNode.data?.blockId;
@@ -128,10 +129,19 @@ function getStaticTabBlockCount(): number {
 }
 
 function simpleCloseStaticTab() {
-    const ws = globalStore.get(atoms.workspace);
+    const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
-    getApi().closeTab(ws.oid, tabId);
-    deleteLayoutModelForTab(tabId);
+    const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
+    getApi()
+        .closeTab(workspaceId, tabId, confirmClose)
+        .then((didClose) => {
+            if (didClose) {
+                deleteLayoutModelForTab(tabId);
+            }
+        })
+        .catch((e) => {
+            console.log("error closing tab", e);
+        });
 }
 
 function uxCloseBlock(blockId: string) {
@@ -150,6 +160,13 @@ function uxCloseBlock(blockId: string) {
     const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
     const blockData = globalStore.get(blockAtom);
     const isAIFileDiff = blockData?.meta?.view === "aifilediff";
+
+    // If this is the last block, closing it will close the tab — route through simpleCloseStaticTab
+    // so the tab:confirmclose setting is respected.
+    if (getStaticTabBlockCount() === 1) {
+        simpleCloseStaticTab();
+        return;
+    }
 
     const layoutModel = getLayoutModelForStaticTab();
     const node = layoutModel.getNodeByBlockId(blockId);
@@ -186,6 +203,13 @@ function genericClose() {
     }
     const blockCount = getStaticTabBlockCount();
     if (blockCount === 0) {
+        simpleCloseStaticTab();
+        return;
+    }
+
+    // If this is the last block, closing it will close the tab — route through simpleCloseStaticTab
+    // so the tab:confirmclose setting is respected.
+    if (blockCount === 1) {
         simpleCloseStaticTab();
         return;
     }
@@ -299,7 +323,7 @@ function globalRefocusWithTimeout(timeoutVal: number) {
 }
 
 function globalRefocus() {
-    if (globalStore.get(atoms.waveWindowType) == "builder") {
+    if (isBuilderWindow()) {
         return;
     }
 
@@ -395,7 +419,6 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     }
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
-        console.log("lastHandledEvent return false");
         return false;
     }
     lastHandledEvent = nativeEvent;
@@ -426,7 +449,7 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
             return true;
         }
     }
-    if (globalStore.get(atoms.waveWindowType) == "tab") {
+    if (isTabWindow()) {
         const layoutModel = getLayoutModelForStaticTab();
         const focusedNode = globalStore.get(layoutModel.focusedNode);
         const blockId = focusedNode?.data?.blockId;
@@ -467,7 +490,7 @@ function tryReinjectKey(event: WaveKeyboardEvent): boolean {
 function countTermBlocks(): number {
     const allBCMs = getAllBlockComponentModels();
     let count = 0;
-    let gsGetBound = globalStore.get.bind(globalStore);
+    const gsGetBound = globalStore.get.bind(globalStore);
     for (const bcm of allBCMs) {
         const viewModel = bcm.viewModel;
         if (viewModel.viewType == "term" && viewModel.isBasicTerm?.(gsGetBound)) {
@@ -562,7 +585,40 @@ function registerGlobalKeys() {
         switchBlockInDirection(NavigateDirection.Right);
         return true;
     });
+    // Vim-style aliases for block focus navigation.
+    globalKeyMap.set("Ctrl:Shift:h", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Left);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:j", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Down);
+        return true;
+    });
     globalKeyMap.set("Ctrl:Shift:k", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Up);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:l", () => {
+        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+        if (disableCtrlShiftArrows) {
+            return false;
+        }
+        switchBlockInDirection(NavigateDirection.Right);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:x", () => {
         const blockId = getFocusedBlockId();
         if (blockId == null) {
             return true;
@@ -639,7 +695,15 @@ function registerGlobalKeys() {
             return false;
         }
         if (bcm.viewModel.searchAtoms) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            if (globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+                // Already open — increment the focusInput counter so this block's
+                // SearchComponent focuses its own input (avoids a global DOM query
+                // that could target the wrong block when multiple searches are open).
+                const cur = globalStore.get(bcm.viewModel.searchAtoms.focusInput) as number;
+                globalStore.set(bcm.viewModel.searchAtoms.focusInput, cur + 1);
+            } else {
+                globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            }
             return true;
         }
         return false;

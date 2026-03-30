@@ -391,6 +391,7 @@ export interface NodeModel {
     isResizing: Atom<boolean>;
     isFocused: Atom<boolean>;
     isMagnified: Atom<boolean>;
+    anyMagnified: Atom<boolean>;
     isEphemeral: Atom<boolean>;
     ready: Atom<boolean>;
     disablePointerEvents: Atom<boolean>;

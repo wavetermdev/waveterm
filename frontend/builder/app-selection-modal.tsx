@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FlexiModal } from "@/app/modals/modal";
+import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, getApi, globalStore } from "@/store/global";
+import { atoms, getApi } from "@/store/global";
 import * as WOS from "@/store/wos";
 import { formatRelativeTime } from "@/util/util";
 import { useEffect, useState } from "react";

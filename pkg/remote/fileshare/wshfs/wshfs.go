@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshfs
@@ -7,12 +7,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -30,6 +30,7 @@ const (
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
 var RpcClient *wshutil.WshRpc
+var RpcClientRouteId string
 
 func parseConnection(ctx context.Context, path string) (*connparse.Connection, error) {
 	conn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, path)
@@ -40,31 +41,79 @@ func parseConnection(ctx context.Context, path string) (*connparse.Connection, e
 }
 
 func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	if data.Info == nil {
+		return nil, fmt.Errorf("file info is required")
+	}
 	log.Printf("Read: %v", data.Info.Path)
 	conn, err := parseConnection(ctx, data.Info.Path)
 	if err != nil {
 		return nil, err
 	}
-	rtnCh := readStream(conn, data)
-	return fsutil.ReadStreamToFileData(ctx, rtnCh)
-}
-
-func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	log.Printf("ReadStream: %v", data.Info.Path)
-	conn, err := parseConnection(ctx, data.Info.Path)
-	if err != nil {
-		return wshutil.SendErrCh[wshrpc.FileData](err)
+	broker := RpcClient.StreamBroker
+	if broker == nil {
+		return nil, fmt.Errorf("stream broker not available")
 	}
-	return readStream(conn, data)
-}
-
-func readStream(conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	if RpcClientRouteId == "" {
+		return nil, fmt.Errorf("no route id available")
+	}
+	readerRouteId := RpcClientRouteId
+	writerRouteId := wshutil.MakeConnectionRouteId(conn.Host)
+	reader, streamMeta := broker.CreateStreamReader(readerRouteId, writerRouteId, 256*1024)
+	defer reader.Close()
+	go func() {
+		<-ctx.Done()
+		reader.Close()
+	}()
 	byteRange := ""
 	if data.At != nil && data.At.Size > 0 {
-		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size))
+		byteRange = fmt.Sprintf("%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size)-1)
 	}
-	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: conn.Path, ByteRange: byteRange}
-	return wshclient.RemoteStreamFileCommand(RpcClient, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+	remoteData := wshrpc.CommandRemoteFileStreamData{
+		Path:       conn.Path,
+		ByteRange:  byteRange,
+		StreamMeta: *streamMeta,
+	}
+	fileInfo, err := wshclient.RemoteFileStreamCommand(RpcClient, remoteData, &wshrpc.RpcOpts{Route: writerRouteId})
+	if err != nil {
+		return nil, fmt.Errorf("starting remote file stream: %w", err)
+	}
+	var rawData []byte
+	if fileInfo != nil && !fileInfo.IsDir {
+		rawData, err = io.ReadAll(reader)
+		if err != nil {
+			return nil, fmt.Errorf("reading file stream: %w", err)
+		}
+	}
+	rtnData := &wshrpc.FileData{Info: fileInfo}
+	if len(rawData) > 0 {
+		rtnData.Data64 = base64.StdEncoding.EncodeToString(rawData)
+	}
+	return rtnData, nil
+}
+
+func GetConnectionRouteId(ctx context.Context, path string) (string, error) {
+	conn, err := parseConnection(ctx, path)
+	if err != nil {
+		return "", err
+	}
+	return wshutil.MakeConnectionRouteId(conn.Host), nil
+}
+
+func FileStream(ctx context.Context, data wshrpc.CommandFileStreamData) (*wshrpc.FileInfo, error) {
+	if data.Info == nil {
+		return nil, fmt.Errorf("file info is required")
+	}
+	log.Printf("FileStream: %v", data.Info.Path)
+	conn, err := parseConnection(ctx, data.Info.Path)
+	if err != nil {
+		return nil, err
+	}
+	remoteData := wshrpc.CommandRemoteFileStreamData{
+		Path:       conn.Path,
+		ByteRange:  data.ByteRange,
+		StreamMeta: data.StreamMeta,
+	}
+	return wshclient.RemoteFileStreamCommand(RpcClient, remoteData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {

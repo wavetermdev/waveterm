@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -16,6 +16,8 @@ const (
 	ConfigKey_AppHideAiButton                = "app:hideaibutton"
 	ConfigKey_AppDisableCtrlShiftArrows      = "app:disablectrlshiftarrows"
 	ConfigKey_AppDisableCtrlShiftDisplay     = "app:disablectrlshiftdisplay"
+	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
+	ConfigKey_AppTabBar                      = "app:tabbar"
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
@@ -51,8 +53,11 @@ const (
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
+	ConfigKey_TermCursor                     = "term:cursor"
+	ConfigKey_TermCursorBlink                = "term:cursorblink"
 	ConfigKey_TermBellSound                  = "term:bellsound"
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
+	ConfigKey_TermOsc52                      = "term:osc52"
 	ConfigKey_TermDurable                    = "term:durable"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
@@ -76,8 +81,11 @@ const (
 	ConfigKey_MarkdownFixedFontSize          = "markdown:fixedfontsize"
 
 	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
+	ConfigKey_PreviewDefaultSort             = "preview:defaultsort"
 
 	ConfigKey_TabPreset                      = "tab:preset"
+	ConfigKey_TabConfirmClose                = "tab:confirmclose"
+	ConfigKey_TabBackground                  = "tab:background"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
@@ -114,6 +122,7 @@ const (
 	ConfigKey_DebugClear                     = "debug:*"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
+	ConfigKey_DebugWebGlStatus               = "debug:webglstatus"
 
 	ConfigKey_TsunamiClear                   = "tsunami:*"
 	ConfigKey_TsunamiScaffoldPath            = "tsunami:scaffoldpath"

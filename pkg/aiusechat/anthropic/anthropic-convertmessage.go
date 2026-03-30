@@ -13,10 +13,13 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
@@ -119,16 +122,16 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		reqBody.System = systemBlocks
 	}
 
-	if len(chatOpts.Tools) > 0 {
-		cleanedTools := make([]uctypes.ToolDefinition, len(chatOpts.Tools))
-		for i, tool := range chatOpts.Tools {
-			cleanedTools[i] = *tool.Clean()
-		}
-		reqBody.Tools = cleanedTools
+	for _, tool := range chatOpts.Tools {
+		cleanedTool := tool.Clean()
+		reqBody.Tools = append(reqBody.Tools, cleanedTool)
 	}
 	for _, tool := range chatOpts.TabTools {
-		cleanedTool := *tool.Clean()
+		cleanedTool := tool.Clean()
 		reqBody.Tools = append(reqBody.Tools, cleanedTool)
+	}
+	if chatOpts.AllowNativeWebSearch {
+		reqBody.Tools = append(reqBody.Tools, &anthropicWebSearchTool{Type: "web_search_20250305", Name: "web_search"})
 	}
 
 	// Enable extended thinking based on level
@@ -136,7 +139,6 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 
 	// pretty print json of anthropicMsgs
 	if jsonStr, err := utilfn.MarshalIndentNoHTMLString(convertedMsgs, "", "  "); err == nil {
-		log.Printf("system-prompt: %v\n", chatOpts.SystemPrompt)
 		var toolNames []string
 		for _, tool := range chatOpts.Tools {
 			toolNames = append(toolNames, tool.Name)
@@ -144,9 +146,12 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		for _, tool := range chatOpts.TabTools {
 			toolNames = append(toolNames, tool.Name)
 		}
-		log.Printf("tools: %s\n", strings.Join(toolNames, ", "))
-		log.Printf("anthropicMsgs JSON:\n%s", jsonStr)
-		log.Printf("has-api-key: %v\n", opts.APIToken != "")
+		if chatOpts.AllowNativeWebSearch {
+			toolNames = append(toolNames, "web_search[server]")
+		}
+		logutil.DevPrintf("tools: %s\n", strings.Join(toolNames, ", "))
+		logutil.DevPrintf("anthropicMsgs JSON:\n%s", jsonStr)
+		logutil.DevPrintf("has-api-key: %v\n", opts.APIToken != "")
 	}
 
 	var buf bytes.Buffer
@@ -698,6 +703,13 @@ func (m *anthropicChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
 					ToolCallID: block.ID,
 					Input:      block.Input,
 				})
+				if block.ToolUseData != nil {
+					parts = append(parts, uctypes.UIMessagePart{
+						Type: "data-tooluse",
+						ID:   block.ID,
+						Data: *block.ToolUseData,
+					})
+				}
 			}
 		default:
 			// For now, skip all other types (will implement later)
@@ -826,4 +838,103 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		APIVersion: aiChat.APIVersion,
 		Messages:   uiMessages,
 	}, nil
+}
+
+func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
+	for _, genMsg := range aiChat.NativeMessages {
+		chatMsg, ok := genMsg.(*anthropicChatMessage)
+		if !ok {
+			continue
+		}
+		for _, block := range chatMsg.Content {
+			if block.Type != "tool_use" || block.ID != toolCallId {
+				continue
+			}
+			argsInput := block.Input
+			if argsInput == nil {
+				argsInput = map[string]interface{}{}
+			}
+			argsBytes, err := json.Marshal(argsInput)
+			if err != nil {
+				continue
+			}
+			return &uctypes.AIFunctionCallInput{
+				CallId:      block.ID,
+				Name:        block.Name,
+				Arguments:   string(argsBytes),
+				ToolUseData: block.ToolUseData,
+			}
+		}
+	}
+	return nil
+}
+
+func UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*anthropicChatMessage)
+		if !ok {
+			continue
+		}
+		for i, block := range chatMsg.Content {
+			if block.Type != "tool_use" || block.ID != toolCallId {
+				continue
+			}
+			updatedMsg := &anthropicChatMessage{
+				MessageId: chatMsg.MessageId,
+				Usage:     chatMsg.Usage,
+				Role:      chatMsg.Role,
+				Content:   slices.Clone(chatMsg.Content),
+			}
+			updatedMsg.Content[i].ToolUseData = &toolUseData
+			aiOpts := &uctypes.AIOptsType{
+				APIType:    chat.APIType,
+				Model:      chat.Model,
+				APIVersion: chat.APIVersion,
+			}
+			return chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg)
+		}
+	}
+	return fmt.Errorf("tool call with ID %s not found in chat %s", toolCallId, chatId)
+}
+
+func RemoveToolUseCall(chatId string, toolCallId string) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*anthropicChatMessage)
+		if !ok {
+			continue
+		}
+		for i, block := range chatMsg.Content {
+			if block.Type != "tool_use" || block.ID != toolCallId {
+				continue
+			}
+			updatedMsg := &anthropicChatMessage{
+				MessageId: chatMsg.MessageId,
+				Usage:     chatMsg.Usage,
+				Role:      chatMsg.Role,
+				Content:   slices.Delete(slices.Clone(chatMsg.Content), i, i+1),
+			}
+			if len(updatedMsg.Content) == 0 {
+				chatstore.DefaultChatStore.RemoveMessage(chatId, chatMsg.MessageId)
+			} else {
+				aiOpts := &uctypes.AIOptsType{
+					APIType:    chat.APIType,
+					Model:      chat.Model,
+					APIVersion: chat.APIVersion,
+				}
+				if err := chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
+	return nil
 }

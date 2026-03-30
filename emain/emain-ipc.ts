@@ -17,13 +17,14 @@ import {
     incrementTermCommandsRemote,
     incrementTermCommandsRun,
     incrementTermCommandsWsl,
+    setWasActive,
 } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
-import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
+import { createNewWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -129,12 +130,18 @@ function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInS
     });
 }
 
-function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string, readStream: Readable) {
+function saveImageFileWithNativeDialog(
+    sender: electron.WebContents,
+    defaultFileName: string,
+    mimeType: string,
+    readStream: Readable
+) {
     if (defaultFileName == null || defaultFileName == "") {
         defaultFileName = "image";
     }
-    const ww = focusedWaveWindow;
+    const ww = electron.BrowserWindow.fromWebContents(sender);
     if (ww == null) {
+        readStream.destroy();
         return;
     }
     const mimeToExtension: { [key: string]: string } = {
@@ -163,6 +170,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
         })
         .then((file) => {
             if (file.canceled) {
+                readStream.destroy();
                 return;
             }
             const writeStream = fs.createWriteStream(file.filePath);
@@ -201,7 +209,7 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
         const menu = new electron.Menu();
-        const win = getWaveWindowByWebContentsId(event.sender.hostWebContents.id);
+        const win = getWaveWindowByWebContentsId(event.sender.hostWebContents?.id);
         if (win == null) {
             return;
         }
@@ -212,7 +220,12 @@ export function initIpcHandlers() {
                     const resultP = getUrlInSession(event.sender.session, payload.src);
                     resultP
                         .then((result) => {
-                            saveImageFileWithNativeDialog(result.fileName, result.mimeType, result.stream);
+                            saveImageFileWithNativeDialog(
+                                event.sender.hostWebContents,
+                                result.fileName,
+                                result.mimeType,
+                                result.stream
+                            );
                         })
                         .catch((e) => {
                             console.log("error getting image", e);
@@ -317,6 +330,10 @@ export function initIpcHandlers() {
         tabView?.setKeyboardChordMode(true);
     });
 
+    electron.ipcMain.handle("set-is-active", () => {
+        setWasActive(true);
+    });
+
     const fac = new FastAverageColor();
     electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
         if (unamePlatform === "darwin") return;
@@ -336,6 +353,7 @@ export function initIpcHandlers() {
             const png = PNG.sync.read(overlayBuffer);
             const color = fac.prepareResult(fac.getColorFromArray4(png.data));
             const ww = getWaveWindowByWebContentsId(event.sender.id);
+            if (ww == null) return;
             ww.setTitleBarOverlay({
                 color: unamePlatform === "linux" ? color.rgba : "#00000000",
                 symbolColor: color.isDark ? "white" : "black",
@@ -469,5 +487,28 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("do-refresh", (event) => {
         event.sender.reloadIgnoringCache();
+    });
+
+    electron.ipcMain.handle("save-text-file", async (event, fileName: string, content: string) => {
+        const ww = electron.BrowserWindow.fromWebContents(event.sender);
+        if (ww == null) {
+            return false;
+        }
+        const result = await electron.dialog.showSaveDialog(ww, {
+            title: "Save Scrollback",
+            defaultPath: fileName || "session.log",
+            filters: [{ name: "Text Files", extensions: ["txt", "log"] }],
+        });
+        if (result.canceled || !result.filePath) {
+            return false;
+        }
+        try {
+            await fs.promises.writeFile(result.filePath, content, "utf-8");
+            console.log("saved scrollback to", result.filePath);
+            return true;
+        } catch (err) {
+            console.error("error saving scrollback file", err);
+            return false;
+        }
     });
 }

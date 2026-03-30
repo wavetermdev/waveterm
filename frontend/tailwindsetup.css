@@ -1,7 +1,8 @@
-/* Copyright 2025, Command Line Inc.
+/* Copyright 2026, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
 @import "tailwindcss";
+
 @source "../node_modules/streamdown/dist/index.js";
 
 @theme {
@@ -75,6 +76,13 @@
     --z-window-drag: 100;
 }
 
+/* Applied when body.nohover is set — used to suppress hover effects during tab remount to prevent ghost-hover flicker */
+@custom-variant nohover {
+    body.nohover & {
+        @slot;
+    }
+}
+
 :root {
     --zoomfactor: 1;
     --zoomfactor-inv: 1;
@@ -83,6 +91,10 @@
 /* Chart tooltip styling for sysinfo plots */
 svg [aria-label="tip"] g path {
     color: var(--border-color);
+}
+
+.wide-scrollbar::-webkit-scrollbar {
+    width: 10px;
 }
 
 /* Monaco editor scrollbar styling */

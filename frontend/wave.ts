@@ -3,6 +3,7 @@
 
 import { App } from "@/app/app";
 import { loadMonaco } from "@/app/monaco/monaco-env";
+import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
@@ -17,25 +18,21 @@ import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
+import { countersClear, countersPrint } from "@/store/counters";
 import {
     atoms,
-    countersClear,
-    countersPrint,
     getApi,
     globalStore,
     initGlobal,
     initGlobalWaveEventSubs,
     loadConnStatus,
-    loadTabIndicators,
-    pushFlashError,
-    pushNotification,
-    removeNotificationById,
     subscribeToConnEvents,
 } from "@/store/global";
 import { activeTabIdAtom } from "@/store/tab-model";
 import * as WOS from "@/store/wos";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
+import { isMacOS, setMacOSVersion } from "@/util/platformutil";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -51,9 +48,6 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).countersPrint = countersPrint;
 (window as any).countersClear = countersClear;
 (window as any).getLayoutModelForStaticTab = getLayoutModelForStaticTab;
-(window as any).pushFlashError = pushFlashError;
-(window as any).pushNotification = pushNotification;
-(window as any).removeNotificationById = removeNotificationById;
 (window as any).modalsModel = modalsModel;
 
 function updateZoomFactor(zoomFactor: number) {
@@ -166,19 +160,23 @@ async function initWave(initOpts: WaveInitOpts) {
     const globalWS = initWshrpc(makeTabRouteId(initOpts.tabId));
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
-    await loadConnStatus();
-    await loadTabIndicators();
-    initGlobalWaveEventSubs(initOpts);
-    subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
     try {
-        const [client, waveWindow, initialTab] = await Promise.all([
+        await loadConnStatus();
+        await loadBadges();
+        initGlobalWaveEventSubs(initOpts);
+        subscribeToConnEvents();
+        if (isMacOS()) {
+            const macOSVersion = await RpcApi.MacOSVersionCommand(TabRpcClient);
+            setMacOSVersion(macOSVersion);
+        }
+        const [_client, waveWindow, initialTab] = await Promise.all([
             WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
             WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
             WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
         ]);
-        const [ws, layoutState] = await Promise.all([
+        const [ws, _layoutState] = await Promise.all([
             WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
             WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
         ]);
@@ -200,7 +198,7 @@ async function initWave(initOpts: WaveInitOpts) {
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
     console.log("Wave First Render");
     let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
+    const firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
     const reactElem = createElement(App, { onFirstRender: firstRenderResolveFn }, null);
@@ -259,7 +257,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     globalStore.set(atoms.builderAppId, appIdToUse);
 
-    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
+    const _client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
 
     registerBuilderGlobalKeys();
     registerElectronReinjectKeyHandler();
@@ -272,7 +270,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     console.log("Tsunami Builder First Render");
     let firstRenderResolveFn: () => void = null;
-    let firstRenderPromise = new Promise<void>((resolve) => {
+    const firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
     const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn }, null);
