@@ -90,12 +90,6 @@ func readStat(pid int32) (*ProcInfo, error) {
 		return nil, fmt.Errorf("procinfo: parse pid: %w", err)
 	}
 
-	ppid, _ := strconv.ParseInt(rest[1], 10, 32)
-	utime, _ := strconv.ParseUint(rest[11], 10, 64)
-	stime, _ := strconv.ParseUint(rest[12], 10, 64)
-	numThreads, _ := strconv.ParseInt(rest[17], 10, 32)
-	rssPages, _ := strconv.ParseInt(rest[21], 10, 64)
-
 	statusChar := rest[0]
 	status, ok := LinuxStatStatus[statusChar]
 	if !ok {
@@ -104,14 +98,30 @@ func readStat(pid int32) (*ProcInfo, error) {
 
 	info := &ProcInfo{
 		Pid:        int32(parsedPid),
-		Ppid:       int32(ppid),
 		Command:    comm,
 		Status:     status,
-		CpuUser:    float64(utime) / userHz,
-		CpuSys:     float64(stime) / userHz,
-		VmRSS:      uint64(rssPages * pageSize),
-		NumThreads: int32(numThreads),
+		CpuUser:    -1,
+		CpuSys:     -1,
+		VmRSS:      -1,
+		NumThreads: -1,
 	}
+
+	if ppid, err := strconv.ParseInt(rest[1], 10, 32); err == nil {
+		info.Ppid = int32(ppid)
+	}
+	if utime, err := strconv.ParseUint(rest[11], 10, 64); err == nil {
+		info.CpuUser = float64(utime) / userHz
+	}
+	if stime, err := strconv.ParseUint(rest[12], 10, 64); err == nil {
+		info.CpuSys = float64(stime) / userHz
+	}
+	if numThreads, err := strconv.ParseInt(rest[17], 10, 32); err == nil {
+		info.NumThreads = int32(numThreads)
+	}
+	if rssPages, err := strconv.ParseInt(rest[21], 10, 64); err == nil {
+		info.VmRSS = rssPages * pageSize
+	}
+
 	return info, nil
 }
 

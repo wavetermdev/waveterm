@@ -911,16 +911,20 @@ type FocusedBlockData struct {
 	TermLastCommand            string              `json:"termlastcommand,omitempty"`
 }
 
+// ProcessInfo holds per-process information for the process viewer.
+// Mem, MemPct, Cpu, and NumThreads are set to -1 when the data is unavailable
+// (e.g. permission denied reading another user's process on macOS).
 type ProcessInfo struct {
-	Pid        int32    `json:"pid"`
-	Ppid       int32    `json:"ppid,omitempty"`
-	Command    string   `json:"command,omitempty"`
-	Status     string   `json:"status,omitempty"`
-	User       string   `json:"user,omitempty"`
-	Mem        uint64   `json:"mem,omitempty"`
-	MemPct     float64  `json:"mempct,omitempty"`
-	Cpu        *float64 `json:"cpu,omitempty"`
-	NumThreads int32    `json:"numthreads,omitempty"`
+	Pid        int32   `json:"pid"`
+	Ppid       int32   `json:"ppid,omitempty"`
+	Command    string  `json:"command,omitempty"`
+	Status     string  `json:"status,omitempty"`
+	User       string  `json:"user,omitempty"`
+	Mem        int64   `json:"mem"`        // resident set size in bytes; -1 if unavailable
+	MemPct     float64 `json:"mempct"`     // memory percent; -1 if unavailable
+	Cpu        float64 `json:"cpu"`        // cpu percent; -1 if unavailable
+	NumThreads int32   `json:"numthreads"` // -1 if unavailable
+	Gone       bool    `json:"gone,omitempty"`
 }
 
 type ProcessSummary struct {
@@ -946,13 +950,17 @@ type ProcessListResponse struct {
 }
 
 type CommandRemoteProcessListData struct {
+	WidgetId   string `json:"widgetid,omitempty"`
 	SortBy     string `json:"sortby,omitempty"`
 	SortDesc   bool   `json:"sortdesc,omitempty"`
 	Start      int    `json:"start,omitempty"`
 	Limit      int    `json:"limit,omitempty"`
 	TextSearch string `json:"textsearch,omitempty"`
-	// Pids overrides all other fields; when set, returns only the specified pids (no sort/limit/start/textsearch).
-	Pids []int32 `json:"pids,omitempty"`
+	// LastPidOrder, when set, ignores SortBy/SortDesc/TextSearch and returns processes in the order
+	// they were returned in the previous request for this WidgetId (with Gone=true for dead pids).
+	LastPidOrder bool `json:"lastpidorder,omitempty"`
+	// KeepAlive, when set, overrides all other fields and simply keeps the backend cache alive (returns nil).
+	KeepAlive bool `json:"keepalive,omitempty"`
 }
 
 type CommandRemoteProcessSignalData struct {

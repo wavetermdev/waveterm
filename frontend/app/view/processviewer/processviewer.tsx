@@ -44,6 +44,7 @@ function formatNumber4(n: number): string {
 
 function fmtMem(bytes: number): string {
     if (bytes == null) return "";
+    if (bytes === -1) return "-";
     if (bytes < 1024) return formatNumber4(bytes) + "B";
     if (bytes < 1024 * 1024) return formatNumber4(bytes / 1024) + "K";
     if (bytes < 1024 * 1024 * 1024) return formatNumber4(bytes / 1024 / 1024) + "M";
@@ -52,7 +53,13 @@ function fmtMem(bytes: number): string {
 
 function fmtCpu(cpu: number): string {
     if (cpu == null) return "";
-    return cpu.toFixed(1) + "%";
+    if (cpu === -1) return "   -";
+    if (cpu === 0) return " 0.0%";
+    if (cpu < 0.005) return "~0.0%";
+    if (cpu < 10) return cpu.toFixed(2) + "%";
+    if (cpu < 100) return cpu.toFixed(1) + "%";
+    if (cpu < 1000) return " " + Math.floor(cpu).toString() + "%";
+    return Math.floor(cpu).toString() + "%";
 }
 
 function fmtLoad(load: number): string {
@@ -74,6 +81,7 @@ export class ProcessViewerViewModel implements ViewModel {
     noPadding = jotai.atom<boolean>(true);
 
     dataAtom: jotai.PrimitiveAtom<ProcessListResponse>;
+    dataStartAtom: jotai.PrimitiveAtom<number>;
     sortByAtom: jotai.PrimitiveAtom<SortCol>;
     sortDescAtom: jotai.PrimitiveAtom<boolean>;
     scrollTopAtom: jotai.PrimitiveAtom<number>;
@@ -86,12 +94,14 @@ export class ProcessViewerViewModel implements ViewModel {
     actionStatusAtom: jotai.PrimitiveAtom<ActionStatus>;
     textSearchAtom: jotai.PrimitiveAtom<string>;
     searchOpenAtom: jotai.PrimitiveAtom<boolean>;
+    fetchIntervalAtom: jotai.PrimitiveAtom<number>;
 
     connection: jotai.Atom<string>;
     connStatus: jotai.Atom<ConnStatus>;
 
     disposed = false;
     cancelPoll: (() => void) | null = null;
+    fetchEpoch = 0;
 
     constructor({ blockId, waveEnv }: ViewModelInitType) {
         this.viewType = "processviewer";
@@ -99,6 +109,7 @@ export class ProcessViewerViewModel implements ViewModel {
         this.env = waveEnv;
 
         this.dataAtom = jotai.atom<ProcessListResponse>(null) as jotai.PrimitiveAtom<ProcessListResponse>;
+        this.dataStartAtom = jotai.atom<number>(0);
         this.sortByAtom = jotai.atom<SortCol>("cpu");
         this.sortDescAtom = jotai.atom<boolean>(true);
         this.scrollTopAtom = jotai.atom<number>(0);
@@ -111,6 +122,7 @@ export class ProcessViewerViewModel implements ViewModel {
         this.actionStatusAtom = jotai.atom<ActionStatus>(null) as jotai.PrimitiveAtom<ActionStatus>;
         this.textSearchAtom = jotai.atom<string>("") as jotai.PrimitiveAtom<string>;
         this.searchOpenAtom = jotai.atom<boolean>(false) as jotai.PrimitiveAtom<boolean>;
+        this.fetchIntervalAtom = jotai.atom<number>(2000) as jotai.PrimitiveAtom<number>;
 
         this.connection = jotai.atom((get) => {
             const connValue = get(this.env.getBlockMetaKeyAtom(blockId, "connection"));
@@ -132,8 +144,9 @@ export class ProcessViewerViewModel implements ViewModel {
         return ProcessViewerView;
     }
 
-    async doOneFetch(cancelledFn?: () => boolean) {
+    async doOneFetch(lastPidOrder: boolean, cancelledFn?: () => boolean) {
         if (this.disposed) return;
+        const epoch = ++this.fetchEpoch;
         const sortBy = globalStore.get(this.sortByAtom);
         const sortDesc = globalStore.get(this.sortDescAtom);
         const scrollTop = globalStore.get(this.scrollTopAtom);
@@ -149,20 +162,44 @@ export class ProcessViewerViewModel implements ViewModel {
         try {
             const resp = await this.env.rpc.RemoteProcessListCommand(
                 TabRpcClient,
-                { sortby: sortBy, sortdesc: sortDesc, start, limit, textsearch: textSearch || undefined },
+                {
+                    widgetid: this.blockId,
+                    sortby: sortBy,
+                    sortdesc: sortDesc,
+                    start,
+                    limit,
+                    textsearch: textSearch || undefined,
+                    lastpidorder: lastPidOrder,
+                },
                 { route }
             );
-            if (!this.disposed && !cancelledFn?.()) {
+            if (!this.disposed && !cancelledFn?.() && this.fetchEpoch === epoch) {
                 globalStore.set(this.dataAtom, resp);
+                globalStore.set(this.dataStartAtom, start);
                 globalStore.set(this.loadingAtom, false);
                 globalStore.set(this.errorAtom, null);
                 globalStore.set(this.lastSuccessAtom, Date.now());
             }
         } catch (e) {
-            if (!this.disposed && !cancelledFn?.()) {
+            if (!this.disposed && !cancelledFn?.() && this.fetchEpoch === epoch) {
                 globalStore.set(this.loadingAtom, false);
                 globalStore.set(this.errorAtom, String(e));
             }
+        }
+    }
+
+    async doKeepAlive() {
+        if (this.disposed) return;
+        const conn = globalStore.get(this.connection);
+        const route = makeConnRoute(conn);
+        try {
+            await this.env.rpc.RemoteProcessListCommand(
+                TabRpcClient,
+                { widgetid: this.blockId, keepalive: true },
+                { route }
+            );
+        } catch (_) {
+            // keepalive failures are silent
         }
     }
 
@@ -174,12 +211,13 @@ export class ProcessViewerViewModel implements ViewModel {
 
         const poll = async () => {
             while (!cancelled && !this.disposed) {
-                await this.doOneFetch(() => cancelled);
+                await this.doOneFetch(false, () => cancelled);
 
                 if (cancelled || this.disposed) break;
 
+                const interval = globalStore.get(this.fetchIntervalAtom);
                 await new Promise<void>((resolve) => {
-                    const timer = setTimeout(resolve, 1000);
+                    const timer = setTimeout(resolve, interval);
                     this.cancelPoll = () => {
                         clearTimeout(timer);
                         cancelled = true;
@@ -198,12 +236,60 @@ export class ProcessViewerViewModel implements ViewModel {
         poll();
     }
 
+    startKeepAlive() {
+        let cancelled = false;
+        this.cancelPoll = () => {
+            cancelled = true;
+        };
+
+        const keepAliveLoop = async () => {
+            while (!cancelled && !this.disposed) {
+                await this.doKeepAlive();
+
+                if (cancelled || this.disposed) break;
+
+                await new Promise<void>((resolve) => {
+                    const timer = setTimeout(resolve, 10000);
+                    this.cancelPoll = () => {
+                        clearTimeout(timer);
+                        cancelled = true;
+                        resolve();
+                    };
+                });
+
+                if (!cancelled) {
+                    this.cancelPoll = () => {
+                        cancelled = true;
+                    };
+                }
+            }
+        };
+
+        keepAliveLoop();
+    }
+
     triggerRefresh() {
         if (this.cancelPoll) {
             this.cancelPoll();
         }
         this.cancelPoll = null;
         if (!globalStore.get(this.pausedAtom)) {
+            this.startPolling();
+        }
+    }
+
+    forceRefreshOnConnectionChange() {
+        if (this.cancelPoll) {
+            this.cancelPoll();
+        }
+        this.cancelPoll = null;
+        globalStore.set(this.dataAtom, null);
+        globalStore.set(this.loadingAtom, true);
+        globalStore.set(this.errorAtom, null);
+        if (globalStore.get(this.pausedAtom)) {
+            this.doOneFetch(false);
+            this.startKeepAlive();
+        } else {
             this.startPolling();
         }
     }
@@ -215,6 +301,7 @@ export class ProcessViewerViewModel implements ViewModel {
                 this.cancelPoll();
             }
             this.cancelPoll = null;
+            this.startKeepAlive();
         } else {
             this.startPolling();
         }
@@ -223,7 +310,7 @@ export class ProcessViewerViewModel implements ViewModel {
     setTextSearch(text: string) {
         globalStore.set(this.textSearchAtom, text);
         if (globalStore.get(this.pausedAtom)) {
-            this.doOneFetch();
+            this.doOneFetch(false);
         } else {
             this.triggerRefresh();
         }
@@ -262,7 +349,7 @@ export class ProcessViewerViewModel implements ViewModel {
             globalStore.set(this.sortDescAtom, numericCols.includes(col));
         }
         if (globalStore.get(this.pausedAtom)) {
-            this.doOneFetch();
+            this.doOneFetch(false);
         } else {
             this.triggerRefresh();
         }
@@ -272,14 +359,20 @@ export class ProcessViewerViewModel implements ViewModel {
         const cur = globalStore.get(this.scrollTopAtom);
         if (Math.abs(cur - scrollTop) < RowHeight) return;
         globalStore.set(this.scrollTopAtom, scrollTop);
-        this.triggerRefresh();
+        if (globalStore.get(this.pausedAtom)) {
+            this.doOneFetch(true);
+        }
     }
 
     setContainerHeight(height: number) {
         const cur = globalStore.get(this.containerHeightAtom);
         if (cur === height) return;
         globalStore.set(this.containerHeightAtom, height);
-        this.triggerRefresh();
+        if (globalStore.get(this.pausedAtom)) {
+            this.doOneFetch(true);
+        } else {
+            this.triggerRefresh();
+        }
     }
 
     async sendSignal(pid: number, signal: string, killLabel?: boolean) {
@@ -308,6 +401,41 @@ export class ProcessViewerViewModel implements ViewModel {
 
     clearActionStatus() {
         globalStore.set(this.actionStatusAtom, null);
+    }
+
+    setFetchInterval(ms: number) {
+        globalStore.set(this.fetchIntervalAtom, ms);
+        this.triggerRefresh();
+    }
+
+    getSettingsMenuItems(): ContextMenuItem[] {
+        const currentInterval = globalStore.get(this.fetchIntervalAtom);
+        return [
+            {
+                label: "Refresh Interval",
+                type: "submenu",
+                submenu: [
+                    {
+                        label: "1 second",
+                        type: "checkbox",
+                        checked: currentInterval === 1000,
+                        click: () => this.setFetchInterval(1000),
+                    },
+                    {
+                        label: "2 seconds",
+                        type: "checkbox",
+                        checked: currentInterval === 2000,
+                        click: () => this.setFetchInterval(2000),
+                    },
+                    {
+                        label: "5 seconds",
+                        type: "checkbox",
+                        checked: currentInterval === 5000,
+                        click: () => this.setFetchInterval(5000),
+                    },
+                ],
+            },
+        ];
     }
 
     dispose() {
@@ -470,6 +598,26 @@ const ProcessRow = React.memo(function ProcessRow({
     const gridTemplate = getGridTemplate(platform);
     const showStatus = platform !== "windows" && platform !== "darwin";
     const showThreads = platform !== "windows";
+    if (proc.gone) {
+        return (
+            <div
+                className={`grid w-full text-xs transition-colors cursor-pointer ${selected ? "bg-accentbg" : "hover:bg-white/5"}`}
+                style={{ gridTemplateColumns: gridTemplate, height: RowHeight }}
+                onClick={() => onSelect(proc.pid)}
+                onContextMenu={(e) => onContextMenu(proc.pid, e)}
+            >
+                <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
+                    {proc.pid}
+                </div>
+                <div className="px-2 flex items-center truncate text-muted italic">(gone)</div>
+                {showStatus && <div className="px-2 flex items-center truncate" />}
+                <div className="px-2 flex items-center truncate" />
+                {showThreads && <div className="px-2 flex items-center truncate" />}
+                <div className="px-2 flex items-center truncate" />
+                <div className="px-2 flex items-center truncate" />
+            </div>
+        );
+    }
     return (
         <div
             className={`grid w-full text-xs transition-colors cursor-pointer ${selected ? "bg-accentbg" : "hover:bg-white/5"}`}
@@ -487,11 +635,11 @@ const ProcessRow = React.memo(function ProcessRow({
             <div className="px-2 flex items-center truncate text-secondary">{proc.user}</div>
             {showThreads && (
                 <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
-                    {proc.numthreads >= 1 ? proc.numthreads : ""}
+                    {proc.numthreads === -1 ? "-" : proc.numthreads >= 1 ? proc.numthreads : ""}
                 </div>
             )}
-            <div className="px-2 flex items-center truncate justify-end font-mono text-[11px]">
-                {hasCpu && proc.cpu != null ? fmtCpu(proc.cpu) : ""}
+            <div className="px-2 flex items-center truncate justify-end font-mono text-[11px] whitespace-pre">
+                {hasCpu ? fmtCpu(proc.cpu) : ""}
             </div>
             <div className="px-2 flex items-center truncate justify-end font-mono text-[11px]">{fmtMem(proc.mem)}</div>
         </div>
@@ -589,7 +737,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                     <>
                         <div className="w-px self-stretch bg-white/10 shrink-0" />
                         <Tooltip
-                            content={`100% per core · ${summary.numcpu} cores = ${summary.numcpu * 100}% max`}
+                            content={`100% per core · ${summary.numcpu} ${summary.numcpu === 1 ? "core" : "cores"} = ${summary.numcpu * 100}% max`}
                             placement="bottom"
                         >
                             <span className="shrink-0 cursor-default whitespace-pre">
@@ -642,7 +790,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 {hasSummaryCpu && (
                     <div className="flex flex-col shrink-0 w-[55px] mr-1">
                         <Tooltip
-                            content={`100% per core · ${summary.numcpu} cores = ${summary.numcpu * 100}% max`}
+                            content={`100% per core · ${summary.numcpu} ${summary.numcpu === 1 ? "core" : "cores"} = ${summary.numcpu * 100}% max`}
                             placement="bottom"
                         >
                             <div className="cursor-default">
@@ -720,11 +868,21 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const sortDesc = jotai.useAtomValue(model.sortDescAtom);
         const loading = jotai.useAtomValue(model.loadingAtom);
         const error = jotai.useAtomValue(model.errorAtom);
-        const scrollTop = jotai.useAtomValue(model.scrollTopAtom);
         const [selectedPid, setSelectedPid] = jotai.useAtom(model.selectedPidAtom);
+        const dataStart = jotai.useAtomValue(model.dataStartAtom);
+        const connection = jotai.useAtomValue(model.connection);
         const bodyScrollRef = React.useRef<HTMLDivElement>(null);
         const containerRef = React.useRef<HTMLDivElement>(null);
         const [wide, setWide] = React.useState(false);
+
+        const isFirstRender = React.useRef(true);
+        React.useEffect(() => {
+            if (isFirstRender.current) {
+                isFirstRender.current = false;
+                return;
+            }
+            model.forceRefreshOnConnectionChange();
+        }, [connection]);
 
         const handleSelectPid = React.useCallback(
             (pid: number) => {
@@ -770,13 +928,15 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                     });
                 }
 
+                menu.push({ type: "separator" });
+                menu.push(...model.getSettingsMenuItems());
+
                 ContextMenuModel.getInstance().showContextMenu(menu, e);
             },
             [model, setSelectedPid]
         );
 
         const platform = data?.platform ?? "";
-        const startIdx = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
         const totalCount = data?.totalcount ?? 0;
         const filteredCount = data?.filteredcount ?? totalCount;
         const processes = data?.processes ?? [];
@@ -804,7 +964,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         }, [model]);
 
         const totalHeight = filteredCount * RowHeight;
-        const paddingTop = startIdx * RowHeight;
+        const paddingTop = dataStart * RowHeight;
 
         return (
             <div className="flex flex-col w-full h-full overflow-hidden" ref={containerRef}>
@@ -823,7 +983,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                         {/* virtualized rows — same width as header, scrolls vertically */}
                         <div
                             ref={bodyScrollRef}
-                            className="flex-1 overflow-y-auto overflow-x-hidden w-full"
+                            className="flex-1 overflow-y-auto overflow-x-hidden w-full wide-scrollbar"
                             onScroll={handleScroll}
                         >
                             <div style={{ height: totalHeight, position: "relative" }}>

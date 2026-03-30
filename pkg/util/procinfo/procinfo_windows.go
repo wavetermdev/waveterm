@@ -97,6 +97,9 @@ func GetProcInfo(_ context.Context, snap any, pid int32) (*ProcInfo, error) {
 		Ppid:       int32(si.ppid),
 		NumThreads: int32(si.numThreads),
 		Command:    si.exeName,
+		CpuUser:    -1,
+		CpuSys:     -1,
+		VmRSS:      -1,
 	}
 
 	handle, err := windows.OpenProcess(
@@ -127,7 +130,7 @@ func GetProcInfo(_ context.Context, snap any, pid int32) (*ProcInfo, error) {
 		uintptr(mc.CB),
 	)
 	if r != 0 {
-		info.VmRSS = uint64(mc.WorkingSetSize)
+		info.VmRSS = int64(mc.WorkingSetSize)
 	}
 
 	return info, nil
