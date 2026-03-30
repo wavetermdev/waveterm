@@ -46,6 +46,7 @@ import {
     createNewWaveWindow,
     focusedWaveWindow,
     getAllWaveWindows,
+    getQuakeWindow,
     getWaveWindowById,
     getWaveWindowByWorkspaceId,
     registerGlobalHotkey,
@@ -427,6 +428,16 @@ async function appMain() {
 
     electronApp.on("activate", () => {
         const allWindows = getAllWaveWindows();
+        const anyVisible = allWindows.some((w) => !w.isDestroyed() && w.isVisible());
+        if (anyVisible) {
+            return;
+        }
+        const qw = getQuakeWindow();
+        if (qw != null && !qw.isDestroyed()) {
+            qw.show();
+            qw.focus();
+            return;
+        }
         if (allWindows.length === 0) {
             fireAndForget(createNewWaveWindow);
         }

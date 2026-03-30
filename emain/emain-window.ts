@@ -104,6 +104,10 @@ export let focusedWaveWindow: WaveBrowserWindow = null;
 // quake window for toggle hotkey (show/hide behavior)
 let quakeWindow: WaveBrowserWindow | null = null;
 
+export function getQuakeWindow(): WaveBrowserWindow | null {
+    return quakeWindow;
+}
+
 let cachedClientId: string = null;
 let hasCompletedFirstRelaunch = false;
 
