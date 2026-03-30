@@ -36,7 +36,13 @@ import {
     isClaudeCodeCommand,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
-import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
+import {
+    bufferLinesToText,
+    createTempFileFromBlob,
+    extractAllClipboardData,
+    normalizeCursorStyle,
+    quoteForPosixShell,
+} from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -276,13 +282,13 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
 
-        this.connectElem.addEventListener("dragover", (e: DragEvent) => {
+        const dragoverHandler = (e: DragEvent) => {
             e.preventDefault();
             if (e.dataTransfer) {
                 e.dataTransfer.dropEffect = "copy";
             }
-        });
-        this.connectElem.addEventListener("drop", (e: DragEvent) => {
+        };
+        const dropHandler = (e: DragEvent) => {
             e.preventDefault();
             if (!e.dataTransfer || e.dataTransfer.files.length === 0) {
                 return;
@@ -292,13 +298,20 @@ export class TermWrap {
                 const file = e.dataTransfer.files[i];
                 const filePath = getApi().getPathForFile(file);
                 if (filePath) {
-                    const quoted = "'" + filePath.replace(/'/g, "'\\''") + "'";
-                    paths.push(quoted);
+                    paths.push(quoteForPosixShell(filePath));
                 }
             }
             if (paths.length > 0) {
-                this.terminal.paste(paths.join(" "));
+                this.terminal.paste(paths.join(" ") + " ");
             }
+        };
+        this.connectElem.addEventListener("dragover", dragoverHandler);
+        this.connectElem.addEventListener("drop", dropHandler);
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("dragover", dragoverHandler);
+                this.connectElem.removeEventListener("drop", dropHandler);
+            },
         });
         this.handleResize();
         const pasteHandler = this.pasteHandler.bind(this);
