@@ -715,11 +715,6 @@ export async function createBrowserWindow(
     console.log("createBrowserWindow", waveWindow.oid, workspace.oid, workspace);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
 
-    // designate the first created window as the quake window, which is used for the global toggle hotkey (show/hide behavior)
-    if (quakeWindow == null) {
-        quakeWindow = bwin;
-        console.log("designated quake window", bwin.waveWindowId);
-    }
     if (workspace.activetabid) {
         await bwin.setActiveTab(workspace.activetabid, false, opts.isPrimaryStartupWindow ?? false);
     }
@@ -848,6 +843,9 @@ export async function createNewWaveWindow() {
                 unamePlatform,
                 isPrimaryStartupWindow: false,
             });
+            if (quakeWindow == null) {
+                quakeWindow = win;
+            }
             win.show();
             recreatedWindow = true;
         }
@@ -861,6 +859,9 @@ export async function createNewWaveWindow() {
         unamePlatform,
         isPrimaryStartupWindow: false,
     });
+    if (quakeWindow == null) {
+        quakeWindow = newBrowserWindow;
+    }
     newBrowserWindow.show();
 }
 
@@ -903,6 +904,10 @@ export async function relaunchBrowserWindows() {
             foregroundWindow: windowId === primaryWindowId,
         });
         wins.push(win);
+        if (windowId === primaryWindowId) {
+            quakeWindow = win;
+            console.log("designated quake window", win.waveWindowId);
+        }
     }
     hasCompletedFirstRelaunch = true;
     for (const win of wins) {
@@ -952,64 +957,82 @@ function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Dis
 }
 
 // small delay on fullscreen toggle to ensure that the OS has finished the fullscreen transition on its end
-const PRE_QUAKE_FULLSCREEN_DELAY_MS = 120;
-const POST_QUAKE_FULLSCREEN_DELAY_MS = 80;
+const PreQuakeFullscreenDelayMs = 120;
+const PostQuakeFullscreenDelayMs = 80;
 
 // handles a theoretical race condition where the user spams the hotkey before the toggle finishes
 let quakeToggleInProgress = false;
-export function registerGlobalHotkey(rawGlobalHotKey: string) {
+
+async function quakeToggle() {
+    if (quakeToggleInProgress) {
+        return;
+    }
+    quakeToggleInProgress = true;
     try {
-        const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
-        console.log("registering globalhotkey of ", electronHotKey);
-        globalShortcut.register(electronHotKey, () => {
-            fireAndForget(async () => {
-                if (quakeToggleInProgress) {
-                    return;
-                }
-                quakeToggleInProgress = true;
-                try {
-                    // quake mode: toggle visibility of the designated quake window
-                    const window = quakeWindow;
-                    if (window && !window.isDestroyed()) {
-                        if (window.isVisible()) {
-                            window.hide();
-                        } else {
-                            const targetDisplay = getDisplayForQuakeToggle();
-                            // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
-                            const wasFullscreen = window.isFullScreen();
-                            if (wasFullscreen) {
-                                window.setFullScreen(false);
-                                await delay(PRE_QUAKE_FULLSCREEN_DELAY_MS);
-                                if (window.isDestroyed()) { return; }
-                            }
-                            moveWindowToDisplay(window, targetDisplay);
-                            window.show();
-                            if (wasFullscreen) {
-                                await delay(POST_QUAKE_FULLSCREEN_DELAY_MS);
-                                if (window.isDestroyed()) { return; }
-                                moveWindowToDisplay(window, targetDisplay);
-                                window.setFullScreen(true);
-                            }
-                            window.focus();
-                            if (window.activeTabView?.webContents) {
-                                window.activeTabView.webContents.focus();
-                            }
-                        }
-                    } else if (window == null) {
-                        // no quake window yet, create one
-                        await createNewWaveWindow();
-                    } else {
-                        // quake window was destroyed, clear it
-                        quakeWindow = null;
-                        await createNewWaveWindow();
+        // quake mode: toggle visibility of the designated quake window
+        const window = quakeWindow;
+        if (window && !window.isDestroyed()) {
+            if (window.isVisible()) {
+                window.hide();
+            } else {
+                const targetDisplay = getDisplayForQuakeToggle();
+                // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
+                const wasFullscreen = window.isFullScreen();
+                if (wasFullscreen) {
+                    window.setFullScreen(false);
+                    await delay(PreQuakeFullscreenDelayMs);
+                    if (window.isDestroyed()) {
+                        return;
                     }
                 }
-                finally {
-                    quakeToggleInProgress = false;
+                moveWindowToDisplay(window, targetDisplay);
+                window.show();
+                if (wasFullscreen) {
+                    await delay(PostQuakeFullscreenDelayMs);
+                    if (window.isDestroyed()) {
+                        return;
+                    }
+                    moveWindowToDisplay(window, targetDisplay);
+                    window.setFullScreen(true);
                 }
-            });
+                window.focus();
+                if (window.activeTabView?.webContents) {
+                    window.activeTabView.webContents.focus();
+                }
+            }
+        } else if (window == null) {
+            // no quake window yet, create one
+            await createNewWaveWindow();
+        } else {
+            // quake window was destroyed, clear it
+            quakeWindow = null;
+            await createNewWaveWindow();
+        }
+    } finally {
+        quakeToggleInProgress = false;
+    }
+}
+
+let currentRawGlobalHotKey: string = null;
+let currentGlobalHotKey: string = null;
+
+export function registerGlobalHotkey(rawGlobalHotKey: string) {
+    if (rawGlobalHotKey === currentRawGlobalHotKey) {
+        return;
+    }
+    try {
+        const electronHotKey = waveKeyToElectronKey(rawGlobalHotKey);
+        if (currentGlobalHotKey != null) {
+            globalShortcut.unregister(currentGlobalHotKey);
+            currentGlobalHotKey = null;
+        }
+        const ok = globalShortcut.register(electronHotKey, () => {
+            fireAndForget(quakeToggle);
         });
+        currentRawGlobalHotKey = rawGlobalHotKey;
+        currentGlobalHotKey = electronHotKey;
+        console.log("registered globalhotkey", rawGlobalHotKey, "=>", electronHotKey, "ok=", ok);
     } catch (e) {
-        console.log("error registering global hotkey: ", e);
+        console.log("error registering global hotkey", rawGlobalHotKey, ":", e);
     }
 }
