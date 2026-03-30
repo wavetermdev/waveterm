@@ -1381,6 +1381,7 @@ declare global {
         "app:ctrlvpaste"?: boolean;
         "app:confirmquit"?: boolean;
         "app:hideaibutton"?: boolean;
+        "app:showsplitbuttons"?: boolean;
         "app:disablectrlshiftarrows"?: boolean;
         "app:disablectrlshiftdisplay"?: boolean;
         "app:focusfollowscursor"?: string;
