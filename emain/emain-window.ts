@@ -1019,7 +1019,7 @@ async function quakeToggle() {
         // Some environments don't hide or move the window if it's fullscreen (even when hidden), so leave fullscreen first
         if (window.isFullScreen()) {
             // macos has a really long fullscreen animation and can have issues restoring from fullscreen, so we skip on macos
-            quakeRestoreFullscreenOnShow = process.platform !== "darwin";;
+            quakeRestoreFullscreenOnShow = process.platform !== "darwin";
             const leavePromise = waitForFullscreenLeave(window);
             window.setFullScreen(false);
             try {
