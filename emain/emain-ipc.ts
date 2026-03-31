@@ -238,9 +238,9 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("webview-mouse-navigate", (event: electron.IpcMainEvent, direction: string) => {
         if (direction === "back") {
-            event.sender.goBack();
+            event.sender.navigationHistory.goBack();
         } else if (direction === "forward") {
-            event.sender.goForward();
+            event.sender.navigationHistory.goForward();
         }
     });
 
