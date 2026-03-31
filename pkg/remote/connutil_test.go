@@ -20,6 +20,7 @@ func TestParseOpts(t *testing.T) {
 		{"host only", "myserver", "", "myserver", "", false},
 		{"chinese host alias", "PROD-服务器", "", "PROD-服务器", "", false},
 		{"mixed ascii and chinese with user and port", "user@PROD-阿里云:22", "user", "PROD-阿里云", "22", false},
+		{"unicode user and host", "用户@服务器:22", "用户", "服务器", "22", false},
 		{"unicode only host", "服务器", "", "服务器", "", false},
 		{"japanese host", "サーバー", "", "サーバー", "", false},
 		{"empty string", "", "", "", "", true},
