@@ -961,6 +961,7 @@ const FullscreenTransitionTimeoutMs = 2000;
 
 // handles a theoretical race condition where the user spams the hotkey before the toggle finishes
 let quakeToggleInProgress = false;
+let quakeRestoreFullscreenOnShow = false;
 
 function waitForFullscreenLeave(window: WaveBrowserWindow): Promise<void> {
     if (!window.isFullScreen()) {
@@ -981,6 +982,25 @@ function waitForFullscreenLeave(window: WaveBrowserWindow): Promise<void> {
     });
 }
 
+function waitForFullscreenEnter(window: WaveBrowserWindow): Promise<void> {
+    if (window.isFullScreen()) {
+        return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+        // eslint-disable-next-line prefer-const
+        let timeout: ReturnType<typeof setTimeout>;
+        const onEnter = () => {
+            clearTimeout(timeout);
+            resolve();
+        };
+        timeout = setTimeout(() => {
+            window.removeListener("enter-full-screen", onEnter);
+            reject(new Error("fullscreen transition timeout"));
+        }, FullscreenTransitionTimeoutMs);
+        window.once("enter-full-screen", onEnter);
+    });
+}
+
 async function quakeToggle() {
     if (quakeToggleInProgress) {
         return;
@@ -998,6 +1018,8 @@ async function quakeToggle() {
         }
         // Some environments don't hide or move the window if it's fullscreen (even when hidden), so leave fullscreen first
         if (window.isFullScreen()) {
+            // macos has a really long fullscreen animation and can have issues restoring from fullscreen, so we skip on macos
+            quakeRestoreFullscreenOnShow = process.platform !== "darwin";;
             const leavePromise = waitForFullscreenLeave(window);
             window.setFullScreen(false);
             try {
@@ -1015,6 +1037,16 @@ async function quakeToggle() {
             const targetDisplay = getDisplayForQuakeToggle();
             moveWindowToDisplay(window, targetDisplay);
             window.show();
+            if (quakeRestoreFullscreenOnShow) {
+                const enterPromise = waitForFullscreenEnter(window);
+                window.setFullScreen(true);
+                try {
+                    await enterPromise;
+                } catch {
+                    // timeout — proceed anyway
+                }
+            }
+            quakeRestoreFullscreenOnShow = false;
             window.focus();
             if (window.activeTabView?.webContents) {
                 window.activeTabView.webContents.focus();
