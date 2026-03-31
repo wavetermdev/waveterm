@@ -311,6 +311,20 @@ function makeViewMenu(
         {
             role: "togglefullscreen",
         },
+        { type: "separator" },
+        {
+            label: "Toggle Widgets Bar",
+            click: () => {
+                fireAndForget(async () => {
+                    const workspaceId = focusedWaveWindow?.workspaceId;
+                    if (!workspaceId) return;
+                    const oref = `workspace:${workspaceId}`;
+                    const meta = await RpcApi.GetMetaCommand(ElectronWshClient, { oref });
+                    const current = meta?.["layout:widgetsvisible"] ?? true;
+                    await RpcApi.SetMetaCommand(ElectronWshClient, { oref, meta: { "layout:widgetsvisible": !current } });
+                });
+            },
+        },
     ];
 }
 
