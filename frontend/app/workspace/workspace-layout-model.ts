@@ -72,7 +72,11 @@ class WorkspaceLayoutModel {
         this.vtabWidth = VTabBar_DefaultWidth;
         this.vtabVisible = false;
         this.panelVisibleAtom = jotai.atom(false);
-        this.widgetsSidebarVisibleAtom = jotai.atom((get) => get(this.getWidgetsSidebarVisibleAtom()) ?? true);
+        this.widgetsSidebarVisibleAtom = jotai.atom(
+            (get) =>
+                get(getOrefMetaKeyAtom(WOS.makeORef("workspace", this.getWorkspaceId()), "layout:widgetsvisible")) ??
+                true
+        );
         this.initializeFromMeta();
 
         this.handleWindowResize = this.handleWindowResize.bind(this);
@@ -135,10 +139,6 @@ class WorkspaceLayoutModel {
 
     private getVTabBarWidthAtom(): jotai.Atom<number> {
         return getOrefMetaKeyAtom(WOS.makeORef("workspace", this.getWorkspaceId()), "layout:vtabbarwidth");
-    }
-
-    private getWidgetsSidebarVisibleAtom(): jotai.Atom<boolean | undefined> {
-        return getOrefMetaKeyAtom(WOS.makeORef("workspace", this.getWorkspaceId()), "layout:widgetsvisible");
     }
 
     private initializeFromMeta(): void {
@@ -356,18 +356,6 @@ class WorkspaceLayoutModel {
 
     getAIPanelWidth(): number {
         return this.getResolvedAIWidth(window.innerWidth);
-    }
-
-    getWidgetsSidebarVisible(): boolean {
-        return globalStore.get(this.widgetsSidebarVisibleAtom);
-    }
-
-    setWidgetsSidebarVisible(visible: boolean): void {
-        if (globalStore.get(this.widgetsSidebarVisibleAtom) === visible) return;
-        RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("workspace", this.getWorkspaceId()),
-            meta: { "layout:widgetsvisible": visible },
-        });
     }
 
     // ---- Initial percentage helpers (used by workspace.tsx for defaultSize) ----
