@@ -1381,7 +1381,6 @@ declare global {
         "app:ctrlvpaste"?: boolean;
         "app:confirmquit"?: boolean;
         "app:hideaibutton"?: boolean;
-        "app:showsplitbuttons"?: boolean;
         "app:disablectrlshiftarrows"?: boolean;
         "app:disablectrlshiftdisplay"?: boolean;
         "app:focusfollowscursor"?: string;
@@ -1423,6 +1422,7 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
+        "term:showsplitbuttons"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;

@@ -14,7 +14,6 @@ const (
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
 	ConfigKey_AppConfirmQuit                 = "app:confirmquit"
 	ConfigKey_AppHideAiButton                = "app:hideaibutton"
-	ConfigKey_AppShowSplitButtons            = "app:showsplitbuttons"
 	ConfigKey_AppDisableCtrlShiftArrows      = "app:disablectrlshiftarrows"
 	ConfigKey_AppDisableCtrlShiftDisplay     = "app:disablectrlshiftdisplay"
 	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
@@ -60,6 +59,7 @@ const (
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
 	ConfigKey_TermOsc52                      = "term:osc52"
 	ConfigKey_TermDurable                    = "term:durable"
+	ConfigKey_TermShowSplitButtons           = "term:showsplitbuttons"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

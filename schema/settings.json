@@ -29,9 +29,6 @@
         "app:hideaibutton": {
           "type": "boolean"
         },
-        "app:showsplitbuttons": {
-          "type": "boolean"
-        },
         "app:disablectrlshiftarrows": {
           "type": "boolean"
         },
@@ -169,6 +166,9 @@
           ]
         },
         "term:durable": {
+          "type": "boolean"
+        },
+        "term:showsplitbuttons": {
           "type": "boolean"
         },
         "editor:minimapenabled": {

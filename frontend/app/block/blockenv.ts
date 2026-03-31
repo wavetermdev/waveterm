@@ -13,7 +13,7 @@ export type BlockEnv = WaveEnvSubset<{
     getSettingsKeyAtom: SettingsKeyAtomFnType<
         | "app:focusfollowscursor"
         | "app:showoverlayblocknums"
-        | "app:showsplitbuttons"
+        | "term:showsplitbuttons"
         | "window:magnifiedblockblurprimarypx"
         | "window:magnifiedblockopacity"
     >;

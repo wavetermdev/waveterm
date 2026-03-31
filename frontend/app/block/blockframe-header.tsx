@@ -125,7 +125,7 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
     const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
-    const showSplitButtons = jotai.useAtomValue(blockEnv.getSettingsKeyAtom("app:showsplitbuttons"));
+    const showSplitButtons = jotai.useAtomValue(blockEnv.getSettingsKeyAtom("term:showsplitbuttons"));
 
     const endIconsElem: React.ReactElement[] = [];
 
