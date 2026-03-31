@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ClientService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
 import { globalEvents } from "emain/emain-events";
@@ -957,12 +957,29 @@ function moveWindowToDisplay(win: WaveBrowserWindow, targetDisplay: Electron.Dis
     win.setBounds({ ...curBounds, x: nextX, y: nextY, width: nextWidth, height: nextHeight });
 }
 
-// small delay on fullscreen toggle to ensure that the OS has finished the fullscreen transition on its end
-const PreQuakeFullscreenDelayMs = 120;
-const PostQuakeFullscreenDelayMs = 80;
+const FullscreenTransitionTimeoutMs = 2000;
 
 // handles a theoretical race condition where the user spams the hotkey before the toggle finishes
 let quakeToggleInProgress = false;
+
+function waitForFullscreenLeave(window: WaveBrowserWindow): Promise<void> {
+    if (!window.isFullScreen()) {
+        return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+        // eslint-disable-next-line prefer-const
+        let timeout: ReturnType<typeof setTimeout>;
+        const onLeave = () => {
+            clearTimeout(timeout);
+            resolve();
+        };
+        timeout = setTimeout(() => {
+            window.removeListener("leave-full-screen", onLeave);
+            reject(new Error("fullscreen transition timeout"));
+        }, FullscreenTransitionTimeoutMs);
+        window.once("leave-full-screen", onLeave);
+    });
+}
 
 async function quakeToggle() {
     if (quakeToggleInProgress) {
@@ -970,44 +987,38 @@ async function quakeToggle() {
     }
     quakeToggleInProgress = true;
     try {
-        // quake mode: toggle visibility of the designated quake window
-        const window = quakeWindow;
-        if (window && !window.isDestroyed()) {
-            if (window.isVisible()) {
-                window.hide();
-            } else {
-                const targetDisplay = getDisplayForQuakeToggle();
-                // Some environments don't move the window if it's fullscreen, so we have to toggle fullscreen before the move
-                const wasFullscreen = window.isFullScreen();
-                if (wasFullscreen) {
-                    window.setFullScreen(false);
-                    await delay(PreQuakeFullscreenDelayMs);
-                    if (window.isDestroyed()) {
-                        return;
-                    }
-                }
-                moveWindowToDisplay(window, targetDisplay);
-                window.show();
-                if (wasFullscreen) {
-                    await delay(PostQuakeFullscreenDelayMs);
-                    if (window.isDestroyed()) {
-                        return;
-                    }
-                    moveWindowToDisplay(window, targetDisplay);
-                    window.setFullScreen(true);
-                }
-                window.focus();
-                if (window.activeTabView?.webContents) {
-                    window.activeTabView.webContents.focus();
-                }
-            }
-        } else if (window == null) {
-            // no quake window yet, create one
-            await createNewWaveWindow();
-        } else {
-            // quake window was destroyed, clear it
+        let window = quakeWindow;
+        if (window?.isDestroyed()) {
             quakeWindow = null;
+            window = null;
+        }
+        if (window == null) {
             await createNewWaveWindow();
+            return;
+        }
+        // Some environments don't hide or move the window if it's fullscreen (even when hidden), so leave fullscreen first
+        if (window.isFullScreen()) {
+            const leavePromise = waitForFullscreenLeave(window);
+            window.setFullScreen(false);
+            try {
+                await leavePromise;
+            } catch {
+                // timeout — proceed anyway
+            }
+            if (window.isDestroyed()) {
+                return;
+            }
+        }
+        if (window.isVisible()) {
+            window.hide();
+        } else {
+            const targetDisplay = getDisplayForQuakeToggle();
+            moveWindowToDisplay(window, targetDisplay);
+            window.show();
+            window.focus();
+            if (window.activeTabView?.webContents) {
+                window.activeTabView.webContents.focus();
+            }
         }
     } finally {
         quakeToggleInProgress = false;
