@@ -1,0 +1,13 @@
+{
+    "newFile": "新建文件",
+    "newFolder": "新建文件夹",
+    "rename": "重命名",
+    "uploadFiles": "上传文件...",
+    "copyEntry": "复制文件/文件夹",
+    "pasteEntry": "粘贴",
+    "copyFileName": "复制文件名",
+    "copyFullFileName": "复制完整路径",
+    "copyFileNameShellQuoted": "复制文件名（Shell 引号）",
+    "copyFullFileNameShellQuoted": "复制完整路径（Shell 引号）",
+    "delete": "删除"
+}

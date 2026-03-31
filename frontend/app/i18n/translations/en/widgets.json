@@ -1,0 +1,14 @@
+{
+    "settingsAndHelp": "Settings & Help",
+    "localApps": "Local Apps",
+    "noLocalApps": "No local apps found",
+    "buildEditApps": "Build/Edit Apps",
+    "appsLabel": "Apps",
+    "menu": {
+        "settings": "Settings",
+        "tips": "Tips",
+        "secrets": "Secrets",
+        "releaseNotes": "Release Notes",
+        "help": "Help"
+    }
+}

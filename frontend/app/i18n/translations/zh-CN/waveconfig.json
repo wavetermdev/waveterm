@@ -1,0 +1,15 @@
+{
+    "visual": "可视化",
+    "rawJson": "原始JSON",
+    "configFiles": "配置文件",
+    "deprecated": "已弃用",
+    "errors": "配置错误",
+    "file": {
+        "general": "通用",
+        "connections": "连接",
+        "sidebarWidgets": "侧边栏小部件",
+        "waveAiModes": "Wave AI 模式",
+        "tabBackgrounds": "标签页背景",
+        "secrets": "密钥"
+    }
+}

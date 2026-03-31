@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useT } from "@/app/i18n/index";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -112,6 +113,7 @@ function DirectoryTable({
     newDirectory,
 }: DirectoryTableProps) {
     const env = useWaveEnv<PreviewEnv>();
+    const t = useT();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
     const defaultSort = useAtomValue(env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
@@ -322,6 +324,7 @@ function TableBody({
     setRefreshVersion,
     osRef,
 }: TableBodyProps) {
+    const t = useT();
     const searchActive = useAtomValue(model.directorySearchActive);
     const dummyLineRef = useRef<HTMLDivElement>(null);
     const warningBoxRef = useRef<HTMLDivElement>(null);
@@ -370,19 +373,19 @@ function TableBody({
             const fileName = finfo.path.split("/").pop();
             const menu: ContextMenuItem[] = [
                 {
-                    label: "New File",
+                    label: t("filemenu.newFile"),
                     click: () => {
                         table.options.meta.newFile();
                     },
                 },
                 {
-                    label: "New Folder",
+                    label: t("filemenu.newFolder"),
                     click: () => {
                         table.options.meta.newDirectory();
                     },
                 },
                 {
-                    label: "Rename",
+                    label: t("filemenu.rename"),
                     click: () => {
                         table.options.meta.updateName(finfo.path, finfo.isdir);
                     },
@@ -391,19 +394,19 @@ function TableBody({
                     type: "separator",
                 },
                 {
-                    label: "Copy File Name",
+                    label: t("filemenu.copyFileName"),
                     click: () => fireAndForget(() => navigator.clipboard.writeText(fileName)),
                 },
                 {
-                    label: "Copy Full File Name",
+                    label: t("filemenu.copyFullFileName"),
                     click: () => fireAndForget(() => navigator.clipboard.writeText(finfo.path)),
                 },
                 {
-                    label: "Copy File Name (Shell Quoted)",
+                    label: t("filemenu.copyFileNameShellQuoted"),
                     click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([fileName]))),
                 },
                 {
-                    label: "Copy Full File Name (Shell Quoted)",
+                    label: t("filemenu.copyFullFileNameShellQuoted"),
                     click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
                 },
             ];
@@ -413,20 +416,20 @@ function TableBody({
                     type: "separator",
                 },
                 {
-                    label: "Default Settings",
+                    label: t("common.default") + " Settings",
                     submenu: makeDirectoryDefaultMenuItems(model),
                 },
                 {
                     type: "separator",
                 },
                 {
-                    label: "Delete",
+                    label: t("filemenu.delete"),
                     click: () => handleFileDelete(model, finfo.path, false, setErrorMsg),
                 }
             );
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [setRefreshVersion, conn]
+        [setRefreshVersion, conn, t]
     );
 
     const allRows = table.getRowModel().flatRows;
@@ -562,6 +565,7 @@ interface DirectoryPreviewProps {
 
 function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const env = useWaveEnv<PreviewEnv>();
+    const t = useT();
     const [searchText, setSearchText] = useState("");
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
@@ -840,13 +844,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             e.stopPropagation();
             const menu: ContextMenuItem[] = [
                 {
-                    label: "New File",
+                    label: t("filemenu.newFile"),
                     click: () => {
                         newFile();
                     },
                 },
                 {
-                    label: "New Folder",
+                    label: t("filemenu.newFolder"),
                     click: () => {
                         newDirectory();
                     },

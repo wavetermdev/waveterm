@@ -6,7 +6,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import type { TabModel } from "@/app/store/tab-model";
 import { makeORef } from "@/app/store/wos";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
+import { SettingsContent } from "@/app/view/waveconfig/settingscontent";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import type { WaveConfigEnv } from "@/app/view/waveconfig/waveconfigenv";
 import { base64ToString, stringToBase64 } from "@/util/util";
@@ -19,10 +19,12 @@ type ConfigValidator = (parsed: any) => ValidationResult;
 
 export type ConfigFile = {
     name: string;
+    nameKey?: string;
     path: string;
     language?: string;
     deprecated?: boolean;
     description?: string;
+    descriptionKey?: string;
     docsUrl?: string;
     validator?: ConfigValidator;
     isSecrets?: boolean;
@@ -59,13 +61,16 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
     return [
         {
             name: "General",
+            nameKey: "waveconfig.file.general",
             path: "settings.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/config",
             hasJsonView: true,
+            visualComponent: SettingsContent,
         },
         {
             name: "Connections",
+            nameKey: "waveconfig.file.connections",
             path: "connections.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/connections",
@@ -74,6 +79,7 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
         },
         {
             name: "Sidebar Widgets",
+            nameKey: "waveconfig.file.sidebarWidgets",
             path: "widgets.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/customwidgets",
@@ -81,6 +87,7 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
         },
         {
             name: "Wave AI Modes",
+            nameKey: "waveconfig.file.waveAiModes",
             path: "waveai.json",
             language: "json",
             description: "Local models and BYOK",
@@ -91,6 +98,7 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
         },
         {
             name: "Tab Backgrounds",
+            nameKey: "waveconfig.file.tabBackgrounds",
             path: "backgrounds.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/tab-backgrounds",
@@ -98,10 +106,9 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
         },
         {
             name: "Secrets",
+            nameKey: "waveconfig.file.secrets",
             path: "secrets",
             isSecrets: true,
-            hasJsonView: false,
-            visualComponent: SecretsContent,
         },
     ];
 }

@@ -1,0 +1,9 @@
+{
+    "language": "Language",
+    "language.description": "Changes take effect immediately.",
+    "language.english": "English",
+    "language.chinese": "中文",
+    "remoteTmuxResume": "Remote Tmux Resume",
+    "remoteTmuxResume.description": "Automatically resume sessions when reconnecting to remote tmux",
+    "remoteTmuxResume.toggle": "Enable remote tmux resume"
+}

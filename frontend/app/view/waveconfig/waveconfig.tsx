@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { useT } from "@/app/i18n/index";
 import { globalStore } from "@/app/store/jotaiStore";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
@@ -19,6 +20,7 @@ interface ConfigSidebarProps {
 }
 
 const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
+    const t = useT();
     const selectedFile = useAtomValue(model.selectedFileAtom);
     const setIsMenuOpen = useSetAtom(model.isMenuOpenAtom);
     const configFiles = model.getConfigFiles();
@@ -33,9 +35,9 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
     };
 
     return (
-        <div className="flex flex-col w-48 border-r border-border @w600:h-full @max-w600:absolute @max-w600:left-0.5 @max-w600:top-0 @max-w600:bottom-0.5 @max-w600:z-10 @max-w600:bg-background @max-w600:shadow-xl @max-w600:rounded-bl">
+        <div className="flex flex-col w-48 border-r border-border @w600:h-full @max-w600:absolute @max-w600:left-0.5 @max-w600:top-0.5 @max-w600:bottom-0.5 @max-w600:z-10 @max-w600:bg-background @max-w600:shadow-xl @max-w600:rounded-bl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-border @w600:hidden">
-                <span className="font-semibold">Config Files</span>
+                <span className="font-semibold">{t("waveconfig.configFiles")}</span>
                 <button
                     onClick={() => setIsMenuOpen(false)}
                     className="hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors"
@@ -51,15 +53,15 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                         selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                     }`}
                 >
-                    <div className="flex items-center gap-1">
-                        <div className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">{file.name}</div>
-                        {configErrorFiles.has(file.path) && (
-                            <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] shrink-0" />
-                        )}
+                    <div className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                        {file.nameKey ? t(file.nameKey) : file.name}
                     </div>
-                    {file.description && (
+                    {configErrorFiles.has(file.path) && (
+                        <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] shrink-0" />
+                    )}
+                    {(file.descriptionKey || file.description) && (
                         <div className="text-xs text-muted mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                            {file.description}
+                            {file.descriptionKey ? t(file.descriptionKey) : file.description}
                         </div>
                     )}
                 </div>
@@ -75,7 +77,9 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                             }`}
                         >
                             <div className="flex items-center gap-2 overflow-hidden">
-                                <span className="text-secondary truncate">{file.name}</span>
+                                <span className="text-secondary truncate">
+                                    {file.nameKey ? t(file.nameKey) : file.name}
+                                </span>
                                 <span
                                     className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
                                         selectedFile?.path === file.path
@@ -83,7 +87,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                                             : "text-muted-foreground/70 bg-secondary/30"
                                     }`}
                                 >
-                                    deprecated
+                                    {t("waveconfig.deprecated")}
                                 </span>
                                 {configErrorFiles.has(file.path) && (
                                     <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] ml-auto shrink-0" />
@@ -100,6 +104,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
 ConfigSidebar.displayName = "ConfigSidebar";
 
 const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigViewModel>) => {
+    const t = useT();
     const env = useWaveEnv<WaveConfigEnv>();
     const selectedFile = useAtomValue(model.selectedFileAtom);
     const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
@@ -186,9 +191,9 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                     >
                                         <i className="fa fa-bars" />
                                     </button>
-                                    <div className="text-lg font-semibold whitespace-nowrap shrink-0">
-                                        {selectedFile.name}
-                                    </div>
+                                    <span className="text-lg font-semibold whitespace-nowrap shrink-0">
+                                        {selectedFile.nameKey ? t(selectedFile.nameKey) : selectedFile.name}
+                                    </span>
                                     {selectedFile.docsUrl && (
                                         <Tooltip content="View documentation">
                                             <a
@@ -245,7 +250,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                                 : "bg-transparent hover:bg-hover"
                                         )}
                                     >
-                                        Visual
+                                        {t("waveconfig.visual")}
                                     </button>
                                     {/* No guard needed: visual tab saves changes immediately via RPC */}
                                     <button
@@ -257,7 +262,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                                 : "bg-transparent hover:bg-hover"
                                         )}
                                     >
-                                        Raw JSON
+                                        {t("waveconfig.rawJson")}
                                     </button>
                                 </div>
                             )}

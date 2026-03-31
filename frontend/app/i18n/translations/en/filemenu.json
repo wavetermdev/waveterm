@@ -1,0 +1,13 @@
+{
+    "newFile": "New File",
+    "newFolder": "New Folder",
+    "rename": "Rename",
+    "uploadFiles": "Upload Files...",
+    "copyEntry": "Copy File/Folder",
+    "pasteEntry": "Paste",
+    "copyFileName": "Copy File Name",
+    "copyFullFileName": "Copy Full File Name",
+    "copyFileNameShellQuoted": "Copy File Name (Shell Quoted)",
+    "copyFullFileNameShellQuoted": "Copy Full File Name (Shell Quoted)",
+    "delete": "Delete"
+}

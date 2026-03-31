@@ -1,0 +1,9 @@
+{
+    "language": "语言",
+    "language.description": "更改立即生效。",
+    "language.english": "English",
+    "language.chinese": "中文",
+    "remoteTmuxResume": "远程Tmux恢复",
+    "remoteTmuxResume.description": "重新连接到远程tmux时自动恢复会话",
+    "remoteTmuxResume.toggle": "启用远程tmux恢复"
+}

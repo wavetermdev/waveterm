@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { useT } from "@/app/i18n/index";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
@@ -109,15 +110,16 @@ function calculateGridSize(appCount: number): number {
 }
 
 function SettingsTooltipContent({ hasConfigErrors }: { hasConfigErrors: boolean }) {
+    const t = useT();
     if (!hasConfigErrors) {
-        return "Settings & Help";
+        return t("widgets.settingsAndHelp");
     }
     return (
         <div className="flex flex-col p-1">
-            <div className="mb-1">Settings &amp; Help</div>
+            <div className="mb-1">{t("widgets.settingsAndHelp")}</div>
             <div className="flex items-center gap-1 mt-0.5 text-error">
                 <i className="fa fa-solid fa-circle-exclamation"></i>
-                <span>Config Errors</span>
+                <span>{t("waveconfig.errors")}</span>
             </div>
         </div>
     );
@@ -131,6 +133,7 @@ type FloatingWindowPropsType = {
 };
 
 const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: FloatingWindowPropsType) => {
+    const t = useT();
     const [apps, setApps] = useState<AppInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const env = useWaveEnv<WidgetsEnv>();
@@ -197,7 +200,7 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
                             <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
                         </div>
                     ) : apps.length === 0 ? (
-                        <div className="text-muted text-sm p-4 text-center">No local apps found</div>
+                        <div className="text-muted text-sm p-4 text-center">{t("widgets.noLocalApps")}</div>
                     ) : (
                         <div
                             className="grid gap-3"
@@ -246,7 +249,7 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
                     onClick={handleOpenBuilder}
                 >
                     <i className="fa fa-solid fa-hammer"></i>
-                    Build/Edit Apps
+                    {t("widgets.buildEditApps")}
                 </button>
             </div>
         </FloatingPortal>
@@ -255,6 +258,7 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
 
 const SettingsFloatingWindow = memo(
     ({ isOpen, onClose, referenceElement, hasConfigErrors }: FloatingWindowPropsType) => {
+        const t = useT();
         const env = useWaveEnv<WidgetsEnv>();
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
@@ -275,7 +279,8 @@ const SettingsFloatingWindow = memo(
         const menuItems = [
             {
                 icon: "gear",
-                label: "Settings",
+                label: t("widgets.menu.settings"),
+                labelKey: "widgets.menu.settings",
                 hasError: hasConfigErrors,
                 onClick: () => {
                     const blockDef: BlockDef = {
@@ -289,7 +294,8 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "lightbulb",
-                label: "Tips",
+                label: t("widgets.menu.tips"),
+                labelKey: "widgets.menu.tips",
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -302,7 +308,8 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "lock",
-                label: "Secrets",
+                label: t("widgets.menu.secrets"),
+                labelKey: "widgets.menu.secrets",
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -316,7 +323,8 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "book-open",
-                label: "Release Notes",
+                label: t("widgets.menu.releaseNotes"),
+                labelKey: "widgets.menu.releaseNotes",
                 onClick: () => {
                     modalsModel.pushModal("UpgradeOnboardingPatch", { isReleaseNotes: true });
                     onClose();
@@ -324,7 +332,8 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "circle-question",
-                label: "Help",
+                label: t("widgets.menu.help"),
+                labelKey: "widgets.menu.help",
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {

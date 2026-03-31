@@ -123,6 +123,7 @@ export default defineConfig({
     },
     renderer: {
         root: ".",
+        publicDir: "public",
         build: {
             target: CHROME,
             sourcemap: true,

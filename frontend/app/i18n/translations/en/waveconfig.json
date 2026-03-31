@@ -1,0 +1,15 @@
+{
+    "visual": "Visual",
+    "rawJson": "Raw JSON",
+    "configFiles": "Config Files",
+    "deprecated": "deprecated",
+    "errors": "Config Errors",
+    "file": {
+        "general": "General",
+        "connections": "Connections",
+        "sidebarWidgets": "Sidebar Widgets",
+        "waveAiModes": "Wave AI Modes",
+        "tabBackgrounds": "Tab Backgrounds",
+        "secrets": "Secrets"
+    }
+}

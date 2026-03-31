@@ -1,0 +1,14 @@
+{
+    "settingsAndHelp": "设置与帮助",
+    "localApps": "本地应用",
+    "noLocalApps": "未找到本地应用",
+    "buildEditApps": "构建/编辑应用",
+    "appsLabel": "应用",
+    "menu": {
+        "settings": "设置",
+        "tips": "提示",
+        "secrets": "密钥",
+        "releaseNotes": "更新日志",
+        "help": "帮助"
+    }
+}
