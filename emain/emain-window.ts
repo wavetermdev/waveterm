@@ -22,7 +22,7 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
 
-const DevInitTimeoutMs = 15000;
+const DevInitTimeoutMs = 5000;
 
 export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
@@ -395,7 +395,7 @@ export class WaveBrowserWindow extends BaseWindow {
         const clientId = await getClientId();
         await this.awaitWithDevTimeout(tabView.initPromise, "initPromise", tabView.waveTabId);
         const winBounds = this.getContentBounds();
-        tabView.positionTabOffScreen(winBounds);
+        tabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
         this.contentView.addChildView(tabView);
         const initOpts: WaveInitOpts = {
             tabId: tabView.waveTabId,
@@ -460,15 +460,6 @@ export class WaveBrowserWindow extends BaseWindow {
         if (!tabInitialized) {
             console.log("initializing a new tab", primaryStartupTab ? "(primary startup)" : "");
             await this.initializeTab(tabView, primaryStartupTab);
-            this.finalizePositioning();
-        } else if (tabView.isWaveReady) {
-            if (tabView.savedInitOpts?.windowId !== this.waveWindowId) {
-                console.log("reusing wave-ready tab with stale windowId, reinitializing", tabView.waveTabId);
-                tabView.savedInitOpts = { ...tabView.savedInitOpts, windowId: this.waveWindowId };
-                tabView.webContents.send("wave-init", tabView.savedInitOpts);
-            } else {
-                console.log("reusing wave-ready tab, skipping reinit", tabView.waveTabId);
-            }
             this.finalizePositioning();
         } else {
             console.log("reusing an existing tab, calling wave-init", tabView.waveTabId);
