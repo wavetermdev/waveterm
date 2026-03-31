@@ -1019,6 +1019,7 @@ declare global {
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
+        keybindings: string;
         configerrors: ConfigError[];
     };
 

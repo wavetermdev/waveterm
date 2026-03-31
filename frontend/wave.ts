@@ -7,6 +7,7 @@ import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
+    initKeybindingsWatcher,
     registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
@@ -188,6 +189,7 @@ async function initWave(initOpts: WaveInitOpts) {
         getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + e.message + "\n" + e.stack);
     }
     registerGlobalKeys();
+    initKeybindingsWatcher();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
     await loadMonaco();

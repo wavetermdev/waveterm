@@ -16,6 +16,7 @@ declare global {
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
+        keybindingsAtom: jotai.Atom<any[]>; // derived from fullConfig keybindings
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
         hasConfigErrors: jotai.Atom<boolean>; // derived from fullConfig
         staticTabId: jotai.Atom<string>;

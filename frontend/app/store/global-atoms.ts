@@ -59,6 +59,18 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
+    const keybindingsAtom = atom((get) => {
+        const fullConfig = get(fullConfigAtom);
+        if (!fullConfig?.keybindings) return [];
+        try {
+            const raw = fullConfig.keybindings;
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            console.warn("Failed to parse keybindings.json");
+            return [];
+        }
+    });
     const hasCustomAIPresetsAtom = atom((get) => {
         const fullConfig = get(fullConfigAtom);
         if (!fullConfig?.presets) {
@@ -136,6 +148,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         fullConfigAtom,
         waveaiModeConfigAtom,
         settingsAtom,
+        keybindingsAtom,
         hasCustomAIPresetsAtom,
         hasConfigErrors,
         staticTabId: staticTabIdAtom,

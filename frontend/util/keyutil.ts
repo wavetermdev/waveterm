@@ -75,32 +75,33 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
     let rtn = { key: "", mods: {} } as KeyPressDecl;
     let keys = keyDescription.replace(/[()]/g, "").split(":");
     for (let key of keys) {
-        if (key == "Cmd") {
+        const keyLower = key.toLowerCase();
+        if (keyLower == "cmd") {
             if (PLATFORM == PlatformMacOS) {
                 rtn.mods.Meta = true;
             } else {
                 rtn.mods.Alt = true;
             }
             rtn.mods.Cmd = true;
-        } else if (key == "Shift") {
+        } else if (keyLower == "shift") {
             rtn.mods.Shift = true;
-        } else if (key == "Ctrl") {
+        } else if (keyLower == "ctrl") {
             rtn.mods.Ctrl = true;
-        } else if (key == "Option") {
+        } else if (keyLower == "option") {
             if (PLATFORM == PlatformMacOS) {
                 rtn.mods.Alt = true;
             } else {
                 rtn.mods.Meta = true;
             }
             rtn.mods.Option = true;
-        } else if (key == "Alt") {
+        } else if (keyLower == "alt") {
             if (PLATFORM == PlatformMacOS) {
                 rtn.mods.Option = true;
             } else {
                 rtn.mods.Cmd = true;
             }
             rtn.mods.Alt = true;
-        } else if (key == "Meta") {
+        } else if (keyLower == "meta") {
             if (PLATFORM == PlatformMacOS) {
                 rtn.mods.Cmd = true;
             } else {
