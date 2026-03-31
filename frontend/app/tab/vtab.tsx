@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { refocusNode } from "@/app/store/global";
 import { validateCssColor } from "@/util/color-validator";
 import { cn } from "@/util/util";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -122,6 +123,7 @@ export function VTab({
         if (newText !== originalName) {
             onRename?.(newText);
         }
+        setTimeout(() => refocusNode(null), 10);
     };
 
     const handleKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
