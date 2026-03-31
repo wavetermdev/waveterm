@@ -634,6 +634,14 @@ function registerGlobalKeys() {
         );
         return true;
     });
+    globalKeyMap.set("F2", () => {
+        const tabModel = getActiveTabModel();
+        if (tabModel?.startRenameCallback != null) {
+            tabModel.startRenameCallback();
+            return true;
+        }
+        return false;
+    });
     globalKeyMap.set("Cmd:g", () => {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         if (bcm.openSwitchConnection != null) {

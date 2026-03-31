@@ -21,6 +21,7 @@ export class TabModel {
     tabNumBlocksAtom: Atom<number>;
     isTermMultiInput = atom(false) as PrimitiveAtom<boolean>;
     metaCache: Map<string, Atom<any>> = new Map();
+    startRenameCallback: (() => void) | null = null;
 
     constructor(tabId: string, waveEnv?: TabModelEnv) {
         this.tabId = tabId;
