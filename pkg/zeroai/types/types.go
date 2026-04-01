@@ -57,3 +57,15 @@ type ZeroAiPermissionData struct {
 	Description string            `json:"description"`
 	Options     []PermissionOption `json:"options"`
 }
+
+// ZeroAiSessionChunk represents a text content chunk from session update
+type ZeroAiSessionChunk struct {
+	Content  string                 `json:"content"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// ZeroAiPlanUpdate represents a plan update event
+type ZeroAiPlanUpdate struct {
+	Content  string                 `json:"content,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}

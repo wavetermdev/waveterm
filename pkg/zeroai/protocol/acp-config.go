@@ -1,13 +1,41 @@
-// Package protocol implements ACP (Agent Control Protocol) configuration
-//
-// This file provides ACP backend configuration management.
+// Package protocol provides ACP configuration management for ZeroAI
 package protocol
 
 import (
 	"fmt"
+	"strings"
 )
 
-// Backend configurations for each supported ACP backend
+// GetBackendConfig returns the configuration for a given ACP backend
+func GetBackendConfig(backend AcpBackend) (*AcpBackendConfig, error) {
+	config, exists := backendConfigs[backend]
+	if !exists {
+		return nil, fmt.Errorf("unknown backend: %s", backend)
+	}
+	return &config, nil
+}
+
+// GetAllBackendConfigs returns all available backend configurations
+func GetAllBackendConfigs() []AcpBackendConfig {
+	configs := make([]AcpBackendConfig, 0, len(backendConfigs))
+	for _, cfg := range backendConfigs {
+		configs = append(configs, cfg)
+	}
+	return configs
+}
+
+// GetEnabledBackends returns all enabled backend configurations
+func GetEnabledBackends() []AcpBackendConfig {
+	var enabled []AcpBackendConfig
+	for _, cfg := range backendConfigs {
+		if cfg.Enabled {
+			enabled = append(enabled, cfg)
+		}
+	}
+	return enabled
+}
+
+// BackendConfigs represents all pre-configured backends
 var backendConfigs = map[AcpBackend]AcpBackendConfig{
 	AcpBackendClaude: {
 		ID:               AcpBackendClaude,
@@ -17,47 +45,53 @@ var backendConfigs = map[AcpBackend]AcpBackendConfig{
 		AuthRequired:     true,
 		Enabled:          true,
 		SupportsStreaming: true,
-		AcpArgs:          []string{"acp"},
+		AcpArgs:          []string{"--stdio"},
+		Env: map[string]string{
+			"ANTHROPIC_COLOR": "auto",
+		},
 	},
 	AcpBackendGemini: {
 		ID:               AcpBackendGemini,
 		Name:             "Gemini",
-		CliCommand:       "gemini",
-		DefaultCliPath:   "gemini-acp",
+		CliCommand:       "gemini-chat",
+		DefaultCliPath:   "gemini-chat-cli",
 		AuthRequired:     true,
-		Enabled:          false, // TODO: enable when available
+		Enabled:          false, // Not yet available
 		SupportsStreaming: true,
-		AcpArgs:          []string{"acp"},
+		AcpArgs:          []string{"--stdio"},
 	},
 	AcpBackendQwen: {
 		ID:               AcpBackendQwen,
 		Name:             "Qwen",
 		CliCommand:       "qwen",
-		DefaultCliPath:   "qwen",
-		AuthRequired:     false,
+		DefaultCliPath:   "qwen-cli",
+		AuthRequired:     true,
 		Enabled:          true,
 		SupportsStreaming: true,
-		AcpArgs:          []string{"acp"},
+		AcpArgs:          []string{"--stdio"},
+		Env: map[string]string{
+			"QWEN_COLOR": "auto",
+		},
 	},
 	AcpBackendCodex: {
 		ID:               AcpBackendCodex,
 		Name:             "Codex",
 		CliCommand:       "codex",
 		DefaultCliPath:   "codex-acp",
-		AuthRequired:     false,
-		Enabled:          false, // TODO: enable when available
+		AuthRequired:     true,
+		Enabled:          true,
 		SupportsStreaming: true,
-		AcpArgs:          []string{"acp"},
+		AcpArgs:          []string{"--stdio"},
 	},
 	AcpBackendOpenCode: {
 		ID:               AcpBackendOpenCode,
 		Name:             "OpenCode",
 		CliCommand:       "opencode",
-		DefaultCliPath:   "opencode-acp",
-		AuthRequired:     false,
-		Enabled:          false, // TODO: enable when available
+		DefaultCliPath:   "opencode-cli",
+		AuthRequired:     true,
+		Enabled:          false, // Not yet available
 		SupportsStreaming: true,
-		AcpArgs:          []string{"acp"},
+		AcpArgs:          []string{"--stdio"},
 	},
 	AcpBackendCustom: {
 		ID:               AcpBackendCustom,
@@ -65,120 +99,275 @@ var backendConfigs = map[AcpBackend]AcpBackendConfig{
 		CliCommand:       "",
 		DefaultCliPath:   "",
 		AuthRequired:     false,
-		Enabled:          false,
+		Enabled:          true,
 		SupportsStreaming: false,
 		AcpArgs:          []string{},
+		Env:              nil,
 	},
 }
 
-// GetBackendConfig returns the configuration for a given backend
-func GetBackendConfig(backend AcpBackend) AcpBackendConfig {
-	cfg, ok := backendConfigs[backend]
-	if !ok {
-		// Return custom config for unknown backends
-		return AcpBackendConfig{
-			ID:               AcpBackendCustom,
-			Name:             string(backend),
-			CliCommand:       "",
-			DefaultCliPath:   "",
-			AuthRequired:     false,
-			Enabled:          false,
-			SupportsStreaming: false,
-			AcpArgs:          []string{},
-		}
+// DefaultSessionConfigs provides default session configurations per backend
+var DefaultSessionConfigs = map[AcpBackend]map[string]string{
+	AcpBackendClaude: {
+		"model":         "claude-sonnet-4-20250514",
+		"thinkingLevel": "medium",
+	},
+	AcpBackendQwen: {
+		"model":         "qwen-coder-plus",
+		"thinkingLevel": "normal",
+	},
+}
+
+// ValidSessionModes returns valid session mode values for each backend
+var ValidSessionModes = map[AcpBackend][]string{
+	AcpBackendClaude:   {"chat", "code", "bypassPermissions"},
+	AcpBackendQwen:     {"chat", "code", "yolo"},
+	AcpBackendCodex:    {"code", "bypassPermissions"},
+	AcpBackendOpenCode: {"code", "bypassPermissions"},
+	AcpBackendGemini:   {"chat"},
+}
+
+// ValidateSessionConfig validates a session configuration
+func ValidateSessionConfig(config *AcpSessionConfig) error {
+	if config == nil {
+		return fmt.Errorf("session config is nil")
 	}
-	return cfg
-}
 
-// GetEnabledBackends returns a list of all enabled backends
-func GetEnabledBackends() []AcpBackend {
-	var enabled []AcpBackend
-	for _, cfg := range backendConfigs {
-		if cfg.Enabled {
-			enabled = append(enabled, cfg.ID)
-		}
-	}
-	return enabled
-}
-
-// IsBackendEnabled checks if a backend is enabled
-func IsBackendEnabled(backend AcpBackend) bool {
-	cfg := GetBackendConfig(backend)
-	return cfg.Enabled
-}
-
-// ValidateConfig validates an ACP session configuration
-func ValidateConfig(config AcpSessionConfig) error {
 	// Check backend is valid
-	if config.Backend == "" {
-		return &AcpError{
-			Type:    ErrorConnection,
-			Message: "backend is required",
+	if !IsBackendAvailable(string(config.Backend)) {
+		return fmt.Errorf("invalid backend: %s", config.Backend)
+	}
+
+	// Check CLI path for non-custom backends
+	if config.Backend != AcpBackendCustom && config.CliPath == "" {
+		backendCfg, err := GetBackendConfig(config.Backend)
+		if err != nil {
+			return err
+		}
+		if backendCfg.DefaultCliPath == "" {
+			return fmt.Errorf("no CLI path specified for backend %s", config.Backend)
 		}
 	}
 
-	// Check backend is enabled
-	if !IsBackendEnabled(config.Backend) {
-		// For custom backends, allow them even if not in config
-		if config.Backend != AcpBackendCustom {
-			return &AcpError{
-				Type:    ErrorConnection,
-				Message: fmt.Sprintf("backend %s is not enabled", config.Backend),
+	// If resume session, must have session ID
+	if config.ResumeSession && config.SessionID == "" {
+		return fmt.Errorf("resumeSession requires sessionId")
+	}
+
+	return nil
+}
+
+// BuildCliCommand builds the full CLI command for a backend
+func BuildCliCommand(config *AcpBackendConfig, cliPath string, extraArgs []string) []string {
+	command := []string{cliPath}
+
+	// Add ACP args
+	command = append(command, config.AcpArgs...)
+
+	// Add any extra args
+	if len(extraArgs) > 0 {
+		command = append(command, extraArgs...)
+	}
+
+	return command
+}
+
+// GetBackendEnvVars returns default environment variables for a backend
+func GetBackendEnvVars(backend AcpBackend) map[string]string {
+	config, exists := backendConfigs[backend]
+	if !exists {
+		return nil
+	}
+
+	env := make(map[string]string)
+	for k, v := range config.Env {
+		env[k] = v
+	}
+	return env
+}
+
+// MergeEnvVars merges user-provided env vars with backend defaults
+func MergeEnvVars(backend AcpBackend, userEnv map[string]string) map[string]string {
+	defaultEnv := GetBackendEnvVars(backend)
+	if defaultEnv == nil {
+		defaultEnv = make(map[string]string)
+	}
+
+	merged := make(map[string]string)
+	for k, v := range defaultEnv {
+		merged[k] = v
+	}
+	for k, v := range userEnv {
+		merged[k] = v
+	}
+
+	return merged
+}
+
+// IsStreamingSupported checks if a backend supports streaming
+func IsStreamingSupported(backend AcpBackend) bool {
+	config, exists := backendConfigs[backend]
+	if !exists {
+		return false
+	}
+	return config.SupportsStreaming
+}
+
+// GetDefaultModel returns the default model for a backend
+func GetDefaultModel(backend AcpBackend) string {
+	if _, exists := backendConfigs[backend]; exists {
+		defaults, hasDefaults := DefaultSessionConfigs[backend]
+		if hasDefaults {
+			if model, ok := defaults["model"]; ok {
+				return model
+			}
+		}
+	}
+	return ""
+}
+
+// GetAvailableModels returns available models for a backend
+func GetAvailableModels(backend AcpBackend) []string {
+	// Models are discovered through session/models RPC
+	// This returns static defaults available in config
+	models := make([]string, 0)
+
+	switch backend {
+	case AcpBackendClaude:
+		models = []string{
+			"claude-sonnet-4-20250514",
+			"claude-sonnet-4-20250514-thinking-level-0",
+			"claude-sonnet-4-20250514-thinking-level-1",
+			"claude-sonnet-4-20250514-thinking-level-2",
+			"claude-sonnet-4-20250514-thinking-level-3",
+			"claude-opus-20250514",
+			"claude-opus-20250514-thinking-level-0",
+			"claude-opus-20250514-thinking-level-1",
+			"claude-opus-20250514-thinking-level-2",
+			"claude-opus-20250514-thinking-level-3",
+		}
+	case AcpBackendQwen:
+		models = []string{
+			"qwen-coder-plus",
+			"qwen-plus",
+			"qwen-max",
+		}
+	case AcpBackendCodex:
+		models = []string{
+			"gpt-4",
+			"gpt-4-turbo",
+		}
+	}
+
+	return models
+}
+
+// GetSessionTimeout returns the default session timeout for a backend
+func GetSessionTimeout(backend AcpBackend) int {
+	// Default to 30 minutes for most backends
+	return 30
+}
+
+// ValidateMode validates a session mode for a backend
+func ValidateMode(backend AcpBackend, mode string) error {
+	validModes, exists := ValidSessionModes[backend]
+	if !exists {
+		return fmt.Errorf("unknown backend: %s", backend)
+	}
+
+	for _, validMode := range validModes {
+		if validMode == mode {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid mode '%s' for backend %s. Valid modes: %s",
+		mode, backend, strings.Join(validModes, ", "))
+}
+
+// GetYoloMode returns the yolo/bypass mode string for a backend
+func GetYoloMode(backend AcpBackend) string {
+	switch backend {
+	case AcpBackendClaude:
+		return ClaudeYoloSessionMode
+	case AcpBackendQwen:
+		return QwenYoloSessionMode
+	case AcpBackendCodex:
+		return CodebuddyYoloSessionMode
+	default:
+		return ""
+	}
+}
+
+// DetectBackendFromCLI attempts to detect the backend from a CLI command path
+func DetectBackendFromCLI(cliPath string) (AcpBackend, error) {
+	cliPath = strings.ToLower(cliPath)
+
+	for _, config := range backendConfigs {
+		if config.CliCommand == "" {
+			continue
+		}
+		if strings.Contains(cliPath, config.CliCommand) {
+			return config.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("cannot detect backend from CLI path: %s", cliPath)
+}
+
+// GetWorkspaceSafeBackends returns backends that can be used safely in workspace
+func GetWorkspaceSafeBackends() []AcpBackend {
+	return []AcpBackend{
+		AcpBackendClaude,
+		AcpBackendQwen,
+		AcpBackendCodex,
+	}
+}
+
+// ParseSessionConfigFromWsh parses session config from WSH settings
+func ParseSessionConfigFromWsh(settings map[string]interface{}) (*AcpSessionConfig, error) {
+	config := &AcpSessionConfig{}
+
+	if backendStr, ok := settings["backend"].(string); ok {
+		backend, err := GetBackendFromString(backendStr)
+		if err != nil {
+			return nil, err
+		}
+		config.Backend = backend
+	}
+
+	if cliPath, ok := settings["cliPath"].(string); ok {
+		config.CliPath = cliPath
+	}
+
+	if cwd, ok := settings["cwd"].(string); ok {
+		config.Cwd = cwd
+	}
+
+	if resume, ok := settings["resumeSession"].(bool); ok {
+		config.ResumeSession = resume
+	}
+
+	if sid, ok := settings["sessionId"].(string); ok {
+		config.SessionID = sid
+	}
+
+	if yolo, ok := settings["yoloMode"].(bool); ok {
+		config.YoloMode = yolo
+	}
+
+	if model, ok := settings["model"].(string); ok {
+		config.Model = model
+	}
+
+	if envMap, ok := settings["env"].(map[string]interface{}); ok {
+		config.Env = make(map[string]string)
+		for k, v := range envMap {
+			if str, ok := v.(string); ok {
+				config.Env[k] = str
 			}
 		}
 	}
 
-	// Validate resume/fork session mutual exclusivity
-	if config.ResumeSession && config.ForkSession {
-		return &AcpError{
-			Type:    ErrorSession,
-			Message: "cannot specify both resumeSession and forkSession",
-		}
-	}
-
-	// If resume or fork, session ID is required
-	if (config.ResumeSession || config.ForkSession) && config.SessionID == "" {
-		return &AcpError{
-			Type:    ErrorSession,
-			Message: "session ID is required for resume/fork",
-		}
-	}
-
-	// Working directory is always required
-	if config.Cwd == "" {
-		return &AcpError{
-			Type:    ErrorSession,
-			Message: "working directory (cwd) is required",
-		}
-	}
-
-	return nil
-}
-
-// SetBackendEnabled enables or disables a backend
-func SetBackendEnabled(backend AcpBackend, enabled bool) {
-	cfg, ok := backendConfigs[backend]
-	if ok {
-		cfg.Enabled = enabled
-		backendConfigs[backend] = cfg
-	}
-}
-
-// RegisterCustomBackend registers a custom backend configuration
-func RegisterCustomBackend(cfg AcpBackendConfig) error {
-	if cfg.ID == "" {
-		return &AcpError{
-			Type:    ErrorConnection,
-			Message: "backend ID is required",
-		}
-	}
-	if cfg.Name == "" {
-		return &AcpError{
-			Type:    ErrorConnection,
-			Message: "backend name is required",
-		}
-	}
-
-	backendConfigs[cfg.ID] = cfg
-	return nil
+	return config, nil
 }
