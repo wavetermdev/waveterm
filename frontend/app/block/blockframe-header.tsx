@@ -132,7 +132,7 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }
-    if (showSplitButtons) {
+    if (showSplitButtons && viewModel?.viewType === "term") {
         const splitHorizontalDecl: IconButtonDecl = {
             elemtype: "iconbutton",
             icon: "columns",
