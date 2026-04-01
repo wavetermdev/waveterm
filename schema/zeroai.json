@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://waveterm.com/schema/zeroai.json",
+  "title": "ZeroAI Agent Schema",
+  "description": "Schema for defining ZeroAI agent types and their configuration",
+  "type": "object",
+  "additionalProperties": {
+    "$ref": "#/$defs/ZeroAiAgentType"
+  },
+  "$defs": {
+    "ZeroAiAgentType": {
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable display name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "backend": {
+          "type": "string",
+          "enum": ["claude", "gemini", "qwen", "codex", "opencode", "custom"],
+          "description": "ACP backend type"
+        },
+        "cli:command": {
+          "type": "string",
+          "description": "CLI command to execute"
+        },
+        "cli:args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Arguments to pass to the CLI command"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Environment variables to set"
+        },
+        "provider": {
+          "type": "string",
+          "description": "LLM provider (anthropic, openai, google, etc.)"
+        },
+        "model": {
+          "type": "string",
+          "description": "Default model to use"
+        },
+        "thinking_level": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "default": "medium",
+          "description": "Thinking/temperature level"
+        },
+        "yolo_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Bypass permissions with yolo mode"
+        },
+        "api:key": {
+          "type": "string",
+          "description": "API key reference (e.g., ${secret:claude-key})"
+        },
+        "supports_streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the agent supports streaming responses"
+        }
+      },
+      "required": ["displayName", "backend"],
+      "additionalProperties": false
+    }
+  }
+}
