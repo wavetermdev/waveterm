@@ -110,6 +110,7 @@ type SettingsType struct {
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 	TermOsc52               string   `json:"term:osc52,omitempty" jsonschema:"enum=focus,enum=always"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
+	TermShowSplitButtons    bool     `json:"term:showsplitbuttons,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
