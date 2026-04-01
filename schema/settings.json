@@ -168,6 +168,9 @@
         "term:durable": {
           "type": "boolean"
         },
+        "term:showsplitbuttons": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },
@@ -231,6 +234,9 @@
         },
         "tab:confirmclose": {
           "type": "boolean"
+        },
+        "tab:background": {
+          "type": "string"
         },
         "widget:*": {
           "type": "boolean"
@@ -324,6 +330,9 @@
         },
         "debug:pprofmemprofilerate": {
           "type": "integer"
+        },
+        "debug:webglstatus": {
+          "type": "boolean"
         },
         "tsunami:*": {
           "type": "boolean"

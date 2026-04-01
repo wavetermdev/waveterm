@@ -1,17 +1,19 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import ClaudeColorSvg from "@/app/asset/claude-color.svg";
 import { SubBlock } from "@/app/block/block";
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { NullErrorBoundary } from "@/app/element/errorboundary";
 import { Search, useSearch } from "@/app/element/search";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { globalStore } from "@/app/store/jotaiStore";
 import { useTabModel } from "@/app/store/tab-model";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { TermViewModel } from "@/app/view/term/term-model";
-import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
+import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
@@ -32,6 +34,16 @@ interface TerminalViewProps {
     blockId: string;
     model: TermViewModel;
 }
+
+const TermClaudeIcon = React.memo(() => {
+    return (
+        <div className="[&_svg]:w-[15px] [&_svg]:h-[15px]" aria-hidden="true">
+            <ClaudeColorSvg />
+        </div>
+    );
+});
+
+TermClaudeIcon.displayName = "TermClaudeIcon";
 
 const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => {
     const connStatus = jotai.useAtomValue(model.connStatus);
@@ -60,7 +72,7 @@ const TermVDomToolbarNode = ({ vdomBlockId, blockId, model }: TerminalViewProps 
         const unsub = waveEventSubscribeSingle({
             eventType: "blockclose",
             scope: WOS.makeORef("block", vdomBlockId),
-            handler: (event) => {
+            handler: (_event) => {
                 RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: {
@@ -103,7 +115,7 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
         const unsub = waveEventSubscribeSingle({
             eventType: "blockclose",
             scope: WOS.makeORef("block", vdomBlockId),
-            handler: (event) => {
+            handler: (_event) => {
                 RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: {
@@ -299,6 +311,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 macOptionIsMeta: termMacOptionIsMeta,
                 cursorStyle: termCursorStyle,
                 cursorBlink: termCursorBlink,
+                overviewRuler: { width: 6 },
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
@@ -311,9 +324,6 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         model.termRef.current = termWrap;
         setTermWrapInst(termWrap);
         const rszObs = new ResizeObserver(() => {
-            if (termWrap.cachedAtBottomForResize == null) {
-                termWrap.cachedAtBottomForResize = termWrap.wasRecentlyAtBottom();
-            }
             termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);
@@ -391,4 +401,4 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     );
 };
 
-export { TerminalView };
+export { TermClaudeIcon, TerminalView };

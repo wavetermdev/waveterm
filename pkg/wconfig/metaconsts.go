@@ -59,6 +59,7 @@ const (
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
 	ConfigKey_TermOsc52                      = "term:osc52"
 	ConfigKey_TermDurable                    = "term:durable"
+	ConfigKey_TermShowSplitButtons           = "term:showsplitbuttons"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
@@ -85,6 +86,7 @@ const (
 
 	ConfigKey_TabPreset                      = "tab:preset"
 	ConfigKey_TabConfirmClose                = "tab:confirmclose"
+	ConfigKey_TabBackground                  = "tab:background"
 
 	ConfigKey_WidgetClear                    = "widget:*"
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
@@ -121,6 +123,7 @@ const (
 	ConfigKey_DebugClear                     = "debug:*"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
+	ConfigKey_DebugWebGlStatus               = "debug:webglstatus"
 
 	ConfigKey_TsunamiClear                   = "tsunami:*"
 	ConfigKey_TsunamiScaffoldPath            = "tsunami:scaffoldpath"

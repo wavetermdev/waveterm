@@ -93,6 +93,7 @@ type MetaTSType struct {
 
 	// for tabs
 	TabFlagColor        string  `json:"tab:flagcolor,omitempty"`
+	TabBackground       string  `json:"tab:background,omitempty"`
 	BgClear             bool    `json:"bg:*,omitempty"`
 	Bg                  string  `json:"bg,omitempty"`
 	BgOpacity           float64 `json:"bg:opacity,omitempty"`
@@ -101,7 +102,8 @@ type MetaTSType struct {
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
 	// for workspace
-	LayoutVTabBarWidth int `json:"layout:vtabbarwidth,omitempty"`
+	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
+	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
 
 	// for tabs+waveai
 	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`

@@ -108,6 +108,17 @@ declare global {
         iconcolor: string;
     };
 
+    // wconfig.BackgroundConfigType
+    type BackgroundConfigType = {
+        bg?: string;
+        "bg:opacity"?: number;
+        "bg:blendmode"?: string;
+        "bg:bordercolor"?: string;
+        "bg:activebordercolor"?: string;
+        "display:name": string;
+        "display:order"?: number;
+    };
+
     // baseds.Badge
     type Badge = {
         badgeid: string;
@@ -380,6 +391,13 @@ declare global {
         restoretofilename: string;
     };
 
+    // wshrpc.CommandFileStreamData
+    type CommandFileStreamData = {
+        info: FileInfo;
+        byterange?: string;
+        streammeta: StreamMeta;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -521,6 +539,13 @@ declare global {
         paths: string[];
     };
 
+    // wshrpc.CommandRemoteFileStreamData
+    type CommandRemoteFileStreamData = {
+        path: string;
+        byterange?: string;
+        streammeta: StreamMeta;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -530,6 +555,24 @@ declare global {
     // wshrpc.CommandRemoteListEntriesRtnData
     type CommandRemoteListEntriesRtnData = {
         fileinfo?: FileInfo[];
+    };
+
+    // wshrpc.CommandRemoteProcessListData
+    type CommandRemoteProcessListData = {
+        widgetid?: string;
+        sortby?: string;
+        sortdesc?: boolean;
+        start?: number;
+        limit?: number;
+        textsearch?: string;
+        lastpidorder?: boolean;
+        keepalive?: boolean;
+    };
+
+    // wshrpc.CommandRemoteProcessSignalData
+    type CommandRemoteProcessSignalData = {
+        pid: number;
+        signal: string;
     };
 
     // wshrpc.CommandRemoteReconnectToJobManagerData
@@ -560,12 +603,6 @@ declare global {
         mainserverjwttoken: string;
         clientid: string;
         publickeybase64: string;
-    };
-
-    // wshrpc.CommandRemoteStreamFileData
-    type CommandRemoteStreamFileData = {
-        path: string;
-        byterange?: string;
     };
 
     // wshrpc.CommandRemoteTerminateJobManagerData
@@ -977,6 +1014,7 @@ declare global {
         defaultwidgets: {[key: string]: WidgetConfigType};
         widgets: {[key: string]: WidgetConfigType};
         presets: {[key: string]: MetaType};
+        backgrounds: {[key: string]: BackgroundConfigType};
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
@@ -1115,6 +1153,7 @@ declare global {
         "graph:metrics"?: string[];
         "sysinfo:type"?: string;
         "tab:flagcolor"?: string;
+        "tab:background"?: string;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
@@ -1122,6 +1161,7 @@ declare global {
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
         "layout:vtabbarwidth"?: number;
+        "layout:widgetsvisible"?: boolean;
         "waveai:panelopen"?: boolean;
         "waveai:panelwidth"?: number;
         "waveai:model"?: string;
@@ -1221,6 +1261,44 @@ declare global {
     type Point = {
         x: number;
         y: number;
+    };
+
+    // wshrpc.ProcessInfo
+    type ProcessInfo = {
+        pid: number;
+        ppid?: number;
+        command?: string;
+        status?: string;
+        user?: string;
+        mem: number;
+        mempct: number;
+        cpu: number;
+        numthreads: number;
+        gone?: boolean;
+    };
+
+    // wshrpc.ProcessListResponse
+    type ProcessListResponse = {
+        processes: ProcessInfo[];
+        summary: ProcessSummary;
+        ts: number;
+        hascpu?: boolean;
+        platform?: string;
+        totalcount?: number;
+        filteredcount?: number;
+    };
+
+    // wshrpc.ProcessSummary
+    type ProcessSummary = {
+        total: number;
+        load1?: number;
+        load5?: number;
+        load15?: number;
+        memtotal?: number;
+        memused?: number;
+        memfree?: number;
+        numcpu?: number;
+        cpusum?: number;
     };
 
     // uctypes.RateLimitInfo
@@ -1344,6 +1422,7 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
+        "term:showsplitbuttons"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -1364,6 +1443,7 @@ declare global {
         "preview:defaultsort"?: string;
         "tab:preset"?: string;
         "tab:confirmclose"?: boolean;
+        "tab:background"?: string;
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
@@ -1395,6 +1475,7 @@ declare global {
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
+        "debug:webglstatus"?: boolean;
         "tsunami:*"?: boolean;
         "tsunami:scaffoldpath"?: string;
         "tsunami:sdkreplacepath"?: string;

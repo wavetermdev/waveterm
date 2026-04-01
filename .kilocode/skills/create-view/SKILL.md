@@ -110,7 +110,8 @@ Create a new file for your view model (e.g., `frontend/app/view/myview/myview-mo
 
 ```typescript
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { WOS, globalStore, useBlockAtom } from "@/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
+import { WOS, useBlockAtom } from "@/store/global";
 import * as jotai from "jotai";
 import { MyView } from "./myview";
 
@@ -202,9 +203,11 @@ export const MyView: React.FC<ViewComponentProps<MyViewModel>> = ({
 
 ### 3. Register the View
 
-Add your view to the `BlockRegistry` in `frontend/app/block/block.tsx`:
+Add your view to the `BlockRegistry` in `frontend/app/block/blockregistry.ts`:
 
 ```typescript
+import { MyViewModel } from "@/app/view/myview/myview-model";
+
 const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
 BlockRegistry.set("preview", PreviewModel);

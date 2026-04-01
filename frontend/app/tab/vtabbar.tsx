@@ -3,6 +3,7 @@
 
 import { Tooltip } from "@/app/element/tooltip";
 import { getTabBadgeAtom } from "@/app/store/badge";
+import { getTabModelByTabId } from "@/app/store/tab-model";
 import { makeORef } from "@/app/store/wos";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
@@ -121,6 +122,17 @@ function VTabWrapper({
     const [tabData] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", tabId));
     const badges = useAtomValue(getTabBadgeAtom(tabId, env));
     const renameRef = useRef<(() => void) | null>(null);
+    const tabModel = getTabModelByTabId(tabId, env);
+
+    useEffect(() => {
+        const cb = () => renameRef.current?.();
+        tabModel.startRenameCallback = cb;
+        return () => {
+            if (tabModel.startRenameCallback === cb) {
+                tabModel.startRenameCallback = null;
+            }
+        };
+    }, [tabModel]);
 
     const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
     let flagColor: string | null = null;

@@ -1,10 +1,11 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ModalsRenderer } from "@/app/modals/modalsrenderer";
+import { globalStore } from "@/app/store/jotaiStore";
 import { AppSelectionModal } from "@/builder/app-selection-modal";
 import { BuilderWorkspace } from "@/builder/builder-workspace";
-import { ModalsRenderer } from "@/app/modals/modalsrenderer";
-import { atoms, globalStore, isDev } from "@/store/global";
+import { atoms, isDev } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import * as keyutil from "@/util/keyutil";
 import { isBlank } from "@/util/util";

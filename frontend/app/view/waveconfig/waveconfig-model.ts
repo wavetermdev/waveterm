@@ -32,16 +32,6 @@ export type ConfigFile = {
 
 export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
 
-function validateBgJson(parsed: any): ValidationResult {
-    const keys = Object.keys(parsed);
-    for (const key of keys) {
-        if (!key.startsWith("bg@")) {
-            return { error: `Invalid key "${key}": all top-level keys must start with "bg@"` };
-        }
-    }
-    return { success: true };
-}
-
 function validateAiJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
     for (const key of keys) {
@@ -101,10 +91,9 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
         },
         {
             name: "Tab Backgrounds",
-            path: "presets/bg.json",
+            path: "backgrounds.json",
             language: "json",
-            docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
-            validator: validateBgJson,
+            docsUrl: "https://docs.waveterm.dev/tab-backgrounds",
             hasJsonView: true,
         },
         {
@@ -272,6 +261,21 @@ export class WaveConfigViewModel implements ViewModel {
 
     hasChanges(): boolean {
         return globalStore.get(this.hasEditedAtom);
+    }
+
+    confirmDiscardChanges(): boolean {
+        if (!this.hasChanges()) {
+            return true;
+        }
+        return window.confirm("You have unsaved changes. Discard and continue?");
+    }
+
+    discardChanges() {
+        const originalContent = globalStore.get(this.originalContentAtom);
+        globalStore.set(this.fileContentAtom, originalContent);
+        globalStore.set(this.hasEditedAtom, false);
+        globalStore.set(this.validationErrorAtom, null);
+        globalStore.set(this.errorMessageAtom, null);
     }
 
     markAsEdited() {

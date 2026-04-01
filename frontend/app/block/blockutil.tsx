@@ -2,12 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import {
+    MetaKeyAtomFnType,
+    WaveEnv,
+    WaveEnvSubset,
+} from "@/app/waveenv/waveenv";
 import { IconButton, ToggleIconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
 import { MenuButton } from "@/element/menubutton";
 import * as util from "@/util/util";
 import clsx from "clsx";
+import * as jotai from "jotai";
 import * as React from "react";
+
+export type TabBackgroundEnv = WaveEnvSubset<{
+    getTabMetaKeyAtom: MetaKeyAtomFnType<"bg:activebordercolor" | "bg:bordercolor" | "tab:background">;
+    getConfigBackgroundAtom: WaveEnv["getConfigBackgroundAtom"];
+}>;
 
 export const colorRegex = /^((#[0-9a-f]{6,8})|([a-z]+))$/;
 export const NumActiveConnColors = 8;
@@ -30,6 +41,9 @@ export function blockViewToIcon(view: string): string {
     }
     if (view == "tips") {
         return "lightbulb";
+    }
+    if (view == "processviewer") {
+        return "microchip";
     }
     return "square";
 }
@@ -55,6 +69,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "tips") {
         return "Tips";
+    }
+    if (view == "processviewer") {
+        return "Processes";
     }
     return view;
 }
@@ -153,6 +170,19 @@ export function getViewIconElem(
     } else {
         return <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
     }
+}
+
+export function useTabBackground(
+    waveEnv: TabBackgroundEnv,
+    tabId: string | null
+): [string, string, BackgroundConfigType] {
+    const tabActiveBorderColorDirect = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabId, "bg:activebordercolor"));
+    const tabBorderColorDirect = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabId, "bg:bordercolor"));
+    const tabBg = jotai.useAtomValue(waveEnv.getTabMetaKeyAtom(tabId, "tab:background"));
+    const configBg = jotai.useAtomValue(waveEnv.getConfigBackgroundAtom(tabBg));
+    const tabActiveBorderColor = tabActiveBorderColorDirect ?? configBg?.["bg:activebordercolor"];
+    const tabBorderColor = tabBorderColorDirect ?? configBg?.["bg:bordercolor"];
+    return [tabBorderColor, tabActiveBorderColor, configBg];
 }
 
 export const Input = React.memo(

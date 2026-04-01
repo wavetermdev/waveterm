@@ -75,28 +75,38 @@ export function buildTabContextMenu(
     ];
     menu.push({ label: "Flag Tab", type: "submenu", submenu: flagSubmenu }, { type: "separator" });
     const fullConfig = globalStore.get(env.atoms.fullConfigAtom);
-    const bgPresets: string[] = [];
-    for (const key in fullConfig?.presets ?? {}) {
-        if (key.startsWith("bg@") && fullConfig.presets[key] != null) {
-            bgPresets.push(key);
-        }
-    }
-    bgPresets.sort((a, b) => {
-        const aOrder = fullConfig.presets[a]["display:order"] ?? 0;
-        const bOrder = fullConfig.presets[b]["display:order"] ?? 0;
+    const backgrounds = fullConfig?.backgrounds ?? {};
+    const bgKeys = Object.keys(backgrounds).filter((k) => backgrounds[k] != null);
+    bgKeys.sort((a, b) => {
+        const aOrder = backgrounds[a]["display:order"] ?? 0;
+        const bOrder = backgrounds[b]["display:order"] ?? 0;
         return aOrder - bOrder;
     });
-    if (bgPresets.length > 0) {
+    if (bgKeys.length > 0) {
         const submenu: ContextMenuItem[] = [];
         const oref = makeORef("tab", id);
-        for (const presetName of bgPresets) {
-            // preset cannot be null (filtered above)
-            const preset = fullConfig.presets[presetName];
+        submenu.push({
+            label: "Default",
+            click: () =>
+                fireAndForget(async () => {
+                    await env.rpc.SetMetaCommand(TabRpcClient, {
+                        oref,
+                        meta: { "bg:*": true, "tab:background": null },
+                    });
+                    env.rpc.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                    recordTEvent("action:settabtheme");
+                }),
+        });
+        for (const bgKey of bgKeys) {
+            const bg = backgrounds[bgKey];
             submenu.push({
-                label: preset["display:name"] ?? presetName,
+                label: bg["display:name"] ?? bgKey,
                 click: () =>
                     fireAndForget(async () => {
-                        await env.rpc.SetMetaCommand(TabRpcClient, { oref, meta: preset });
+                        await env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref,
+                            meta: { "bg:*": true, "tab:background": bgKey },
+                        });
                         env.rpc.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
                         recordTEvent("action:settabtheme");
                     }),

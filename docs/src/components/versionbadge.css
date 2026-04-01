@@ -20,3 +20,22 @@
     background-color: var(--ifm-color-primary-dark);
     color: var(--ifm-background-color);
 }
+
+.deprecated-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    margin-left: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    background-color: #9e9e9e;
+    color: #fff;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .deprecated-badge {
+    background-color: #616161;
+    color: #e0e0e0;
+}

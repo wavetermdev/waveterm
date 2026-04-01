@@ -6,6 +6,31 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.14.4 &mdash; Mar 26, 2026
+
+Wave v0.14.4 introduces vertical tabs, upgrades to xterm.js v6, and includes a collection of bug fixes and internal improvements.
+
+**Vertical Tab Bar:**
+
+- **New Vertical Tab Bar Option** - Tabs can now be displayed vertically along the side of the window, giving you more horizontal space and easier access to tabs when you have many open. Toggle between horizontal and vertical tab layouts in settings.
+
+**Terminal Improvements:**
+
+- **xterm.js v6.0.0 Upgrade** - Upgraded to the latest xterm.js v6, bringing improved terminal compatibility and rendering. This should resolve various terminal rendering quirks observed with tools like Claude Code.
+
+**Other Changes:**
+
+- **`backgrounds.json`** - Renamed `presets/bg.json` to `backgrounds.json` and moved background config to new `tab:background` key (auto-migrated on startup)
+- **Config Errors Moved** - Config errors removed from the tab bar and moved to Settings / WaveConfig view for less clutter
+- **Warn on Unsaved Changes** - WaveConfig view now warns before discarding unsaved changes
+- **Stream Performance** - Migrated file streaming to new modern interface with flow control, fixing a large time-to-first-byte streaming bug
+- **macOS First Click** - Improved first-click handling on macOS (cancel the click but properly set block/WaveAI focus)
+- Deprecated legacy AI widget has been removed
+- [bugfix] Fixed focus bug for newly created blocks
+- [bugfix] Fixed an issue around starting a new durable session by splitting an old one
+- Electron upgraded to v41
+- Package updates and dependency upgrades
+
 ### v0.14.2 &mdash; Mar 12, 2026
 
 Wave v0.14.2 adds block/tab badges, directory preview improvements, and assorted bug fixes.
@@ -479,7 +504,7 @@ New minor release that introduces Wave's connected computing extensions. We've i
 
 ### v0.9.2 &mdash; Nov 11, 2024
 
-New minor release with bug fixes and new features! Fixed the bug around making Wave fullscreen (also affecting certain window managers like Hyprland). We've also put a lot of work into the doc site (https://docs.waveterm.dev), including documenting how [Widgets](./widgets) and [Presets](./presets) work!
+New minor release with bug fixes and new features! Fixed the bug around making Wave fullscreen (also affecting certain window managers like Hyprland). We've also put a lot of work into the doc site (https://docs.waveterm.dev), including documenting how [Widgets](./widgets) and Presets work!
 
 - Updated documentation
 - Wave AI now supports the Anthropic API! Checkout the [FAQ](./faq) for how to use the Claude models with Wave AI.

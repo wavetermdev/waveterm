@@ -6,12 +6,13 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { getAtoms, initGlobalAtoms } from "@/app/store/global-atoms";
 import { GlobalModel } from "@/app/store/global-model";
 import { globalStore } from "@/app/store/jotaiStore";
+import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { loadFonts } from "@/util/fontutil";
-import { atom, Provider } from "jotai";
+import { Provider } from "jotai";
 import React, { lazy, Suspense, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { makeMockWaveEnv } from "./mock/mockwaveenv";
+import { makeMockWaveEnv, PreviewClientId, PreviewTabId, PreviewWindowId } from "./mock/mockwaveenv";
 import { installPreviewElectronApi } from "./mock/preview-electron-api";
 import { PreviewContextMenu } from "./preview-contextmenu";
 
@@ -93,22 +94,14 @@ function PreviewHeader({ previewName }: { previewName: string }) {
 }
 
 function PreviewRoot() {
-    const waveEnvRef = useRef(
-        makeMockWaveEnv({
-            atoms: {
-                uiContext: atom({ windowid: PreviewWindowId, activetabid: PreviewTabId } as UIContext),
-                staticTabId: atom(PreviewTabId),
-                workspaceId: atom(PreviewWorkspaceId),
-            },
-        })
-    );
+    const waveEnvRef = useRef(makeMockWaveEnv());
     return (
         <Provider store={globalStore}>
             <WaveEnvContext.Provider value={waveEnvRef.current}>
-                <>
+                <TabModelContext.Provider value={getTabModelByTabId(PreviewTabId, waveEnvRef.current)}>
                     <PreviewApp />
                     <PreviewContextMenu />
-                </>
+                </TabModelContext.Provider>
             </WaveEnvContext.Provider>
         </Provider>
     );
@@ -149,11 +142,6 @@ function PreviewApp() {
 
     return <PreviewIndex />;
 }
-
-const PreviewTabId = crypto.randomUUID();
-const PreviewWindowId = crypto.randomUUID();
-const PreviewWorkspaceId = crypto.randomUUID();
-const PreviewClientId = crypto.randomUUID();
 
 function initPreview() {
     installPreviewElectronApi();

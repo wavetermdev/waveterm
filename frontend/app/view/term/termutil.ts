@@ -389,3 +389,7 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
 
     return lines;
 }
+
+export function quoteForPosixShell(filePath: string): string {
+    return "'" + filePath.replace(/'/g, "'\\''") + "'";
+}

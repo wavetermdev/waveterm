@@ -3,6 +3,7 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Search, useSearch } from "@/app/element/search";
+import { globalStore } from "@/app/store/jotaiStore";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import type { TabModel } from "@/app/store/tab-model";
 import { makeORef } from "@/app/store/wos";
@@ -14,7 +15,7 @@ import {
 } from "@/app/suggestion/suggestion";
 import { MockBoundary } from "@/app/waveenv/mockboundary";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
-import { globalStore, openLink } from "@/store/global";
+import { openLink } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
@@ -73,6 +74,7 @@ export class WebViewModel implements ViewModel {
     partitionOverride: PrimitiveAtom<string> | null;
     userAgentType: Atom<string>;
     env: WebViewEnv;
+    ctrlShiftUnsubFn: (() => void) | null = null;
 
     constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
         this.nodeModel = nodeModel;
@@ -208,6 +210,11 @@ export class WebViewModel implements ViewModel {
 
             return buttons;
         });
+    }
+
+    dispose() {
+        this.ctrlShiftUnsubFn?.();
+        this.ctrlShiftUnsubFn = null;
     }
 
     get viewComponent(): ViewComponent {
@@ -507,18 +514,21 @@ export class WebViewModel implements ViewModel {
             return true;
         }
         const ctrlShiftState = globalStore.get(getSimpleControlShiftAtom());
-        if (ctrlShiftState) {
+        if (ctrlShiftState && !this.ctrlShiftUnsubFn) {
             // this is really weird, we don't get keyup events from webview
-            const unsubFn = globalStore.sub(getSimpleControlShiftAtom(), () => {
+            this.ctrlShiftUnsubFn = globalStore.sub(getSimpleControlShiftAtom(), () => {
                 const state = globalStore.get(getSimpleControlShiftAtom());
                 if (!state) {
-                    unsubFn();
+                    this.ctrlShiftUnsubFn?.();
+                    this.ctrlShiftUnsubFn = null;
                     const isStillFocused = globalStore.get(this.nodeModel.isFocused);
                     if (isStillFocused) {
                         this.webviewRef.current?.focus();
                     }
                 }
             });
+        }
+        if (ctrlShiftState) {
             return false;
         }
         this.webviewRef.current?.focus();

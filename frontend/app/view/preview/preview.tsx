@@ -14,9 +14,9 @@ import { CodeEditPreview } from "./preview-edit";
 import { ErrorOverlay } from "./preview-error-overlay";
 import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
-import { fetchPreviewFileSuggestions } from "./previewsuggestions";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
+import { fetchPreviewFileSuggestions } from "./previewsuggestions";
 
 export type SpecializedViewProps = {
     model: PreviewModel;
@@ -112,7 +112,8 @@ function PreviewView({
     };
     const fetchSuggestionsFn = async (query, ctx) => {
         const conn = await globalStore.get(model.connection);
-        const cwd = globalStore.get(model.statFile)?.path;
+        const file = await globalStore.get(model.statFile);
+        const cwd = file?.path;
         return await fetchPreviewFileSuggestions(env, query, ctx, { cwd, connection: conn });
     };
 

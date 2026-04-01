@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-    BlockMetaKeyAtomFnType,
     ConnConfigKeyAtomFnType,
+    MetaKeyAtomFnType,
     SettingsKeyAtomFnType,
     WaveEnv,
     WaveEnvSubset,
@@ -13,6 +13,7 @@ export type BlockEnv = WaveEnvSubset<{
     getSettingsKeyAtom: SettingsKeyAtomFnType<
         | "app:focusfollowscursor"
         | "app:showoverlayblocknums"
+        | "term:showsplitbuttons"
         | "window:magnifiedblockblurprimarypx"
         | "window:magnifiedblockopacity"
     >;
@@ -36,7 +37,7 @@ export type BlockEnv = WaveEnvSubset<{
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
     getLocalHostDisplayNameAtom: WaveEnv["getLocalHostDisplayNameAtom"];
     getConnConfigKeyAtom: ConnConfigKeyAtomFnType<"conn:wshenabled">;
-    getBlockMetaKeyAtom: BlockMetaKeyAtomFnType<
+    getBlockMetaKeyAtom: MetaKeyAtomFnType<
         | "frame:text"
         | "frame:activebordercolor"
         | "frame:bordercolor"
@@ -46,4 +47,6 @@ export type BlockEnv = WaveEnvSubset<{
         | "frame:title"
         | "frame:icon"
     >;
+    getTabMetaKeyAtom: MetaKeyAtomFnType<"bg:activebordercolor" | "bg:bordercolor" | "tab:background">;
+    getConfigBackgroundAtom: WaveEnv["getConfigBackgroundAtom"];
 }>;

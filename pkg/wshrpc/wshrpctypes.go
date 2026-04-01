@@ -128,6 +128,8 @@ type WshRpcInterface interface {
 	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
 	RemoteTerminateJobManagerCommand(ctx context.Context, data CommandRemoteTerminateJobManagerData) error
 	BadgeWatchPidCommand(ctx context.Context, data CommandBadgeWatchPidData) error
+	RemoteProcessListCommand(ctx context.Context, data CommandRemoteProcessListData) (*ProcessListResponse, error)
+	RemoteProcessSignalCommand(ctx context.Context, data CommandRemoteProcessSignalData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -907,4 +909,61 @@ type FocusedBlockData struct {
 	ConnStatus                 *ConnStatus         `json:"connstatus,omitempty"`
 	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
 	TermLastCommand            string              `json:"termlastcommand,omitempty"`
+}
+
+// ProcessInfo holds per-process information for the process viewer.
+// Mem, MemPct, Cpu, and NumThreads are set to -1 when the data is unavailable
+// (e.g. permission denied reading another user's process on macOS).
+type ProcessInfo struct {
+	Pid        int32   `json:"pid"`
+	Ppid       int32   `json:"ppid,omitempty"`
+	Command    string  `json:"command,omitempty"`
+	Status     string  `json:"status,omitempty"`
+	User       string  `json:"user,omitempty"`
+	Mem        int64   `json:"mem"`        // resident set size in bytes; -1 if unavailable
+	MemPct     float64 `json:"mempct"`     // memory percent; -1 if unavailable
+	Cpu        float64 `json:"cpu"`        // cpu percent; -1 if unavailable
+	NumThreads int32   `json:"numthreads"` // -1 if unavailable
+	Gone       bool    `json:"gone,omitempty"`
+}
+
+type ProcessSummary struct {
+	Total    int     `json:"total"`
+	Load1    float64 `json:"load1,omitempty"`
+	Load5    float64 `json:"load5,omitempty"`
+	Load15   float64 `json:"load15,omitempty"`
+	MemTotal uint64  `json:"memtotal,omitempty"`
+	MemUsed  uint64  `json:"memused,omitempty"`
+	MemFree  uint64  `json:"memfree,omitempty"`
+	NumCPU   int     `json:"numcpu,omitempty"`
+	CpuSum   float64 `json:"cpusum,omitempty"`
+}
+
+type ProcessListResponse struct {
+	Processes     []ProcessInfo  `json:"processes"`
+	Summary       ProcessSummary `json:"summary"`
+	Ts            int64          `json:"ts"`
+	HasCPU        bool           `json:"hascpu,omitempty"`
+	Platform      string         `json:"platform,omitempty"`
+	TotalCount    int            `json:"totalcount,omitempty"`
+	FilteredCount int            `json:"filteredcount,omitempty"`
+}
+
+type CommandRemoteProcessListData struct {
+	WidgetId   string `json:"widgetid,omitempty"`
+	SortBy     string `json:"sortby,omitempty"`
+	SortDesc   bool   `json:"sortdesc,omitempty"`
+	Start      int    `json:"start,omitempty"`
+	Limit      int    `json:"limit,omitempty"`
+	TextSearch string `json:"textsearch,omitempty"`
+	// LastPidOrder, when set, ignores SortBy/SortDesc/TextSearch and returns processes in the order
+	// they were returned in the previous request for this WidgetId (with Gone=true for dead pids).
+	LastPidOrder bool `json:"lastpidorder,omitempty"`
+	// KeepAlive, when set, overrides all other fields and simply keeps the backend cache alive (returns nil).
+	KeepAlive bool `json:"keepalive,omitempty"`
+}
+
+type CommandRemoteProcessSignalData struct {
+	Pid    int32  `json:"pid"`
+	Signal string `json:"signal"`
 }

@@ -46,7 +46,7 @@ const WorkspaceElem = memo(() => {
     const tabBarPosition = useAtomValue(getSettingsKeyAtom("app:tabbar")) ?? "top";
     const showLeftTabBar = tabBarPosition === "left";
     const aiPanelVisible = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
-    const vtabVisible = useAtomValue(workspaceLayoutModel.vtabVisibleAtom);
+    const widgetsSidebarVisible = useAtomValue(workspaceLayoutModel.widgetsSidebarVisibleAtom);
     const windowWidth = window.innerWidth;
     const leftGroupInitialPct = workspaceLayoutModel.getLeftGroupInitialPercentage(windowWidth, showLeftTabBar);
     const innerVTabInitialPct = workspaceLayoutModel.getInnerVTabInitialPercentage(windowWidth, showLeftTabBar);
@@ -57,6 +57,7 @@ const WorkspaceElem = memo(() => {
     const vtabPanelRef = useRef<ImperativePanelHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
+    const vtabPanelWrapperRef = useRef<HTMLDivElement>(null);
 
     // showLeftTabBar is passed as a seed value only; subsequent changes are handled by setShowLeftTabBar below.
     // Do NOT add showLeftTabBar as a dep here — re-registering refs on config changes would redundantly re-run commitLayouts.
@@ -75,6 +76,7 @@ const WorkspaceElem = memo(() => {
                 panelContainerRef.current,
                 aiPanelWrapperRef.current,
                 vtabPanelRef.current ?? undefined,
+                vtabPanelWrapperRef.current ?? undefined,
                 showLeftTabBar
             );
         }
@@ -86,13 +88,13 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     useEffect(() => {
-        workspaceLayoutModel.setShowLeftTabBar(showLeftTabBar);
-    }, [showLeftTabBar]);
-
-    useEffect(() => {
         window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
         return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
+
+    useEffect(() => {
+        workspaceLayoutModel.setShowLeftTabBar(showLeftTabBar);
+    }, [showLeftTabBar]);
 
     useEffect(() => {
         const handleFocus = () => workspaceLayoutModel.syncVTabWidthFromMeta();
@@ -100,9 +102,9 @@ const WorkspaceElem = memo(() => {
         return () => window.removeEventListener("focus", handleFocus);
     }, []);
 
-    const innerHandleVisible = vtabVisible && aiPanelVisible;
+    const innerHandleVisible = showLeftTabBar && aiPanelVisible;
     const innerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${innerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
-    const outerHandleVisible = vtabVisible || aiPanelVisible;
+    const outerHandleVisible = showLeftTabBar || aiPanelVisible;
     const outerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${outerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
 
     return (
@@ -129,7 +131,9 @@ const WorkspaceElem = memo(() => {
                                     order={0}
                                     className="overflow-hidden"
                                 >
-                                    {showLeftTabBar && <VTabBar workspace={ws} />}
+                                    <div ref={vtabPanelWrapperRef} className="w-full h-full">
+                                        {showLeftTabBar && <VTabBar workspace={ws} />}
+                                    </div>
                                 </Panel>
                                 <PanelResizeHandle className={innerHandleClass} />
                                 <Panel
@@ -155,7 +159,7 @@ const WorkspaceElem = memo(() => {
                             ) : (
                                 <div className="flex flex-row h-full">
                                     <TabContent key={tabId} tabId={tabId} noTopPadding={showLeftTabBar && isMacOS()} />
-                                    <Widgets />
+                                    {widgetsSidebarVisible && <Widgets />}
                                 </div>
                             )}
                         </Panel>

@@ -3,21 +3,13 @@
 
 import {
     BlockComponentModel2,
-    BlockNodeModel,
     BlockProps,
     FullBlockProps,
     FullSubBlockProps,
     SubBlockProps,
 } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { useTabModel } from "@/app/store/tab-model";
-import { AiFileDiffViewModel } from "@/app/view/aifilediff/aifilediff";
-import { LauncherViewModel } from "@/app/view/launcher/launcher";
-import { PreviewModel } from "@/app/view/preview/preview-model";
-import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
-import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
-import { VDomModel } from "@/app/view/vdom/vdom-model";
-import { useWaveEnv, WaveEnv } from "@/app/waveenv/waveenv";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
@@ -26,48 +18,13 @@ import { getBlockComponentModel, registerBlockComponentModel, unregisterBlockCom
 import { makeORef } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
-import { HelpViewModel } from "@/view/helpview/helpview";
-import { TermViewModel } from "@/view/term/term-model";
-import { WaveAiModel } from "@/view/waveai/waveai";
-import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
-import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
 import "./block.scss";
 import { BlockEnv } from "./blockenv";
 import { BlockFrame } from "./blockframe";
-import { blockViewToIcon, blockViewToName } from "./blockutil";
-
-const BlockRegistry: Map<string, ViewModelClass> = new Map();
-BlockRegistry.set("term", TermViewModel);
-BlockRegistry.set("preview", PreviewModel);
-BlockRegistry.set("web", WebViewModel);
-BlockRegistry.set("waveai", WaveAiModel);
-BlockRegistry.set("cpuplot", SysinfoViewModel);
-BlockRegistry.set("sysinfo", SysinfoViewModel);
-BlockRegistry.set("vdom", VDomModel);
-BlockRegistry.set("tips", QuickTipsViewModel);
-BlockRegistry.set("help", HelpViewModel);
-BlockRegistry.set("launcher", LauncherViewModel);
-BlockRegistry.set("tsunami", TsunamiViewModel);
-BlockRegistry.set("aifilediff", AiFileDiffViewModel);
-BlockRegistry.set("waveconfig", WaveConfigViewModel);
-
-function makeViewModel(
-    blockId: string,
-    blockView: string,
-    nodeModel: BlockNodeModel,
-    tabModel: TabModel,
-    waveEnv: WaveEnv
-): ViewModel {
-    const ctor = BlockRegistry.get(blockView);
-    if (ctor != null) {
-        return new ctor({ blockId, nodeModel, tabModel, waveEnv });
-    }
-    return makeDefaultViewModel(blockView);
-}
+import { makeViewModel } from "./blockregistry";
 
 function getViewElem(
     blockId: string,
@@ -84,18 +41,6 @@ function getViewElem(
     }
     const VC = viewModel.viewComponent;
     return <VC key={blockId} blockId={blockId} blockRef={blockRef} contentRef={contentRef} model={viewModel} />;
-}
-
-function makeDefaultViewModel(viewType: string): ViewModel {
-    const viewModel: ViewModel = {
-        viewType: viewType,
-        viewIcon: atom(blockViewToIcon(viewType)),
-        viewName: atom(blockViewToName(viewType)),
-        preIconButton: atom(null),
-        endIconButtons: atom(null),
-        viewComponent: null,
-    };
-    return viewModel;
 }
 
 const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
@@ -144,6 +89,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const focusElemRef = useRef<HTMLInputElement>(null);
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
+    const pendingFocusRafRef = useRef<number | null>(null);
     const [blockClicked, setBlockClicked] = useState(false);
     const blockView = useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "view")) ?? "";
     const isFocused = useAtomValue(nodeModel.isFocused);
@@ -155,6 +101,14 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const focusFollowsCursorMode = useAtomValue(waveEnv.getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const innerRect = useDebouncedNodeInnerRect(nodeModel);
     const noPadding = useAtomValueSafe(viewModel.noPadding);
+
+    useEffect(() => {
+        return () => {
+            if (pendingFocusRafRef.current != null) {
+                cancelAnimationFrame(pendingFocusRafRef.current);
+            }
+        };
+    }, []);
 
     useLayoutEffect(() => {
         setBlockClicked(isFocused);
@@ -221,18 +175,27 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     );
 
     const setFocusTarget = useCallback(() => {
+        if (pendingFocusRafRef.current != null) {
+            cancelAnimationFrame(pendingFocusRafRef.current);
+            pendingFocusRafRef.current = null;
+        }
         const ok = viewModel?.giveFocus?.();
         if (ok) {
             return;
         }
         focusElemRef.current?.focus({ preventScroll: true });
+        pendingFocusRafRef.current = requestAnimationFrame(() => {
+            pendingFocusRafRef.current = null;
+            if (blockRef.current?.contains(document.activeElement)) {
+                viewModel?.giveFocus?.();
+            }
+        });
     }, [viewModel]);
 
     const focusFromPointerEnter = useCallback(
         (event: React.PointerEvent<HTMLDivElement>) => {
             const focusFollowsCursorEnabled =
-                focusFollowsCursorMode === "on" ||
-                (focusFollowsCursorMode === "term" && blockView === "term");
+                focusFollowsCursorMode === "on" || (focusFollowsCursorMode === "term" && blockView === "term");
             if (!focusFollowsCursorEnabled || event.pointerType === "touch" || event.buttons > 0) {
                 return;
             }

@@ -90,6 +90,7 @@ const (
 	MetaKey_SysinfoType                      = "sysinfo:type"
 
 	MetaKey_TabFlagColor                     = "tab:flagcolor"
+	MetaKey_TabBackground                    = "tab:background"
 
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"
@@ -99,6 +100,7 @@ const (
 	MetaKey_BgActiveBorderColor              = "bg:activebordercolor"
 
 	MetaKey_LayoutVTabBarWidth               = "layout:vtabbarwidth"
+	MetaKey_LayoutWidgetsVisible             = "layout:widgetsvisible"
 
 	MetaKey_WaveAiPanelOpen                  = "waveai:panelopen"
 	MetaKey_WaveAiPanelWidth                 = "waveai:panelwidth"
