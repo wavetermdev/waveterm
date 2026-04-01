@@ -1423,6 +1423,7 @@ declare global {
         "term:osc52"?: string;
         "term:durable"?: boolean;
         "term:showsplitbuttons"?: boolean;
+        "term:trimtrailingwhitespace"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
