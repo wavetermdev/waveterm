@@ -2,19 +2,19 @@
   "id": "zeroai-panel",
   "name": "zeroai-panel",
   "title": "ZeroAI - 独立 AI 面板",
-  "description": "",
-  "status": "planning",
-  "dev_type": null,
-  "scope": null,
-  "priority": "P2",
+  "description": "基于 WaveTerm 项目实现一个独立的 ZeroAI AI 面板，实现 Agent CLI 集成、多会话管理、可扩展的 LLM 配置以及 Agent 团队协作能力。",
+  "status": "in_progress",
+  "dev_type": "fullstack",
+  "scope": "backend",
+  "priority": "P1",
   "creator": "claude-agent",
   "assignee": "claude-agent",
   "createdAt": "2026-04-01",
   "completedAt": null,
-  "branch": null,
-  "base_branch": "zeroai",
+  "branch": "zeroai",
+  "base_branch": "main",
   "worktree_path": null,
-  "current_phase": 0,
+  "current_phase": 1,
   "next_action": [
     {
       "phase": 1,
@@ -33,12 +33,77 @@
       "action": "create-pr"
     }
   ],
-  "commit": null,
+  "commit": "902d7235",
   "pr_url": null,
-  "subtasks": [],
+  "subtasks": [
+    {
+      "id": "sprint1-types",
+      "title": "Sprint 1: Type Definitions & Storage Layer",
+      "status": "completed",
+      "description": "实现 ACP 类型定义、Agent 接口、存储接口和数据库迁移"
+    },
+    {
+      "id": "sprint2-protocol",
+      "title": "Sprint 2: Protocol Layer - ACP Connection & Adapter",
+      "status": "completed",
+      "description": "实现 ACP Connection Manager、JSON-RPC codec、ACP adapter 和配置管理"
+    },
+    {
+      "id": "sprint3-process",
+      "title": "Sprint 3: Process Layer - Process Manager",
+      "status": "completed",
+      "description": "实现 WSH Process Manager、Process Spawner 和 Agent 进程生命周期管理"
+    },
+    {
+      "id": "sprint4-agent-adapter",
+      "title": "Sprint 4: Agent Adapter Layer",
+      "status": "completed",
+      "description": "实现 AcpAgent 完整生命周期、会话管理和消息处理"
+    },
+    {
+      "id": "sprint5-service",
+      "title": "Sprint 5: Service Layer - ZeroAI Manager",
+      "status": "pending",
+      "description": "实现 ZeroAI Manager 作为主要服务接口"
+    },
+    {
+      "id": "sprint6-rpc",
+      "title": "Sprint 6: RPC Layer - WSH RPC Server",
+      "status": "pending",
+      "description": "实现 WSH RPC 服务接口"
+    },
+    {
+      "id": "sprint7-frontend",
+      "title": "Sprint 7: Frontend - ZeroAI Panel UI",
+      "status": "pending",
+      "description": "实现前端面板 UI"
+    }
+  ],
   "children": [],
   "parent": null,
-  "relatedFiles": [],
-  "notes": "",
-  "meta": {}
+  "relatedFiles": [
+    "pkg/zeroai/agent/agent-interface.go",
+    "pkg/zeroai/agent/acp-agent.go",
+    "pkg/zeroai/protocol/",
+    "pkg/zeroai/store/",
+    "pkg/zeroai/types/",
+    "pkg/zeroai/process/",
+    "db/migrations-zeroai/",
+    "schema/zeroai.json"
+  ],
+  "notes": "Sprint 1-4 已完成并合并到 zeroai 分支。使用 ClawTeam (WSH 后端) 并行开发 Sprints 2-4。",
+  "meta": {
+    "sprint1_commit": "6b14a074",
+    "sprint2_commit": "ddd46f77",
+    "sprint3_commit": "6195e2a3",
+    "sprint4_commit": "902d7235",
+    "fix_commit": "833fbbeb",
+    "team_cleanup_complete": true,
+    "teams_used": [
+      "zeroai-sprint2-protocol",
+      "zeroai-sprint3-process",
+      "zeroai-sprint4-agent-adapter"
+    ],
+    "clawteam_backend": "wsh"
+  }
 }
