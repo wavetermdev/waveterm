@@ -19,12 +19,13 @@ import (
 
 // WshRpcZeroaiServer implements WSH RPC methods for ZeroAI
 type WshRpcZeroaiServer struct {
-	sessionService SessionServiceInterface
-	messageService MessageServiceInterface
-	agentService   *service.AgentService
+	sessionService  SessionServiceInterface
+	messageService  MessageServiceInterface
+	agentService    *service.AgentService
+	providerService *service.ProviderService
 	teamCoordinator *team.Coordinator
 	messageRouter   *team.MessageRouter
-	defaultBackend string
+	defaultBackend  string
 }
 
 // SessionServiceInterface abstracts session service operations
@@ -51,6 +52,7 @@ func NewWshRpcZeroaiServer(
 	sessionService SessionServiceInterface,
 	messageService MessageServiceInterface,
 	agentService *service.AgentService,
+	providerService *service.ProviderService,
 	teamCoordinator *team.Coordinator,
 	messageRouter *team.MessageRouter,
 ) *WshRpcZeroaiServer {
@@ -58,12 +60,12 @@ func NewWshRpcZeroaiServer(
 		sessionService:  sessionService,
 		messageService:  messageService,
 		agentService:    agentService,
+		providerService: providerService,
 		teamCoordinator: teamCoordinator,
 		messageRouter:   messageRouter,
-		defaultBackend:  "claude", // Default backend for now
+		defaultBackend:  "claude",
 	}
 }
-
 
 // ZeroAiCreateSessionCommand creates a new ZeroAI session
 func (zs *WshRpcZeroaiServer) ZeroAiCreateSessionCommand(ctx context.Context, req wshrpc.CommandZeroAiCreateSessionData) (wshrpc.CommandZeroAiCreateSessionRtnData, error) {
@@ -72,6 +74,7 @@ func (zs *WshRpcZeroaiServer) ZeroAiCreateSessionCommand(ctx context.Context, re
 	}()
 
 	opts := agent.AgentSessionOptions{
+		Backend:       req.Backend,
 		WorkDir:       req.WorkDir,
 		Model:         req.Model,
 		ResumeSession: false,
@@ -160,13 +163,22 @@ func (zs *WshRpcZeroaiServer) ZeroAiSetWorkDirCommand(ctx context.Context, req w
 }
 
 // ZeroAiSendMessageCommand sends a non-streaming message to the agent
+func (zs *WshRpcZeroaiServer) getBackendForSession(ctx context.Context, sessionID string) string {
+	session, err := zs.sessionService.GetSession(sessionID)
+	if err != nil || session.Backend == "" {
+		return zs.defaultBackend
+	}
+	return session.Backend
+}
+
 func (zs *WshRpcZeroaiServer) ZeroAiSendMessageCommand(ctx context.Context, req wshrpc.CommandZeroAiSendMessageData) (wshrpc.CommandZeroAiSendMessageRtnData, error) {
 	defer func() {
 		panichandler.PanicHandler("ZeroAiSendMessageCommand", recover())
 	}()
 
+	backend := zs.getBackendForSession(ctx, req.SessionID)
 	agentConfig := agent.AgentConfig{
-		Backend: zs.defaultBackend,
+		Backend: backend,
 	}
 
 	ag, err := zs.agentService.GetAgent(ctx, agentConfig)
@@ -229,8 +241,9 @@ func (zs *WshRpcZeroaiServer) ZeroAiSendStreamMessageCommand(ctx context.Context
 	go func() {
 		defer close(rtn)
 
+		backend := zs.getBackendForSession(ctx, req.SessionID)
 		agentConfig := agent.AgentConfig{
-			Backend: zs.defaultBackend,
+			Backend: backend,
 		}
 
 		ag, err := zs.agentService.GetAgent(ctx, agentConfig)
@@ -333,12 +346,24 @@ func (zs *WshRpcZeroaiServer) ZeroAiGetAgentsCommand(ctx context.Context, req ws
 	for i, a := range agents {
 		result[i] = wshrpc.ZeroAiAgentInfo{
 			Backend:     a.Backend,
-			Model:       a.Backend, // Use backend as model for now
+			Model:       a.Backend,
 			Provider:    "cli",
 			DisplayName: a.Backend,
 			Description: a.CliPath,
 			Enabled:     a.IsRunning,
 		}
+	}
+
+	customProviders, _ := zs.providerService.ListProviders()
+	for _, prov := range customProviders {
+		result = append(result, wshrpc.ZeroAiAgentInfo{
+			Backend:     prov.ID,
+			Model:       prov.DefaultModel,
+			Provider:    "custom",
+			DisplayName: prov.DisplayName,
+			Description: prov.CliCommand,
+			Enabled:     prov.IsAvailable,
+		})
 	}
 
 	return result, nil
@@ -350,8 +375,9 @@ func (zs *WshRpcZeroaiServer) ZeroAiConfirmPermissionCommand(ctx context.Context
 		panichandler.PanicHandler("ZeroAiConfirmPermissionCommand", recover())
 	}()
 
+	backend := zs.getBackendForSession(ctx, req.SessionID)
 	agentConfig := agent.AgentConfig{
-		Backend: zs.defaultBackend,
+		Backend: backend,
 	}
 
 	ag, err := zs.agentService.GetAgent(ctx, agentConfig)
@@ -402,4 +428,50 @@ func sendError(ch chan wshrpc.RespOrErrorUnion[wshrpc.ZeroAiStreamMessageEvent],
 	resp := wshrpc.RespOrErrorUnion[wshrpc.ZeroAiStreamMessageEvent]{}
 	resp.Error = err
 	ch <- resp
+}
+
+func (zs *WshRpcZeroaiServer) ZeroAiListProvidersCommand(ctx context.Context, req wshrpc.CommandZeroAiListProvidersData) (wshrpc.CommandZeroAiListProvidersRtnData, error) {
+	defer func() {
+		panichandler.PanicHandler("ZeroAiListProvidersCommand", recover())
+	}()
+
+	providers, err := zs.providerService.ListProviders()
+	if err != nil {
+		return wshrpc.CommandZeroAiListProvidersRtnData{}, err
+	}
+
+	return wshrpc.CommandZeroAiListProvidersRtnData{
+		Providers: providers,
+	}, nil
+}
+
+func (zs *WshRpcZeroaiServer) ZeroAiSaveProviderCommand(ctx context.Context, req wshrpc.CommandZeroAiSaveProviderData) error {
+	defer func() {
+		panichandler.PanicHandler("ZeroAiSaveProviderCommand", recover())
+	}()
+
+	return zs.providerService.SaveProvider(req)
+}
+
+func (zs *WshRpcZeroaiServer) ZeroAiDeleteProviderCommand(ctx context.Context, req wshrpc.CommandZeroAiDeleteProviderData) error {
+	defer func() {
+		panichandler.PanicHandler("ZeroAiDeleteProviderCommand", recover())
+	}()
+
+	return zs.providerService.DeleteProvider(req.ProviderID)
+}
+
+func (zs *WshRpcZeroaiServer) ZeroAiTestProviderCommand(ctx context.Context, req wshrpc.CommandZeroAiTestProviderData) (wshrpc.CommandZeroAiTestProviderRtnData, error) {
+	defer func() {
+		panichandler.PanicHandler("ZeroAiTestProviderCommand", recover())
+	}()
+
+	result, err := zs.providerService.TestProvider(ctx, req.ProviderID)
+	if err != nil {
+		return wshrpc.CommandZeroAiTestProviderRtnData{}, err
+	}
+
+	return wshrpc.CommandZeroAiTestProviderRtnData{
+		Result: result,
+	}, nil
 }

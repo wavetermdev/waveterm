@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-export type ZeroAiBackend = "claude" | "qwen" | "codex" | "opencode";
+export type ZeroAiBackend = "claude" | "qwen" | "codex" | "opencode" | "custom";
 
 export type ZeroAiRole = "user" | "assistant" | "system";
 
@@ -111,4 +111,45 @@ export interface SendMessageRequest {
     content: string;
     eventType?: string;
     metadata?: Record<string, unknown>;
+}
+
+export interface ZeroAiProviderInfo {
+    id: string;
+    displayName: string;
+    displayIcon: string;
+    cliCommand: string;
+    cliPath: string;
+    cliArgs: string[];
+    envVars: Record<string, string>;
+    supportsStreaming: boolean;
+    defaultModel: string;
+    availableModels: string[];
+    authRequired: boolean;
+    isAvailable: boolean;
+    isCustom: boolean;
+}
+
+export interface SaveProviderRequest {
+    providerId: string;
+    displayName: string;
+    displayIcon?: string;
+    cliCommand: string;
+    cliPath?: string;
+    cliArgs?: string[];
+    envVars?: Record<string, string>;
+    supportsStreaming?: boolean;
+    defaultModel?: string;
+    availableModels?: string[];
+    authRequired?: boolean;
+}
+
+export interface DeleteProviderRequest {
+    providerId: string;
+}
+
+export interface TestProviderResult {
+    success: boolean;
+    version: string;
+    error?: string;
+    latencyMs: number;
 }

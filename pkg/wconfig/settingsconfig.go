@@ -364,18 +364,33 @@ type TermThemeType struct {
 	Cursor              string  `json:"cursor"`
 }
 
+type ZeroAiProviderConfigType struct {
+	DisplayName       string            `json:"display:name"`
+	DisplayOrder      float64           `json:"display:order,omitempty"`
+	DisplayIcon       string            `json:"display:icon,omitempty"`
+	CliCommand        string            `json:"cli:command"`
+	CliPath           string            `json:"cli:path,omitempty"`
+	CliArgs           []string          `json:"cli:args,omitempty"`
+	EnvVars           map[string]string `json:"env:vars,omitempty"`
+	SupportsStreaming bool              `json:"supportsStreaming"`
+	DefaultModel      string            `json:"defaultModel,omitempty"`
+	AvailableModels   []string          `json:"availableModels,omitempty"`
+	AuthRequired      bool              `json:"authRequired"`
+}
+
 type FullConfigType struct {
-	Settings       SettingsType                    `json:"settings" merge:"meta"`
-	MimeTypes      map[string]MimeTypeConfigType   `json:"mimetypes"`
-	DefaultWidgets map[string]WidgetConfigType     `json:"defaultwidgets"`
-	Widgets        map[string]WidgetConfigType     `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType  `json:"presets"`
-	Backgrounds    map[string]BackgroundConfigType `json:"backgrounds"`
-	TermThemes     map[string]TermThemeType        `json:"termthemes"`
-	Connections    map[string]ConnKeywords         `json:"connections"`
-	Bookmarks      map[string]WebBookmark          `json:"bookmarks"`
-	WaveAIModes    map[string]AIModeConfigType     `json:"waveai"`
-	ConfigErrors   []ConfigError                   `json:"configerrors" configfile:"-"`
+	Settings        SettingsType                        `json:"settings" merge:"meta"`
+	MimeTypes       map[string]MimeTypeConfigType       `json:"mimetypes"`
+	DefaultWidgets  map[string]WidgetConfigType         `json:"defaultwidgets"`
+	Widgets         map[string]WidgetConfigType         `json:"widgets"`
+	Presets         map[string]waveobj.MetaMapType      `json:"presets"`
+	Backgrounds     map[string]BackgroundConfigType     `json:"backgrounds"`
+	TermThemes      map[string]TermThemeType            `json:"termthemes"`
+	Connections     map[string]ConnKeywords             `json:"connections"`
+	Bookmarks       map[string]WebBookmark              `json:"bookmarks"`
+	WaveAIModes     map[string]AIModeConfigType         `json:"waveai"`
+	ZeroAiProviders map[string]ZeroAiProviderConfigType `json:"zeroai"`
+	ConfigErrors    []ConfigError                       `json:"configerrors" configfile:"-"`
 }
 
 type ConnKeywords struct {

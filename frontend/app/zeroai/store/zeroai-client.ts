@@ -4,9 +4,13 @@
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type {
     CreateSessionRequest,
+    DeleteProviderRequest,
+    SaveProviderRequest,
     SendMessageRequest,
+    TestProviderResult,
     ZeroAiAgentInfo,
     ZeroAiMessage,
+    ZeroAiProviderInfo,
     ZeroAiSession,
     ZeroAiSessionInfo,
     ZeroAiStreamMessageEvent,
@@ -243,8 +247,6 @@ export class ZeroAiClient {
     ): Promise<void> {
         try {
             const client = TabRpcClient;
-            // Note: After running `task generate`, use:
-            // await RpcApi.ZeroAiConfirmPermissionCommand(client, { sessionId, callId, optionId, confirmAll }, opts);
             await client.wshRpcCall(
                 "zeroaiconfirmermission",
                 {
@@ -258,6 +260,28 @@ export class ZeroAiClient {
         } catch (error) {
             throw new ZeroAiClientError(`Failed to confirm permission: ${error}`, "CONFIRM_PERMISSION_ERROR", error);
         }
+    }
+
+    async listProviders(opts?: ZeroAiClientOpts): Promise<ZeroAiProviderInfo[]> {
+        const client = TabRpcClient;
+        const result = await client.wshRpcCall("zeroailistproviders", {}, opts);
+        return result.providers || [];
+    }
+
+    async saveProvider(request: SaveProviderRequest, opts?: ZeroAiClientOpts): Promise<void> {
+        const client = TabRpcClient;
+        await client.wshRpcCall("zeroaisaveprovider", request, opts);
+    }
+
+    async deleteProvider(request: DeleteProviderRequest, opts?: ZeroAiClientOpts): Promise<void> {
+        const client = TabRpcClient;
+        await client.wshRpcCall("zeroaiproviderdelete", request, opts);
+    }
+
+    async testProvider(providerId: string, opts?: ZeroAiClientOpts): Promise<TestProviderResult> {
+        const client = TabRpcClient;
+        const result = await client.wshRpcCall("zeroaitestprovider", { providerId }, opts);
+        return result.result;
     }
 }
 

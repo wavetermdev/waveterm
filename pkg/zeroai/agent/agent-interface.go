@@ -45,6 +45,7 @@ type AgentSession struct {
 
 // AgentSessionOptions represents options when creating a session
 type AgentSessionOptions struct {
+	Backend       string `json:"backend,omitempty"`
 	WorkDir       string `json:"workDir"`
 	Model         string `json:"model,omitempty"`
 	ResumeSession bool   `json:"resumeSession,omitempty"`
@@ -52,9 +53,9 @@ type AgentSessionOptions struct {
 
 // SendMessageInput represents input for sending a message
 type SendMessageInput struct {
-	Content string                 `json:"content"`
-	Files   []string               `json:"files,omitempty"`
-	Model   string                 `json:"model,omitempty"`
+	Content  string                 `json:"content"`
+	Files    []string               `json:"files,omitempty"`
+	Model    string                 `json:"model,omitempty"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
@@ -71,11 +72,11 @@ const (
 
 // AgentEvent represents an event from the agent
 type AgentEvent struct {
-	Type    EventType              `json:"type"`
-	Session string                 `json:"session"`
-	Data    interface{}            `json:"data,omitempty"`
-	Error   error                  `json:"error,omitempty"`
-	Created int64                  `json:"created"`
+	Type    EventType   `json:"type"`
+	Session string      `json:"session"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   error       `json:"error,omitempty"`
+	Created int64       `json:"created"`
 }
 
 // AgentStatus represents the current status of an agent
@@ -89,10 +90,10 @@ type AgentStatus struct {
 
 // AgentConfig represents configuration for creating an agent
 type AgentConfig struct {
-	Backend       string            `json:"backend"`
-	CliPath       string            `json:"cliPath,omitempty"`
+	Backend       string                 `json:"backend"`
+	CliPath       string                 `json:"cliPath,omitempty"`
 	SessionConfig map[string]interface{} `json:"sessionConfig,omitempty"`
-	Env           map[string]string `json:"env,omitempty"`
+	Env           map[string]string      `json:"env,omitempty"`
 }
 
 // AgentFactory is a factory for creating agents

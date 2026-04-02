@@ -103,6 +103,11 @@ type WshRpcInterface interface {
 	ZeroAiGetMessagesCommand(ctx context.Context, data CommandZeroAiGetMessagesData) (CommandZeroAiGetMessagesRtnData, error)
 	ZeroAiGetAgentsCommand(ctx context.Context, data CommandZeroAiGetAgentsData) ([]ZeroAiAgentInfo, error)
 	ZeroAiConfirmPermissionCommand(ctx context.Context, data CommandZeroAiConfirmPermissionData) error
+	ZeroAiListProvidersCommand(ctx context.Context, data CommandZeroAiListProvidersData) (CommandZeroAiListProvidersRtnData, error)
+	ZeroAiSaveProviderCommand(ctx context.Context, data CommandZeroAiSaveProviderData) error
+	ZeroAiDeleteProviderCommand(ctx context.Context, data CommandZeroAiDeleteProviderData) error
+	ZeroAiTestProviderCommand(ctx context.Context, data CommandZeroAiTestProviderData) (CommandZeroAiTestProviderRtnData, error)
+
 	SendTelemetryCommand(ctx context.Context) error
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
@@ -1025,17 +1030,17 @@ type CommandZeroAiSetWorkDirData struct {
 
 // CommandZeroAiSendMessageData is the request data for sending a message
 type CommandZeroAiSendMessageData struct {
-	SessionID string                 `json:"sessionId"` // the session ID
-	Role      string                 `json:"role"`      // "user", "assistant", "system"
-	Content   string                 `json:"content"`   // the message content
+	SessionID string                 `json:"sessionId"`           // the session ID
+	Role      string                 `json:"role"`                // "user", "assistant", "system"
+	Content   string                 `json:"content"`             // the message content
 	EventType string                 `json:"eventType,omitempty"` // optional event type
-	Metadata  map[string]interface{} `json:"metadata,omitempty"` // optional metadata
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`  // optional metadata
 }
 
 // CommandZeroAiSendMessageRtnData is the response data for sending a message
 type CommandZeroAiSendMessageRtnData struct {
-	MessageID int64  `json:"messageId"` // the new message ID
-	Streaming bool   `json:"streaming"` // whether the response is streaming
+	MessageID int64 `json:"messageId"` // the new message ID
+	Streaming bool  `json:"streaming"` // whether the response is streaming
 }
 
 // CommandZeroAiGetMessagesData is the request data for retrieving session messages
@@ -1091,8 +1096,8 @@ type ZeroAiStreamMessageEvent struct {
 
 // CommandZeroAiCreateTeamData is the request data for creating a new team
 type CommandZeroAiCreateTeamData struct {
-	Name    string `json:"name"`              // team name
-	LeaderID string `json:"leaderId"`          // ID of the leader agent
+	Name     string `json:"name"`     // team name
+	LeaderID string `json:"leaderId"` // ID of the leader agent
 }
 
 // CommandZeroAiCreateTeamRtnData is the response data for creating a team
@@ -1127,9 +1132,9 @@ type CommandZeroAiDeleteTeamData struct {
 
 // CommandZeroAiJoinTeamData is the request data for joining a team
 type CommandZeroAiJoinTeamData struct {
-	TeamID  string `json:"teamId"`           // the team ID
-	AgentID string `json:"agentId"`          // the agent ID
-	Role    string `json:"role,omitempty"`   // member role (default: worker)
+	TeamID  string `json:"teamId"`         // the team ID
+	AgentID string `json:"agentId"`        // the agent ID
+	Role    string `json:"role,omitempty"` // member role (default: worker)
 }
 
 // CommandZeroAiJoinTeamRtnData is the response data for joining a team
@@ -1155,8 +1160,8 @@ type CommandZeroAiListTeamMembersRtnData struct {
 
 // CommandZeroAiCreateTaskData is the request data for creating a task
 type CommandZeroAiCreateTaskData struct {
-	TeamID          string `json:"teamId"`            // the team ID
-	Description     string `json:"description"`       // task description
+	TeamID          string `json:"teamId"`                    // the team ID
+	Description     string `json:"description"`               // task description
 	AssignedAgentID string `json:"assignedAgentId,omitempty"` // optional agent assignment
 }
 
@@ -1178,9 +1183,9 @@ type CommandZeroAiAssignTaskRtnData struct {
 
 // CommandZeroAiListTasksData is the request data for listing tasks
 type CommandZeroAiListTasksData struct {
-	TeamID          string `json:"teamId"`            // the team ID
+	TeamID          string `json:"teamId"`                    // the team ID
 	AssignedAgentID string `json:"assignedAgentId,omitempty"` // optional filter by agent
-	Status          string `json:"status,omitempty"`  // optional filter by status
+	Status          string `json:"status,omitempty"`          // optional filter by status
 }
 
 // CommandZeroAiListTasksRtnData is the response data for listing tasks
@@ -1200,10 +1205,10 @@ type CommandZeroAiGetTaskStatusRtnData struct {
 
 // CommandZeroAiSendToAgentData is the request data for sending a message to an agent
 type CommandZeroAiSendToAgentData struct {
-	From    string                 `json:"from"`    // sender agent ID
-	To      string                 `json:"to"`      // recipient agent ID
-	Type    string                 `json:"type"`    // message type
-	Content string                 `json:"content"` // message content
+	From    string                 `json:"from"`              // sender agent ID
+	To      string                 `json:"to"`                // recipient agent ID
+	Type    string                 `json:"type"`              // message type
+	Content string                 `json:"content"`           // message content
 	Payload map[string]interface{} `json:"payload,omitempty"` // optional payload
 }
 
@@ -1214,9 +1219,9 @@ type CommandZeroAiSendToAgentRtnData struct {
 
 // CommandZeroAiBroadcastData is the request data for broadcasting a message
 type CommandZeroAiBroadcastData struct {
-	From    string                 `json:"from"`    // sender agent ID
-	Type    string                 `json:"type"`    // message type
-	Content string                 `json:"content"` // message content
+	From    string                 `json:"from"`              // sender agent ID
+	Type    string                 `json:"type"`              // message type
+	Content string                 `json:"content"`           // message content
 	Payload map[string]interface{} `json:"payload,omitempty"` // optional payload
 }
 
@@ -1250,4 +1255,59 @@ type ZeroAiTaskInfo struct {
 	Description     string `json:"description"`     // task description
 	CreatedAt       int64  `json:"createdAt"`       // creation timestamp
 	CompletedAt     int64  `json:"completedAt"`     // completion timestamp (0 if not completed)
+}
+
+type CommandZeroAiListProvidersData struct{}
+
+type CommandZeroAiListProvidersRtnData struct {
+	Providers []*ZeroAiProviderInfo `json:"providers"`
+}
+
+type ZeroAiProviderInfo struct {
+	ID                string            `json:"id"`
+	DisplayName       string            `json:"displayName"`
+	DisplayIcon       string            `json:"displayIcon"`
+	CliCommand        string            `json:"cliCommand"`
+	CliPath           string            `json:"cliPath"`
+	CliArgs           []string          `json:"cliArgs"`
+	EnvVars           map[string]string `json:"envVars"`
+	SupportsStreaming bool              `json:"supportsStreaming"`
+	DefaultModel      string            `json:"defaultModel"`
+	AvailableModels   []string          `json:"availableModels"`
+	AuthRequired      bool              `json:"authRequired"`
+	IsAvailable       bool              `json:"isAvailable"`
+	IsCustom          bool              `json:"isCustom"`
+}
+
+type CommandZeroAiSaveProviderData struct {
+	ProviderID        string            `json:"providerId"`
+	DisplayName       string            `json:"displayName"`
+	DisplayIcon       string            `json:"displayIcon"`
+	CliCommand        string            `json:"cliCommand"`
+	CliPath           string            `json:"cliPath"`
+	CliArgs           []string          `json:"cliArgs"`
+	EnvVars           map[string]string `json:"envVars"`
+	SupportsStreaming bool              `json:"supportsStreaming"`
+	DefaultModel      string            `json:"defaultModel"`
+	AvailableModels   []string          `json:"availableModels"`
+	AuthRequired      bool              `json:"authRequired"`
+}
+
+type CommandZeroAiDeleteProviderData struct {
+	ProviderID string `json:"providerId"`
+}
+
+type ZeroAiTestProviderResult struct {
+	Success   bool   `json:"success"`
+	Version   string `json:"version"`
+	Error     string `json:"error,omitempty"`
+	LatencyMs int64  `json:"latencyMs"`
+}
+
+type CommandZeroAiTestProviderData struct {
+	ProviderID string `json:"providerId"`
+}
+
+type CommandZeroAiTestProviderRtnData struct {
+	Result *ZeroAiTestProviderResult `json:"result"`
 }

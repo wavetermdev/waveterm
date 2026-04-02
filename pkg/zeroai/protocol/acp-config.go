@@ -4,27 +4,72 @@ package protocol
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
-// GetBackendConfig returns the configuration for a given ACP backend
-func GetBackendConfig(backend AcpBackend) (*AcpBackendConfig, error) {
-	config, exists := backendConfigs[backend]
-	if !exists {
-		return nil, fmt.Errorf("unknown backend: %s", backend)
+var customConfigsMu sync.RWMutex
+var customBackendConfigs = map[AcpBackend]AcpBackendConfig{}
+
+func RegisterCustomBackend(id string, name string, cliCommand string, cliPath string, cliArgs []string, env map[string]string, supportsStreaming bool) {
+	customConfigsMu.Lock()
+	defer customConfigsMu.Unlock()
+
+	backend := AcpBackend("custom:" + id)
+	customBackendConfigs[backend] = AcpBackendConfig{
+		ID:                backend,
+		Name:              name,
+		CliCommand:        cliCommand,
+		DefaultCliPath:    cliPath,
+		AuthRequired:      false,
+		Enabled:           true,
+		SupportsStreaming: supportsStreaming,
+		AcpArgs:           cliArgs,
+		Env:               env,
 	}
-	return &config, nil
 }
 
-// GetAllBackendConfigs returns all available backend configurations
-func GetAllBackendConfigs() []AcpBackendConfig {
-	configs := make([]AcpBackendConfig, 0, len(backendConfigs))
-	for _, cfg := range backendConfigs {
+func UnregisterCustomBackend(id string) {
+	customConfigsMu.Lock()
+	defer customConfigsMu.Unlock()
+	delete(customBackendConfigs, AcpBackend("custom:"+id))
+}
+
+func GetCustomBackendConfigs() []AcpBackendConfig {
+	customConfigsMu.RLock()
+	defer customConfigsMu.RUnlock()
+	configs := make([]AcpBackendConfig, 0, len(customBackendConfigs))
+	for _, cfg := range customBackendConfigs {
 		configs = append(configs, cfg)
 	}
 	return configs
 }
 
-// GetEnabledBackends returns all enabled backend configurations
+func GetBackendConfig(backend AcpBackend) (*AcpBackendConfig, error) {
+	if config, exists := backendConfigs[backend]; exists {
+		return &config, nil
+	}
+	customConfigsMu.RLock()
+	defer customConfigsMu.RUnlock()
+	if config, exists := customBackendConfigs[backend]; exists {
+		return &config, nil
+	}
+	return nil, fmt.Errorf("unknown backend: %s", backend)
+}
+
+// GetAllBackendConfigs returns all available backend configurations
+func GetAllBackendConfigs() []AcpBackendConfig {
+	configs := make([]AcpBackendConfig, 0)
+	for _, cfg := range backendConfigs {
+		configs = append(configs, cfg)
+	}
+	customConfigsMu.RLock()
+	for _, cfg := range customBackendConfigs {
+		configs = append(configs, cfg)
+	}
+	customConfigsMu.RUnlock()
+	return configs
+}
+
 func GetEnabledBackends() []AcpBackendConfig {
 	var enabled []AcpBackendConfig
 	for _, cfg := range backendConfigs {
@@ -32,77 +77,83 @@ func GetEnabledBackends() []AcpBackendConfig {
 			enabled = append(enabled, cfg)
 		}
 	}
+	customConfigsMu.RLock()
+	for _, cfg := range customBackendConfigs {
+		if cfg.Enabled {
+			enabled = append(enabled, cfg)
+		}
+	}
+	customConfigsMu.RUnlock()
 	return enabled
 }
 
-// BackendConfigs represents all pre-configured backends
 var backendConfigs = map[AcpBackend]AcpBackendConfig{
 	AcpBackendClaude: {
-		ID:               AcpBackendClaude,
-		Name:             "Claude",
-		CliCommand:       "claude",
-		DefaultCliPath:   "claude-code",
-		AuthRequired:     true,
-		Enabled:          true,
+		ID:                AcpBackendClaude,
+		Name:              "Claude",
+		CliCommand:        "claude",
+		DefaultCliPath:    "claude-code",
+		AuthRequired:      true,
+		Enabled:           true,
 		SupportsStreaming: true,
-		AcpArgs:          []string{"--stdio"},
+		AcpArgs:           []string{"--stdio"},
 		Env: map[string]string{
 			"ANTHROPIC_COLOR": "auto",
 		},
 	},
 	AcpBackendGemini: {
-		ID:               AcpBackendGemini,
-		Name:             "Gemini",
-		CliCommand:       "gemini-chat",
-		DefaultCliPath:   "gemini-chat-cli",
-		AuthRequired:     true,
-		Enabled:          false, // Not yet available
+		ID:                AcpBackendGemini,
+		Name:              "Gemini",
+		CliCommand:        "gemini-chat",
+		DefaultCliPath:    "gemini-chat-cli",
+		AuthRequired:      true,
+		Enabled:           false, // Not yet available
 		SupportsStreaming: true,
-		AcpArgs:          []string{"--stdio"},
+		AcpArgs:           []string{"--stdio"},
 	},
 	AcpBackendQwen: {
-		ID:               AcpBackendQwen,
-		Name:             "Qwen",
-		CliCommand:       "qwen",
-		DefaultCliPath:   "qwen-cli",
-		AuthRequired:     true,
-		Enabled:          true,
+		ID:                AcpBackendQwen,
+		Name:              "Qwen",
+		CliCommand:        "qwen",
+		DefaultCliPath:    "qwen-cli",
+		AuthRequired:      true,
+		Enabled:           true,
 		SupportsStreaming: true,
-		AcpArgs:          []string{"--stdio"},
+		AcpArgs:           []string{"--stdio"},
 		Env: map[string]string{
 			"QWEN_COLOR": "auto",
 		},
 	},
 	AcpBackendCodex: {
-		ID:               AcpBackendCodex,
-		Name:             "Codex",
-		CliCommand:       "codex",
-		DefaultCliPath:   "codex-acp",
-		AuthRequired:     true,
-		Enabled:          true,
+		ID:                AcpBackendCodex,
+		Name:              "Codex",
+		CliCommand:        "codex",
+		DefaultCliPath:    "codex-acp",
+		AuthRequired:      true,
+		Enabled:           true,
 		SupportsStreaming: true,
-		AcpArgs:          []string{"--stdio"},
+		AcpArgs:           []string{"--stdio"},
 	},
 	AcpBackendOpenCode: {
-		ID:               AcpBackendOpenCode,
-		Name:             "OpenCode",
-		CliCommand:       "opencode",
-		DefaultCliPath:   "opencode-cli",
-		AuthRequired:     true,
-		Enabled:          false, // Not yet available
+		ID:                AcpBackendOpenCode,
+		Name:              "OpenCode",
+		CliCommand:        "opencode",
+		DefaultCliPath:    "opencode-cli",
+		AuthRequired:      true,
+		Enabled:           false, // Not yet available
 		SupportsStreaming: true,
-		AcpArgs:          []string{"--stdio"},
+		AcpArgs:           []string{"--stdio"},
 	},
 	AcpBackendCustom: {
-		ID:               AcpBackendCustom,
-		Name:             "Custom",
-		CliCommand:       "",
-		DefaultCliPath:   "",
-		AuthRequired:     false,
-		Enabled:          true,
+		ID:                AcpBackendCustom,
+		Name:              "Custom",
+		CliCommand:        "",
+		DefaultCliPath:    "",
+		AuthRequired:      false,
+		Enabled:           true,
 		SupportsStreaming: false,
-		AcpArgs:          []string{},
-		Env:              nil,
+		AcpArgs:           []string{},
+		Env:               nil,
 	},
 }
 
