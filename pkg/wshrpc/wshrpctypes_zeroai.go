@@ -1,7 +1,7 @@
-// Copyright 2026, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// ZeroAI-specific WSH RPC types
+// ZeroAI WSH RPC type definitions
 package wshrpc
 
 // ZeroAI backend constants
@@ -221,11 +221,11 @@ type ZeroAiPlanUpdate struct {
 // ZeroAiPermissionRequest represents a permission request event
 //gotypes: gen
 type ZeroAiPermissionRequest struct {
-	CallID      string                `json:"callId"`
-	ToolName    string                `json:"toolName"`
-	Description string                `json:"description"`
+	CallID      string                 `json:"callId"`
+	ToolName    string                 `json:"toolName"`
+	Description string                 `json:"description"`
 	Options     []ZeroAiPermissionOption `json:"options" tstype:"ZeroAiPermissionOption[]"`
-	SessionID   string                `json:"sessionId"`
+	SessionID   string                 `json:"sessionId"`
 }
 
 // ZeroAiPermissionOption represents a permission option

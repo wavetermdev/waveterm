@@ -91,6 +91,18 @@ type WshRpcInterface interface {
 	GetAllVarsCommand(ctx context.Context, data CommandVarData) ([]CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
+
+	// ZeroAI commands
+	ZeroAiCreateSessionCommand(ctx context.Context, data CommandZeroAiCreateSessionData) (CommandZeroAiCreateSessionRtnData, error)
+	ZeroAiGetSessionCommand(ctx context.Context, data CommandZeroAiGetSessionData) (ZeroAiSessionWrapper, error)
+	ZeroAiListSessionsCommand(ctx context.Context, data CommandZeroAiListSessionsData) (CommandZeroAiListSessionsRtnData, error)
+	ZeroAiDeleteSessionCommand(ctx context.Context, data CommandZeroAiDeleteSessionData) error
+	ZeroAiSetWorkDirCommand(ctx context.Context, data CommandZeroAiSetWorkDirData) error
+	ZeroAiSendMessageCommand(ctx context.Context, data CommandZeroAiSendMessageData) (CommandZeroAiSendMessageRtnData, error)
+	ZeroAiSendStreamMessageCommand(ctx context.Context, data CommandZeroAiSendMessageData) chan RespOrErrorUnion[ZeroAiStreamMessageEvent]
+	ZeroAiGetMessagesCommand(ctx context.Context, data CommandZeroAiGetMessagesData) (CommandZeroAiGetMessagesRtnData, error)
+	ZeroAiGetAgentsCommand(ctx context.Context, data CommandZeroAiGetAgentsData) ([]ZeroAiAgentInfo, error)
+	ZeroAiConfirmPermissionCommand(ctx context.Context, data CommandZeroAiConfirmPermissionData) error
 	SendTelemetryCommand(ctx context.Context) error
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
@@ -212,17 +224,6 @@ type WshRpcInterface interface {
 	JobControllerDetachJobCommand(ctx context.Context, jobId string) error
 	JobControllerGetAllJobManagerStatusCommand(ctx context.Context) ([]*JobManagerStatusUpdate, error)
 	BlockJobStatusCommand(ctx context.Context, blockId string) (*BlockJobStatusData, error)
-
-	// zeroai
-	ZeroAiCreateSessionCommand(ctx context.Context, data ZeroAiCreateSessionData) (CommandZeroAiCreateSessionRtnData, error)
-	ZeroAiGetSessionCommand(ctx context.Context, data ZeroAiGetSessionData) (*ZeroAiSessionWrapper, error)
-	ZeroAiListSessionsCommand(ctx context.Context, data ZeroAiListSessionsData) (CommandZeroAiListSessionsRtnData, error)
-	ZeroAiDeleteSessionCommand(ctx context.Context, data ZeroAiDeleteSessionData) error
-	ZeroAiSetWorkDirCommand(ctx context.Context, data ZeroAiSetWorkDirData) error
-	ZeroAiSendMessageCommand(ctx context.Context, data ZeroAiSendMessageData) (CommandZeroAiSendMessageRtnData, error)
-	ZeroAiGetMessagesCommand(ctx context.Context, data ZeroAiGetMessagesData) (CommandZeroAiGetMessagesRtnData, error)
-	ZeroAiGetAgentsCommand(ctx context.Context, data ZeroAiGetAgentsData) (ZeroAiGetAgentsRtnData, error)
-	ZeroAiConfirmPermissionCommand(ctx context.Context, data ZeroAiConfirmPermissionData) error
 }
 
 // for frontend
@@ -983,12 +984,12 @@ type CommandRemoteProcessSignalData struct {
 
 // CommandZeroAiCreateSessionData is the request data for creating a new ZeroAI session
 type CommandZeroAiCreateSessionData struct {
-	Backend       string `json:"backend"`        // claude, qwen, codex, opencode
-	Model         string `json:"model"`          // specific model to use
-	Provider      string `json:"provider,omitempty"` // provider (e.g., anthropic, openai)
+	Backend       string `json:"backend"`                 // claude, qwen, codex, opencode
+	Model         string `json:"model"`                   // specific model to use
+	Provider      string `json:"provider,omitempty"`      // provider (e.g., anthropic, openai)
 	ThinkingLevel string `json:"thinkingLevel,omitempty"` // thinking level configuration
-	YoloMode      bool   `json:"yoloMode,omitempty"` // whether to enable automatic tool approval
-	WorkDir       string `json:"workDir,omitempty"` // initial working directory
+	YoloMode      bool   `json:"yoloMode,omitempty"`      // whether to enable automatic tool approval
+	WorkDir       string `json:"workDir,omitempty"`       // initial working directory
 }
 
 // CommandZeroAiCreateSessionRtnData is the response data for creating a session
@@ -1024,10 +1025,10 @@ type CommandZeroAiSetWorkDirData struct {
 
 // CommandZeroAiSendMessageData is the request data for sending a message
 type CommandZeroAiSendMessageData struct {
-	SessionID string `json:"sessionId"` // the session ID
-	Role      string `json:"role"`      // "user", "assistant", "system"
-	Content   string `json:"content"`   // the message content
-	EventType string `json:"eventType,omitempty"` // optional event type
+	SessionID string                 `json:"sessionId"` // the session ID
+	Role      string                 `json:"role"`      // "user", "assistant", "system"
+	Content   string                 `json:"content"`   // the message content
+	EventType string                 `json:"eventType,omitempty"` // optional event type
 	Metadata  map[string]interface{} `json:"metadata,omitempty"` // optional metadata
 }
 
@@ -1064,11 +1065,11 @@ type CommandZeroAiConfirmPermissionData struct {
 
 // ZeroAiSessionInfo represents information about a ZeroAI session
 type ZeroAiSessionInfo struct {
-	SessionID    string `json:"sessionId"`    // the internal session ID
-	Provider     string `json:"provider"`     // the backend provider
-	Model        string `json:"model"`        // the model being used
-	WorkDir      string `json:"workDir"`      // current working directory
-	CreatedAt    int64  `json:"createdAt"`    // creation timestamp
+	SessionID     string `json:"sessionId"`     // the internal session ID
+	Provider      string `json:"provider"`      // the backend provider
+	Model         string `json:"model"`         // the model being used
+	WorkDir       string `json:"workDir"`       // current working directory
+	CreatedAt     int64  `json:"createdAt"`     // creation timestamp
 	LastMessageAt int64  `json:"lastMessageAt"` // timestamp of last message
 }
 
@@ -1080,3 +1081,7 @@ type ZeroAiMessageInfo struct {
 	Content   string `json:"content"`   // message content
 	CreatedAt int64  `json:"createdAt"` // creation timestamp
 }
+
+// ZeroAiStreamMessageEvent represents a streamed message event
+type ZeroAiStreamMessageEvent struct {
+	Message *ZeroAiMessageWrapper `json:"message"`
