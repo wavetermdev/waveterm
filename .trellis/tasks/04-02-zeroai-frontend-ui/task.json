@@ -1,0 +1,45 @@
+{
+    "id": "zeroai-frontend-ui",
+    "name": "zeroai-frontend-ui",
+    "title": "实现 ZeroAI 面板的前端 UI，包括：1) SessionList 组件 - 按 Agent 类型分组显示会话列表；2) ChatArea 组件 - 显示消息流，支持流式更新；3) ResizableInput 组件 - 可自由拉伸高度和宽度的输入框；4) StatusBar 组件 - 显示 Provider/Model/Thinking/WorkDir；5) ZeroAI 主面板 - 整合所有组件；6) Jotai models - 状态管理；7) WSH RPC client - 与后端通信。参考现有 WaveAI 架构 (frontend/app/aipanel/)，使用 Tailwind v4 样式，遵循 WaveTerm 前端规范。",
+    "description": "",
+    "status": "completed",
+    "dev_type": "frontend",
+    "scope": "frontend",
+    "priority": "P2",
+    "creator": "claude-agent",
+    "assignee": "claude-agent",
+    "createdAt": "2026-04-02",
+    "completedAt": "2026-04-02",
+    "commit": "00ee731e",
+    "branch": "zeroai",
+    "base_branch": "zeroai",
+    "worktree_path": null,
+    "current_phase": 0,
+    "next_action": [
+        {
+            "phase": 1,
+            "action": "implement"
+        },
+        {
+            "phase": 2,
+            "action": "check"
+        },
+        {
+            "phase": 3,
+            "action": "finish"
+        },
+        {
+            "phase": 4,
+            "action": "create-pr"
+        }
+    ],
+    "commit": "00ee731e",
+    "pr_url": null,
+    "subtasks": [],
+    "children": [],
+    "parent": null,
+    "relatedFiles": [],
+    "notes": "",
+    "meta": {}
+}

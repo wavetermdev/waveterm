@@ -1,0 +1,6 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".trellis/spec/frontend/", "type": "directory", "reason": "前端开发规范"}
+{"file": "frontend/app/aipanel/", "type": "directory", "reason": "WaveAI 参考实现"}
+{"file": "pkg/zeroai/rpc/", "type": "directory", "reason": "后端 RPC 接口定义"}
+{"file": "frontend/app/store/", "type": "directory", "reason": "WSH RPC client 参考"}
