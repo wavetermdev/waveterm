@@ -91,6 +91,18 @@ type WshRpcInterface interface {
 	GetAllVarsCommand(ctx context.Context, data CommandVarData) ([]CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
+
+	// ZeroAI commands
+	ZeroAiCreateSessionCommand(ctx context.Context, data CommandZeroAiCreateSessionData) (CommandZeroAiCreateSessionRtnData, error)
+	ZeroAiGetSessionCommand(ctx context.Context, data CommandZeroAiGetSessionData) (ZeroAiSessionWrapper, error)
+	ZeroAiListSessionsCommand(ctx context.Context, data CommandZeroAiListSessionsData) (CommandZeroAiListSessionsRtnData, error)
+	ZeroAiDeleteSessionCommand(ctx context.Context, data CommandZeroAiDeleteSessionData) error
+	ZeroAiSetWorkDirCommand(ctx context.Context, data CommandZeroAiSetWorkDirData) error
+	ZeroAiSendMessageCommand(ctx context.Context, data CommandZeroAiSendMessageData) (CommandZeroAiSendMessageRtnData, error)
+	ZeroAiSendStreamMessageCommand(ctx context.Context, data CommandZeroAiSendMessageData) chan RespOrErrorUnion[ZeroAiStreamMessageEvent]
+	ZeroAiGetMessagesCommand(ctx context.Context, data CommandZeroAiGetMessagesData) (CommandZeroAiGetMessagesRtnData, error)
+	ZeroAiGetAgentsCommand(ctx context.Context, data CommandZeroAiGetAgentsData) ([]ZeroAiAgentInfo, error)
+	ZeroAiConfirmPermissionCommand(ctx context.Context, data CommandZeroAiConfirmPermissionData) error
 	SendTelemetryCommand(ctx context.Context) error
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
@@ -967,3 +979,109 @@ type CommandRemoteProcessSignalData struct {
 	Pid    int32  `json:"pid"`
 	Signal string `json:"signal"`
 }
+
+// ZeroAI RPC request types
+
+// CommandZeroAiCreateSessionData is the request data for creating a new ZeroAI session
+type CommandZeroAiCreateSessionData struct {
+	Backend       string `json:"backend"`                 // claude, qwen, codex, opencode
+	Model         string `json:"model"`                   // specific model to use
+	Provider      string `json:"provider,omitempty"`      // provider (e.g., anthropic, openai)
+	ThinkingLevel string `json:"thinkingLevel,omitempty"` // thinking level configuration
+	YoloMode      bool   `json:"yoloMode,omitempty"`      // whether to enable automatic tool approval
+	WorkDir       string `json:"workDir,omitempty"`       // initial working directory
+}
+
+// CommandZeroAiCreateSessionRtnData is the response data for creating a session
+type CommandZeroAiCreateSessionRtnData struct {
+	SessionID string `json:"sessionId"` // the internal session ID
+}
+
+// CommandZeroAiGetSessionData is the request data for retrieving a session
+type CommandZeroAiGetSessionData struct {
+	SessionID string `json:"sessionId"` // the internal ZeroAI session ID
+}
+
+// CommandZeroAiListSessionsData is the request data for listing sessions
+type CommandZeroAiListSessionsData struct {
+	Backend string `json:"backend,omitempty"` // optional filter by backend
+}
+
+// CommandZeroAiListSessionsRtnData is the response data for listing sessions
+type CommandZeroAiListSessionsRtnData struct {
+	Sessions []*ZeroAiSessionInfo `json:"sessions"` // list of sessions
+}
+
+// CommandZeroAiDeleteSessionData is the request data for deleting a session
+type CommandZeroAiDeleteSessionData struct {
+	SessionID string `json:"sessionId"` // the session ID to delete
+}
+
+// CommandZeroAiSetWorkDirData is the request data for setting working directory
+type CommandZeroAiSetWorkDirData struct {
+	SessionID string `json:"sessionId"` // the session ID
+	WorkDir   string `json:"workDir"`   // the new working directory
+}
+
+// CommandZeroAiSendMessageData is the request data for sending a message
+type CommandZeroAiSendMessageData struct {
+	SessionID string                 `json:"sessionId"` // the session ID
+	Role      string                 `json:"role"`      // "user", "assistant", "system"
+	Content   string                 `json:"content"`   // the message content
+	EventType string                 `json:"eventType,omitempty"` // optional event type
+	Metadata  map[string]interface{} `json:"metadata,omitempty"` // optional metadata
+}
+
+// CommandZeroAiSendMessageRtnData is the response data for sending a message
+type CommandZeroAiSendMessageRtnData struct {
+	MessageID int64  `json:"messageId"` // the new message ID
+	Streaming bool   `json:"streaming"` // whether the response is streaming
+}
+
+// CommandZeroAiGetMessagesData is the request data for retrieving session messages
+type CommandZeroAiGetMessagesData struct {
+	SessionID string `json:"sessionId"` // the session ID
+	Limit     int    `json:"limit"`     // maximum number of messages to return
+	Offset    int    `json:"offset"`    // offset for pagination (default: 0)
+}
+
+// CommandZeroAiGetMessagesRtnData is the response data for retrieving session messages
+type CommandZeroAiGetMessagesRtnData struct {
+	Messages []*ZeroAiMessageInfo `json:"messages"` // list of messages
+}
+
+// CommandZeroAiGetAgentsData is the request data for listing available agents
+type CommandZeroAiGetAgentsData struct {
+	Backend string `json:"backend,omitempty"` // optional filter by backend
+}
+
+// CommandZeroAiConfirmPermissionData is the request data for confirming permissions
+type CommandZeroAiConfirmPermissionData struct {
+	SessionID  string `json:"sessionId"`  // the session ID
+	CallID     string `json:"callId"`     // the tool call ID
+	OptionID   string `json:"optionId"`   // the selected option ID
+	ConfirmAll bool   `json:"confirmAll"` // whether to apply to all future permissions
+}
+
+// ZeroAiSessionInfo represents information about a ZeroAI session
+type ZeroAiSessionInfo struct {
+	SessionID     string `json:"sessionId"`     // the internal session ID
+	Provider      string `json:"provider"`      // the backend provider
+	Model         string `json:"model"`         // the model being used
+	WorkDir       string `json:"workDir"`       // current working directory
+	CreatedAt     int64  `json:"createdAt"`     // creation timestamp
+	LastMessageAt int64  `json:"lastMessageAt"` // timestamp of last message
+}
+
+// ZeroAiMessageInfo represents information about a ZeroAI message
+type ZeroAiMessageInfo struct {
+	ID        int64  `json:"id"`        // message ID
+	SessionID string `json:"sessionId"` // associated session ID
+	Role      string `json:"role"`      // message role
+	Content   string `json:"content"`   // message content
+	CreatedAt int64  `json:"createdAt"` // creation timestamp
+}
+
+// ZeroAiStreamMessageEvent represents a streamed message event
+type ZeroAiStreamMessageEvent struct {
+	Message *ZeroAiMessageWrapper `json:"message"`
