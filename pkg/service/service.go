@@ -11,6 +11,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/service/blockservice"
 	"github.com/wavetermdev/waveterm/pkg/service/clientservice"
+	"github.com/wavetermdev/waveterm/pkg/service/messageservice"
 	"github.com/wavetermdev/waveterm/pkg/service/objectservice"
 	"github.com/wavetermdev/waveterm/pkg/service/userinputservice"
 	"github.com/wavetermdev/waveterm/pkg/service/windowservice"
@@ -24,6 +25,7 @@ import (
 
 var ServiceMap = map[string]any{
 	"block":     blockservice.BlockServiceInstance,
+	"message":   messageservice.MessageServiceInstance,
 	"object":    &objectservice.ObjectService{},
 	"client":    &clientservice.ClientService{},
 	"window":    &windowservice.WindowService{},
