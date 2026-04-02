@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/zeroai/agent"
 	"github.com/wavetermdev/waveterm/pkg/zeroai/service"
 	"github.com/wavetermdev/waveterm/pkg/zeroai/store"
+	"github.com/wavetermdev/waveterm/pkg/zeroai/team"
 )
 
 // WshRpcZeroaiServer implements WSH RPC methods for ZeroAI
@@ -21,6 +22,8 @@ type WshRpcZeroaiServer struct {
 	sessionService SessionServiceInterface
 	messageService MessageServiceInterface
 	agentService   *service.AgentService
+	teamCoordinator *team.Coordinator
+	messageRouter   *team.MessageRouter
 	defaultBackend string
 }
 
@@ -40,19 +43,27 @@ type MessageServiceInterface interface {
 	DeleteSessionMessages(sessionID string) error
 }
 
+// WshServerImpl implements the WshServerImpl interface marker
+func (*WshRpcZeroaiServer) WshServerImpl() {}
+
 // NewWshRpcZeroaiServer creates a new WshRpcZeroaiServer
 func NewWshRpcZeroaiServer(
 	sessionService SessionServiceInterface,
 	messageService MessageServiceInterface,
 	agentService *service.AgentService,
+	teamCoordinator *team.Coordinator,
+	messageRouter *team.MessageRouter,
 ) *WshRpcZeroaiServer {
 	return &WshRpcZeroaiServer{
-		sessionService: sessionService,
-		messageService: messageService,
-		agentService:   agentService,
-		defaultBackend: "claude", // Default backend for now
+		sessionService:  sessionService,
+		messageService:  messageService,
+		agentService:    agentService,
+		teamCoordinator: teamCoordinator,
+		messageRouter:   messageRouter,
+		defaultBackend:  "claude", // Default backend for now
 	}
 }
+
 
 // ZeroAiCreateSessionCommand creates a new ZeroAI session
 func (zs *WshRpcZeroaiServer) ZeroAiCreateSessionCommand(ctx context.Context, req wshrpc.CommandZeroAiCreateSessionData) (wshrpc.CommandZeroAiCreateSessionRtnData, error) {

@@ -1086,3 +1086,168 @@ type ZeroAiMessageInfo struct {
 type ZeroAiStreamMessageEvent struct {
 	Message *ZeroAiMessageWrapper `json:"message"`
 }
+
+// ZeroAI Team RPC request types
+
+// CommandZeroAiCreateTeamData is the request data for creating a new team
+type CommandZeroAiCreateTeamData struct {
+	Name    string `json:"name"`              // team name
+	LeaderID string `json:"leaderId"`          // ID of the leader agent
+}
+
+// CommandZeroAiCreateTeamRtnData is the response data for creating a team
+type CommandZeroAiCreateTeamRtnData struct {
+	TeamID string `json:"teamId"` // the new team ID
+}
+
+// CommandZeroAiGetTeamData is the request data for retrieving a team
+type CommandZeroAiGetTeamData struct {
+	TeamID string `json:"teamId"` // the team ID
+}
+
+// CommandZeroAiGetTeamRtnData is the response data for retrieving a team
+type CommandZeroAiGetTeamRtnData struct {
+	Team *ZeroAiTeamInfo `json:"team"` // team information
+}
+
+// CommandZeroAiListTeamsData is the request data for listing teams
+type CommandZeroAiListTeamsData struct {
+	Status string `json:"status,omitempty"` // optional filter by status
+}
+
+// CommandZeroAiListTeamsRtnData is the response data for listing teams
+type CommandZeroAiListTeamsRtnData struct {
+	Teams []*ZeroAiTeamInfo `json:"teams"` // list of teams
+}
+
+// CommandZeroAiDeleteTeamData is the request data for deleting a team
+type CommandZeroAiDeleteTeamData struct {
+	TeamID string `json:"teamId"` // the team ID
+}
+
+// CommandZeroAiJoinTeamData is the request data for joining a team
+type CommandZeroAiJoinTeamData struct {
+	TeamID  string `json:"teamId"`           // the team ID
+	AgentID string `json:"agentId"`          // the agent ID
+	Role    string `json:"role,omitempty"`   // member role (default: worker)
+}
+
+// CommandZeroAiJoinTeamRtnData is the response data for joining a team
+type CommandZeroAiJoinTeamRtnData struct {
+	Success bool `json:"success"` // whether the agent joined successfully
+}
+
+// CommandZeroAiLeaveTeamData is the request data for leaving a team
+type CommandZeroAiLeaveTeamData struct {
+	TeamID  string `json:"teamId"`  // the team ID
+	AgentID string `json:"agentId"` // the agent ID
+}
+
+// CommandZeroAiListTeamMembersData is the request data for listing team members
+type CommandZeroAiListTeamMembersData struct {
+	TeamID string `json:"teamId"` // the team ID
+}
+
+// CommandZeroAiListTeamMembersRtnData is the response data for listing team members
+type CommandZeroAiListTeamMembersRtnData struct {
+	Members []*ZeroAiTeamMemberInfo `json:"members"` // list of team members
+}
+
+// CommandZeroAiCreateTaskData is the request data for creating a task
+type CommandZeroAiCreateTaskData struct {
+	TeamID          string `json:"teamId"`            // the team ID
+	Description     string `json:"description"`       // task description
+	AssignedAgentID string `json:"assignedAgentId,omitempty"` // optional agent assignment
+}
+
+// CommandZeroAiCreateTaskRtnData is the response data for creating a task
+type CommandZeroAiCreateTaskRtnData struct {
+	TaskID string `json:"taskId"` // the new task ID
+}
+
+// CommandZeroAiAssignTaskData is the request data for assigning a task
+type CommandZeroAiAssignTaskData struct {
+	TaskID  string `json:"taskId"`  // the task ID
+	AgentID string `json:"agentId"` // the agent ID
+}
+
+// CommandZeroAiAssignTaskRtnData is the response data for assigning a task
+type CommandZeroAiAssignTaskRtnData struct {
+	Success bool `json:"success"` // whether the task was assigned
+}
+
+// CommandZeroAiListTasksData is the request data for listing tasks
+type CommandZeroAiListTasksData struct {
+	TeamID          string `json:"teamId"`            // the team ID
+	AssignedAgentID string `json:"assignedAgentId,omitempty"` // optional filter by agent
+	Status          string `json:"status,omitempty"`  // optional filter by status
+}
+
+// CommandZeroAiListTasksRtnData is the response data for listing tasks
+type CommandZeroAiListTasksRtnData struct {
+	Tasks []*ZeroAiTaskInfo `json:"tasks"` // list of tasks
+}
+
+// CommandZeroAiGetTaskStatusData is the request data for getting task status
+type CommandZeroAiGetTaskStatusData struct {
+	TaskID string `json:"taskId"` // the task ID
+}
+
+// CommandZeroAiGetTaskStatusRtnData is the response data for getting task status
+type CommandZeroAiGetTaskStatusRtnData struct {
+	Task *ZeroAiTaskInfo `json:"task"` // task information
+}
+
+// CommandZeroAiSendToAgentData is the request data for sending a message to an agent
+type CommandZeroAiSendToAgentData struct {
+	From    string                 `json:"from"`    // sender agent ID
+	To      string                 `json:"to"`      // recipient agent ID
+	Type    string                 `json:"type"`    // message type
+	Content string                 `json:"content"` // message content
+	Payload map[string]interface{} `json:"payload,omitempty"` // optional payload
+}
+
+// CommandZeroAiSendToAgentRtnData is the response data for sending a message
+type CommandZeroAiSendToAgentRtnData struct {
+	Success bool `json:"success"` // whether the message was sent
+}
+
+// CommandZeroAiBroadcastData is the request data for broadcasting a message
+type CommandZeroAiBroadcastData struct {
+	From    string                 `json:"from"`    // sender agent ID
+	Type    string                 `json:"type"`    // message type
+	Content string                 `json:"content"` // message content
+	Payload map[string]interface{} `json:"payload,omitempty"` // optional payload
+}
+
+// CommandZeroAiBroadcastRtnData is the response data for broadcasting
+type CommandZeroAiBroadcastRtnData struct {
+	RecipientCount int `json:"recipientCount"` // number of recipients
+}
+
+// ZeroAiTeamInfo represents information about a team
+type ZeroAiTeamInfo struct {
+	TeamID  string `json:"teamId"`  // the team ID
+	Name    string `json:"name"`    // team name
+	Created int64  `json:"created"` // creation timestamp
+	Status  string `json:"status"`  // team status
+}
+
+// ZeroAiTeamMemberInfo represents information about a team member
+type ZeroAiTeamMemberInfo struct {
+	AgentID  string `json:"agentId"`  // the agent ID
+	Role     string `json:"role"`     // member role
+	Status   string `json:"status"`   // member status
+	JoinedAt int64  `json:"joinedAt"` // join timestamp
+}
+
+// ZeroAiTaskInfo represents information about a task
+type ZeroAiTaskInfo struct {
+	TaskID          string `json:"taskId"`          // the task ID
+	TeamID          string `json:"teamId"`          // the team ID
+	AssignedAgentID string `json:"assignedAgentId"` // assigned agent ID
+	Status          string `json:"status"`          // task status
+	Description     string `json:"description"`     // task description
+	CreatedAt       int64  `json:"createdAt"`       // creation timestamp
+	CompletedAt     int64  `json:"completedAt"`     // completion timestamp (0 if not completed)
+}

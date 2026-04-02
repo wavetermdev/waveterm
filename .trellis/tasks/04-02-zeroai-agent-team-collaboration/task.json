@@ -1,0 +1,44 @@
+{
+  "id": "zeroai-agent-team-collaboration",
+  "name": "zeroai-agent-team-collaboration",
+  "title": "实现 ZeroAI Agent 团队协作功能，包括：1) 多 Agent 并发连接管理 - 支持多个 ACP Agent 同时连接和独立管理；2) Agent 间消息转发机制 - 实现 Agent-to-Agent 消息路由和转发；3) 简单任务分配系统 - 支持任务分配给特定 Agent，跟踪任务状态；4) WSH 进程管理集成 - 利用 WSH (Wave Shell) 替代 tmux 进行 Agent 进程生命周期管理；5) 团队状态同步 - 实现 TeamState 存储，同步所有 Agent 的运行状态；6) WSH RPC 接口 - 添加团队协作相关 RPC 方法（CreateTeam, JoinTeam, LeaveTeam, AssignTask 等）",
+  "description": "",
+  "status": "completed",
+  "dev_type": "backend",
+  "scope": "zeroai",
+  "priority": "P2",
+  "creator": "claude-agent",
+  "assignee": "claude-agent",
+  "createdAt": "2026-04-02",
+  "completedAt": "2026-04-02",
+  "branch": "feature/zeroai-agent-team-collaboration",
+  "base_branch": "zeroai",
+  "worktree_path": "/home/zero/zero/trellis-worktrees/feature/zeroai-agent-team-collaboration",
+  "current_phase": 4,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": "feat(zeroai): zeroai-agent-team-collaboration",
+  "pr_url": "branch pushed - PR creation failed due to network timeout",
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

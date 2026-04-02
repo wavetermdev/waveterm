@@ -3,37 +3,37 @@ package types
 
 // ZeroAiSession represents a ZeroAI session
 type ZeroAiSession struct {
-	ID            string                 `json:"id"`
-	Backend       string                 `json:"backend"`
-	WorkDir       string                 `json:"workDir"`
-	Model         string                 `json:"model"`
-	Provider      string                 `json:"provider"`
-	ThinkingLevel string                 `json:"thinkingLevel"`
-	YoloMode      bool                   `json:"yoloMode"`
-	SessionID     string                 `json:"sessionId,omitempty"`
-	CreatedAt     int64                  `json:"createdAt"`
-	UpdatedAt     int64                  `json:"updatedAt"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ID            string `json:"id"`
+	Backend       string `json:"backend"`
+	WorkDir       string `json:"workDir"`
+	Model         string `json:"model"`
+	Provider      string `json:"provider"`
+	ThinkingLevel string `json:"thinkingLevel"`
+	YoloMode      bool   `json:"yoloMode"`
+	SessionID     string `json:"sessionId,omitempty"`
+	CreatedAt     int64  `json:"createdAt"`
+	UpdatedAt     int64  `json:"updatedAt"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
 }
 
 // ZeroAiMessage represents a message in a ZeroAI session
 type ZeroAiMessage struct {
-	ID         int64                  `json:"id"`
-	SessionID  string                 `json:"sessionId"`
-	Role       string                 `json:"role"`
-	Content    string                 `json:"content"`
-	EventType  string                 `json:"eventType,omitempty"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt  int64                  `json:"createdAt"`
+	ID        int64  `json:"id"`
+	SessionID string `json:"sessionId"`
+	Role      string `json:"role"`
+	Content   string `json:"content"`
+	EventType string `json:"eventType,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+	CreatedAt int64  `json:"createdAt"`
 }
 
 // ZeroAiEvent represents an event from ZeroAI
 type ZeroAiEvent struct {
-	Type    string                 `json:"type"`
-	Session string                 `json:"session"`
-	Data    interface{}            `json:"data,omitempty"`
-	Error   error                  `json:"error,omitempty"`
-	Created int64                  `json:"created"`
+	Type    string  `json:"type"`
+	Session string  `json:"session"`
+	Data    any     `json:"data,omitempty"`
+	Error   error   `json:"error,omitempty"`
+	Created int64   `json:"created"`
 }
 
 // PermissionOption represents a permission option
@@ -60,12 +60,46 @@ type ZeroAiPermissionData struct {
 
 // ZeroAiSessionChunk represents a text content chunk from session update
 type ZeroAiSessionChunk struct {
-	Content  string                 `json:"content"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Content  string        `json:"content"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // ZeroAiPlanUpdate represents a plan update event
 type ZeroAiPlanUpdate struct {
-	Content  string                 `json:"content,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Content  string        `json:"content,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// Team represents a multi-agent team
+type Team struct {
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	CreatedAt int64         `json:"createdAt"`
+	UpdatedAt int64         `json:"updatedAt"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+}
+
+// TeamMember represents a member of a team
+type TeamMember struct {
+	ID        string        `json:"id"`
+	TeamID    string        `json:"teamId"`
+	AgentID   string        `json:"agentId"`
+	AgentName string        `json:"agentName"`
+	Role      string        `json:"role"` // coordinator, worker, specialist
+	CreatedAt int64         `json:"createdAt"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+}
+
+// TeamTask represents a task assigned within a team
+type TeamTask struct {
+	ID          string        `json:"id"`
+	TeamID      string        `json:"teamId"`
+	Subject     string        `json:"subject"`
+	Description string        `json:"description"`
+	Status      string        `json:"status"` // pending, in_progress, completed, blocked, failed
+	OwnerAgent  string        `json:"ownerAgent,omitempty"`
+	Priority    string        `json:"priority"` // low, medium, high
+	CreatedAt   int64         `json:"createdAt"`
+	UpdatedAt   int64         `json:"updatedAt"`
+	Metadata    map[string]any `json:"metadata,omitempty"`
 }

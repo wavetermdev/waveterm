@@ -250,3 +250,8 @@ type ZeroAiStreamEnd struct {
 	FinishReason string `json:"finishReason,omitempty" tstype:"null | \"stop\" | \"length\" | \"error\""`
 	Error        string `json:"error,omitempty" tstype:"null | string"`
 }
+
+// ===== Team Collaboration Types =====
+
+// ZeroAiTeamInfo represents information about a team
+//gotypes: gen

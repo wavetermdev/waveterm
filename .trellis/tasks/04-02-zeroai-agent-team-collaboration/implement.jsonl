@@ -1,0 +1,11 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Quality guidelines for backend code"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "Error handling patterns for backend"}
+{"file": "pkg/zeroai/service/session-service.go", "reason": "Reference for service layer patterns"}
+{"file": "pkg/zeroai/service/agent-service.go", "reason": "Reference for agent management patterns"}
+{"file": "pkg/zeroai/agent/agent-interface.go", "reason": "Agent interface definition"}
+{"file": "pkg/zeroai/process/process-manager.go", "reason": "Process management integration"}
+{"file": "pkg/zeroai/rpc/wshserver-zeroai.go", "reason": "WSH RPC server implementation pattern"}
+{"file": "pkg/zeroai/rpc/wshrpc-zeroai.go", "reason": "WSH RPC type definitions pattern"}
+{"file": "pkg/zeroai/store/session-store.go", "reason": "Database store patterns for team state"}
