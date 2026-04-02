@@ -1,0 +1,19 @@
+.zeroai-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.zeroai-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-area-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}

@@ -1,0 +1,196 @@
+// ResizableInput component styles
+.resizable-input-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    transition: all 0.2s ease;
+    resize: both;
+    overflow: visible; // Handle resize manually with custom drag
+    width: auto;
+
+    &:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    &:focus-within {
+        border-color: rgba(59, 130, 246, 0.5);
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    &.is-resizing {
+        cursor: nwse-resize;
+        border-color: rgba(59, 130, 246, 0.6);
+    }
+
+    &.is-sending {
+        pointer-events: none;
+        opacity: 0.8;
+    }
+
+    &.isDisabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.resizable-input-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 8px;
+}
+
+.input-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.text-area-input {
+    flex: 1;
+    width: 100%;
+    min-height: 60px;
+    max-height: 400px;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s ease;
+    font-family: inherit;
+
+    &::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.input-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.send-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(59, 130, 246, 0.8);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(.is-disabled) {
+        background: rgba(59, 130, 246, 1);
+        transform: translateY(-1px);
+    }
+
+    &:active:not(.is-disabled) {
+        transform: translateY(0);
+    }
+
+    &.is-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .sending-spinner {
+        i {
+            font-size: 14px;
+        }
+    }
+
+    .send-icon {
+        i {
+            font-size: 14px;
+        }
+    }
+
+    .shortcut-hint {
+        font-size: 11px;
+        opacity: 0.7;
+        padding-left: 8px;
+        margin-left: 4px;
+        border-left: 1px solid rgba(255, 255, 255, 0.3);
+    }
+}
+
+.file-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+
+    i {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+}
+
+.resize-handle {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    color: rgba(255, 255, 255, 0.3);
+    opacity: 0.5;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+
+    &:hover {
+        opacity: 1;
+        color: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    svg {
+        transform: rotate(45deg);
+    }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+    .resizable-input-container {
+        min-width: 200px !important;
+        max-width: calc(100vw - 32px) !important;
+    }
+
+    .send-button .shortcut-hint {
+        display: none;
+    }
+
+    .file-hint {
+        font-size: 10px;
+    }
+}

@@ -1,0 +1,233 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+@use "@/app/theme/colors" as colors;
+
+.status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 16px;
+}
+
+.status-bar-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.status-bar-section {
+    display: flex;
+    align-items: center;
+
+    &.clickable {
+        cursor: pointer;
+        border-radius: 4px;
+        padding: 4px 8px;
+        transition: background 0.2s ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        &:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+}
+
+.status-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+
+    i {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.5);
+        flex-shrink: 0;
+    }
+}
+
+.status-bar-label {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.5);
+    flex-shrink: 0;
+}
+
+.status-bar-value {
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.status-bar-workdir {
+    flex-shrink: 1;
+    min-width: 0;
+
+    .workdir-path {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
+        font-family: monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.6);
+    }
+}
+
+.status-bar-yolo {
+    .status-bar-item {
+        background: rgba(239, 68, 68, 0.15);
+        padding: 4px 8px;
+        border-radius: 4px;
+
+        i {
+            color: rgba(239, 68, 68, 1);
+        }
+
+        .status-bar-value {
+            color: rgba(239, 68, 68, 1);
+            font-weight: 600;
+        }
+    }
+}
+
+.status-bar-streaming {
+    .status-bar-item {
+        background: rgba(59, 130, 246, 0.15);
+        padding: 4px 8px;
+        border-radius: 4px;
+
+        .status-bar-value {
+            color: rgba(59, 130, 246, 1);
+            font-weight: 600;
+        }
+    }
+
+    .streaming-dots {
+        display: flex;
+        gap: 2px;
+
+        span {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 1);
+            animation: streaming 1.4s infinite ease-in-out both;
+
+            &:nth-child(1) {
+                animation-delay: -0.32s;
+            }
+
+            &:nth-child(2) {
+                animation-delay: -0.16s;
+            }
+
+            &:nth-child(3) {
+                animation-delay: 0s;
+            }
+        }
+    }
+}
+
+@keyframes streaming {
+    0%,
+    80%,
+    100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+
+    40% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.status-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 11px;
+    font-weight: 500;
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    &.online {
+        .status-dot {
+            background: rgba(34, 197, 94, 1);
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+        }
+
+        .status-text {
+            color: rgba(34, 197, 94, 1);
+        }
+    }
+
+    &.offline {
+        .status-dot {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .status-text {
+            color: rgba(255, 255, 255, 0.4);
+        }
+    }
+
+    &.connecting {
+        .status-dot {
+            background: rgba(234, 179, 8, 1);
+            animation: blink 1s infinite;
+        }
+
+        .status-text {
+            color: rgba(234, 179, 8, 1);
+        }
+    }
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}

@@ -1,0 +1,214 @@
+// ChatArea component styles
+.chat-area {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.chat-area-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    scroll-behavior: smooth;
+
+    // Custom scrollbar
+    &::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    }
+}
+
+.chat-area-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-text {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0 0 8px 0;
+    }
+
+    .empty-hint {
+        font-size: 14px;
+        opacity: 0.7;
+        margin: 0;
+    }
+}
+
+.chat-message-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 24px;
+    animation: fadeIn 0.2s ease-out;
+
+    &.role-user {
+        align-items: flex-end;
+
+        .chat-message-content {
+            background: rgba(59, 130, 246, 0.15);
+            border-radius: 16px 16px 4px 16px;
+            max-width: 80%;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .chat-message-role {
+            color: rgb(59, 130, 246);
+        }
+    }
+
+    &.role-assistant {
+        align-items: flex-start;
+
+        .chat-message-content {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px 16px 16px 4px;
+            max-width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-message-role {
+            color: rgb(168, 85, 247);
+        }
+    }
+}
+
+.chat-message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    padding: 0 4px;
+
+    .chat-message-role {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+
+        i {
+            font-size: 14px;
+        }
+    }
+
+    .chat-message-timestamp {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.4);
+    }
+}
+
+.chat-message-content {
+    position: relative;
+    padding: 12px 16px;
+
+    .user-message-text {
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .assistant-message-markdown {
+        line-height: 1.6;
+
+        // Markdown styling already in WaveStreamdown
+        // Just add specific overrides for chat context
+        p {
+            margin: 0 0 12px 0;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        code {
+            font-size: 13px;
+        }
+
+        pre {
+            margin: 12px 0;
+        }
+    }
+}
+
+.chat-message-streaming {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-left: 16px;
+    font-size: 11px;
+    color: rgba(168, 85, 247, 0.8);
+
+    span {
+        font-size: 8px;
+    }
+}
+
+.chat-area-scroll-bottom {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    i {
+        font-size: 14px;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
