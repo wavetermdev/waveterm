@@ -732,7 +732,10 @@ func (c *AcpConnection) logError(msg string) {
 func (c *AcpConnection) buildCommand(config AcpSessionConfig) (string, []string, error) {
 	cliPath := config.CliPath
 	if cliPath == "" {
-		backendCfg := GetBackendConfig(config.Backend)
+		backendCfg, err := GetBackendConfig(config.Backend)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to get backend config: %w", err)
+		}
 		cliPath = backendCfg.DefaultCliPath
 	}
 
@@ -741,7 +744,10 @@ func (c *AcpConnection) buildCommand(config AcpSessionConfig) (string, []string,
 	}
 
 	// Build ACP arguments
-	backendCfg := GetBackendConfig(config.Backend)
+	backendCfg, err := GetBackendConfig(config.Backend)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get backend config: %w", err)
+	}
 	args := []string{}
 	args = append(args, backendCfg.AcpArgs...)
 
