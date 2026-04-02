@@ -1085,3 +1085,4 @@ type ZeroAiMessageInfo struct {
 // ZeroAiStreamMessageEvent represents a streamed message event
 type ZeroAiStreamMessageEvent struct {
 	Message *ZeroAiMessageWrapper `json:"message"`
+}
