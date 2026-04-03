@@ -1,0 +1,51 @@
+.zeroai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+}
+
+.zeroai-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+
+    i {
+        color: rgb(147, 197, 253); /* light blue accent */
+    }
+}
+
+.zeroai-header-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    color: rgb(209, 213, 219); /* gray-300 */
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: white;
+    }
+
+    &.active {
+        background-color: rgba(147, 197, 253, 0.2); /* light blue with opacity */
+        border-color: rgba(147, 197, 253, 0.5);
+        color: rgb(147, 197, 253);
+    }
+
+    i {
+        font-size: 0.75rem;
+    }
+}

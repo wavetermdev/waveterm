@@ -1,0 +1,44 @@
+{
+  "id": "phase5b-provider-ui",
+  "name": "phase5b-provider-ui",
+  "title": "Phase 5b: Provider Settings UI integration into main panel",
+  "description": "",
+  "status": "planning",
+  "dev_type": null,
+  "scope": "zeroai",
+  "priority": "P2",
+  "creator": "claude-agent",
+  "assignee": "claude-agent",
+  "createdAt": "2026-04-03",
+  "completedAt": null,
+  "branch": "feature/phase5b-provider-ui",
+  "base_branch": "zeroai",
+  "worktree_path": "/home/zero/zero/trellis-worktrees/feature/phase5b-provider-ui",
+  "current_phase": 3,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

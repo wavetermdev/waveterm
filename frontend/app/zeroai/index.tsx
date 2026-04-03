@@ -1,10 +1,10 @@
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
-import { ChatArea, ResizableInput, SessionList, StatusBar } from "./components";
+import { ChatArea, ProviderSettings, ResizableInput, SessionList, StatusBar, ZeroAIHeader } from "./components";
 import "./index.scss";
 import { dispatchMessageAction, messagesAtom } from "./models/message-model";
 import { activeSessionIdAtom, dispatchSessionAction, removeSession, sessionsAtom } from "./models/session-model";
-import { inputHeightAtom, inputWidthAtom, setThinking } from "./models/ui-model";
+import { inputHeightAtom, inputWidthAtom, setThinking, showProviderSettingsAtom, toggleProviderSettings } from "./models/ui-model";
 import { ZeroAiClient } from "./store/zeroai-client";
 import type { CreateSessionRequest, ZeroAiAgentInfo, ZeroAiSession, ZeroAiSessionInfo } from "./types";
 
@@ -14,6 +14,7 @@ export function ZeroAIPanel() {
     const messagesMap = useAtomValue(messagesAtom);
     const inputHeight = useAtomValue(inputHeightAtom);
     const inputWidth = useAtomValue(inputWidthAtom);
+    const showProviderSettings = useAtomValue(showProviderSettingsAtom);
 
     const [inputValue, setInputValue] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
@@ -157,27 +158,34 @@ export function ZeroAIPanel() {
                 onWorkDirClick={() => console.log("Change work dir")}
                 isStreaming={isStreaming}
             />
+            <ZeroAIHeader showSettings={showProviderSettings} onToggleSettings={toggleProviderSettings} />
             <div className="zeroai-content">
-                <SessionList
-                    sessions={sessions as unknown as ZeroAiSession[]}
-                    currentSessionId={activeSessionId || undefined}
-                    onSelectSession={handleSelectSession}
-                    onCreateSession={handleCreateSession}
-                    onDeleteSession={handleDeleteSession}
-                />
-                <div className="chat-area-wrapper">
-                    <ChatArea messages={currentMessages} />
-                    <ResizableInput
-                        value={inputValue}
-                        onChange={setInputValue}
-                        onSend={handleSendMessage}
-                        isSending={isStreaming}
-                        minHeight={minHeight}
-                        maxHeight={400}
-                        minWidth={minWidth}
-                        maxWidth={1200}
-                    />
-                </div>
+                {showProviderSettings ? (
+                    <ProviderSettings className="provider-settings-full" />
+                ) : (
+                    <>
+                        <SessionList
+                            sessions={sessions as unknown as ZeroAiSession[]}
+                            currentSessionId={activeSessionId || undefined}
+                            onSelectSession={handleSelectSession}
+                            onCreateSession={handleCreateSession}
+                            onDeleteSession={handleDeleteSession}
+                        />
+                        <div className="chat-area-wrapper">
+                            <ChatArea messages={currentMessages} />
+                            <ResizableInput
+                                value={inputValue}
+                                onChange={setInputValue}
+                                onSend={handleSendMessage}
+                                isSending={isStreaming}
+                                minHeight={minHeight}
+                                maxHeight={400}
+                                minWidth={minWidth}
+                                maxWidth={1200}
+                            />
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

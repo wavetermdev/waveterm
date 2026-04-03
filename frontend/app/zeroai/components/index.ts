@@ -15,3 +15,6 @@ export type { StatusBarProps } from "./status-bar";
 
 export { ProviderSettings } from "./provider-settings";
 export type { ProviderSettingsProps } from "./provider-settings";
+
+export { ZeroAIHeader } from "./zeroai-header";
+export type { ZeroAIHeaderProps } from "./zeroai-header";

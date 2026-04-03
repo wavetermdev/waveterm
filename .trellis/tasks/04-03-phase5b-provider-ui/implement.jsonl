@@ -1,0 +1,9 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "frontend/app/zeroai/index.tsx", "reason": "Main panel to integrate ProviderSettings"}
+{"file": "frontend/app/zeroai/components/provider-settings.tsx", "reason": "ProviderSettings component to integrate"}
+{"file": "frontend/app/zeroai/components/status-bar.tsx", "reason": "StatusBar for potential settings button"}
+{"file": "frontend/app/zeroai/components/index.ts", "reason": "Component exports"}
+{"file": "frontend/app/zeroai/models/ui-model.ts", "reason": "UI state management (add showProviderSettingsAtom)"}
+{"file": "frontend/app/zeroai/index.scss", "reason": "Panel layout styles"}
+{"file": "frontend/app/aipanel/aipanelheader.tsx", "reason": "Reference: AIPanelHeader pattern for header with actions"}
