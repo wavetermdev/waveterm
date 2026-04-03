@@ -4,6 +4,9 @@
 // CSS modules
 type CSSModuleClasses = { readonly [key: string]: string };
 
+declare module "*.scss" {}
+declare module "*.css" {}
+
 declare module "*.module.css" {
     const classes: CSSModuleClasses;
     export default classes;
