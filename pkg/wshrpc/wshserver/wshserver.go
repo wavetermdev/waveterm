@@ -1334,7 +1334,8 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 			delete(data, key)
 		}
 		if strings.HasSuffix(key, "#error") {
-			props.WshHadError = true
+			props.WshCmd = strings.TrimSuffix(key, "#error")
+			props.WshErrorCount = 1
 		} else {
 			props.WshCmd = key
 		}
@@ -1344,7 +1345,7 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
 	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-		Event: "wsh:run",
+		Event: telemetry.WshRunEventName,
 		Props: props,
 	})
 	return nil
