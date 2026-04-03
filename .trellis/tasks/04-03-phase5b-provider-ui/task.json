@@ -12,7 +12,7 @@
   "createdAt": "2026-04-03",
   "completedAt": null,
   "branch": "feature/phase5b-provider-ui",
-  "base_branch": "zeroai",
+  "base_branch": "main",
   "worktree_path": "/home/zero/zero/trellis-worktrees/feature/phase5b-provider-ui",
   "current_phase": 3,
   "next_action": [
