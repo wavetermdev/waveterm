@@ -1077,4 +1077,87 @@ func WslStatusCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.ConnSta
 	return resp, err
 }
 
+// command "zeroaiconfirmpermission", wshserver.ZeroAiConfirmPermissionCommand
+func ZeroAiConfirmPermissionCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiConfirmPermissionData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "zeroaiconfirmpermission", data, opts)
+	return err
+}
+
+// command "zeroaicreatesession", wshserver.ZeroAiCreateSessionCommand
+func ZeroAiCreateSessionCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiCreateSessionData, opts *wshrpc.RpcOpts) (wshrpc.CommandZeroAiCreateSessionRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandZeroAiCreateSessionRtnData](w, "zeroaicreatesession", data, opts)
+	return resp, err
+}
+
+// command "zeroaideleteprovider", wshserver.ZeroAiDeleteProviderCommand
+func ZeroAiDeleteProviderCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiDeleteProviderData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "zeroaideleteprovider", data, opts)
+	return err
+}
+
+// command "zeroaideletesession", wshserver.ZeroAiDeleteSessionCommand
+func ZeroAiDeleteSessionCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiDeleteSessionData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "zeroaideletesession", data, opts)
+	return err
+}
+
+// command "zeroaigetagents", wshserver.ZeroAiGetAgentsCommand
+func ZeroAiGetAgentsCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiGetAgentsData, opts *wshrpc.RpcOpts) ([]wshrpc.ZeroAiAgentInfo, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.ZeroAiAgentInfo](w, "zeroaigetagents", data, opts)
+	return resp, err
+}
+
+// command "zeroaigetmessages", wshserver.ZeroAiGetMessagesCommand
+func ZeroAiGetMessagesCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiGetMessagesData, opts *wshrpc.RpcOpts) (wshrpc.CommandZeroAiGetMessagesRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandZeroAiGetMessagesRtnData](w, "zeroaigetmessages", data, opts)
+	return resp, err
+}
+
+// command "zeroaigetsession", wshserver.ZeroAiGetSessionCommand
+func ZeroAiGetSessionCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiGetSessionData, opts *wshrpc.RpcOpts) (wshrpc.ZeroAiSessionWrapper, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.ZeroAiSessionWrapper](w, "zeroaigetsession", data, opts)
+	return resp, err
+}
+
+// command "zeroailistproviders", wshserver.ZeroAiListProvidersCommand
+func ZeroAiListProvidersCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiListProvidersData, opts *wshrpc.RpcOpts) (wshrpc.CommandZeroAiListProvidersRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandZeroAiListProvidersRtnData](w, "zeroailistproviders", data, opts)
+	return resp, err
+}
+
+// command "zeroailistsessions", wshserver.ZeroAiListSessionsCommand
+func ZeroAiListSessionsCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiListSessionsData, opts *wshrpc.RpcOpts) (wshrpc.CommandZeroAiListSessionsRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandZeroAiListSessionsRtnData](w, "zeroailistsessions", data, opts)
+	return resp, err
+}
+
+// command "zeroaisaveprovider", wshserver.ZeroAiSaveProviderCommand
+func ZeroAiSaveProviderCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiSaveProviderData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "zeroaisaveprovider", data, opts)
+	return err
+}
+
+// command "zeroaisendmessage", wshserver.ZeroAiSendMessageCommand
+func ZeroAiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiSendMessageData, opts *wshrpc.RpcOpts) (wshrpc.CommandZeroAiSendMessageRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandZeroAiSendMessageRtnData](w, "zeroaisendmessage", data, opts)
+	return resp, err
+}
+
+// command "zeroaisendstreammessage", wshserver.ZeroAiSendStreamMessageCommand
+func ZeroAiSendStreamMessageCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiSendMessageData, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.ZeroAiStreamMessageEvent] {
+	return sendRpcRequestResponseStreamHelper[wshrpc.ZeroAiStreamMessageEvent](w, "zeroaisendstreammessage", data, opts)
+}
+
+// command "zeroaisetworkdir", wshserver.ZeroAiSetWorkDirCommand
+func ZeroAiSetWorkDirCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiSetWorkDirData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "zeroaisetworkdir", data, opts)
+	return err
+}
+
+// command "zeroaitestprovider", wshserver.ZeroAiTestProviderCommand
+func ZeroAiTestProviderCommand(w *wshutil.WshRpc, data wshrpc.CommandZeroAiTestProviderData, opts *wshrpc.RpcOpts) (wshrpc.CommandZeroAiTestProviderRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandZeroAiTestProviderRtnData](w, "zeroaitestprovider", data, opts)
+	return resp, err
+}
+
 

@@ -80,6 +80,27 @@ declare global {
         conn?: {[key: string]: number};
     };
 
+    // agent.AgentSession
+    type AgentSession = {
+        id: string;
+        backend: string;
+        workDir: string;
+        model: string;
+        provider: string;
+        thinkingLevel: string;
+        createdAt: number;
+        updatedAt: number;
+        metadata?: {[key: string]: any};
+    };
+
+    // agent.AgentSessionOptions
+    type AgentSessionOptions = {
+        backend?: string;
+        workDir: string;
+        model?: string;
+        resumeSession?: boolean;
+    };
+
     // wshrpc.AiMessageData
     type AiMessageData = {
         message?: string;
@@ -799,6 +820,125 @@ declare global {
         data64: string;
     };
 
+    // wshrpc.CommandZeroAiConfirmPermissionData
+    type CommandZeroAiConfirmPermissionData = {
+        sessionId: string;
+        callId: string;
+        optionId: string;
+        confirmAll: boolean;
+    };
+
+    // wshrpc.CommandZeroAiCreateSessionData
+    type CommandZeroAiCreateSessionData = {
+        backend: string;
+        model: string;
+        provider?: string;
+        thinkingLevel?: string;
+        yoloMode?: boolean;
+        workDir?: string;
+    };
+
+    // wshrpc.CommandZeroAiCreateSessionRtnData
+    type CommandZeroAiCreateSessionRtnData = {
+        sessionId: string;
+    };
+
+    // wshrpc.CommandZeroAiDeleteProviderData
+    type CommandZeroAiDeleteProviderData = {
+        providerId: string;
+    };
+
+    // wshrpc.CommandZeroAiDeleteSessionData
+    type CommandZeroAiDeleteSessionData = {
+        sessionId: string;
+    };
+
+    // wshrpc.CommandZeroAiGetAgentsData
+    type CommandZeroAiGetAgentsData = {
+        backend?: string;
+    };
+
+    // wshrpc.CommandZeroAiGetMessagesData
+    type CommandZeroAiGetMessagesData = {
+        sessionId: string;
+        limit: number;
+        offset: number;
+    };
+
+    // wshrpc.CommandZeroAiGetMessagesRtnData
+    type CommandZeroAiGetMessagesRtnData = {
+        messages: ZeroAiMessageInfo[];
+    };
+
+    // wshrpc.CommandZeroAiGetSessionData
+    type CommandZeroAiGetSessionData = {
+        sessionId: string;
+    };
+
+    // wshrpc.CommandZeroAiListProvidersData
+    type CommandZeroAiListProvidersData = object;
+
+    // wshrpc.CommandZeroAiListProvidersRtnData
+    type CommandZeroAiListProvidersRtnData = {
+        providers: ZeroAiProviderInfo[];
+    };
+
+    // wshrpc.CommandZeroAiListSessionsData
+    type CommandZeroAiListSessionsData = {
+        backend?: string;
+    };
+
+    // wshrpc.CommandZeroAiListSessionsRtnData
+    type CommandZeroAiListSessionsRtnData = {
+        sessions: ZeroAiSessionInfo[];
+    };
+
+    // wshrpc.CommandZeroAiSaveProviderData
+    type CommandZeroAiSaveProviderData = {
+        providerId: string;
+        displayName: string;
+        displayIcon: string;
+        cliCommand: string;
+        cliPath: string;
+        cliArgs: string[];
+        envVars: {[key: string]: string};
+        supportsStreaming: boolean;
+        defaultModel: string;
+        availableModels: string[];
+        authRequired: boolean;
+    };
+
+    // wshrpc.CommandZeroAiSendMessageData
+    type CommandZeroAiSendMessageData = {
+        sessionId: string;
+        role: string;
+        content: string;
+        eventType?: string;
+        metadata?: {[key: string]: any};
+    };
+
+    // wshrpc.CommandZeroAiSendMessageRtnData
+    type CommandZeroAiSendMessageRtnData = {
+        messageId: number;
+        streaming: boolean;
+    };
+
+    // wshrpc.CommandZeroAiSetWorkDirData
+    type CommandZeroAiSetWorkDirData = {
+        sessionId: string;
+        workDir: string;
+    };
+
+    // wshrpc.CommandZeroAiTestProviderData
+    type CommandZeroAiTestProviderData = {
+        providerId: string;
+    };
+
+    // wshrpc.CommandZeroAiTestProviderRtnData
+    type CommandZeroAiTestProviderRtnData = {
+        result: ZeroAiTestProviderResult;
+    };
+
     // wconfig.ConfigError
     type ConfigError = {
         file: string;
@@ -1019,6 +1159,7 @@ declare global {
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
+        zeroai: {[key: string]: ZeroAiProviderConfigType};
         configerrors: ConfigError[];
     };
 
@@ -1082,6 +1223,17 @@ declare global {
     type LeafOrderEntry = {
         nodeid: string;
         blockid: string;
+    };
+
+    // messageservice.Message
+    type Message = {
+        id: number;
+        sessionId: string;
+        role: string;
+        content: string;
+        eventType?: string;
+        metadata?: {[key: string]: any};
+        createdAt: number;
     };
 
     // waveobj.MetaTSType
@@ -1369,6 +1521,25 @@ declare global {
     type SecretMeta = {
         desc: string;
         optional: boolean;
+    };
+
+    // messageservice.SendMessageEvent
+    type SendMessageEvent = {
+        type: string;
+        session: string;
+        data?: any;
+        error?: string;
+        created: number;
+        metadata?: {[key: string]: any};
+    };
+
+    // messageservice.SendMessageInput
+    type SendMessageInput = {
+        sessionId: string;
+        content: string;
+        files?: string[];
+        model?: string;
+        metadata?: {[key: string]: any};
     };
 
     // wconfig.SettingsType
@@ -2230,6 +2401,107 @@ declare global {
     // wshrpc.WshServerCommandMeta
     type WshServerCommandMeta = {
         commandtype: string;
+    };
+
+    // wshrpc.ZeroAiAgentInfo
+    type ZeroAiAgentInfo = {
+        backend: "claude" | "qwen" | "codex" | "opencode";
+        model: string;
+        provider: string;
+        displayName: string;
+        description: string;
+        enabled: boolean;
+        supportedOps: string[];
+    };
+
+    // wshrpc.ZeroAiMessageInfo
+    type ZeroAiMessageInfo = {
+        id: number;
+        sessionId: string;
+        role: string;
+        content: string;
+        createdAt: number;
+    };
+
+    // wshrpc.ZeroAiMessageWrapper
+    type ZeroAiMessageWrapper = {
+        id: number;
+        sessionId: string;
+        role: "user" | "assistant" | "system";
+        content: string;
+        eventType?: string;
+        metadata?: null | Record<string, any>;
+        createdAt: number;
+    };
+
+    // wconfig.ZeroAiProviderConfigType
+    type ZeroAiProviderConfigType = {
+        "display:name": string;
+        "display:order"?: number;
+        "display:icon"?: string;
+        "cli:command": string;
+        "cli:path"?: string;
+        "cli:args"?: string[];
+        "env:vars"?: {[key: string]: string};
+        supportsStreaming: boolean;
+        defaultModel?: string;
+        availableModels?: string[];
+        authRequired: boolean;
+    };
+
+    // wshrpc.ZeroAiProviderInfo
+    type ZeroAiProviderInfo = {
+        id: string;
+        displayName: string;
+        displayIcon: string;
+        cliCommand: string;
+        cliPath: string;
+        cliArgs: string[];
+        envVars: {[key: string]: string};
+        supportsStreaming: boolean;
+        defaultModel: string;
+        availableModels: string[];
+        authRequired: boolean;
+        isAvailable: boolean;
+        isCustom: boolean;
+    };
+
+    // wshrpc.ZeroAiSessionInfo
+    type ZeroAiSessionInfo = {
+        sessionId: string;
+        provider: string;
+        model: string;
+        workDir: string;
+        createdAt: number;
+        lastMessageAt: number;
+    };
+
+    // wshrpc.ZeroAiSessionWrapper
+    type ZeroAiSessionWrapper = {
+        id: string;
+        backend: string;
+        workDir: string;
+        model: string;
+        provider: string;
+        thinkingLevel: string;
+        yoloMode: boolean;
+        sessionId: string;
+        createdAt: number;
+        updatedAt: number;
+        metadata?: null | Record<string, any>;
+    };
+
+    // wshrpc.ZeroAiStreamMessageEvent
+    type ZeroAiStreamMessageEvent = {
+        message: ZeroAiMessageWrapper;
+    };
+
+    // wshrpc.ZeroAiTestProviderResult
+    type ZeroAiTestProviderResult = {
+        success: boolean;
+        version: string;
+        error?: string;
+        latencyMs: number;
     };
 
 }

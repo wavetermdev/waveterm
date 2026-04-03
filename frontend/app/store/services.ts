@@ -72,6 +72,33 @@ export class ClientServiceType {
 
 export const ClientService = new ClientServiceType();
 
+// messageservice.MessageService (message)
+export class MessageServiceType {
+    waveEnv: WaveEnv;
+
+    constructor(waveEnv?: WaveEnv) {
+        this.waveEnv = waveEnv;
+    }
+
+    // get all messages for an agent session
+    GetMessages(sessionId: string): Promise<Message[]> {
+        return callBackendService(this?.waveEnv, "message", "GetMessages", Array.from(arguments))
+    }
+
+    // send a message to an agent session with streaming events
+    SendMessage(input: SendMessageInput): Promise<string> {
+        return callBackendService(this?.waveEnv, "message", "SendMessage", Array.from(arguments))
+    }
+    SendMessageWithStream(arg2: any, arg3: SendMessageInput): Promise<any> {
+        return callBackendService(this?.waveEnv, "message", "SendMessageWithStream", Array.from(arguments))
+    }
+    SetStore(arg1: any): Promise<void> {
+        return callBackendService(this?.waveEnv, "message", "SetStore", Array.from(arguments))
+    }
+}
+
+export const MessageService = new MessageServiceType();
+
 // objectservice.ObjectService (object)
 export class ObjectServiceType {
     waveEnv: WaveEnv;
@@ -217,20 +244,63 @@ export class WorkspaceServiceType {
 
 export const WorkspaceService = new WorkspaceServiceType();
 
+// zeroaiservice.ZeroaiService (zeroai)
+export class ZeroaiServiceType {
+    waveEnv: WaveEnv;
+
+    constructor(waveEnv?: WaveEnv) {
+        this.waveEnv = waveEnv;
+    }
+
+    // @returns AgentSession
+    CreateSession(workDir: AgentSessionOptions): Promise<AgentSession> {
+        return callBackendService(this?.waveEnv, "zeroai", "CreateSession", Array.from(arguments))
+    }
+
+    // @returns object updates
+    DeleteSession(sessionId: string): Promise<void> {
+        return callBackendService(this?.waveEnv, "zeroai", "DeleteSession", Array.from(arguments))
+    }
+
+    // @returns AgentSession
+    GetSession(sessionId: string): Promise<AgentSession> {
+        return callBackendService(this?.waveEnv, "zeroai", "GetSession", Array.from(arguments))
+    }
+    Initialize(arg1: any, arg2: any): Promise<void> {
+        return callBackendService(this?.waveEnv, "zeroai", "Initialize", Array.from(arguments))
+    }
+
+    // @returns []AgentSession
+    ListSessions(): Promise<AgentSession[]> {
+        return callBackendService(this?.waveEnv, "zeroai", "ListSessions", Array.from(arguments))
+    }
+
+    // @returns object updates
+    SetWorkDir(sessionId: string, workDir: string): Promise<void> {
+        return callBackendService(this?.waveEnv, "zeroai", "SetWorkDir", Array.from(arguments))
+    }
+}
+
+export const ZeroaiService = new ZeroaiServiceType();
+
 export const AllServiceTypes = {
     "block": BlockServiceType,
     "client": ClientServiceType,
+    "message": MessageServiceType,
     "object": ObjectServiceType,
     "userinput": UserInputServiceType,
     "window": WindowServiceType,
     "workspace": WorkspaceServiceType,
+    "zeroai": ZeroaiServiceType,
 };
 
 export const AllServiceImpls = {
     "block": BlockService,
     "client": ClientService,
+    "message": MessageService,
     "object": ObjectService,
     "userinput": UserInputService,
     "window": WindowService,
     "workspace": WorkspaceService,
+    "zeroai": ZeroaiService,
 };
