@@ -9,6 +9,7 @@
 基于 WaveTerm 项目实现一个独立的 ZeroAI AI 面板，实现 Agent CLI 集成、多会话管理、可扩展的 LLM 配置以及 Agent 团队协作能力。
 
 **核心目标**:
+
 1. 支持 ACP (Agent Communication Protocol) 协议
 2. 支持多种 Agent CLI (claude-code, opencode, codex, qwen, gemini)
 3. 多会话管理 (按 Agent 类型分组)
@@ -23,11 +24,11 @@
 
 ### 核心文档
 
-| 文档 | 描述 | 状态 |
-|------|------|------|
-| **[prd.md](./prd.md)** | 产品需求文档 | ✅ 已完成 |
+| 文档                         | 描述          | 状态      |
+| ---------------------------- | ------------- | --------- |
+| **[prd.md](./prd.md)**       | 产品需求文档  | ✅ 已完成 |
 | **[design.md](./design.md)** | 技术设计 v2.0 | ✅ 已完成 |
-| **[tasks.md](./tasks.md)** | 任务分解 v2.0 | ✅ 已完成 |
+| **[tasks.md](./tasks.md)**   | 任务分解 v2.0 | ✅ 已完成 |
 
 ### 阅读顺序
 
@@ -132,20 +133,20 @@ task dev
 
 ## 模块解耦矩阵
 
-| 模块 | 依赖 | 解耦程度 | 可独立开发 |
-|------|------|---------|-----------|
-| **acp-types** | 无 | 🔴 高 | ✅ 是 |
-| **acp-connection** | acp-types, process | 🟡 中 | ✅ 是 |
-| **acp-adapter** | acp-types | 🔴 高 | ✅ 是 |
-| **acp-config** | acp-types | 🔴 高 | ✅ 是 |
-| **session-store** | acp-types | 🔴 高 | ✅ 是 |
-| **message-store** | acp-types | 🔴 高 | ✅ 是 |
-| **process-manager** | WSH | 🟡 中 | ✅ 是 |
-| **acp-agent** | protocol + store | 🟢 低 | ❌ 否 |
-| **claude 适配器** | acp-types | 🔴 高 | ✅ 是 |
-| **qwen 适配器** | acp-types | 🔴 高 | ✅ 是 |
-| **codex 适配器** | acp-types | 🔴 高 | ✅ 是 |
-| **opencode 适配器** | acp-types | 🔴 高 | ✅ 是 |
+| 模块                | 依赖               | 解耦程度 | 可独立开发 |
+| ------------------- | ------------------ | -------- | ---------- |
+| **acp-types**       | 无                 | 🔴 高    | ✅ 是      |
+| **acp-connection**  | acp-types, process | 🟡 中    | ✅ 是      |
+| **acp-adapter**     | acp-types          | 🔴 高    | ✅ 是      |
+| **acp-config**      | acp-types          | 🔴 高    | ✅ 是      |
+| **session-store**   | acp-types          | 🔴 高    | ✅ 是      |
+| **message-store**   | acp-types          | 🔴 高    | ✅ 是      |
+| **process-manager** | WSH                | 🟡 中    | ✅ 是      |
+| **acp-agent**       | protocol + store   | 🟢 低    | ❌ 否      |
+| **claude 适配器**   | acp-types          | 🔴 高    | ✅ 是      |
+| **qwen 适配器**     | acp-types          | 🔴 高    | ✅ 是      |
+| **codex 适配器**    | acp-types          | 🔴 高    | ✅ 是      |
+| **opencode 适配器** | acp-types          | 🔴 高    | ✅ 是      |
 
 ---
 
@@ -153,18 +154,18 @@ task dev
 
 ### 可完全并行的模块
 
-| 模块 | 开发者 | Day |
-|------|--------|-----|
-| **acp-types** | A | 1 |
-| **session-store** | B | 1 |
-| **message-store** | B | 1 |
-| **acp-adapter** | A | 2 |
-| **acp-config** | A | 2 |
-| **process-manager** | C | 3 |
-| **claude 适配器** | D | 6 |
-| **qwen 适配器** | E | 6 |
-| **codex 适配器** | F | 6 |
-| **opencode 适配器** | G | 7 |
+| 模块                | 开发者 | Day |
+| ------------------- | ------ | --- |
+| **acp-types**       | A      | 1   |
+| **session-store**   | B      | 1   |
+| **message-store**   | B      | 1   |
+| **acp-adapter**     | A      | 2   |
+| **acp-config**      | A      | 2   |
+| **process-manager** | C      | 3   |
+| **claude 适配器**   | D      | 6   |
+| **qwen 适配器**     | E      | 6   |
+| **codex 适配器**    | F      | 6   |
+| **opencode 适配器** | G      | 7   |
 
 ### 开发时间线
 
@@ -225,13 +226,13 @@ Day 12-13:   [测试组]     → 集成测试
 
 ## 关键技术决策
 
-| 决策 | 选择 |
-|------|------|
+| 决策            | 选择              |
+| --------------- | ----------------- |
 | Agent Team 协作 | 基础协作 (简化版) |
-| Session Resume | 完整支持 |
-| 工作目录 | 按 Session 级别 |
-| 实施策略 | 分阶段 MVP 先行 |
-| 架构参考 | AIONUi Agent |
+| Session Resume  | 完整支持          |
+| 工作目录        | 按 Session 级别   |
+| 实施策略        | 分阶段 MVP 先行   |
+| 架构参考        | AIONUi Agent      |
 
 ---
 
@@ -246,6 +247,7 @@ Day 12-13:   [测试组]     → 集成测试
 ## 实施计划
 
 ### Phase 1: MVP (13 天)
+
 - ✅ 基础设施: 类型定义、数据库、进程管理
 - ✅ 协议层: ACP 连接、适配器、配置
 - ✅ Agent 层: Agent 实现、后端适配器
@@ -254,19 +256,32 @@ Day 12-13:   [测试组]     → 集成测试
 - ✅ 前端: UI 组件
 - ✅ 测试: 集成测试
 
-### Phase 2: 多会话管理 (预计 2 周)
-- UI 增强 (SessionList)
-- 会话切换
-- 会话恢复
+### Phase 2: 多会话管理 ✅ 已完成 (commit: 00ee731e)
 
-### Phase 3: Agent 团队协作 (预计 3 周)
-- 多 Agent 并发
-- 消息路由
-- 任务分配
+- ✅ UI 增强 (SessionList)
+- ✅ 会话切换
+- ✅ 会话恢复
 
-### Phase 4: 自定义 LLM 配置 (预计 1.5 周)
-- Provider 配置 UI
-- 自定义 Provider
+### Phase 3: Agent 团队协作 ✅ 已完成 (commit: a562f0b2)
+
+- ✅ 多 Agent 并发
+- ✅ 消息路由
+- ✅ 任务分配
+
+### Phase 4: 自定义 LLM 配置 ✅ 已完成 (commit: 64e0b9d9)
+
+- ✅ Provider CRUD 后端 (list/save/delete/test)
+- ✅ 4 个新 WSH RPC 命令
+- ✅ 自定义 Backend 注册到 ACP 系统
+- ✅ 动态 Backend 查找 (不再硬编码)
+- ✅ Provider 管理 UI (添加/编辑/删除/测试)
+- ✅ Jotai 状态管理 (provider-model.ts)
+
+### Phase 5: 下一步 (待规划)
+
+- 🔲 配置文件生成 (`task generate` + TS 绑定更新)
+- 🔲 Provider 设置页面入口集成到主 UI
+- 🔲 集成测试补充
 
 ---
 
@@ -274,4 +289,4 @@ Day 12-13:   [测试组]     → 集成测试
 
 - **项目**: ZeroAI
 - **状态**: Active
-- **最后更新**: 2026-04-01
+- **最后更新**: 2026-04-03

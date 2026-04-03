@@ -8,17 +8,17 @@
 
 ### 团队划分 (建议)
 
-| 团队 | 职责 | 规模 | 工期 |
-|------|------|------|------|
-| **类型定义组** | 类型定义、Schema | 1 人 | 1 天 |
-| **协议层组** | ACP 连接、适配器、配置 | 2 人 | 4 天 |
-| **存储层组** | 数据库、存储接口 | 1-2 人 | 2 天 |
-| **进程层组** | 进程管理、WSH 集成 | 1 人 | 2 天 |
-| **Agent 适配器组** | 各 Agent 实现 | 4 人 (每人 1-2 个) | 3 天 |
-| **服务层组** | Service 层逻辑 | 2 人 | 2 天 |
-| **RPC 层组** | WSH RPC 接口 | 1 人 | 2 天 |
-| **前端组** | UI 组件、状态管理 | 2-3 人 | 4 天 |
-| **集成测试组** | E2E 测试 | 1-2 人 | 2 天 |
+| 团队               | 职责                   | 规模               | 工期 |
+| ------------------ | ---------------------- | ------------------ | ---- |
+| **类型定义组**     | 类型定义、Schema       | 1 人               | 1 天 |
+| **协议层组**       | ACP 连接、适配器、配置 | 2 人               | 4 天 |
+| **存储层组**       | 数据库、存储接口       | 1-2 人             | 2 天 |
+| **进程层组**       | 进程管理、WSH 集成     | 1 人               | 2 天 |
+| **Agent 适配器组** | 各 Agent 实现          | 4 人 (每人 1-2 个) | 3 天 |
+| **服务层组**       | Service 层逻辑         | 2 人               | 2 天 |
+| **RPC 层组**       | WSH RPC 接口           | 1 人               | 2 天 |
+| **前端组**         | UI 组件、状态管理      | 2-3 人             | 4 天 |
+| **集成测试组**     | E2E 测试               | 1-2 人             | 2 天 |
 
 ---
 
@@ -542,12 +542,12 @@
 
 ### Day 2 场景: 协议层 + 存储层 + 前端
 
-| 团队 | 任务 | 状态 |
-|------|------|------|
+| 团队         | 任务                   | 状态   |
+| ------------ | ---------------------- | ------ |
 | **协议层 A** | AcpConnection 基础结构 | 进行中 |
-| **协议层 B** | JSON-RPC 编解码 | 进行中 |
-| **存储层** | Session Store | 进行中 |
-| **前端** | TypeScript 类型规划 | 进行中 |
+| **协议层 B** | JSON-RPC 编解码        | 进行中 |
+| **存储层**   | Session Store          | 进行中 |
+| **前端**     | TypeScript 类型规划    | 进行中 |
 
 ### Day 4 场景: Agent 适配器并行
 
@@ -588,14 +588,14 @@ store (Day 2)
 
 ## 里程碑
 
-| 里程碑 | 日期 | 内容 |
-|--------|------|------|
-| **M1: 基础设施** | Day 2 | 类型定义、数据库、进程管理 |
-| **M2: 协议层完成** | Day 5 | ACP 连接、适配器、配置 |
-| **M3: Agent 完成** | Day 7 | ACP Agent + 各后端适配器 |
-| **M4: 后端完成** | Day 9 | Service + RPC |
-| **M5: 前端完成** | Day 12 | UI 组件完整 |
-| **M6: MVP 完成** | Day 13 | 测试通过 + 文档 |
+| 里程碑             | 日期   | 内容                       |
+| ------------------ | ------ | -------------------------- |
+| **M1: 基础设施**   | Day 2  | 类型定义、数据库、进程管理 |
+| **M2: 协议层完成** | Day 5  | ACP 连接、适配器、配置     |
+| **M3: Agent 完成** | Day 7  | ACP Agent + 各后端适配器   |
+| **M4: 后端完成**   | Day 9  | Service + RPC              |
+| **M5: 前端完成**   | Day 12 | UI 组件完整                |
+| **M6: MVP 完成**   | Day 13 | 测试通过 + 文档            |
 
 ---
 
@@ -672,3 +672,177 @@ schema/zeroai.json          [1.2.4]
 - **总工期**: ~13 天
 - **并行程度**: 高 (Day 2-9 最多 4 团队并行)
 - **文件数量**: ~36 个 (后端 27 + 前端 8 + schema 1)
+
+---
+
+## 实际完成进度
+
+> 最后更新: 2026-04-03
+
+### Sprint 1: 基础设施 ✅ 已完成
+
+- [x] 1.1.1 ACP 类型定义 (commit: 00ee731e)
+- [x] 1.1.2 Agent 接口定义 (commit: 00ee731e)
+- [x] 1.1.3 存储接口定义 (commit: 00ee731e)
+- [x] 1.1.4 内部类型定义 (commit: 00ee731e)
+- [x] 1.2.1 数据库迁移脚本 (commit: 00ee731e)
+- [x] 1.2.2 Session Store 实现 (commit: 00ee731e)
+- [x] 1.2.3 Message Store 实现 (commit: 00ee731e)
+
+### Sprint 2: 协议层 ✅ 已完成
+
+- [x] 2.1 ACP 连接实现 (commit: 00ee731e)
+- [x] 2.2 ACP 适配器实现 (commit: 00ee731e)
+- [x] 2.3 ACP 配置实现 (commit: 00ee731e)
+
+### Sprint 3: 进程层 ✅ 已完成
+
+- [x] 3.1-3.3 进程管理器 (commit: 00ee731e)
+
+### Sprint 4: Agent 适配器 ✅ 已完成
+
+- [x] 4.1 ACP Agent 实现 (commit: 00ee731e)
+- [x] 4.2 各后端适配器 (commit: 00ee731e)
+
+### Sprint 5: 服务层 ✅ 已完成
+
+- [x] 5.1-5.3 Session/Message/Agent Service (commit: 00ee731e)
+
+### Sprint 6: RPC 层 ✅ 已完成
+
+- [x] 6.1 RPC 类型定义 (commit: 2ae6291c → c9d3bad7)
+- [x] 6.2 WSH Server 实现 (commit: c9d3bad7)
+- [x] 6.3 HTTP 处理器 (commit: c9d3bad7)
+- [x] 6.4 事件发布 (commit: c9d3bad7)
+
+### Sprint 7-8: 前端 ✅ 已完成
+
+- [x] 7.1 TypeScript 类型绑定 (commit: 00ee731e)
+- [x] 7.2 ZeroAI Model — Jotai atoms (commit: 00ee731e)
+- [x] 7.3 API Client (commit: 00ee731e)
+- [x] 7.4 ZeroAI Panel 主面板 (commit: 00ee731e)
+- [x] 7.5 Session List (commit: 00ee731e)
+- [x] 7.6 Chat Area (commit: 00ee731e)
+- [x] 7.7 ZeroAI Input / ResizableInput (commit: 00ee731e)
+- [x] 7.8 Status Bar (commit: 00ee731e)
+- [ ] 7.9 WorkDir Select — 未单独实现 (集成在 StatusBar 中)
+
+### Sprint 9: 集成测试 🔲 部分完成
+
+- [ ] 9.1-9.4 后端/前端/E2E 测试 — 待后续补充
+
+### Sprint 10: 文档和清理 🔲 部分完成
+
+- [x] 10.3 代码清理 (commit: 00ee731e, 2ae6291c)
+
+---
+
+## Phase 2: 多会话管理 ✅ 已完成 (commit: 00ee731e)
+
+## Phase 3: Agent 团队协作 ✅ 已完成 (commit: a562f0b2)
+
+## Phase 4: 自定义 LLM 配置 ✅ 已完成 (commit: 64e0b9d9)
+
+### Sprint 11: 自定义 Provider 配置
+
+- [x] **11.1 后端配置类型** (`pkg/wconfig/settingsconfig.go`)
+  - 添加 `ZeroAiProviderConfigType` 到 `FullConfigType`
+  - 配置存储在 `zeroai.json`
+  - **验收**: 通过编译
+
+- [x] **11.2 RPC 接口定义** (`pkg/wshrpc/wshrpctypes.go`)
+  - 添加 `ZeroAiListProvidersCommand`
+  - 添加 `ZeroAiSaveProviderCommand`
+  - 添加 `ZeroAiDeleteProviderCommand`
+  - 添加 `ZeroAiTestProviderCommand`
+  - 定义 `ZeroAiProviderInfo`, `ZeroAiTestProviderResult` 等类型
+  - **验收**: 通过编译
+
+- [x] **11.3 Provider 服务层** (`pkg/zeroai/service/provider-service.go`)
+  - 实现 `ListProviders()` — 列出自定义 Provider
+  - 实现 `SaveProvider()` — 保存到 zeroai.json
+  - 实现 `DeleteProvider()` — 从 zeroai.json 删除
+  - 实现 `TestProvider()` — 运行 --version 测试连接
+  - 实现 `checkProviderAvailable()` — CLI 可用性检测
+  - **验收**: 编译通过，无 LSP 错误
+
+- [x] **11.4 自定义 Backend 注册** (`pkg/zeroai/protocol/acp-config.go`)
+  - 实现 `RegisterCustomBackend()` — 注册自定义 backend
+  - 实现 `UnregisterCustomBackend()` — 取消注册
+  - 实现 `GetCustomBackendConfigs()` — 查询所有自定义配置
+  - 更新 `GetBackendConfig()` — 支持查找自定义 backend
+  - 更新 `GetAllBackendConfigs()` / `GetEnabledBackends()` — 包含自定义
+  - 使用 `sync.RWMutex` 保证并发安全
+  - **验收**: 与预定义 backend 无缝融合
+
+- [x] **11.5 RPC 服务端方法** (`pkg/zeroai/rpc/wshserver-zeroai.go`)
+  - 实现 4 个 Provider 管理 RPC handler
+  - 添加 `providerService` 到 `WshRpcZeroaiServer`
+  - 更新 `GetAgentsCommand` — 返回自定义 Provider
+  - 更新 `CreateSessionCommand` — 传递 Backend 到 session options
+  - 添加 `getBackendForSession()` — 动态 backend 查找
+  - 更新 `SendMessageCommand` / `SendStreamMessageCommand` — 使用动态 backend
+  - 更新 `ConfirmPermissionCommand` — 使用动态 backend
+  - **验收**: 编译通过，无 LSP 错误
+
+- [x] **11.6 前端类型定义** (`frontend/app/zeroai/types/index.ts`)
+  - 添加 `ZeroAiProviderInfo` 类型
+  - 添加 `SaveProviderRequest` 类型
+  - 添加 `DeleteProviderRequest` 类型
+  - 添加 `TestProviderResult` 类型
+  - 更新 `ZeroAiBackend` 包含 `"custom"`
+  - **验收**: TypeScript 编译通过
+
+- [x] **11.7 前端状态管理** (`frontend/app/zeroai/models/provider-model.ts`)
+  - Jotai atoms: `providersAtom`, `providerLoadingAtom`, `providerTestingAtom`
+  - Action dispatch: `ProviderAction` 联合类型
+  - 异步函数: `fetchProviders()`, `saveProvider()`, `deleteProvider()`, `testProvider()`
+  - **验收**: TypeScript 编译通过
+
+- [x] **11.8 前端 RPC 客户端** (`frontend/app/zeroai/store/zeroai-client.ts`)
+  - 添加 `listProviders()`
+  - 添加 `saveProvider()`
+  - 添加 `deleteProvider()`
+  - 添加 `testProvider()`
+  - **验收**: TypeScript 编译通过
+
+- [x] **11.9 前端 Provider 管理 UI** (`frontend/app/zeroai/components/provider-settings.tsx`)
+  - `ProviderSettings` — 主容器 (列表 + 添加/编辑表单)
+  - `ProviderCard` — Provider 卡片 (状态徽章、操作按钮)
+  - `ProviderForm` — 表单 (名称、CLI 命令、路径、参数、流式支持、模型)
+  - 测试结果展示 (成功/失败 + 延迟 + 版本)
+  - **验收**: TypeScript 编译通过
+
+- [x] **11.10 前端样式** (`frontend/app/zeroai/components/provider-settings.scss`)
+  - 卡片列表样式 (悬停效果、选中高亮、可用性状态)
+  - 表单网格布局
+  - 测试结果状态 (成功绿色/失败红色)
+  - 操作按钮 (悬停显示)
+  - **验收**: SCSS 编译通过
+
+### Phase 4 文件清单 (新增/修改)
+
+```
+新增文件 (4):
+  pkg/zeroai/service/provider-service.go       [11.3]
+  frontend/app/zeroai/models/provider-model.ts   [11.7]
+  frontend/app/zeroai/components/provider-settings.tsx  [11.9]
+  frontend/app/zeroai/components/provider-settings.scss  [11.10]
+
+修改文件 (8):
+  pkg/wconfig/settingsconfig.go              [11.1]
+  pkg/wshrpc/wshrpctypes.go                  [11.2]
+  pkg/zeroai/protocol/acp-config.go           [11.4]
+  pkg/zeroai/agent/agent-interface.go         [Backend field]
+  pkg/zeroai/rpc/wshserver-zeroai.go          [11.5]
+  frontend/app/zeroai/types/index.ts          [11.6]
+  frontend/app/zeroai/store/zeroai-client.ts  [11.8]
+  frontend/app/zeroai/components/index.ts     [export]
+```
+
+### Phase 4 Git 提交
+
+```
+64e0b9d9 feat(zeroai): implement Phase 4 custom LLM provider configuration
+  12 files changed, +1,404 / -108 lines
+```
