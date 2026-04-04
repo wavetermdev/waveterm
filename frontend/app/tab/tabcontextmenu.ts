@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import i18n from "@/app/i18n";
 import { getOrefMetaKeyAtom, globalStore, recordTEvent } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget } from "@/util/util";
@@ -17,23 +18,25 @@ const FlagColors: { label: string; value: string }[] = [
     { label: "Yellow", value: "#FFE900" },
 ];
 
+const t = i18n.t.bind(i18n);
+
 export function buildTabBarContextMenu(env: TabEnv): ContextMenuItem[] {
     const currentTabBar = globalStore.get(env.getSettingsKeyAtom("app:tabbar")) ?? "top";
     const tabBarSubmenu: ContextMenuItem[] = [
         {
-            label: "Top",
+            label: t("app.top"),
             type: "checkbox",
             checked: currentTabBar === "top",
             click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "top" })),
         },
         {
-            label: "Left",
+            label: t("app.left"),
             type: "checkbox",
             checked: currentTabBar === "left",
             click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "left" })),
         },
     ];
-    return [{ label: "Tab Bar Position", type: "submenu", submenu: tabBarSubmenu }];
+    return [{ label: t("app.tabBarPosition"), type: "submenu", submenu: tabBarSubmenu }];
 }
 
 export function buildTabContextMenu(

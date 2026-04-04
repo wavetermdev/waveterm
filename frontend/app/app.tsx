@@ -1,6 +1,8 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import "./i18n/index";
+
 import {
     clearBadgesForBlockOnFocus,
     clearBadgesForTabOnFocus,

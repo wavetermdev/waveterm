@@ -9,6 +9,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isDev } from "@/util/isdev";
 import { fireAndForget } from "@/util/util";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApi } from "../store/global";
 import { Modal } from "./modal";
 
@@ -19,6 +20,7 @@ interface AboutModalVProps {
 }
 
 const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProps) => {
+    const { t } = useTranslation();
     const currentDate = new Date();
 
     return (
@@ -27,17 +29,17 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
             <div className="flex flex-col gap-[26px] w-full relative z-10">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
-                    <div className="text-[25px]">Wave Terminal</div>
+                    <div className="text-[25px]">{t("app.waveTerminal")}</div>
                     <div className="leading-5">
-                        Open-Source AI-Integrated Terminal
+                        {t("app.aboutDescription")}
                         <br />
-                        Built for Seamless Workflows
+                        {t("app.aboutTagline")}
                     </div>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
-                    Client Version {versionString}
+                    {t("app.clientVersion")} {versionString}
                     <br />
-                    Update Channel: {updaterChannel}
+                    {t("app.updateChannel")}: {updaterChannel}
                 </div>
                 <div className="grid grid-cols-2 gap-[10px] self-stretch w-full">
                     <a
@@ -46,7 +48,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-brands fa-github mr-2"></i>GitHub
+                        <i className="fa-brands fa-github mr-2"></i>{t("app.github")}
                     </a>
                     <a
                         href="https://www.waveterm.dev/?ref=about"
@@ -54,7 +56,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-globe mr-2"></i>Website
+                        <i className="fa-sharp fa-light fa-globe mr-2"></i>{t("app.website")}
                     </a>
                     <a
                         href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
@@ -62,7 +64,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-book mr-2"></i>Open Source
+                        <i className="fa-sharp fa-light fa-book mr-2"></i>{t("app.openSource")}
                     </a>
                     <a
                         href="https://github.com/sponsors/wavetermdev"
@@ -70,7 +72,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-heart mr-2"></i>Sponsor
+                        <i className="fa-sharp fa-light fa-heart mr-2"></i>{t("app.sponsor")}
                     </a>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">

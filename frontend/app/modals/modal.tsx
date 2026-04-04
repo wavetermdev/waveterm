@@ -6,6 +6,7 @@ import { cn } from "@/util/util";
 import clsx from "clsx";
 import { forwardRef } from "react";
 import ReactDOM from "react-dom";
+import { useTranslation } from "react-i18next";
 
 import "./modal.scss";
 
@@ -97,16 +98,17 @@ const ModalFooter = ({
     okDisabled,
     cancelDisabled,
 }: ModalFooterProps) => {
+    const { t } = useTranslation();
     return (
         <footer className="modal-footer">
             {onCancel && (
                 <Button className="grey ghost" onClick={onCancel} disabled={cancelDisabled}>
-                    {cancelLabel}
+                    {cancelLabel || t("app.cancel")}
                 </Button>
             )}
             {onOk && (
                 <Button onClick={onOk} disabled={okDisabled}>
-                    {okLabel}
+                    {okLabel || t("app.ok")}
                 </Button>
             )}
         </footer>
