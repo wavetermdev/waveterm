@@ -53,7 +53,7 @@
     "app.keybindings": "Keybindings",
     "app.errorRenderingViewHeader": "Error Rendering View Header: {{error}}",
     "app.cancel": "Cancel",
-    "app.ok": "Ok",
+    "app.ok": "OK",
     "app.aboutDescription": "Open-Source AI-Integrated Terminal",
     "app.aboutTagline": "Built for Seamless Workflows",
     "app.clientVersion": "Client Version",
