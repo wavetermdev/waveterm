@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import i18n from "@/app/i18n";
 import { getOrefMetaKeyAtom, globalStore, recordTEvent } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget } from "@/util/util";
@@ -17,23 +18,25 @@ const FlagColors: { label: string; value: string }[] = [
     { label: "Yellow", value: "#FFE900" },
 ];
 
+const t = i18n.t.bind(i18n);
+
 export function buildTabBarContextMenu(env: TabEnv): ContextMenuItem[] {
     const currentTabBar = globalStore.get(env.getSettingsKeyAtom("app:tabbar")) ?? "top";
     const tabBarSubmenu: ContextMenuItem[] = [
         {
-            label: "Top",
+            label: t("app.top"),
             type: "checkbox",
             checked: currentTabBar === "top",
             click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "top" })),
         },
         {
-            label: "Left",
+            label: t("app.left"),
             type: "checkbox",
             checked: currentTabBar === "left",
             click: () => fireAndForget(() => env.rpc.SetConfigCommand(TabRpcClient, { "app:tabbar": "left" })),
         },
     ];
-    return [{ label: "Tab Bar Position", type: "submenu", submenu: tabBarSubmenu }];
+    return [{ label: t("app.tabBarPosition"), type: "submenu", submenu: tabBarSubmenu }];
 }
 
 export function buildTabContextMenu(
@@ -44,9 +47,9 @@ export function buildTabContextMenu(
 ): ContextMenuItem[] {
     const menu: ContextMenuItem[] = [];
     menu.push(
-        { label: "Rename Tab", click: () => renameRef.current?.() },
+        { label: t("app.renameTab"), click: () => renameRef.current?.() },
         {
-            label: "Copy TabId",
+            label: t("app.copyTabId"),
             click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
         },
         { type: "separator" }
@@ -55,7 +58,7 @@ export function buildTabContextMenu(
     const currentFlagColor = globalStore.get(getOrefMetaKeyAtom(tabORef, "tab:flagcolor")) ?? null;
     const flagSubmenu: ContextMenuItem[] = [
         {
-            label: "None",
+            label: t("app.none"),
             type: "checkbox",
             checked: currentFlagColor == null,
             click: () =>
@@ -64,7 +67,7 @@ export function buildTabContextMenu(
                 ),
         },
         ...FlagColors.map((fc) => ({
-            label: fc.label,
+            label: t("app." + fc.label.toLowerCase()),
             type: "checkbox" as const,
             checked: currentFlagColor === fc.value,
             click: () =>
@@ -73,7 +76,7 @@ export function buildTabContextMenu(
                 ),
         })),
     ];
-    menu.push({ label: "Flag Tab", type: "submenu", submenu: flagSubmenu }, { type: "separator" });
+    menu.push({ label: t("app.flagTab"), type: "submenu", submenu: flagSubmenu }, { type: "separator" });
     const fullConfig = globalStore.get(env.atoms.fullConfigAtom);
     const backgrounds = fullConfig?.backgrounds ?? {};
     const bgKeys = Object.keys(backgrounds).filter((k) => backgrounds[k] != null);
@@ -86,7 +89,7 @@ export function buildTabContextMenu(
         const submenu: ContextMenuItem[] = [];
         const oref = makeORef("tab", id);
         submenu.push({
-            label: "Default",
+            label: t("app.default"),
             click: () =>
                 fireAndForget(async () => {
                     await env.rpc.SetMetaCommand(TabRpcClient, {
@@ -112,9 +115,9 @@ export function buildTabContextMenu(
                     }),
             });
         }
-        menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
+        menu.push({ label: t("app.backgrounds"), type: "submenu", submenu }, { type: "separator" });
     }
     menu.push(...buildTabBarContextMenu(env), { type: "separator" });
-    menu.push({ label: "Close Tab", click: () => onClose(null) });
+    menu.push({ label: t("app.closeTab"), click: () => onClose(null) });
     return menu;
 }
