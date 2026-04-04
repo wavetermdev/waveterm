@@ -93,8 +93,8 @@ interface ModalFooterProps {
 const ModalFooter = ({
     onCancel,
     onOk,
-    cancelLabel = "Cancel",
-    okLabel = "Ok",
+    cancelLabel,
+    okLabel,
     okDisabled,
     cancelDisabled,
 }: ModalFooterProps) => {
@@ -103,12 +103,12 @@ const ModalFooter = ({
         <footer className="modal-footer">
             {onCancel && (
                 <Button className="grey ghost" onClick={onCancel} disabled={cancelDisabled}>
-                    {cancelLabel || t("app.cancel")}
+                    {cancelLabel != null ? cancelLabel : t("app.cancel")}
                 </Button>
             )}
             {onOk && (
                 <Button onClick={onOk} disabled={okDisabled}>
-                    {okLabel || t("app.ok")}
+                    {okLabel != null ? okLabel : t("app.ok")}
                 </Button>
             )}
         </footer>

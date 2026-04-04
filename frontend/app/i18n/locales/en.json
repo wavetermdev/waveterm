@@ -69,5 +69,7 @@
     "app.save": "Save",
     "app.unsavedChanges": "Unsaved changes",
     "app.loading": "Loading...",
-    "app.configError": "Config Error"
+    "app.configError": "Config Error",
+    "app.deprecated": "Deprecated",
+    "app.saveWithShortcut": "Save ({{shortcut}})"
 }

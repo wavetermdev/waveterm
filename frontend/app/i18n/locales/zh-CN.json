@@ -69,5 +69,7 @@
     "app.save": "保存",
     "app.unsavedChanges": "未保存的更改",
     "app.loading": "加载中...",
-    "app.configError": "配置错误"
+    "app.configError": "配置错误",
+    "app.deprecated": "已弃用",
+    "app.saveWithShortcut": "保存 ({{shortcut}})"
 }

@@ -244,7 +244,7 @@ function getConnectionsEditItem(
         status: "disconnected",
         icon: "gear",
         iconColor: "var(--grey-text-color)",
-        value: t("app.editConnections"),
+        value: "",
         label: t("app.editConnections"),
         onSelect: () => {
             util.fireAndForget(async () => {

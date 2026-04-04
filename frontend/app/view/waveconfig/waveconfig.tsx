@@ -85,7 +85,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                                             : "text-muted-foreground/70 bg-secondary/30"
                                     }`}
                                 >
-                                    deprecated
+                                    {t("app.deprecated")}
                                 </span>
                                 {configErrorFiles.has(file.path) && (
                                     <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] ml-auto shrink-0" />
@@ -164,7 +164,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [hasChanges, isSaving, model]);
 
-    const saveTooltip = `Save (${model.saveShortcut})`;
+    const saveTooltip = t("app.saveWithShortcut", { shortcut: model.saveShortcut });
 
     return (
         <div className="@container flex flex-col w-full h-full">
