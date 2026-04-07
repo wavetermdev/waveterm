@@ -71,7 +71,6 @@ type WshRpcInterface interface {
 	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
 	WriteTempFileCommand(ctx context.Context, data CommandWriteTempFileData) (string, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
-	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	TestMultiArgCommand(ctx context.Context, arg1 string, arg2 int, arg3 bool) (string, error)
@@ -342,47 +341,6 @@ type CommandEventReadHistoryData struct {
 	MaxItems int    `json:"maxitems"`
 }
 
-type WaveAIStreamRequest struct {
-	ClientId string                    `json:"clientid,omitempty"`
-	Opts     *WaveAIOptsType           `json:"opts"`
-	Prompt   []WaveAIPromptMessageType `json:"prompt"`
-}
-
-type WaveAIPromptMessageType struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-	Name    string `json:"name,omitempty"`
-}
-
-type WaveAIOptsType struct {
-	Model      string `json:"model"`
-	APIType    string `json:"apitype,omitempty"`
-	APIToken   string `json:"apitoken"`
-	OrgID      string `json:"orgid,omitempty"`
-	APIVersion string `json:"apiversion,omitempty"`
-	BaseURL    string `json:"baseurl,omitempty"`
-	ProxyURL   string `json:"proxyurl,omitempty"`
-	MaxTokens  int    `json:"maxtokens,omitempty"`
-	MaxChoices int    `json:"maxchoices,omitempty"`
-	TimeoutMs  int    `json:"timeoutms,omitempty"`
-}
-
-type WaveAIPacketType struct {
-	Type         string           `json:"type"`
-	Model        string           `json:"model,omitempty"`
-	Created      int64            `json:"created,omitempty"`
-	FinishReason string           `json:"finish_reason,omitempty"`
-	Usage        *WaveAIUsageType `json:"usage,omitempty"`
-	Index        int              `json:"index,omitempty"`
-	Text         string           `json:"text,omitempty"`
-	Error        string           `json:"error,omitempty"`
-}
-
-type WaveAIUsageType struct {
-	PromptTokens     int `json:"prompt_tokens,omitempty"`
-	CompletionTokens int `json:"completion_tokens,omitempty"`
-	TotalTokens      int `json:"total_tokens,omitempty"`
-}
 
 type CpuDataRequest struct {
 	Id    string `json:"id"`
