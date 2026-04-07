@@ -1020,6 +1020,8 @@ declare global {
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
+        version: string;
+        buildtime: string;
     };
 
     // waveobj.Job

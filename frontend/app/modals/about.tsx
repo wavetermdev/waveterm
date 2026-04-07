@@ -3,13 +3,14 @@
 
 import Logo from "@/app/asset/logo.svg";
 import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
+import { atoms } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isDev } from "@/util/isdev";
 import { fireAndForget } from "@/util/util";
-import { useEffect, useState } from "react";
-import { getApi } from "../store/global";
+import { useAtomValue } from "jotai";
+import { useEffect } from "react";
 import { Modal } from "./modal";
 
 interface AboutModalVProps {
@@ -84,9 +85,9 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
 AboutModalV.displayName = "AboutModalV";
 
 const AboutModal = () => {
-    const [details] = useState(() => getApi().getAboutModalDetails());
-    const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
-    const versionString = `${details.version} (${isDev() ? "dev-" : ""}${details.buildTime})`;
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const versionString = `${fullConfig?.version ?? ""} (${isDev() ? "dev-" : ""}${fullConfig?.buildtime ?? ""})`;
+    const updaterChannel = fullConfig?.settings?.["autoupdate:channel"] ?? "latest";
 
     useEffect(() => {
         fireAndForget(async () => {
