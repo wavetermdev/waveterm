@@ -7,6 +7,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
+    atoms,
     fetchWaveFile,
     getApi,
     getOverrideConfigAtom,
@@ -16,6 +17,7 @@ import {
     openLink,
     WOS,
 } from "@/store/global";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
@@ -99,8 +101,10 @@ export class TermWrap {
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
+    currentCwdAtom: jotai.PrimitiveAtom<string | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
     claudeCodeActiveAtom: jotai.PrimitiveAtom<boolean>;
+    contentHeightRows: number;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
@@ -120,6 +124,7 @@ export class TermWrap {
     lastMode2026ResetTs: number = 0;
     inSyncTransaction: boolean = false;
     inRepaintTransaction: boolean = false;
+    syncQuickTerminalHeight_debounced: () => void;
 
     constructor(
         tabId: string,
@@ -139,8 +144,10 @@ export class TermWrap {
         this.lastUpdated = Date.now();
         this.promptMarkers = [];
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
+        this.currentCwdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.claudeCodeActiveAtom = jotai.atom(false);
+        this.contentHeightRows = 0;
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
@@ -182,7 +189,7 @@ export class TermWrap {
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             try {
-                return handleOsc7Command(data, this.blockId, this.loaded);
+                return handleOsc7Command(data, this.blockId, this.loaded, this);
             } catch (e) {
                 console.error("[termwrap] osc 7 handler error", this.blockId, e);
                 return false;
@@ -280,6 +287,7 @@ export class TermWrap {
         this.mainFileSubject = null;
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
+        this.syncQuickTerminalHeight_debounced = debounce(16, this.syncQuickTerminalHeight.bind(this));
         this.terminal.open(this.connectElem);
 
         const dragoverHandler = (e: DragEvent) => {
@@ -475,6 +483,7 @@ export class TermWrap {
         if (msg.fileop == "truncate") {
             this.terminal.clear();
             this.heldData = [];
+            this.syncQuickTerminalHeight_debounced();
         } else if (msg.fileop == "append") {
             const decodedData = base64ToArray(msg.data64);
             if (this.loaded) {
@@ -508,6 +517,7 @@ export class TermWrap {
                 this.dataBytesProcessed += data.length;
             }
             this.lastUpdated = Date.now();
+            this.syncQuickTerminalHeight_debounced();
             resolve();
         });
         return prtn;
@@ -575,11 +585,29 @@ export class TermWrap {
             );
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
+        this.syncQuickTerminalHeight_debounced();
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
         }
+    }
+
+    private getContentHeightRows(): number {
+        return Math.max(1, this.terminal.buffer.active.baseY + this.terminal.buffer.active.cursorY + 1);
+    }
+
+    private syncQuickTerminalHeight() {
+        const nextRows = this.getContentHeightRows();
+        this.contentHeightRows = nextRows;
+
+        const quickTermState = globalStore.get(atoms.quickTerminalAtom);
+        if (quickTermState.blockId !== this.blockId) {
+            return;
+        }
+
+        const layoutModel = getLayoutModelForStaticTab();
+        layoutModel?.updateTree(false);
     }
 
     processAndCacheData() {

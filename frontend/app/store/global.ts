@@ -38,6 +38,7 @@ import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribeSingle } from "./wps";
 
 let globalPrimaryTabStartup: boolean = false;
+const QuickTerminalInitialState = { visible: false, blockId: null as string | null, opening: false, closing: false };
 
 function initGlobal(initOpts: GlobalInitOptions) {
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
@@ -570,6 +571,32 @@ function getFocusedBlockId(): string {
     return focusedLayoutNode?.data?.blockId;
 }
 
+function getInheritedContextFromBlock(blockId: string | null): { cwd: string | null; connection: string | null } {
+    if (blockId == null) {
+        return { cwd: null, connection: null };
+    }
+
+    const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+    const blockData = globalStore.get(blockAtom);
+    const blockComponentModel = getBlockComponentModel(blockId);
+    const liveCwdAtom = (blockComponentModel?.viewModel as any)?.termRef?.current?.currentCwdAtom as
+        | PrimitiveAtom<string | null>
+        | undefined;
+    const liveCwd = liveCwdAtom ? globalStore.get(liveCwdAtom) : null;
+    const cwd = typeof liveCwd === "string" ? liveCwd : typeof blockData?.meta?.["cmd:cwd"] === "string" ? blockData.meta["cmd:cwd"] : null;
+
+    let connection = typeof blockData?.meta?.connection === "string" ? blockData.meta.connection : null;
+    const shellProcFullStatusAtom = (blockComponentModel?.viewModel as any)?.shellProcFullStatus as
+        | PrimitiveAtom<BlockControllerRuntimeStatus>
+        | undefined;
+    const runtimeStatus = shellProcFullStatusAtom ? globalStore.get(shellProcFullStatusAtom) : null;
+    if (typeof runtimeStatus?.shellprocconnname === "string") {
+        connection = runtimeStatus.shellprocconnname;
+    }
+
+    return { cwd, connection };
+}
+
 // pass null to refocus the currently focused block
 function refocusNode(blockId: string) {
     if (blockId == null) {
@@ -673,6 +700,60 @@ function recordTEvent(event: string, props?: TEventProps) {
     RpcApi.RecordTEventCommand(TabRpcClient, { event, props }, { noresponse: true });
 }
 
+async function toggleQuickTerminal(): Promise<boolean> {
+    const layoutModel = getLayoutModelForStaticTab();
+    const quickTermState = globalStore.get(atoms.quickTerminalAtom);
+
+    if (quickTermState.opening || quickTermState.closing) {
+        return true;
+    }
+
+    if (quickTermState.visible && quickTermState.blockId) {
+        // Dismiss: close the ephemeral node
+        // Set closing flag to prevent race condition with double-ESC
+        globalStore.set(atoms.quickTerminalAtom, { ...quickTermState, closing: true });
+        const quickTerminalNode = layoutModel.getNodeByBlockId(quickTermState.blockId);
+        if (quickTerminalNode != null) {
+            await layoutModel.closeNode(quickTerminalNode.id);
+        } else {
+            await ObjectService.DeleteBlock(quickTermState.blockId);
+        }
+        globalStore.set(atoms.quickTerminalAtom, QuickTerminalInitialState);
+        return true;
+    }
+
+    // Summon: inherit connection info and current working directory from the focused block when possible.
+    const focusedBlockId = getFocusedBlockId();
+    const { cwd, connection } = getInheritedContextFromBlock(focusedBlockId);
+
+    // Create ephemeral terminal block with custom quick terminal sizing
+    const blockDef: BlockDef = {
+        meta: {
+            view: "term",
+            controller: "shell",
+            ...(connection != null && { connection }),
+            ...(cwd != null && { "cmd:cwd": cwd }),
+        },
+    };
+
+    globalStore.set(atoms.quickTerminalAtom, { ...QuickTerminalInitialState, opening: true });
+
+    let blockId: string | null = null;
+    try {
+        const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+        blockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+        layoutModel.newQuickTerminalNode(blockId, focusedBlockId);
+        globalStore.set(atoms.quickTerminalAtom, { visible: true, blockId, opening: false, closing: false });
+        return true;
+    } catch (error) {
+        globalStore.set(atoms.quickTerminalAtom, QuickTerminalInitialState);
+        if (blockId != null) {
+            fireAndForget(() => ObjectService.DeleteBlock(blockId));
+        }
+        throw error;
+    }
+}
+
 export {
     atoms,
     createBlock,
@@ -683,6 +764,7 @@ export {
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
+    getInheritedContextFromBlock,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
     getTabMetaKeyAtom,
@@ -715,6 +797,7 @@ export {
     setNodeFocus,
     setPlatform,
     subscribeToConnEvents,
+    toggleQuickTerminal,
     unregisterBlockComponentModel,
     useBlockAtom,
     useBlockCache,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FocusManager } from "@/app/store/focusManager";
-import { getSettingsKeyAtom } from "@/app/store/global";
+import { getBlockComponentModel, getSettingsKeyAtom } from "@/app/store/global";
 import { BlockService } from "@/app/store/services";
 import * as WOS from "@/app/store/wos";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
@@ -72,6 +72,15 @@ interface ResizeContext {
 const DefaultGapSizePx = 3;
 const MinNodeSizePx = 40;
 const DefaultAnimationTimeS = 0.15;
+const QuickTerminalMinWidthPx = 160;
+const QuickTerminalFallbackCols = 80;
+const QuickTerminalFallbackCharWidthPx = 8;
+const QuickTerminalInitialHeightPct = 0.1;
+const QuickTerminalMaxHeightPct = 0.5;
+const QuickTerminalMinRows = 2;
+const QuickTerminalRowHeightMultiplier = 1.35;
+const QuickTerminalVerticalChromePx = 8;
+const QuickTerminalHorizontalInsetPx = 12;
 
 export class LayoutModel {
     /**
@@ -753,13 +762,17 @@ export class LayoutModel {
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
-                this.updateEphemeralNodeProps(
-                    ephemeralNode,
-                    newAdditionalProps,
-                    newLeafs,
-                    magnifiedNodeSize,
-                    boundingRect
-                );
+                if (ephemeralNode.data?.ephemeralType === "quick-terminal") {
+                    this.updateQuickTerminalNodeProps(ephemeralNode, newAdditionalProps, newLeafs, boundingRect);
+                } else {
+                    this.updateEphemeralNodeProps(
+                        ephemeralNode,
+                        newAdditionalProps,
+                        newLeafs,
+                        magnifiedNodeSize,
+                        boundingRect
+                    );
+                }
             }
 
             this.treeState.leafOrder = getLeafOrder(newLeafs, newAdditionalProps);
@@ -1333,6 +1346,102 @@ export class LayoutModel {
         this.updateEphemeralNodeProps(ephemeralNode, addlProps, leafs, magnifiedNodeSizePct, boundingRect);
         this.setter(this.additionalProps, addlProps);
         this.focusNode(ephemeralNode.id);
+    }
+
+    newQuickTerminalNode(blockId: string, sourceBlockId?: string | null) {
+        if (this.getter(this.ephemeralNode)) {
+            this.closeNode(this.getter(this.ephemeralNode).id);
+        }
+
+        const ephemeralNode = newLayoutNode(undefined, undefined, undefined, {
+            blockId,
+            ephemeralType: "quick-terminal",
+            quickTerminalSourceBlockId: sourceBlockId,
+        });
+        this.setter(this.ephemeralNode, ephemeralNode);
+
+        const addlProps = this.getter(this.additionalProps);
+        const leafs = this.getter(this.leafs);
+        const boundingRect = this.getBoundingRect();
+
+        this.updateQuickTerminalNodeProps(ephemeralNode, addlProps, leafs, boundingRect);
+
+        this.setter(this.additionalProps, addlProps);
+        this.focusNode(ephemeralNode.id);
+    }
+
+    updateQuickTerminalNodeProps(
+        node: LayoutNode,
+        addlPropsMap: Record<string, LayoutNodeAdditionalProps>,
+        leafs: LayoutNode[],
+        boundingRect: Dimensions
+    ) {
+        // Quick terminal: width is slightly inset from the source block (or fallback), starts at 10% of the current
+        // window, then grows with terminal content up to 50%.
+        // always opens from the top edge of the layout container.
+        const termFontSize = this.getter(getSettingsKeyAtom("term:fontsize")) ?? 12;
+        const minHeightPx = Math.ceil(
+            termFontSize * QuickTerminalRowHeightMultiplier * QuickTerminalMinRows + QuickTerminalVerticalChromePx
+        );
+
+        // Determine width and left: prefer the source block bounds when available.
+        // If the source block is effectively fullscreen, don't inset it further.
+        // If no source block is available, fall back to the current layout width instead of a narrow fixed column size.
+        const layoutInsetPx = Math.min(
+            QuickTerminalHorizontalInsetPx,
+            Math.max(0, (boundingRect.width - QuickTerminalMinWidthPx) / 2)
+        );
+        let width = boundingRect.width - 2 * layoutInsetPx;
+        let left = layoutInsetPx;
+        const sourceBlockId = node.data?.quickTerminalSourceBlockId;
+        if (sourceBlockId) {
+            const sourceNode = this.getNodeByBlockId(sourceBlockId);
+            if (sourceNode) {
+                const sourceRect = this.getNodeRectById(sourceNode.id);
+                if (sourceRect) {
+                    if (sourceRect.width >= QuickTerminalMinWidthPx) {
+                        const sourceMatchesLayoutWidth =
+                            sourceRect.width >= boundingRect.width - 2 * QuickTerminalHorizontalInsetPx;
+                        const sourceInsetPx = sourceMatchesLayoutWidth
+                            ? 0
+                            : Math.min(
+                                  QuickTerminalHorizontalInsetPx,
+                                  Math.max(0, (sourceRect.width - QuickTerminalMinWidthPx) / 2)
+                              );
+                        width = sourceRect.width - 2 * sourceInsetPx;
+                        left = sourceRect.left + sourceInsetPx;
+                    }
+                }
+            }
+        }
+
+        const quickTerminalRows =
+            getBlockComponentModel(node.data?.blockId)?.viewModel?.termRef?.current?.contentHeightRows ?? 0;
+        const initialHeightPx = Math.floor(boundingRect.height * QuickTerminalInitialHeightPct);
+        const maxHeightPx = Math.floor(boundingRect.height * QuickTerminalMaxHeightPct);
+        const contentHeightPx =
+            quickTerminalRows > 0
+                ? Math.ceil(quickTerminalRows * termFontSize * QuickTerminalRowHeightMultiplier) +
+                  QuickTerminalVerticalChromePx
+                : 0;
+        let height = Math.max(initialHeightPx, minHeightPx, contentHeightPx);
+        height = Math.min(height, maxHeightPx);
+        height = Math.min(height, boundingRect.height);
+        left = Math.max(0, Math.min(left, boundingRect.width - width));
+
+        const transform = setTransform(
+            {
+                top: 0,
+                left: left,
+                width: width,
+                height: height,
+            },
+            true,
+            true,
+            "var(--zindex-layout-ephemeral-node)"
+        );
+        addlPropsMap[node.id] = { treeKey: "-1", transform };
+        leafs.push(node);
     }
 
     addEphemeralNodeToLayout() {
