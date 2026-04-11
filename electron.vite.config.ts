@@ -8,9 +8,73 @@ import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-// from our electron build
 const CHROME = "chrome140";
 const NODE = "node22";
+
+/**
+ * Rewrites all ESM import forms from "electron" so that every access goes
+ * through the CJS default export (module.exports) at runtime. This works
+ * around Node.js v24's stricter CJS-to-ESM static analysis which cannot
+ * detect lazy-getter exports (BaseWindow, BrowserWindow, etc.) from
+ * Electron's CJS module.
+ *
+ * Three patterns are handled:
+ *
+ *   import * as electron from "electron"
+ *     → import electron from "electron"
+ *       (namespace → default; electron.X now hits module.exports.X directly)
+ *
+ *   import electron__default, { app, net as net$1 } from "electron"
+ *     → import electron__default from "electron"
+ *       const { app, net: net$1 } = electron__default
+ *
+ *   import { app, BaseWindow } from "electron"
+ *     → import __electron__ from "electron"
+ *       const { app, BaseWindow } = __electron__
+ */
+function electronEsmInteropPlugin() {
+    const importAsToDestructure = (namedImports: string): string =>
+        namedImports
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((s) => s.replace(/^([\w$]+)\s+as\s+([\w$]+)$/, "$1: $2"))
+            .join(", ");
+
+    return {
+        name: "electron-esm-interop",
+        renderChunk(code: string) {
+            let result = code;
+            let transformed = false;
+
+            result = result.replace(
+                /import\s+([\w$]+)\s*,\s*\{([^}]+)\}\s*from\s*["']electron["']\s*;?/g,
+                (_match: string, defaultName: string, named: string) => {
+                    transformed = true;
+                    return `import ${defaultName} from "electron";\nconst { ${importAsToDestructure(named)} } = ${defaultName};`;
+                }
+            );
+
+            result = result.replace(
+                /import\s*\{([^}]+)\}\s*from\s*["']electron["']\s*;?/g,
+                (_match: string, named: string) => {
+                    transformed = true;
+                    return `import __electron__ from "electron";\nconst { ${importAsToDestructure(named)} } = __electron__;`;
+                }
+            );
+
+            result = result.replace(
+                /import\s*\*\s*as\s+([\w$]+)\s+from\s*["']electron["']\s*;?/g,
+                (_match: string, nsName: string) => {
+                    transformed = true;
+                    return `import ${nsName} from "electron";`;
+                }
+            );
+
+            return transformed ? { code: result, map: null } : null;
+        },
+    };
+}
 
 // for debugging
 // target is like -- path.resolve(__dirname, "frontend/app/workspace/workspace-layout-model.ts");
@@ -85,7 +149,7 @@ export default defineConfig({
             outDir: "dist/main",
             externalizeDeps: false,
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths(), electronEsmInteropPlugin()],
         resolve: {
             alias: {
                 "@": "frontend",
