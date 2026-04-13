@@ -81,6 +81,7 @@ const QuickTerminalMinRows = 2;
 const QuickTerminalRowHeightMultiplier = 1.35;
 const QuickTerminalVerticalChromePx = 8;
 const QuickTerminalHorizontalInsetPx = 12;
+const QuickTerminalEphemeralType = "quick-terminal" as const;
 
 export class LayoutModel {
     /**
@@ -762,7 +763,7 @@ export class LayoutModel {
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
-                if (ephemeralNode.data?.ephemeralType === "quick-terminal") {
+                if (ephemeralNode.data?.ephemeralType === QuickTerminalEphemeralType) {
                     this.updateQuickTerminalNodeProps(ephemeralNode, newAdditionalProps, newLeafs, boundingRect);
                 } else {
                     this.updateEphemeralNodeProps(
@@ -1355,7 +1356,7 @@ export class LayoutModel {
 
         const ephemeralNode = newLayoutNode(undefined, undefined, undefined, {
             blockId,
-            ephemeralType: "quick-terminal",
+            ephemeralType: QuickTerminalEphemeralType,
             quickTerminalSourceBlockId: sourceBlockId,
         });
         this.setter(this.ephemeralNode, ephemeralNode);

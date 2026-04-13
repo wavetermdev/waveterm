@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import type { TermViewModel } from "@/app/view/term/term-model";
 import {
     getLayoutModelForStaticTab,
     LayoutTreeActionType,
@@ -579,16 +580,13 @@ function getInheritedContextFromBlock(blockId: string | null): { cwd: string | n
     const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
     const blockData = globalStore.get(blockAtom);
     const blockComponentModel = getBlockComponentModel(blockId);
-    const liveCwdAtom = (blockComponentModel?.viewModel as any)?.termRef?.current?.currentCwdAtom as
-        | PrimitiveAtom<string | null>
-        | undefined;
+    const termViewModel = blockComponentModel?.viewModel as TermViewModel | undefined;
+    const liveCwdAtom = termViewModel?.termRef?.current?.currentCwdAtom;
     const liveCwd = liveCwdAtom ? globalStore.get(liveCwdAtom) : null;
     const cwd = typeof liveCwd === "string" ? liveCwd : typeof blockData?.meta?.["cmd:cwd"] === "string" ? blockData.meta["cmd:cwd"] : null;
 
     let connection = typeof blockData?.meta?.connection === "string" ? blockData.meta.connection : null;
-    const shellProcFullStatusAtom = (blockComponentModel?.viewModel as any)?.shellProcFullStatus as
-        | PrimitiveAtom<BlockControllerRuntimeStatus>
-        | undefined;
+    const shellProcFullStatusAtom = termViewModel?.shellProcFullStatus;
     const runtimeStatus = shellProcFullStatusAtom ? globalStore.get(shellProcFullStatusAtom) : null;
     if (typeof runtimeStatus?.shellprocconnname === "string") {
         connection = runtimeStatus.shellprocconnname;
