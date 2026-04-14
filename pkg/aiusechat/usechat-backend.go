@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/gemini"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openaichat"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/pi"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
@@ -61,8 +62,17 @@ var _ UseChatBackend = (*openaiCompletionsBackend)(nil)
 var _ UseChatBackend = (*anthropicBackend)(nil)
 var _ UseChatBackend = (*geminiBackend)(nil)
 
-// GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
-func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
+// piBackendFactory manages stateful pi backend instances per chat.
+var piBackendFactory = pi.NewFactory()
+
+// GetOrCreatePiBackend returns a pi backend for the given chat, creating one if needed.
+func GetOrCreatePiBackend(chatId string, chatOpts uctypes.WaveChatOpts) (UseChatBackend, error) {
+	return piBackendFactory.NewBackendForChat(chatId, chatOpts)
+}
+
+// GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type.
+// For stateful backends (pi), pass chatId and chatOpts to get a per-chat instance.
+func GetBackendByAPIType(apiType string, chatId string, chatOpts uctypes.WaveChatOpts) (UseChatBackend, error) {
 	switch apiType {
 	case uctypes.APIType_OpenAIResponses:
 		return &openaiResponsesBackend{}, nil
@@ -72,6 +82,8 @@ func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
 		return &anthropicBackend{}, nil
 	case uctypes.APIType_GoogleGemini:
 		return &geminiBackend{}, nil
+	case uctypes.APIType_PiRPC:
+		return GetOrCreatePiBackend(chatId, chatOpts)
 	default:
 		return nil, fmt.Errorf("unsupported API type: %s", apiType)
 	}

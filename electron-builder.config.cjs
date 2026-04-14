@@ -22,7 +22,7 @@ const config = {
         {
             from: "./dist",
             to: "./dist",
-            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*", "!tsunamiscaffold/**/*"],
+            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*", "bin/pi*", "!tsunamiscaffold/**/*"],
         },
         {
             from: ".",
@@ -41,7 +41,7 @@ const config = {
         output: "make",
     },
     asarUnpack: [
-        "dist/bin/**/*", // wavesrv and wsh binaries
+        "dist/bin/**/*", // wavesrv, wsh, and pi binaries
         "dist/schema/**/*", // schema files for Monaco editor
     ],
     mac: {

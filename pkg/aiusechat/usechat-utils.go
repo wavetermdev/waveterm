@@ -71,7 +71,7 @@ func ConvertAIChatToUIChat(aiChat *uctypes.AIChat) (*uctypes.UIChat, error) {
 		return nil, nil
 	}
 
-	backend, err := GetBackendByAPIType(aiChat.APIType)
+	backend, err := GetBackendByAPIType(aiChat.APIType, aiChat.ChatId, uctypes.WaveChatOpts{})
 	if err != nil {
 		return nil, err
 	}

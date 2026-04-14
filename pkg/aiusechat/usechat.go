@@ -550,7 +550,7 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 	startTime := time.Now()
 
 	// Convert AIMessage to native chat message using backend
-	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
+	backend, err := GetBackendByAPIType(chatOpts.Config.APIType, chatOpts.ChatId, chatOpts)
 	if err != nil {
 		return err
 	}
@@ -777,7 +777,7 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 		return nil, nil, fmt.Errorf("chat not found: %s", chatId)
 	}
 
-	backend, err := GetBackendByAPIType(aiChat.APIType)
+	backend, err := GetBackendByAPIType(aiChat.APIType, chatId, uctypes.WaveChatOpts{})
 	if err != nil {
 		return nil, nil, err
 	}

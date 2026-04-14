@@ -130,12 +130,24 @@ tasks:
             - npm:install
             - build:backend
             - build:tsunamiscaffold
+            - build:pi
 
-    build:frontend:dev:
-        desc: Build the frontend in development mode.
-        cmd: npm run build:dev
+    electron:dev:
+        desc: Run the Electron application via the Vite dev server (enables hot reloading).
+        cmd: npm run dev
+        aliases:
+            - dev
         deps:
             - npm:install
+            - build:backend
+            - build:tsunamiscaffold
+            - build:pi
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
+            WAVETERM_NOCONFIRMQUIT: "1"
 
     build:backend:
         desc: Build the wavesrv and wsh components.
@@ -341,6 +353,16 @@ tasks:
                 - VERSION
         cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
+
+    build:pi:
+        desc: Download and extract the pi CLI binary to dist/bin.
+        cmds:
+            - cmd: "mkdir -p dist/bin"
+            - cmd: "npm install @mariozechner/pi-coding-agent --prefix /tmp/pi-install --no-save 2>/dev/null"
+            - cmd: "cp /tmp/pi-install/node_modules/@mariozechner/pi-coding-agent/dist/cli.js dist/bin/pi"
+            - cmd: "sed -i '1s/^/#!/' dist/bin/pi && chmod +x dist/bin/pi"
+        generates:
+            - "dist/bin/pi"
 
     build:tsunamiscaffold:
         desc: Build and copy tsunami scaffold to dist directory.
