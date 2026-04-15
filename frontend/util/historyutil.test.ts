@@ -15,8 +15,10 @@ describe("getParentDirectory", () => {
     it("handles Windows drive paths", () => {
         expect(getParentDirectory("C:\\Users\\wave\\Downloads")).toBe("C:\\Users\\wave");
         expect(getParentDirectory("C:\\Users\\wave\\Downloads\\")).toBe("C:\\Users\\wave");
+        expect(getParentDirectory("C:\\Users\\wave/Downloads")).toBe("C:\\Users\\wave");
         expect(getParentDirectory("C:\\Users")).toBe("C:\\");
         expect(getParentDirectory("C:\\")).toBe("C:\\");
+        expect(getParentDirectory("C:")).toBe("C:\\");
         expect(getParentDirectory("C:/Users/wave/Downloads")).toBe("C:/Users/wave");
         expect(getParentDirectory("C:/Users")).toBe("C:/");
     });
@@ -25,6 +27,7 @@ describe("getParentDirectory", () => {
         expect(getParentDirectory("\\\\server\\share\\folder")).toBe("\\\\server\\share");
         expect(getParentDirectory("\\\\server\\share\\folder\\")).toBe("\\\\server\\share");
         expect(getParentDirectory("\\\\server\\share")).toBe("\\\\server\\share");
+        expect(getParentDirectory("//server/share/folder")).toBe("//server/share");
     });
 });
 

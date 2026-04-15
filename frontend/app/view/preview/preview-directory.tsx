@@ -435,7 +435,7 @@ function TableBody({
             }
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [canCreateEntries, setRefreshVersion, conn]
+        [canCreateEntries, conn, setErrorMsg]
     );
 
     const allRows = table.getRowModel().flatRows;
@@ -878,7 +878,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [canCreateEntries, setRefreshVersion, conn, newFile, newDirectory, dirPath]
+        [canCreateEntries, conn, newFile, newDirectory, dirPath, finfo]
     );
 
     return (

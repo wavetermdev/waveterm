@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { getWheelLineDelta } from "./termutil";
 
 describe("getWheelLineDelta", () => {
+    it("returns 0 for zero and non-finite deltas", () => {
+        expect(getWheelLineDelta(0, 0, 16, 40)).toBe(0);
+        expect(getWheelLineDelta(Number.NaN, 0, 16, 40)).toBe(0);
+        expect(getWheelLineDelta(Number.POSITIVE_INFINITY, 0, 16, 40)).toBe(0);
+        expect(getWheelLineDelta(Number.NEGATIVE_INFINITY, 0, 16, 40)).toBe(0);
+    });
+
     it("converts pixel deltas using cell height", () => {
         expect(getWheelLineDelta(32, 0, 16, 40)).toBe(2);
         expect(getWheelLineDelta(-24, 0, 12, 40)).toBe(-2);

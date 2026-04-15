@@ -319,8 +319,8 @@ export class TermWrap {
             if (event.defaultPrevented || this.terminal.modes.mouseTrackingMode !== "none") {
                 return;
             }
-            const target = event.target as Element | null;
-            if (target?.closest(".xterm-viewport") != null) {
+            const target = event.target;
+            if (target instanceof Element && target.closest(".xterm-viewport") != null) {
                 return;
             }
             const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
@@ -334,6 +334,8 @@ export class TermWrap {
                     ? Math.floor(this.wheelScrollRemainder)
                     : Math.ceil(this.wheelScrollRemainder);
             if (wholeLines === 0) {
+                event.preventDefault();
+                event.stopPropagation();
                 return;
             }
             this.wheelScrollRemainder -= wholeLines;

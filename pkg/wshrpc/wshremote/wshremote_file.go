@@ -424,9 +424,6 @@ func computeDirPart(path string) string {
 		return dir
 	}
 	path = filepath.ToSlash(path)
-	if path == "/" {
-		return "/"
-	}
 	return filepath.Dir(path)
 }
 
