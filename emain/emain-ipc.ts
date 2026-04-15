@@ -10,7 +10,6 @@ import { PNG } from "pngjs";
 import { Readable } from "stream";
 import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
-import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, parseDataUrl } from "../frontend/util/util";
 import {
     incrementTermCommandsDurable,
@@ -22,15 +21,12 @@ import {
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
-import { handleCtrlShiftState } from "./emain-util";
+import { setWebviewKeys } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
 import { createNewWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
-
-let webviewFocusId: number = null;
-let webviewKeys: string[] = [];
 
 export function openBuilderWindow(appId?: string) {
     const normalizedAppId = appId || "";
@@ -288,48 +284,12 @@ export function initIpcHandlers() {
         event.returnValue = event.sender.getZoomFactor();
     });
 
-    const hasBeforeInputRegisteredMap = new Map<number, boolean>();
-
-    electron.ipcMain.on("webview-focus", (event: Electron.IpcMainEvent, focusedId: number) => {
-        webviewFocusId = focusedId;
+    electron.ipcMain.on("webview-focus", (_event: Electron.IpcMainEvent, focusedId: number) => {
         console.log("webview-focus", focusedId);
-        if (focusedId == null) {
-            return;
-        }
-        const parentWc = event.sender;
-        const webviewWc = electron.webContents.fromId(focusedId);
-        if (webviewWc == null) {
-            webviewFocusId = null;
-            return;
-        }
-        if (!hasBeforeInputRegisteredMap.get(focusedId)) {
-            hasBeforeInputRegisteredMap.set(focusedId, true);
-            webviewWc.on("before-input-event", (e, input) => {
-                let waveEvent = keyutil.adaptFromElectronKeyEvent(input);
-                handleCtrlShiftState(parentWc, waveEvent);
-                if (webviewFocusId != focusedId) {
-                    return;
-                }
-                if (input.type != "keyDown") {
-                    return;
-                }
-                for (let keyDesc of webviewKeys) {
-                    if (keyutil.checkKeyPressed(waveEvent, keyDesc)) {
-                        e.preventDefault();
-                        parentWc.send("reinject-key", waveEvent);
-                        console.log("webview reinject-key", keyDesc);
-                        return;
-                    }
-                }
-            });
-            webviewWc.on("destroyed", () => {
-                hasBeforeInputRegisteredMap.delete(focusedId);
-            });
-        }
     });
 
     electron.ipcMain.on("register-global-webview-keys", (event, keys: string[]) => {
-        webviewKeys = keys ?? [];
+        setWebviewKeys(keys);
     });
 
     electron.ipcMain.on("set-keyboard-chord-mode", (event) => {

@@ -8,6 +8,16 @@ export const WaveAppPathVarName = "WAVETERM_APP_PATH";
 export const WaveAppResourcesPathVarName = "WAVETERM_RESOURCES_PATH";
 export const WaveAppElectronExecPath = "WAVETERM_ELECTRONEXECPATH";
 
+let webviewKeys: string[] = [];
+
+export function getWebviewKeys(): string[] {
+    return webviewKeys;
+}
+
+export function setWebviewKeys(keys: string[]) {
+    webviewKeys = keys ?? [];
+}
+
 const MinZoomLevel = 0.4;
 const MaxZoomLevel = 2.6;
 const ZoomDelta = 0.2;
