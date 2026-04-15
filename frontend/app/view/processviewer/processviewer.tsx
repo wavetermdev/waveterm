@@ -153,7 +153,11 @@ export class ProcessViewerViewModel implements ViewModel {
         const containerHeight = globalStore.get(this.containerHeightAtom);
         const conn = globalStore.get(this.connection);
         const textSearch = globalStore.get(this.textSearchAtom);
+        const connStatus = globalStore.get(this.connStatus);
 
+        if (!connStatus?.connected) {
+            return;
+        }
         const start = Math.max(0, Math.floor(scrollTop / RowHeight) - OverscanRows);
         const visibleRows = containerHeight > 0 ? Math.ceil(containerHeight / RowHeight) : 50;
         const limit = visibleRows + OverscanRows * 2;
@@ -871,6 +875,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
         const [selectedPid, setSelectedPid] = jotai.useAtom(model.selectedPidAtom);
         const dataStart = jotai.useAtomValue(model.dataStartAtom);
         const connection = jotai.useAtomValue(model.connection);
+        const connStatus = jotai.useAtomValue(model.connStatus);
         const bodyScrollRef = React.useRef<HTMLDivElement>(null);
         const containerRef = React.useRef<HTMLDivElement>(null);
         const [wide, setWide] = React.useState(false);
@@ -976,33 +981,36 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
 
                 {/* outer h-scroll wrapper */}
                 <div className="flex-1 overflow-x-auto overflow-y-hidden">
-                    {/* inner column — expands to header's natural width, rows match */}
-                    <div className="flex flex-col h-full min-w-full w-max">
-                        <TableHeader model={model} sortBy={sortBy} sortDesc={sortDesc} platform={platform} />
-
-                        {/* virtualized rows — same width as header, scrolls vertically */}
-                        <div
-                            ref={bodyScrollRef}
-                            className="flex-1 overflow-y-auto overflow-x-hidden w-full wide-scrollbar"
-                            onScroll={handleScroll}
-                        >
-                            <div style={{ height: totalHeight, position: "relative" }}>
-                                <div style={{ position: "absolute", top: paddingTop, left: 0, right: 0 }}>
-                                    {processes.map((proc) => (
-                                        <ProcessRow
-                                            key={proc.pid}
-                                            proc={proc}
-                                            hasCpu={hasCpu}
-                                            platform={platform}
-                                            selected={selectedPid === proc.pid}
-                                            onSelect={handleSelectPid}
-                                            onContextMenu={handleContextMenu}
-                                        />
-                                    ))}
+                    {!connStatus?.connected ? (
+                        <div className="flex items-center justify-center h-full text-secondary text-sm">
+                            Waiting for connection…
+                        </div>
+                    ) : (
+                        <div className="flex flex-col h-full min-w-full w-max">
+                            <TableHeader model={model} sortBy={sortBy} sortDesc={sortDesc} platform={platform} />
+                            <div
+                                ref={bodyScrollRef}
+                                className="flex-1 overflow-y-auto overflow-x-hidden w-full wide-scrollbar"
+                                onScroll={handleScroll}
+                            >
+                                <div style={{ height: totalHeight, position: "relative" }}>
+                                    <div style={{ position: "absolute", top: paddingTop, left: 0, right: 0 }}>
+                                        {processes.map((proc) => (
+                                            <ProcessRow
+                                                key={proc.pid}
+                                                proc={proc}
+                                                hasCpu={hasCpu}
+                                                platform={platform}
+                                                selected={selectedPid === proc.pid}
+                                                onSelect={handleSelectPid}
+                                                onContextMenu={handleContextMenu}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
                 <ActionStatusBar model={model} />
             </div>
