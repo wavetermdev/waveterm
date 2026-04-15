@@ -23,7 +23,6 @@ require (
 	github.com/launchdarkly/eventsource v1.11.0
 	github.com/mattn/go-sqlite3 v1.14.40
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/sashabaranov/go-openai v1.41.2
 	github.com/sawka/txwrap v0.2.0
 	github.com/shirou/gopsutil/v4 v4.26.3
 	github.com/skeema/knownhosts v1.3.1
