@@ -40,7 +40,7 @@ import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
-import { computeTheme, DefaultTermTheme } from "./termutil";
+import { computeTheme, DefaultTermTheme, trimTerminalSelection } from "./termutil";
 import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
@@ -750,9 +750,12 @@ export class TermViewModel implements ViewModel {
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             event.preventDefault();
             event.stopPropagation();
-            const sel = this.termRef.current?.terminal.getSelection();
+            let sel = this.termRef.current?.terminal.getSelection();
             if (!sel) {
                 return false;
+            }
+            if (globalStore.get(getSettingsKeyAtom("term:trimtrailingwhitespace")) !== false) {
+                sel = trimTerminalSelection(sel);
             }
             navigator.clipboard.writeText(sel);
             return false;
@@ -829,7 +832,11 @@ export class TermViewModel implements ViewModel {
                 label: "Copy",
                 click: () => {
                     if (selection) {
-                        navigator.clipboard.writeText(selection);
+                        const text =
+                            globalStore.get(getSettingsKeyAtom("term:trimtrailingwhitespace")) !== false
+                                ? trimTerminalSelection(selection)
+                                : selection;
+                        navigator.clipboard.writeText(text);
                     }
                 },
             });

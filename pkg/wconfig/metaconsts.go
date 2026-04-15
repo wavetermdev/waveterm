@@ -60,6 +60,7 @@ const (
 	ConfigKey_TermOsc52                      = "term:osc52"
 	ConfigKey_TermDurable                    = "term:durable"
 	ConfigKey_TermShowSplitButtons           = "term:showsplitbuttons"
+	ConfigKey_TermTrimTrailingWhitespace     = "term:trimtrailingwhitespace"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

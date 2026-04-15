@@ -36,6 +36,7 @@
     "term:cursor": "block",
     "term:cursorblink": false,
     "term:copyonselect": true,
+    "term:trimtrailingwhitespace": true,
     "term:durable": false,
     "waveai:showcloudmodes": true,
     "waveai:defaultmode": "waveai@balanced",
