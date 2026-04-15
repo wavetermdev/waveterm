@@ -115,3 +115,4 @@ Sponsorship helps support the time spent building and maintaining the project.
 ## License
 
 Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
+
