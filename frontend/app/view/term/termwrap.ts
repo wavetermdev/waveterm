@@ -323,6 +323,10 @@ export class TermWrap {
             if (target instanceof Element && target.closest(".xterm-viewport") != null) {
                 return;
             }
+            // This relies on xterm.js private internals (`_core._renderService`) because
+            // there is no public API for measured cell height yet; fall back to 16px
+            // (a conservative default line height) so wheel deltas still map to lines,
+            // and revisit this when xterm exposes public cell dimensions.
             const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
             const lineDelta = getWheelLineDelta(event.deltaY, event.deltaMode, cellHeight, this.terminal.rows);
             if (lineDelta === 0) {

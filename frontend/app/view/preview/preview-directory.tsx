@@ -187,7 +187,8 @@ function DirectoryTable({
     );
 
     const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
-    const canCreateEntries = useAtomValue(model.statFile).supportsmkdir ?? true;
+    const stat = useAtomValue(model.statFile);
+    const canCreateEntries = stat?.supportsmkdir === true;
 
     const updateName = useCallback(
         (path: string, isDir: boolean) => {
@@ -327,7 +328,9 @@ function TableBody({
     const dummyLineRef = useRef<HTMLDivElement>(null);
     const warningBoxRef = useRef<HTMLDivElement>(null);
     const conn = useAtomValue(model.connection);
-    const canCreateEntries = useAtomValue(model.statFile).supportsmkdir ?? true;
+    const stat = useAtomValue(model.statFile);
+    const canCreateEntries = stat?.supportsmkdir === true;
+    const canMutateEntries = stat != null && (stat.path !== "/" || stat.supportsmkdir === true);
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
@@ -384,17 +387,21 @@ function TableBody({
                         click: () => {
                             table.options.meta.newDirectory();
                         },
-                    },
-                    {
-                        label: "Rename",
-                        click: () => {
-                            table.options.meta.updateName(finfo.path, finfo.isdir);
-                        },
-                    },
-                    {
-                        type: "separator",
                     }
                 );
+            }
+            if (canMutateEntries) {
+                menu.push({
+                    label: "Rename",
+                    click: () => {
+                        table.options.meta.updateName(finfo.path, finfo.isdir);
+                    },
+                });
+            }
+            if (canCreateEntries || canMutateEntries) {
+                menu.push({
+                    type: "separator",
+                });
             }
             menu.push(
                 {
@@ -422,7 +429,7 @@ function TableBody({
                 label: "Default Settings",
                 submenu: makeDirectoryDefaultMenuItems(model),
             });
-            if (canCreateEntries) {
+            if (canMutateEntries) {
                 menu.push(
                     {
                         type: "separator",
@@ -435,7 +442,7 @@ function TableBody({
             }
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [canCreateEntries, conn, setErrorMsg]
+        [canCreateEntries, canMutateEntries, conn, setErrorMsg]
     );
 
     const allRows = table.getRowModel().flatRows;
@@ -580,7 +587,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
     const finfo = useAtomValue(model.statFile);
-    const canCreateEntries = finfo?.supportsmkdir ?? true;
+    const canCreateEntries = finfo?.supportsmkdir === true;
     const dirPath = finfo?.path;
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
