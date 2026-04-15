@@ -4,6 +4,12 @@ const fs = require("fs");
 const path = require("path");
 
 const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
+const windowsShouldEditExecutable = windowsShouldSign || process.env.WAVETERM_WINDOWS_EDIT_EXECUTABLE === "1";
+const windowsShouldBuildInstallers = windowsShouldSign || process.env.WAVETERM_WINDOWS_INSTALLERS === "1";
+const windowsTargets = windowsShouldBuildInstallers ? ["nsis", "msi", "zip"] : ["zip"];
+const localWindowsElectronDist = path.resolve(__dirname, "node_modules", "electron", "dist");
+const useLocalWindowsElectronDist =
+    process.platform === "win32" && fs.existsSync(path.join(localWindowsElectronDist, "electron.exe"));
 
 /**
  * @type {import('electron-builder').Configuration}
@@ -18,6 +24,7 @@ const config = {
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
+    electronDist: useLocalWindowsElectronDist ? localWindowsElectronDist : null,
     files: [
         {
             from: "./dist",
@@ -96,7 +103,8 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
-        target: ["nsis", "msi", "zip"],
+        target: windowsTargets,
+        signAndEditExecutable: windowsShouldEditExecutable,
         signtoolOptions: windowsShouldSign && {
             signingHashAlgorithms: ["sha256"],
             publisherName: "Command Line Inc",

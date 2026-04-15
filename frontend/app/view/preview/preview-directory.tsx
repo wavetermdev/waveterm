@@ -187,6 +187,7 @@ function DirectoryTable({
     );
 
     const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
+    const canCreateEntries = useAtomValue(model.statFile).supportsmkdir ?? true;
 
     const updateName = useCallback(
         (path: string, isDir: boolean) => {
@@ -228,8 +229,8 @@ function DirectoryTable({
         enableSortingRemoval: false,
         meta: {
             updateName,
-            newFile,
-            newDirectory,
+            newFile: canCreateEntries ? newFile : () => {},
+            newDirectory: canCreateEntries ? newDirectory : () => {},
         },
     });
     const sortingState = table.getState().sorting;
@@ -326,6 +327,7 @@ function TableBody({
     const dummyLineRef = useRef<HTMLDivElement>(null);
     const warningBoxRef = useRef<HTMLDivElement>(null);
     const conn = useAtomValue(model.connection);
+    const canCreateEntries = useAtomValue(model.statFile).supportsmkdir ?? true;
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
@@ -368,28 +370,33 @@ function TableBody({
                 return;
             }
             const fileName = finfo.path.split("/").pop();
-            const menu: ContextMenuItem[] = [
-                {
-                    label: "New File",
-                    click: () => {
-                        table.options.meta.newFile();
+            const menu: ContextMenuItem[] = [];
+            if (canCreateEntries) {
+                menu.push(
+                    {
+                        label: "New File",
+                        click: () => {
+                            table.options.meta.newFile();
+                        },
                     },
-                },
-                {
-                    label: "New Folder",
-                    click: () => {
-                        table.options.meta.newDirectory();
+                    {
+                        label: "New Folder",
+                        click: () => {
+                            table.options.meta.newDirectory();
+                        },
                     },
-                },
-                {
-                    label: "Rename",
-                    click: () => {
-                        table.options.meta.updateName(finfo.path, finfo.isdir);
+                    {
+                        label: "Rename",
+                        click: () => {
+                            table.options.meta.updateName(finfo.path, finfo.isdir);
+                        },
                     },
-                },
-                {
-                    type: "separator",
-                },
+                    {
+                        type: "separator",
+                    }
+                );
+            }
+            menu.push(
                 {
                     label: "Copy File Name",
                     click: () => fireAndForget(() => navigator.clipboard.writeText(fileName)),
@@ -405,28 +412,30 @@ function TableBody({
                 {
                     label: "Copy Full File Name (Shell Quoted)",
                     click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
-                },
-            ];
-            addOpenMenuItems(menu, conn, finfo);
-            menu.push(
-                {
-                    type: "separator",
-                },
-                {
-                    label: "Default Settings",
-                    submenu: makeDirectoryDefaultMenuItems(model),
-                },
-                {
-                    type: "separator",
-                },
-                {
-                    label: "Delete",
-                    click: () => handleFileDelete(model, finfo.path, false, setErrorMsg),
                 }
             );
+            addOpenMenuItems(menu, conn, finfo);
+            menu.push({
+                type: "separator",
+            });
+            menu.push({
+                label: "Default Settings",
+                submenu: makeDirectoryDefaultMenuItems(model),
+            });
+            if (canCreateEntries) {
+                menu.push(
+                    {
+                        type: "separator",
+                    },
+                    {
+                        label: "Delete",
+                        click: () => handleFileDelete(model, finfo.path, false, setErrorMsg),
+                    }
+                );
+            }
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [setRefreshVersion, conn]
+        [canCreateEntries, setRefreshVersion, conn]
     );
 
     const allRows = table.getRowModel().flatRows;
@@ -571,6 +580,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
     const finfo = useAtomValue(model.statFile);
+    const canCreateEntries = finfo?.supportsmkdir ?? true;
     const dirPath = finfo?.path;
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
@@ -796,6 +806,9 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
 
     const newFile = useCallback(() => {
+        if (!canCreateEntries) {
+            return;
+        }
         setEntryManagerProps({
             entryManagerType: EntryManagerType.NewFile,
             onSave: (newName: string) => {
@@ -815,8 +828,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 setEntryManagerProps(undefined);
             },
         });
-    }, [dirPath]);
+    }, [canCreateEntries, dirPath]);
     const newDirectory = useCallback(() => {
+        if (!canCreateEntries) {
+            return;
+        }
         setEntryManagerProps({
             entryManagerType: EntryManagerType.NewDirectory,
             onSave: (newName: string) => {
@@ -832,34 +848,37 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 setEntryManagerProps(undefined);
             },
         });
-    }, [dirPath]);
+    }, [canCreateEntries, dirPath]);
 
     const handleFileContextMenu = useCallback(
         (e: any) => {
             e.preventDefault();
             e.stopPropagation();
-            const menu: ContextMenuItem[] = [
-                {
-                    label: "New File",
-                    click: () => {
-                        newFile();
+            const menu: ContextMenuItem[] = [];
+            if (canCreateEntries) {
+                menu.push(
+                    {
+                        label: "New File",
+                        click: () => {
+                            newFile();
+                        },
                     },
-                },
-                {
-                    label: "New Folder",
-                    click: () => {
-                        newDirectory();
+                    {
+                        label: "New Folder",
+                        click: () => {
+                            newDirectory();
+                        },
                     },
-                },
-                {
-                    type: "separator",
-                },
-            ];
+                    {
+                        type: "separator",
+                    }
+                );
+            }
             addOpenMenuItems(menu, conn, finfo);
 
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [setRefreshVersion, conn, newFile, newDirectory, dirPath]
+        [canCreateEntries, setRefreshVersion, conn, newFile, newDirectory, dirPath]
     );
 
     return (

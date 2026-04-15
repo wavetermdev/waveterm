@@ -117,6 +117,9 @@ function getWaveConfigDir(): string {
         retVal = override;
     } else if (xdgConfigHome) {
         retVal = path.join(xdgConfigHome, waveDirName);
+    } else if (unamePlatform === "win32") {
+        const legacyConfigDir = path.join(app.getPath("home"), ".config", waveDirName);
+        retVal = existsSync(legacyConfigDir) ? legacyConfigDir : paths.config;
     } else {
         retVal = path.join(app.getPath("home"), ".config", waveDirName);
     }

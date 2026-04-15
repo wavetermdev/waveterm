@@ -40,6 +40,7 @@ import {
     bufferLinesToText,
     createTempFileFromBlob,
     extractAllClipboardData,
+    getWheelLineDelta,
     normalizeCursorStyle,
     quoteForPosixShell,
 } from "./termutil";
@@ -109,6 +110,7 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+    wheelScrollRemainder: number = 0;
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -311,6 +313,38 @@ export class TermWrap {
             dispose: () => {
                 this.connectElem.removeEventListener("dragover", dragoverHandler);
                 this.connectElem.removeEventListener("drop", dropHandler);
+            },
+        });
+        const wheelHandler = (event: WheelEvent) => {
+            if (event.defaultPrevented || this.terminal.modes.mouseTrackingMode !== "none") {
+                return;
+            }
+            const target = event.target as Element | null;
+            if (target?.closest(".xterm-viewport") != null) {
+                return;
+            }
+            const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
+            const lineDelta = getWheelLineDelta(event.deltaY, event.deltaMode, cellHeight, this.terminal.rows);
+            if (lineDelta === 0) {
+                return;
+            }
+            this.wheelScrollRemainder += lineDelta;
+            const wholeLines =
+                this.wheelScrollRemainder > 0
+                    ? Math.floor(this.wheelScrollRemainder)
+                    : Math.ceil(this.wheelScrollRemainder);
+            if (wholeLines === 0) {
+                return;
+            }
+            this.wheelScrollRemainder -= wholeLines;
+            this.terminal.scrollLines(wholeLines);
+            event.preventDefault();
+            event.stopPropagation();
+        };
+        this.connectElem.addEventListener("wheel", wheelHandler, { passive: false, capture: true });
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("wheel", wheelHandler, true);
             },
         });
         this.handleResize();

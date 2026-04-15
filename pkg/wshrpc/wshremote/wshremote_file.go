@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -31,6 +32,74 @@ import (
 const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
 
 var DisableRecursiveFileOpts = true
+
+func isWindowsVirtualRoot(path string, goos string) bool {
+	if goos != "windows" {
+		return false
+	}
+	cleaned := filepath.Clean(path)
+	return cleaned == `\` || cleaned == `/`
+}
+
+func isWindowsDriveRoot(path string, goos string) bool {
+	if goos != "windows" {
+		return false
+	}
+	cleaned := filepath.Clean(path)
+	volume := filepath.VolumeName(cleaned)
+	if volume == "" {
+		return false
+	}
+	return cleaned == filepath.Clean(volume+`\`)
+}
+
+func makeWindowsVirtualRootInfo() *wshrpc.FileInfo {
+	return &wshrpc.FileInfo{
+		Path:          "/",
+		Dir:           "/",
+		Name:          "/",
+		Size:          -1,
+		Mode:          fs.ModeDir | 0755,
+		ModeStr:       (fs.ModeDir | 0755).String(),
+		IsDir:         true,
+		MimeType:      "directory",
+		SupportsMkdir: false,
+	}
+}
+
+func listWindowsDriveInfos(goos string, statFn func(string) (os.FileInfo, error)) []*wshrpc.FileInfo {
+	if goos != "windows" {
+		return nil
+	}
+	var entries []*wshrpc.FileInfo
+	for drive := 'A'; drive <= 'Z'; drive++ {
+		root := fmt.Sprintf("%c:\\", drive)
+		finfo, err := statFn(root)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
+			log.Printf("cannot stat windows drive %q: %v\n", root, err)
+			continue
+		}
+		if finfo == nil || !finfo.IsDir() {
+			continue
+		}
+		entries = append(entries, &wshrpc.FileInfo{
+			Path:          root,
+			Dir:           "/",
+			Name:          root,
+			Size:          -1,
+			Mode:          finfo.Mode(),
+			ModeStr:       finfo.Mode().String(),
+			ModTime:       finfo.ModTime().UnixMilli(),
+			IsDir:         true,
+			MimeType:      "directory",
+			SupportsMkdir: true,
+		})
+	}
+	return entries
+}
 
 // prepareDestForCopy resolves the final destination path and handles overwrite logic.
 // destPath is the raw destination path (may be a directory or file path).
@@ -212,6 +281,15 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
 		}
+		if isWindowsVirtualRoot(path, runtime.GOOS) {
+			driveInfos := listWindowsDriveInfos(runtime.GOOS, os.Stat)
+			if len(driveInfos) > 0 {
+				ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{
+					Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: driveInfos},
+				}
+			}
+			return
+		}
 		if data.Opts == nil {
 			data.Opts = &wshrpc.FileListOpts{}
 		}
@@ -280,10 +358,14 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
+	name := finfo.Name()
+	if isWindowsDriveRoot(fullPath, runtime.GOOS) {
+		name = filepath.VolumeName(fullPath) + `\`
+	}
 	rtn := &wshrpc.FileInfo{
 		Path:          wavebase.ReplaceHomeDir(fullPath),
 		Dir:           computeDirPart(fullPath),
-		Name:          finfo.Name(),
+		Name:          name,
 		Size:          finfo.Size(),
 		Mode:          finfo.Mode(),
 		ModeStr:       finfo.Mode().String(),
@@ -327,6 +409,20 @@ func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
 
 func computeDirPart(path string) string {
 	path = filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	if isWindowsVirtualRoot(path, runtime.GOOS) {
+		return "/"
+	}
+	if isWindowsDriveRoot(path, runtime.GOOS) {
+		return "/"
+	}
+	if runtime.GOOS == "windows" {
+		dir := filepath.Dir(path)
+		volume := filepath.VolumeName(dir)
+		if dir == volume && volume != "" {
+			return volume + `\`
+		}
+		return dir
+	}
 	path = filepath.ToSlash(path)
 	if path == "/" {
 		return "/"
@@ -336,6 +432,9 @@ func computeDirPart(path string) string {
 
 func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInfo, error) {
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	if isWindowsVirtualRoot(cleanedPath, runtime.GOOS) {
+		return makeWindowsVirtualRootInfo(), nil
+	}
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
 		return &wshrpc.FileInfo{
