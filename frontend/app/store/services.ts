@@ -34,9 +34,6 @@ export class BlockServiceType {
     SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
         return callBackendService(this?.waveEnv, "block", "SaveTerminalState", Array.from(arguments))
     }
-    SaveWaveAiData(arg2: string, arg3: WaveAIPromptMessageType[]): Promise<void> {
-        return callBackendService(this?.waveEnv, "block", "SaveWaveAiData", Array.from(arguments))
-    }
 }
 
 export const BlockService = new BlockServiceType();

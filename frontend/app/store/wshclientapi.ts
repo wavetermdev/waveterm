@@ -924,12 +924,6 @@ export class RpcApiType {
         return client.wshRpcStream("streamtest", null, opts);
     }
 
-    // command "streamwaveai" [responsestream]
-	StreamWaveAiCommand(client: WshClient, data: WaveAIStreamRequest, opts?: RpcOpts): AsyncGenerator<WaveAIPacketType, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "streamwaveai", data, opts);
-        return client.wshRpcStream("streamwaveai", data, opts);
-    }
-
     // command "termgetscrollbacklines" [call]
     TermGetScrollbackLinesCommand(client: WshClient, data: CommandTermGetScrollbackLinesData, opts?: RpcOpts): Promise<CommandTermGetScrollbackLinesRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "termgetscrollbacklines", data, opts);
