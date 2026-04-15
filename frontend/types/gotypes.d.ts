@@ -1592,7 +1592,8 @@ declare global {
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
-        "wsh:haderror"?: boolean;
+        "wsh:errorcount"?: number;
+        "wsh:count"?: number;
         "conn:conntype"?: string;
         "conn:wsherrorcode"?: string;
         "conn:errorcode"?: string;

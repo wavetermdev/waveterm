@@ -126,8 +126,9 @@ type TEventProps struct {
 	AiBackendType string `json:"ai:backendtype,omitempty"`
 	AiLocal       bool   `json:"ai:local,omitempty"`
 
-	WshCmd      string `json:"wsh:cmd,omitempty"`
-	WshHadError bool   `json:"wsh:haderror,omitempty"`
+	WshCmd        string `json:"wsh:cmd,omitempty"`
+	WshErrorCount int    `json:"wsh:errorcount,omitempty"`
+	WshCount      int    `json:"wsh:count,omitempty"`
 
 	ConnType         string `json:"conn:conntype,omitempty"`
 	ConnWshErrorCode string `json:"conn:wsherrorcode,omitempty"`
