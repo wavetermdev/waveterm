@@ -39,6 +39,13 @@ export type UseChatSetMessagesType = (
     messages: WaveUIMessage[] | ((messages: WaveUIMessage[]) => WaveUIMessage[])
 ) => void;
 
+export interface SavedCommand {
+    id: string;
+    text: string;
+    createdts?: number;
+    updatedts?: number;
+}
+
 export type UseChatSendMessageType = (
     message?:
         | (Omit<WaveUIMessage, "id" | "role"> & {

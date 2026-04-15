@@ -121,10 +121,45 @@ export function Code({ className = "", children }: { className?: string; childre
 type CodeBlockProps = {
     children: React.ReactNode;
     onClickExecute?: (cmd: string) => void;
+    onClickSaveCommand?: (cmd: string) => void;
     codeBlockMaxWidthAtom?: Atom<number>;
 };
 
-const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBlockProps) => {
+const shellLanguages = new Set(["bash", "sh", "zsh", "shell", "fish", "console", "terminal", "powershell", "pwsh"]);
+
+export function canSaveCommand(language: string, text: string): boolean {
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+        return false;
+    }
+    const normalizedLanguage = language.toLowerCase();
+    if (shellLanguages.has(normalizedLanguage)) {
+        return true;
+    }
+    if (normalizedLanguage !== "text" && normalizedLanguage !== "") {
+        return false;
+    }
+    const lines = trimmed
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+    if (lines.length === 0 || lines.length > 12) {
+        return false;
+    }
+    return lines.every((line) => {
+        if (!/^(?:[$>#]\s+)?[a-zA-Z0-9_.\/~-]+/.test(line)) {
+            return false;
+        }
+        const normalizedLine = line.replace(/^(?:[$>#]\s+)/, "");
+        const firstToken = normalizedLine.split(/\s+/)[0] ?? "";
+        if (/^[A-Z][a-z]+$/.test(firstToken)) {
+            return false;
+        }
+        return !/[.!?]$/.test(normalizedLine);
+    });
+}
+
+const CodeBlock = ({ children, onClickExecute, onClickSaveCommand, codeBlockMaxWidthAtom }: CodeBlockProps) => {
     const codeBlockMaxWidth = useAtomValueSafe(codeBlockMaxWidthAtom);
     const getLanguage = (children: any): string => {
         if (children?.props?.className) {
@@ -147,7 +182,14 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
         }
     };
 
+    const handleSave = (e: React.MouseEvent) => {
+        const cmd = extractText(children).replace(/\n$/, "");
+        onClickSaveCommand?.(cmd);
+    };
+
     const language = getLanguage(children);
+    const commandText = extractText(children).replace(/\n$/, "");
+    const showSaveCommand = onClickSaveCommand != null && canSaveCommand(language, commandText);
 
     return (
         <div
@@ -162,6 +204,16 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
                 <span className="text-[11px] text-white/50">{language}</span>
                 <div className="flex items-center gap-2">
                     <CopyButton onClick={handleCopy} title="Copy" />
+                    {showSaveCommand && (
+                        <IconButton
+                            decl={{
+                                elemtype: "iconbutton",
+                                icon: "bookmark",
+                                title: "Save to Saved Commands",
+                                click: handleSave,
+                            }}
+                        />
+                    )}
                     {onClickExecute && (
                         <IconButton
                             decl={{
@@ -202,6 +254,7 @@ interface WaveStreamdownProps {
     parseIncompleteMarkdown?: boolean;
     className?: string;
     onClickExecute?: (cmd: string) => void;
+    onClickSaveCommand?: (cmd: string) => void;
     codeBlockMaxWidthAtom?: Atom<number>;
 }
 
@@ -210,6 +263,7 @@ export const WaveStreamdown = ({
     parseIncompleteMarkdown,
     className,
     onClickExecute,
+    onClickSaveCommand,
     codeBlockMaxWidthAtom,
 }: WaveStreamdownProps) => {
     const components = useMemo(
@@ -219,6 +273,7 @@ export const WaveStreamdown = ({
                 <CodeBlock
                     children={props.children}
                     onClickExecute={onClickExecute}
+                    onClickSaveCommand={onClickSaveCommand}
                     codeBlockMaxWidthAtom={codeBlockMaxWidthAtom}
                 />
             ),

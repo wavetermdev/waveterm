@@ -2,13 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+    SavedCommand,
     UseChatSendMessageType,
     UseChatSetMessagesType,
     WaveUIMessage,
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
-import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
+import {
+    atoms,
+    createBlock,
+    getBlockComponentModel,
+    getFocusedBlockId,
+    getOrefMetaKeyAtom,
+    getSettingsKeyAtom,
+} from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { isBuilderWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
@@ -65,6 +73,7 @@ export class WaveAIModel {
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
     codeBlockMaxWidth!: jotai.Atom<number>;
+    savedCommandsAtom: jotai.PrimitiveAtom<SavedCommand[]> = jotai.atom([]);
     inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
     isLoadingChatAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     isChatEmptyAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
@@ -282,6 +291,102 @@ export class WaveAIModel {
         this.useChatSetMessages?.([]);
     }
 
+    private normalizeSavedCommands(commands: ObjRTInfo["waveai:savedcommands"]): SavedCommand[] {
+        if (!Array.isArray(commands)) {
+            return [];
+        }
+        return commands
+            .filter((command): command is SavedCommand => command != null && typeof command.text === "string")
+            .map((command) => ({
+                id: command.id || crypto.randomUUID(),
+                text: command.text,
+                createdts: command.createdts ?? Date.now(),
+                updatedts: command.updatedts ?? command.createdts ?? Date.now(),
+            }));
+    }
+
+    private persistSavedCommands(commands: SavedCommand[]) {
+        globalStore.set(this.savedCommandsAtom, commands);
+        void RpcApi.SetRTInfoCommand(TabRpcClient, {
+            oref: this.orefContext,
+            data: { "waveai:savedcommands": commands.length > 0 ? commands : null },
+        }).catch((error) => {
+            console.error("Failed to persist saved commands:", error);
+        });
+    }
+
+    addSavedCommand(text: string): string {
+        const normalizedText = text.replace(/\n$/, "");
+        const now = Date.now();
+        const currentCommands = globalStore.get(this.savedCommandsAtom);
+        const existing = currentCommands.find(
+            (command) => command.text.trim() === normalizedText.trim() && normalizedText.trim().length > 0
+        );
+        if (existing) {
+            this.persistSavedCommands(
+                currentCommands.map((command) =>
+                    command.id === existing.id ? { ...command, updatedts: now } : command
+                )
+            );
+            return existing.id;
+        }
+
+        const nextCommand: SavedCommand = {
+            id: crypto.randomUUID(),
+            text: normalizedText,
+            createdts: now,
+            updatedts: now,
+        };
+        this.persistSavedCommands([nextCommand, ...currentCommands]);
+        return nextCommand.id;
+    }
+
+    updateSavedCommand(id: string, text: string) {
+        const now = Date.now();
+        this.persistSavedCommands(
+            globalStore.get(this.savedCommandsAtom).map((command) =>
+                command.id === id ? { ...command, text, updatedts: now } : command
+            )
+        );
+    }
+
+    removeSavedCommand(id: string) {
+        this.persistSavedCommands(globalStore.get(this.savedCommandsAtom).filter((command) => command.id !== id));
+    }
+
+    async runSavedCommand(text: string) {
+        const commandText = text.trim();
+        if (!commandText) {
+            return;
+        }
+        if (this.inBuilder) {
+            this.setError("Running saved commands in the terminal is not available from the builder.");
+            return;
+        }
+
+        const focusedBlockId = getFocusedBlockId();
+        if (!focusedBlockId) {
+            this.setError("Focus a terminal block, then run the saved command again.");
+            return;
+        }
+        const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedBlockId));
+        const blockData = globalStore.get(blockAtom);
+        if (blockData?.meta?.view !== "term") {
+            this.setError("Focus a terminal block, then run the saved command again.");
+            return;
+        }
+        const blockComponentModel = getBlockComponentModel(focusedBlockId);
+        const termViewModel = blockComponentModel?.viewModel as { sendDataToController?: (data: string) => void };
+        if (typeof termViewModel?.sendDataToController !== "function") {
+            this.setError("The focused terminal is not ready to receive commands.");
+            return;
+        }
+
+        const commandWithNewline = text.endsWith("\n") ? text : `${text}\n`;
+        termViewModel.sendDataToController(commandWithNewline);
+        this.requestNodeFocus();
+    }
+
     setError(message: string) {
         globalStore.set(this.errorMessage, message);
     }
@@ -449,6 +554,7 @@ export class WaveAIModel {
         const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
             oref: this.orefContext,
         });
+        globalStore.set(this.savedCommandsAtom, this.normalizeSavedCommands(rtInfo?.["waveai:savedcommands"]));
         let chatIdValue = rtInfo?.["waveai:chatid"];
         if (chatIdValue == null) {
             chatIdValue = crypto.randomUUID();

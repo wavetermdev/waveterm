@@ -1249,6 +1249,7 @@ declare global {
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
+        "waveai:savedcommands"?: WaveAISavedCommand[];
     };
 
     // wshrpc.PathCommandData
@@ -2042,6 +2043,14 @@ declare global {
         role: string;
         content: string;
         name?: string;
+    };
+
+    // waveobj.WaveAISavedCommand
+    type WaveAISavedCommand = {
+        id: string;
+        text: string;
+        createdts?: number;
+        updatedts?: number;
     };
 
     // wshrpc.WaveAIStreamRequest
