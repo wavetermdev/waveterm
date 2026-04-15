@@ -194,6 +194,10 @@ export class ProcessViewerViewModel implements ViewModel {
 
     async doKeepAlive() {
         if (this.disposed) return;
+        const connStatus = globalStore.get(this.connStatus);
+        if (!connStatus?.connected) {
+            return;
+        }
         const conn = globalStore.get(this.connection);
         const route = makeConnRoute(conn);
         try {
