@@ -191,7 +191,19 @@ function convertVDomFunc(model: TsunamiModel, fnDecl: VDomFunc, compId: string, 
         if (fnDecl.stoppropagation) {
             e.stopPropagation();
         }
-        model.callVDomFunc(fnDecl, e, compId, propName);
+        if (fnDecl.jscode) {
+            try {
+                const fn = eval(fnDecl.jscode);
+                if (typeof fn === "function") {
+                    fn(e, e.currentTarget ?? e.target);
+                }
+            } catch (err) {
+                console.error("vdom jscode error:", err);
+            }
+        }
+        if (!fnDecl.preventbackend) {
+            model.callVDomFunc(fnDecl, e, compId, propName);
+        }
     };
 }
 

@@ -82,8 +82,10 @@ type VDomFunc = {
     type: "func";
     stoppropagation?: boolean;
     preventdefault?: boolean;
+    preventbackend?: boolean;
     globalevent?: string;
     keys?: string[];
+    jscode?: string;
 };
 
 // vdom.VDomMessage
