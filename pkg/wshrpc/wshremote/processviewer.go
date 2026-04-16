@@ -27,6 +27,7 @@ import (
 const (
 	ProcCacheIdleTimeout  = 60 * time.Second
 	ProcCachePollInterval = 1 * time.Second
+	ProcCacheMinSleep     = 500 * time.Millisecond
 	ProcViewerMaxLimit    = 500
 )
 
@@ -153,17 +154,48 @@ func (s *procCacheState) getWidgetPidOrder(widgetId string) ([]int32, int) {
 	return entry.pids, entry.totalCount
 }
 
+// updateCacheAndCheckIdle stores the latest snapshot, signals the first-ready channel if needed,
+// and checks whether the loop has been idle long enough to shut down.
+// Returns true if the loop should exit (idle timeout reached), false to continue.
+func (s *procCacheState) updateCacheAndCheckIdle(result *wshrpc.ProcessListResponse, firstDone *bool, firstReadyCh chan struct{}) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if result != nil {
+		s.cached = result
+	}
+	if !*firstDone {
+		*firstDone = true
+		close(firstReadyCh)
+		s.ready = nil
+	}
+	if time.Since(s.lastRequest) < ProcCacheIdleTimeout {
+		return false
+	}
+	s.cached = nil
+	s.running = false
+	s.lastCPUSamples = nil
+	s.lastCPUEpoch = 0
+	s.uidCache = nil
+	s.widgetPidOrders = nil
+	return true
+}
+
 func (s *procCacheState) runLoop(firstReadyCh chan struct{}) {
+	firstDone := false
 	defer func() {
-		panichandler.PanicHandler("procCache.runLoop", recover())
+		if panichandler.PanicHandler("procCache.runLoop", recover()) == nil {
+			return
+		}
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		s.running = false
+		if !firstDone {
+			close(firstReadyCh)
+			s.ready = nil
+		}
 	}()
 
-	numCPU := runtime.NumCPU()
-	if numCPU < 1 {
-		numCPU = 1
-	}
-
-	firstDone := false
+	numCPU := max(runtime.NumCPU(), 1)
 
 	for {
 		iterStart := time.Now()
@@ -178,36 +210,21 @@ func (s *procCacheState) runLoop(firstReadyCh chan struct{}) {
 			}
 		}
 
-		s.lock.Lock()
-		s.cached = result
-		idleFor := time.Since(s.lastRequest)
-		if !firstDone {
-			firstDone = true
-			close(firstReadyCh)
-			s.ready = nil
-		}
-		if idleFor >= ProcCacheIdleTimeout {
-			s.cached = nil
-			s.running = false
-			s.lastCPUSamples = nil
-			s.lastCPUEpoch = 0
-			s.uidCache = nil
-			s.widgetPidOrders = nil
-			s.lock.Unlock()
+		if s.updateCacheAndCheckIdle(result, &firstDone, firstReadyCh) {
 			return
 		}
-		s.lock.Unlock()
 
 		elapsed := time.Since(iterStart)
-		if sleep := ProcCachePollInterval - elapsed; sleep > 0 {
-			time.Sleep(sleep)
-		}
+		time.Sleep(max(ProcCacheMinSleep, ProcCachePollInterval-elapsed))
 	}
 }
 
 // lookupUID resolves a uid to a username, using the per-run cache to avoid
 // repeated syscalls for the same uid.
 func (s *procCacheState) lookupUID(uid uint32) string {
+	if runtime.GOOS == "windows" {
+		return ""
+	}
 	if s.uidCache == nil {
 		s.uidCache = make(map[uint32]string)
 	}
@@ -239,33 +256,25 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 		s.lastCPUSamples = make(map[int32]cpuSample, len(procs))
 	}
 
-	snap, _ := procinfo.MakeGlobalSnapshot()
+	snap, err := procinfo.MakeGlobalSnapshot()
+	if err != nil {
+		return nil
+	}
 
 	hasCPU := s.lastCPUEpoch > 1 // first epoch has no previous sample to diff against
 
-	// Build per-pid procinfo in parallel, then compute CPU% sequentially.
 	type pidInfo struct {
 		pid  int32
 		info *procinfo.ProcInfo
 	}
 	rawInfos := make([]pidInfo, len(procs))
-	var wg sync.WaitGroup
 	for i, p := range procs {
-		i, p := i, p
-		wg.Add(1)
-		go func() {
-			defer func() {
-				panichandler.PanicHandler("collectSnapshot:GetProcInfo", recover())
-				wg.Done()
-			}()
-			pi, err := procinfo.GetProcInfo(ctx, snap, p.Pid)
-			if err != nil {
-				pi = nil
-			}
-			rawInfos[i] = pidInfo{pid: p.Pid, info: pi}
-		}()
+		pi, err := procinfo.GetProcInfo(ctx, snap, p.Pid)
+		if err != nil {
+			pi = nil
+		}
+		rawInfos[i] = pidInfo{pid: p.Pid, info: pi}
 	}
-	wg.Wait()
 
 	// Sample CPU times and compute CPU% sequentially to keep epoch accounting simple.
 	cpuPcts := make(map[int32]float64, len(procs))
@@ -295,10 +304,11 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 		}
 	}
 
-	// Compute total memory for MemPct.
+	// Compute total memory for MemPct and summary.
+	vmStat, _ := mem.VirtualMemoryWithContext(ctx)
 	var totalMem uint64
-	if vm, err := mem.VirtualMemoryWithContext(ctx); err == nil {
-		totalMem = vm.Total
+	if vmStat != nil {
+		totalMem = vmStat.Total
 	}
 
 	var cpuSum float64
@@ -331,16 +341,7 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 		infos = append(infos, info)
 	}
 
-	summaryCh := make(chan wshrpc.ProcessSummary, 1)
-	go func() {
-		defer func() {
-			if err := panichandler.PanicHandler("buildProcessSummary", recover()); err != nil {
-				summaryCh <- wshrpc.ProcessSummary{Total: len(procs)}
-			}
-		}()
-		summaryCh <- buildProcessSummary(ctx, len(procs), numCPU, cpuSum)
-	}()
-	summary := <-summaryCh
+	summary := buildProcessSummary(ctx, len(procs), numCPU, cpuSum, vmStat)
 
 	return &wshrpc.ProcessListResponse{
 		Processes: infos,
@@ -351,6 +352,10 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 	}
 }
 
+func bound(v, lo, hi int) int {
+	return max(lo, min(v, hi))
+}
+
 func computeCPUPct(t1, t2, elapsedSec float64) float64 {
 	delta := (t2 - t1) / elapsedSec * 100
 	if delta < 0 {
@@ -359,17 +364,17 @@ func computeCPUPct(t1, t2, elapsedSec float64) float64 {
 	return delta
 }
 
-func buildProcessSummary(ctx context.Context, total int, numCPU int, cpuSum float64) wshrpc.ProcessSummary {
+func buildProcessSummary(ctx context.Context, total int, numCPU int, cpuSum float64, vmStat *mem.VirtualMemoryStat) wshrpc.ProcessSummary {
 	summary := wshrpc.ProcessSummary{Total: total, NumCPU: numCPU, CpuSum: cpuSum}
 	if avg, err := load.AvgWithContext(ctx); err == nil {
 		summary.Load1 = avg.Load1
 		summary.Load5 = avg.Load5
 		summary.Load15 = avg.Load15
 	}
-	if vm, err := mem.VirtualMemoryWithContext(ctx); err == nil {
-		summary.MemTotal = vm.Total
-		summary.MemUsed = vm.Used
-		summary.MemFree = vm.Free
+	if vmStat != nil {
+		summary.MemTotal = vmStat.Total
+		summary.MemUsed = vmStat.Used
+		summary.MemFree = vmStat.Free
 	}
 	return summary
 }
@@ -544,10 +549,7 @@ func (impl *ServerImpl) RemoteProcessListCommand(ctx context.Context, data wshrp
 	for _, p := range raw.Processes {
 		pidMap[p.Pid] = p
 	}
-	start := data.Start
-	if start >= len(pidOrder) {
-		start = len(pidOrder)
-	}
+	start := bound(data.Start, 0, len(pidOrder))
 	window := pidOrder[start:]
 	if limit > 0 && len(window) > limit {
 		window = window[:limit]

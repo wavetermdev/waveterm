@@ -311,6 +311,10 @@ export class ProcessViewerViewModel implements ViewModel {
             this.cancelPoll = null;
             this.startKeepAlive();
         } else {
+            if (this.cancelPoll) {
+                this.cancelPoll();
+            }
+            this.cancelPoll = null;
             this.startPolling();
         }
     }
@@ -470,7 +474,7 @@ const Columns: ColDef[] = [
     { key: "pid", label: "PID", width: "70px", align: "right" },
     { key: "command", label: "Command", width: "minmax(120px, 4fr)" },
     { key: "status", label: "Status", width: "75px", hideOnPlatform: ["windows", "darwin"] },
-    { key: "user", label: "User", width: "80px" },
+    { key: "user", label: "User", width: "80px", hideOnPlatform: ["windows"] },
     { key: "threads", label: "NT", tooltip: "Num Threads", width: "40px", align: "right", hideOnPlatform: ["windows"] },
     { key: "cpu", label: "CPU%", width: "70px", align: "right" },
     { key: "mem", label: "Memory", width: "90px", align: "right" },
@@ -603,9 +607,9 @@ const ProcessRow = React.memo(function ProcessRow({
     onSelect: (pid: number) => void;
     onContextMenu: (pid: number, e: React.MouseEvent) => void;
 }) {
+    const cols = getColumns(platform);
+    const visibleKeys = new Set(cols.map((c) => c.key));
     const gridTemplate = getGridTemplate(platform);
-    const showStatus = platform !== "windows" && platform !== "darwin";
-    const showThreads = platform !== "windows";
     if (proc.gone) {
         return (
             <div
@@ -618,9 +622,9 @@ const ProcessRow = React.memo(function ProcessRow({
                     {proc.pid}
                 </div>
                 <div className="px-2 flex items-center truncate text-muted italic">(gone)</div>
-                {showStatus && <div className="px-2 flex items-center truncate" />}
-                <div className="px-2 flex items-center truncate" />
-                {showThreads && <div className="px-2 flex items-center truncate" />}
+                {visibleKeys.has("status") && <div className="px-2 flex items-center truncate" />}
+                {visibleKeys.has("user") && <div className="px-2 flex items-center truncate" />}
+                {visibleKeys.has("threads") && <div className="px-2 flex items-center truncate" />}
                 <div className="px-2 flex items-center truncate" />
                 <div className="px-2 flex items-center truncate" />
             </div>
@@ -637,11 +641,13 @@ const ProcessRow = React.memo(function ProcessRow({
                 {proc.pid}
             </div>
             <div className="px-2 flex items-center truncate">{proc.command}</div>
-            {showStatus && (
+            {visibleKeys.has("status") && (
                 <div className="px-2 flex items-center truncate text-secondary text-[11px]">{proc.status}</div>
             )}
-            <div className="px-2 flex items-center truncate text-secondary">{proc.user}</div>
-            {showThreads && (
+            {visibleKeys.has("user") && (
+                <div className="px-2 flex items-center truncate text-secondary">{proc.user}</div>
+            )}
+            {visibleKeys.has("threads") && (
                 <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
                     {proc.numthreads === -1 ? "-" : proc.numthreads >= 1 ? proc.numthreads : ""}
                 </div>
