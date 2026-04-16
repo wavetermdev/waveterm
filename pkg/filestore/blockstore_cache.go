@@ -21,6 +21,7 @@ type FileStore struct {
 	Lock       *sync.Mutex
 	Cache      map[cacheKey]*CacheEntry
 	IsFlushing bool
+	FlushNotifyCh chan struct{}
 }
 
 type DataCacheEntry struct {

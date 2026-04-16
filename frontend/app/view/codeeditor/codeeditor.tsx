@@ -1,12 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MonacoCodeEditor } from "@/app/monaco/monaco-react";
 import { useOverrideConfigAtom } from "@/app/store/global";
 import { boundNumber } from "@/util/util";
 import type * as MonacoTypes from "monaco-editor";
-import * as MonacoModule from "monaco-editor";
 import React, { useMemo, useRef } from "react";
+
+const LazyMonacoCodeEditor = React.lazy(async () => {
+    const mod = await import("@/app/monaco/monaco-react");
+    return { default: mod.MonacoCodeEditor };
+});
+type MonacoModuleType = typeof import("monaco-editor");
 
 function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
     const opts: MonacoTypes.editor.IEditorOptions = {
@@ -36,7 +40,7 @@ interface CodeEditorProps {
     language?: string;
     fileName?: string;
     onChange?: (text: string) => void;
-    onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: typeof MonacoModule) => () => void;
+    onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: MonacoModuleType) => () => void;
 }
 
 export function CodeEditor({ blockId, text, language, fileName, readonly, onChange, onMount }: CodeEditorProps) {
@@ -72,7 +76,7 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
 
     function handleEditorOnMount(
         editor: MonacoTypes.editor.IStandaloneCodeEditor,
-        monaco: typeof MonacoModule
+        monaco: MonacoModuleType
     ): () => void {
         if (onMount) {
             const cleanup = onMount(editor, monaco);
@@ -95,15 +99,17 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
     return (
         <div className="flex flex-col w-full h-full items-center justify-center">
             <div className="flex flex-col h-full w-full" ref={divRef}>
-                <MonacoCodeEditor
-                    readonly={readonly}
-                    text={text}
-                    options={editorOpts}
-                    onChange={handleEditorChange}
-                    onMount={handleEditorOnMount}
-                    path={editorPath}
-                    language={language}
-                />
+                <React.Suspense fallback={<div className="flex flex-col h-full w-full" />}>
+                    <LazyMonacoCodeEditor
+                        readonly={readonly}
+                        text={text}
+                        options={editorOpts}
+                        onChange={handleEditorChange}
+                        onMount={handleEditorOnMount}
+                        path={editorPath}
+                        language={language}
+                    />
+                </React.Suspense>
             </div>
         </div>
     );

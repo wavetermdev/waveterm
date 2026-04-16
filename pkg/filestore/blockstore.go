@@ -9,6 +9,7 @@ package filestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -37,18 +38,21 @@ const (
 
 const DefaultPartDataSize = 64 * 1024
 const DefaultFlushTime = 5 * time.Second
+const DefaultFlushDelay = 500 * time.Millisecond
 const NoPartIdx = -1
 
 // for unit tests
 var warningCount = &atomic.Int32{}
 var flushErrorCount = &atomic.Int32{}
+var ErrFlushInProgress = errors.New("flush already in progress")
 
 var partDataSize int64 = DefaultPartDataSize // overridden in tests
 var stopFlush = &atomic.Bool{}
 
 var WFS *FileStore = &FileStore{
-	Lock:  &sync.Mutex{},
-	Cache: make(map[cacheKey]*CacheEntry),
+	Lock:          &sync.Mutex{},
+	Cache:         make(map[cacheKey]*CacheEntry),
+	FlushNotifyCh: make(chan struct{}, 1),
 }
 
 type WaveFile struct {
@@ -204,7 +208,7 @@ func (s *FileStore) ListFiles(ctx context.Context, zoneId string) ([]*WaveFile, 
 }
 
 func (s *FileStore) WriteMeta(ctx context.Context, zoneId string, name string, meta wshrpc.FileMeta, merge bool) error {
-	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+	err := withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -223,6 +227,10 @@ func (s *FileStore) WriteMeta(ctx context.Context, zoneId string, name string, m
 		entry.File.ModTs = time.Now().UnixMilli()
 		return nil
 	})
+	if err == nil {
+		s.notifyFlusher()
+	}
+	return err
 }
 
 func (s *FileStore) WriteFile(ctx context.Context, zoneId string, name string, data []byte) error {
@@ -241,7 +249,7 @@ func (s *FileStore) WriteAt(ctx context.Context, zoneId string, name string, off
 	if offset < 0 {
 		return fmt.Errorf("offset must be non-negative")
 	}
-	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+	err := withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -259,10 +267,14 @@ func (s *FileStore) WriteAt(ctx context.Context, zoneId string, name string, off
 		entry.writeAt(offset, data, false)
 		return nil
 	})
+	if err == nil {
+		s.notifyFlusher()
+	}
+	return err
 }
 
 func (s *FileStore) AppendData(ctx context.Context, zoneId string, name string, data []byte) error {
-	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+	err := withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -278,6 +290,10 @@ func (s *FileStore) AppendData(ctx context.Context, zoneId string, name string, 
 		entry.writeAt(entry.File.Size, data, false)
 		return nil
 	})
+	if err == nil {
+		s.notifyFlusher()
+	}
+	return err
 }
 
 func metaIncrement(file *WaveFile, key string, amount int) int {
@@ -308,7 +324,7 @@ func (s *FileStore) compactIJson(ctx context.Context, entry *CacheEntry) error {
 }
 
 func (s *FileStore) CompactIJson(ctx context.Context, zoneId string, name string) error {
-	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+	err := withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -318,6 +334,10 @@ func (s *FileStore) CompactIJson(ctx context.Context, zoneId string, name string
 		}
 		return s.compactIJson(ctx, entry)
 	})
+	if err == nil {
+		s.notifyFlusher()
+	}
+	return err
 }
 
 func (s *FileStore) AppendIJson(ctx context.Context, zoneId string, name string, command map[string]any) error {
@@ -325,7 +345,7 @@ func (s *FileStore) AppendIJson(ctx context.Context, zoneId string, name string,
 	if err != nil {
 		return err
 	}
-	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+	err = withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -359,6 +379,10 @@ func (s *FileStore) AppendIJson(ctx context.Context, zoneId string, name string,
 		}
 		return nil
 	})
+	if err == nil {
+		s.notifyFlusher()
+	}
+	return err
 }
 
 func (s *FileStore) GetAllZoneIds(ctx context.Context) ([]string, error) {
@@ -396,7 +420,7 @@ type FlushStats struct {
 func (s *FileStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr error) {
 	wasFlushing := s.setUnlessFlushing()
 	if wasFlushing {
-		return stats, fmt.Errorf("flush already in progress")
+		return stats, ErrFlushInProgress
 	}
 	defer s.setIsFlushing(false)
 	startTime := time.Now()
@@ -486,6 +510,16 @@ func (s *FileStore) getDirtyCacheKeys() []cacheKey {
 	return dirtyCacheKeys
 }
 
+func (s *FileStore) notifyFlusher() {
+	if s == nil || s.FlushNotifyCh == nil {
+		return
+	}
+	select {
+	case s.FlushNotifyCh <- struct{}{}:
+	default:
+	}
+}
+
 func (s *FileStore) setIsFlushing(flushing bool) {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
@@ -513,17 +547,52 @@ func (s *FileStore) runFlusher() {
 	defer func() {
 		panichandler.PanicHandler("filestore flusher", recover())
 	}()
-	for {
+	flushAndLog := func() {
 		stats, err := s.runFlushWithNewContext()
 		if err != nil || stats.NumDirtyEntries > 0 {
 			log.Printf("filestore flush: %d/%d entries flushed, err:%v\n", stats.NumCommitted, stats.NumDirtyEntries, err)
 		}
+	}
+	flushAndLog()
+	periodicTimer := time.NewTimer(DefaultFlushTime)
+	defer periodicTimer.Stop()
+	debounceTimer := time.NewTimer(DefaultFlushDelay)
+	if !debounceTimer.Stop() {
+		select {
+		case <-debounceTimer.C:
+		default:
+		}
+	}
+	defer debounceTimer.Stop()
+	var debounceCh <-chan time.Time
+	for {
 		if stopFlush.Load() {
 			log.Printf("filestore flusher stopping\n")
 			return
 		}
-		time.Sleep(DefaultFlushTime)
+		select {
+		case <-s.FlushNotifyCh:
+			resetTimer(debounceTimer, DefaultFlushDelay)
+			debounceCh = debounceTimer.C
+		case <-debounceCh:
+			debounceCh = nil
+			flushAndLog()
+			resetTimer(periodicTimer, DefaultFlushTime)
+		case <-periodicTimer.C:
+			flushAndLog()
+			periodicTimer.Reset(DefaultFlushTime)
+		}
 	}
+}
+
+func resetTimer(timer *time.Timer, duration time.Duration) {
+	if !timer.Stop() {
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+	timer.Reset(duration)
 }
 
 func minInt64(a, b int64) int64 {

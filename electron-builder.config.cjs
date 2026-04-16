@@ -10,6 +10,7 @@ const windowsTargets = windowsShouldBuildInstallers ? ["nsis", "msi", "zip"] : [
 const localWindowsElectronDist = path.resolve(__dirname, "node_modules", "electron", "dist");
 const useLocalWindowsElectronDist =
     process.platform === "win32" && fs.existsSync(path.join(localWindowsElectronDist, "electron.exe"));
+const windowsIconPath = path.resolve(__dirname, "assets", "appicon-windows.ico");
 
 /**
  * @type {import('electron-builder').Configuration}
@@ -104,6 +105,7 @@ const config = {
     },
     win: {
         target: windowsTargets,
+        icon: windowsIconPath,
         signAndEditExecutable: windowsShouldEditExecutable,
         signtoolOptions: windowsShouldSign && {
             signingHashAlgorithms: ["sha256"],
@@ -111,6 +113,11 @@ const config = {
             certificateSubjectName: "Command Line Inc",
             certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
         },
+    },
+    nsis: {
+        installerIcon: windowsIconPath,
+        uninstallerIcon: windowsIconPath,
+        installerHeaderIcon: windowsIconPath,
     },
     appImage: {
         license: "LICENSE",

@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -67,6 +68,22 @@ const DiagnosticTick = 10 * time.Minute
 
 var shutdownOnce sync.Once
 
+func flushFilestoreOnShutdown(ctx context.Context) {
+	stats, err := filestore.WFS.FlushCache(ctx)
+	for errors.Is(err, filestore.ErrFlushInProgress) && ctx.Err() == nil {
+		log.Printf("filestore flush already in progress during shutdown, waiting for it to finish\n")
+		time.Sleep(100 * time.Millisecond)
+		stats, err = filestore.WFS.FlushCache(ctx)
+	}
+	if err != nil {
+		log.Printf("error flushing filestore during shutdown: %v\n", err)
+		return
+	}
+	if stats.NumDirtyEntries > 0 {
+		log.Printf("filestore shutdown flush: %d/%d entries flushed\n", stats.NumCommitted, stats.NumDirtyEntries)
+	}
+}
+
 func init() {
 	envFilePath := os.Getenv("WAVETERM_ENVFILE")
 	if envFilePath != "" {
@@ -85,7 +102,7 @@ func doShutdown(reason string) {
 		sendTelemetryWrapper()
 		// TODO deal with flush in progress
 		clearTempFiles()
-		filestore.WFS.FlushCache(ctx)
+		flushFilestoreOnShutdown(ctx)
 		watcher := wconfig.GetWatcher()
 		if watcher != nil {
 			watcher.Close()

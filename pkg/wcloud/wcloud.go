@@ -56,13 +56,15 @@ func CacheAndRemoveEnvVars() error {
 	WCloudEndpoint_VarCache = os.Getenv(WCloudEndpointVarName)
 	err := checkEndpointVar(WCloudEndpoint_VarCache, "wcloud endpoint", WCloudEndpointVarName)
 	if err != nil {
-		return err
+		log.Printf("[warn] %v, disabling wcloud HTTP endpoint\n", err)
+		WCloudEndpoint_VarCache = ""
 	}
 	os.Unsetenv(WCloudEndpointVarName)
 	WCloudWSEndpoint_VarCache = os.Getenv(WCloudWSEndpointVarName)
 	err = checkWSEndpointVar(WCloudWSEndpoint_VarCache, "wcloud ws endpoint", WCloudWSEndpointVarName)
 	if err != nil {
-		return err
+		log.Printf("[warn] %v, disabling wcloud websocket endpoint\n", err)
+		WCloudWSEndpoint_VarCache = ""
 	}
 	os.Unsetenv(WCloudWSEndpointVarName)
 	WCloudPingEndpoint_VarCache = os.Getenv(WCloudPingEndpointVarName)

@@ -254,6 +254,23 @@ function hideWindowWithCatch(window: WaveBrowserWindow) {
     }
 }
 
+function requestWaveSrvShutdown() {
+    shutdownWshrpc();
+    const waveSrvProc = getWaveSrvProc();
+    if (waveSrvProc == null) {
+        return;
+    }
+    if (unamePlatform === "win32") {
+        try {
+            waveSrvProc.stdin.end();
+        } catch (e) {
+            console.log("error closing wavesrv stdin", e);
+        }
+        return;
+    }
+    waveSrvProc.kill("SIGINT");
+}
+
 electronApp.on("window-all-closed", () => {
     if (getGlobalIsRelaunching()) {
         return;
@@ -292,13 +309,7 @@ electronApp.on("before-quit", (e) => {
     }
     setGlobalIsQuitting(true);
     updater?.stop();
-    if (unamePlatform == "win32") {
-        // win32 doesn't have a SIGINT, so we just let electron die, which
-        // ends up killing wavesrv via closing it's stdin.
-        return;
-    }
-    getWaveSrvProc()?.kill("SIGINT");
-    shutdownWshrpc();
+    requestWaveSrvShutdown();
     if (getForceQuit()) {
         return;
     }
@@ -355,6 +366,12 @@ process.on("uncaughtException", (error) => {
     // Optionally, handle cleanup or exit the app
     setUserConfirmedQuit(true);
     electronApp.quit();
+});
+process.on("unhandledRejection", (reason) => {
+    console.log("Unhandled Rejection:", reason);
+    if (reason instanceof Error) {
+        console.log("Stack Trace:", reason.stack);
+    }
 });
 
 let lastWaveWindowCount = 0;

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from "@/app/app";
-import { loadMonaco } from "@/app/monaco/monaco-env";
 import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
@@ -40,6 +39,7 @@ const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
 let tabTitleUnsub: (() => void) | null = null;
+let monacoLoadPromise: Promise<void> | null = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -55,6 +55,27 @@ function updateZoomFactor(zoomFactor: number) {
     console.log("update zoomfactor", zoomFactor);
     document.documentElement.style.setProperty("--zoomfactor", String(zoomFactor));
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
+}
+
+function ensureMonacoLoaded(): Promise<void> {
+    if (monacoLoadPromise == null) {
+        monacoLoadPromise = import("@/app/monaco/monaco-env").then(({ loadMonaco }) => {
+            loadMonaco();
+        });
+    }
+    return monacoLoadPromise;
+}
+
+function preloadMonaco() {
+    fireAndForget(async () => {
+        try {
+            await ensureMonacoLoaded();
+        } catch (e) {
+            const error = e instanceof Error ? e : new Error(String(e));
+            getApi().sendLog("Error preloading Monaco " + error.message + "\n" + error.stack);
+            console.error("Error preloading Monaco", e);
+        }
+    });
 }
 
 function formatWaveWindowTitle(tabName?: string | null) {
@@ -182,11 +203,15 @@ async function initWave(initOpts: WaveInitOpts) {
     const globalWS = initWshrpc(makeTabRouteId(initOpts.tabId));
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
+    const startupConfigPromise = Promise.all([
+        RpcApi.GetFullConfigCommand(TabRpcClient),
+        RpcApi.GetWaveAIModeConfigCommand(TabRpcClient),
+    ]);
+    startupConfigPromise.catch(() => undefined);
 
     // ensures client/window/workspace are loaded into the cache before rendering
     try {
-        await loadConnStatus();
-        await loadBadges();
+        await Promise.all([loadConnStatus(), loadBadges()]);
         initGlobalWaveEventSubs(initOpts);
         subscribeToConnEvents();
         if (isMacOS()) {
@@ -212,11 +237,9 @@ async function initWave(initOpts: WaveInitOpts) {
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
-    await loadMonaco();
-    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
+    const [fullConfig, waveaiModeConfig] = await startupConfigPromise;
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
-    const waveaiModeConfig = await RpcApi.GetWaveAIModeConfigCommand(TabRpcClient);
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
     console.log("Wave First Render");
     let firstRenderResolveFn: () => void = null;
@@ -230,6 +253,7 @@ async function initWave(initOpts: WaveInitOpts) {
     await firstRenderPromise;
     console.log("Wave First Render Done");
     getApi().setWindowInitStatus("wave-ready");
+    preloadMonaco();
 }
 
 async function initBuilderWrap(initOpts: BuilderInitOpts) {
@@ -283,7 +307,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     registerBuilderGlobalKeys();
     registerElectronReinjectKeyHandler();
-    await loadMonaco();
+    await ensureMonacoLoaded();
     const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
