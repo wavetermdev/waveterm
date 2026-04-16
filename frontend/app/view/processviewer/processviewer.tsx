@@ -470,7 +470,7 @@ const Columns: ColDef[] = [
     { key: "pid", label: "PID", width: "70px", align: "right" },
     { key: "command", label: "Command", width: "minmax(120px, 4fr)" },
     { key: "status", label: "Status", width: "75px", hideOnPlatform: ["windows", "darwin"] },
-    { key: "user", label: "User", width: "80px" },
+    { key: "user", label: "User", width: "80px", hideOnPlatform: ["windows"] },
     { key: "threads", label: "NT", tooltip: "Num Threads", width: "40px", align: "right", hideOnPlatform: ["windows"] },
     { key: "cpu", label: "CPU%", width: "70px", align: "right" },
     { key: "mem", label: "Memory", width: "90px", align: "right" },

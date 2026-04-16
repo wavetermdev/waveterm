@@ -220,6 +220,9 @@ func (s *procCacheState) runLoop(firstReadyCh chan struct{}) {
 // lookupUID resolves a uid to a username, using the per-run cache to avoid
 // repeated syscalls for the same uid.
 func (s *procCacheState) lookupUID(uid uint32) string {
+	if runtime.GOOS == "windows" {
+		return ""
+	}
 	if s.uidCache == nil {
 		s.uidCache = make(map[uint32]string)
 	}
