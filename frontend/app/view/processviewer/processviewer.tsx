@@ -311,6 +311,10 @@ export class ProcessViewerViewModel implements ViewModel {
             this.cancelPoll = null;
             this.startKeepAlive();
         } else {
+            if (this.cancelPoll) {
+                this.cancelPoll();
+            }
+            this.cancelPoll = null;
             this.startPolling();
         }
     }

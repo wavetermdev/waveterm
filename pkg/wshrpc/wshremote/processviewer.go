@@ -160,7 +160,9 @@ func (s *procCacheState) getWidgetPidOrder(widgetId string) ([]int32, int) {
 func (s *procCacheState) updateCacheAndCheckIdle(result *wshrpc.ProcessListResponse, firstDone *bool, firstReadyCh chan struct{}) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	s.cached = result
+	if result != nil {
+		s.cached = result
+	}
 	if !*firstDone {
 		*firstDone = true
 		close(firstReadyCh)
@@ -254,7 +256,10 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 		s.lastCPUSamples = make(map[int32]cpuSample, len(procs))
 	}
 
-	snap, _ := procinfo.MakeGlobalSnapshot()
+	snap, err := procinfo.MakeGlobalSnapshot()
+	if err != nil {
+		return nil
+	}
 
 	hasCPU := s.lastCPUEpoch > 1 // first epoch has no previous sample to diff against
 
