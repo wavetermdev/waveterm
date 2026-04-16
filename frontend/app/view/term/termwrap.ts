@@ -319,10 +319,6 @@ export class TermWrap {
             if (event.defaultPrevented || this.terminal.modes.mouseTrackingMode !== "none") {
                 return;
             }
-            const target = event.target;
-            if (target instanceof Element && target.closest(".xterm-viewport") != null) {
-                return;
-            }
             // This relies on xterm.js private internals (`_core._renderService`) because
             // there is no public API for measured cell height yet; fall back to 16px
             // (a conservative default line height) so wheel deltas still map to lines,

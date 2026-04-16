@@ -39,6 +39,7 @@ import { createRoot } from "react-dom/client";
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
+let tabTitleUnsub: (() => void) | null = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -54,6 +55,27 @@ function updateZoomFactor(zoomFactor: number) {
     console.log("update zoomfactor", zoomFactor);
     document.documentElement.style.setProperty("--zoomfactor", String(zoomFactor));
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
+}
+
+function formatWaveWindowTitle(tabName?: string | null) {
+    const trimmedTabName = tabName?.trim();
+    return trimmedTabName ? `Wave Terminal - ${trimmedTabName}` : "Wave Terminal";
+}
+
+function installWaveWindowTitleSync(tabId: string) {
+    tabTitleUnsub?.();
+    tabTitleUnsub = null;
+    if (!tabId) {
+        document.title = formatWaveWindowTitle();
+        return;
+    }
+    const tabAtom = WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId));
+    const updateTitle = () => {
+        const tab = globalStore.get(tabAtom);
+        document.title = formatWaveWindowTitle(tab?.name);
+    };
+    updateTitle();
+    tabTitleUnsub = globalStore.sub(tabAtom, updateTitle);
 }
 
 async function initBare() {
@@ -113,7 +135,7 @@ async function reinitWave() {
     const initialTab = await WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
     await WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     reloadAllWorkspaceTabs(ws);
-    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+    installWaveWindowTitleSync(initialTab.oid);
     getApi().setWindowInitStatus("wave-ready");
     globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
     globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
@@ -182,7 +204,7 @@ async function initWave(initOpts: WaveInitOpts) {
         ]);
         loadAllWorkspaceTabs(ws);
         WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
-        document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+        installWaveWindowTitleSync(initialTab.oid);
     } catch (e) {
         console.error("Failed initialization error", e);
         getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + e.message + "\n" + e.stack);

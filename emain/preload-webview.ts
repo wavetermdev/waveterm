@@ -5,10 +5,16 @@ import { ipcRenderer } from "electron";
 
 document.addEventListener("contextmenu", (event) => {
     console.log("contextmenu event", event);
-    if (event.target == null) {
+    if (!event.isTrusted || event.target == null) {
         return;
     }
     const targetElement = event.target as HTMLElement;
+    const selection = document.getSelection()?.toString().trim();
+    const isEditable =
+        targetElement.isContentEditable || targetElement.tagName === "INPUT" || targetElement.tagName === "TEXTAREA";
+    if (selection || isEditable) {
+        return;
+    }
     // Check if the right-click is on an image
     if (targetElement.tagName === "IMG") {
         setTimeout(() => {
@@ -22,7 +28,13 @@ document.addEventListener("contextmenu", (event) => {
         }, 50);
         return;
     }
-    // do nothing
+    setTimeout(() => {
+        if (event.defaultPrevented) {
+            return;
+        }
+        event.preventDefault();
+        ipcRenderer.send("webview-contextmenu");
+    }, 50);
 });
 
 document.addEventListener("mouseup", (event) => {

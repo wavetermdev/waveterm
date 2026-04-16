@@ -103,9 +103,9 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     const innerHandleVisible = showLeftTabBar && aiPanelVisible;
-    const innerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${innerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+    const innerHandleClass = `transition-colors ${innerHandleVisible ? "w-[3px] cursor-col-resize bg-border/45 hover:bg-accent/45 active:bg-accent/60" : "w-0 pointer-events-none"}`;
     const outerHandleVisible = showLeftTabBar || aiPanelVisible;
-    const outerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${outerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+    const outerHandleClass = `transition-colors ${outerHandleVisible ? "w-[3px] cursor-col-resize bg-border/45 hover:bg-accent/45 active:bg-accent/60" : "w-0 pointer-events-none"}`;
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">

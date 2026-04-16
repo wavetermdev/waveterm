@@ -233,6 +233,30 @@ export function initIpcHandlers() {
                 },
             })
         );
+        menu.append(new electron.MenuItem({ type: "separator" }));
+        menu.append(
+            new electron.MenuItem({
+                label: "Refresh",
+                accelerator: "CmdOrCtrl+R",
+                click: () => {
+                    event.sender.reload();
+                },
+            })
+        );
+        menu.popup();
+    });
+
+    electron.ipcMain.on("webview-contextmenu", (event: electron.IpcMainEvent) => {
+        const menu = new electron.Menu();
+        menu.append(
+            new electron.MenuItem({
+                label: "Refresh",
+                accelerator: "CmdOrCtrl+R",
+                click: () => {
+                    event.sender.reload();
+                },
+            })
+        );
         menu.popup();
     });
 
