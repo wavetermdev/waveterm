@@ -40,6 +40,7 @@ import {
     bufferLinesToText,
     createTempFileFromBlob,
     extractAllClipboardData,
+    getWheelLineDelta,
     normalizeCursorStyle,
     quoteForPosixShell,
     trimTerminalSelection,
@@ -110,6 +111,7 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+    wheelScrollRemainder: number = 0;
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -312,6 +314,40 @@ export class TermWrap {
             dispose: () => {
                 this.connectElem.removeEventListener("dragover", dragoverHandler);
                 this.connectElem.removeEventListener("drop", dropHandler);
+            },
+        });
+        const wheelHandler = (event: WheelEvent) => {
+            if (event.defaultPrevented || this.terminal.modes.mouseTrackingMode !== "none") {
+                return;
+            }
+            // This relies on xterm.js private internals (`_core._renderService`) because
+            // there is no public API for measured cell height yet; fall back to 16px
+            // (a conservative default line height) so wheel deltas still map to lines,
+            // and revisit this when xterm exposes public cell dimensions.
+            const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
+            const lineDelta = getWheelLineDelta(event.deltaY, event.deltaMode, cellHeight, this.terminal.rows);
+            if (lineDelta === 0) {
+                return;
+            }
+            this.wheelScrollRemainder += lineDelta;
+            const wholeLines =
+                this.wheelScrollRemainder > 0
+                    ? Math.floor(this.wheelScrollRemainder)
+                    : Math.ceil(this.wheelScrollRemainder);
+            if (wholeLines === 0) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            this.wheelScrollRemainder -= wholeLines;
+            this.terminal.scrollLines(wholeLines);
+            event.preventDefault();
+            event.stopPropagation();
+        };
+        this.connectElem.addEventListener("wheel", wheelHandler, { passive: false, capture: true });
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("wheel", wheelHandler, true);
             },
         });
         this.handleResize();

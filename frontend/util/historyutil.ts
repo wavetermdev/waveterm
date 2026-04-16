@@ -5,22 +5,109 @@ import * as util from "@/util/util";
 
 const MaxHistory = 20;
 
-// this needs to be fixed for windows
+const windowsDriveRootRe = /^[a-zA-Z]:[\\/]?$/;
+const windowsDrivePathRe = /^[a-zA-Z]:[\\/]/;
+
+function isPathSeparator(ch: string): boolean {
+    return ch == "/" || ch == "\\";
+}
+
+function getWindowsDriveRoot(path: string): string | null {
+    if (!windowsDrivePathRe.test(path) && !windowsDriveRootRe.test(path)) {
+        return null;
+    }
+    return path.substring(0, 2) + (path.includes("/") && !path.includes("\\") ? "/" : "\\");
+}
+
+function getUncRootEnd(path: string): number {
+    if (path.length < 3 || !isPathSeparator(path[0]) || path[0] != path[1]) {
+        return -1;
+    }
+
+    let serverEnd = -1;
+    for (let index = 2; index < path.length; index++) {
+        if (isPathSeparator(path[index])) {
+            serverEnd = index;
+            break;
+        }
+    }
+    if (serverEnd == -1) {
+        return path.length;
+    }
+
+    for (let index = serverEnd + 1; index < path.length; index++) {
+        if (isPathSeparator(path[index])) {
+            return index;
+        }
+    }
+    return path.length;
+}
+
+function trimTrailingSeparators(path: string): string {
+    const windowsDriveRoot = getWindowsDriveRoot(path);
+    if (windowsDriveRoot != null && path.length <= windowsDriveRoot.length) {
+        return windowsDriveRoot;
+    }
+
+    const uncRootEnd = getUncRootEnd(path);
+    let minLength = 1;
+    if (windowsDriveRoot != null) {
+        minLength = windowsDriveRoot.length;
+    } else if (uncRootEnd != -1) {
+        minLength = uncRootEnd;
+    }
+
+    let end = path.length;
+    while (end > minLength && isPathSeparator(path[end - 1])) {
+        end--;
+    }
+    return path.substring(0, end);
+}
+
 function getParentDirectory(path: string): string {
-    if (util.isBlank(path) == null) {
+    if (util.isBlank(path)) {
         // this not great, ideally we'd never be passed a null path
         return "/";
     }
-    if (path == "/") {
+    if (path == "/" || path == "~") {
+        return path;
+    }
+
+    const windowsDriveRoot = getWindowsDriveRoot(path);
+    if (windowsDriveRoot != null && path.length <= windowsDriveRoot.length) {
+        return windowsDriveRoot;
+    }
+
+    const trimmedPath = trimTrailingSeparators(path);
+    if (trimmedPath == "/" || trimmedPath == "~") {
+        return trimmedPath;
+    }
+
+    const uncRootEnd = getUncRootEnd(trimmedPath);
+    if (uncRootEnd != -1 && trimmedPath.length <= uncRootEnd) {
+        return trimmedPath;
+    }
+
+    let lastSeparatorIndex = -1;
+    for (let index = trimmedPath.length - 1; index >= 0; index--) {
+        if (isPathSeparator(trimmedPath[index])) {
+            lastSeparatorIndex = index;
+            break;
+        }
+    }
+    if (lastSeparatorIndex == -1) {
+        return trimmedPath;
+    }
+    if (lastSeparatorIndex == 0) {
         return "/";
     }
-    const splitPath = path.split("/");
-    splitPath.pop();
-    if (splitPath.length == 1 && splitPath[0] == "") {
-        return "/";
+    if (windowsDriveRoot != null && lastSeparatorIndex <= windowsDriveRoot.length - 1) {
+        return windowsDriveRoot;
     }
-    const newPath = splitPath.join("/");
-    return newPath;
+    if (uncRootEnd != -1 && lastSeparatorIndex <= uncRootEnd) {
+        return trimmedPath.substring(0, uncRootEnd);
+    }
+    return trimmedPath.substring(0, lastSeparatorIndex);
 }
 
 function goHistoryBack(curValKey: "url" | "file", curVal: string, meta: MetaType, backToParent: boolean): MetaType {

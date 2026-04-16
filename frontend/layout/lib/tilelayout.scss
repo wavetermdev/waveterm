@@ -43,29 +43,34 @@
         z-index: var(--zindex-layout-resize-handle);
 
         .line {
-            visibility: hidden;
+            opacity: 0.75;
+            transition:
+                opacity var(--animation-time-xs) ease,
+                border-color var(--animation-time-xs) ease;
         }
         &.flex-row {
             cursor: ew-resize;
             .line {
                 height: 100%;
                 width: calc(50% + 1px);
-                border-right: 2px solid var(--accent-color);
+                border-right: 2px solid rgb(from var(--border-color) r g b / 0.95);
             }
         }
         &.flex-column {
             cursor: ns-resize;
             .line {
                 height: calc(50% + 1px);
-                border-bottom: 2px solid var(--accent-color);
+                border-bottom: 2px solid rgb(from var(--border-color) r g b / 0.95);
             }
         }
         &:hover .line {
-            visibility: visible;
-
-            // Ignore the prefers-reduced-motion override, since we are not applying a true animation here, just a delay.
-            transition-property: visibility !important;
-            transition-delay: var(--animation-time-s) !important;
+            opacity: 1;
+        }
+        &.flex-row:hover .line {
+            border-right-color: var(--accent-color);
+        }
+        &.flex-column:hover .line {
+            border-bottom-color: var(--accent-color);
         }
     }
 

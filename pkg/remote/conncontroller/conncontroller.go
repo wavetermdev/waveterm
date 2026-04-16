@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1251,11 +1252,23 @@ func GetConnectionsFromInternalConfig() []string {
 }
 
 func GetConnectionsFromConfig() ([]string, error) {
-	home := wavebase.GetHomeDir()
-	localConfig := filepath.Join(home, ".ssh", "config")
-	systemConfig := filepath.Join("/etc", "ssh", "config")
-	sshConfigFiles := []string{localConfig, systemConfig}
+	sshConfigFiles := getSshConfigFiles(wavebase.GetHomeDir(), runtime.GOOS, os.Getenv("PROGRAMDATA"))
 	remote.WaveSshConfigUserSettings().ReloadConfigs()
 
 	return resolveSshConfigPatterns(sshConfigFiles)
+}
+
+func getSshConfigFiles(homeDir string, goos string, programData string) []string {
+	localConfig := filepath.Join(homeDir, ".ssh", "config")
+	sshConfigFiles := []string{localConfig}
+
+	if goos == "windows" {
+		if programData != "" {
+			sshConfigFiles = append(sshConfigFiles, filepath.Join(programData, "ssh", "ssh_config"))
+		}
+		return sshConfigFiles
+	}
+
+	systemConfig := filepath.Join("/etc", "ssh", "config")
+	return append(sshConfigFiles, systemConfig)
 }

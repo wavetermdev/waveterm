@@ -400,3 +400,19 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
 export function quoteForPosixShell(filePath: string): string {
     return "'" + filePath.replace(/'/g, "'\\''") + "'";
 }
+
+export function getWheelLineDelta(deltaY: number, deltaMode: number, cellHeight: number, rows: number): number {
+    if (!Number.isFinite(deltaY) || deltaY === 0) {
+        return 0;
+    }
+    const safeCellHeight = Number.isFinite(cellHeight) && cellHeight > 0 ? cellHeight : 16;
+    const safeRows = Number.isFinite(rows) && rows > 0 ? rows : 1;
+    switch (deltaMode) {
+        case 1:
+            return deltaY;
+        case 2:
+            return deltaY * safeRows;
+        default:
+            return deltaY / safeCellHeight;
+    }
+}
