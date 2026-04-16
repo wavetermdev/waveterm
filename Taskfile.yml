@@ -156,6 +156,7 @@ tasks:
             - tsunami/go.mod
             - tsunami/go.sum
             - tsunami/**/*.go
+            - package.json
 
     build:schema:
         desc: Build the schema for configuration.
@@ -185,6 +186,7 @@ tasks:
             - "pkg/**/*.json"
             - "pkg/**/*.sh"
             - tsunami/**/*.go
+            - package.json
         generates:
             - dist/bin/wavesrv.*
 
@@ -289,6 +291,7 @@ tasks:
         sources:
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
+            - package.json
         generates:
             - "dist/bin/wsh*"
 
