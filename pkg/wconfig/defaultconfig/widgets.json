@@ -40,5 +40,15 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@processviewer": {
+        "display:order": -1,
+        "icon": "list-tree",
+        "label": "processes",
+        "blockdef": {
+            "meta": {
+                "view": "processviewer"
+            }
+        }
     }
 }

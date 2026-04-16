@@ -243,29 +243,18 @@ func (s *procCacheState) collectSnapshot(numCPU int) *wshrpc.ProcessListResponse
 
 	hasCPU := s.lastCPUEpoch > 1 // first epoch has no previous sample to diff against
 
-	// Build per-pid procinfo in parallel, then compute CPU% sequentially.
 	type pidInfo struct {
 		pid  int32
 		info *procinfo.ProcInfo
 	}
 	rawInfos := make([]pidInfo, len(procs))
-	var wg sync.WaitGroup
 	for i, p := range procs {
-		i, p := i, p
-		wg.Add(1)
-		go func() {
-			defer func() {
-				panichandler.PanicHandler("collectSnapshot:GetProcInfo", recover())
-				wg.Done()
-			}()
-			pi, err := procinfo.GetProcInfo(ctx, snap, p.Pid)
-			if err != nil {
-				pi = nil
-			}
-			rawInfos[i] = pidInfo{pid: p.Pid, info: pi}
-		}()
+		pi, err := procinfo.GetProcInfo(ctx, snap, p.Pid)
+		if err != nil {
+			pi = nil
+		}
+		rawInfos[i] = pidInfo{pid: p.Pid, info: pi}
 	}
-	wg.Wait()
 
 	// Sample CPU times and compute CPU% sequentially to keep epoch accounting simple.
 	cpuPcts := make(map[int32]float64, len(procs))
