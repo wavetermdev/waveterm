@@ -1,8 +1,10 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { globalStore } from "@/app/store/jotaiStore";
+import { WaveEnvContext } from "@/app/waveenv/waveenv";
+import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
 import { AppSelectionModal } from "@/builder/app-selection-modal";
 import { BuilderWorkspace } from "@/builder/builder-workspace";
 import { atoms, isDev } from "@/store/global";
@@ -10,7 +12,7 @@ import { appHandleKeyDown } from "@/store/keymodel";
 import * as keyutil from "@/util/keyutil";
 import { isBlank } from "@/util/util";
 import { Provider, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 
@@ -60,13 +62,16 @@ function BuilderAppInner() {
 }
 
 export function BuilderApp({ initOpts, onFirstRender }: BuilderAppProps) {
+    const waveEnvRef = useRef(makeWaveEnvImpl());
     useEffect(() => {
         onFirstRender();
     }, []);
 
     return (
         <Provider store={globalStore}>
-            <BuilderAppInner />
+            <WaveEnvContext.Provider value={waveEnvRef.current}>
+                <BuilderAppInner />
+            </WaveEnvContext.Provider>
         </Provider>
     );
 }
