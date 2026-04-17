@@ -198,8 +198,14 @@
         "web:defaultsearch": {
           "type": "string"
         },
+        "feishu:*": {
+            "type": "boolean"
+        },
+        "feishu:apppath": {
+            "type": "string"
+        },
         "autoupdate:*": {
-          "type": "boolean"
+            "type": "boolean"
         },
         "autoupdate:enabled": {
           "type": "boolean"

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "TASK-001",
+    "title": "飞书入口增强与 Harness 初始化",
+    "status": "blocked",
+    "priority": "P1",
+    "scope": [
+      "emain/emain-feishu.ts",
+      "emain/emain-ipc.ts",
+      "emain/preload.ts",
+      "frontend/app/view/feishuview/feishuview.tsx",
+      "frontend/app/view/webview/webview.tsx",
+      "frontend/app/view/webview/webviewenv.ts",
+      "frontend/app/block/blockregistry.ts",
+      "frontend/app/block/blockutil.tsx",
+      "pkg/wconfig/defaultconfig/widgets.json",
+      "pkg/wconfig/defaultconfig/settings.json",
+      "pkg/wconfig/settingsconfig.go",
+      "frontend/types/custom.d.ts",
+      "frontend/types/gotypes.d.ts",
+      "schema/settings.json",
+      ".harness/*",
+      "scripts/verify.ps1",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "acceptance": [
+      "飞书入口支持本地 App 自动发现、配置路径覆盖与网页兜底",
+      "飞书视图弹出的新窗口继承 persist:feishu 分区",
+      "用户可见地提供 `Feishu App` / `Feishu Web` 双入口，且 `Feishu Web` 可直接隐藏当前卡片",
+      "最小验证命令 scripts/verify.ps1 通过",
+      "仓库具备最小可续跑的 Harness 工件"
+    ],
+    "notes": "代码实现与 verify 已完成；剩余阻塞是运行态 smoke 依赖账号态，且本地启动环境还缺少可用的 WCLOUD_ENDPOINT。"
+  }
+]

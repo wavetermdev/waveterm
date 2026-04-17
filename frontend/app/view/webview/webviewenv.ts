@@ -6,6 +6,7 @@ import type { MetaKeyAtomFnType, SettingsKeyAtomFnType, WaveEnv, WaveEnvSubset }
 export type WebViewEnv = WaveEnvSubset<{
     electron: {
         openExternal: WaveEnv["electron"]["openExternal"];
+        openFeishuApp: WaveEnv["electron"]["openFeishuApp"];
         getWebviewPreload: WaveEnv["electron"]["getWebviewPreload"];
         clearWebviewStorage: WaveEnv["electron"]["clearWebviewStorage"];
         getConfigDir: WaveEnv["electron"]["getConfigDir"];

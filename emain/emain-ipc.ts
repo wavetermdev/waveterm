@@ -20,6 +20,7 @@ import {
     setWasActive,
 } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
+import { openFeishuApp } from "./emain-feishu";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
@@ -205,6 +206,10 @@ export function initIpcHandlers() {
         } else {
             console.error("Invalid URL received in open-external event:", url);
         }
+    });
+
+    electron.ipcMain.handle("open-feishu-app", async () => {
+        return await openFeishuApp();
     });
 
     electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {

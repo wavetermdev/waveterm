@@ -33,6 +33,12 @@ export function blockViewToIcon(view: string): string {
     if (view == "web") {
         return "globe";
     }
+    if (view == "feishu") {
+        return "desktop";
+    }
+    if (view == "feishuweb") {
+        return "globe";
+    }
     if (view == "waveai") {
         return "sparkles";
     }
@@ -60,6 +66,12 @@ export function blockViewToName(view: string): string {
     }
     if (view == "web") {
         return "Web";
+    }
+    if (view == "feishu") {
+        return "Feishu App";
+    }
+    if (view == "feishuweb") {
+        return "Feishu Web";
     }
     if (view == "waveai") {
         return "WaveAI";

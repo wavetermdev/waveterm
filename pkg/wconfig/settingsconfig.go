@@ -123,6 +123,9 @@ type SettingsType struct {
 	WebDefaultUrl          string `json:"web:defaulturl,omitempty"`
 	WebDefaultSearch       string `json:"web:defaultsearch,omitempty"`
 
+	FeishuClear   bool   `json:"feishu:*,omitempty"`
+	FeishuAppPath string `json:"feishu:apppath,omitempty"`
+
 	AutoUpdateClear         bool    `json:"autoupdate:*,omitempty"`
 	AutoUpdateEnabled       bool    `json:"autoupdate:enabled,omitempty"`
 	AutoUpdateIntervalMs    float64 `json:"autoupdate:intervalms,omitempty"`

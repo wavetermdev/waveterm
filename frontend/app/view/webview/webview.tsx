@@ -487,6 +487,10 @@ export class WebViewModel implements ViewModel {
         globalStore.set(this.isLoading, isLoading);
     }
 
+    handleNewWindow(url: string) {
+        fireAndForget(() => openLink(url, true));
+    }
+
     async setHomepageUrl(url: string, scope: "global" | "block") {
         if (url != null && url != "") {
             switch (scope) {
@@ -1020,7 +1024,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         const newWindowHandler = (e: any) => {
             e.preventDefault();
             const newUrl = e.detail.url;
-            fireAndForget(() => openLink(newUrl, true));
+            model.handleNewWindow(newUrl);
         };
         const startLoadingHandler = () => {
             model.setRefreshIcon("xmark-large");

@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("api", {
             console.error("Invalid URL passed to openExternal:", url);
         }
     },
+    openFeishuApp: () => ipcRenderer.invoke("open-feishu-app"),
     getEnv: (varName) => ipcRenderer.sendSync("get-env", varName),
     onFullScreenChange: (callback) =>
         ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),

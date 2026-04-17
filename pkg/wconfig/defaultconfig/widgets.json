@@ -40,5 +40,27 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@feishu": {
+        "display:order": -1,
+        "icon": "desktop",
+        "label": "feishu",
+        "description": "Open the local Feishu desktop app",
+        "blockdef": {
+            "meta": {
+                "view": "feishu"
+            }
+        }
+    },
+    "defwidget@feishuweb": {
+        "display:order": 0,
+        "icon": "globe",
+        "label": "fei-web",
+        "description": "Open Feishu chat inside Wave using the embedded web view",
+        "blockdef": {
+            "meta": {
+                "view": "feishuweb"
+            }
+        }
     }
 }

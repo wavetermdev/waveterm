@@ -77,6 +77,14 @@ declare global {
         windowId: string;
     };
 
+    type OpenFeishuResult = {
+        opened: boolean;
+        method: string;
+        fallbackUrl: string;
+        appPath?: string;
+        error?: string;
+    };
+
     type ElectronApi = {
         getAuthKey(): string; // get-auth-key
         getIsDev(): boolean; // get-is-dev
@@ -99,6 +107,7 @@ declare global {
         onIframeNavigate: (callback: (url: string) => void) => void;
         downloadFile: (path: string) => void; // download
         openExternal: (url: string) => void; // open-external
+        openFeishuApp: () => Promise<OpenFeishuResult>; // open-feishu-app
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void; // fullscreen-change
         onZoomFactorChange: (callback: (zoomFactor: number) => void) => void; // zoom-factor-change
         onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void; // app-update-status

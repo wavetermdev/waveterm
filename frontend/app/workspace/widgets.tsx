@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { atoms, getFocusedBlockId, globalStore, WOS } from "@/app/store/global";
+import { uxCloseBlock } from "@/app/store/keymodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
@@ -57,6 +59,24 @@ type WidgetPropsType = {
 
 async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
     const blockDef = widget.blockdef;
+    const widgetView = blockDef?.meta?.view;
+    if (widgetView === "feishu" || widgetView === "feishuweb") {
+        const staticTabId = globalStore.get(atoms.staticTabId);
+        const staticTabAtom = staticTabId ? WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", staticTabId)) : null;
+        const staticTab = staticTabAtom ? globalStore.get(staticTabAtom) : null;
+        const blockIds = staticTab?.blockids ?? [];
+        const focusedBlockId = getFocusedBlockId();
+        const matchingBlockIds = blockIds.filter((blockId) => {
+            const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+            const blockData = globalStore.get(blockAtom);
+            return blockData?.meta?.view === widgetView;
+        });
+        if (matchingBlockIds.length > 0) {
+            const targetBlockId = matchingBlockIds.includes(focusedBlockId) ? focusedBlockId : matchingBlockIds[0];
+            uxCloseBlock(targetBlockId);
+            return;
+        }
+    }
     env.createBlock(blockDef, widget.magnified);
 }
 
