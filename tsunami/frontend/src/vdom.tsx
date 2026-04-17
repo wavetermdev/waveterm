@@ -170,15 +170,21 @@ const SvgUrlIdAttributes = {
     "text-decoration": true,
 };
 
-function convertVDomFunc(model: TsunamiModel, fnDecl: VDomFunc, compId: string, propName: string): (e: any) => void {
-    return (e: any) => {
+function convertVDomFunc(
+    model: TsunamiModel,
+    fnDecl: VDomFunc,
+    compId: string,
+    propName: string
+): (...args: any[]) => any {
+    return (...args: any[]) => {
+        const e = args[0];
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["keys"]) {
             dlog("key event", fnDecl, e);
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
             for (let keyDesc of fnDecl["keys"] || []) {
                 if (checkKeyPressed(waveEvent, keyDesc)) {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    e?.preventDefault?.();
+                    e?.stopPropagation?.();
                     model.callVDomFunc(fnDecl, e, compId, propName);
                     return;
                 }
@@ -186,17 +192,16 @@ function convertVDomFunc(model: TsunamiModel, fnDecl: VDomFunc, compId: string, 
             return;
         }
         if (fnDecl.preventdefault) {
-            e.preventDefault();
+            e?.preventDefault?.();
         }
         if (fnDecl.stoppropagation) {
-            e.stopPropagation();
+            e?.stopPropagation?.();
         }
+        let retVal: any;
         if (fnDecl.jscode) {
             try {
                 const fn = eval(fnDecl.jscode);
-                if (typeof fn === "function") {
-                    fn(e, e.currentTarget ?? e.target);
-                }
+                if (typeof fn === "function") retVal = fn(...args);
             } catch (err) {
                 console.error("vdom jscode error:", err);
             }
@@ -204,6 +209,7 @@ function convertVDomFunc(model: TsunamiModel, fnDecl: VDomFunc, compId: string, 
         if (!fnDecl.preventbackend) {
             model.callVDomFunc(fnDecl, e, compId, propName);
         }
+        return retVal;
     };
 }
 
@@ -266,7 +272,7 @@ function convertChildren(elem: VDomElem, model: TsunamiModel): React.ReactNode[]
     if (elem.children == null || elem.children.length == 0) {
         return null;
     }
-    let childrenComps: React.ReactNode[] = [];
+    const childrenComps: React.ReactNode[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;

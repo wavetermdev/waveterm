@@ -236,6 +236,9 @@ function checkKeyPressed(event: VDomKeyboardEvent, keyDescription: string): bool
 }
 
 function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): VDomKeyboardEvent {
+    if (event == null || typeof event.key !== "string") {
+        return { type: "unknown" } as VDomKeyboardEvent;
+    }
     let rtn: VDomKeyboardEvent = {} as VDomKeyboardEvent;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;
