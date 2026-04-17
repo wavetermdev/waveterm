@@ -397,6 +397,14 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
     return lines;
 }
 
+export function isLikelyOnSameHost(lastCommand: string): boolean {
+    if (lastCommand == null) {
+        return true;
+    }
+    const cmd = lastCommand.trimStart();
+    return !cmd.startsWith("ssh ");
+}
+
 export function quoteForPosixShell(filePath: string): string {
     return "'" + filePath.replace(/'/g, "'\\''") + "'";
 }

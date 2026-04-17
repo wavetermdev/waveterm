@@ -40,7 +40,7 @@ import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
-import { computeTheme, DefaultTermTheme, trimTerminalSelection } from "./termutil";
+import { computeTheme, DefaultTermTheme, isLikelyOnSameHost, trimTerminalSelection } from "./termutil";
 import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
@@ -958,9 +958,9 @@ export class TermViewModel implements ViewModel {
         });
         fullMenu.push({ type: "separator" });
 
-        const shellIntegrationStatus = globalStore.get(this.termRef?.current?.shellIntegrationStatusAtom);
+        const lastCommand = globalStore.get(this.termRef?.current?.lastCommandAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
-        const canShowFileBrowser = shellIntegrationStatus === "ready" && cwd != null;
+        const canShowFileBrowser = cwd != null && isLikelyOnSameHost(lastCommand);
 
         if (canShowFileBrowser) {
             fullMenu.push({
