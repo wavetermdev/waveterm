@@ -9,7 +9,7 @@ const globalModel = new TsunamiModel();
 
 function App() {
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <div className="h-full bg-background text-foreground overflow-auto">
             <VDomView model={globalModel} />
         </div>
     );

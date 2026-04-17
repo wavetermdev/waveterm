@@ -5,7 +5,7 @@ import { ClientService, ObjectService, WindowService, WorkspaceService } from "@
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
-import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
+import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen, webContents } from "electron";
 import { globalEvents } from "emain/emain-events";
 import path from "path";
 import { debounce } from "throttle-debounce";
@@ -299,6 +299,7 @@ export class WaveBrowserWindow extends BaseWindow {
             if (this.isDestroyed()) {
                 return;
             }
+            this.closeAllDevTools();
             console.log("win 'close' handler fired", this.waveWindowId);
             if (getGlobalIsQuitting() || updater?.status == "installing" || getGlobalIsRelaunching()) {
                 return;
@@ -356,6 +357,24 @@ export class WaveBrowserWindow extends BaseWindow {
         });
         waveWindowMap.set(waveWindow.oid, this);
         setTimeout(() => globalEvents.emit("windows-updated"), 50);
+    }
+
+    private closeAllDevTools() {
+        for (const tabView of this.allLoadedTabViews.values()) {
+            if (tabView.webContents?.isDevToolsOpened()) {
+                tabView.webContents.closeDevTools();
+            }
+        }
+        const tabViewIds = new Set(
+            [...this.allLoadedTabViews.values()].map((tv) => tv.webContents?.id).filter((id) => id != null)
+        );
+        for (const wc of webContents.getAllWebContents()) {
+            if (wc.getType() === "webview" && tabViewIds.has(wc.hostWebContents?.id)) {
+                if (wc.isDevToolsOpened()) {
+                    wc.closeDevTools();
+                }
+            }
+        }
     }
 
     private removeAllChildViews() {

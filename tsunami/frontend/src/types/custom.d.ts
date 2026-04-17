@@ -12,4 +12,5 @@ type KeyPressDecl = {
     };
     key: string;
     keyType: string;
+    nomatch?: boolean;
 };

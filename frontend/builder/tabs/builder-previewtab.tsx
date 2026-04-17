@@ -70,8 +70,8 @@ const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
                     <div className="flex flex-col gap-3">
                         <h2 className="text-2xl font-semibold text-error">Secrets Required</h2>
                         <p className="text-base text-secondary leading-relaxed">
-                            This app requires secrets that must be configured. Please use the Secrets tab to set and bind
-                            the required secrets for your app to run.
+                            This app requires secrets that must be configured. Please use the Secrets tab to set and
+                            bind the required secrets for your app to run.
                         </p>
                         <div className="text-left bg-panel border border-error/30 rounded-lg p-4 max-h-96 overflow-auto mt-2">
                             <pre className="text-sm text-secondary whitespace-pre-wrap font-mono">{displayMsg}</pre>
@@ -178,47 +178,48 @@ const BuilderPreviewTab = memo(() => {
     const originalContent = useAtomValue(model.originalContentAtom);
     const builderStatus = useAtomValue(model.builderStatusAtom);
     const builderId = useAtomValue(atoms.builderId);
-
     const fileExists = originalContent.length > 0;
-
-    if (isLoading) {
-        return null;
-    }
-
-    if (builderStatus?.status === "error") {
-        return <ErrorStateView errorMsg={builderStatus?.errormsg || ""} />;
-    }
-
-    if (!fileExists) {
-        return <EmptyStateView />;
-    }
+    const [lastKnownUrl, setLastKnownUrl] = useState<string>(null);
 
     const status = builderStatus?.status || "init";
+    const isWebViewActive = status === "running" && builderStatus?.port && builderStatus.port !== 0;
 
-    if (status === "init") {
-        return null;
-    }
-
-    if (status === "building") {
-        return <BuildingStateView />;
-    }
-
-    if (status === "stopped") {
-        return <StoppedStateView onStart={() => model.startBuilder()} />;
-    }
-
-    const shouldShowWebView = status === "running" && builderStatus?.port && builderStatus.port !== 0;
-
-    if (shouldShowWebView) {
+    if (isWebViewActive) {
         const previewUrl = `http://localhost:${builderStatus.port}/?clientid=wave:${builderId}`;
-        return (
-            <div className="w-full h-full">
-                <webview src={previewUrl} className="w-full h-full" />
-            </div>
-        );
+        if (previewUrl !== lastKnownUrl) {
+            setLastKnownUrl(previewUrl);
+        }
     }
 
-    return null;
+    let overlay = null;
+    if (!isLoading && !isWebViewActive) {
+        if (builderStatus?.status === "error") {
+            overlay = <ErrorStateView errorMsg={builderStatus?.errormsg || ""} />;
+        } else if (!fileExists || status === "init") {
+            overlay = <EmptyStateView />;
+        } else if (status === "building") {
+            overlay = <BuildingStateView />;
+        } else if (status === "stopped") {
+            overlay = <StoppedStateView onStart={() => model.startBuilder()} />;
+        }
+    }
+
+    return (
+        <div className="w-full h-full relative">
+            {lastKnownUrl && (
+                <webview
+                    ref={model.webviewRef}
+                    src={lastKnownUrl}
+                    className="w-full h-full"
+                    style={{
+                        visibility: isWebViewActive ? "visible" : "hidden",
+                        pointerEvents: isWebViewActive ? "auto" : "none",
+                    }}
+                />
+            )}
+            {overlay && <div className="absolute inset-0">{overlay}</div>}
+        </div>
+    );
 });
 
 BuilderPreviewTab.displayName = "BuilderPreviewTab";

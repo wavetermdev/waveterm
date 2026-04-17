@@ -257,6 +257,10 @@ const BuilderAppPanel = memo(() => {
         model.switchBuilderApp();
     }, [model]);
 
+    const handleOpenDevToolsClick = useCallback(() => {
+        model.openPreviewDevTools();
+    }, [model]);
+
     const handleKebabClick = useCallback(
         (e: React.MouseEvent) => {
             const menu: ContextMenuItem[] = [
@@ -268,13 +272,20 @@ const BuilderAppPanel = memo(() => {
                     type: "separator",
                 },
                 {
+                    label: "Open DevTools",
+                    click: handleOpenDevToolsClick,
+                },
+                {
+                    type: "separator",
+                },
+                {
                     label: "Switch App",
                     click: handleSwitchAppClick,
                 },
             ];
             ContextMenuModel.getInstance().showContextMenu(menu, e);
         },
-        [handleSwitchAppClick, handlePublishClick]
+        [handleSwitchAppClick, handlePublishClick, handleOpenDevToolsClick]
     );
 
     return (

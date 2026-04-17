@@ -21,7 +21,7 @@ import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
-import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, createRef, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import "./webview.scss";
 import type { WebViewEnv } from "./webviewenv";
 
@@ -950,6 +950,15 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
                 });
         }, 100);
     }
+
+    useLayoutEffect(() => {
+        return () => {
+            const webview = model.webviewRef.current;
+            if (webview?.isDevToolsOpened()) {
+                webview.closeDevTools();
+            }
+        };
+    }, []);
 
     useEffect(() => {
         return () => {
