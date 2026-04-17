@@ -21,6 +21,8 @@ import {
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import packageJson from "../../../package.json";
+import bundledWidgetsJson from "../../../pkg/wconfig/defaultconfig/widgets.json";
 
 export type WidgetsEnv = WaveEnvSubset<{
     isDev: WaveEnv["isDev"];
@@ -398,7 +400,16 @@ const Widgets = memo(() => {
     const measurementRef = useRef<HTMLDivElement>(null);
 
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
-    const widgetsMap = fullConfig?.widgets ?? {};
+    const packagedVersion = packageJson.version;
+    const backendVersion = fullConfig?.version;
+    const shouldUseBundledWidgetsFallback =
+        fullConfig != null && backendVersion != null && packagedVersion != null && backendVersion !== packagedVersion;
+    const widgetsMap = shouldUseBundledWidgetsFallback
+        ? ({
+              ...(bundledWidgetsJson as { [key: string]: WidgetConfigType }),
+              ...(fullConfig?.widgets ?? {}),
+          } as { [key: string]: WidgetConfigType })
+        : fullConfig?.widgets ?? {};
     const filteredWidgets = Object.fromEntries(
         Object.entries(widgetsMap).filter(([_key, widget]) => shouldIncludeWidgetForWorkspace(widget, workspaceId))
     );

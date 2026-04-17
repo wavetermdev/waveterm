@@ -32,6 +32,7 @@ import * as WOS from "@/store/wos";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
 import { isMacOS, setMacOSVersion } from "@/util/platformutil";
+import { fireAndForget } from "@/util/util";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -100,6 +101,7 @@ function installWaveWindowTitleSync(tabId: string) {
 }
 
 async function initBare() {
+    const initBareTs = Date.now();
     getApi().sendLog("Init Bare");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
@@ -112,9 +114,12 @@ async function initBare() {
     getApi().onZoomFactorChange((zoomFactor) => {
         updateZoomFactor(zoomFactor);
     });
-    document.fonts.ready.then(() => {
-        console.log("Init Bare Done");
+    setTimeout(() => {
+        console.log("Init Bare Ready", Date.now() - initBareTs + "ms");
         getApi().setWindowInitStatus("ready");
+    }, 0);
+    document.fonts.ready.then(() => {
+        console.log("Init Bare Fonts Ready", Date.now() - initBareTs + "ms");
     });
 }
 

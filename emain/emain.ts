@@ -17,6 +17,7 @@ import {
     getAndClearTermCommandsRun,
     getAndClearTermCommandsWsl,
     getForceQuit,
+    getGlobalIsStarting,
     getGlobalIsRelaunching,
     getUserConfirmedQuit,
     setForceQuit,
@@ -405,6 +406,15 @@ async function appMain() {
     }
     electronApp.on("second-instance", (_event, argv, workingDirectory) => {
         console.log("second-instance event, argv:", argv, "workingDirectory:", workingDirectory);
+        if (getGlobalIsStarting() || getGlobalIsRelaunching()) {
+            const win = getQuakeWindow() ?? focusedWaveWindow ?? getAllWaveWindows()[0];
+            if (win != null && !win.isDestroyed()) {
+                win.show();
+                win.focus();
+                win.activeTabView?.webContents?.focus();
+            }
+            return;
+        }
         fireAndForget(createNewWaveWindow);
     });
     try {

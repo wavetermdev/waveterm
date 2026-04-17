@@ -885,25 +885,61 @@ export async function relaunchBrowserWindows() {
     const wins: WaveBrowserWindow[] = [];
     const isFirstRelaunch = !hasCompletedFirstRelaunch;
     const primaryWindowId = windowIds.length > 0 ? windowIds[0] : null;
-    for (const windowId of windowIds.slice().reverse()) {
+    const createRelaunchWindow = async (
+        windowId: string,
+        isPrimaryStartupWindow: boolean,
+        foregroundWindow: boolean
+    ) => {
         const windowData: WaveWindow = await WindowService.GetWindow(windowId);
         if (windowData == null) {
             console.log("relaunch -- window data not found, closing window", windowId);
             await WindowService.CloseWindow(windowId, true);
-            continue;
+            return null;
         }
-        const isPrimaryStartupWindow = isFirstRelaunch && windowId === primaryWindowId;
         console.log(
             "relaunch -- creating window",
             windowId,
             windowData,
             isPrimaryStartupWindow ? "(primary startup)" : ""
         );
-        const win = await createBrowserWindow(windowData, fullConfig, {
+        return await createBrowserWindow(windowData, fullConfig, {
             unamePlatform,
             isPrimaryStartupWindow,
-            foregroundWindow: windowId === primaryWindowId,
+            foregroundWindow,
         });
+    };
+    if (isFirstRelaunch && primaryWindowId != null) {
+        const primaryWin = await createRelaunchWindow(primaryWindowId, true, true);
+        if (primaryWin != null) {
+            wins.push(primaryWin);
+            quakeWindow = primaryWin;
+            console.log("designated quake window", primaryWin.waveWindowId);
+            console.log("show window", primaryWin.waveWindowId);
+            primaryWin.show();
+        }
+        hasCompletedFirstRelaunch = true;
+        const secondaryWindowIds = windowIds.filter((windowId) => windowId !== primaryWindowId).slice().reverse();
+        for (const windowId of secondaryWindowIds) {
+            const win = await createRelaunchWindow(windowId, false, false);
+            if (win == null) {
+                continue;
+            }
+            wins.push(win);
+            console.log("show window", win.waveWindowId);
+            win.show();
+        }
+        if (primaryWin != null && !primaryWin.isDestroyed()) {
+            primaryWin.focus();
+            primaryWin.activeTabView?.webContents?.focus();
+        }
+        return;
+    }
+    for (const windowId of windowIds.slice().reverse()) {
+        const isPrimaryStartupWindow = isFirstRelaunch && windowId === primaryWindowId;
+        const win = await createRelaunchWindow(windowId, isPrimaryStartupWindow, windowId === primaryWindowId);
+        if (win == null) {
+            continue;
+        }
         wins.push(win);
         if (windowId === primaryWindowId) {
             quakeWindow = win;

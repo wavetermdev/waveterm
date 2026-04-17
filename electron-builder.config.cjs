@@ -2,6 +2,7 @@ const { Arch } = require("electron-builder");
 const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");
+const { pathToFileURL } = require("url");
 
 const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
 const windowsShouldEditExecutable = windowsShouldSign || process.env.WAVETERM_WINDOWS_EDIT_EXECUTABLE === "1";
@@ -11,6 +12,39 @@ const localWindowsElectronDist = path.resolve(__dirname, "node_modules", "electr
 const useLocalWindowsElectronDist =
     process.platform === "win32" && fs.existsSync(path.join(localWindowsElectronDist, "electron.exe"));
 const windowsIconPath = path.resolve(__dirname, "assets", "appicon-windows.ico");
+const electronBuilderManualDownloadsDir =
+    process.env.LOCALAPPDATA != null
+        ? path.resolve(process.env.LOCALAPPDATA, "electron-builder", "manual-tools", "downloads")
+        : null;
+const localNsisBinaryArchive =
+    electronBuilderManualDownloadsDir == null
+        ? null
+        : path.join(electronBuilderManualDownloadsDir, "nsis-3.0.4.1.7z");
+const localNsisResourcesArchive =
+    electronBuilderManualDownloadsDir == null
+        ? null
+        : path.join(electronBuilderManualDownloadsDir, "nsis-resources-3.4.1.7z");
+const hasLocalNsisArchives =
+    localNsisBinaryArchive != null &&
+    localNsisResourcesArchive != null &&
+    fs.existsSync(localNsisBinaryArchive) &&
+    fs.existsSync(localNsisResourcesArchive);
+
+function getBuildVersion(version) {
+    const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([A-Za-z0-9.-]+))?$/);
+    if (match == null) {
+        return version;
+    }
+    const [, major, minor, patch, prerelease] = match;
+    let sequence = "0";
+    if (prerelease != null) {
+        const numericIdentifiers = prerelease.split(".").filter((part) => /^\d+$/.test(part));
+        if (numericIdentifiers.length > 0) {
+            sequence = numericIdentifiers[numericIdentifiers.length - 1];
+        }
+    }
+    return `${major}.${minor}.${patch}.${sequence}`;
+}
 
 /**
  * @type {import('electron-builder').Configuration}
@@ -19,6 +53,7 @@ const windowsIconPath = path.resolve(__dirname, "assets", "appicon-windows.ico")
 const config = {
     appId: pkg.build.appId,
     productName: pkg.productName,
+    buildVersion: getBuildVersion(pkg.version),
     executableName: pkg.productName,
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
     generateUpdatesFilesForAllChannels: true,
@@ -118,6 +153,20 @@ const config = {
         installerIcon: windowsIconPath,
         uninstallerIcon: windowsIconPath,
         installerHeaderIcon: windowsIconPath,
+        ...(hasLocalNsisArchives
+            ? {
+                  customNsisBinary: {
+                      url: pathToFileURL(localNsisBinaryArchive).href,
+                      version: "3.0.4.1",
+                      checksum: "VKMiizYdmNdJOWpRGz4trl4lD++BvYP2irAXpMilheUP0pc93iKlWAoP843Vlraj8YG19CVn0j+dCo/hURz9+Q==",
+                  },
+                  customNsisResources: {
+                      url: pathToFileURL(localNsisResourcesArchive).href,
+                      version: "3.4.1",
+                      checksum: "Dqd6g+2buwwvoG1Vyf6BHR1b+25QMmPcwZx40atOT57gH27rkjOei1L0JTldxZu4NFoEmW4kJgZ3DlSWVON3+Q==",
+                  },
+              }
+            : {}),
     },
     appImage: {
         license: "LICENSE",
