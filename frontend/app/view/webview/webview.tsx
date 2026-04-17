@@ -33,6 +33,19 @@ const USER_AGENT_ANDROID =
 
 let webviewPreloadUrl = null;
 
+function makeDesktopChromeUserAgent(): string {
+    if (typeof navigator === "undefined" || navigator.userAgent == null) {
+        return null;
+    }
+    return navigator.userAgent
+        .replace(/\sElectron\/[^\s]+/g, "")
+        .replace(/\sWave\/[^\s]+/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+const DESKTOP_CHROME_USER_AGENT = makeDesktopChromeUserAgent();
+
 function getWebviewPreloadUrl(env: WebViewEnv) {
     if (webviewPreloadUrl == null) {
         webviewPreloadUrl = env.electron.getWebviewPreload();
@@ -72,6 +85,8 @@ export class WebViewModel implements ViewModel {
     searchAtoms?: SearchAtoms;
     typeaheadOpen: PrimitiveAtom<boolean>;
     partitionOverride: PrimitiveAtom<string> | null;
+    defaultUserAgent: Atom<string | null>;
+    webPreferences: Atom<string | null>;
     userAgentType: Atom<string>;
     env: WebViewEnv;
     ctrlShiftUnsubFn: (() => void) | null = null;
@@ -104,6 +119,8 @@ export class WebViewModel implements ViewModel {
         this.hideNav = this.env.getBlockMetaKeyAtom(blockId, "web:hidenav");
         this.typeaheadOpen = atom(false);
         this.partitionOverride = null;
+        this.defaultUserAgent = atom(null);
+        this.webPreferences = atom(null);
         this.userAgentType = this.env.getBlockMetaKeyAtom(blockId, "web:useragenttype");
 
         this.mediaPlaying = atom(false);
@@ -860,10 +877,12 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     const partitionOverride = useAtomValueSafe(model.partitionOverride);
     const metaPartition = useAtomValue(env.getBlockMetaKeyAtom(model.blockId, "web:partition"));
     const webPartition = partitionOverride || metaPartition || undefined;
+    const defaultUserAgent = useAtomValueSafe(model.defaultUserAgent);
+    const webPreferences = useAtomValueSafe(model.webPreferences);
     const userAgentType = useAtomValue(model.userAgentType) || "default";
 
     // Determine user agent string based on type
-    let userAgent: string | undefined = undefined;
+    let userAgent: string | undefined = defaultUserAgent || undefined;
     if (userAgentType === "mobile:iphone") {
         userAgent = USER_AGENT_IPHONE;
     } else if (userAgentType === "mobile:android") {
@@ -993,7 +1012,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     // Reload webview when user agent type changes
     useEffect(() => {
         if (prevUserAgentTypeRef.current !== userAgentType && domReady && model.webviewRef.current) {
-            let newUserAgent: string | undefined = undefined;
+            let newUserAgent: string | undefined = defaultUserAgent || undefined;
             if (userAgentType === "mobile:iphone") {
                 newUserAgent = USER_AGENT_IPHONE;
             } else if (userAgentType === "mobile:android") {
@@ -1008,7 +1027,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
             model.webviewRef.current.reload();
         }
         prevUserAgentTypeRef.current = userAgentType;
-    }, [userAgentType, domReady]);
+    }, [userAgentType, defaultUserAgent, domReady]);
 
     useEffect(() => {
         const webview = model.webviewRef.current;
@@ -1114,6 +1133,8 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
                     allowpopups="true"
                     partition={webPartition}
                     useragent={userAgent}
+                    // @ts-expect-error Electron webviewTag supports the webpreferences attribute.
+                    webpreferences={webPreferences || undefined}
                 />
             </MockBoundary>
             {errorText && (
@@ -1127,4 +1148,4 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     );
 });
 
-export { WebView, WebViewPreviewFallback, getWebPreviewDisplayUrl };
+export { DESKTOP_CHROME_USER_AGENT, WebView, WebViewPreviewFallback, getWebPreviewDisplayUrl };

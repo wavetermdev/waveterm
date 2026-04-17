@@ -29,6 +29,8 @@ import { createNewWaveWindow, getWaveWindowByWebContentsId } from "./emain-windo
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
+const WindowsTitleBarOverlayColor = "#0F1722";
+const WindowsTitleBarSymbolColor = "#EAF2FF";
 
 let webviewFocusId: number = null;
 let webviewKeys: string[] = [];
@@ -392,8 +394,8 @@ export function initIpcHandlers() {
             const ww = getWaveWindowByWebContentsId(event.sender.id);
             if (ww == null) return;
             ww.setTitleBarOverlay({
-                color: unamePlatform === "linux" ? color.rgba : "#00000000",
-                symbolColor: color.isDark ? "white" : "black",
+                color: unamePlatform === "linux" ? color.rgba : WindowsTitleBarOverlayColor,
+                symbolColor: unamePlatform === "win32" ? WindowsTitleBarSymbolColor : color.isDark ? "white" : "black",
             });
         } catch (e) {
             console.error("Error updating window controls overlay:", e);

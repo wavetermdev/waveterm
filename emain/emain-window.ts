@@ -24,6 +24,8 @@ import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
 
 const DevInitTimeoutMs = 5000;
+const DefaultWindowChromeColor = "#0F1722";
+const DefaultWindowSymbolColor = "#d6e2ef";
 
 export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
@@ -181,12 +183,12 @@ export class WaveBrowserWindow extends BaseWindow {
             } else if (isBlur) {
                 winOpts.vibrancy = "fullscreen-ui";
             } else {
-                winOpts.backgroundColor = "#222222";
+                winOpts.backgroundColor = DefaultWindowChromeColor;
             }
         } else if (opts.unamePlatform === "linux") {
             winOpts.titleBarStyle = settings["window:nativetitlebar"] ? "default" : "hidden";
             winOpts.titleBarOverlay = {
-                symbolColor: "white",
+                symbolColor: DefaultWindowSymbolColor,
                 color: "#00000000",
             };
             winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png");
@@ -194,13 +196,13 @@ export class WaveBrowserWindow extends BaseWindow {
             if (isTransparent) {
                 winOpts.transparent = true;
             } else {
-                winOpts.backgroundColor = "#222222";
+                winOpts.backgroundColor = DefaultWindowChromeColor;
             }
         } else if (opts.unamePlatform === "win32") {
             winOpts.titleBarStyle = "hidden";
             winOpts.titleBarOverlay = {
-                color: "#222222",
-                symbolColor: "#c3c8c2",
+                color: DefaultWindowChromeColor,
+                symbolColor: DefaultWindowSymbolColor,
                 height: 32,
             };
             if (isTransparent) {
@@ -208,7 +210,7 @@ export class WaveBrowserWindow extends BaseWindow {
             } else if (isBlur) {
                 winOpts.backgroundMaterial = "acrylic";
             } else {
-                winOpts.backgroundColor = "#222222";
+                winOpts.backgroundColor = DefaultWindowChromeColor;
             }
         }
 

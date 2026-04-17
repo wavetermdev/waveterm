@@ -94,6 +94,7 @@ function handleWindowsMenuAccelerators(
 }
 
 function computeBgColor(fullConfig: FullConfigType): string {
+    const defaultWindowChromeColor = "#0F1722";
     const settings = fullConfig?.settings;
     const isTransparent = settings?.["window:transparent"] ?? false;
     const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
@@ -102,11 +103,56 @@ function computeBgColor(fullConfig: FullConfigType): string {
     } else if (isBlur) {
         return "#00000000";
     } else {
-        return "#222222";
+        return defaultWindowChromeColor;
     }
 }
 
 const wcIdToWaveTabMap = new Map<number, WaveTabView>();
+
+function getUrlHost(url: string): string | null {
+    try {
+        return new URL(url).hostname.toLowerCase();
+    } catch (_) {
+        return null;
+    }
+}
+
+function isFeishuOrLarkHost(host: string | null): boolean {
+    if (!host) {
+        return false;
+    }
+    return (
+        host === "feishu.cn" ||
+        host.endsWith(".feishu.cn") ||
+        host === "larksuite.com" ||
+        host.endsWith(".larksuite.com") ||
+        host === "larkoffice.com" ||
+        host.endsWith(".larkoffice.com")
+    );
+}
+
+function isLikelyFeishuAssetHost(host: string | null): boolean {
+    if (!host) {
+        return false;
+    }
+    return (
+        isFeishuOrLarkHost(host) ||
+        host.endsWith(".byteimg.com") ||
+        host.endsWith(".bytedance.net") ||
+        host.endsWith(".bytedance.com") ||
+        host.endsWith(".larksuitecdn.com")
+    );
+}
+
+function shouldAllowFeishuPopup(openerUrl: string, targetUrl: string): boolean {
+    if (!isFeishuOrLarkHost(getUrlHost(openerUrl))) {
+        return false;
+    }
+    if (targetUrl === "about:blank" || targetUrl.startsWith("blob:") || targetUrl.startsWith("data:")) {
+        return true;
+    }
+    return isLikelyFeishuAssetHost(getUrlHost(targetUrl));
+}
 
 export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
     if (webContentsId == null) {
@@ -318,6 +364,10 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
         wc.setWindowOpenHandler((details) => {
             if (wc == null || wc.isDestroyed() || tabView.webContents == null || tabView.webContents.isDestroyed()) {
                 return { action: "deny" };
+            }
+            if (shouldAllowFeishuPopup(wc.getURL(), details.url)) {
+                console.log("allow feishu webview popup", details.url, "opener", wc.getURL());
+                return { action: "allow" };
             }
             tabView.webContents.send("webview-new-window", wc.id, details);
             return { action: "deny" };

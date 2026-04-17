@@ -105,6 +105,8 @@ async function initBare() {
     getApi().sendLog("Init Bare");
     document.body.style.visibility = "hidden";
     document.body.style.opacity = "0";
+    document.documentElement.classList.add(platform);
+    document.body.classList.add(platform);
     document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
     getApi().onBuilderInit(initBuilderWrap);

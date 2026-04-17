@@ -24,7 +24,7 @@ import * as React from "react";
 import { TermLinkTooltip } from "./term-tooltip";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
-import { computeTheme, normalizeCursorStyle } from "./termutil";
+import { computeTheme, normalizeCursorStyle, normalizeTermScrollback } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
@@ -275,19 +275,9 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         const termTransparency = globalStore.get(model.termTransparencyAtom);
         const termMacOptionIsMetaAtom = getOverrideConfigAtom(blockId, "term:macoptionismeta");
         const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
-        let termScrollback = 2000;
-        if (termSettings?.["term:scrollback"]) {
-            termScrollback = Math.floor(termSettings["term:scrollback"]);
-        }
-        if (blockData?.meta?.["term:scrollback"]) {
-            termScrollback = Math.floor(blockData.meta["term:scrollback"]);
-        }
-        if (termScrollback < 0) {
-            termScrollback = 0;
-        }
-        if (termScrollback > 50000) {
-            termScrollback = 50000;
-        }
+        let termScrollback = normalizeTermScrollback(undefined);
+        termScrollback = normalizeTermScrollback(termSettings?.["term:scrollback"], termScrollback);
+        termScrollback = normalizeTermScrollback(blockData?.meta?.["term:scrollback"], termScrollback);
         const termAllowBPM = globalStore.get(model.termBPMAtom) ?? true;
         const termMacOptionIsMeta = globalStore.get(termMacOptionIsMetaAtom) ?? false;
         const termCursorStyle = normalizeCursorStyle(globalStore.get(getOverrideConfigAtom(blockId, "term:cursor")));

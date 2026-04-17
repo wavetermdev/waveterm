@@ -53,6 +53,8 @@ export interface TileLayoutProps {
 
 const DragPreviewWidth = 300;
 const DragPreviewHeight = 300;
+const DragHoverThrottleMs = 16;
+const DragPreviewMaxPixelRatio = 1.5;
 
 function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutProps) {
     const layoutModel = useTileLayout(tabAtom, contents);
@@ -66,11 +68,11 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
         dragClientOffset: monitor.getClientOffset(),
         dragItemType: monitor.getItemType(),
     }));
+    const activeTileDrag = activeDrag && dragItemType == tileItemType;
 
     useEffect(() => {
-        const activeTileDrag = activeDrag && dragItemType == tileItemType;
         setActiveDrag(activeTileDrag);
-    }, [activeDrag, dragItemType]);
+    }, [activeTileDrag]);
 
     const checkForCursorBounds = useCallback(
         debounce(100, (dragClientOffset: XYCoord) => {
@@ -120,7 +122,10 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     return (
         <Suspense>
             <div
-                className={clsx("tile-layout", contents.className, { animate: animate && !isResizing })}
+                className={clsx("tile-layout", contents.className, {
+                    animate: animate && !isResizing,
+                    dragging: activeTileDrag,
+                })}
                 style={tileStyle}
             >
                 <div key="display" ref={layoutModel.displayContainerRef} className="display-container">
@@ -227,6 +232,7 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
     const previewRef = useRef<HTMLDivElement>(null);
     const addlProps = useAtomValue(nodeModel.additionalProps);
     const devicePixelRatio = useDevicePixelRatio();
+    const previewPixelRatio = Math.min(Math.max(devicePixelRatio || 1, 1), DragPreviewMaxPixelRatio);
     const isEphemeral = useAtomValue(nodeModel.isEphemeral);
     const isMagnified = useAtomValue(nodeModel.isMagnified);
 
@@ -253,25 +259,25 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
                     style={{
                         width: DragPreviewWidth,
                         height: DragPreviewHeight,
-                        transform: `scale(${1 / devicePixelRatio})`,
+                        transform: `scale(${1 / previewPixelRatio})`,
                     }}
                 >
                     {layoutModel.renderPreview?.(nodeModel)}
                 </div>
             </div>
         );
-    }, [devicePixelRatio, nodeModel]);
+    }, [nodeModel, previewPixelRatio]);
 
     const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
     const [previewImageGeneration, setPreviewImageGeneration] = useState(0);
     const generatePreviewImage = useCallback(() => {
-        const offsetX = (DragPreviewWidth * devicePixelRatio - DragPreviewWidth) / 2 + 10;
-        const offsetY = (DragPreviewHeight * devicePixelRatio - DragPreviewHeight) / 2 + 10;
+        const offsetX = (DragPreviewWidth * previewPixelRatio - DragPreviewWidth) / 2 + 10;
+        const offsetY = (DragPreviewHeight * previewPixelRatio - DragPreviewHeight) / 2 + 10;
         if (previewImage !== null && previewElementGeneration === previewImageGeneration) {
             dragPreview(previewImage, { offsetY, offsetX });
         } else if (previewRef.current) {
             setPreviewImageGeneration(previewElementGeneration);
-            toPng(previewRef.current).then((url) => {
+            toPng(previewRef.current, { pixelRatio: previewPixelRatio }).then((url) => {
                 const img = new Image();
                 img.src = url;
                 setPreviewImage(img);
@@ -284,7 +290,7 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
         previewElementGeneration,
         previewImageGeneration,
         previewImage,
-        devicePixelRatio,
+        previewPixelRatio,
     ]);
 
     const leafContent = useMemo(() => {
@@ -373,7 +379,7 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
                     layoutModel.onDrop();
                 }
             },
-            hover: throttle(50, (_, monitor: DropTargetMonitor<unknown, unknown>) => {
+            hover: throttle(DragHoverThrottleMs, (_, monitor: DropTargetMonitor<unknown, unknown>) => {
                 if (monitor.isOver({ shallow: true })) {
                     if (monitor.canDrop() && layoutModel.displayContainerRef?.current && additionalProps?.rect) {
                         const dragItem = monitor.getItem<LayoutNode>();

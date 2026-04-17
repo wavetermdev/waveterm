@@ -79,14 +79,20 @@
         overflow: hidden;
         width: 100%;
         height: 100%;
+        contain: layout paint;
+        will-change: transform, width, height, opacity;
 
         &.dragging {
-            filter: blur(8px);
+            opacity: 0.22;
+            filter: none;
         }
 
         &.resizing {
-            border: 1px solid var(--accent-color);
-            backdrop-filter: blur(8px);
+            border: 1px solid rgb(from var(--accent-color) r g b / 0.45);
+            backdrop-filter: none;
+            box-shadow:
+                inset 0 0 0 1px rgb(from var(--accent-color) r g b / 0.18),
+                0 0 0 1px rgb(from var(--accent-color) r g b / 0.12);
         }
 
         .tile-leaf {
@@ -120,7 +126,9 @@
         left: 0;
         width: 100%;
         height: 100%;
+        background: rgb(from var(--main-bg-color) r g b / 0.1);
         backdrop-filter: blur(var(--block-blur));
+        will-change: opacity;
     }
 
     .magnified-node-backdrop {
@@ -135,8 +143,16 @@
         .tile-node,
         .placeholder {
             transition-duration: var(--animation-time-s);
-            transition-timing-function: linear;
-            transition-property: transform, width, height, background-color;
+            transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+            transition-property: transform, width, height, background-color, opacity, box-shadow;
+        }
+    }
+
+    &.dragging {
+        .tile-node,
+        .placeholder {
+            transition-duration: 0.06s;
+            transition-timing-function: ease-out;
         }
     }
 
@@ -150,5 +166,6 @@
         background-color: var(--accent-color);
         opacity: 0.5;
         border-radius: calc(var(--block-border-radius) + 2px);
+        box-shadow: 0 12px 28px -20px rgb(from var(--accent-color) r g b / 0.65);
     }
 }

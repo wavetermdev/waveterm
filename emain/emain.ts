@@ -374,6 +374,17 @@ process.on("unhandledRejection", (reason) => {
         console.log("Stack Trace:", reason.stack);
     }
 });
+electronApp.on("render-process-gone", (_event, webContents, details) => {
+    console.log("render-process-gone", {
+        webContentsId: webContents.id,
+        url: webContents.getURL(),
+        reason: details.reason,
+        exitCode: details.exitCode,
+    });
+});
+electronApp.on("child-process-gone", (_event, details) => {
+    console.log("child-process-gone", details);
+});
 
 let lastWaveWindowCount = 0;
 let lastIsBuilderWindowActive = false;

@@ -2,7 +2,6 @@ const { Arch } = require("electron-builder");
 const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");
-const { pathToFileURL } = require("url");
 
 const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
 const windowsShouldEditExecutable = windowsShouldSign || process.env.WAVETERM_WINDOWS_EDIT_EXECUTABLE === "1";
@@ -12,23 +11,28 @@ const localWindowsElectronDist = path.resolve(__dirname, "node_modules", "electr
 const useLocalWindowsElectronDist =
     process.platform === "win32" && fs.existsSync(path.join(localWindowsElectronDist, "electron.exe"));
 const windowsIconPath = path.resolve(__dirname, "assets", "appicon-windows.ico");
-const electronBuilderManualDownloadsDir =
+const electronBuilderManualToolsDir =
     process.env.LOCALAPPDATA != null
-        ? path.resolve(process.env.LOCALAPPDATA, "electron-builder", "manual-tools", "downloads")
+        ? path.resolve(process.env.LOCALAPPDATA, "electron-builder", "manual-tools")
         : null;
-const localNsisBinaryArchive =
-    electronBuilderManualDownloadsDir == null
+const localNsisBinaryDir =
+    electronBuilderManualToolsDir == null
         ? null
-        : path.join(electronBuilderManualDownloadsDir, "nsis-3.0.4.1.7z");
-const localNsisResourcesArchive =
-    electronBuilderManualDownloadsDir == null
+        : path.join(electronBuilderManualToolsDir, "nsis-3.0.4.1");
+const localNsisResourcesDir =
+    electronBuilderManualToolsDir == null
         ? null
-        : path.join(electronBuilderManualDownloadsDir, "nsis-resources-3.4.1.7z");
-const hasLocalNsisArchives =
-    localNsisBinaryArchive != null &&
-    localNsisResourcesArchive != null &&
-    fs.existsSync(localNsisBinaryArchive) &&
-    fs.existsSync(localNsisResourcesArchive);
+        : path.join(electronBuilderManualToolsDir, "nsis-resources-3.4.1");
+const hasLocalNsisDirs =
+    localNsisBinaryDir != null &&
+    localNsisResourcesDir != null &&
+    fs.existsSync(localNsisBinaryDir) &&
+    fs.existsSync(localNsisResourcesDir);
+
+if (hasLocalNsisDirs) {
+    process.env.ELECTRON_BUILDER_NSIS_DIR ??= localNsisBinaryDir;
+    process.env.ELECTRON_BUILDER_NSIS_RESOURCES_DIR ??= localNsisResourcesDir;
+}
 
 function getBuildVersion(version) {
     const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([A-Za-z0-9.-]+))?$/);
@@ -153,20 +157,6 @@ const config = {
         installerIcon: windowsIconPath,
         uninstallerIcon: windowsIconPath,
         installerHeaderIcon: windowsIconPath,
-        ...(hasLocalNsisArchives
-            ? {
-                  customNsisBinary: {
-                      url: pathToFileURL(localNsisBinaryArchive).href,
-                      version: "3.0.4.1",
-                      checksum: "VKMiizYdmNdJOWpRGz4trl4lD++BvYP2irAXpMilheUP0pc93iKlWAoP843Vlraj8YG19CVn0j+dCo/hURz9+Q==",
-                  },
-                  customNsisResources: {
-                      url: pathToFileURL(localNsisResourcesArchive).href,
-                      version: "3.4.1",
-                      checksum: "Dqd6g+2buwwvoG1Vyf6BHR1b+25QMmPcwZx40atOT57gH27rkjOei1L0JTldxZu4NFoEmW4kJgZ3DlSWVON3+Q==",
-                  },
-              }
-            : {}),
     },
     appImage: {
         license: "LICENSE",

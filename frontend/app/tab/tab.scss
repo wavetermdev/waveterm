@@ -28,23 +28,30 @@
         height: 100%;
         white-space: nowrap;
         border-radius: 6px;
+        border: 1px solid transparent;
+        background: rgb(from var(--chrome-bg-solid-color) r g b / 0.28);
+        box-shadow: inset 0 1px 0 rgb(from var(--glass-highlight-color) r g b / 0.55);
     }
 
     &.animate {
         transition:
             transform 0.3s ease,
-            background-color 0.3s ease-in-out;
+            background-color 0.3s ease-in-out,
+            box-shadow 0.3s ease-in-out;
     }
 
     &.active {
         .tab-inner {
-            border-color: transparent;
+            border-color: var(--tab-active-border-color);
             border-radius: 6px;
-            background: rgb(from var(--main-text-color) r g b / 0.1);
+            background: var(--tab-active-bg-color);
+            box-shadow:
+                0 16px 28px -24px rgb(from var(--main-bg-color) r g b / 0.95),
+                inset 0 1px 0 rgb(from var(--main-text-color) r g b / 0.08);
         }
 
         .name {
-            color: rgba(255, 255, 255, 1);
+            color: var(--main-text-color);
             font-weight: 600;
         }
     }
@@ -58,7 +65,7 @@
         z-index: var(--zindex-tab-name);
         font-size: 11px;
         font-weight: 500;
-        text-shadow: 0px 0px 4px rgb(from var(--main-bg-color) r g b / 0.25);
+        text-shadow: 0 1px 6px rgb(from var(--main-bg-color) r g b / 0.25);
         overflow: hidden;
         width: calc(100% - 10px);
         text-overflow: ellipsis;
@@ -108,8 +115,8 @@ body:not(.nohover) .tab.dragging {
     }
 
     .tab-inner {
-        border-color: transparent;
-        background: rgb(from var(--main-text-color) r g b / 0.1);
+        border-color: rgb(from var(--tab-active-border-color) r g b / 0.7);
+        background: var(--tab-hover-bg-color);
     }
     .close {
         visibility: visible;
@@ -138,4 +145,3 @@ body.nohover .tab.active .close {
 .tab.new-tab {
     animation: expandWidthAndFadeIn 0.1s forwards;
 }
-

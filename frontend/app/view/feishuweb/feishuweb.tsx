@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { uxCloseBlock } from "@/app/store/keymodel";
-import { WebView, WebViewModel } from "@/app/view/webview/webview";
+import { DESKTOP_CHROME_USER_AGENT, WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom } from "jotai";
 
@@ -21,6 +21,8 @@ class FeishuWebViewModel extends WebViewModel {
         this.viewName = atom("Feishu Web");
         this.homepageUrl = atom(FeishuWebUrl);
         this.partitionOverride = atom(FeishuPartition);
+        this.defaultUserAgent = atom(DESKTOP_CHROME_USER_AGENT);
+        this.webPreferences = atom("nativeWindowOpen=yes");
         this.endIconButtons = atom((get) => {
             const currentUrl = get(this.url);
             const metaUrl = get(this.blockAtom)?.meta?.url;

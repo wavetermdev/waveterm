@@ -394,6 +394,62 @@ export function quoteForPosixShell(filePath: string): string {
     return "'" + filePath.replace(/'/g, "'\\''") + "'";
 }
 
+export const DefaultTermScrollback = 50000;
+export const MaxTermScrollback = 200000;
+const ResizeScrollbackHeadroomRows = 1000;
+
+export function normalizeTermScrollback(value: unknown, fallback = DefaultTermScrollback): number {
+    const fallbackScrollback = Number.isFinite(fallback) ? Math.floor(fallback) : DefaultTermScrollback;
+    const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : fallbackScrollback;
+    if (!Number.isFinite(parsed)) {
+        return Math.max(0, Math.min(MaxTermScrollback, fallbackScrollback));
+    }
+    return Math.max(0, Math.min(MaxTermScrollback, Math.floor(parsed)));
+}
+
+export function computeResizePreserveScrollback(
+    currentScrollback: number,
+    bufferRows: number,
+    oldCols: number,
+    newCols: number,
+    newRows: number
+): number {
+    const normalizedCurrent = normalizeTermScrollback(currentScrollback);
+    if (
+        !Number.isFinite(bufferRows) ||
+        !Number.isFinite(oldCols) ||
+        !Number.isFinite(newCols) ||
+        !Number.isFinite(newRows) ||
+        bufferRows <= 0 ||
+        oldCols <= 0 ||
+        newCols <= 0 ||
+        newCols >= oldCols
+    ) {
+        return normalizedCurrent;
+    }
+    const estimatedBufferRows = Math.ceil(bufferRows * (oldCols / newCols));
+    const requiredScrollback = Math.max(0, estimatedBufferRows - Math.max(1, Math.floor(newRows))) + ResizeScrollbackHeadroomRows;
+    return Math.max(normalizedCurrent, Math.min(MaxTermScrollback, requiredScrollback));
+}
+
+export function shouldHandleTerminalWheel(defaultPrevented: boolean, activeBufferType: string | undefined): boolean {
+    if (defaultPrevented) {
+        return false;
+    }
+    return true;
+}
+
+const AlternateWheelLinesPerPage = 6;
+
+export function getAlternateWheelInputSequence(lineDelta: number): string {
+    if (!Number.isFinite(lineDelta) || lineDelta === 0) {
+        return "";
+    }
+    const pageCount = Math.max(1, Math.floor(Math.abs(lineDelta) / AlternateWheelLinesPerPage));
+    const pageSeq = lineDelta < 0 ? "\x1b[5~" : "\x1b[6~";
+    return pageSeq.repeat(pageCount);
+}
+
 export function getWheelLineDelta(deltaY: number, deltaMode: number, cellHeight: number, rows: number): number {
     if (!Number.isFinite(deltaY) || deltaY === 0) {
         return 0;

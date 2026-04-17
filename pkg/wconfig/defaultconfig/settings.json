@@ -33,6 +33,7 @@
     "term:bellsound": false,
     "term:bellindicator": true,
     "term:fontsize": 15,
+    "term:scrollback": 50000,
     "term:osc52": "always",
     "term:cursor": "block",
     "term:cursorblink": false,

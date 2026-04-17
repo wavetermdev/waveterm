@@ -6,7 +6,7 @@ import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import useResizeObserver from "@react-hook/resize-observer";
 import { useAtomValue } from "jotai";
-import { CSSProperties, useCallback, useLayoutEffect, useRef } from "react";
+import { CSSProperties, useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { debounce } from "throttle-debounce";
 import { atoms, getApi, WOS } from "./store/global";
 import { useWaveObjectValue } from "./store/wos";
@@ -24,7 +24,21 @@ export function AppBackground() {
     const tabBg = useAtomValue(env.getTabMetaKeyAtom(tabId, "tab:background"));
     const configBg = useAtomValue(env.getConfigBackgroundAtom(tabBg));
     const resolvedMeta: Omit<BackgroundConfigType, "display:name"> = tabBg && configBg ? configBg : tabData?.meta;
-    const style: CSSProperties = computeBgStyleFromMeta(resolvedMeta, 0.5) ?? {};
+    const style: CSSProperties = useMemo(() => {
+        const computedStyle = computeBgStyleFromMeta(resolvedMeta, 0.5) ?? {};
+        if (Object.keys(computedStyle).length > 0) {
+            return computedStyle;
+        }
+        return {
+            backgroundColor: "rgb(11, 18, 26)",
+            backgroundImage: [
+                "radial-gradient(circle at 18% 18%, rgba(102, 214, 174, 0.18), transparent 24%)",
+                "radial-gradient(circle at 82% 16%, rgba(111, 173, 255, 0.2), transparent 26%)",
+                "radial-gradient(circle at 52% 100%, rgba(143, 118, 255, 0.16), transparent 34%)",
+                "linear-gradient(180deg, rgba(12, 18, 26, 0.98), rgba(8, 12, 18, 0.98))",
+            ].join(", "),
+        };
+    }, [resolvedMeta]);
     const getAvgColor = useCallback(
         debounce(30, () => {
             if (

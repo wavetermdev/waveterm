@@ -2,18 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 :root {
-    --main-text-color: #f7f7f7;
+    --main-text-color: #eef4fb;
     --title-font-size: 18px;
     --window-opacity: 1;
-    --secondary-text-color: rgb(195, 200, 194);
-    --grey-text-color: #666;
-    --main-bg-color: rgb(34, 34, 34);
-    --border-color: rgba(255, 255, 255, 0.16);
-    --base-font: normal 14px / normal "Inter", sans-serif;
-    --fixed-font: normal 12px / normal "Hack", monospace;
-    --accent-color: rgb(88, 193, 66);
-    --panel-bg-color: rgba(31, 33, 31, 0.5);
-    --highlight-bg-color: rgba(255, 255, 255, 0.2);
+    --secondary-text-color: rgb(179, 194, 209);
+    --grey-text-color: #8894a7;
+    --main-bg-color: rgb(11, 18, 26);
+    --border-color: rgba(148, 177, 204, 0.18);
+    --base-font: 500 14px / 1.45 "Segoe UI Variable Text", "Segoe UI", "Inter", sans-serif;
+    --fixed-font: 400 12px / 1.45 "JetBrains Mono", "Hack", "Cascadia Mono", monospace;
+    --accent-color: rgb(102, 214, 174);
+    --accent-color-strong: rgb(126, 232, 196);
+    --panel-bg-color: rgba(16, 28, 39, 0.72);
+    --highlight-bg-color: rgba(140, 187, 255, 0.14);
     --markdown-font-family:
         -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
         "Segoe UI Emoji";
@@ -22,22 +23,30 @@
     --error-color: rgb(229, 77, 46);
     --warning-color: rgb(224, 185, 86);
     --success-color: rgb(78, 154, 6);
-    --hover-bg-color: rgba(255, 255, 255, 0.1);
-    --block-bg-color: rgba(0, 0, 0, 0.5);
-    --block-bg-solid-color: rgb(0, 0, 0);
-    --block-border-radius: 8px;
+    --hover-bg-color: rgba(255, 255, 255, 0.08);
+    --block-bg-color: rgba(15, 27, 39, 0.82);
+    --block-bg-solid-color: rgb(15, 27, 39);
+    --block-border-radius: 10px;
+    --chrome-bg-color: rgba(11, 19, 27, 0.78);
+    --chrome-bg-solid-color: rgb(12, 20, 29);
+    --chrome-border-color: rgba(164, 191, 216, 0.16);
+    --glass-highlight-color: rgba(255, 255, 255, 0.08);
+    --block-shadow-color: rgba(3, 8, 18, 0.38);
+    --tab-hover-bg-color: rgba(126, 160, 255, 0.12);
+    --tab-active-bg-color: rgba(126, 160, 255, 0.18);
+    --tab-active-border-color: rgba(168, 193, 255, 0.2);
 
     --keybinding-color: #e0e0e0;
-    --keybinding-bg-color: #333;
-    --keybinding-border-color: #444;
+    --keybinding-bg-color: #182230;
+    --keybinding-border-color: rgba(148, 177, 204, 0.18);
 
     /* scrollbar colors */
     --scrollbar-background-color: transparent;
-    --scrollbar-thumb-color: rgba(255, 255, 255, 0.15);
-    --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
-    --scrollbar-thumb-active-color: rgba(255, 255, 255, 0.6);
+    --scrollbar-thumb-color: rgba(173, 195, 216, 0.22);
+    --scrollbar-thumb-hover-color: rgba(203, 222, 240, 0.42);
+    --scrollbar-thumb-active-color: rgba(220, 236, 250, 0.5);
 
-    --header-font: 700 11px / normal "Inter", sans-serif;
+    --header-font: 700 11px / 1.2 "Segoe UI Variable Small", "Segoe UI Semibold", "Inter", sans-serif;
     --header-icon-size: 14px;
     --header-icon-width: 16px;
     --header-height: 30px;
@@ -78,9 +87,9 @@
     // xterm-decoration-top: 2
 
     // modal colors
-    --modal-bg-color: #232323;
-    --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
-    --modal-border-color: rgba(255, 255, 255, 0.12); /* toggle colors */
+    --modal-bg-color: #16202b;
+    --modal-header-bottom-border-color: rgba(205, 220, 234, 0.12);
+    --modal-border-color: rgba(173, 198, 221, 0.14); /* toggle colors */
     --modal-border-radius: 6px;
     --toggle-bg-color: var(--border-color);
     --modal-shadow-color: rgba(0, 0, 0, 0.8);
@@ -90,7 +99,7 @@
     --toggle-checked-bg-color: var(--accent-color);
 
     // link color
-    --link-color: #58c142;
+    --link-color: var(--accent-color);
 
     // form colors
     --form-element-border-color: rgba(241, 246, 243, 0.15);
@@ -98,7 +107,7 @@
     --form-element-text-color: var(--main-text-color);
     --form-element-primary-text-color: var(--main-text-color);
     --form-element-primary-color: var(--accent-color);
-    --form-element-secondary-color: rgba(255, 255, 255, 0.2);
+    --form-element-secondary-color: rgba(173, 198, 221, 0.16);
     --form-element-error-color: var(--error-color);
 
     --conn-icon-color: #53b4ea;
@@ -110,7 +119,7 @@
     --conn-icon-color-6: #ffa24e;
     --conn-icon-color-7: #dbde52;
     --conn-icon-color-8: #58c142;
-    --conn-status-overlay-bg-color: rgba(230, 186, 30, 0.2);
+    --conn-status-overlay-bg-color: rgba(230, 186, 30, 0.16);
 
     --sysinfo-cpu-color: #58c142;
     --sysinfo-mem-color: #53b4ea;
@@ -147,10 +156,10 @@
     --button-text-color: #000000;
     --button-green-bg: var(--term-green);
     --button-green-border-color: #29f200;
-    --button-grey-bg: rgba(255, 255, 255, 0.04);
+    --button-grey-bg: rgba(255, 255, 255, 0.05);
     --button-grey-hover-bg: rgba(255, 255, 255, 0.09);
-    --button-grey-border-color: rgba(255, 255, 255, 0.1);
-    --button-grey-outlined-color: rgba(255, 255, 255, 0.6);
+    --button-grey-border-color: rgba(173, 198, 221, 0.14);
+    --button-grey-outlined-color: rgba(220, 232, 244, 0.68);
     --button-red-bg: #cc0000;
     --button-red-hover-bg: #f93939;
     --button-red-border-color: #fc3131;

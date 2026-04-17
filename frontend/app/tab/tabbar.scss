@@ -11,8 +11,13 @@
     width: 100vw;
     -webkit-app-region: drag;
     height: max(33px, calc(33px * var(--zoomfactor-inv)));
-    backdrop-filter: blur(20px);
-    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+    background: linear-gradient(
+        180deg,
+        rgb(from var(--chrome-bg-solid-color) r g b / 0.94),
+        rgb(from var(--chrome-bg-solid-color) r g b / 0.74)
+    );
+    border-bottom: 1px solid var(--chrome-border-color);
     flex-shrink: 0;
 
     button {
