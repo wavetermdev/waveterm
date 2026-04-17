@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, getApi, WOS } from "@/store/global";
 import { base64ToString, stringToBase64 } from "@/util/util";
-import { WebviewTag } from "electron";
+import type { WebviewTag } from "electron";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
 import { debounce } from "throttle-debounce";
