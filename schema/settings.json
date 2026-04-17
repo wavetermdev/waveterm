@@ -168,6 +168,12 @@
         "term:durable": {
           "type": "boolean"
         },
+        "term:showsplitbuttons": {
+          "type": "boolean"
+        },
+        "term:trimtrailingwhitespace": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },

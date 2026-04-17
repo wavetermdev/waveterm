@@ -189,7 +189,8 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         const addBtnWidth = getOuterWidth(addBtnRef.current);
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
-        const waveAIButtonWidth = waveAIButtonRef.current != null ? getOuterWidth(waveAIButtonRef.current) : 0;
+        const waveAIButtonWidth =
+            !hideAiButton && waveAIButtonRef.current != null ? getOuterWidth(waveAIButtonRef.current) : 0;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
@@ -276,7 +277,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
         if (allLoaded) {
-            setSizeAndPosition(newTabId === null && prevAllLoadedRef.current);
+            setSizeAndPosition(false);
             saveTabsPosition();
             if (!prevAllLoadedRef.current) {
                 prevAllLoadedRef.current = true;

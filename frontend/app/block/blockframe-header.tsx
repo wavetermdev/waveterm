@@ -11,7 +11,13 @@ import {
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { getBlockBadgeAtom } from "@/app/store/badge";
-import { recordTEvent, refocusNode } from "@/app/store/global";
+import {
+    createBlockSplitHorizontally,
+    createBlockSplitVertically,
+    recordTEvent,
+    refocusNode,
+    WOS,
+} from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -119,11 +125,44 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
     const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
+    const showSplitButtons = jotai.useAtomValue(blockEnv.getSettingsKeyAtom("term:showsplitbuttons"));
 
     const endIconsElem: React.ReactElement[] = [];
 
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
+    }
+    if (showSplitButtons && viewModel?.viewType === "term") {
+        const splitHorizontalDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: "columns",
+            title: "Split Horizontally",
+            click: (e) => {
+                e.stopPropagation();
+                const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+                const blockData = globalStore.get(blockAtom);
+                const blockDef: BlockDef = {
+                    meta: blockData?.meta || { view: "term", controller: "shell" },
+                };
+                createBlockSplitHorizontally(blockDef, blockId, "after");
+            },
+        };
+        const splitVerticalDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: "grip-lines",
+            title: "Split Vertically",
+            click: (e) => {
+                e.stopPropagation();
+                const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+                const blockData = globalStore.get(blockAtom);
+                const blockDef: BlockDef = {
+                    meta: blockData?.meta || { view: "term", controller: "shell" },
+                };
+                createBlockSplitVertically(blockDef, blockId, "after");
+            },
+        };
+        endIconsElem.push(<IconButton key="split-horizontal" decl={splitHorizontalDecl} />);
+        endIconsElem.push(<IconButton key="split-vertical" decl={splitVerticalDecl} />);
     }
     const settingsDecl: IconButtonDecl = {
         elemtype: "iconbutton",

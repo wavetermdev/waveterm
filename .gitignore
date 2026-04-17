@@ -7,6 +7,7 @@ node_modules/
 frontend/bindings
 bindings/
 *.log
+*.tsbuildinfo
 bin/
 *.dmg
 *.exe
@@ -39,3 +40,6 @@ test-results.xml
 docsite/
 
 .kilo-format-temp-*
+.superpowers
+docs/superpowers
+.claude

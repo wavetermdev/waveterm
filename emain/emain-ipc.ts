@@ -236,6 +236,14 @@ export function initIpcHandlers() {
         menu.popup();
     });
 
+    electron.ipcMain.on("webview-mouse-navigate", (event: electron.IpcMainEvent, direction: string) => {
+        if (direction === "back") {
+            event.sender.navigationHistory.goBack();
+        } else if (direction === "forward") {
+            event.sender.navigationHistory.goForward();
+        }
+    });
+
     electron.ipcMain.on("download", (event, payload) => {
         const baseName = encodeURIComponent(path.basename(payload.filePath));
         const streamingUrl =

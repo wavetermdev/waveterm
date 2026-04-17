@@ -109,7 +109,9 @@ type SettingsType struct {
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 	TermOsc52               string   `json:"term:osc52,omitempty" jsonschema:"enum=focus,enum=always"`
-	TermDurable             *bool    `json:"term:durable,omitempty"`
+	TermDurable                    *bool    `json:"term:durable,omitempty"`
+	TermShowSplitButtons           bool     `json:"term:showsplitbuttons,omitempty"`
+	TermTrimTrailingWhitespace     *bool    `json:"term:trimtrailingwhitespace,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
@@ -375,6 +377,8 @@ type FullConfigType struct {
 	Bookmarks      map[string]WebBookmark          `json:"bookmarks"`
 	WaveAIModes    map[string]AIModeConfigType     `json:"waveai"`
 	ConfigErrors   []ConfigError                   `json:"configerrors" configfile:"-"`
+	Version        string                          `json:"version" configfile:"-"`
+	BuildTime      string                          `json:"buildtime" configfile:"-"`
 }
 
 type ConnKeywords struct {
@@ -695,6 +699,8 @@ func ReadFullConfig() FullConfigType {
 			utilfn.ReUnmarshal(fieldPtr, configPart)
 		}
 	}
+	fullConfig.Version = wavebase.WaveVersion
+	fullConfig.BuildTime = wavebase.BuildTime
 	return fullConfig
 }
 

@@ -25,12 +25,9 @@ import (
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"
 const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
-const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
-const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
 const WCloudPingEndpoint = "https://ping.waveterm.dev/central"
 const WCloudPingEndpointVarName = "WCLOUD_PING_ENDPOINT"
 
-var WCloudWSEndpoint_VarCache string
 var WCloudEndpoint_VarCache string
 var WCloudPingEndpoint_VarCache string
 
@@ -59,12 +56,6 @@ func CacheAndRemoveEnvVars() error {
 		return err
 	}
 	os.Unsetenv(WCloudEndpointVarName)
-	WCloudWSEndpoint_VarCache = os.Getenv(WCloudWSEndpointVarName)
-	err = checkWSEndpointVar(WCloudWSEndpoint_VarCache, "wcloud ws endpoint", WCloudWSEndpointVarName)
-	if err != nil {
-		return err
-	}
-	os.Unsetenv(WCloudWSEndpointVarName)
 	WCloudPingEndpoint_VarCache = os.Getenv(WCloudPingEndpointVarName)
 	os.Unsetenv(WCloudPingEndpointVarName)
 	return nil
@@ -80,30 +71,11 @@ func checkEndpointVar(endpoint string, debugName string, varName string) error {
 	return nil
 }
 
-func checkWSEndpointVar(endpoint string, debugName string, varName string) error {
-	if !wavebase.IsDevMode() {
-		return nil
-	}
-	log.Printf("checking endpoint %q\n", endpoint)
-	if endpoint == "" || !strings.HasPrefix(endpoint, "wss://") {
-		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
-	}
-	return nil
-}
-
 func GetEndpoint() string {
 	if !wavebase.IsDevMode() {
 		return WCloudEndpoint
 	}
 	endpoint := WCloudEndpoint_VarCache
-	return endpoint
-}
-
-func GetWSEndpoint() string {
-	if !wavebase.IsDevMode() {
-		return WCloudWSEndpoint
-	}
-	endpoint := WCloudWSEndpoint_VarCache
 	return endpoint
 }
 

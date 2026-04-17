@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { contextBridge, ipcRenderer, Rectangle, WebviewTag } from "electron";
+import { contextBridge, ipcRenderer, Rectangle, webUtils, WebviewTag } from "electron";
 
 // update type in custom.d.ts (ElectronApi type)
 contextBridge.exposeInMainWorld("api", {
@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld("api", {
     openBuilder: (appId?: string) => ipcRenderer.send("open-builder", appId),
     setBuilderWindowAppId: (appId: string) => ipcRenderer.send("set-builder-window-appid", appId),
     doRefresh: () => ipcRenderer.send("do-refresh"),
+    getPathForFile: (file: File): string => webUtils.getPathForFile(file),
     saveTextFile: (fileName: string, content: string) => ipcRenderer.invoke("save-text-file", fileName, content),
     setIsActive: () => ipcRenderer.invoke("set-is-active"),
 });

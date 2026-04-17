@@ -557,6 +557,24 @@ declare global {
         fileinfo?: FileInfo[];
     };
 
+    // wshrpc.CommandRemoteProcessListData
+    type CommandRemoteProcessListData = {
+        widgetid?: string;
+        sortby?: string;
+        sortdesc?: boolean;
+        start?: number;
+        limit?: number;
+        textsearch?: string;
+        lastpidorder?: boolean;
+        keepalive?: boolean;
+    };
+
+    // wshrpc.CommandRemoteProcessSignalData
+    type CommandRemoteProcessSignalData = {
+        pid: number;
+        signal: string;
+    };
+
     // wshrpc.CommandRemoteReconnectToJobManagerData
     type CommandRemoteReconnectToJobManagerData = {
         jobid: string;
@@ -1002,6 +1020,8 @@ declare global {
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
+        version: string;
+        buildtime: string;
     };
 
     // waveobj.Job
@@ -1143,6 +1163,7 @@ declare global {
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
         "layout:vtabbarwidth"?: number;
+        "layout:widgetsvisible"?: boolean;
         "waveai:panelopen"?: boolean;
         "waveai:panelwidth"?: number;
         "waveai:model"?: string;
@@ -1242,6 +1263,44 @@ declare global {
     type Point = {
         x: number;
         y: number;
+    };
+
+    // wshrpc.ProcessInfo
+    type ProcessInfo = {
+        pid: number;
+        ppid?: number;
+        command?: string;
+        status?: string;
+        user?: string;
+        mem: number;
+        mempct: number;
+        cpu: number;
+        numthreads: number;
+        gone?: boolean;
+    };
+
+    // wshrpc.ProcessListResponse
+    type ProcessListResponse = {
+        processes: ProcessInfo[];
+        summary: ProcessSummary;
+        ts: number;
+        hascpu?: boolean;
+        platform?: string;
+        totalcount?: number;
+        filteredcount?: number;
+    };
+
+    // wshrpc.ProcessSummary
+    type ProcessSummary = {
+        total: number;
+        load1?: number;
+        load5?: number;
+        load15?: number;
+        memtotal?: number;
+        memused?: number;
+        memfree?: number;
+        numcpu?: number;
+        cpusum?: number;
     };
 
     // uctypes.RateLimitInfo
@@ -1365,6 +1424,8 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
+        "term:showsplitbuttons"?: boolean;
+        "term:trimtrailingwhitespace"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -1531,7 +1592,8 @@ declare global {
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
-        "wsh:haderror"?: boolean;
+        "wsh:errorcount"?: number;
+        "wsh:count"?: number;
         "conn:conntype"?: string;
         "conn:wsherrorcode"?: string;
         "conn:errorcode"?: string;
@@ -1951,53 +2013,6 @@ declare global {
     // wconfig.WatcherUpdate
     type WatcherUpdate = {
         fullconfig: FullConfigType;
-    };
-
-    // wshrpc.WaveAIOptsType
-    type WaveAIOptsType = {
-        model: string;
-        apitype?: string;
-        apitoken: string;
-        orgid?: string;
-        apiversion?: string;
-        baseurl?: string;
-        proxyurl?: string;
-        maxtokens?: number;
-        maxchoices?: number;
-        timeoutms?: number;
-    };
-
-    // wshrpc.WaveAIPacketType
-    type WaveAIPacketType = {
-        type: string;
-        model?: string;
-        created?: number;
-        finish_reason?: string;
-        usage?: WaveAIUsageType;
-        index?: number;
-        text?: string;
-        error?: string;
-    };
-
-    // wshrpc.WaveAIPromptMessageType
-    type WaveAIPromptMessageType = {
-        role: string;
-        content: string;
-        name?: string;
-    };
-
-    // wshrpc.WaveAIStreamRequest
-    type WaveAIStreamRequest = {
-        clientid?: string;
-        opts: WaveAIOptsType;
-        prompt: WaveAIPromptMessageType[];
-    };
-
-    // wshrpc.WaveAIUsageType
-    type WaveAIUsageType = {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
     };
 
 

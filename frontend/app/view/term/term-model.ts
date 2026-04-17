@@ -10,7 +10,7 @@ import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { TerminalView } from "@/app/view/term/term";
+import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
@@ -40,7 +40,7 @@ import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
-import { computeTheme, DefaultTermTheme } from "./termutil";
+import { computeTheme, DefaultTermTheme, trimTerminalSelection } from "./termutil";
 import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
@@ -404,10 +404,12 @@ export class TermViewModel implements ViewModel {
             return null;
         }
         const shellIntegrationStatus = get(this.termRef.current.shellIntegrationStatusAtom);
+        const claudeCodeActive = get(this.termRef.current.claudeCodeActiveAtom);
+        const icon = claudeCodeActive ? React.createElement(TermClaudeIcon) : "sparkles";
         if (shellIntegrationStatus == null) {
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-muted",
                 title: "No shell integration — Wave AI unable to run commands.",
                 noAction: true,
@@ -416,14 +418,16 @@ export class TermViewModel implements ViewModel {
         if (shellIntegrationStatus === "ready") {
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-accent",
                 title: "Shell ready — Wave AI can run commands in this terminal.",
                 noAction: true,
             };
         }
         if (shellIntegrationStatus === "running-command") {
-            let title = "Shell busy — Wave AI unable to run commands while another command is running.";
+            let title = claudeCodeActive
+                ? "Claude Code Detected"
+                : "Shell busy — Wave AI unable to run commands while another command is running.";
 
             if (this.termRef.current) {
                 const inAltBuffer = this.termRef.current.terminal?.buffer?.active?.type === "alternate";
@@ -436,7 +440,7 @@ export class TermViewModel implements ViewModel {
 
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-warning",
                 title: title,
                 noAction: true,
@@ -746,9 +750,12 @@ export class TermViewModel implements ViewModel {
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             event.preventDefault();
             event.stopPropagation();
-            const sel = this.termRef.current?.terminal.getSelection();
+            let sel = this.termRef.current?.terminal.getSelection();
             if (!sel) {
                 return false;
+            }
+            if (globalStore.get(getSettingsKeyAtom("term:trimtrailingwhitespace")) !== false) {
+                sel = trimTerminalSelection(sel);
             }
             navigator.clipboard.writeText(sel);
             return false;
@@ -819,7 +826,11 @@ export class TermViewModel implements ViewModel {
                 label: "Copy",
                 click: () => {
                     if (selection) {
-                        navigator.clipboard.writeText(selection);
+                        const text =
+                            globalStore.get(getSettingsKeyAtom("term:trimtrailingwhitespace")) !== false
+                                ? trimTerminalSelection(selection)
+                                : selection;
+                        navigator.clipboard.writeText(text);
                     }
                 },
             });

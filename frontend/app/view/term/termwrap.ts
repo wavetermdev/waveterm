@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
@@ -8,6 +8,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     fetchWaveFile,
+    getApi,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
@@ -33,9 +34,17 @@ import {
     handleOsc16162Command,
     handleOsc52Command,
     handleOsc7Command,
+    isClaudeCodeCommand,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
-import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
+import {
+    bufferLinesToText,
+    createTempFileFromBlob,
+    extractAllClipboardData,
+    normalizeCursorStyle,
+    quoteForPosixShell,
+    trimTerminalSelection,
+} from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -94,6 +103,7 @@ export class TermWrap {
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
+    claudeCodeActiveAtom: jotai.PrimitiveAtom<boolean>;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
     onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
@@ -139,6 +149,7 @@ export class TermWrap {
         this.promptMarkers = [];
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+        this.claudeCodeActiveAtom = jotai.atom(false);
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
@@ -193,16 +204,34 @@ export class TermWrap {
         this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
-            return handleOsc7Command(data, this.blockId, this.loaded);
+            try {
+                return handleOsc7Command(data, this.blockId, this.loaded);
+            } catch (e) {
+                console.error("[termwrap] osc 7 handler error", this.blockId, e);
+                return false;
+            }
         });
         this.terminal.parser.registerOscHandler(52, (data: string) => {
-            return handleOsc52Command(data, this.blockId, this.loaded, this);
+            try {
+                return handleOsc52Command(data, this.blockId, this.loaded, this);
+            } catch (e) {
+                console.error("[termwrap] osc 52 handler error", this.blockId, e);
+                return false;
+            }
         });
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
-            return handleOsc16162Command(data, this.blockId, this.loaded, this);
+            try {
+                return handleOsc16162Command(data, this.blockId, this.loaded, this);
+            } catch (e) {
+                console.error("[termwrap] osc 16162 handler error", this.blockId, e);
+                return false;
+            }
         });
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {
+                if (params == null || params.length < 1) {
+                    return false;
+                }
                 if (params[0] === 3) {
                     this.lastClearScrollbackTs = Date.now();
                     if (this.inSyncTransaction) {
@@ -215,6 +244,9 @@ export class TermWrap {
         );
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ prefix: "?", final: "h" }, (params) => {
+                if (params == null || params.length < 1) {
+                    return false;
+                }
                 if (params[0] === 2026) {
                     this.lastMode2026SetTs = Date.now();
                     this.inSyncTransaction = true;
@@ -224,6 +256,9 @@ export class TermWrap {
         );
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
+                if (params == null || params.length < 1) {
+                    return false;
+                }
                 if (params[0] === 2026) {
                     this.lastMode2026ResetTs = Date.now();
                     this.inSyncTransaction = false;
@@ -269,6 +304,38 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+
+        const dragoverHandler = (e: DragEvent) => {
+            e.preventDefault();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = "copy";
+            }
+        };
+        const dropHandler = (e: DragEvent) => {
+            e.preventDefault();
+            if (!e.dataTransfer || e.dataTransfer.files.length === 0) {
+                return;
+            }
+            const paths: string[] = [];
+            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                const file = e.dataTransfer.files[i];
+                const filePath = getApi().getPathForFile(file);
+                if (filePath) {
+                    paths.push(quoteForPosixShell(filePath));
+                }
+            }
+            if (paths.length > 0) {
+                this.terminal.paste(paths.join(" ") + " ");
+            }
+        };
+        this.connectElem.addEventListener("dragover", dragoverHandler);
+        this.connectElem.addEventListener("drop", dropHandler);
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("dragover", dragoverHandler);
+                this.connectElem.removeEventListener("drop", dropHandler);
+            },
+        });
         this.handleResize();
         const pasteHandler = this.pasteHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteHandler, true);
@@ -348,6 +415,7 @@ export class TermWrap {
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
+        const trimTrailingWhitespaceAtom = getSettingsKeyAtom("term:trimtrailingwhitespace");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
         this.toDispose.push(
             this.terminal.onSelectionChange(
@@ -361,8 +429,11 @@ export class TermWrap {
                     if (active != null && active.closest(".search-container") != null) {
                         return;
                     }
-                    const selectedText = this.terminal.getSelection();
+                    let selectedText = this.terminal.getSelection();
                     if (selectedText.length > 0) {
+                        if (globalStore.get(trimTrailingWhitespaceAtom) !== false) {
+                            selectedText = trimTerminalSelection(selectedText);
+                        }
                         navigator.clipboard.writeText(selectedText);
                     }
                 })
@@ -379,16 +450,19 @@ export class TermWrap {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("block", this.blockId),
             });
+            let shellState: ShellIntegrationStatus = null;
 
             if (rtInfo && rtInfo["shell:integration"]) {
-                const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
+                shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
                 globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
             } else {
                 globalStore.set(this.shellIntegrationStatusAtom, null);
             }
 
             const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
+            const isCC = shellState === "running-command" && isClaudeCodeCommand(lastCmd);
             globalStore.set(this.lastCommandAtom, lastCmd || null);
+            globalStore.set(this.claudeCodeActiveAtom, isCC);
         } catch (e) {
             console.log("Error loading runtime info:", e);
         }
@@ -405,7 +479,9 @@ export class TermWrap {
         this.promptMarkers.forEach((marker) => {
             try {
                 marker.dispose();
-            } catch (_) {}
+            } catch (_) {
+                /* nothing */
+            }
         });
         this.promptMarkers = [];
         this.webglContextLossDisposable?.dispose();
@@ -414,7 +490,9 @@ export class TermWrap {
         this.toDispose.forEach((d) => {
             try {
                 d.dispose();
-            } catch (_) {}
+            } catch (_) {
+                /* nothing */
+            }
         });
         this.mainFileSubject.release();
     }

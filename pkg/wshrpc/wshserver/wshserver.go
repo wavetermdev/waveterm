@@ -43,7 +43,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -112,10 +111,6 @@ func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrEr
 		close(rtn)
 	}()
 	return rtn
-}
-
-func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
-	return waveai.RunAICommand(ctx, request)
 }
 
 func MakePlotData(ctx context.Context, blockId string) error {
@@ -1334,7 +1329,8 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 			delete(data, key)
 		}
 		if strings.HasSuffix(key, "#error") {
-			props.WshHadError = true
+			props.WshCmd = strings.TrimSuffix(key, "#error")
+			props.WshErrorCount = 1
 		} else {
 			props.WshCmd = key
 		}
@@ -1344,7 +1340,7 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
 	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-		Event: "wsh:run",
+		Event: telemetry.WshRunEventName,
 		Props: props,
 	})
 	return nil

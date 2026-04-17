@@ -6,6 +6,47 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.14.5 &mdash; Apr 16, 2026
+
+Wave v0.14.5 introduces a new Process Viewer widget, Quake Mode for global hotkey, and several quality-of-life improvements.
+
+- **Process Viewer** - New widget that displays running processes on local and remote machines, with CPU and memory usage, sortable columns, and the ability to send signals to processes
+- **Quake Mode** - The global hotkey (`app:globalhotkey`) now toggles a Wave window visible and invisible
+- **[bugfix] Settings Widget** - Fixed a bug where config files that didn't exist yet couldn't be created or edited from the Settings widget UI
+- **Drag & Drop Files into Terminal** - Drag files from Finder (macOS) or your file manager into a terminal block to paste their quoted path ([#746](https://github.com/wavetermdev/waveterm/issues/746))
+- New opt-in `app:showsplitbuttons` setting adds horizontal/vertical split buttons to block headers
+- Toggle the widgets sidebar from the View menu; visibility persists per workspace
+- F2 to rename the active tab
+- Mouse button 3/4 (back/forward) now navigate in web widgets
+- Terminal sessions now set `COLORTERM=truecolor` for better color support in CLI tools
+- [bugfix] Trim trailing whitespace from terminal clipboard copies
+- Package updates and dependency upgrades
+
+### v0.14.4 &mdash; Mar 26, 2026
+
+Wave v0.14.4 introduces vertical tabs, upgrades to xterm.js v6, and includes a collection of bug fixes and internal improvements.
+
+**Vertical Tab Bar:**
+
+- **New Vertical Tab Bar Option** - Tabs can now be displayed vertically along the side of the window, giving you more horizontal space and easier access to tabs when you have many open. Toggle between horizontal and vertical tab layouts in settings.
+
+**Terminal Improvements:**
+
+- **xterm.js v6.0.0 Upgrade** - Upgraded to the latest xterm.js v6, bringing improved terminal compatibility and rendering. This should resolve various terminal rendering quirks observed with tools like Claude Code.
+
+**Other Changes:**
+
+- **`backgrounds.json`** - Renamed `presets/bg.json` to `backgrounds.json` and moved background config to new `tab:background` key (auto-migrated on startup)
+- **Config Errors Moved** - Config errors removed from the tab bar and moved to Settings / WaveConfig view for less clutter
+- **Warn on Unsaved Changes** - WaveConfig view now warns before discarding unsaved changes
+- **Stream Performance** - Migrated file streaming to new modern interface with flow control, fixing a large time-to-first-byte streaming bug
+- **macOS First Click** - Improved first-click handling on macOS (cancel the click but properly set block/WaveAI focus)
+- Deprecated legacy AI widget has been removed
+- [bugfix] Fixed focus bug for newly created blocks
+- [bugfix] Fixed an issue around starting a new durable session by splitting an old one
+- Electron upgraded to v41
+- Package updates and dependency upgrades
+
 ### v0.14.2 &mdash; Mar 12, 2026
 
 Wave v0.14.2 adds block/tab badges, directory preview improvements, and assorted bug fixes.

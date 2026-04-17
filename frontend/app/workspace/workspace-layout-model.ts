@@ -56,6 +56,7 @@ class WorkspaceLayoutModel {
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     private debouncedPersistAIWidth: () => void;
     private debouncedPersistVTabWidth: () => void;
+    widgetsSidebarVisibleAtom: jotai.Atom<boolean>;
 
     private constructor() {
         this.aiPanelRef = null;
@@ -71,6 +72,11 @@ class WorkspaceLayoutModel {
         this.vtabWidth = VTabBar_DefaultWidth;
         this.vtabVisible = false;
         this.panelVisibleAtom = jotai.atom(false);
+        this.widgetsSidebarVisibleAtom = jotai.atom(
+            (get) =>
+                get(getOrefMetaKeyAtom(WOS.makeORef("workspace", this.getWorkspaceId()), "layout:widgetsvisible")) ??
+                true
+        );
         this.initializeFromMeta();
 
         this.handleWindowResize = this.handleWindowResize.bind(this);

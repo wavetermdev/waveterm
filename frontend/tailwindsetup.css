@@ -93,6 +93,10 @@ svg [aria-label="tip"] g path {
     color: var(--border-color);
 }
 
+.wide-scrollbar::-webkit-scrollbar {
+    width: 10px;
+}
+
 /* Monaco editor scrollbar styling */
 .monaco-editor .slider {
     background: rgba(255, 255, 255, 0.4);

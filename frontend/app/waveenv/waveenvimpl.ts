@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { AllServiceImpls } from "@/app/store/services";
 import {
     atoms,
     createBlock,
@@ -16,6 +15,7 @@ import {
     isDev,
     WOS,
 } from "@/app/store/global";
+import { AllServiceImpls } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { WaveEnv } from "@/app/waveenv/waveenv";
 import { isMacOS, isWindows, PLATFORM } from "@/util/platformutil";

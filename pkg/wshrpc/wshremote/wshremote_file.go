@@ -565,6 +565,14 @@ func (impl *ServerImpl) RemoteFileStreamCommand(ctx context.Context, data wshrpc
 
 	finfo, err := os.Stat(cleanedPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			writer.Close()
+			return &wshrpc.FileInfo{
+				Path:     wavebase.ReplaceHomeDir(data.Path),
+				Dir:      computeDirPart(data.Path),
+				NotFound: true,
+			}, nil
+		}
 		writer.CloseWithError(err)
 		return nil, fmt.Errorf("cannot stat file %q: %w", data.Path, err)
 	}

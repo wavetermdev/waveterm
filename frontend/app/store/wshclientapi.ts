@@ -756,6 +756,18 @@ export class RpcApiType {
         return client.wshRpcCall("remotemkdir", data, opts);
     }
 
+    // command "remoteprocesslist" [call]
+    RemoteProcessListCommand(client: WshClient, data: CommandRemoteProcessListData, opts?: RpcOpts): Promise<ProcessListResponse> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remoteprocesslist", data, opts);
+        return client.wshRpcCall("remoteprocesslist", data, opts);
+    }
+
+    // command "remoteprocesssignal" [call]
+    RemoteProcessSignalCommand(client: WshClient, data: CommandRemoteProcessSignalData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remoteprocesssignal", data, opts);
+        return client.wshRpcCall("remoteprocesssignal", data, opts);
+    }
+
     // command "remotereconnecttojobmanager" [call]
     RemoteReconnectToJobManagerCommand(client: WshClient, data: CommandRemoteReconnectToJobManagerData, opts?: RpcOpts): Promise<CommandRemoteReconnectToJobManagerRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotereconnecttojobmanager", data, opts);
@@ -910,12 +922,6 @@ export class RpcApiType {
 	StreamTestCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<number, void, boolean> {
         if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "streamtest", null, opts);
         return client.wshRpcStream("streamtest", null, opts);
-    }
-
-    // command "streamwaveai" [responsestream]
-	StreamWaveAiCommand(client: WshClient, data: WaveAIStreamRequest, opts?: RpcOpts): AsyncGenerator<WaveAIPacketType, void, boolean> {
-        if (this.mockClient) return this.mockClient.mockWshRpcStream(client, "streamwaveai", data, opts);
-        return client.wshRpcStream("streamwaveai", data, opts);
     }
 
     // command "termgetscrollbacklines" [call]

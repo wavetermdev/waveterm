@@ -5,7 +5,6 @@ package blockservice
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -64,28 +63,6 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 	err = filestore.WFS.WriteMeta(ctx, blockId, "cache:term:"+stateType, fileMeta, true)
 	if err != nil {
 		return fmt.Errorf("cannot save terminal state meta: %w", err)
-	}
-	return nil
-}
-
-func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, history []wshrpc.WaveAIPromptMessageType) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
-	if err != nil {
-		return err
-	}
-	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
-	if viewName != "waveai" {
-		return fmt.Errorf("invalid view type: %s", viewName)
-	}
-	historyBytes, err := json.Marshal(history)
-	if err != nil {
-		return fmt.Errorf("unable to serialize ai history: %v", err)
-	}
-	// ignore MakeFile error (already exists is ok)
-	filestore.WFS.MakeFile(ctx, blockId, "aidata", nil, wshrpc.FileOpts{})
-	err = filestore.WFS.WriteFile(ctx, blockId, "aidata", historyBytes)
-	if err != nil {
-		return fmt.Errorf("cannot save terminal state: %w", err)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@
 
 import { getTabBadgeAtom } from "@/app/store/badge";
 import { refocusNode } from "@/app/store/global";
+import { getTabModelByTabId } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveEnv, WaveEnvSubset, useWaveEnv } from "@/app/waveenv/waveenv";
 import { Button } from "@/element/button";
@@ -251,6 +252,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
 
     const loadedRef = useRef(false);
     const renameRef = useRef<(() => void) | null>(null);
+    const tabModel = getTabModelByTabId(id, env);
 
     useEffect(() => {
         if (!loadedRef.current) {
@@ -258,6 +260,16 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             loadedRef.current = true;
         }
     }, [onLoaded]);
+
+    useEffect(() => {
+        const cb = () => renameRef.current?.();
+        tabModel.startRenameCallback = cb;
+        return () => {
+            if (tabModel.startRenameCallback === cb) {
+                tabModel.startRenameCallback = null;
+            }
+        };
+    }, [tabModel]);
 
     const handleTabClick = () => {
         onSelect();

@@ -10,6 +10,13 @@ import { colord } from "colord";
 
 export type GenClipboardItem = { text?: string; image?: Blob };
 
+export function trimTerminalSelection(text: string): string {
+    return text
+        .split("\n")
+        .map((line) => line.trimEnd())
+        .join("\n");
+}
+
 export function normalizeCursorStyle(cursorStyle: string): TermTypes.Terminal["options"]["cursorStyle"] {
     if (cursorStyle === "underline" || cursorStyle === "bar") {
         return cursorStyle;
@@ -388,4 +395,8 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
     }
 
     return lines;
+}
+
+export function quoteForPosixShell(filePath: string): string {
+    return "'" + filePath.replace(/'/g, "'\\''") + "'";
 }
