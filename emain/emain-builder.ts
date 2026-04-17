@@ -4,7 +4,7 @@
 import { ClientService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { randomUUID } from "crypto";
-import { BrowserWindow } from "electron";
+import { BrowserWindow, webContents } from "electron";
 import { globalEvents } from "emain/emain-events";
 import path from "path";
 import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
@@ -86,6 +86,20 @@ export async function createBuilderWindow(appId: string): Promise<BuilderWindowT
     typedBuilderWindow.builderId = builderId;
     typedBuilderWindow.builderAppId = appId;
     typedBuilderWindow.savedInitOpts = initOpts;
+
+    typedBuilderWindow.on("close", () => {
+        const wc = typedBuilderWindow.webContents;
+        if (wc.isDevToolsOpened()) {
+            wc.closeDevTools();
+        }
+        for (const guest of webContents.getAllWebContents()) {
+            if (guest.getType() === "webview" && guest.hostWebContents?.id === wc.id) {
+                if (guest.isDevToolsOpened()) {
+                    guest.closeDevTools();
+                }
+            }
+        }
+    });
 
     typedBuilderWindow.on("focus", () => {
         focusedBuilderWindow = typedBuilderWindow;

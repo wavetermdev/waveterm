@@ -72,7 +72,9 @@ function parseKey(key: string): { key: string; type: string } {
 function parseKeyDescription(keyDescription: string): KeyPressDecl {
     let rtn = { key: "", mods: {} } as KeyPressDecl;
     let keys = keyDescription.replace(/[()]/g, "").split(":");
-    for (let key of keys) {
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let isLastToken = i === keys.length - 1;
         if (key == "Cmd") {
             if (PLATFORM == PlatformMacOS) {
                 rtn.mods.Meta = true;
@@ -106,6 +108,10 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
             }
             rtn.mods.Meta = true;
         } else {
+            if (!isLastToken) {
+                rtn.nomatch = true;
+                return rtn;
+            }
             let { key: parsedKey, type: keyType } = parseKey(key);
             rtn.key = parsedKey;
             rtn.keyType = keyType;
@@ -194,6 +200,9 @@ function isInputEvent(event: VDomKeyboardEvent): boolean {
 
 function checkKeyPressed(event: VDomKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
+    if (keyPress.nomatch) {
+        return false;
+    }
     if (notMod(keyPress.mods.Option, event.option)) {
         return false;
     }
@@ -236,6 +245,9 @@ function checkKeyPressed(event: VDomKeyboardEvent, keyDescription: string): bool
 }
 
 function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): VDomKeyboardEvent {
+    if (event == null || typeof event.key !== "string") {
+        return { type: "unknown" } as VDomKeyboardEvent;
+    }
     let rtn: VDomKeyboardEvent = {} as VDomKeyboardEvent;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;

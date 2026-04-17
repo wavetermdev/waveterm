@@ -247,7 +247,44 @@ func isValidAzureResourceName(name string) bool {
 	return AzureResourceNameRegex.MatchString(name)
 }
 
+var builderModeConfigs = map[string]wconfig.AIModeConfigType{
+	uctypes.AIModeBuilderDefault: {
+		DisplayName:        "Builder Default",
+		DisplayOrder:       -2,
+		DisplayIcon:        "sparkles",
+		DisplayDescription: "Good mix of speed and accuracy\n(gpt-5.4 with minimal thinking)",
+		Provider:           uctypes.AIProvider_Wave,
+		APIType:            uctypes.APIType_OpenAIResponses,
+		Model:              "gpt-5.4",
+		ThinkingLevel:      uctypes.ThinkingLevelLow,
+		Verbosity:          uctypes.VerbosityLevelLow,
+		Capabilities:       []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
+		WaveAIPremium:      true,
+		SwitchCompat:       []string{"wavecloud"},
+	},
+	uctypes.AIModeBuilderDeep: {
+		DisplayName:        "Builder Deep",
+		DisplayOrder:       -1,
+		DisplayIcon:        "lightbulb",
+		DisplayDescription: "Slower but most capable\n(gpt-5.4 with full reasoning)",
+		Provider:           uctypes.AIProvider_Wave,
+		APIType:            uctypes.APIType_OpenAIResponses,
+		Model:              "gpt-5.4",
+		ThinkingLevel:      uctypes.ThinkingLevelMedium,
+		Verbosity:          uctypes.VerbosityLevelLow,
+		Capabilities:       []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
+		WaveAIPremium:      true,
+		SwitchCompat:       []string{"wavecloud"},
+	},
+}
+
 func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {
+	if config, ok := builderModeConfigs[aiMode]; ok {
+		resolved := config
+		applyProviderDefaults(&resolved)
+		return &resolved, nil
+	}
+
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	config, ok := fullConfig.WaveAIModes[aiMode]
 	if !ok {
@@ -271,13 +308,13 @@ func handleConfigUpdate(fullConfig wconfig.FullConfigType) {
 
 func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModeConfigType {
 	resolvedConfigs := make(map[string]wconfig.AIModeConfigType)
-	
+
 	for modeName, modeConfig := range fullConfig.WaveAIModes {
 		resolved := modeConfig
 		applyProviderDefaults(&resolved)
 		resolvedConfigs[modeName] = resolved
 	}
-	
+
 	return resolvedConfigs
 }
 
@@ -285,7 +322,7 @@ func broadcastAIModeConfigs(configs map[string]wconfig.AIModeConfigType) {
 	update := wconfig.AIModeConfigUpdate{
 		Configs: configs,
 	}
-	
+
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_AIModeConfig,
 		Data:  update,

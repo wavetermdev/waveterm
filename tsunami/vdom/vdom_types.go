@@ -32,8 +32,10 @@ type VDomFunc struct {
 	Type            string   `json:"type" tstype:"\"func\""`
 	StopPropagation bool     `json:"stoppropagation,omitempty"` // set to call e.stopPropagation() on the client side
 	PreventDefault  bool     `json:"preventdefault,omitempty"`  // set to call e.preventDefault() on the client side
+	PreventBackend  bool     `json:"preventbackend,omitempty"`  // set to skip firing the event to the backend
 	GlobalEvent     string   `json:"globalevent,omitempty"`
 	Keys            []string `json:"keys,omitempty"` // special for keyDown events a list of keys to "capture"
+	JsCode          string   `json:"jscode,omitempty"` // client-side JS function expression: (e, elem) => { ... }
 }
 
 // used in props

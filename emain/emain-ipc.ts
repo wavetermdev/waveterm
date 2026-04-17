@@ -490,6 +490,17 @@ export function initIpcHandlers() {
                 console.error("Error deleting builder rtinfo:", e);
             }
         }
+        const wc = bw.webContents;
+        if (wc.isDevToolsOpened()) {
+            wc.closeDevTools();
+        }
+        for (const guest of electron.webContents.getAllWebContents()) {
+            if (guest.getType() === "webview" && guest.hostWebContents?.id === wc.id) {
+                if (guest.isDevToolsOpened()) {
+                    guest.closeDevTools();
+                }
+            }
+        }
         bw.destroy();
     });
 

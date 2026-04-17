@@ -62,7 +62,10 @@
 }
 
 /* Disable overscroll behavior */
-html, body {
+html, body, #root {
+    height: 100%;
+    color-scheme: dark;
+    background: var(--color-background);
     overscroll-behavior: none;
     overscroll-behavior-x: none;
     overscroll-behavior-y: none;
