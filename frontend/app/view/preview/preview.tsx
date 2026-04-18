@@ -4,11 +4,28 @@
 import { CenteredDiv } from "@/app/element/quickelems";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+
+function shellEscapePath(path: string): string {
+    if (path === "~") return "~";
+    if (path.startsWith("~/")) {
+        // ~ must be unquoted to expand; single-quote the rest
+        return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
+    }
+    return "'" + path.replace(/'/g, "'\\''") + "'";
+}
+
+async function sendCdToTerminal(termBlockId: string, path: string, env: import("./previewenv").PreviewEnv) {
+    const command = "\x15cd " + shellEscapePath(path) + "\r";
+    await env.rpc.ControllerInputCommand(TabRpcClient, { blockid: termBlockId, inputdata64: stringToBase64(command) });
+}
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
-import { isBlank, makeConnRoute } from "@/util/util";
+import { BlockModel } from "@/app/block/block-model";
+import * as WOS from "@/store/wos";
+import { fireAndForget, isBlank, makeConnRoute, stringToBase64 } from "@/util/util";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./preview-directory";
 import { CodeEditPreview } from "./preview-edit";
@@ -96,6 +113,110 @@ const fetchSuggestions = async (
     });
 };
 
+function FollowTermDropdown({ model }: { model: PreviewModel }) {
+    const menuData = useAtomValue(model.followTermMenuDataAtom);
+
+    if (!menuData) return null;
+
+    const { pos, terms, currentFollowId, bidir } = menuData;
+    const closeMenu = () => {
+        BlockModel.getInstance().setBlockHighlight(null);
+        globalStore.set(model.followTermMenuDataAtom, null);
+    };
+    const linkTerm = (blockId: string) => {
+        BlockModel.getInstance().setBlockHighlight(null);
+        fireAndForget(async () => {
+            await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), {
+                "preview:followtermid": blockId,
+            });
+        });
+        globalStore.set(model.followTermMenuDataAtom, null);
+    };
+    const toggleBidir = () => {
+        fireAndForget(async () => {
+            await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), {
+                "preview:followterm:bidir": !bidir,
+            });
+        });
+        globalStore.set(model.followTermMenuDataAtom, { ...menuData, bidir: !bidir });
+    };
+    const unlink = () => {
+        fireAndForget(async () => {
+            await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), {
+                "preview:followtermid": null,
+                "preview:followterm:bidir": null,
+            });
+        });
+        globalStore.set(model.followTermMenuDataAtom, null);
+    };
+
+    const dropdownStyle: React.CSSProperties = {
+        left: pos.x,
+        top: pos.y,
+        background: "var(--modal-bg-color)",
+        border: "1px solid var(--border-color)",
+        boxShadow: "0px 8px 24px 0px rgba(0,0,0,0.4)",
+        borderRadius: "var(--modal-border-radius)",
+    };
+    const dividerStyle: React.CSSProperties = { borderTop: "1px solid var(--border-color)" };
+
+    return ReactDOM.createPortal(
+        <>
+            <div className="fixed inset-0 z-[9998]" onMouseDown={closeMenu} />
+            <div className="fixed z-[9999] py-1 min-w-[200px] text-sm" style={dropdownStyle}>
+                {terms.length === 0 ? (
+                    <div className="px-3 py-1.5 opacity-50">No terminals on this tab</div>
+                ) : (
+                    terms.map(({ blockId, title }) => (
+                        <div
+                            key={blockId}
+                            className="px-3 py-1.5 cursor-pointer hover:bg-white/10 flex items-center gap-2"
+                            onMouseEnter={() =>
+                                BlockModel.getInstance().setBlockHighlight({ blockId, icon: "terminal" })
+                            }
+                            onMouseLeave={() => BlockModel.getInstance().setBlockHighlight(null)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => linkTerm(blockId)}
+                        >
+                            <i className="fa-sharp fa-solid fa-terminal opacity-50" />
+                            {title}
+                        </div>
+                    ))
+                )}
+                {currentFollowId && (
+                    <>
+                        <div className="my-1" style={dividerStyle} />
+                        <div
+                            className="px-3 py-1.5 cursor-pointer hover:bg-white/10 flex items-center gap-2"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={toggleBidir}
+                        >
+                            <i
+                                className={
+                                    bidir
+                                        ? "fa-sharp fa-solid fa-square-check"
+                                        : "fa-sharp fa-regular fa-square"
+                                }
+                                style={{ color: bidir ? "var(--success-color)" : undefined, width: 14 }}
+                            />
+                            Bidirectional
+                        </div>
+                        <div className="my-1" style={dividerStyle} />
+                        <div
+                            className="px-3 py-1.5 cursor-pointer hover:bg-white/10"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={unlink}
+                        >
+                            Stop Following
+                        </div>
+                    </>
+                )}
+            </div>
+        </>,
+        document.body
+    );
+}
+
 function PreviewView({
     blockRef,
     contentRef,
@@ -111,6 +232,11 @@ function PreviewView({
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
     const connection = useAtomValue(model.connectionImmediate);
     const fileInfo = useAtomValue(model.statFile);
+    const followTermId = useAtomValue(model.followTermIdAtom);
+    const followTermCwd = useAtomValue(model.followTermCwdAtom);
+    const followTermBidir = useAtomValue(model.followTermBidirAtom);
+    const loadableFileInfo = useAtomValue(model.loadableFileInfo);
+    const suppressBidirRef = useRef(false);
 
     useEffect(() => {
         console.log("fileInfo or connection changed", fileInfo, connection);
@@ -119,6 +245,24 @@ function PreviewView({
         }
         setErrorMsg(null);
     }, [connection, fileInfo]);
+
+    useEffect(() => {
+        if (!followTermId || !followTermCwd) return;
+        suppressBidirRef.current = true;
+        fireAndForget(() => model.goHistory(followTermCwd));
+    }, [followTermCwd]);
+
+    useEffect(() => {
+        if (!followTermId || !followTermBidir) return;
+        if (suppressBidirRef.current) {
+            suppressBidirRef.current = false;
+            return;
+        }
+        if (loadableFileInfo.state !== "hasData") return;
+        const fi = loadableFileInfo.data;
+        if (!fi || fi.mimetype !== "directory" || !fi.path) return;
+        fireAndForget(() => sendCdToTerminal(followTermId, fi.path, env));
+    }, [loadableFileInfo]);
 
     if (connStatus?.status != "connected") {
         return null;
@@ -148,6 +292,7 @@ function PreviewView({
 
     return (
         <>
+            <FollowTermDropdown model={model} />
             <div key="fullpreview" className="flex flex-col w-full overflow-hidden scrollbar-hide-until-hover">
                 {errorMsg && <ErrorOverlay errorMsg={errorMsg} resetOverlay={() => setErrorMsg(null)} />}
                 <div ref={contentRef} className="flex-grow overflow-hidden">

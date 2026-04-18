@@ -142,6 +142,9 @@ type MetaTSType struct {
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
 
+	PreviewFollowTermId    string `json:"preview:followtermid,omitempty"`
+	PreviewFollowTermBidir *bool  `json:"preview:followterm:bidir,omitempty"`
+
 	TsunamiClear          bool              `json:"tsunami:*,omitempty"`
 	TsunamiSdkReplacePath string            `json:"tsunami:sdkreplacepath,omitempty"`
 	TsunamiAppPath        string            `json:"tsunami:apppath,omitempty"`

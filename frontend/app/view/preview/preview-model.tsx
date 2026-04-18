@@ -170,6 +170,11 @@ export class PreviewModel implements ViewModel {
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     env: PreviewEnv;
 
+    followTermIdAtom: Atom<string | null>;
+    followTermCwdAtom: Atom<string | null>;
+    followTermBidirAtom: Atom<boolean>;
+    followTermMenuDataAtom: PrimitiveAtom<{ pos: { x: number; y: number }; terms: { blockId: string; title: string }[]; currentFollowId: string | null; bidir: boolean } | null>;
+
     constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
         this.viewType = "preview";
         this.blockId = blockId;
@@ -334,6 +339,7 @@ export class PreviewModel implements ViewModel {
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
+                const followTermId = get(this.followTermIdAtom);
                 return [
                     {
                         elemtype: "iconbutton",
@@ -342,6 +348,13 @@ export class PreviewModel implements ViewModel {
                         click: () => {
                             globalStore.set(this.showHiddenFiles, (prev) => !prev);
                         },
+                    },
+                    {
+                        elemtype: "iconbutton",
+                        icon: "link",
+                        title: followTermId ? "Following Terminal (click to change or unlink)" : "Follow a Terminal",
+                        iconColor: followTermId ? "var(--success-color)" : undefined,
+                        click: (e: React.MouseEvent<any>) => this.showFollowTermMenu(e),
                     },
                     {
                         elemtype: "iconbutton",
@@ -489,6 +502,45 @@ export class PreviewModel implements ViewModel {
         });
 
         this.noPadding = atom(true);
+        this.followTermIdAtom = atom<string | null>((get) => {
+            return (get(this.blockAtom)?.meta?.["preview:followtermid"] as string) ?? null;
+        });
+        this.followTermCwdAtom = atom<string | null>((get) => {
+            const termId = get(this.followTermIdAtom);
+            if (!termId) return null;
+            const termBlock = WOS.getObjectValue<Block>(WOS.makeORef("block", termId), get);
+            return (termBlock?.meta?.["cmd:cwd"] as string) ?? null;
+        });
+        this.followTermBidirAtom = atom<boolean>((get) => {
+            return (get(this.blockAtom)?.meta?.["preview:followterm:bidir"] as boolean) ?? false;
+        });
+        this.followTermMenuDataAtom = atom(null);
+    }
+
+    showFollowTermMenu(e: React.MouseEvent<any>) {
+        const tabData = globalStore.get(this.tabModel.tabAtom);
+        const blockIds = tabData?.blockids ?? [];
+        const terms = blockIds
+            .filter((bid) => bid !== this.blockId)
+            .map((bid) => {
+                const block = WOS.getObjectValue<Block>(WOS.makeORef("block", bid), globalStore.get);
+                return { blockId: bid, block };
+            })
+            .filter(({ block }) => block?.meta?.view === "term")
+            .map(({ blockId: bid, block }, i) => ({
+                blockId: bid,
+                title: (block?.meta?.["frame:title"] as string) || `Terminal ${i + 1}`,
+            }));
+
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const currentFollowId = globalStore.get(this.followTermIdAtom);
+        const bidir = globalStore.get(this.followTermBidirAtom);
+        globalStore.set(this.followTermMenuDataAtom, {
+            pos: { x: rect.left, y: rect.bottom + 4 },
+            terms,
+            currentFollowId,
+            bidir,
+        });
     }
 
     markdownShowTocToggle() {

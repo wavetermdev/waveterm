@@ -21,6 +21,7 @@ import {
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { renamingBlockIdAtom, startBlockRename, stopBlockRename } from "@/app/block/blockrenamestate";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
@@ -42,6 +43,10 @@ function handleHeaderContextMenu(
     e.stopPropagation();
     const magnified = globalStore.get(nodeModel.isMagnified);
     const menu: ContextMenuItem[] = [
+        {
+            label: "Rename Block",
+            click: () => startBlockRename(blockId),
+        },
         {
             label: magnified ? "Un-Magnify Block" : "Magnify Block",
             click: () => {
@@ -78,11 +83,64 @@ type HeaderTextElemsProps = {
 const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: HeaderTextElemsProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
     const frameTextAtom = waveEnv.getBlockMetaKeyAtom(blockId, "frame:text");
+    const frameTitleAtom = waveEnv.getBlockMetaKeyAtom(blockId, "frame:title");
     const frameText = jotai.useAtomValue(frameTextAtom);
+    const frameTitle = jotai.useAtomValue(frameTitleAtom);
+    const renamingBlockId = jotai.useAtomValue(renamingBlockIdAtom);
+    const isRenaming = renamingBlockId === blockId;
+    const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     headerTextUnion = frameText ?? headerTextUnion;
 
+    const saveRename = React.useCallback(
+        (newTitle: string) => {
+            const val = newTitle.trim() || null;
+            waveEnv.rpc.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", blockId),
+                meta: { "frame:title": val },
+            });
+            stopBlockRename();
+        },
+        [blockId, waveEnv]
+    );
+
+    if (isRenaming) {
+        return (
+            <div className="block-frame-textelems-wrapper">
+                <input
+                    autoFocus
+                    defaultValue={frameTitle ?? ""}
+                    placeholder="Block name..."
+                    className="block-frame-rename-input bg-transparent border border-white/20 rounded px-2 py-0.5 text-sm outline-none focus:border-white/40 min-w-0 w-full max-w-[200px]"
+                    onBlur={(e) => saveRename(e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            saveRename(e.currentTarget.value);
+                        } else if (e.key === "Escape") {
+                            stopBlockRename();
+                        }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                />
+            </div>
+        );
+    }
+
     const headerTextElems: React.ReactElement[] = [];
+
+    // For terminal blocks, show frame:title as a name badge in the text area
+    if (useTermHeader && frameTitle) {
+        headerTextElems.push(
+            <div
+                key="frame-title"
+                className="block-frame-text shrink-0 opacity-70 cursor-pointer"
+                title="Right-click header to rename"
+            >
+                {frameTitle}
+            </div>
+        );
+    }
+
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
