@@ -4,20 +4,6 @@
 import { CenteredDiv } from "@/app/element/quickelems";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-
-function shellEscapePath(path: string): string {
-    if (path === "~") return "~";
-    if (path.startsWith("~/")) {
-        // ~ must be unquoted to expand; single-quote the rest
-        return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
-    }
-    return "'" + path.replace(/'/g, "'\\''") + "'";
-}
-
-async function sendCdToTerminal(termBlockId: string, path: string, env: import("./previewenv").PreviewEnv) {
-    const command = "\x15cd " + shellEscapePath(path) + "\r";
-    await env.rpc.ControllerInputCommand(TabRpcClient, { blockid: termBlockId, inputdata64: stringToBase64(command) });
-}
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { BlockModel } from "@/app/block/block-model";
@@ -34,6 +20,64 @@ import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
+
+function posixEscapePath(path: string): string {
+    if (path === "~") return "~";
+    if (path.startsWith("~/")) {
+        return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
+    }
+    return "'" + path.replace(/'/g, "'\\''") + "'";
+}
+
+function powershellEscapePath(path: string): string {
+    if (path === "~") return "~";
+    if (path.startsWith("~/")) {
+        return "~/" + "'" + path.slice(2).replace(/'/g, "''") + "'";
+    }
+    return "'" + path.replace(/'/g, "''") + "'";
+}
+
+function cmdEscapePath(path: string): string {
+    if (path.startsWith("~/")) {
+        return '"%USERPROFILE%\\' + path.slice(2).replace(/\//g, "\\") + '"';
+    }
+    if (path.includes(" ")) {
+        return '"' + path.replace(/\//g, "\\") + '"';
+    }
+    return path.replace(/\//g, "\\");
+}
+
+function getShellType(termBlockId: string): string {
+    const termBlock = WOS.getObjectValue<Block>(WOS.makeORef("block", termBlockId), globalStore.get);
+    const shellPath = (termBlock?.meta?.["cmd:shell"] as string) ?? "";
+    if (shellPath.includes("powershell") || shellPath.includes("pwsh")) {
+        return "powershell";
+    }
+    if (shellPath.includes("cmd.exe")) {
+        return "cmd";
+    }
+    return "posix";
+}
+
+async function sendCdToTerminal(termBlockId: string, path: string, env: import("./previewenv").PreviewEnv) {
+    const shellType = getShellType(termBlockId);
+    let command: string;
+
+    switch (shellType) {
+        case "powershell":
+            command = "cd " + powershellEscapePath(path) + "\r";
+            break;
+        case "cmd":
+            command = "cd " + cmdEscapePath(path) + "\r";
+            break;
+        case "posix":
+        default:
+            command = "\x15cd " + posixEscapePath(path) + "\r";
+            break;
+    }
+
+    await env.rpc.ControllerInputCommand(TabRpcClient, { blockid: termBlockId, inputdata64: stringToBase64(command) });
+}
 
 export type SpecializedViewProps = {
     model: PreviewModel;
@@ -115,6 +159,8 @@ const fetchSuggestions = async (
 
 function FollowTermDropdown({ model }: { model: PreviewModel }) {
     const menuData = useAtomValue(model.followTermMenuDataAtom);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const previousActiveElement = useRef<Element | null>(null);
 
     if (!menuData) return null;
 
@@ -122,15 +168,22 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
     const closeMenu = () => {
         BlockModel.getInstance().setBlockHighlight(null);
         globalStore.set(model.followTermMenuDataAtom, null);
+        if (previousActiveElement.current instanceof HTMLElement) {
+            previousActiveElement.current.focus();
+        }
     };
     const linkTerm = (blockId: string) => {
         BlockModel.getInstance().setBlockHighlight(null);
         fireAndForget(async () => {
             await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), {
                 "preview:followtermid": blockId,
+                "preview:followterm:bidir": false,
             });
         });
         globalStore.set(model.followTermMenuDataAtom, null);
+        if (previousActiveElement.current instanceof HTMLElement) {
+            previousActiveElement.current.focus();
+        }
     };
     const toggleBidir = () => {
         fireAndForget(async () => {
@@ -148,7 +201,29 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
             });
         });
         globalStore.set(model.followTermMenuDataAtom, null);
+        if (previousActiveElement.current instanceof HTMLElement) {
+            previousActiveElement.current.focus();
+        }
     };
+
+    useEffect(() => {
+        previousActiveElement.current = document.activeElement;
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                closeMenu();
+            }
+        };
+        document.addEventListener("keydown", handleEscape);
+        if (menuRef.current) {
+            const firstItem = menuRef.current.querySelector('[role="menuitem"]');
+            if (firstItem instanceof HTMLElement) {
+                firstItem.focus();
+            }
+        }
+        return () => {
+            document.removeEventListener("keydown", handleEscape);
+        };
+    }, []);
 
     const dropdownStyle: React.CSSProperties = {
         left: pos.x,
@@ -163,13 +238,16 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
     return ReactDOM.createPortal(
         <>
             <div className="fixed inset-0 z-[9998]" onMouseDown={closeMenu} />
-            <div className="fixed z-[9999] py-1 min-w-[200px] text-sm" style={dropdownStyle}>
+            <div ref={menuRef} className="fixed z-[9999] py-1 min-w-[200px] text-sm" style={dropdownStyle} role="menu">
                 {terms.length === 0 ? (
                     <div className="px-3 py-1.5 opacity-50">No terminals on this tab</div>
                 ) : (
                     terms.map(({ blockId, title }) => (
                         <div
                             key={blockId}
+                            role="menuitem"
+                            tabIndex={0}
+                            aria-label={`Follow terminal: ${title}`}
                             className="px-3 py-1.5 cursor-pointer hover:bg-white/10 flex items-center gap-2"
                             onMouseEnter={() =>
                                 BlockModel.getInstance().setBlockHighlight({ blockId, icon: "terminal" })
@@ -177,6 +255,12 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
                             onMouseLeave={() => BlockModel.getInstance().setBlockHighlight(null)}
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={() => linkTerm(blockId)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    linkTerm(blockId);
+                                }
+                            }}
                         >
                             <i className="fa-sharp fa-solid fa-terminal opacity-50" />
                             {title}
@@ -187,9 +271,18 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
                     <>
                         <div className="my-1" style={dividerStyle} />
                         <div
+                            role="menuitem"
+                            tabIndex={0}
+                            aria-label={`Bidirectional following: ${bidir ? "enabled" : "disabled"}`}
                             className="px-3 py-1.5 cursor-pointer hover:bg-white/10 flex items-center gap-2"
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={toggleBidir}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    toggleBidir();
+                                }
+                            }}
                         >
                             <i
                                 className={
@@ -203,9 +296,18 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
                         </div>
                         <div className="my-1" style={dividerStyle} />
                         <div
+                            role="menuitem"
+                            tabIndex={0}
+                            aria-label="Stop following terminal"
                             className="px-3 py-1.5 cursor-pointer hover:bg-white/10"
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={unlink}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    unlink();
+                                }
+                            }}
                         >
                             Stop Following
                         </div>
@@ -250,7 +352,11 @@ function PreviewView({
         if (!followTermId || !followTermCwd) return;
         suppressBidirRef.current = true;
         fireAndForget(() => model.goHistory(followTermCwd));
-    }, [followTermCwd]);
+        const timer = setTimeout(() => {
+            suppressBidirRef.current = false;
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [followTermCwd, followTermId, model]);
 
     useEffect(() => {
         if (!followTermId || !followTermBidir) return;
@@ -262,7 +368,7 @@ function PreviewView({
         const fi = loadableFileInfo.data;
         if (!fi || fi.mimetype !== "directory" || !fi.path) return;
         fireAndForget(() => sendCdToTerminal(followTermId, fi.path, env));
-    }, [loadableFileInfo]);
+    }, [loadableFileInfo, followTermId, followTermBidir, env]);
 
     if (connStatus?.status != "connected") {
         return null;

@@ -520,17 +520,22 @@ export class PreviewModel implements ViewModel {
     showFollowTermMenu(e: React.MouseEvent<any>) {
         const tabData = globalStore.get(this.tabModel.tabAtom);
         const blockIds = tabData?.blockids ?? [];
-        const terms = blockIds
-            .filter((bid) => bid !== this.blockId)
-            .map((bid) => {
+
+        const termBlockIds = blockIds
+            .filter((bid) => {
+                if (bid === this.blockId) return false;
                 const block = WOS.getObjectValue<Block>(WOS.makeORef("block", bid), globalStore.get);
-                return { blockId: bid, block };
-            })
-            .filter(({ block }) => block?.meta?.view === "term")
-            .map(({ blockId: bid, block }, i) => ({
+                return block?.meta?.view === "term";
+            });
+
+        const terms = termBlockIds.map((bid) => {
+            const block = WOS.getObjectValue<Block>(WOS.makeORef("block", bid), globalStore.get);
+            const termIndex = termBlockIds.indexOf(bid) + 1;
+            return {
                 blockId: bid,
-                title: (block?.meta?.["frame:title"] as string) || `Terminal ${i + 1}`,
-            }));
+                title: (block?.meta?.["frame:title"] as string) || `Terminal ${termIndex}`,
+            };
+        });
 
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const currentFollowId = globalStore.get(this.followTermIdAtom);

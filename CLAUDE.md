@@ -25,7 +25,10 @@ This project uses a set of "skill" guides — focused how-to documents for commo
 - **Build**: `task package` (requires `PATH="/opt/homebrew/bin:$PATH"` for Go/Task). Builds as `Wave Dev.app` in `make/mac-arm64/`.
 - **Launch**: Use `launch_wave_dev.command` or run directly:
   ```bash
-  WAVETERM_HOME=~/.waveterm-dev make/mac-arm64/Wave\ Dev.app/Contents/MacOS/Wave\ Dev
+  WAVETERM_HOME=~/.waveterm-dev \
+  WAVETERM_CONFIG_HOME=~/.waveterm-dev/config \
+  WAVETERM_DATA_HOME=~/.waveterm-dev/data \
+  make/mac-arm64/Wave\ Dev.app/Contents/MacOS/Wave\ Dev
   ```
-  `WAVETERM_HOME` gives the dev build a separate data directory (`~/.waveterm-dev`) from the vanilla install (`~/.waveterm`).
+  These variables create isolated config and data directories for the dev build. Note: `getWaveHomeDir()` only honors `WAVETERM_HOME` after `wave.lock` exists, so explicit `CONFIG/DATA` overrides are needed for clean installs and newly launched dev instances.
 - **Do not modify Info.plist or re-sign** the built app bundle — it breaks code signing on macOS and causes crashes.
