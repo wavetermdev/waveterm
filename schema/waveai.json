@@ -26,6 +26,7 @@
             "openai",
             "azure",
             "azure-legacy",
+            "novita",
             "custom"
           ]
         },

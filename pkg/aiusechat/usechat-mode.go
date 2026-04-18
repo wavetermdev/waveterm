@@ -23,6 +23,7 @@ const (
 	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
 	NanoGPTChatEndpoint            = "https://nano-gpt.com/api/v1/chat/completions"
 	GroqChatEndpoint               = "https://api.groq.com/openai/v1/chat/completions"
+	NovitaChatEndpoint             = "https://api.novita.ai/openai/v1/chat/completions"
 	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
 	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
 	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
@@ -36,6 +37,7 @@ const (
 	GroqAPITokenSecretName        = "GROQ_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
+	NovitaAPITokenSecretName      = "NOVITA_API_KEY"
 )
 
 func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
@@ -123,6 +125,20 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = GroqAPITokenSecretName
+		}
+	}
+	if config.Provider == uctypes.AIProvider_Novita {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = NovitaChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = NovitaAPITokenSecretName
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages}
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
