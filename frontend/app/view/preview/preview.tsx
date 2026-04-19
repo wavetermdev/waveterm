@@ -10,7 +10,7 @@ import { BlockModel } from "@/app/block/block-model";
 import * as WOS from "@/store/wos";
 import { fireAndForget, isBlank, makeConnRoute, stringToBase64 } from "@/util/util";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { memo, useEffect, useRef } from "react";
+import React, { memo, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./preview-directory";
@@ -21,7 +21,7 @@ import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
 
-function posixEscapePath(path: string): string {
+function shellEscapePath(path: string): string {
     if (path === "~") return "~";
     if (path.startsWith("~/")) {
         return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
@@ -29,53 +29,8 @@ function posixEscapePath(path: string): string {
     return "'" + path.replace(/'/g, "'\\''") + "'";
 }
 
-function powershellEscapePath(path: string): string {
-    if (path === "~") return "~";
-    if (path.startsWith("~/")) {
-        return "~/" + "'" + path.slice(2).replace(/'/g, "''") + "'";
-    }
-    return "'" + path.replace(/'/g, "''") + "'";
-}
-
-function cmdEscapePath(path: string): string {
-    if (path.startsWith("~/")) {
-        return '"%USERPROFILE%\\' + path.slice(2).replace(/\//g, "\\") + '"';
-    }
-    if (path.includes(" ")) {
-        return '"' + path.replace(/\//g, "\\") + '"';
-    }
-    return path.replace(/\//g, "\\");
-}
-
-function getShellType(termBlockId: string): string {
-    const termBlock = WOS.getObjectValue<Block>(WOS.makeORef("block", termBlockId), globalStore.get);
-    const shellPath = (termBlock?.meta?.["cmd:shell"] as string) ?? "";
-    if (shellPath.includes("powershell") || shellPath.includes("pwsh")) {
-        return "powershell";
-    }
-    if (shellPath.includes("cmd.exe")) {
-        return "cmd";
-    }
-    return "posix";
-}
-
 async function sendCdToTerminal(termBlockId: string, path: string, env: import("./previewenv").PreviewEnv) {
-    const shellType = getShellType(termBlockId);
-    let command: string;
-
-    switch (shellType) {
-        case "powershell":
-            command = "cd " + powershellEscapePath(path) + "\r";
-            break;
-        case "cmd":
-            command = "cd " + cmdEscapePath(path) + "\r";
-            break;
-        case "posix":
-        default:
-            command = "\x15cd " + posixEscapePath(path) + "\r";
-            break;
-    }
-
+    const command = "\x15cd " + shellEscapePath(path) + "\r";
     await env.rpc.ControllerInputCommand(TabRpcClient, { blockid: termBlockId, inputdata64: stringToBase64(command) });
 }
 
@@ -162,23 +117,45 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
     const menuRef = useRef<HTMLDivElement>(null);
     const previousActiveElement = useRef<Element | null>(null);
 
-    if (!menuData) return null;
-
-    const { pos, terms, currentFollowId, bidir } = menuData;
-    const closeMenu = () => {
+    const closeMenu = React.useCallback(() => {
         BlockModel.getInstance().setBlockHighlight(null);
         globalStore.set(model.followTermMenuDataAtom, null);
         if (previousActiveElement.current instanceof HTMLElement) {
             previousActiveElement.current.focus();
         }
-    };
+    }, [model.followTermMenuDataAtom]);
+
+    useEffect(() => {
+        if (!menuData) return;
+        previousActiveElement.current = document.activeElement;
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                closeMenu();
+            }
+        };
+        document.addEventListener("keydown", handleEscape);
+        if (menuRef.current) {
+            const firstItem = menuRef.current.querySelector('[role="menuitem"]');
+            if (firstItem instanceof HTMLElement) {
+                firstItem.focus();
+            }
+        }
+        return () => {
+            document.removeEventListener("keydown", handleEscape);
+        };
+    }, [menuData, closeMenu]);
+
+    if (!menuData) return null;
+
+    const { pos, terms, currentFollowId, bidir } = menuData;
     const linkTerm = (blockId: string) => {
         BlockModel.getInstance().setBlockHighlight(null);
         fireAndForget(async () => {
-            await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), {
-                "preview:followtermid": blockId,
-                "preview:followterm:bidir": false,
-            });
+            const updates: Record<string, any> = { "preview:followtermid": blockId };
+            if (blockId !== currentFollowId) {
+                updates["preview:followterm:bidir"] = false;
+            }
+            await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), updates);
         });
         globalStore.set(model.followTermMenuDataAtom, null);
         if (previousActiveElement.current instanceof HTMLElement) {
@@ -205,25 +182,6 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
             previousActiveElement.current.focus();
         }
     };
-
-    useEffect(() => {
-        previousActiveElement.current = document.activeElement;
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                closeMenu();
-            }
-        };
-        document.addEventListener("keydown", handleEscape);
-        if (menuRef.current) {
-            const firstItem = menuRef.current.querySelector('[role="menuitem"]');
-            if (firstItem instanceof HTMLElement) {
-                firstItem.focus();
-            }
-        }
-        return () => {
-            document.removeEventListener("keydown", handleEscape);
-        };
-    }, []);
 
     const dropdownStyle: React.CSSProperties = {
         left: pos.x,
@@ -352,10 +310,6 @@ function PreviewView({
         if (!followTermId || !followTermCwd) return;
         suppressBidirRef.current = true;
         fireAndForget(() => model.goHistory(followTermCwd));
-        const timer = setTimeout(() => {
-            suppressBidirRef.current = false;
-        }, 100);
-        return () => clearTimeout(timer);
     }, [followTermCwd, followTermId, model]);
 
     useEffect(() => {

@@ -514,28 +514,26 @@ export class PreviewModel implements ViewModel {
         this.followTermBidirAtom = atom<boolean>((get) => {
             return (get(this.blockAtom)?.meta?.["preview:followterm:bidir"] as boolean) ?? false;
         });
-        this.followTermMenuDataAtom = atom(null) as PrimitiveAtom<{ pos: any; terms: any; currentFollowId: any; bidir: any } | null>;
+        this.followTermMenuDataAtom = atom(null) as PrimitiveAtom<{ pos: { x: number; y: number }; terms: { blockId: string; title: string }[]; currentFollowId: string | null; bidir: boolean } | null>;
     }
 
     showFollowTermMenu(e: React.MouseEvent<any>) {
         const tabData = globalStore.get(this.tabModel.tabAtom);
         const blockIds = tabData?.blockids ?? [];
 
-        const termBlockIds = blockIds
-            .filter((bid) => {
-                if (bid === this.blockId) return false;
-                const block = WOS.getObjectValue<Block>(WOS.makeORef("block", bid), globalStore.get);
-                return block?.meta?.view === "term";
-            });
-
-        const terms = termBlockIds.map((bid) => {
+        const terms: { blockId: string; title: string }[] = [];
+        let termIndex = 1;
+        for (const bid of blockIds) {
+            if (bid === this.blockId) continue;
             const block = WOS.getObjectValue<Block>(WOS.makeORef("block", bid), globalStore.get);
-            const termIndex = termBlockIds.indexOf(bid) + 1;
-            return {
-                blockId: bid,
-                title: (block?.meta?.["frame:title"] as string) || `Terminal ${termIndex}`,
-            };
-        });
+            if (block?.meta?.view === "term") {
+                terms.push({
+                    blockId: bid,
+                    title: (block?.meta?.["frame:title"] as string) || `Terminal ${termIndex}`,
+                });
+                termIndex++;
+            }
+        }
 
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const currentFollowId = globalStore.get(this.followTermIdAtom);
