@@ -514,7 +514,7 @@ export class PreviewModel implements ViewModel {
         this.followTermBidirAtom = atom<boolean>((get) => {
             return (get(this.blockAtom)?.meta?.["preview:followterm:bidir"] as boolean) ?? false;
         });
-        this.followTermMenuDataAtom = atom(null);
+        this.followTermMenuDataAtom = atom(null) as PrimitiveAtom<{ pos: any; terms: any; currentFollowId: any; bidir: any } | null>;
     }
 
     showFollowTermMenu(e: React.MouseEvent<any>) {

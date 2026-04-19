@@ -113,10 +113,10 @@ const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: Head
                     oref: WOS.makeORef("block", blockId),
                     meta: { "frame:title": val },
                 });
+                stopBlockRename();
             } catch (error) {
                 console.error("Failed to save block rename:", error);
             }
-            stopBlockRename();
         },
         [blockId, waveEnv]
     );
