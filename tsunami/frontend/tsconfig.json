@@ -5,7 +5,6 @@
         "module": "ESNext",
         "skipLibCheck": true,
         "allowJs": false,
-        "esModuleInterop": false,
         "allowSyntheticDefaultImports": true,
         "strict": false,
         "strictNullChecks": false,
@@ -16,7 +15,6 @@
         "isolatedModules": true,
         "noEmit": true,
         "jsx": "react-jsx",
-        "baseUrl": ".",
         "paths": {
             "@/*": ["./src/*"]
         }
