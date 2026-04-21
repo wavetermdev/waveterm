@@ -2,7 +2,7 @@
   {
     "id": "TASK-001",
     "title": "飞书入口增强与 Harness 初始化",
-    "status": "blocked",
+    "status": "passing",
     "priority": "P1",
     "scope": [
       "emain/emain-feishu.ts",
@@ -32,5 +32,80 @@
       "仓库具备最小可续跑的 Harness 工件"
     ],
     "notes": "代码实现与 verify 已完成；剩余阻塞是运行态 smoke 依赖账号态，且本地启动环境还缺少可用的 WCLOUD_ENDPOINT。"
+  },
+  {
+    "id": "TASK-TERM-001",
+    "title": "终端滚轮与输入法位置专项修复",
+    "status": "passing",
+    "priority": "P1",
+    "scope": [
+      "frontend/app/view/term/termwrap.ts",
+      "frontend/app/view/term/termutil.ts",
+      "frontend/app/view/term/fitaddon.ts",
+      "frontend/app/view/term/osc-handlers.ts",
+      ".harness/*"
+    ],
+    "acceptance": [
+      "普通终端历史可以用鼠标滚轮上下滚动",
+      "Codex/Agent 会话中 normal buffer 与 alternate buffer 的滚轮行为符合预期",
+      "中文输入法候选框/组合文本不再出现在左上角或历史 viewport 位置",
+      "调整窗口大小或从历史恢复后，当前输入位置和可视 viewport 不错位",
+      "vitest、scripts/verify.ps1 与 electron-builder 验证完成或明确记录阻塞"
+    ],
+    "notes": "已回到 upstream/main termwrap 官方主线，只保留 termsize 强制同步、Codex/Agent IME 锚点和 normal buffer 滚轮兜底。最新修正后，wheel 兜底改为 bubble 阶段，避免抢占 xterm 内部 xterm-scrollable-element；IME 改为跟随当前 cursor 行列，而不是固定中线。按用户最新要求，前端已彻底停用 terminal 历史缓存/恢复链路：不再读取 cache:term:full、不再调用 SaveTerminalState，只保留当前会话 term blockfile 的实时 append；为避免初始化阶段丢数据，新增 heldData 顺序回放。"
+  },
+  {
+    "id": "TASK-TERM-002",
+    "title": "终端回归 Smoke 自动化闭环",
+    "status": "passing",
+    "priority": "P1",
+    "scope": [
+      "scripts/smoke-terminal.ps1",
+      ".harness/*"
+    ],
+    "acceptance": [
+      "脚本可启动最新 make\\win-unpacked\\Wave.exe 并连接 Electron CDP",
+      "脚本可静态确认 termwrap.ts 不再包含历史缓存/恢复入口",
+      "脚本可运行态确认 window.term 可达、历史方法为空、serializeAddon 不存在",
+      "脚本可验证 wheel 改变 viewportY，IME textarea 与 cursor 对齐",
+      "脚本输出 JSON 和截图，失败时给出明确原因"
+    ],
+    "notes": "已新增 scripts/smoke-terminal.ps1。首次 smoke 抓到旧 win-unpacked bundle 仍暴露历史方法；重跑 scripts/verify.ps1 与 electron-builder --win dir 后通过。最新结果 JSON 为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-162451.json，截图为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-162451.png；wheel viewportY 127->87，IME topDelta/leftDelta 均为 0。"
+  },
+  {
+    "id": "TASK-TERM-003",
+    "title": "多终端焦点与真实事件路径 Smoke 补强",
+    "status": "in_progress",
+    "priority": "P1",
+    "scope": [
+      "scripts/smoke-terminal.ps1",
+      ".harness/*"
+    ],
+    "acceptance": [
+      "脚本可识别多 terminal block，而不是只验证 window.term",
+      "脚本可断言 active/focused terminal 与 IME helper 所属 terminal 一致",
+      "脚本可区分真实外层 wheel 路径与内部 scrollableElement 路径结果",
+      "split-pane 场景失败时可明确标出焦点归属问题或 wheel 路由问题"
+    ],
+    "notes": "来自批准的方向 A。该任务只扩展 smoke 覆盖范围，不改业务逻辑，目标是稳定复现用户最新截图中的多终端输入框错位与滚轮回归。"
+  },
+  {
+    "id": "TASK-TERM-004",
+    "title": "将 Wheel / IME 修复收口到 xterm 官方扩展点与焦点归属",
+    "status": "in_progress",
+    "priority": "P1",
+    "scope": [
+      "frontend/app/view/term/termwrap.ts",
+      "frontend/app/view/term/termutil.ts",
+      "frontend/app/view/term/termutil.test.ts",
+      ".harness/*"
+    ],
+    "acceptance": [
+      "使用 xterm 官方 wheel hook 处理 normal buffer 滚轮兜底",
+      "只有 active terminal 可重定位 IME helper",
+      "多 terminal split-pane 场景中输入框不串位，滚轮不串 terminal",
+      "vitest、verify、smoke、electron-builder 验证通过"
+    ],
+    "notes": "这是批准方向 A 的第二个闭环任务；需在 TASK-TERM-003 给出更真实复现证据后再改业务逻辑。"
   }
 ]

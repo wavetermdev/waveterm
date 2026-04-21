@@ -30,3 +30,34 @@
 - 原因：用户确认“小眼睛”图标已经满足关闭需求，不再需要额外的文字隐藏按钮
 - 收益：界面更干净，同时保留现有 block header 的统一交互
 - 范围：移除额外文字按钮，不影响 `Feishu Web` 的网页容器能力
+
+## 2026-04-21
+
+# ADR-20260421-001: 终端问题改为“两阶段闭环”推进
+
+## Context
+- 当前终端已停用历史恢复链路，并已有单 terminal smoke
+- 用户最新截图显示：真实多 terminal split-pane 场景下，输入框错位和滚轮回归仍会发生
+- 现有 smoke 通过 `window.term` 与内部 `.xterm-scrollable-element` 直派发事件，不能代表真实用户路径
+
+## Options
+- option A：继续在现有 `termwrap.ts` 上直接 patch
+- option B：先补多 terminal / 真实焦点 / 真实 wheel 路径 smoke，再改业务逻辑
+- option C：先清理后端历史缓存死代码
+
+## Decision
+- chosen option：B
+- why it was chosen：当前最大不确定性不是“补丁怎么写”，而是“真实失败路径是否已被自动化覆盖”；先补复现场景，再把业务逻辑收口到 xterm 官方扩展点，风险最低
+
+## Consequences
+- positive effects
+  - 避免再次出现“单测和单 terminal smoke 通过，但用户真实场景仍失败”
+  - 后续 wheel/IME 重构有更稳定的回归闭环
+- negative effects
+  - 比直接 patch 多一个前置任务包，短期交付稍慢
+- follow-up work
+  - `TASK-TERM-003`
+  - `TASK-TERM-004`
+
+## Review Date
+- 2026-04-22

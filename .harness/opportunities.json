@@ -1,0 +1,167 @@
+{
+  "opportunities": [
+    {
+      "id": "OPP-TERM-002",
+      "title": "把滚轮与 IME 兜底收敛到 xterm 官方扩展点",
+      "problem": "当前终端滚轮与 IME 修复仍在 `termwrap.ts` 里通过外层 DOM wheel listener、正则识别 Agent TUI、直接改 textarea/composition-view style 实现，容易与 xterm 内部 viewport、mouse tracking、composition helper 生命周期冲突。",
+      "evidence": [
+        {
+          "source": "xterm.js Terminal API",
+          "url": "https://xtermjs.org/docs/api/terminal/classes/terminal/#attachcustomwheeleventhandler",
+          "strength": "strong",
+          "note": "xterm.js 已提供 `attachCustomWheelEventHandler`，用于让 embedder 决定是否继续处理 terminal wheel event。"
+        },
+        {
+          "source": "xterm.js 6.0.0 release",
+          "url": "https://github.com/xtermjs/xterm.js/releases/tag/6.0.0",
+          "strength": "strong",
+          "note": "xterm.js 6.0.0 集成 VS Code scrollbar，明确说明 viewport/scrollbar 行为有重大变化。"
+        },
+        {
+          "source": "xterm.js issue #5734",
+          "url": "https://github.com/xtermjs/xterm.js/issues/5734",
+          "strength": "strong",
+          "note": "xterm.js 6.0.0 + Electron + Claude/AI CLI 下中文 IME 候选窗定位错误，与当前问题高度相似。"
+        },
+        {
+          "source": "xterm.js PR #5759",
+          "url": "https://github.com/xtermjs/xterm.js/pull/5759",
+          "strength": "strong",
+          "note": "上游已合并 IME 方向修复：compositionstart 前同步 textarea，compositionstart 后立即更新 composition element。"
+        },
+        {
+          "source": "本地代码审查",
+          "url": "frontend/app/view/term/termwrap.ts",
+          "strength": "strong",
+          "note": "`installNormalBufferWheelScrollback()` 当前在 bubble 阶段先判断 `event.defaultPrevented`；如果 xterm 内部已先消费 wheel，Wave 兜底不会运行。"
+        },
+        {
+          "source": "用户 2026-04-21 截图反馈",
+          "url": ".harness/progress.md",
+          "strength": "strong",
+          "note": "最新多终端截图显示真实 split-pane 场景里输入框仍错位、滚轮又失效，说明当前修复在真实焦点切换场景下仍不稳定。"
+        }
+      ],
+      "candidate_solutions": [
+        "用 `terminal.attachCustomWheelEventHandler` 替代外层 DOM wheel listener，在 xterm 默认处理前决定 normal-buffer wheel 是否转为 scrollback",
+        "给 IME 兜底增加 focused terminal ownership，只允许当前真实焦点 terminal 改 helper textarea/composition-view 位置",
+        "在 xterm compositionstart / focus 生命周期附近做最小 IME 同步，参考 xterm PR #5759，而不是持续 onRender 改 style",
+        "把 Agent/Codex 检测从可见文本正则降级为 fallback，只在 xterm 原生同步失败时启用"
+      ],
+      "reach": 5,
+      "impact": 5,
+      "confidence": "high",
+      "effort": 3,
+      "architecture_fit": "high",
+      "strategic_fit": "high",
+      "risk_penalty": "medium",
+      "maintenance_penalty": "low",
+      "status": "approved"
+    },
+    {
+      "id": "OPP-TERM-003",
+      "title": "建立终端回归 smoke 自动化闭环",
+      "problem": "多轮修复反复出现“代码已改但用户测到旧包/旧实例/无法确认真实滚轮和 IME”的问题，当前验证主要靠人工和临时 CDP 命令，无法稳定防止回归。",
+      "evidence": [
+        {
+          "source": "本地 .harness/progress.md",
+          "url": ".harness/progress.md",
+          "strength": "strong",
+          "note": "已记录多次产物未刷新、CDP 截图不稳定、真实系统 IME 难自动化的问题。"
+        },
+        {
+          "source": "Microsoft IME guidance",
+          "url": "https://learn.microsoft.com/en-us/windows/apps/develop/input/input-method-editors",
+          "strength": "medium",
+          "note": "Microsoft 建议有文本输入的应用对 IME 端到端体验做测试，并修复候选窗遮挡等问题。"
+        },
+        {
+          "source": "TextBox DesiredCandidateWindowAlignment",
+          "url": "https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.textbox.desiredcandidatewindowalignment?view=windows-app-sdk-1.8",
+          "strength": "medium",
+          "note": "Windows 输入体验默认硬件键盘下 IME 跟随 cursor；这可作为 Wave 的 smoke 断言目标。"
+        }
+      ],
+      "candidate_solutions": [
+        "新增 `scripts/smoke-terminal.ps1`：关闭旧进程、启动最新 win-unpacked、连接 CDP、断言运行路径/版本/行列/无历史恢复",
+        "用 DOM/JS 断言 xterm `viewportY` 变化、helper textarea 与 cursor 对齐，而不是依赖截图",
+        "把完整分发包时间戳、SHA256、运行态 `location.href` 写入 smoke 输出，避免误测旧包"
+      ],
+      "reach": 5,
+      "impact": 4,
+      "confidence": "high",
+      "effort": 2,
+      "architecture_fit": "high",
+      "strategic_fit": "high",
+      "risk_penalty": "low",
+      "maintenance_penalty": "low",
+      "status": "implemented"
+    },
+    {
+      "id": "OPP-TERM-005",
+      "title": "补强多终端焦点与真实事件路径 smoke",
+      "problem": "当前 smoke 已能证明最新包、历史链路移除、单终端 DOM 级 wheel/IME 断言可通过，但它仍通过 `window.term` 单实例、强制 `shouldAnchorImeForAgentTui=()=>true` 和直接向 `.xterm-scrollable-element` 派发 `WheelEvent` 的方式验证，无法覆盖真实多终端 split-pane、焦点切换和 OS 事件路径。",
+      "evidence": [
+        {
+          "source": "本地 smoke 脚本",
+          "url": "scripts/smoke-terminal.ps1",
+          "strength": "strong",
+          "note": "当前 smoke 只验证单个 `window.term`，并强制调用 `syncImePositionForAgentTui()`，没有验证真实 focus owner。"
+        },
+        {
+          "source": "用户 2026-04-21 截图反馈",
+          "url": ".harness/progress.md",
+          "strength": "strong",
+          "note": "用户最新截图显示脚本通过后，真实 UI 中滚轮和输入框问题仍会复现，说明 smoke 覆盖范围不足。"
+        }
+      ],
+      "candidate_solutions": [
+        "让 smoke 先枚举页面上的多个 terminal block，选择当前可见且聚焦的 terminal，而不是默认 `window.term`",
+        "增加 split-pane 场景断言：上方 Codex 终端与下方 PowerShell 终端同时存在时，只有 active terminal 的 textarea/composition-view 允许被改位置",
+        "把 wheel 断言从内部 scrollableElement 直派发升级为对 terminal connectElem/外层容器派发，尽量贴近真实用户路径"
+      ],
+      "reach": 4,
+      "impact": 4,
+      "confidence": "high",
+      "effort": 2,
+      "architecture_fit": "high",
+      "strategic_fit": "high",
+      "risk_penalty": "low",
+      "maintenance_penalty": "low",
+      "status": "approved"
+    },
+    {
+      "id": "OPP-TERM-004",
+      "title": "清理后端未使用的终端历史缓存入口",
+      "problem": "前端已经停用 terminal 历史缓存/恢复，但后端仍保留 `SaveTerminalState`、`BlockFile_Cache` 等入口；未来维护者可能误以为历史缓存仍是受支持能力并重新接回。",
+      "evidence": [
+        {
+          "source": "Wave upstream termwrap",
+          "url": "https://raw.githubusercontent.com/wavetermdev/waveterm/main/frontend/app/view/term/termwrap.ts",
+          "strength": "medium",
+          "note": "上游当前仍包含 `cache:term:full` 与 `SaveTerminalState` 链路；本 fork 已按用户要求偏离上游。"
+        },
+        {
+          "source": "本地代码检索",
+          "url": "frontend/app/view/term/termwrap.ts",
+          "strength": "strong",
+          "note": "本地前端已不存在 `cache:term:full`、`SaveTerminalState`、`SerializeAddon` 引用。"
+        }
+      ],
+      "candidate_solutions": [
+        "删除或标记废弃后端 `SaveTerminalState` 与 `BlockFile_Cache`，并更新生成类型",
+        "保留 API 但改名/注释为 deprecated，避免误接回前端",
+        "把历史缓存作为显式 feature flag，默认关闭"
+      ],
+      "reach": 3,
+      "impact": 3,
+      "confidence": "medium",
+      "effort": 3,
+      "architecture_fit": "medium",
+      "strategic_fit": "medium",
+      "risk_penalty": "medium",
+      "maintenance_penalty": "medium",
+      "status": "candidate"
+    }
+  ]
+}

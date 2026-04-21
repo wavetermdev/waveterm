@@ -7,7 +7,6 @@ import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
-    fetchWaveFile,
     getApi,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
@@ -16,12 +15,10 @@ import {
     openLink,
     WOS,
 } from "@/store/global";
-import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
-import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
@@ -38,26 +35,32 @@ import {
 } from "./osc-handlers";
 import {
     bufferLinesToText,
-    computeResizePreserveScrollback,
     createTempFileFromBlob,
     extractAllClipboardData,
-    getAlternateWheelInputSequence,
     getWheelLineDelta,
-    MaxTermScrollback,
     normalizeCursorStyle,
-    normalizeTermScrollback,
     quoteForPosixShell,
-    shouldHandleTerminalWheel,
+    trimTerminalSelection,
 } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
-const TermCacheFileName = "cache:term:full";
-const MinDataProcessedForCache = 100 * 1024;
-const MaxInitialTermReplayBytes = 2 * 1024 * 1024;
 export const SupportsImageInput = true;
 const MaxRepaintTransactionMs = 2000;
+const AgentImeCommandRegex = /^(codex|claude|opencode|aider|gemini|qwen)\b/i;
+const AgentImeVisibleRegex = /\b(OpenAI Codex|Codex|Claude Code|opencode|gpt-\d|tokens left|esc to interrupt)\b/i;
+const ShellPromptTailRegex = /^(?:PS [^\n>]+>|[A-Za-z]:\\[^>\n]*>|(?:\([^)]+\)\s*)?[\w.@-]+(?::[~./\w-]+)?[$#%>])\s*$/;
+
+function normalizeAgentCommand(command: string | null | undefined): string {
+    if (!command) {
+        return "";
+    }
+    let normalized = command.trim();
+    normalized = normalized.replace(/^env\s+/, "");
+    normalized = normalized.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
+    return normalized;
+}
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -83,13 +86,10 @@ type TermWrapOptions = {
 export class TermWrap {
     tabId: string;
     blockId: string;
-    ptyOffset: number;
-    dataBytesProcessed: number;
     terminal: Terminal;
     connectElem: HTMLDivElement;
     fitAddon: FitAddon;
     searchAddon: SearchAddon;
-    serializeAddon: SerializeAddon;
     mainFileSubject: SubjectWithRef<WSFileEventData>;
     loaded: boolean;
     heldData: Uint8Array[];
@@ -103,6 +103,9 @@ export class TermWrap {
     webglContextLossDisposable: TermTypes.IDisposable | null = null;
     webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
     pasteActive: boolean = false;
+    disposed: boolean = false;
+    imePositionPatched: boolean = false;
+    imePositionSyncScheduled: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
@@ -128,9 +131,6 @@ export class TermWrap {
     lastMode2026ResetTs: number = 0;
     inSyncTransaction: boolean = false;
     inRepaintTransaction: boolean = false;
-    disposed: boolean = false;
-    processIdleTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    processIdleCallbackId: number | null = null;
 
     constructor(
         tabId: string,
@@ -144,8 +144,6 @@ export class TermWrap {
         this.blockId = blockId;
         this.sendDataHandler = waveOptions.sendDataHandler;
         this.nodeModel = waveOptions.nodeModel;
-        this.ptyOffset = 0;
-        this.dataBytesProcessed = 0;
         this.hasResized = false;
         this.lastUpdated = Date.now();
         this.promptMarkers = [];
@@ -155,11 +153,9 @@ export class TermWrap {
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
-        this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
-        this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
             new WebLinksAddon(
                 (e, uri) => {
@@ -324,27 +320,32 @@ export class TermWrap {
                 this.connectElem.removeEventListener("drop", dropHandler);
             },
         });
+        this.installNormalBufferWheelScrollback();
+        this.handleResize();
+        this.scheduleDeferredResize();
+        this.installImePositionFix();
+        const pasteHandler = this.pasteHandler.bind(this);
+        this.connectElem.addEventListener("paste", pasteHandler, true);
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("paste", pasteHandler, true);
+            },
+        });
+    }
+
+    getZoneId(): string {
+        return this.blockId;
+    }
+
+    installNormalBufferWheelScrollback() {
         const wheelHandler = (event: WheelEvent) => {
-            if (!shouldHandleTerminalWheel(event.defaultPrevented, this.terminal.buffer.active.type)) {
+            if (event.defaultPrevented || this.terminal.buffer.active.type !== "normal") {
                 this.wheelScrollRemainder = 0;
                 return;
             }
-            // This relies on xterm.js private internals (`_core._renderService`) because
-            // there is no public API for measured cell height yet; fall back to 16px
-            // (a conservative default line height) so wheel deltas still map to lines,
-            // and revisit this when xterm exposes public cell dimensions.
             const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
             const lineDelta = getWheelLineDelta(event.deltaY, event.deltaMode, cellHeight, this.terminal.rows);
             if (lineDelta === 0) {
-                return;
-            }
-            if (this.terminal.buffer.active.type === "alternate") {
-                const inputSequence = getAlternateWheelInputSequence(lineDelta);
-                if (inputSequence) {
-                    this.sendDataHandler?.(inputSequence);
-                }
-                event.preventDefault();
-                event.stopPropagation();
                 return;
             }
             this.wheelScrollRemainder += lineDelta;
@@ -353,8 +354,6 @@ export class TermWrap {
                     ? Math.floor(this.wheelScrollRemainder)
                     : Math.ceil(this.wheelScrollRemainder);
             if (wholeLines === 0) {
-                event.preventDefault();
-                event.stopPropagation();
                 return;
             }
             this.wheelScrollRemainder -= wholeLines;
@@ -362,44 +361,162 @@ export class TermWrap {
             event.preventDefault();
             event.stopPropagation();
         };
-        this.connectElem.addEventListener("wheel", wheelHandler, { passive: false, capture: true });
+        this.connectElem.addEventListener("wheel", wheelHandler, { passive: false });
         this.toDispose.push({
             dispose: () => {
-                this.connectElem.removeEventListener("wheel", wheelHandler, true);
-            },
-        });
-        this.handleResize();
-        const pasteHandler = this.pasteHandler.bind(this);
-        this.connectElem.addEventListener("paste", pasteHandler, true);
-        this.toDispose.push({
-            dispose: () => {
-                this.connectElem.removeEventListener("paste", pasteHandler, true);
-            },
-        });
-        const visibilityHandler = () => {
-            if (document.visibilityState === "hidden") {
-                this.persistTerminalState(true);
-            }
-        };
-        document.addEventListener("visibilitychange", visibilityHandler);
-        this.toDispose.push({
-            dispose: () => {
-                document.removeEventListener("visibilitychange", visibilityHandler);
-            },
-        });
-        const beforeUnloadHandler = () => {
-            this.persistTerminalState(true);
-        };
-        window.addEventListener("beforeunload", beforeUnloadHandler);
-        this.toDispose.push({
-            dispose: () => {
-                window.removeEventListener("beforeunload", beforeUnloadHandler);
+                this.connectElem.removeEventListener("wheel", wheelHandler, false);
             },
         });
     }
 
-    getZoneId(): string {
-        return this.blockId;
+    scheduleDeferredResize(forceTermSizeSync = false) {
+        const resize = () => {
+            if (!this.disposed) {
+                this.handleResize(forceTermSizeSync);
+            }
+        };
+        setTimeout(resize, 0);
+        setTimeout(resize, 50);
+        setTimeout(resize, 250);
+    }
+
+    shouldAnchorImeForAgentTui(): boolean {
+        const shellState = globalStore.get(this.shellIntegrationStatusAtom);
+        if (shellState === "ready") {
+            return false;
+        }
+        const lastCommand = normalizeAgentCommand(globalStore.get(this.lastCommandAtom));
+        if (shellState === "running-command" && AgentImeCommandRegex.test(lastCommand)) {
+            return true;
+        }
+        const activeBuffer = this.terminal.buffer.active;
+        const tailStart = Math.max(0, activeBuffer.length - Math.max(this.terminal.rows * 2, 80));
+        const tailText = bufferLinesToText(activeBuffer, tailStart, activeBuffer.length).join("\n");
+        const lastVisibleLine = tailText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .at(-1);
+        if (lastVisibleLine != null && ShellPromptTailRegex.test(lastVisibleLine)) {
+            return false;
+        }
+        return AgentImeVisibleRegex.test(tailText);
+    }
+
+    clearImePositionOverrides() {
+        if (!this.imePositionPatched) {
+            return;
+        }
+        const textarea = this.terminal.textarea;
+        const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active");
+        if (textarea != null) {
+            textarea.style.removeProperty("top");
+            textarea.style.removeProperty("left");
+            textarea.style.removeProperty("width");
+            textarea.style.removeProperty("height");
+            textarea.style.removeProperty("line-height");
+            textarea.style.removeProperty("z-index");
+        }
+        if (compositionView != null) {
+            compositionView.style.removeProperty("top");
+            compositionView.style.removeProperty("left");
+            compositionView.style.removeProperty("height");
+            compositionView.style.removeProperty("line-height");
+            compositionView.style.removeProperty("z-index");
+        }
+        this.imePositionPatched = false;
+    }
+
+    syncImePositionForAgentTui() {
+        if (!this.shouldAnchorImeForAgentTui()) {
+            this.clearImePositionOverrides();
+            return;
+        }
+        const textarea = this.terminal.textarea;
+        const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active");
+        if (textarea == null) {
+            return;
+        }
+        const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
+        const cellWidth = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.width ?? 8;
+        const activeBuffer = this.terminal.buffer.active;
+        const cursorRow = Math.max(0, Math.min(this.terminal.rows - 1, activeBuffer.cursorY ?? 0));
+        const cursorCol = Math.max(0, Math.min(this.terminal.cols - 1, activeBuffer.cursorX ?? 0));
+        const top = `${cursorRow * cellHeight}px`;
+        const left = `${cursorCol * cellWidth}px`;
+        const lineHeight = `${Math.max(1, cellHeight)}px`;
+        if (compositionView != null) {
+            compositionView.style.top = top;
+            compositionView.style.left = left;
+            compositionView.style.height = lineHeight;
+            compositionView.style.lineHeight = lineHeight;
+            compositionView.style.zIndex = "6";
+        }
+        const compositionWidth = Math.max(compositionView?.getBoundingClientRect().width ?? 0, cellWidth * 2, 1);
+        textarea.style.top = top;
+        textarea.style.left = left;
+        textarea.style.width = `${compositionWidth}px`;
+        textarea.style.height = lineHeight;
+        textarea.style.lineHeight = lineHeight;
+        textarea.style.zIndex = "5";
+        this.imePositionPatched = true;
+    }
+
+    scheduleImePositionSync() {
+        this.syncImePositionForAgentTui();
+        if (this.imePositionSyncScheduled) {
+            return;
+        }
+        this.imePositionSyncScheduled = true;
+        setTimeout(() => {
+            if (!this.disposed) {
+                this.syncImePositionForAgentTui();
+            }
+        }, 0);
+        setTimeout(() => {
+            if (!this.disposed) {
+                this.syncImePositionForAgentTui();
+            }
+        }, 16);
+        setTimeout(() => {
+            if (!this.disposed) {
+                this.syncImePositionForAgentTui();
+            }
+            this.imePositionSyncScheduled = false;
+        }, 100);
+    }
+
+    installImePositionFix() {
+        const textarea = this.terminal.textarea;
+        if (textarea == null) {
+            return;
+        }
+        const sync = () => this.scheduleImePositionSync();
+        const clear = () => this.clearImePositionOverrides();
+        for (const eventName of ["focus", "compositionstart", "compositionupdate"]) {
+            textarea.addEventListener(eventName, sync);
+        }
+        textarea.addEventListener("blur", clear);
+        this.toDispose.push({
+            dispose: () => {
+                for (const eventName of ["focus", "compositionstart", "compositionupdate"]) {
+                    textarea.removeEventListener(eventName, sync);
+                }
+                textarea.removeEventListener("blur", clear);
+                this.clearImePositionOverrides();
+            },
+        });
+        this.toDispose.push(
+            this.terminal.onRender(() => {
+                const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active");
+                const shouldAnchorIme = this.shouldAnchorImeForAgentTui();
+                if (shouldAnchorIme || document.activeElement === textarea || compositionView != null) {
+                    this.scheduleImePositionSync();
+                } else {
+                    this.clearImePositionOverrides();
+                }
+            })
+        );
     }
 
     setCursorStyle(cursorStyle: string) {
@@ -455,6 +572,7 @@ export class TermWrap {
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
+        const trimTrailingWhitespaceAtom = getSettingsKeyAtom("term:trimtrailingwhitespace");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
         this.toDispose.push(
             this.terminal.onSelectionChange(
@@ -468,8 +586,11 @@ export class TermWrap {
                     if (active != null && active.closest(".search-container") != null) {
                         return;
                     }
-                    const selectedText = this.terminal.getSelection();
+                    let selectedText = this.terminal.getSelection();
                     if (selectedText.length > 0) {
+                        if (globalStore.get(trimTrailingWhitespaceAtom) !== false) {
+                            selectedText = trimTerminalSelection(selectedText);
+                        }
                         navigator.clipboard.writeText(selectedText);
                     }
                 })
@@ -503,18 +624,15 @@ export class TermWrap {
             console.log("Error loading runtime info:", e);
         }
 
-        try {
-            await this.loadInitialTerminalData();
-        } finally {
-            this.loaded = true;
-        }
-        this.runProcessIdleTimeout();
+        this.loaded = true;
+        await this.flushHeldTerminalData();
+        this.scheduleDeferredResize(true);
+        this.scheduleImePositionSync();
     }
 
     dispose() {
-        this.cancelProcessIdleTimeout();
-        this.persistTerminalState(true);
         this.disposed = true;
+        this.clearImePositionOverrides();
         this.promptMarkers.forEach((marker) => {
             try {
                 marker.dispose();
@@ -533,7 +651,7 @@ export class TermWrap {
                 /* nothing */
             }
         });
-        this.mainFileSubject?.release();
+        this.mainFileSubject.release();
     }
 
     handleTermData(data: string) {
@@ -556,7 +674,7 @@ export class TermWrap {
         } else if (msg.fileop == "append") {
             const decodedData = base64ToArray(msg.data64);
             if (this.loaded) {
-                this.doTerminalWrite(decodedData, null);
+                this.doTerminalWrite(decodedData);
             } else {
                 this.heldData.push(decodedData);
             }
@@ -566,7 +684,18 @@ export class TermWrap {
         }
     }
 
-    doTerminalWrite(data: string | Uint8Array, setPtyOffset?: number): Promise<void> {
+    async flushHeldTerminalData(): Promise<void> {
+        if (this.heldData.length === 0) {
+            return;
+        }
+        const pendingData = this.heldData;
+        this.heldData = [];
+        for (const data of pendingData) {
+            await this.doTerminalWrite(data);
+        }
+    }
+
+    doTerminalWrite(data: string | Uint8Array): Promise<void> {
         if (isDev() && this.loaded) {
             const dataStr = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
             this.recentWrites.push({ idx: this.recentWritesCounter++, ts: Date.now(), data: dataStr });
@@ -579,113 +708,13 @@ export class TermWrap {
             resolve = presolve;
         });
         this.terminal.write(data, () => {
-            if (setPtyOffset != null) {
-                this.ptyOffset = setPtyOffset;
-            } else {
-                this.ptyOffset += data.length;
-                this.dataBytesProcessed += data.length;
-            }
             this.lastUpdated = Date.now();
             resolve();
+            if (document.activeElement === this.terminal.textarea || this.imePositionPatched) {
+                this.scheduleImePositionSync();
+            }
         });
         return prtn;
-    }
-
-    async loadInitialTerminalData(): Promise<void> {
-        const startTs = Date.now();
-        const zoneId = this.getZoneId();
-        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(zoneId, TermCacheFileName);
-        let ptyOffset = 0;
-        if (cacheFile != null) {
-            ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
-        }
-        let mainData: Uint8Array = null;
-        let mainFile: WaveFile = null;
-        try {
-            const mainRtn = await fetchWaveFile(zoneId, TermFileName, ptyOffset);
-            mainData = mainRtn.data;
-            mainFile = mainRtn.fileInfo;
-        } catch (e) {
-            console.warn("error loading terminal file from cached offset, retrying from start", this.blockId, ptyOffset, e);
-            ptyOffset = 0;
-            const mainRtn = await fetchWaveFile(zoneId, TermFileName, 0);
-            mainData = mainRtn.data;
-            mainFile = mainRtn.fileInfo;
-        }
-        if (this.shouldReplayFullTermFile(mainFile)) {
-            const fullMain =
-                ptyOffset === 0 ? { data: mainData, fileInfo: mainFile } : await fetchWaveFile(zoneId, TermFileName, 0);
-            if (fullMain.data?.byteLength > 0) {
-                await this.doTerminalWrite(fullMain.data, fullMain.fileInfo.size);
-                console.log(
-                    `terminal loaded full termfile:${fullMain.data.byteLength} bytes, ${Date.now() - startTs}ms`
-                );
-                return;
-            }
-        }
-        if (cacheFile != null) {
-            if (cacheData.byteLength > 0) {
-                const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-                const fileTermSize: TermSize = cacheFile.meta["termsize"];
-                let didResize = false;
-                if (
-                    fileTermSize != null &&
-                    (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
-                ) {
-                    console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
-                    this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
-                    didResize = true;
-                }
-                await this.doTerminalWrite(cacheData, ptyOffset);
-                if (didResize) {
-                    this.ensureScrollbackForResize(curTermSize.cols, curTermSize.rows);
-                    this.terminal.resize(curTermSize.cols, curTermSize.rows);
-                }
-            }
-        }
-        console.log(
-            `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
-        );
-        if (mainFile != null) {
-            await this.doTerminalWrite(mainData, null);
-        }
-    }
-
-    shouldReplayFullTermFile(fileInfo: WaveFile): boolean {
-        if (fileInfo == null || fileInfo.size <= 0 || fileInfo.size > MaxInitialTermReplayBytes) {
-            return false;
-        }
-        const maxSize = fileInfo.opts?.maxsize ?? 0;
-        const isWrappedCircularFile = fileInfo.opts?.circular && maxSize > 0 && fileInfo.size > maxSize;
-        return !isWrappedCircularFile;
-    }
-
-    ensureScrollbackForResize(newCols: number, newRows: number) {
-        const oldCols = this.terminal.cols;
-        if (newCols >= oldCols) {
-            return;
-        }
-        const currentScrollback = normalizeTermScrollback(this.terminal.options.scrollback, 0);
-        const nextScrollback = computeResizePreserveScrollback(
-            currentScrollback,
-            this.terminal.buffer.active.length,
-            oldCols,
-            newCols,
-            newRows
-        );
-        if (nextScrollback > currentScrollback) {
-            console.log(
-                "[termwrap] preserving scrollback for resize",
-                this.blockId,
-                `${oldCols}->${newCols}`,
-                currentScrollback,
-                "->",
-                nextScrollback,
-                "max",
-                MaxTermScrollback
-            );
-            this.terminal.options.scrollback = nextScrollback;
-        }
     }
 
     async resyncController(reason: string) {
@@ -702,13 +731,24 @@ export class TermWrap {
         }
     }
 
-    handleResize() {
+    syncControllerTermSize(reason: string) {
+        const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+        if (termSize.rows <= 0 || termSize.cols <= 0) {
+            return;
+        }
+        dlog("termsize sync", reason, `${termSize.rows}x${termSize.cols}`);
+        fireAndForget(async () => {
+            try {
+                await RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
+            } catch (e) {
+                console.warn("failed to sync terminal size", this.blockId, reason, e);
+            }
+        });
+    }
+
+    handleResize(forceTermSizeSync = false) {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
-        const dims = this.fitAddon.proposeDimensions();
-        if (dims != null) {
-            this.ensureScrollbackForResize(dims.cols, dims.rows);
-        }
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
@@ -718,75 +758,16 @@ export class TermWrap {
                 "->",
                 `${this.terminal.rows}x${this.terminal.cols}`
             );
-            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
+            this.syncControllerTermSize("resize");
+        } else if (forceTermSizeSync) {
+            this.syncControllerTermSize("forced resize sync");
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
         }
-    }
-
-    persistTerminalState(force = false) {
-        if (!this.loaded || this.disposed) {
-            return;
-        }
-        if (!force && this.dataBytesProcessed < MinDataProcessedForCache) {
-            return;
-        }
-        try {
-            const serializedOutput = this.serializeAddon.serialize();
-            const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            console.log("persist terminal state", this.blockId, this.dataBytesProcessed, serializedOutput.length, termSize);
-            fireAndForget(async () => {
-                try {
-                    await services.BlockService.SaveTerminalState(
-                        this.blockId,
-                        serializedOutput,
-                        "full",
-                        this.ptyOffset,
-                        termSize
-                    );
-                } catch (e) {
-                    console.warn("Failed to persist terminal state", this.blockId, e);
-                }
-            });
-            this.dataBytesProcessed = 0;
-        } catch (e) {
-            console.warn("Failed to serialize terminal state", this.blockId, e);
-        }
-    }
-
-    cancelProcessIdleTimeout() {
-        if (this.processIdleTimeoutId != null) {
-            clearTimeout(this.processIdleTimeoutId);
-            this.processIdleTimeoutId = null;
-        }
-        if (this.processIdleCallbackId != null && window.cancelIdleCallback != null) {
-            window.cancelIdleCallback(this.processIdleCallbackId);
-            this.processIdleCallbackId = null;
-        }
-    }
-
-    runProcessIdleTimeout() {
-        this.cancelProcessIdleTimeout();
-        if (this.disposed) {
-            return;
-        }
-        this.processIdleTimeoutId = setTimeout(() => {
-            this.processIdleTimeoutId = null;
-            if (this.disposed) {
-                return;
-            }
-            this.processIdleCallbackId = window.requestIdleCallback(() => {
-                this.processIdleCallbackId = null;
-                if (this.disposed) {
-                    return;
-                }
-                this.persistTerminalState();
-                this.runProcessIdleTimeout();
-            });
-        }, 5000);
+        this.scheduleImePositionSync();
     }
 
     async pasteHandler(e?: ClipboardEvent): Promise<void> {
