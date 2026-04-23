@@ -143,6 +143,36 @@ export class TermWrap {
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.claudeCodeActiveAtom = jotai.atom(false);
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
+        // Custom linkHandler for OSC 8 hyperlinks. Without this, xterm.js falls
+        // back to window.confirm() + window.open(), which Electron's renderer
+        // blocks — so the confirmation dialog appears but clicking OK silently
+        // fails. Route OSC 8 clicks through the same Cmd/Ctrl-click path that
+        // WebLinksAddon uses for regex-detected URLs.
+        options.linkHandler = {
+            activate: (event: MouseEvent, uri: string) => {
+                event.preventDefault();
+                switch (PLATFORM) {
+                    case PlatformMacOS:
+                        if (event.metaKey) {
+                            fireAndForget(() => openLink(uri));
+                        }
+                        break;
+                    default:
+                        if (event.ctrlKey) {
+                            fireAndForget(() => openLink(uri));
+                        }
+                        break;
+                }
+            },
+            hover: (event: MouseEvent, uri: string) => {
+                this.hoveredLinkUri = uri;
+                this.onLinkHover?.(uri, event.clientX, event.clientY);
+            },
+            leave: () => {
+                this.hoveredLinkUri = null;
+                this.onLinkHover?.(null, 0, 0);
+            },
+        };
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon();
