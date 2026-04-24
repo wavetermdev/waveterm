@@ -13,11 +13,13 @@ import {
     getApi,
     getBlockComponentModel,
     getFocusedBlockId,
+    getInheritedContextFromBlock,
     getSettingsKeyAtom,
     globalStore,
     recordTEvent,
     refocusNode,
     replaceBlock,
+    toggleQuickTerminal,
     WOS,
 } from "@/app/store/global";
 import { getActiveTabModel } from "@/app/store/tab-model";
@@ -41,6 +43,10 @@ let globalKeybindingsDisabled = false;
 // track current chord state and timeout (for resetting)
 let activeChord: string | null = null;
 let chordTimeout: NodeJS.Timeout = null;
+
+// Quick terminal double-ESC tracking
+let lastEscapeTime: number = 0;
+const QUICK_TERM_DOUBLE_ESC_TIMEOUT = 300; // milliseconds
 
 function resetChord() {
     activeChord = null;
@@ -361,15 +367,12 @@ function getDefaultNewBlockDef(): BlockDef {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode != null) {
-        const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedNode.data?.blockId));
-        const blockData = globalStore.get(blockAtom);
-        if (blockData?.meta?.view == "term") {
-            if (blockData?.meta?.["cmd:cwd"] != null) {
-                termBlockDef.meta["cmd:cwd"] = blockData.meta["cmd:cwd"];
-            }
+        const { cwd, connection } = getInheritedContextFromBlock(focusedNode.data?.blockId);
+        if (cwd != null) {
+            termBlockDef.meta["cmd:cwd"] = cwd;
         }
-        if (blockData?.meta?.connection != null) {
-            termBlockDef.meta.connection = blockData.meta.connection;
+        if (connection != null) {
+            termBlockDef.meta.connection = connection;
         }
     }
     return termBlockDef;
@@ -726,6 +729,36 @@ function registerGlobalKeys() {
     }
     globalKeyMap.set("Cmd:f", activateSearch);
     globalKeyMap.set("Escape", () => {
+        const now = Date.now();
+        const quickTermState = globalStore.get(atoms.quickTerminalAtom);
+
+        // Handle quick terminal toggle on double-ESC
+        if (quickTermState.visible) {
+            // If quick terminal is open, single ESC dismisses it
+            // Skip if already closing to prevent double-close
+            if (!quickTermState.closing) {
+                fireAndForget(() => toggleQuickTerminal());
+            }
+            lastEscapeTime = 0; // Reset to prevent stale double-ESC detection
+            return true;
+        }
+
+        if (quickTermState.opening || quickTermState.closing) {
+            lastEscapeTime = 0;
+            return true;
+        }
+
+        // Check for double-ESC to summon quick terminal
+        if (now - lastEscapeTime < QUICK_TERM_DOUBLE_ESC_TIMEOUT) {
+            // Double ESC detected - summon quick terminal
+            fireAndForget(() => toggleQuickTerminal());
+            lastEscapeTime = 0; // Reset after handling
+            return true;
+        }
+
+        lastEscapeTime = now;
+
+        // Existing ESC behavior (modals, search)
         if (modalsModel.hasOpenModals()) {
             modalsModel.popModal();
             return true;
