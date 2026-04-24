@@ -21,6 +21,7 @@ aiplans/
 manifests/
 .env
 out
+.kilocode/package-lock.json
 
 # Yarn Modern
 .pnp.*
