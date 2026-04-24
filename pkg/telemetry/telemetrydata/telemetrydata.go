@@ -122,6 +122,7 @@ type TEventProps struct {
 
 	BlockView       string `json:"block:view,omitempty"`
 	BlockController string `json:"block:controller,omitempty"`
+	BlockSubBlock   bool   `json:"block:subblock,omitempty"`
 
 	AiBackendType string `json:"ai:backendtype,omitempty"`
 	AiLocal       bool   `json:"ai:local,omitempty"`
