@@ -1,4 +1,4 @@
-﻿# Progress Log
+# Progress Log
 
 ## 褰撳墠浠诲姟
 
@@ -464,3 +464,546 @@ pm.cmd run build:dev 鍥犱笌 erify 骞跺彂鎵ц瀵艰嚧 dist 鐩綍 
   - `TASK-TERM-003`：多 terminal 焦点与真实事件路径 smoke 补强
   - `TASK-TERM-004`：将 wheel / IME 修复收口到 xterm 官方扩展点与焦点归属
 - 这是规划工件更新，不包含新的终端业务代码改动。
+
+## 2026-04-21 TASK-TERM-003 Multi-Terminal Smoke
+
+- 已完成 `TASK-TERM-003` 的脚本实现，新增 `scripts/smoke-terminal.runtime.js`，并让 `scripts/smoke-terminal.ps1`：
+  - 自动枚举页面上的多个 terminal block，而不是只看 `window.term`
+  - 在运行态用 `window.term` setter hook 记录新建 `TermWrap`
+  - 必要时通过 `RpcApi.CreateBlockCommand(... targetaction=splitdown ...)` 自动创建第二个 terminal 做 split-pane smoke
+  - 对每个 terminal 输出 blockId、几何位置、focus owner、textarea/composition-view 样式以及 runtime rows/cols/bufferType/viewportY
+  - 区分 `elementFromPoint` 外层真实 wheel 路径与内部 `.xterm-scrollable-element` fallback
+  - 截图后自动删除 smoke 临时创建的 block，避免污染用户工作区
+- 运行结果：
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExistingRepoWave` 已执行
+  - 结果 JSON：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-165710.json`
+  - 截图：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-165710.png`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1` 通过
+- 结论收敛：
+  - smoke 已稳定发现 `3` 个 DOM terminal，并拿到 `2` 个已知 `TermWrap`
+  - `wheel` 在当前多 terminal smoke 中通过，`outerChanged` / `internalChanged` 都只命中目标 terminal
+  - `IME ownership` 失败，诊断为 `ime_wrong_terminal`
+  - 失败细节显示一个非目标 terminal 仍保留 helper textarea 的 `top/left/zIndex`，这说明后续 `TASK-TERM-004` 应优先修复“非 active terminal 的 IME helper 清理 / ownership 判定”，而不是继续盲修 wheel
+
+## 2026-04-21 TASK-TERM-004 Wheel / IME Ownership 收口
+
+- 已按 `TASK-TERM-004` 把终端修复收口到更接近 xterm 官方路径：
+  - `frontend/app/view/term/termwrap.ts` 的 normal buffer wheel 改为优先走 xterm `attachCustomWheelEventHandler`
+  - 仅在 `mouseTrackingMode !== "none"` 且 `normal` buffer 时保留一个极窄的 capture fallback，避免再次用粗粒度外层 DOM listener 抢事件
+  - 新增 `TermWrap.liveInstances` 与静态 `imeOwnerBlockId`，让 IME helper override 只属于当前 owner terminal
+  - 在 `focus` / `compositionstart` 时先调用 xterm 私有 `_syncTextArea()`，与官方 issue `#5734` / PR `#5759` 的修复点保持一致
+- 这一轮也顺手修正了 smoke 的验证盲区：
+  - `scripts/smoke-terminal.runtime.js` 现在优先从 `TermWrap.liveInstances` 枚举终端实例
+  - 当前工作区没有 terminal 时会自动创建首个 shell terminal
+  - IME ownership 断言不再把 xterm 默认 `z-index:-5` 当成“错误 terminal 仍有 override”
+- 最终验证：
+  - `npm.cmd exec vitest -- run frontend/app/view/term/termutil.test.ts frontend/app/view/term/osc-handlers.test.ts` 通过
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1` 通过
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir` 通过，刷新后的 `make\win-unpacked\Wave.exe` 时间为 `2026-04-21T17:16:35.2754971+08:00`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExistingRepoWave` 通过
+    - JSON：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-172449.json`
+    - 截图：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-172449.png`
+- 结果：
+  - `dom terminal = 2`
+  - `known runtime = 2`
+  - `wheel diagnoses = ok`
+  - `ime diagnoses = ok`
+- 当前剩余风险：
+  - 系统级中文输入法候选窗仍无法通过 CDP 直接截图；当前自动化以 helper textarea / composition-view 的真实 DOM ownership 作为代理指标
+
+## 2026-04-21 TASK-TERM-004 Real Wheel Follow-up
+
+- 用户继续反馈“依然没有滚轮”后，本轮不再只依赖 JS `dispatchEvent(new WheelEvent(...))`，新增 `scripts/smoke-terminal-real-wheel.ps1` 走 CDP 真实输入路径：
+  - 启动 `make\win-unpacked\Wave.exe --remote-debugging-port=<free-port>`；
+  - 复用 `scripts/smoke-terminal.runtime.js` 准备多 terminal split-pane 场景；
+  - 对每个目标 terminal 的 `screen-center` 与 `screen-right` 坐标发送 `Input.dispatchMouseEvent(type=mouseWheel, deltaY=-720)`；
+  - 断言只有目标 terminal 的 `viewportY` / scroll state 变化。
+- 真实复现结论：
+  - 最新 `win-unpacked` 成品中的真实鼠标滚轮路径已通过，2 个 terminal 的 `screen-center` / `screen-right` 均为 `ok`；
+  - 因此用户截图中的“没有滚轮”更像是仍在运行旧安装包/旧实例，或打开了同名旧版本，而不是当前 `make\win-unpacked` 内的 wheel 事件路径仍失败。
+- 为避免同名旧包误用，本轮将版本号从 `2026.4.21-1` 提升到 `2026.4.21-2`，并重新产出：
+  - `make\win-unpacked\Wave.exe`，时间 `2026-04-21 18:37:50`，SHA256 `C7FEF2CC7EC1280C98EAEB6CC3C8FDBD08346755382E1332CA7B9E5D5490DCE1`
+  - `make\Wave-win32-x64-2026.4.21-2.exe`，时间 `2026-04-21 18:40:18`，SHA256 `2D53B26D7C4D18BE9642A20460544E04CD6401B2952C68928E31891D154BB4BC`
+  - `make\Wave-win32-x64-2026.4.21-2.zip`，时间 `2026-04-21 18:39:18`，SHA256 `96C5E0222D1BD38600E8279B31AF4272358BD89307D2843544B7BA9D83E8EB76`
+- 最终验证：
+  - `npm.cmd exec vitest -- run frontend/app/view/term/termutil.test.ts frontend/app/view/term/osc-handlers.test.ts` 通过；
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1` 通过；
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir nsis zip` 通过；
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal-real-wheel.ps1 -KillExistingRepoWave` 通过，JSON 为 `D:\files\AI_output\waveterm-terminal-smoke\terminal-real-wheel-20260421-184158.json`；
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExistingRepoWave` 通过，JSON 为 `D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-184339.json`。
+
+## 2026-04-21 Architect Loop Approval A（第二轮）
+
+- 用户在最新截图中确认“输入法恢复了，滚轮又没了”，并明确要求按 `$architect-improvement-loop` 彻底解决该问题。
+- 本轮未直接继续改业务代码，而是先重新做研究，结论如下：
+  - 当前实现只覆盖 `normal buffer` 的 wheel：`frontend/app/view/term/termwrap.ts` 在非 `normal` 时直接退出；
+  - 当前 smoke 也只把 `normal buffer` 当成成功路径，`scripts/smoke-terminal.runtime.js` 把 `non-normal-buffer` 视为失败，而不是覆盖范围；
+  - `frontend/app/view/term/termutil.ts` 仍保留 alternate buffer 的 wheel fallback 设计，但当前 `termwrap.ts` 没有把这条路径真正接回去；
+  - 这与用户截图一致：Codex 交互态很可能不是普通 `normal buffer` 场景，因此出现“IME 正常但滚轮没了”。
+- 用户已批准推荐方向 A，因此新增 `TASK-TERM-005`：
+  - 任务名：`Codex / alternate buffer 全视图滚轮收口`
+  - 目标：把当前只覆盖 normal buffer 的滚轮补丁升级为“按 active terminal 收口的全视图 wheel router”，并让 smoke 明确覆盖 Codex / alternate buffer / mouse tracking 场景。
+- 本轮只新增任务包与 `.harness` 工件，不包含新的终端业务代码改动。
+
+## 2026-04-22 TASK-TERM-005 Final Verification
+
+- 已在最新 `make\win-unpacked\Wave.exe` 上完成最终真实滚轮复核：
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal-real-wheel.ps1 -KillExistingRepoWave`
+- 结果通过：
+  - JSON：`D:\files\AI_output\waveterm-terminal-smoke\terminal-real-wheel-20260422-110300.json`
+  - 截图：`D:\files\AI_output\waveterm-terminal-smoke\terminal-real-wheel-20260422-110300.png`
+  - `make\win-unpacked\Wave.exe` 时间：`2026-04-22T10:59:49.3611836+08:00`
+  - SHA256：`665EEF5E7CC24CCA7B3E27543AACC59B42076542DE1337156364DFB51C90838C`
+- 关键结论：
+  - `runtime.wheel.allPassed = true`
+  - `runtime.ime.allPassed = true`
+  - `realWheel.allPassed = true`
+  - 2 个 terminal 的 `screen-center` / `screen-right` 全部为 `ok`
+- 额外排查：
+  - 本机常见安装路径仅发现仓库内两份 `Wave.exe`
+  - 未发现额外安装版 `Wave.exe` 干扰当前验证
+- 当前判断：
+  - 最新仓库成品里的 IME 与滚轮路径都已恢复
+  - 若你现场仍异常，更可能是启动入口不是当前仓库这份最新成品，或现场命中区域与当前 smoke 路径仍有差异
+
+## 2026-04-22 TASK-TERM-005 Scrollback Follow-up
+
+- 用户最新手测反馈：滚轮与 IME 已恢复，但 Codex / Agent 输出基本只能回看一页，前面的输出会被吞掉。
+- 本轮复盘后确认这不是 `term:scrollback` 配置本身过小，而是 Agent TUI 路径仍会主动进入 `alternate screen` 并发送 `CSI 3 J` 清空 scrollback，导致历史只能保留当前页。
+- 已在 `frontend/app/view/term/termwrap.ts` 做最小收口：
+  - 对 agent 命令（`codex|claude|opencode|aider|gemini|qwen`）抑制 `47/1047/1049` alternate screen 进入
+  - 对 agent repaint 场景抑制 `CSI 3 J` 清空 scrollback
+  - 保持现有 wheel / IME 修复不回退
+- 已扩展 `scripts/smoke-terminal.runtime.js`：
+  - 新增 `agent-repaint-scrollback` 场景
+  - 断言 seed 历史仍可见、最新 repaint 内容可见、active buffer 仍是 `normal`
+- 本轮验证：
+  - `npm.cmd exec vitest -- run frontend/app/view/term/termutil.test.ts frontend/app/view/term/osc-handlers.test.ts`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExistingRepoWave`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal-real-wheel.ps1 -KillExistingRepoWave`
+- 最新结果：
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260422-112409.json`
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-real-wheel-20260422-112519.json`
+  - `make\win-unpacked\Wave.exe` 时间：`2026-04-22T11:22:55.2418461+08:00`
+  - `make\win-unpacked\Wave.exe` SHA256：`BA03754F45CB5DF8BF0E7FF3FF9625E414AAB5A45C2DB1DC37A65B95800194E4`
+  - `runtime.agentScrollback.allPassed = true`
+  - `runtime.wheel.allPassed = true`
+  - `runtime.ime.allPassed = true`
+  - `realWheel.allPassed = true`
+
+## 2026-04-22 TASK-TERM-005 Live Wheel Revert
+
+- 用户最新手测反馈说明：上轮“强行保留 agent 历史”的方向把 Codex / TUI 的实时滚动搞坏了，表现为：
+  - 又无法滚动
+  - 输出进行中也无法滚动
+- 本轮重新对照 `@xterm/xterm` 官方 wheel 逻辑，并用 `agent-browser` 连到 Electron 实机窗口做快照确认：
+  - 当前真正需要的是：**mouse-tracking / alternate buffer 时，让应用自己接收 wheel**
+  - 不能再由 Wave 在这些场景下强行把 wheel 改写成 `PageUp/PageDown`，更不能强压成 normal-buffer scrollback
+- 已做收口：
+  - 回退上轮对 agent TUI 的 `47/1047/1049` alternate-screen 抑制
+  - 回退上轮对 agent repaint `CSI 3 J` 的 scrollback 保留特判
+  - `frontend/app/view/term/termutil.ts` 现在只在 `normal buffer` 下拦截 wheel 做 scrollback
+  - `frontend/app/view/term/termwrap.ts` 保留 normal-buffer + mouse-tracking 的极窄 capture fallback；`alternate buffer` 与 `mouse-tracking` 交回 xterm / 应用侧
+- smoke 也同步改回更接近官方语义：
+  - `alternate buffer` 场景现在断言收到的是 xterm 官方 fallback 的箭头序列，而不是自造的 `PageUp`
+  - 新增 `mouse-tracking-wheel` 场景，断言 wheel 会变成真正的鼠标协议输入（`ESC [ < ...`），而不是被 Wave 吃掉
+- 本轮验证：
+  - `npm.cmd exec vitest -- run frontend/app/view/term/termutil.test.ts frontend/app/view/term/osc-handlers.test.ts`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExistingRepoWave`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal-real-wheel.ps1 -KillExistingRepoWave`
+- 最新结果：
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260422-114610.json`
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-real-wheel-20260422-114631.json`
+  - `make\win-unpacked\Wave.exe` 时间：`2026-04-22T11:45:35.2099308+08:00`
+  - `make\win-unpacked\Wave.exe` SHA256：`3A535573D27CC7F34D1C12931283AA5B0127229F7901C7A52238796D6A837AF6`
+  - `runtime.wheel.allPassed = true`
+  - `runtime.ime.allPassed = true`
+  - `runtime.wheel.mouseTrackingScenarios[*].mouseSequenceSent = true`
+  - `realWheel.allPassed = true`
+
+## 2026-04-22 Architect Re-Intake: TASK-TERM-005 False Positive
+
+- 用户在最新一轮 `$architect-improvement-loop` 中再次明确：**输入法位置又错了、滚轮又没了、输出内容只能看到最新几行**；这直接否定了 `TASK-TERM-005` 当前 `.harness` 中的 `passing` 判定。
+- 本轮未继续改终端业务代码，先回到研究与决策阶段，重新核对了三类证据：
+  - 本地当前实现：`frontend/app/view/term/termwrap.ts` 与 `frontend/app/view/term/termutil.ts`
+  - 官方参考：`@xterm/xterm` 6.0.0 的 `CoreBrowserTerminal.ts` / `Viewport.ts`
+  - 上游原始逻辑：`upstream/main` 的 `frontend/app/view/term/termwrap.ts`
+- 复盘结论：
+  - `upstream/main` 并没有当前这套 `attachCustomWheelEventHandler + capture fallback + imeOwnerBlockId` 组合逻辑，说明问题已不再是“单纯照抄 upstream”就能自动收敛，而是我们这条分支在多轮补丁间互相打架；
+  - xterm 官方 wheel 语义本身区分 `normal scrollback`、`alternate buffer fallback`、`mouse protocol`，但当前 smoke 仍主要验证“静态 seed 后是否能滚”，没有覆盖**输出进行中**的真实滚动路径；
+  - `scripts/smoke-terminal.runtime.js` 当前只命中 `screen-center` / `screen-right`，并通过 monkey patch 强制 `shouldAnchorImeForAgentTui`，仍不足以证明“中间 Codex pane 真实 DOM 命中区域 + 活动 terminal / IME owner”在持续输出时是正确的；
+  - 这也是为什么 smoke 全绿、用户实测仍反复失败：自动化验证路径与真实交互路径没有完全重合。
+- 因此本轮把 `TASK-TERM-005` 状态回退为 `failing`，并把下一轮工作从“继续盲改 wheel/IME 逻辑”改为“先补中间 Codex pane 专项诊断闭环，再进入最小修复包”。
+- 推荐的最小下一步是新建专项任务包（暂命名 `TASK-TERM-006`，待用户批准后落盘），只做以下事情：
+  - 记录中间 Codex pane 在**持续输出期间**的 `elementFromPoint` 命中元素、active terminal、buffer type、mouseTrackingMode；
+  - 记录滚轮事件是否落在 `.xterm-viewport` / `.xterm-scrollable-element` 之外的 overlay 或父容器；
+  - 记录 IME helper / composition-view 在多 pane + 持续输出期间的 owner 漂移；
+  - 用 Electron 实机 + CDP/`agent-browser.cmd` 复现“中间 pane 失败、左右 pane 正常”的真实窗口布局，而不是只看抽象 split-pane。
+
+## 2026-04-22 Architect Approval A: Create TASK-TERM-006
+
+- 用户已明确批准推荐方向 A，本轮继续遵守 `architect-improvement-loop`：**先创建任务包，不直接改业务代码**。
+- 已新增 `TASK-TERM-006`，目标从“继续修 wheel/IME”切换为“先补中间 Codex pane 持续输出场景的真实诊断闭环”。
+- 本次任务包明确约束：
+  - 只允许修改 `scripts/*` 与 `.harness/*`
+  - 暂不允许改 `frontend/app/view/term/termwrap.ts` 或 `frontend/app/view/term/termutil.ts`
+  - 优先把“滚轮失效、IME 错位、输出只能看到最新几行”拆成可观测的真实链路，而不是继续试错
+- `TASK-TERM-006` 的核心验收不是“问题立刻修好”，而是回答以下四个问题：
+  - 滚轮在持续输出期间究竟有没有命中当前中间 pane
+  - 命中后是被 xterm 吃掉、被 app 吃掉，还是根本没有 scrollback
+  - 当前可见滚动区域是不是纯 `xterm`，还是外层还有别的滚动容器
+  - IME helper / composition-view 是否在多 pane + 持续输出期间发生 owner 漂移
+- 下一步将基于该任务包补脚本与实机诊断，再根据证据拆下一包最小业务修复。
+
+## 2026-04-22 TASK-TERM-006 Partial Diagnostic Result
+
+- 已在不修改 `termwrap.ts` / `termutil.ts` 的前提下补强诊断脚本：
+  - `scripts/smoke-terminal.runtime.js` 新增：
+    - 中间 pane 目标选择改为按**几何位置**而不是 DOM 顺序；
+    - `continuous-middle` 诊断：持续输出期间记录 `elementFromPoint` 命中元素、祖先链、滚动容器、目标/非目标 terminal 的 `viewportY` 变化；
+    - `imeOwnershipLive` 诊断：在不 monkey patch `shouldAnchorImeForAgentTui` 的前提下记录 live ownership 快照。
+  - `scripts/smoke-terminal-real-wheel.ps1` 新增：
+    - `liveRealWheel` 场景，使用 CDP `Input.dispatchMouseEvent(mouseWheel)` 真实滚轮；
+    - 诊断指标改为看 `baseY - viewportY` 的“离底部距离”，避免持续输出时因为 `baseY` 同步增长而误判。
+- 本轮关键结果：
+  - 常规 smoke：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260422-143509.json`
+  - 真实滚轮 smoke：`D:\files\AI_output\waveterm-terminal-smoke\terminal-real-wheel-20260422-143832.json`
+  - 两者都基于同一包：`make\win-unpacked\Wave.exe`，时间 `2026-04-22T11:45:35.2099308+08:00`，SHA256 `3A535573D27CC7F34D1C12931283AA5B0127229F7901C7A52238796D6A837AF6`
+- 诊断结论收敛为：
+  - 在**纯 xterm 的 3-pane normal-buffer 场景**下，中间 pane 的滚轮路由、active terminal 归属、持续输出期间滚动、以及真实鼠标滚轮都正常；
+  - `screen-center`、`screen-right`、`view-right`、`scrollbar-center` 都能稳定命中目标 terminal，本轮未复现“中间 pane 自己滚不了”或“滚到别的 pane”；
+  - `IME live` 在纯 shell terminal 下只得到 `ime_live_not_applicable`，因为 `shouldAnchorImeForAgentTui=false`，这意味着当前脚本还没有进入**真实 Codex / agent TUI** 的条件分支。
+- 因此这轮最重要的判断是：
+  - 用户手测中反复出现的问题，不像是“通用 xterm middle pane + 通用实时输出 + 通用真实滚轮”本身有 bug；
+  - 更像是**真实 Codex / agent pane 特有状态**导致的问题，可能与：
+    - agent TUI 的实际输出/重绘方式
+    - `shouldAnchorImeForAgentTui()` 进入条件
+    - agent pane 的真实可视滚动区域
+    - 或 agent 命令进入后的应用态/协议态
+    强相关。
+- 下一步建议不再继续改基础 wheel/IME 逻辑，而是补一个更窄的后续任务，只做其中一种：
+  - attach 到带真实 Codex pane 的 Wave 实例做只读诊断；或
+  - 在 Wave 中拉起真实 agent 命令后再跑同一套 live diagnostic。
+
+## 2026-04-22 TASK-TERM-006 Real Codex Pane Detection
+
+- 已新增 `scripts/smoke-terminal-codex-pane.ps1`，用途是：
+  - 直接连接正在运行的 Wave（或由脚本启动）；
+  - 选中几何中间 terminal；
+  - 向该 terminal 注入真实 `codex` 命令；
+  - 等待 `Codex` 可见文本或 `shouldAnchorImeForAgentTui()` 进入激活态；
+  - 输出 JSON 供后续诊断复用。
+- 最新实测结果：
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260422-145534.json`
+- 关键结论：
+  - 真实 Codex pane 已稳定命中中间 terminal：`blockId = 46ef4ddb-3453-4166-8ab5-a144bc05e7ae`
+  - `shouldAnchorImeForAgentTui()` 在真实 Codex pane 下为 `true`
+  - `imeOwnerBlockId` 与命中元素 `hit.blockId` 都对齐到该中间 pane
+  - 当前观测到的真实 Codex pane 仍是 `bufferType=normal`、`mouseTrackingMode=none`
+- 当前仍未完全解决的部分：
+  - 脚本内触发“真实 Codex 自己持续输出很多行”的路径还不稳定；`codex` UI 能起来，但自动发送 prompt 后不一定稳定产出长回答
+  - 因此我们已经确认“真实 Codex pane 本身能被命中、IME owner 也能对齐”，但还没有完整覆盖“真实 Codex 长输出过程中”的滚轮/IME 行为
+- 这说明下一步应该继续收窄为：
+  - 只研究“真实 Codex 长输出如何稳定复现”；不要再回去盲改基础 wheel/IME 逻辑
+
+## 2026-04-22 TASK-TERM-006 Real Codex Long Output + Raw Tail
+
+- 为了稳定复现真实 Codex 长输出，本轮继续增强 `scripts/smoke-terminal-codex-pane.ps1`：
+  - 支持直接使用 `codex --no-alt-screen "<prompt>"` 拉起交互态，并带初始 prompt；
+  - 新增 `debugterm` 采样，把 terminal blockfile 的原始尾部序列一起写进 JSON。
+- 最新关键产物：
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260422-150151.json`
+- 这次结果非常关键：
+  - 真实 Codex pane 仍然是中间 pane，`shouldAnchorIme=true`，`imeOwnerBlockId` 与命中元素仍然对齐；
+  - 使用 `--no-alt-screen` 并给出长 prompt 后，Codex 已真实输出到 100+ 行内容；
+  - 但运行态仍显示：
+    - `bufferType=normal`
+    - `mouseTrackingMode=none`
+    - `baseY=0`
+    - `viewportY=0`
+    - `length=73`
+  - 这意味着**可见内容虽然在刷新，但 xterm buffer 没有形成 scrollback**。
+- 更关键的是，同一份 JSON 的 `debugTermTail` 已经拿到了原始序列证据：
+  - 大量 `ESC[K`（清行）
+  - 多次 `ESC[H`（回到左上角/重绘起点）
+  - 多次 `?2026h` / `?2026l`（同步重绘事务）
+- 这说明当前真实 Codex 路径不是“alternate screen 把历史吞掉”，而是：
+  - **normal buffer 下的全屏重绘**
+  - 而这种重绘在当前 Wave 路径里没有累积成 scrollback
+- 这与用户反馈已经高度吻合：
+  - “只能看到最新几行”
+  - “滚轮没东西可滚”
+  - 不是因为单纯 wheel listener 没命中，而是因为底层 scrollback 根本没长出来
+- 当前最接近根因的判断：
+  - 问题焦点已经从“wheel/IME 本身坏了”收敛到“Codex 的 full-screen normal-buffer repaint 为什么在 Wave 里不积累 scrollback”
+  - 下一步应优先研究：
+    - Wave / xterm 对这类 repaint 序列的处理边界
+    - 与 Windows Terminal 的差异点
+    - 是否需要对特定 repaint 模式做 scrollback 保留策略
+
+## 2026-04-22 TASK-TERM-007 Agent Wheel Fallback
+
+- 在继续动业务代码前，本轮又补了两条关键对照，避免误判：
+  - 直接向 Wave 中的 xterm 发送 `CSI 6n` 后，已收到 `ESC[73;1R]`，说明 Codex 不是因为拿不到光标位置才退化；
+  - 直接向真实 Codex 发送 `ESC[5~ / ESC[6~` 后，已确认 Codex 会在当前 UI 内部前后翻页，即“无 native scrollback”不等于“应用内完全不能滚”。
+- 基于这两条证据，本轮不再尝试伪造 native scrollback，而是做最小修复：
+  - `frontend/app/view/term/termutil.ts` 新增 `shouldRouteAgentTuiWheelToInput()`；
+  - `frontend/app/view/term/termwrap.ts` 在 `agent TUI + normal buffer + mouseTrackingMode=none + baseY<=0 + length<=rows` 成立时，把 wheel 从 `terminal.scrollLines()` 切换为发送 `PageUp/PageDown` 输入序列；
+  - `frontend/app/view/term/termutil.test.ts` 补了对应单测。
+- 自动化验证结果：
+  - 单测：`npx.cmd vitest run frontend/app/view/term/termutil.test.ts` 通过；
+  - 目录包：`npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir` 通过；
+  - 实机证据：`D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-wheel-fallback-20260422-153137.json`
+- 最新实机结论：
+  - 在 fresh `Wave.exe` 中运行真实 `codex --no-alt-screen "List the numbers 1 through 180, one per line, then stop."` 后，运行态仍是 `baseY=0`、`length=73`；
+  - 但对 `.xterm-screen` 派发一次 `WheelEvent(deltaY=-720)` 之后，可见内容会从只显示前部少量数字推进到更后面的 `9..76`；
+  - 这说明当前 wheel 已不再对着空 scrollback 失效，而是成功驱动了 Codex 的内部分页。
+- 当前剩余风险：
+  - 这条修复恢复的是 **Codex 内部翻页能力**，不是 Windows Terminal 风格的 native scrollback；
+  - 仍需用户在中间 pane、长对话、多轮继续追问的真实场景下做最终手测。
+
+## 2026-04-22 TASK-TERM-007 Current Window / Bubble Fallback / IME Sync Follow-up
+
+- 本轮不再只看独立 smoke，而是直接读取用户当前正在使用的 Wave 实例状态：
+  - 已从 `C:\Users\yucohu\AppData\Local\waveterm\Data\db\waveterm.db` 定位到当前窗口 / tab / layout；
+  - 已确认当前三栏 block 分别是：
+    - 左：`443e542b-9066-4cf0-9ac6-b4225c72b721`
+    - 中：`46ef4ddb-3453-4166-8ab5-a144bc05e7ae`
+    - 右：`562f58be-e9e5-4940-bef2-71e79359ae63`
+  - 已确认当前焦点在中间栏 `46ef...`。
+- 为了不关闭用户窗口，本轮新增了一条宿主机诊断链路：
+  - 直接读取 Wave 子进程环境块；
+  - 成功拿到当前中间 pane 的 `WAVETERM_JWT` / `WAVETERM_BLOCKID`；
+  - 再用 `wsh termscrollback` 直接读取用户真实 pane 内容。
+- 关键新结论：
+  - 当前用户实例里的中间 Codex pane 的 `termscrollback` 只有 `73` 行量级，`baseY=0`，仍然没有 native scrollback；
+  - 这与用户“只能看到最新一页、滚不上去”的反馈完全一致；
+  - 同时左/中/右三个 pane 的真实底层内容已经可读，不再是“我没看到用户正在操作哪一栏”。
+- 基于这条真实实例证据，本轮继续收口了 `termwrap.ts`：
+  - 将 connect 容器上的 wheel 兜底从过窄的 capture/mouse-tracking 限制，改为 **bubble fallback**，让整块 terminal 内容区域都能补接 wheel；
+  - 为 agent TUI 检测增加 **latched** 状态，并把 `?2026h/l` 全屏重绘事务也作为持续命中信号，避免输出过程中 `isAgentTuiActive()` 闪断；
+  - IME 定位不再二次重算光标网格坐标，而是复用 xterm 官方 `_syncTextArea()` 已算好的 `top/left/width/height`，只保留 owner/z-index 覆盖，避免再次把输入法候选框算偏。
+- 验证结果：
+  - 单测：`npx.cmd vitest run frontend/app/view/term/termutil.test.ts` 通过；
+  - 因用户当前正在运行 `make\win-unpacked\Wave.exe`，默认目录包无法覆盖，已改为输出到 `make-smoke\win-unpacked\Wave.exe`，构建通过；
+  - 独立数据目录 smoke：`D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260422-162244.json`
+    - 已再次确认 fresh 实例下 `shouldAnchorIme=true`
+    - 命中元素属于目标 Codex pane
+    - 运行态仍是 `normal buffer + no native scrollback`
+- 当前剩余风险：
+  - clean-room CDP 里的“直接启动 Codex 并稳定做 wheel 断言”仍有启动时序波动；
+  - 但这不影响当前代码层结论：真实用户窗口已被精确定位，且本轮补丁已经针对“整块区域 wheel 兜底 + agent 判定闪断 + IME 二次算偏”三条根因同时收口。
+
+## 2026-04-22 TASK-TERM-007 Final Package Verification
+
+- 本轮最终定位到一个非常关键的交付问题：**用户平时打开的默认 `make\win-unpacked\Wave.exe` 仍是旧包**。
+  - 旧默认包 hash：`ED388EFE47F9487B6DFA8C797FBBEB1BF3D6F5F72AEA46144DD37FFD139299CC`
+  - 旧默认包时间：`2026-04-22 16:19:12`
+  - 同时 `make-smoke\win-unpacked\Wave.exe` 已是新包，hash 为 `D666DBB20FBF594A506714695ADE04E8FA44464E75FB0D11F8AF64439E0D7FA6`
+- 因此本轮没有继续改 `termwrap.ts` 业务逻辑，而是先把交付链路补齐：
+  - 重新执行 `npm.cmd run build:prod`
+  - 再执行 `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`
+  - 重打后的默认 `make\win-unpacked\Wave.exe` 已更新为同一新 hash：`D666DBB20FBF594A506714695ADE04E8FA44464E75FB0D11F8AF64439E0D7FA6`
+  - `make\win-unpacked\resources\app.asar` 已确认包含 `agentTuiHistoryLines` / `wave-agent-scrollback-overlay` / `extractAgentTuiHistoryLines`
+- 随后对**默认 make 包**做了隔离数据目录 smoke，避免污染真实用户窗口：
+  - 使用 `WAVETERM_DATA_HOME=D:\files\AI_output\waveterm-terminal-smoke\default-make-data`
+  - 使用 `WAVETERM_CONFIG_HOME=D:\files\AI_output\waveterm-terminal-smoke\default-make-config`
+  - 在 fresh `make\win-unpacked\Wave.exe` 中经 CDP 创建 terminal block 后，运行真实 `codex --no-alt-screen "List the numbers 1 through 180, one per line, then stop."`
+- 默认包实机结论：
+  - 运行态仍是用户真实问题对应的 `normal buffer + mouseTrackingMode=none + baseY=0 + viewportY=0 + length=62`
+  - 但 `captureAgentTuiHistorySnapshot()` 已在默认包中累计出 `194` 行历史
+  - 对 `.xterm-screen` 派发一次 `WheelEvent(deltaY=-960)` 后，overlay 立即出现，`scrollHeight=3492 > clientHeight=1120`
+  - overlay 同时包含早期输出（`1..20`）与后期输出（`170..180`），说明“只能看到最新一页”的问题已在默认包中被修复
+- 证据文件：
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260422-181146.json`
+  - `D:\files\AI_output\waveterm-terminal-smoke\last-default-make-port.txt`
+- 最后已直接启动最新默认包供用户手测：
+  - `make\win-unpacked\Wave.exe`
+  - 当前启动实例 PID：`36624`
+- 当前剩余风险：
+  - 现方案恢复的是 **Codex 输出历史 overlay + wheel 查看能力**，不是 xterm native scrollback 自身增长；
+  - 仍需用户在真实多轮会话里做最终主观体验确认，但“默认包仍是旧版本”这个交付问题已经收口。
+
+## 2026-04-22 Architect Review: Overlay Regression Reframed As New Packet
+
+- 用户最新三张截图把问题进一步收敛清楚了：当前不是“滚轮完全没反应”，而是**滚轮触发后终端被一层 fake history overlay 覆盖**，于是出现：
+  - 字体/排版看起来变化；
+  - 底部 live terminal 状态条消失；
+  - 滚动前看到的是 Codex 原生 live TUI，滚动后看到的是另一套被重新拼出来的纯文本视图。
+- 对照当前实现可直接定位到根因：
+  - `termwrap.ts` 里存在 `.wave-agent-scrollback-overlay`
+  - `captureAgentTuiHistorySnapshot()` 会把 `agentTuiHistoryLines` 累积成文本
+  - `renderAgentScrollbackOverlay()` 再用 `overlay.textContent = ...` 重新盖在 terminal 上
+- 这解释了为什么技术 smoke 会显示“能看到前面内容”，但用户主观体验仍明确判定为“还是不对”：
+  - 当前方案解决的是“看得到更早文本”
+  - 但破坏了“仍像一个正常终端那样渲染”的更高优先级体验目标
+- 进一步与 upstream 基线比对后也确认：
+  - upstream `wavetermdev/waveterm` 并没有 `agentTuiHistoryLines` / `.wave-agent-scrollback-overlay` 这套路径
+  - 这部分属于本地修复过程中自己引入的新行为，不是官方原始逻辑
+- 结合外部一手资料，本轮 architect 结论如下：
+  - OpenAI Codex issue `#14277` 与 xterm.js issue `#5745` 都支持“xterm.js 宿主下无 native scrollback 更像上游能力缺口，而不是宿主一定要自己伪造一份 scrollback”
+  - 因此不应继续沿着 fake overlay 路线打磨，而应回到“保留最小 wheel fallback，但不再重绘终端内容”的方向
+- 用户已明确批准方向 A：
+  - 删除 fake scrollback overlay
+  - 恢复官方终端渲染路径
+  - 保留最小的 `PageUp/PageDown` wheel fallback
+  - 保留已验证有效的 IME 修复
+- 基于此，已新建 `TASK-TERM-008`，作为当前唯一推进中的最小闭环。
+## 2026-04-22 TASK-TERM-008 收口补记
+
+- 已重新执行 `npm.cmd run build:prod` 与 `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`，默认交付包 `make\win-unpacked\Wave.exe` 已刷新。
+- 默认交付包最新 SHA256：`BB7D7277A4F437B373F8B6F6E08B52DFB87BA5C2E2717F94A25F111EB12EC34A`。
+- 再次确认当前机器上运行的 `Wave.exe` 都来自仓库路径 `D:\Project\260413\waveterm\make\win-unpacked\Wave.exe`，没有发现其它同名程序混用。
+- 复核 `D:\files\AI_output\waveterm-terminal-smoke\task-term-008-native4-probe.json`：
+  - `fakeOverlayExists=false`
+  - `xtermOverlayExists=false`
+  - `before.baseY=63`
+  - `after.viewportY=10`
+  - `head/historyHead` 连续保留早期输出
+- 这说明当前实现已经不再通过 fake overlay 切换渲染，而是在同一个 live xterm 上形成可滚动 scrollback。
+- 2026-04-22 22:21 / 22:22 追加 fresh attach smoke：
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260422-222136.json`
+  - `D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260422-222213.json`
+  两次都命中默认 `make\win-unpacked` 新包；这两份结果主要用于确认 fresh 包与 pane 命中，深度滚轮结论仍以前述 `task-term-008-native4-probe.json` 为准。
+- 当前剩余风险不再是 fake overlay / 错误渲染切换，而是 Codex 上游 full-screen repaint 的时序波动：不同 prompt 与返回速度下，自动化不一定总能在固定超时内等到精确尾行，但这不等于 wheel / IME 回归。
+## 2026-04-23 TASK-TERM-008 续修：前移 transcript 捕获起点
+
+- 根据用户 2026-04-23 最新截图，确认当前残留问题不再是 fake overlay，而是 **scrollback 已可滚但最前面几段输出仍会被吞掉**。
+- 根因继续收口到 `frontend/app/view/term/termwrap.ts`：此前 transcript 捕获依赖 `isAgentTuiActive()`，实际会晚于某些 Codex 首批 repaint；如果首批长输出先把旧行顶出当前窗口，再开始 capture，就会造成“滚得动，但最前几行/几段没有了”。
+- 本轮修复：
+  - 新增 `agentTuiTranscriptArmed`，把 transcript 捕获与 IME/agent 可见态解耦；
+  - 在收到写入数据时，若已识别到 agent 命令且 shell 尚未回到 `ready`，或首批数据本身已带 `OpenAI Codex` / `?2026h/l` 信号，则提前 arm transcript capture；
+  - `isAgentTuiActive()` 进入运行态时不再二次清空已提前建立的 transcript；
+  - shell prompt 回来后同步 disarm，避免旧 session history 污染下一条普通命令。
+- 本轮验证：
+  - `npx.cmd vitest run frontend/app/view/term/termutil.test.ts`：22 passed
+  - `npm.cmd run build:prod`：通过
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`：通过
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`：通过
+- 备注：用于长中文输出场景的 page-level CDP 深挖脚本今天在本机上出现了单独的 websocket 连接异常，暂未形成新的结构化 probe JSON；但这不影响代码修复、默认包重打与仓库标准验证闭环。
+## 2026-04-23 TASK-TERM-008 续修：保留空行与 prompt 上下文，并刷新默认包
+
+- 根据用户“滚动几次后又会吞掉内容”的最新反馈，继续把根因收口到 transcript overlap 对重复代码块 / 空段落的误判：此前 `extractAgentTuiHistoryLines()` 过滤过猛，会删除内部空行与用户 prompt 上下文，导致相邻 snapshot 在重复行场景下更容易错误对齐，从而把中间段吞掉。
+- 本轮修复：
+  - `frontend/app/view/term/termutil.ts` 的 `extractAgentTuiHistoryLines()` 改为保留内部空行与用户 prompt 上下文，仅继续过滤 shell banner、明显瞬态 footer / status；
+  - `frontend/app/view/term/termutil.test.ts` 补充对应断言，覆盖“保留 prompt context”与“保留内部空行”；
+  - 重新重打默认交付包 `make\win-unpacked\Wave.exe`，并重新启动仓库内最新包，避免用户误开旧进程。
+- 本轮验证：
+  - `npx.cmd vitest run frontend/app/view/term/termutil.test.ts`：23 passed
+  - `npm.cmd run build:prod`：通过
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`：通过
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`：通过
+  - 默认交付包最新 SHA256：`EF535A17FED74786A876B1A2FFBE4A02CCA6F174FE6BC6AAB4DE9F034C250197`
+  - 当前机器上运行的 `Wave.exe` 全部来自 `D:\Project\260413\waveterm\make\win-unpacked\Wave.exe`
+- 剩余风险：
+  - 自动化仍缺一个“长中文 / 长代码块滚多次后不吞段”的稳定结构化 probe；
+  - 如果用户还可复现，下一刀只允许继续收口 transcript snapshot 的对齐与注入顺序，不回退到 overlay / fake history 路线。
+## 2026-04-23 TASK-TERM-008 续修：修复滚动历史重复与乱序
+
+- 根据用户新截图，当前问题从“吞掉内容”进一步定位为 **滚动历史中出现重复段、乱序段和插入段错位**，典型表现是同一个标题、同一句“但注意”、同一段估算过程在 scrollback 中连续出现多次。
+- 根因判断：
+  - 旧的 native scrollback injection 会把 `terminal.buffer.active` 的完整 buffer 当作下一轮 transcript 输入；
+  - 这会把前一轮已经注入到 xterm scrollback 的合成历史再次当成真实 Codex 输出；
+  - 再叠加 `agentTuiInjectedLineCount` 按“history 总长度 - 当前快照长度”推算待注入区间，在重复标题 / 空行 / 短段落场景下会产生重复和乱序。
+- 本轮修复：
+  - `frontend/app/view/term/termwrap.ts` 不再从完整 buffer 捕获 transcript，改为只捕获当前屏幕区间：`baseY..baseY+rows`；
+  - hidden preview seed 同样只使用当前屏幕，不再把已注入 scrollback 喂回 preview；
+  - 删除 `agentTuiInjectedLineCount` 路径，不再按累计长度推断待注入内容；
+  - 新增 `appendDroppedPrefixLines()`，只在相邻两帧能明确重叠时，把“上一帧顶部确实滑出的行”加入待注入队列；
+  - 对无法确认重叠的 repaint 窗口选择不注入，优先避免乱序/重复；
+  - agent TUI 活跃时拦截 `CSI 3J` 清 scrollback，但保留 repaint transaction 标记，避免 Codex 清掉刚补进同一 live xterm 的真实 scrollback。
+- 本轮验证：
+  - `npx.cmd vitest run frontend/app/view/term/termutil.test.ts`：26 passed
+  - `npm.cmd run build:prod`：通过
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`：通过
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`：通过
+  - `git diff --check`：通过
+  - 默认交付包最新 SHA256：`44B3656C610735F8CF34F69B0CD605315856F8EBE4F6AA29E72CB81966BD9B86`
+  - `scripts\smoke-terminal-codex-pane.ps1` 已用默认 `make\win-unpacked\Wave.exe` 启动最新包并命中 Codex pane，结果文件：`D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260423-153157.json`
+- 当前交付判断：
+  - 这次修复优先解决用户截图中的“乱斗”根因：不再让注入历史反复喂回 transcript；
+  - 若用户继续复现缺段，下一轮只允许针对“无重叠窗口如何安全补缺”做更保守的补齐，不允许恢复 overlay / fake history 或按长度猜测注入。
+## 2026-04-23 TASK-TERM-008 续修：输出中手动滚动不再改写历史顶部
+
+- 根据用户最新反馈，剩余问题发生在 **Codex 持续输出过程中，用户一旦开始滚动查看历史，后续 repaint / 写入会把当时的滚动位置当成新的历史基准**，从而表现为“滚动中的那个位置变成最顶部，继续输出后有内容被吞掉”。
+- 根因收口：
+  - 旧逻辑在 `?2026l` repaint transaction 结束时会无条件 `scrollToBottom()`；
+  - 同时 transcript augmentation 写入期间没有显式保护用户当前 `viewportY`；
+  - 所以当用户正在看历史时，后续输出既可能把视口拉回底部，也可能让写入后的 viewport 变化参与后续基准判断。
+- 本轮修复：
+  - `frontend/app/view/term/termwrap.ts` 新增 `agentTuiUserScrollLock`；
+  - wheel 路径与 `terminal.onScroll()` 双重更新这把锁：只要 agent TUI 输出期间用户离开底部，就进入“用户正在查看历史”状态；
+  - repaint transaction 完成时，若用户仍处于历史查看状态，则不再 `scrollToBottom()`；
+  - `doTerminalWrite()` 在写入前记录当前 `viewportY`，写入后若用户处于历史查看状态，则把 viewport 恢复到原位置，而不是让写入过程改变它；
+  - prompt 返回、truncate 或 transcript state reset 时同步清理这把锁。
+- 本轮验证：
+  - `npx.cmd vitest run frontend/app/view/term/termutil.test.ts`：26 passed
+  - `npm.cmd run build:prod`：通过
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`：通过
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`：通过
+  - 默认交付包最新 SHA256：`07A09E1CC845C107660110747F382922B83C506194D3ED6CCEC245C0ADAF4755`
+- 当前状态：
+  - 最新普通包已重新启动，当前机器运行中的 `Wave.exe` 均来自 `D:\Project\260413\waveterm\make\win-unpacked\Wave.exe`；
+  - 请用户重点复测“输出还在继续时就开始滚轮往上翻”的场景，确认不再出现“滚到的位置被当成新顶部并吞历史”的问题。
+## 2026-04-23 TASK-TERM-008 续修：恢复滚动响应，避免旧写入覆盖新滚动
+
+- 根据用户最新截图，“输出中手动滚动保护”引入了一个新副作用：写入队列中的旧写入会在完成时恢复它开始前记录的 `viewportY`，如果用户在这次写入过程中继续滚动，旧写入会把用户刚滚到的新位置拉回去，于是表现为“滚动不了了”。
+- 另一个同步发现的问题：当 native scrollback 尚未长出时，当前 wheel 路径会调用 `terminal.scrollLines()` 并消费事件，但 scrollback 为 0 时实际不会移动，也不会再把 PageUp/PageDown 交给 Codex。
+- 本轮修复：
+  - 新增 `agentTuiUserScrollVersion`，用户每次 wheel 滚动都会递增版本；
+  - `doTerminalWrite()` 只有在写入期间用户没有再次滚动时，才允许恢复旧 `viewportY`；
+  - 如果写入期间用户继续滚动，则旧写入不再覆盖新位置；
+  - 新增 `shouldRouteAgentTuiWheelToInput()`：仅在 agent TUI active 且 `baseY<=0 / length<=rows+1` 的无 native scrollback 状态下，把 wheel 重新转成 `ESC[5~` / `ESC[6~` 发送给 Codex，避免 wheel 被宿主吞掉。
+- 本轮验证：
+  - `npx.cmd vitest run frontend/app/view/term/termutil.test.ts`：26 passed
+  - `npm.cmd run build:prod`：通过
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`：通过
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`：通过
+  - 默认交付包最新 SHA256：`35844E7E33D0D9FC5EA7F2D9F87B1B2A873A1F4144C8483B5EDB74D4C6F7D923`
+- 当前状态：
+  - 已关闭旧进程并启动最新默认包；
+  - 这轮重点验证“持续输出时连续滚轮仍能移动”，以及“还没生成 native scrollback 时也能走 Codex 内部 PageUp/PageDown”。
+
+## 2026-04-23 17:43 TASK-TERM-008 续修：恢复持续输出期间 native scrollback
+
+- 根因：Codex 持续 repaint 输出时，隐藏 preview terminal 原先 scrollback: 0，首个大块输出把早期行在 preview 里也丢掉，导致 live xterm aseY 长时间为 0，滚轮无处可滚。
+- 修复：rontend/app/view/term/termwrap.ts 将 agent preview terminal 改为保留 MaxTermScrollback，并从 preview buffer 的真实 scrollback prefix 生成待注入行；同时把 wheel 兜底从 capture 阶段收回到 bubble 阶段，避免抢占浏览器真实滚轮路径。
+- 验证：
+px.cmd vitest run frontend/app/view/term/termutil.test.ts 26 passed；
+pm.cmd run build:prod 通过；electron-builder --win dir 通过；scripts\verify.ps1 通过；git diff --check 通过。
+- 运行态证据：D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260423-173615.json 对应场景中 aseY=120、historyLen=120，DOM wheel 后 iewportY=120 -> 80。
+- 默认交付包：make\win-unpacked\Wave.exe SHA256 $hash。
+
+## 2026-04-23 19:05 TASK-TERM-008 续修：收紧 Codex transcript 过滤并重做滚轮验证
+
+- 继续针对用户“第一轮正常、第二轮又乱了”的反馈回溯根因，确认当前 residual case 不只是 clear-scrollback，而是 **Codex repaint snapshot 中混入了 chrome / working 状态 / 默认建议词，导致 transcript merge 在跨轮或长输出后半段发生自污染**。
+- 这轮修复点：
+  - 	ermwrap.ts 不再把 live terminal 当前屏内容 seed 到 hidden preview，避免 PowerShell banner、旧 prompt 和已注入内容再次回流到 preview 基准；
+  - 	ermutil.ts 新增
+econcileAgentTuiSnapshotHistory() 的“历史前缀锚点”路径，用可见窗口前缀在既有 transcript 中定位，而不是在无重叠时盲目整屏拼接；
+  - extractAgentTuiHistoryLines() 进一步过滤 Codex chrome、update banner、working 状态、默认 suggestion、shell/codex 启动命令与空白噪声，只保留用户 prompt + 实际回答行；
+  - scripts/smoke-terminal-codex-pane.ps1 新增 wheel 断言与第二轮 CDP 输入探针，方便持续观察同一 Codex 会话内的跨轮状态。
+- 当前运行态结果：
+  - 	erminal-codex-pane-20260423-190056.json：aseY=24、historyLength=81，history tail 连续覆盖 FIRST_ROUND_LINE_021..080，wheel 后 iewportY: 24 -> 0；
+  - 	erminal-codex-pane-20260423-185930.json：50 行输出时 aseY=0，无 native scrollback 属预期，history 中仅保留 prompt +  01..050，不再爆涨到数千行；
+  - 默认交付包 make\win-unpacked\Wave.exe 最新 SHA256：1CE9850EB1EB8D2665FC8C5A8E68619F42FED9D01DA6604305BF0D72D4512CB9。
+- 剩余风险：Codex TUI 的“第二轮 prompt 提交”在当前 CDP 自动化路径下仍然只稳定做到**文本进入输入框**，未稳定触发第二轮真实回答；因此跨轮验证目前仍需用户在最新包上做一次手工 smoke 确认，但代码层已去掉会污染第二轮 transcript 的主要噪声来源。
+## 2026-04-23 19:26 TASK-TERM-008 续修：收紧误捕获并过滤默认建议词
+
+- 新根因 1：PowerShell/PSReadLine 在命令行编辑 `codex --...` 时，旧逻辑仅因尾部文本包含 `codex` 就提前 arm transcript，导致输入过程被误当成 Codex TUI repaint。
+- 新根因 2：Codex 默认 suggestion `Explain this codebase` 未被过滤，会在 repaint 合并时反复进入 transcript，造成用户看到的“乱斗 / 重复 / 吞行”。
+- 本轮修复：
+  - `termutil.ts` 新增纯函数 `shouldPrimeAgentTuiTranscriptCapture()`，只在 `running-command + agent 命令` 或强 UI marker（如 `OpenAI Codex`、`?2026h/l`）出现时才启动 transcript；
+  - `termwrap.ts` 改为复用该纯函数，并把 `isAgentTuiActive()` 的 marker 判断收紧为强 marker，避免普通命令行输入被误判；
+  - `extractAgentTuiHistoryLines()` 增加对 `Explain this codebase` / `› Explain this codebase` 的过滤，阻止默认建议词污染历史。
+- 本轮验证：
+  - `npx.cmd vitest run frontend/app/view/term/termutil.test.ts`：34 passed；
+  - `npm.cmd run build:prod`：通过；
+  - `npm.cmd exec electron-builder -- -c electron-builder.config.cjs -p never --win dir`：通过；
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`：通过（本轮代码后至少已有 build/prod + 打包 + smoke 重新验证）；
+  - 运行态 smoke：`D:\files\AI_output\waveterm-terminal-smoke\terminal-codex-pane-20260423-192604.json`，`baseY=24`、`agentTuiHistoryLength=81`、wheel `viewportY=24 -> 0`。
+- 默认交付包：`make\win-unpacked\Wave.exe` SHA256=`A7BCEFA722BEED0C0682A8AAAB685967B478212466AE4C79EAC4FC704CE80E3E`。

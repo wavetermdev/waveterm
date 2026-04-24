@@ -36,10 +36,17 @@ import {
 import {
     bufferLinesToText,
     createTempFileFromBlob,
+    extractAgentTuiHistoryLines,
     extractAllClipboardData,
     getWheelLineDelta,
+    hasAgentTuiStrongMarker,
+    isAgentTuiCommand,
+    MaxTermScrollback,
     normalizeCursorStyle,
+    reconcileAgentTuiSnapshotHistory,
     quoteForPosixShell,
+    shouldHandleTerminalWheel,
+    shouldPrimeAgentTuiTranscriptCapture,
     trimTerminalSelection,
 } from "./termutil";
 
@@ -48,19 +55,7 @@ const dlog = debug("wave:termwrap");
 const TermFileName = "term";
 export const SupportsImageInput = true;
 const MaxRepaintTransactionMs = 2000;
-const AgentImeCommandRegex = /^(codex|claude|opencode|aider|gemini|qwen)\b/i;
-const AgentImeVisibleRegex = /\b(OpenAI Codex|Codex|Claude Code|opencode|gpt-\d|tokens left|esc to interrupt)\b/i;
 const ShellPromptTailRegex = /^(?:PS [^\n>]+>|[A-Za-z]:\\[^>\n]*>|(?:\([^)]+\)\s*)?[\w.@-]+(?::[~./\w-]+)?[$#%>])\s*$/;
-
-function normalizeAgentCommand(command: string | null | undefined): string {
-    if (!command) {
-        return "";
-    }
-    let normalized = command.trim();
-    normalized = normalized.replace(/^env\s+/, "");
-    normalized = normalized.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
-    return normalized;
-}
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -84,6 +79,9 @@ type TermWrapOptions = {
 };
 
 export class TermWrap {
+    static liveInstances = new Set<TermWrap>();
+    static imeOwnerBlockId: string | null = null;
+
     tabId: string;
     blockId: string;
     terminal: Terminal;
@@ -120,6 +118,17 @@ export class TermWrap {
     lastPasteData: string = "";
     lastPasteTime: number = 0;
     wheelScrollRemainder: number = 0;
+    wheelScrollBufferType: string | null = null;
+    terminalWriteQueue: Promise<void> = Promise.resolve();
+    agentTuiLatched: boolean = false;
+    agentTuiTranscriptArmed: boolean = false;
+    agentTuiUserScrollLock: boolean = false;
+    agentTuiUserScrollVersion: number = 0;
+    agentTuiHistoryLines: string[] = [];
+    agentTuiInjectedLineCount: number = 0;
+    agentTuiLastSnapshotLines: string[] = [];
+    agentTuiPreviewTerminalHost: HTMLDivElement | null = null;
+    agentTuiPreviewTerminal: Terminal | null = null;
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -131,6 +140,18 @@ export class TermWrap {
     lastMode2026ResetTs: number = 0;
     inSyncTransaction: boolean = false;
     inRepaintTransaction: boolean = false;
+
+    static setImeOwnerBlockId(blockId: string | null) {
+        if (TermWrap.imeOwnerBlockId === blockId) {
+            return;
+        }
+        TermWrap.imeOwnerBlockId = blockId;
+        for (const termWrap of TermWrap.liveInstances) {
+            if (termWrap.blockId !== blockId) {
+                termWrap.clearImePositionOverrides();
+            }
+        }
+    }
 
     constructor(
         tabId: string,
@@ -147,6 +168,7 @@ export class TermWrap {
         this.hasResized = false;
         this.lastUpdated = Date.now();
         this.promptMarkers = [];
+        TermWrap.liveInstances.add(this);
         this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.claudeCodeActiveAtom = jotai.atom(false);
@@ -222,6 +244,9 @@ export class TermWrap {
                         console.log("[termwrap] repaint transaction starting");
                         this.inRepaintTransaction = true;
                     }
+                    if (this.shouldSuppressAgentTuiClearScrollback()) {
+                        return true;
+                    }
                 }
                 return false;
             })
@@ -250,6 +275,9 @@ export class TermWrap {
                     this.inRepaintTransaction = false;
                     if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
                         setTimeout(() => {
+                            if (this.shouldPreserveAgentTuiUserViewport()) {
+                                return;
+                            }
                             console.log("[termwrap] repaint transaction complete, scrolling to bottom");
                             this.terminal.scrollToBottom();
                         }, 20);
@@ -320,7 +348,7 @@ export class TermWrap {
                 this.connectElem.removeEventListener("drop", dropHandler);
             },
         });
-        this.installNormalBufferWheelScrollback();
+        this.installTerminalWheelRouter();
         this.handleResize();
         this.scheduleDeferredResize();
         this.installImePositionFix();
@@ -337,36 +365,322 @@ export class TermWrap {
         return this.blockId;
     }
 
-    installNormalBufferWheelScrollback() {
-        const wheelHandler = (event: WheelEvent) => {
-            if (event.defaultPrevented || this.terminal.buffer.active.type !== "normal") {
+    isTextAreaFocused(): boolean {
+        const textarea = this.terminal.textarea;
+        return textarea != null && document.activeElement === textarea;
+    }
+
+    isTerminalFocused(): boolean {
+        const activeElement = document.activeElement;
+        const textarea = this.terminal.textarea;
+        if (activeElement == null || textarea == null) {
+            return false;
+        }
+        return activeElement === textarea || this.connectElem.contains(activeElement);
+    }
+
+    isImeOwner(): boolean {
+        return TermWrap.imeOwnerBlockId === this.blockId || this.isTextAreaFocused();
+    }
+
+    claimImeOwnership() {
+        if (!this.disposed && this.isTerminalFocused()) {
+            TermWrap.setImeOwnerBlockId(this.blockId);
+        }
+    }
+
+    releaseImeOwnership() {
+        if (TermWrap.imeOwnerBlockId === this.blockId && !this.isTerminalFocused()) {
+            TermWrap.setImeOwnerBlockId(null);
+        }
+    }
+
+    syncNativeTextAreaPosition() {
+        (this.terminal as any)?._core?._syncTextArea?.();
+    }
+
+    getWheelWholeLines(event: WheelEvent, bufferType: string): number {
+        if (this.wheelScrollBufferType !== bufferType) {
+            this.wheelScrollBufferType = bufferType;
+            this.wheelScrollRemainder = 0;
+        }
+        const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
+        const lineDelta = getWheelLineDelta(event.deltaY, event.deltaMode, cellHeight, this.terminal.rows);
+        if (lineDelta === 0) {
+            return 0;
+        }
+        this.wheelScrollRemainder += lineDelta;
+        const wholeLines =
+            this.wheelScrollRemainder > 0 ? Math.floor(this.wheelScrollRemainder) : Math.ceil(this.wheelScrollRemainder);
+        if (wholeLines === 0) {
+            return 0;
+        }
+        this.wheelScrollRemainder -= wholeLines;
+        return wholeLines;
+    }
+
+    handleTerminalWheelEvent(event: WheelEvent): boolean {
+        const bufferType = this.terminal.buffer.active.type;
+        if (!shouldHandleTerminalWheel(event.defaultPrevented, bufferType)) {
+            this.wheelScrollRemainder = 0;
+            return false;
+        }
+        const wholeLines = this.getWheelWholeLines(event, bufferType);
+        if (wholeLines === 0) {
+            return false;
+        }
+        if (this.shouldRouteAgentTuiWheelToInput()) {
+            this.updateAgentTuiUserScrollLock(wholeLines, true);
+            this.sendDataHandler?.(wholeLines < 0 ? "\x1b[5~" : "\x1b[6~");
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+        }
+        this.terminal.scrollLines(wholeLines);
+        this.updateAgentTuiUserScrollLock(wholeLines, true);
+        event.preventDefault();
+        event.stopPropagation();
+        return true;
+    }
+
+    installTerminalWheelRouter() {
+        this.terminal.attachCustomWheelEventHandler((event: WheelEvent) => {
+            if (this.handleTerminalWheelEvent(event)) {
+                return false;
+            }
+            return true;
+        });
+        const wheelFallbackHandler = (event: WheelEvent) => {
+            const bufferType = this.terminal.buffer.active.type;
+            if (bufferType !== "normal") {
                 this.wheelScrollRemainder = 0;
                 return;
             }
-            const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
-            const lineDelta = getWheelLineDelta(event.deltaY, event.deltaMode, cellHeight, this.terminal.rows);
-            if (lineDelta === 0) {
-                return;
-            }
-            this.wheelScrollRemainder += lineDelta;
-            const wholeLines =
-                this.wheelScrollRemainder > 0
-                    ? Math.floor(this.wheelScrollRemainder)
-                    : Math.ceil(this.wheelScrollRemainder);
-            if (wholeLines === 0) {
-                return;
-            }
-            this.wheelScrollRemainder -= wholeLines;
-            this.terminal.scrollLines(wholeLines);
-            event.preventDefault();
-            event.stopPropagation();
+            this.handleTerminalWheelEvent(event);
         };
-        this.connectElem.addEventListener("wheel", wheelHandler, { passive: false });
+        this.connectElem.addEventListener("wheel", wheelFallbackHandler, { passive: false });
         this.toDispose.push({
             dispose: () => {
-                this.connectElem.removeEventListener("wheel", wheelHandler, false);
+                this.connectElem.removeEventListener("wheel", wheelFallbackHandler, false);
             },
         });
+        this.toDispose.push(
+            this.terminal.onScroll(() => {
+                this.updateAgentTuiUserScrollLock(0, false);
+            })
+        );
+    }
+
+    shouldCaptureAgentTuiTranscript(dataText: string): boolean {
+        const activeBuffer = this.terminal.buffer.active;
+        if (activeBuffer?.type !== "normal" || this.terminal.modes.mouseTrackingMode !== "none") {
+            return false;
+        }
+        if (this.isAgentTuiActive()) {
+            return true;
+        }
+        if (this.shouldPrimeAgentTuiTranscript(dataText)) {
+            this.armAgentTuiTranscriptCapture();
+            return true;
+        }
+        return false;
+    }
+
+    captureAgentTuiScreenSnapshotFromBuffer(buffer: TermTypes.IBuffer): string[] {
+        const rowCount = Math.max(1, this.terminal.rows);
+        const screenStart = Math.max(0, Math.min(buffer.baseY, Math.max(0, buffer.length - rowCount)));
+        const screenEnd = Math.min(buffer.length, screenStart + rowCount);
+        return extractAgentTuiHistoryLines(bufferLinesToText(buffer, screenStart, screenEnd));
+    }
+
+    ensureAgentTuiPreviewTerminal(): Terminal {
+        if (this.agentTuiPreviewTerminal != null) {
+            return this.agentTuiPreviewTerminal;
+        }
+        if (this.agentTuiPreviewTerminalHost == null) {
+            const host = document.createElement("div");
+            host.className = "wave-agent-tui-preview-terminal";
+            host.style.position = "fixed";
+            host.style.left = "-10000px";
+            host.style.top = "0";
+            host.style.width = "1px";
+            host.style.height = "1px";
+            host.style.opacity = "0";
+            host.style.pointerEvents = "none";
+            host.style.overflow = "hidden";
+            document.body.appendChild(host);
+            this.agentTuiPreviewTerminalHost = host;
+        }
+        this.agentTuiPreviewTerminal = new Terminal({
+            allowTransparency: true,
+            convertEol: true,
+            cursorBlink: false,
+            cursorStyle: "block",
+            disableStdin: true,
+            drawBoldTextInBrightColors: this.terminal.options.drawBoldTextInBrightColors,
+            fontFamily: this.terminal.options.fontFamily,
+            fontSize: this.terminal.options.fontSize,
+            fontWeight: this.terminal.options.fontWeight,
+            fontWeightBold: this.terminal.options.fontWeightBold,
+            letterSpacing: this.terminal.options.letterSpacing,
+            lineHeight: this.terminal.options.lineHeight,
+            minimumContrastRatio: this.terminal.options.minimumContrastRatio,
+            scrollback: MaxTermScrollback,
+            tabStopWidth: this.terminal.options.tabStopWidth,
+            theme: this.terminal.options.theme,
+            windowsPty: this.terminal.options.windowsPty,
+        });
+        this.agentTuiPreviewTerminal.parser.registerCsiHandler({ final: "J" }, (params) => {
+            return params != null && params.length >= 1 && params[0] === 3;
+        });
+        this.agentTuiPreviewTerminal.open(this.agentTuiPreviewTerminalHost);
+        this.agentTuiPreviewTerminal.resize(this.terminal.cols, this.terminal.rows);
+        return this.agentTuiPreviewTerminal;
+    }
+
+    writeToTerminalBuffer(terminal: Terminal, data: string | Uint8Array): Promise<void> {
+        return new Promise((resolve) => {
+            terminal.write(data, resolve);
+        });
+    }
+
+    resetAgentTuiTranscriptState() {
+        this.agentTuiUserScrollLock = false;
+        this.agentTuiUserScrollVersion = 0;
+        this.agentTuiHistoryLines = [];
+        this.agentTuiInjectedLineCount = 0;
+        this.agentTuiLastSnapshotLines = [];
+        this.agentTuiPreviewTerminal?.dispose();
+        this.agentTuiPreviewTerminal = null;
+    }
+
+    armAgentTuiTranscriptCapture() {
+        if (this.agentTuiTranscriptArmed) {
+            return;
+        }
+        this.resetAgentTuiTranscriptState();
+        this.agentTuiTranscriptArmed = true;
+    }
+
+    getRecentTerminalTailText(): string {
+        const activeBuffer = this.terminal.buffer.active;
+        const tailStart = Math.max(0, activeBuffer.length - Math.max(this.terminal.rows * 2, 80));
+        return bufferLinesToText(activeBuffer, tailStart, activeBuffer.length).join("\n");
+    }
+
+    shouldPrimeAgentTuiTranscript(dataText: string): boolean {
+        const activeBuffer = this.terminal.buffer.active;
+        const shellState = globalStore.get(this.shellIntegrationStatusAtom);
+        const lastCommand = globalStore.get(this.lastCommandAtom);
+        return shouldPrimeAgentTuiTranscriptCapture({
+            activeBufferType: activeBuffer?.type,
+            mouseTrackingMode: this.terminal.modes.mouseTrackingMode,
+            shellState,
+            lastCommand,
+            dataText,
+        });
+    }
+
+    shouldSuppressAgentTuiClearScrollback(): boolean {
+        const activeBuffer = this.terminal.buffer.active;
+        if (activeBuffer?.type !== "normal") {
+            return false;
+        }
+        if (this.agentTuiTranscriptArmed || this.agentTuiLatched) {
+            return true;
+        }
+        const shellState = globalStore.get(this.shellIntegrationStatusAtom);
+        const lastCommand = globalStore.get(this.lastCommandAtom);
+        return shellState === "running-command" && isAgentTuiCommand(lastCommand);
+    }
+
+    isAgentTuiRepaintData(dataText: string): boolean {
+        return /\x1b\[(?:\d+;)?\d*H/.test(dataText) || /\x1b\[\?2026[hl]/.test(dataText);
+    }
+
+    updateAgentTuiUserScrollLock(wholeLines: number, userInitiated: boolean) {
+        const activeBuffer = this.terminal.buffer.active;
+        if (activeBuffer?.type !== "normal") {
+            this.agentTuiUserScrollLock = false;
+            return;
+        }
+        if (!(this.agentTuiTranscriptArmed || this.agentTuiLatched)) {
+            this.agentTuiUserScrollLock = false;
+            return;
+        }
+        if (userInitiated) {
+            this.agentTuiUserScrollVersion++;
+        }
+        if (wholeLines < 0 || activeBuffer.viewportY < activeBuffer.baseY) {
+            this.agentTuiUserScrollLock = true;
+            return;
+        }
+        if (activeBuffer.viewportY >= activeBuffer.baseY) {
+            this.agentTuiUserScrollLock = false;
+        }
+    }
+
+    shouldPreserveAgentTuiUserViewport(): boolean {
+        const activeBuffer = this.terminal.buffer.active;
+        if (activeBuffer?.type !== "normal") {
+            return false;
+        }
+        return this.agentTuiUserScrollLock && activeBuffer.viewportY < activeBuffer.baseY;
+    }
+
+    shouldRouteAgentTuiWheelToInput(): boolean {
+        const activeBuffer = this.terminal.buffer.active;
+        if (activeBuffer?.type !== "normal" || this.terminal.modes.mouseTrackingMode !== "none") {
+            return false;
+        }
+        if (activeBuffer.baseY > 0 || activeBuffer.length > this.terminal.rows + 1) {
+            return false;
+        }
+        return this.agentTuiTranscriptArmed || this.agentTuiLatched || this.isAgentTuiActive();
+    }
+
+    buildNativeScrollbackInjection(lines: string[]): string {
+        const safeLines = lines.map((line) => line.replace(/\x1b/g, ""));
+        const targetRow = Math.max(1, this.terminal.rows);
+        return `\x1b7\x1b[${targetRow};1H${safeLines.join("\r\n")}\r\n\x1b8`;
+    }
+
+    captureAgentTuiPreviewHistoryLines(): string[] {
+        const previewBuffer = this.agentTuiPreviewTerminal?.buffer.active;
+        if (previewBuffer == null || previewBuffer.baseY <= 0) {
+            return [];
+        }
+        return extractAgentTuiHistoryLines(bufferLinesToText(previewBuffer, 0, previewBuffer.baseY));
+    }
+
+    async prepareAgentTuiAugmentedWrite(data: string | Uint8Array): Promise<string | Uint8Array> {
+        const dataText = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
+        if (!this.shouldCaptureAgentTuiTranscript(dataText)) {
+            return data;
+        }
+        const previewTerminal = this.ensureAgentTuiPreviewTerminal();
+        if (this.agentTuiLastSnapshotLines.length === 0) {
+            this.agentTuiLastSnapshotLines = [];
+        }
+        await this.writeToTerminalBuffer(previewTerminal, dataText);
+        const nextSnapshot = this.captureAgentTuiScreenSnapshotFromBuffer(previewTerminal.buffer.active);
+        this.agentTuiLastSnapshotLines = nextSnapshot;
+        if (!this.isAgentTuiRepaintData(dataText)) {
+            return data;
+        }
+        const appendResult = reconcileAgentTuiSnapshotHistory(
+            this.agentTuiHistoryLines,
+            this.agentTuiInjectedLineCount,
+            nextSnapshot,
+            MaxTermScrollback
+        );
+        this.agentTuiHistoryLines = appendResult.history;
+        this.agentTuiInjectedLineCount = appendResult.injectedLineCount;
+        const pendingLines = appendResult.pendingLines;
+        if (pendingLines.length === 0) {
+            return data;
+        }
+        return `${this.buildNativeScrollbackInjection(pendingLines)}${dataText}`;
     }
 
     scheduleDeferredResize(forceTermSizeSync = false) {
@@ -381,26 +695,63 @@ export class TermWrap {
     }
 
     shouldAnchorImeForAgentTui(): boolean {
+        return this.isAgentTuiActive();
+    }
+
+    isAgentTuiActive(): boolean {
         const shellState = globalStore.get(this.shellIntegrationStatusAtom);
-        if (shellState === "ready") {
-            return false;
-        }
-        const lastCommand = normalizeAgentCommand(globalStore.get(this.lastCommandAtom));
-        if (shellState === "running-command" && AgentImeCommandRegex.test(lastCommand)) {
+        const lastCommand = globalStore.get(this.lastCommandAtom);
+        if (shellState === "running-command" && isAgentTuiCommand(lastCommand)) {
+            this.armAgentTuiTranscriptCapture();
+            this.agentTuiLatched = true;
             return true;
         }
-        const activeBuffer = this.terminal.buffer.active;
-        const tailStart = Math.max(0, activeBuffer.length - Math.max(this.terminal.rows * 2, 80));
-        const tailText = bufferLinesToText(activeBuffer, tailStart, activeBuffer.length).join("\n");
+        const tailText = this.getRecentTerminalTailText();
+        const hasAgentMarkers = hasAgentTuiStrongMarker(tailText);
         const lastVisibleLine = tailText
             .split("\n")
             .map((line) => line.trim())
             .filter(Boolean)
             .at(-1);
-        if (lastVisibleLine != null && ShellPromptTailRegex.test(lastVisibleLine)) {
+        if (shellState === "ready" && lastVisibleLine != null && ShellPromptTailRegex.test(lastVisibleLine)) {
+            this.agentTuiLatched = false;
+            this.agentTuiTranscriptArmed = false;
+            this.agentTuiUserScrollLock = false;
+            this.agentTuiUserScrollVersion = 0;
             return false;
         }
-        return AgentImeVisibleRegex.test(tailText);
+        if (hasAgentMarkers) {
+            this.armAgentTuiTranscriptCapture();
+            this.agentTuiLatched = true;
+            return true;
+        }
+        const lastMode2026Ts = Math.max(this.lastMode2026SetTs, this.lastMode2026ResetTs);
+        if (
+            shellState === "running-command" &&
+            Date.now() - lastMode2026Ts <= MaxRepaintTransactionMs &&
+            lastVisibleLine != null
+        ) {
+            if (!ShellPromptTailRegex.test(lastVisibleLine)) {
+                this.armAgentTuiTranscriptCapture();
+                this.agentTuiLatched = true;
+                return true;
+            }
+        }
+        if (this.agentTuiLatched) {
+            if (lastVisibleLine != null && ShellPromptTailRegex.test(lastVisibleLine)) {
+                this.agentTuiLatched = false;
+                this.agentTuiTranscriptArmed = false;
+                this.agentTuiUserScrollLock = false;
+                this.agentTuiUserScrollVersion = 0;
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    shouldApplyImePositionOverride(): boolean {
+        return this.isImeOwner() && this.shouldAnchorImeForAgentTui();
     }
 
     clearImePositionOverrides() {
@@ -408,7 +759,7 @@ export class TermWrap {
             return;
         }
         const textarea = this.terminal.textarea;
-        const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active");
+        const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view");
         if (textarea != null) {
             textarea.style.removeProperty("top");
             textarea.style.removeProperty("left");
@@ -428,23 +779,24 @@ export class TermWrap {
     }
 
     syncImePositionForAgentTui() {
-        if (!this.shouldAnchorImeForAgentTui()) {
+        if (!this.shouldApplyImePositionOverride()) {
             this.clearImePositionOverrides();
             return;
         }
+        this.claimImeOwnership();
+        this.syncNativeTextAreaPosition();
         const textarea = this.terminal.textarea;
-        const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active");
+        const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active, .composition-view");
         if (textarea == null) {
             return;
         }
         const cellHeight = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.height ?? 16;
         const cellWidth = (this.terminal as any)?._core?._renderService?.dimensions?.css?.cell?.width ?? 8;
-        const activeBuffer = this.terminal.buffer.active;
-        const cursorRow = Math.max(0, Math.min(this.terminal.rows - 1, activeBuffer.cursorY ?? 0));
-        const cursorCol = Math.max(0, Math.min(this.terminal.cols - 1, activeBuffer.cursorX ?? 0));
-        const top = `${cursorRow * cellHeight}px`;
-        const left = `${cursorCol * cellWidth}px`;
-        const lineHeight = `${Math.max(1, cellHeight)}px`;
+        const top = textarea.style.top || "0px";
+        const left = textarea.style.left || "0px";
+        const nativeWidth = Number.parseFloat(textarea.style.width || "0");
+        const nativeHeight = Number.parseFloat(textarea.style.height || "0");
+        const lineHeight = `${Math.max(1, nativeHeight || cellHeight)}px`;
         if (compositionView != null) {
             compositionView.style.top = top;
             compositionView.style.left = left;
@@ -452,7 +804,7 @@ export class TermWrap {
             compositionView.style.lineHeight = lineHeight;
             compositionView.style.zIndex = "6";
         }
-        const compositionWidth = Math.max(compositionView?.getBoundingClientRect().width ?? 0, cellWidth * 2, 1);
+        const compositionWidth = Math.max(compositionView?.getBoundingClientRect().width ?? 0, nativeWidth, cellWidth * 2, 1);
         textarea.style.top = top;
         textarea.style.left = left;
         textarea.style.width = `${compositionWidth}px`;
@@ -463,6 +815,10 @@ export class TermWrap {
     }
 
     scheduleImePositionSync() {
+        if (!this.isImeOwner()) {
+            this.clearImePositionOverrides();
+            return;
+        }
         this.syncImePositionForAgentTui();
         if (this.imePositionSyncScheduled) {
             return;
@@ -491,30 +847,93 @@ export class TermWrap {
         if (textarea == null) {
             return;
         }
-        const sync = () => this.scheduleImePositionSync();
-        const clear = () => this.clearImePositionOverrides();
-        for (const eventName of ["focus", "compositionstart", "compositionupdate"]) {
-            textarea.addEventListener(eventName, sync);
-        }
-        textarea.addEventListener("blur", clear);
+        const handleFocus = () => {
+            this.claimImeOwnership();
+            this.syncNativeTextAreaPosition();
+            if (this.shouldAnchorImeForAgentTui()) {
+                this.scheduleImePositionSync();
+            } else {
+                this.clearImePositionOverrides();
+            }
+        };
+        const handleCompositionStart = () => {
+            this.claimImeOwnership();
+            this.syncNativeTextAreaPosition();
+            this.scheduleImePositionSync();
+        };
+        const handleCompositionUpdate = () => {
+            this.claimImeOwnership();
+            this.scheduleImePositionSync();
+        };
+        const handleCompositionEnd = () => {
+            setTimeout(() => {
+                if (this.disposed) {
+                    return;
+                }
+                if (this.shouldApplyImePositionOverride()) {
+                    this.scheduleImePositionSync();
+                } else {
+                    this.clearImePositionOverrides();
+                }
+            }, 0);
+        };
+        const handleBlur = () => {
+            setTimeout(() => {
+                if (this.disposed) {
+                    return;
+                }
+                this.releaseImeOwnership();
+                if (!this.isImeOwner()) {
+                    this.clearImePositionOverrides();
+                }
+            }, 0);
+        };
+        const handlePointerDown = () => {
+            setTimeout(() => {
+                if (this.disposed) {
+                    return;
+                }
+                this.claimImeOwnership();
+            }, 0);
+        };
+        textarea.addEventListener("focus", handleFocus);
+        textarea.addEventListener("compositionstart", handleCompositionStart);
+        textarea.addEventListener("compositionupdate", handleCompositionUpdate);
+        textarea.addEventListener("compositionend", handleCompositionEnd);
+        textarea.addEventListener("blur", handleBlur);
+        this.connectElem.addEventListener("mousedown", handlePointerDown, true);
         this.toDispose.push({
             dispose: () => {
-                for (const eventName of ["focus", "compositionstart", "compositionupdate"]) {
-                    textarea.removeEventListener(eventName, sync);
-                }
-                textarea.removeEventListener("blur", clear);
+                textarea.removeEventListener("focus", handleFocus);
+                textarea.removeEventListener("compositionstart", handleCompositionStart);
+                textarea.removeEventListener("compositionupdate", handleCompositionUpdate);
+                textarea.removeEventListener("compositionend", handleCompositionEnd);
+                textarea.removeEventListener("blur", handleBlur);
+                this.connectElem.removeEventListener("mousedown", handlePointerDown, true);
                 this.clearImePositionOverrides();
             },
         });
         this.toDispose.push(
             this.terminal.onRender(() => {
                 const compositionView = this.connectElem.querySelector<HTMLElement>(".composition-view.active");
-                const shouldAnchorIme = this.shouldAnchorImeForAgentTui();
-                if (shouldAnchorIme || document.activeElement === textarea || compositionView != null) {
-                    this.scheduleImePositionSync();
-                } else {
+                if (!this.isImeOwner()) {
                     this.clearImePositionOverrides();
+                    return;
                 }
+                if (compositionView != null) {
+                    this.scheduleImePositionSync();
+                    return;
+                }
+                if (this.isTextAreaFocused()) {
+                    this.syncNativeTextAreaPosition();
+                    if (this.shouldAnchorImeForAgentTui()) {
+                        this.scheduleImePositionSync();
+                    } else {
+                        this.clearImePositionOverrides();
+                    }
+                    return;
+                }
+                this.clearImePositionOverrides();
             })
         );
     }
@@ -632,7 +1051,15 @@ export class TermWrap {
 
     dispose() {
         this.disposed = true;
+        if (TermWrap.imeOwnerBlockId === this.blockId) {
+            TermWrap.setImeOwnerBlockId(null);
+        }
+        TermWrap.liveInstances.delete(this);
         this.clearImePositionOverrides();
+        this.agentTuiPreviewTerminal?.dispose();
+        this.agentTuiPreviewTerminalHost?.remove();
+        this.agentTuiPreviewTerminal = null;
+        this.agentTuiPreviewTerminalHost = null;
         this.promptMarkers.forEach((marker) => {
             try {
                 marker.dispose();
@@ -669,6 +1096,10 @@ export class TermWrap {
 
     handleNewFileSubjectData(msg: WSFileEventData) {
         if (msg.fileop == "truncate") {
+            this.agentTuiTranscriptArmed = false;
+            this.agentTuiUserScrollLock = false;
+            this.agentTuiUserScrollVersion = 0;
+            this.resetAgentTuiTranscriptState();
             this.terminal.clear();
             this.heldData = [];
         } else if (msg.fileop == "append") {
@@ -703,18 +1134,32 @@ export class TermWrap {
                 this.recentWrites.shift();
             }
         }
-        let resolve: () => void = null;
-        const prtn = new Promise<void>((presolve, _) => {
-            resolve = presolve;
-        });
-        this.terminal.write(data, () => {
+        const writePromise = this.terminalWriteQueue.then(async () => {
+            const preserveViewport = this.shouldPreserveAgentTuiUserViewport();
+            const previousViewportY = preserveViewport ? this.terminal.buffer.active.viewportY : null;
+            const previousUserScrollVersion = this.agentTuiUserScrollVersion;
+            const nextData = await this.prepareAgentTuiAugmentedWrite(data);
+            await this.writeToTerminalBuffer(this.terminal, nextData);
+            if (
+                preserveViewport &&
+                previousViewportY != null &&
+                previousUserScrollVersion === this.agentTuiUserScrollVersion
+            ) {
+                const activeBuffer = this.terminal.buffer.active;
+                const targetViewportY = Math.max(0, Math.min(previousViewportY, activeBuffer.baseY));
+                if (activeBuffer.viewportY !== targetViewportY) {
+                    this.terminal.scrollToLine(targetViewportY);
+                }
+            }
             this.lastUpdated = Date.now();
-            resolve();
             if (document.activeElement === this.terminal.textarea || this.imePositionPatched) {
                 this.scheduleImePositionSync();
             }
         });
-        return prtn;
+        this.terminalWriteQueue = writePromise.catch((error) => {
+            console.error("[termwrap] terminal write failed", this.blockId, error);
+        });
+        return writePromise;
     }
 
     async resyncController(reason: string) {
@@ -750,6 +1195,9 @@ export class TermWrap {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
         this.fitAddon.fit();
+        if (this.agentTuiPreviewTerminal != null) {
+            this.agentTuiPreviewTerminal.resize(this.terminal.cols, this.terminal.rows);
+        }
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
             console.log(

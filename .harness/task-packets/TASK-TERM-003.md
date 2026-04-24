@@ -83,3 +83,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExist
 
 - 当前页面可能未暴露所有 terminal runtime 的全局引用；脚本可能需要通过 DOM 结构和私有属性探测，稳定性低于单实例 `window.term`
 - Electron/CDP 的真实鼠标事件路径仍可能与系统级滚轮略有差异，但比直接打到 `.xterm-scrollable-element` 更贴近用户路径
+
+## 2026-04-21 执行结果
+
+- 已将运行态表达式拆到 `scripts/smoke-terminal.runtime.js`，并让 `scripts/smoke-terminal.ps1` 负责：
+  - 自动注册多个 `TermWrap` 实例，而不是只依赖 `window.term`
+  - 必要时通过 `RpcApi.CreateBlockCommand(... targetaction=splitdown ...)` 自动创建第二个终端
+  - 输出每个 terminal 的 `blockId`、几何位置、focus owner、textarea/composition-view 样式、runtime rows/cols/bufferType/viewportY
+  - 区分 `elementFromPoint` 外层 wheel 路径与内部 `.xterm-scrollable-element` fallback
+  - 截图后自动删除 smoke 临时创建的 block，避免污染用户工作区
+- 执行结果：
+  - 命令：`powershell -ExecutionPolicy Bypass -File .\scripts\smoke-terminal.ps1 -KillExistingRepoWave`
+  - 结果 JSON：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-165710.json`
+  - 截图：`D:\files\AI_output\waveterm-terminal-smoke\terminal-smoke-20260421-165710.png`
+  - 默认 verify：`powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1` 通过
+- 本轮 smoke 结论：
+  - 多 terminal 采集已生效：页面 DOM 中发现 `3` 个 terminal，运行态已稳定拿到 `2` 个 `TermWrap`
+  - `wheel` 两个场景都通过，外层真实路径与内部 fallback 都只作用于目标 terminal
+  - `IME ownership` 明确失败，诊断为 `ime_wrong_terminal`
+  - 失败细节显示：当目标 terminal 已切换时，仍有非目标 terminal 保留 helper textarea 的 `top/left/zIndex`，符合“输入框位置串 terminal”的根因方向

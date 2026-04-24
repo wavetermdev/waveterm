@@ -1,111 +1,196 @@
 [
-  {
-    "id": "TASK-001",
-    "title": "飞书入口增强与 Harness 初始化",
-    "status": "passing",
-    "priority": "P1",
-    "scope": [
-      "emain/emain-feishu.ts",
-      "emain/emain-ipc.ts",
-      "emain/preload.ts",
-      "frontend/app/view/feishuview/feishuview.tsx",
-      "frontend/app/view/webview/webview.tsx",
-      "frontend/app/view/webview/webviewenv.ts",
-      "frontend/app/block/blockregistry.ts",
-      "frontend/app/block/blockutil.tsx",
-      "pkg/wconfig/defaultconfig/widgets.json",
-      "pkg/wconfig/defaultconfig/settings.json",
-      "pkg/wconfig/settingsconfig.go",
-      "frontend/types/custom.d.ts",
-      "frontend/types/gotypes.d.ts",
-      "schema/settings.json",
-      ".harness/*",
-      "scripts/verify.ps1",
-      "AGENTS.md",
-      "CLAUDE.md"
-    ],
-    "acceptance": [
-      "飞书入口支持本地 App 自动发现、配置路径覆盖与网页兜底",
-      "飞书视图弹出的新窗口继承 persist:feishu 分区",
-      "用户可见地提供 `Feishu App` / `Feishu Web` 双入口，且 `Feishu Web` 可直接隐藏当前卡片",
-      "最小验证命令 scripts/verify.ps1 通过",
-      "仓库具备最小可续跑的 Harness 工件"
-    ],
-    "notes": "代码实现与 verify 已完成；剩余阻塞是运行态 smoke 依赖账号态，且本地启动环境还缺少可用的 WCLOUD_ENDPOINT。"
-  },
-  {
-    "id": "TASK-TERM-001",
-    "title": "终端滚轮与输入法位置专项修复",
-    "status": "passing",
-    "priority": "P1",
-    "scope": [
-      "frontend/app/view/term/termwrap.ts",
-      "frontend/app/view/term/termutil.ts",
-      "frontend/app/view/term/fitaddon.ts",
-      "frontend/app/view/term/osc-handlers.ts",
-      ".harness/*"
-    ],
-    "acceptance": [
-      "普通终端历史可以用鼠标滚轮上下滚动",
-      "Codex/Agent 会话中 normal buffer 与 alternate buffer 的滚轮行为符合预期",
-      "中文输入法候选框/组合文本不再出现在左上角或历史 viewport 位置",
-      "调整窗口大小或从历史恢复后，当前输入位置和可视 viewport 不错位",
-      "vitest、scripts/verify.ps1 与 electron-builder 验证完成或明确记录阻塞"
-    ],
-    "notes": "已回到 upstream/main termwrap 官方主线，只保留 termsize 强制同步、Codex/Agent IME 锚点和 normal buffer 滚轮兜底。最新修正后，wheel 兜底改为 bubble 阶段，避免抢占 xterm 内部 xterm-scrollable-element；IME 改为跟随当前 cursor 行列，而不是固定中线。按用户最新要求，前端已彻底停用 terminal 历史缓存/恢复链路：不再读取 cache:term:full、不再调用 SaveTerminalState，只保留当前会话 term blockfile 的实时 append；为避免初始化阶段丢数据，新增 heldData 顺序回放。"
-  },
-  {
-    "id": "TASK-TERM-002",
-    "title": "终端回归 Smoke 自动化闭环",
-    "status": "passing",
-    "priority": "P1",
-    "scope": [
-      "scripts/smoke-terminal.ps1",
-      ".harness/*"
-    ],
-    "acceptance": [
-      "脚本可启动最新 make\\win-unpacked\\Wave.exe 并连接 Electron CDP",
-      "脚本可静态确认 termwrap.ts 不再包含历史缓存/恢复入口",
-      "脚本可运行态确认 window.term 可达、历史方法为空、serializeAddon 不存在",
-      "脚本可验证 wheel 改变 viewportY，IME textarea 与 cursor 对齐",
-      "脚本输出 JSON 和截图，失败时给出明确原因"
-    ],
-    "notes": "已新增 scripts/smoke-terminal.ps1。首次 smoke 抓到旧 win-unpacked bundle 仍暴露历史方法；重跑 scripts/verify.ps1 与 electron-builder --win dir 后通过。最新结果 JSON 为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-162451.json，截图为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-162451.png；wheel viewportY 127->87，IME topDelta/leftDelta 均为 0。"
-  },
-  {
-    "id": "TASK-TERM-003",
-    "title": "多终端焦点与真实事件路径 Smoke 补强",
-    "status": "in_progress",
-    "priority": "P1",
-    "scope": [
-      "scripts/smoke-terminal.ps1",
-      ".harness/*"
-    ],
-    "acceptance": [
-      "脚本可识别多 terminal block，而不是只验证 window.term",
-      "脚本可断言 active/focused terminal 与 IME helper 所属 terminal 一致",
-      "脚本可区分真实外层 wheel 路径与内部 scrollableElement 路径结果",
-      "split-pane 场景失败时可明确标出焦点归属问题或 wheel 路由问题"
-    ],
-    "notes": "来自批准的方向 A。该任务只扩展 smoke 覆盖范围，不改业务逻辑，目标是稳定复现用户最新截图中的多终端输入框错位与滚轮回归。"
-  },
-  {
-    "id": "TASK-TERM-004",
-    "title": "将 Wheel / IME 修复收口到 xterm 官方扩展点与焦点归属",
-    "status": "in_progress",
-    "priority": "P1",
-    "scope": [
-      "frontend/app/view/term/termwrap.ts",
-      "frontend/app/view/term/termutil.ts",
-      "frontend/app/view/term/termutil.test.ts",
-      ".harness/*"
-    ],
-    "acceptance": [
-      "使用 xterm 官方 wheel hook 处理 normal buffer 滚轮兜底",
-      "只有 active terminal 可重定位 IME helper",
-      "多 terminal split-pane 场景中输入框不串位，滚轮不串 terminal",
-      "vitest、verify、smoke、electron-builder 验证通过"
-    ],
-    "notes": "这是批准方向 A 的第二个闭环任务；需在 TASK-TERM-003 给出更真实复现证据后再改业务逻辑。"
-  }
+    {
+        "id":  "TASK-001",
+        "title":  "飞书入口增强与 Harness 初始化",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "emain/emain-feishu.ts",
+                      "emain/emain-ipc.ts",
+                      "emain/preload.ts",
+                      "frontend/app/view/feishuview/feishuview.tsx",
+                      "frontend/app/view/webview/webview.tsx",
+                      "frontend/app/view/webview/webviewenv.ts",
+                      "frontend/app/block/blockregistry.ts",
+                      "frontend/app/block/blockutil.tsx",
+                      "pkg/wconfig/defaultconfig/widgets.json",
+                      "pkg/wconfig/defaultconfig/settings.json",
+                      "pkg/wconfig/settingsconfig.go",
+                      "frontend/types/custom.d.ts",
+                      "frontend/types/gotypes.d.ts",
+                      "schema/settings.json",
+                      ".harness/*",
+                      "scripts/verify.ps1",
+                      "AGENTS.md",
+                      "CLAUDE.md"
+                  ],
+        "acceptance":  [
+                           "飞书入口支持本地 App 自动发现、配置路径覆盖与网页兜底",
+                           "飞书视图弹出的新窗口继承 persist:feishu 分区",
+                           "用户可见地提供 `Feishu App` / `Feishu Web` 双入口，且 `Feishu Web` 可直接隐藏当前卡片",
+                           "最小验证命令 scripts/verify.ps1 通过",
+                           "仓库具备最小可续跑的 Harness 工件"
+                       ],
+        "notes":  "代码实现与 verify 已完成；剩余阻塞是运行态 smoke 依赖账号态，且本地启动环境还缺少可用的 WCLOUD_ENDPOINT。"
+    },
+    {
+        "id":  "TASK-TERM-001",
+        "title":  "终端滚轮与输入法位置专项修复",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "frontend/app/view/term/termwrap.ts",
+                      "frontend/app/view/term/termutil.ts",
+                      "frontend/app/view/term/fitaddon.ts",
+                      "frontend/app/view/term/osc-handlers.ts",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "普通终端历史可以用鼠标滚轮上下滚动",
+                           "Codex/Agent 会话中 normal buffer 与 alternate buffer 的滚轮行为符合预期",
+                           "中文输入法候选框/组合文本不再出现在左上角或历史 viewport 位置",
+                           "调整窗口大小或从历史恢复后，当前输入位置和可视 viewport 不错位",
+                           "vitest、scripts/verify.ps1 与 electron-builder 验证完成或明确记录阻塞"
+                       ],
+        "notes":  "已回到 upstream/main termwrap 官方主线，只保留 termsize 强制同步、Codex/Agent IME 锚点和 normal buffer 滚轮兜底。最新修正后，wheel 兜底改为 bubble 阶段，避免抢占 xterm 内部 xterm-scrollable-element；IME 改为跟随当前 cursor 行列，而不是固定中线。按用户最新要求，前端已彻底停用 terminal 历史缓存/恢复链路：不再读取 cache:term:full、不再调用 SaveTerminalState，只保留当前会话 term blockfile 的实时 append；为避免初始化阶段丢数据，新增 heldData 顺序回放。"
+    },
+    {
+        "id":  "TASK-TERM-002",
+        "title":  "终端回归 Smoke 自动化闭环",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "scripts/smoke-terminal.ps1",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "脚本可启动最新 make\\win-unpacked\\Wave.exe 并连接 Electron CDP",
+                           "脚本可静态确认 termwrap.ts 不再包含历史缓存/恢复入口",
+                           "脚本可运行态确认 window.term 可达、历史方法为空、serializeAddon 不存在",
+                           "脚本可验证 wheel 改变 viewportY，IME textarea 与 cursor 对齐",
+                           "脚本输出 JSON 和截图，失败时给出明确原因"
+                       ],
+        "notes":  "已新增 scripts/smoke-terminal.ps1。首次 smoke 抓到旧 win-unpacked bundle 仍暴露历史方法；重跑 scripts/verify.ps1 与 electron-builder --win dir 后通过。最新结果 JSON 为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-162451.json，截图为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-162451.png；wheel viewportY 127-\u003e87，IME topDelta/leftDelta 均为 0。"
+    },
+    {
+        "id":  "TASK-TERM-003",
+        "title":  "多终端焦点与真实事件路径 Smoke 补强",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "scripts/smoke-terminal.ps1",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "脚本可识别多 terminal block，而不是只验证 window.term",
+                           "脚本可断言 active/focused terminal 与 IME helper 所属 terminal 一致",
+                           "脚本可区分真实外层 wheel 路径与内部 scrollableElement 路径结果",
+                           "split-pane 场景失败时可明确标出焦点归属问题或 wheel 路由问题"
+                       ],
+        "notes":  "已将多终端 smoke 拆到 scripts/smoke-terminal.runtime.js，并让 scripts/smoke-terminal.ps1 在运行态自动注册多个 TermWrap、必要时用 RpcApi.CreateBlockCommand 创建 splitdown 终端、按 blockId 枚举 DOM/runtime、区分 elementFromPoint 外层 wheel 路径与内部 scrollableElement fallback，并在截图后自动清理新增 block。最新结果为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260421-165710.json / .png：dom terminal=3、known runtime=2、wheel 两个场景均为 ok，但 IME ownership 明确失败为 ime_wrong_terminal，说明多 terminal 下仍有错误 terminal 保留 helper textarea 定位。"
+    },
+    {
+        "id":  "TASK-TERM-004",
+        "title":  "将 Wheel / IME 修复收口到 xterm 官方扩展点与焦点归属",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "frontend/app/view/term/termwrap.ts",
+                      "frontend/app/view/term/termutil.ts",
+                      "frontend/app/view/term/termutil.test.ts",
+                      "scripts/smoke-terminal.ps1",
+                      "scripts/smoke-terminal.runtime.js",
+                      "scripts/smoke-terminal-real-wheel.ps1",
+                      "package.json",
+                      "package-lock.json",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "使用 xterm 官方 wheel hook 处理 normal buffer 滚轮兜底",
+                           "只有 active terminal 可重定位 IME helper",
+                           "多 terminal split-pane 场景中输入框不串位，滚轮不串 terminal",
+                           "vitest、verify、smoke、electron-builder 验证通过"
+                       ],
+        "notes":  "已完成收口：`termwrap.ts` 现在优先使用 xterm `attachCustomWheelEventHandler` 处理 normal buffer wheel，只在 `mouseTrackingMode !== none` 且 normal buffer 时保留一个极窄 capture fallback；IME 侧新增 `TermWrap.liveInstances` 与全局 `imeOwnerBlockId`，只有当前 owner terminal 才允许保留 zIndex=5/6 的 helper override，并在 `focus` / `compositionstart` 时先调用 xterm `_syncTextArea()` 对齐官方 issue #5734 / PR #5759 的修复点。为准确验证本次修复，还补了 `scripts/smoke-terminal.runtime.js` 与 `scripts/smoke-terminal-real-wheel.ps1`：前者覆盖多 terminal/IME ownership，后者用 CDP `Input.dispatchMouseEvent(mouseWheel)` 走真实鼠标滚轮路径。2026-04-21 已将包版本提升到 `2026.4.21-2` 并重新产出 `make\\Wave-win32-x64-2026.4.21-2.exe` / `.zip`；最终验证通过 vitest、`scripts/verify.ps1`、`electron-builder --win dir nsis zip`、`scripts/smoke-terminal.ps1 -KillExistingRepoWave`、`scripts/smoke-terminal-real-wheel.ps1 -KillExistingRepoWave`，最新真实滚轮结果为 D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-real-wheel-20260421-184158.json，2 个 terminal 的 screen-center/screen-right 均为 `ok`。但用户最新反馈显示 Codex 交互态仍可复现“IME 正常、滚轮失效”，说明当前方案只在 normal buffer 路径上成功，尚未覆盖 Codex / alternate buffer / mouse tracking 的真实交互态。"
+    },
+    {
+        "id":  "TASK-TERM-005",
+        "title":  "Codex / alternate buffer 全视图滚轮收口",
+        "status":  "failing",
+        "priority":  "P1",
+        "scope":  [
+                      "frontend/app/view/term/termwrap.ts",
+                      "frontend/app/view/term/termutil.ts",
+                      "frontend/app/view/term/termutil.test.ts",
+                      "scripts/smoke-terminal.runtime.js",
+                      "scripts/smoke-terminal.ps1",
+                      "scripts/smoke-terminal-real-wheel.ps1",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "右侧 Codex pane 在可见输出区域滚轮可用",
+                           "split-pane 场景中只滚动当前 active terminal",
+                           "alternate buffer / mouse tracking 场景不再出现 IME 正常但滚轮失效",
+                           "IME 不回退，smoke 明确覆盖 normal 与 non-normal 路径"
+                       ],
+        "notes":  "该任务源于 2026-04-21 architect review。研究发现当前 wheel 逻辑只覆盖 `normal buffer`：`frontend/app/view/term/termwrap.ts` 在非 normal buffer 时直接返回，而 `scripts/smoke-terminal.runtime.js` 也把 `non-normal-buffer` 当作失败而非覆盖目标；同时 `termutil.ts` 仍保留 alternate buffer 的 wheel fallback 设计但未接入执行路径。2026-04-22 用户连续手测再次明确：中间 Codex pane 仍会出现“IME 位置错误、滚轮消失、输出过程中不可滚、只能看到最新几行”。因此当前 `passing` 结论已被真实场景否定；现有 smoke 仍缺少 `输出进行中`、`中间 Codex pane 实际命中区域`、`实时 active terminal / IME owner 漂移` 这几条关键验证，任务状态回退为 `failing`，并拆出 `TASK-TERM-006` 先做诊断闭环，再决定是否继续改业务逻辑。"
+    },
+    {
+        "id":  "TASK-TERM-006",
+        "title":  "Codex pane 持续输出滚动 / 命中区域 / IME ownership 诊断闭环",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "scripts/smoke-terminal.runtime.js",
+                      "scripts/smoke-terminal.ps1",
+                      "scripts/smoke-terminal-real-wheel.ps1",
+                      "scripts/*diagnostic*.ps1",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "可稳定记录中间 Codex pane 在持续输出期间的真实命中元素与 active terminal",
+                           "可区分 wheel 未命中、命中后被 xterm/app 消费、以及无 scrollback 三种失败路径",
+                           "可确认 IME helper / composition-view 在多 pane + 持续输出期间是否 owner 漂移",
+                           "诊断结果可直接指导下一包最小业务修复，不再继续盲改"
+                       ],
+        "notes":  "该任务由 2026-04-22 用户批准 architect 方向 A 后创建。任务目标不是继续修补 `termwrap.ts`，而是先把现有 smoke 的盲区补上：覆盖“中间 Codex pane + 持续输出 + 实际 elementFromPoint 命中区域 + active terminal / IME owner 漂移”。2026-04-22 最新诊断已补进 `scripts/smoke-terminal.runtime.js` 与 `scripts/smoke-terminal-real-wheel.ps1`：在 3-pane 几何中间 terminal 的纯 xterm 场景下，`持续输出 + synthetic wheel` 与 `持续输出 + CDP real mouseWheel` 均通过，命中链路稳定落在目标 terminal，自身不会串滚到其他 pane；对应结果分别为 `D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-smoke-20260422-143509.json` 与 `D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-real-wheel-20260422-143832.json`。同时已新增 `scripts/smoke-terminal-codex-pane.ps1`，可直接 attach 到 Wave 实例并在中间 pane 拉起真实 `codex`；`terminal-codex-pane-20260422-145534.json` 已确认真实 Codex pane 命中中间 terminal，`shouldAnchorIme=true`、`imeOwnerBlockId` 对齐目标 pane、命中元素也落在目标 pane。进一步用 `codex --no-alt-screen \"List the numbers 1 through 300, one per line, then stop.\"` 做真实长输出诊断后，`terminal-codex-pane-20260422-150151.json` 显示：即使在真实 Codex 长输出下，pane 仍为 `bufferType=normal`、`mouseTrackingMode=none`，但 `baseY=0`、`viewportY=0`、`length=73` 始终不增长；而同一份 JSON 附带的 `debugTermTail` 明确显示了大量 `ESC[K`、`ESC[H`、`?2026h/l` 等全屏重绘序列。这说明真实 Codex 在当前 Wave 路径里进入的是“normal buffer + 全屏重绘但不形成 scrollback”的状态。随后又补做了两项关键对照：一是直接向 Wave 中的 xterm 发送 `CSI 6n`，已确认 DSR/光标位置响应正常，不是 CPR 缺失导致的退化；二是直接向 Codex 发送 `ESC[5~ / ESC[6~`，已确认 Codex 会在当前视口内做内部翻页。至此，`TASK-TERM-006` 的诊断目标已完成，并直接导出下一包最小业务修复 `TASK-TERM-007`。"
+    },
+    {
+        "id":  "TASK-TERM-007",
+        "title":  "Codex 无 scrollback 时滚轮转内部翻页",
+        "status":  "passing",
+        "priority":  "P1",
+        "scope":  [
+                      "frontend/app/view/term/termwrap.ts",
+                      "frontend/app/view/term/termutil.ts",
+                      "frontend/app/view/term/termutil.test.ts",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "Codex normal-buffer 且无 native scrollback 时，滚轮可查看更早/更后输出",
+                           "普通 shell terminal 仍保持现有 normal-buffer scrollback 行为",
+                           "IME 锚点逻辑不因 wheel fallback 回退",
+                           "自动化证据可证明真实 wheel 事件已触发 Codex 内部翻页"
+                       ],
+        "notes":  "该任务承接 `TASK-TERM-006` 的诊断结论：问题不再是 wheel 命中或 IME owner，而是 Codex 在 Wave/xterm 中进入了 `normal buffer + full-screen repaint + no native scrollback`。为此，先新增 `shouldRouteAgentTuiWheelToInput()`，在 `agent TUI + normal buffer + mouseTrackingMode=none + baseY\u003c=0 + length\u003c=rows` 成立时，不再调用 `terminal.scrollLines()`，而是把滚轮翻译为 `PageUp/PageDown` 序列发送给 Codex。随后又根据当前真实用户窗口继续收口：1）直接从 Wave 子进程环境块读取 `WAVETERM_JWT`，用 `wsh termscrollback` 证明中间 pane 真实只有一屏量级内容、没有 native scrollback；2）把 `connectElem` 上的 wheel 兜底改成 bubble fallback，不再只在 `mouseTrackingMode !== none` 时才兜底；3）给 `isAgentTuiActive()` 加上 latched 状态与 `?2026h/l` 重绘信号，避免输出过程中 agent 判定闪断；4）IME 不再自己二次按 `cursorRow/cursorCol` 计算坐标，而是复用 xterm `_syncTextArea()` 已算好的 `top/left/width/height`。技术 smoke 证明这条路径能工作，但用户最新截图进一步暴露出一个未被该任务 acceptance 覆盖的 UX 回归：wheel 后 terminal 被 `.wave-agent-scrollback-overlay` 形式的 fake text overlay 覆盖，导致字体、排版和 live terminal chrome 看起来像切换到另一套渲染。该回归已被拆分到 `TASK-TERM-008` 单独收口。"
+    },
+    {
+        "id":  "TASK-TERM-008",
+        "title":  "移除 fake scrollback overlay，恢复官方终端渲染路径",
+        "status":  "in_progress",
+        "priority":  "P1",
+        "scope":  [
+                      "frontend/app/view/term/termwrap.ts",
+                      "frontend/app/view/term/termutil.ts",
+                      "frontend/app/view/term/termutil.test.ts",
+                      ".harness/*"
+                  ],
+        "acceptance":  [
+                           "Codex pane 滚轮后不再创建 `.wave-agent-scrollback-overlay` 或其他 fake scrollback DOM",
+                           "滚轮前后字体、排版、底部状态条与 live terminal chrome 不切换到另一套渲染",
+                           "无 native scrollback 场景下仍至少保留 Codex 自身 `PageUp/PageDown` 查看更早内容的能力",
+                           "普通 shell scrollback 与 IME 修复不回退"
+                       ],
+        "notes":  "已收口到同一个 live xterm。最新续修将隐藏 preview terminal 改为保留 MaxTermScrollback，并从 preview buffer 的真实历史区注入 live xterm，解决持续输出早期 baseY 不增长、滚轮无处可滚的问题；wheel fallback 已从 capture 收回到 bubble。最新证据 terminal-codex-pane-20260423-173615.json：baseY=120、historyLen=120、DOM wheel 后 viewportY=120-\u003e80。默认 make\\\\win-unpacked\\\\Wave.exe SHA256=6FB0D425F28715A9F16115085A56A4B7587EA21ED5A9B9471A7D52B11FFF8154。 2026-04-23 19:05：继续收口 transcript 污染后，单轮 Codex 长输出 smoke 已恢复稳定 native scrollback（`terminal-codex-pane-20260423-190056.json` 中 `baseY=24`、wheel `viewportY=24-\u003e0`），且 50 行场景下 history 仅保留 prompt+回答，不再爆涨。剩余阻塞是 Codex TUI 第二轮 prompt 的自动化提交路径仍不稳定，故状态先收紧为 in_progress，等待用户在最新默认包上手工确认第二轮回答。 2026-04-23 19:26：继续按真实 smoke 收根因。先收紧 transcript 激活：PowerShell/PSReadLine 仅在命令行编辑 `codex --...` 时不再被误判为 Codex TUI；再过滤 Codex 默认 suggestion `Explain this codebase`，避免它在 repaint 合并时被反复注入成历史正文。最新运行态证据 `D:\\files\\AI_output\\waveterm-terminal-smoke\\terminal-codex-pane-20260423-192604.json`：`baseY=24`、`agentTuiHistoryLength=81`（仅 prompt + 80 行回答）、wheel `viewportY=24-\u003e0`。默认交付包 `make\\\\win-unpacked\\\\Wave.exe` 当前 SHA256=`A7BCEFA722BEED0C0682A8AAAB685967B478212466AE4C79EAC4FC704CE80E3E`。剩余阻塞仍是第二轮回答的自动化提交流程。"
+    }
 ]

@@ -227,6 +227,12 @@ $makeDir = Join-Path $repoRoot "make"
 $exePath = Join-Path $makeDir "win-unpacked\Wave.exe"
 $termwrapPath = Join-Path $repoRoot "frontend\app\view\term\termwrap.ts"
 $startedProcess = $null
+$staticCheck = $null
+$exeItem = $null
+$hash = $null
+$target = $null
+$runtime = $null
+$screenshot = $null
 
 if (!(Test-Path -LiteralPath $exePath)) {
     throw "Wave executable not found: $exePath. Run electron-builder --win dir first."
@@ -265,127 +271,42 @@ try {
     $target = Wait-CdpTarget -CdpPort $Port -TimeoutSec $StartupTimeoutSec
     Write-Step "connected target title='$($target.title)' url='$($target.url)'"
 
-    $runtimeExpression = @'
-(async () => {
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const started = Date.now();
-  while (!window.term && Date.now() - started < 15000) {
-    await wait(250);
-  }
-  const summary = {
-    href: location.href,
-    title: document.title,
-    hasTerm: !!window.term,
-    waitedMs: Date.now() - started
-  };
-  if (!window.term) {
-    return summary;
-  }
-
-  const termWrap = window.term;
-  const terminal = termWrap.terminal;
-  const activeBuffer = terminal.buffer.active;
-  const historyMethodsPresent = [
-    'loadInitialTerminalData',
-    'processAndCacheData',
-    'runProcessIdleTimeout',
-    'persistTerminalState'
-  ].filter((name) => typeof termWrap[name] === 'function');
-
-  summary.term = {
-    loaded: termWrap.loaded,
-    rows: terminal.rows,
-    cols: terminal.cols,
-    bufferType: activeBuffer.type,
-    cursorX: activeBuffer.cursorX,
-    cursorY: activeBuffer.cursorY,
-    viewportY: activeBuffer.viewportY,
-    baseY: activeBuffer.baseY,
-    length: activeBuffer.length,
-    historyMethodsPresent,
-    hasSerializeAddon: Object.prototype.hasOwnProperty.call(termWrap, 'serializeAddon'),
-    hasPtyOffset: Object.prototype.hasOwnProperty.call(termWrap, 'ptyOffset'),
-    heldDataLength: Array.isArray(termWrap.heldData) ? termWrap.heldData.length : null
-  };
-
-  const output = Array.from({ length: 180 }, (_, idx) => `smoke-scroll-${idx}`).join('\r\n') + '\r\n';
-  await new Promise((resolve) => terminal.write(output, resolve));
-  terminal.scrollToBottom();
-  await wait(80);
-
-  const beforeViewportY = terminal.buffer.active.viewportY;
-  const scrollTarget =
-    terminal._core?._viewport?._scrollableElement?._domNode ||
-    document.querySelector('.xterm-scrollable-element') ||
-    document.querySelector('.xterm-screen') ||
-    terminal.element;
-  const wheelEvent = new WheelEvent('wheel', {
-    deltaY: -720,
-    deltaMode: 0,
-    bubbles: true,
-    cancelable: true
-  });
-  scrollTarget?.dispatchEvent(wheelEvent);
-  await wait(120);
-  const afterViewportY = terminal.buffer.active.viewportY;
-  summary.wheel = {
-    targetClass: scrollTarget?.className || null,
-    beforeViewportY,
-    afterViewportY,
-    changed: beforeViewportY !== afterViewportY,
-    defaultPrevented: wheelEvent.defaultPrevented
-  };
-
-  const originalShouldAnchor = termWrap.shouldAnchorImeForAgentTui;
-  let forcedImeSync = false;
-  try {
-    if (typeof termWrap.syncImePositionForAgentTui === 'function') {
-      termWrap.shouldAnchorImeForAgentTui = () => true;
-      termWrap.syncImePositionForAgentTui();
-      forcedImeSync = true;
-      await wait(80);
-    }
-  } finally {
-    termWrap.shouldAnchorImeForAgentTui = originalShouldAnchor;
-  }
-
-  const textarea = terminal.textarea;
-  const compositionView = document.querySelector('.composition-view.active');
-  const cell = terminal._core?._renderService?.dimensions?.css?.cell || {};
-  const cellHeight = cell.height || 16;
-  const cellWidth = cell.width || 8;
-  const cursorX = terminal.buffer.active.cursorX || 0;
-  const cursorY = terminal.buffer.active.cursorY || 0;
-  const expectedTop = cursorY * cellHeight;
-  const expectedLeft = cursorX * cellWidth;
-  const actualTop = Number.parseFloat(textarea?.style?.top || 'NaN');
-  const actualLeft = Number.parseFloat(textarea?.style?.left || 'NaN');
-  const topDelta = Number.isFinite(actualTop) ? Math.abs(actualTop - expectedTop) : null;
-  const leftDelta = Number.isFinite(actualLeft) ? Math.abs(actualLeft - expectedLeft) : null;
-
-  summary.ime = {
-    forcedImeSync,
-    cursorX,
-    cursorY,
-    cellHeight,
-    cellWidth,
-    expectedTop,
-    expectedLeft,
-    textareaTop: textarea?.style?.top || null,
-    textareaLeft: textarea?.style?.left || null,
-    compositionTop: compositionView?.style?.top || null,
-    compositionLeft: compositionView?.style?.left || null,
-    topDelta,
-    leftDelta,
-    aligned: topDelta !== null && leftDelta !== null && topDelta <= 1 && leftDelta <= 1
-  };
-
-  return summary;
-})()
-'@
+    $runtimeExpression = Get-Content -Raw -Encoding UTF8 -Path (Join-Path $PSScriptRoot "smoke-terminal.runtime.js")
 
     $runtime = Invoke-CdpEvaluate -WebSocketUrl $target.webSocketDebuggerUrl -Expression $runtimeExpression
     $screenshot = Save-CdpScreenshot -WebSocketUrl $target.webSocketDebuggerUrl -Path $screenshotPath
+
+    $cleanupBlockIds = @()
+    if ($runtime.cleanup) {
+        if ($runtime.cleanup.createdBlockIds) {
+            $cleanupBlockIds = @($runtime.cleanup.createdBlockIds)
+        } elseif ($runtime.cleanup.createdBlockId) {
+            $cleanupBlockIds = @($runtime.cleanup.createdBlockId)
+        }
+    }
+    if ($runtime.cleanup -and $runtime.cleanup.needsCleanup -and $cleanupBlockIds.Count -gt 0) {
+        $cleanupBlockIdsLiteral = $cleanupBlockIds | ConvertTo-Json -Compress
+        $cleanupExpression = @"
+(async () => {
+  const blockIds = $cleanupBlockIdsLiteral;
+  if (!Array.isArray(blockIds) || blockIds.length === 0 || !window.RpcApi || !window.TabRpcClient) {
+    return { cleaned: false, blockIds, reason: 'missing blockIds, RpcApi or TabRpcClient' };
+  }
+  const results = [];
+  for (const blockId of blockIds.slice().reverse()) {
+    try {
+      await window.RpcApi.DeleteBlockCommand(window.TabRpcClient, { blockid: blockId });
+      results.push({ blockId, cleaned: true });
+    } catch (error) {
+      results.push({ blockId, cleaned: false, error: error?.message ?? String(error) });
+    }
+  }
+  return { cleaned: results.every((item) => item.cleaned), blockIds, results };
+})()
+"@
+        $cleanupResult = Invoke-CdpEvaluate -WebSocketUrl $target.webSocketDebuggerUrl -Expression $cleanupExpression
+        $runtime.cleanup | Add-Member -NotePropertyName result -NotePropertyValue $cleanupResult -Force
+    }
 
     if ($RequireTerminal -and !$runtime.hasTerm) {
         throw "window.term not found. Open a terminal block first, or rerun with -RequireTerminal:`$false."
@@ -397,11 +318,22 @@ try {
         if ($runtime.term.hasSerializeAddon) {
             throw "runtime still exposes serializeAddon"
         }
-        if (!$runtime.wheel.changed) {
-            throw "wheel smoke did not change viewportY"
+        if ($runtime.terminals.Count -lt 2 -or $runtime.knownTerminalCount -lt 2) {
+            throw "multi-terminal smoke did not stabilize: dom=$($runtime.terminals.Count) known=$($runtime.knownTerminalCount) diagnostics=$($runtime.diagnostics -join ', ')"
         }
-        if (!$runtime.ime.aligned) {
-            throw "IME textarea is not aligned with cursor"
+        if (!$runtime.wheel.allPassed) {
+            $wheelFailure = @($runtime.wheel.scenarios | Where-Object { -not $_.pass }) | Select-Object -First 1
+            if ($null -ne $wheelFailure) {
+                throw "wheel smoke failed for block $($wheelFailure.targetBlockId): $($wheelFailure.diagnosis)"
+            }
+            throw "wheel smoke failed: $($runtime.wheel.diagnoses -join ', ')"
+        }
+        if (!$runtime.ime.allPassed) {
+            $imeFailure = @($runtime.ime.scenarios | Where-Object { -not $_.pass }) | Select-Object -First 1
+            if ($null -ne $imeFailure) {
+                throw "IME ownership smoke failed for block $($imeFailure.targetBlockId): $($imeFailure.diagnosis)"
+            }
+            throw "IME ownership smoke failed: $($runtime.ime.diagnoses -join ', ')"
         }
     }
 
@@ -436,13 +368,38 @@ try {
         status = "failing"
         timestamp = (Get-Date).ToString("o")
         repoRoot = $repoRoot
-        executable = $exePath
-        cdpPort = $Port
+        executable = if ($exeItem) {
+            [ordered]@{
+                path = $exeItem.FullName
+                lastWriteTime = $exeItem.LastWriteTime.ToString("o")
+                length = $exeItem.Length
+                sha256 = $hash.Hash
+            }
+        } else {
+            $exePath
+        }
+        cdp = if ($target) {
+            [ordered]@{
+                port = $Port
+                targetTitle = $target.title
+                targetUrl = $target.url
+            }
+        } else {
+            [ordered]@{
+                port = $Port
+            }
+        }
+        staticCheck = $staticCheck
+        runtime = $runtime
+        screenshot = $screenshot
         error = $_.Exception.Message
     }
-    $failure | ConvertTo-Json -Depth 20 | Set-Content -Path $resultPath -Encoding UTF8
+    $failure | ConvertTo-Json -Depth 100 | Set-Content -Path $resultPath -Encoding UTF8
     Write-Step "FAIL: $($_.Exception.Message)"
     Write-Step "result: $resultPath"
+    if ($screenshot) {
+        Write-Step "screenshot: $screenshot"
+    }
     throw
 } finally {
     if (!$KeepApp) {

@@ -16,7 +16,6 @@ export function trimTerminalSelection(text: string): string {
         .map((line) => line.trimEnd())
         .join("\n");
 }
-
 export function normalizeCursorStyle(cursorStyle: string): TermTypes.Terminal["options"]["cursorStyle"] {
     if (cursorStyle === "underline" || cursorStyle === "bar") {
         return cursorStyle;
@@ -443,18 +442,263 @@ export function shouldHandleTerminalWheel(defaultPrevented: boolean, activeBuffe
     if (defaultPrevented) {
         return false;
     }
+    return activeBufferType === "normal";
+}
+
+const AgentTuiCommandRegex = /^(codex|claude|opencode|aider|gemini|qwen)\b/i;
+const AgentTuiStrongMarkerRegex = /\b(OpenAI Codex|Claude Code|gpt-\d|tokens left|esc to interrupt)\b/i;
+
+export function normalizeAgentCommand(command: string | null | undefined): string {
+    if (!command) {
+        return "";
+    }
+    let normalized = command.trim();
+    normalized = normalized.replace(/^env\s+/, "");
+    normalized = normalized.replace(/^(?:\w+=(?:"[^"]*"|'[^']*'|\S+)\s+)*/, "");
+    return normalized;
+}
+
+export function isAgentTuiCommand(command: string | null | undefined): boolean {
+    return AgentTuiCommandRegex.test(normalizeAgentCommand(command));
+}
+
+export function hasAgentTuiStrongMarker(text: string | null | undefined): boolean {
+    if (!text) {
+        return false;
+    }
+    return AgentTuiStrongMarkerRegex.test(text) || /\x1b\[\?2026[hl]/.test(text);
+}
+
+export function shouldPrimeAgentTuiTranscriptCapture({
+    activeBufferType,
+    mouseTrackingMode,
+    shellState,
+    lastCommand,
+    dataText,
+}: {
+    activeBufferType: string | undefined;
+    mouseTrackingMode: string | undefined;
+    shellState: string | null | undefined;
+    lastCommand: string | null | undefined;
+    dataText: string;
+}): boolean {
+    if (activeBufferType !== "normal" || mouseTrackingMode !== "none") {
+        return false;
+    }
+    if (shellState === "running-command" && isAgentTuiCommand(lastCommand)) {
+        return true;
+    }
+    return hasAgentTuiStrongMarker(dataText);
+}
+
+function linesEqual(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) {
+        return false;
+    }
+    for (let index = 0; index < left.length; index++) {
+        if (left[index] !== right[index]) {
+            return false;
+        }
+    }
     return true;
 }
 
-const AlternateWheelLinesPerPage = 6;
-
-export function getAlternateWheelInputSequence(lineDelta: number): string {
-    if (!Number.isFinite(lineDelta) || lineDelta === 0) {
-        return "";
+function findSuffixPrefixOverlap(left: string[], right: string[]): number {
+    const maxOverlap = Math.min(left.length, right.length);
+    for (let candidate = maxOverlap; candidate > 0; candidate--) {
+        if (linesEqual(left.slice(left.length - candidate), right.slice(0, candidate))) {
+            return candidate;
+        }
     }
-    const pageCount = Math.max(1, Math.floor(Math.abs(lineDelta) / AlternateWheelLinesPerPage));
-    const pageSeq = lineDelta < 0 ? "\x1b[5~" : "\x1b[6~";
-    return pageSeq.repeat(pageCount);
+    return 0;
+}
+
+export function mergeOverlappingLines(history: string[], snapshot: string[], maxLines = DefaultTermScrollback): string[] {
+    if (snapshot.length === 0) {
+        return history;
+    }
+    if (history.length === 0) {
+        return snapshot.slice(-maxLines);
+    }
+    if (snapshot.length <= history.length && linesEqual(history.slice(history.length - snapshot.length), snapshot)) {
+        return history;
+    }
+    const overlap = findSuffixPrefixOverlap(history, snapshot);
+    const merged = overlap > 0 ? history.concat(snapshot.slice(overlap)) : history.concat(snapshot);
+    return merged.slice(-maxLines);
+}
+
+function findSubsequenceIndex(lines: string[], candidate: string[]): number {
+    if (candidate.length === 0 || candidate.length > lines.length) {
+        return -1;
+    }
+    for (let index = lines.length - candidate.length; index >= 0; index--) {
+        if (linesEqual(lines.slice(index, index + candidate.length), candidate)) {
+            return index;
+        }
+    }
+    return -1;
+}
+
+function findHistoryPrefixOverlap(history: string[], snapshot: string[]): { index: number; overlap: number } | null {
+    const maxOverlap = Math.min(history.length, snapshot.length);
+    const minOverlap = Math.min(maxOverlap, Math.max(1, Math.min(8, Math.ceil(snapshot.length / 3))));
+    for (let overlap = maxOverlap; overlap >= minOverlap; overlap--) {
+        const index = findSubsequenceIndex(history, snapshot.slice(0, overlap));
+        if (index >= 0) {
+            return { index, overlap };
+        }
+    }
+    return null;
+}
+
+export function reconcileAgentTuiSnapshotHistory(
+    history: string[],
+    injectedLineCount: number,
+    visibleSnapshot: string[],
+    maxLines = DefaultTermScrollback
+): { history: string[]; injectedLineCount: number; pendingLines: string[] } {
+    if (visibleSnapshot.length === 0) {
+        return { history, injectedLineCount, pendingLines: [] };
+    }
+
+    let mergedHistory = history;
+    let visibleStartIndex = findSubsequenceIndex(history, visibleSnapshot);
+    if (visibleStartIndex < 0) {
+        const overlap = findSuffixPrefixOverlap(history, visibleSnapshot);
+        if (overlap > 0) {
+            visibleStartIndex = history.length - overlap;
+            mergedHistory = history.concat(visibleSnapshot.slice(overlap));
+        } else {
+            const anchoredOverlap = findHistoryPrefixOverlap(history, visibleSnapshot);
+            if (anchoredOverlap != null) {
+                visibleStartIndex = anchoredOverlap.index;
+                mergedHistory = history.concat(visibleSnapshot.slice(anchoredOverlap.overlap));
+            } else {
+                visibleStartIndex = history.length;
+                mergedHistory = history.concat(visibleSnapshot);
+            }
+        }
+    }
+
+    const trimmedLineCount = Math.max(0, mergedHistory.length - maxLines);
+    if (trimmedLineCount > 0) {
+        mergedHistory = mergedHistory.slice(trimmedLineCount);
+        visibleStartIndex = Math.max(0, visibleStartIndex - trimmedLineCount);
+        injectedLineCount = Math.max(0, injectedLineCount - trimmedLineCount);
+    }
+
+    const safeInjectedLineCount = Math.max(0, Math.min(injectedLineCount, mergedHistory.length));
+    const targetInjectedLineCount = Math.max(0, Math.min(visibleStartIndex, mergedHistory.length));
+    const pendingLines =
+        targetInjectedLineCount > safeInjectedLineCount
+            ? mergedHistory.slice(safeInjectedLineCount, targetInjectedLineCount)
+            : [];
+
+    return {
+        history: mergedHistory,
+        injectedLineCount: Math.max(safeInjectedLineCount, targetInjectedLineCount),
+        pendingLines,
+    };
+}
+
+export function extractDroppedPrefixLines(previousSnapshot: string[], nextSnapshot: string[]): string[] {
+    if (previousSnapshot.length === 0 || nextSnapshot.length === 0) {
+        return [];
+    }
+    const overlap = findSuffixPrefixOverlap(previousSnapshot, nextSnapshot);
+    if (overlap <= 0) {
+        return [];
+    }
+    return previousSnapshot.slice(0, previousSnapshot.length - overlap);
+}
+
+export function appendDroppedPrefixLines(
+    history: string[],
+    previousSnapshot: string[],
+    nextSnapshot: string[],
+    maxLines = DefaultTermScrollback
+): { history: string[]; pendingLines: string[] } {
+    const droppedPrefix = extractDroppedPrefixLines(previousSnapshot, nextSnapshot);
+    if (droppedPrefix.length === 0) {
+        return { history, pendingLines: [] };
+    }
+    const overlap = findSuffixPrefixOverlap(history, droppedPrefix);
+    const pendingLines = droppedPrefix.slice(overlap);
+    if (pendingLines.length === 0) {
+        return { history, pendingLines };
+    }
+    return {
+        history: history.concat(pendingLines).slice(-maxLines),
+        pendingLines,
+    };
+}
+
+export function extractAppendedSuffixLines(previousSnapshot: string[], nextSnapshot: string[]): string[] {
+    if (nextSnapshot.length === 0) {
+        return [];
+    }
+    if (previousSnapshot.length === 0) {
+        return nextSnapshot;
+    }
+    const overlap = findSuffixPrefixOverlap(previousSnapshot, nextSnapshot);
+    if (overlap <= 0) {
+        return [];
+    }
+    return nextSnapshot.slice(overlap);
+}
+
+export function extractAgentTuiHistoryLines(lines: string[]): string[] {
+    const historyLines: string[] = [];
+    for (const line of lines) {
+        const trimmedEnd = line.trimEnd();
+        const trimmed = trimmedEnd.trim();
+        if (
+            trimmed === "" ||
+            /^\u203a\s*Use \/skills/i.test(trimmed) ||
+            /^Tip:/i.test(trimmed) ||
+            /^•\s*Working\b/i.test(trimmed) ||
+            /^gpt-[\w.-]+/i.test(trimmed) ||
+            /tokens left/i.test(trimmed) ||
+            /esc to interrupt/i.test(trimmed) ||
+            /Update available/i.test(trimmed) ||
+            /npm install -g @openai\/codex/i.test(trimmed) ||
+            /github\.com\/openai\/codex\/releases/i.test(trimmed) ||
+            /See full release notes/i.test(trimmed) ||
+            /^OpenAI Codex/i.test(trimmed) ||
+            />_\s*OpenAI Codex/i.test(trimmed) ||
+            />\s*codex\b/i.test(trimmed) ||
+            /\bcodex --no-alt-screen\b/i.test(trimmed) ||
+            /\bmodel:\s+/i.test(trimmed) ||
+            /\bdirectory:\s+/i.test(trimmed) ||
+            /^╭[─\s]+╮$/.test(trimmed) ||
+            /^╰[─\s]+╯$/.test(trimmed) ||
+            /^│\s*│$/.test(trimmed) ||
+            /^Windows PowerShell$/i.test(trimmed) ||
+            /^版权所有/i.test(trimmed) ||
+            /PowerShell https:\/\/aka\.ms\/pscore6/i.test(trimmed) ||
+            /^Use \/skills to list available skills$/i.test(trimmed) ||
+            /^Find and fix a bug in @filename$/i.test(trimmed) ||
+            /^Write tests for @filename$/i.test(trimmed) ||
+            /^Summarize recent commits$/i.test(trimmed) ||
+            /^Run \/review on my current changes$/i.test(trimmed) ||
+            /^Improve documentation in @filename$/i.test(trimmed) ||
+            /^Implement \{feature\}$/i.test(trimmed) ||
+            /^Explain this codebase$/i.test(trimmed) ||
+            /^›\s*(?:Use \/skills|Explain this codebase|Find and fix a bug in @filename|Write tests for @filename|Summarize recent commits|Run \/review on my current changes|Improve documentation in @filename|Implement \{feature\})$/i.test(trimmed) ||
+            /^PS [A-Z]:\\/i.test(trimmed)
+        ) {
+            continue;
+        }
+        historyLines.push(trimmedEnd);
+    }
+    while (historyLines.length > 0 && historyLines[0] === '') {
+        historyLines.shift();
+    }
+    while (historyLines.length > 0 && historyLines[historyLines.length - 1] === '') {
+        historyLines.pop();
+    }
+    return historyLines;
 }
 
 export function getWheelLineDelta(deltaY: number, deltaMode: number, cellHeight: number, rows: number): number {
