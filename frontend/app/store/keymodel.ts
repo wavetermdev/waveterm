@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { profileToBlockMeta } from "@/app/tab/tabprofiles";
 import { FocusManager } from "@/app/store/focusManager";
 import {
     atoms,
@@ -534,7 +535,10 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:t", () => {
-        createTab();
+        const fullConfig = globalStore.get(atoms.fullConfigAtom);
+        const defaultProfileKey = globalStore.get(getSettingsKeyAtom("tab:profile"));
+        const profile = defaultProfileKey && fullConfig?.profiles ? fullConfig.profiles[defaultProfileKey] : null;
+        createTab(profileToBlockMeta(profile));
         return true;
     });
     globalKeyMap.set("Cmd:w", () => {

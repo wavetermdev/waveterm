@@ -13,6 +13,7 @@ import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { buildTabBarContextMenu, buildTabContextMenu } from "./tabcontextmenu";
+import { getProfileDisplayName, getSortedProfiles, profileToBlockMeta } from "./tabprofiles";
 import { UpdateStatusBanner } from "./updatebanner";
 import { VTab, VTabItem } from "./vtab";
 import { VTabBarEnv } from "./vtabbarenv";
@@ -189,6 +190,8 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
     const activeTabId = useAtomValue(env.atoms.staticTabId);
     const reinitVersion = useAtomValue(env.atoms.reinitVersion);
     const documentHasFocus = useAtomValue(env.atoms.documentHasFocus);
+    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
+    const defaultProfileKey = useAtomValue(env.getSettingsKeyAtom("tab:profile"));
     const tabIds = workspace?.tabids ?? [];
 
     const [orderedTabIds, setOrderedTabIds] = useState<string[]>(tabIds);
@@ -422,7 +425,26 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
             <button
                 type="button"
                 className="group relative flex h-9 w-full shrink-0 cursor-pointer items-center gap-1.5 pl-3 pr-3 text-xs text-secondary/60 transition-colors hover:text-primary select-none whitespace-nowrap"
-                onClick={() => env.electron.createTab()}
+                onClick={() => {
+                    const profiles = fullConfig?.profiles;
+                    const profile = defaultProfileKey && profiles ? profiles[defaultProfileKey] : null;
+                    env.electron.createTab(profileToBlockMeta(profile));
+                }}
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    const profiles = fullConfig?.profiles;
+                    const sorted = getSortedProfiles(profiles);
+                    const menuItems: ContextMenuItem[] = sorted.map(({ key, profile }) => ({
+                        label: getProfileDisplayName(key, profile),
+                        click: () => env.electron.createTab(profileToBlockMeta(profile)),
+                    }));
+                    if (menuItems.length > 0) menuItems.push({ type: "separator" });
+                    menuItems.push({
+                        label: "Edit Profiles",
+                        click: () => env.electron.createTab({ view: "waveconfig", file: "profiles.json" }),
+                    });
+                    env.showContextMenu(menuItems, e);
+                }}
                 onMouseEnter={() => setIsNewTabHovered(true)}
                 onMouseLeave={() => setIsNewTabHovered(false)}
                 aria-label="New Tab"

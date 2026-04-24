@@ -15,6 +15,7 @@ import { debounce } from "throttle-debounce";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { TabBarEnv } from "./tabbarenv";
+import { getProfileDisplayName, getSortedProfiles, profileToBlockMeta } from "./tabprofiles";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 
@@ -134,6 +135,8 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
     const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
     const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
+    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
+    const defaultProfileKey = useAtomValue(env.getSettingsKeyAtom("tab:profile"));
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -530,13 +533,35 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         []
     );
 
-    const handleAddTab = () => {
-        env.electron.createTab();
+    const handleAddTab = (blockMeta?: MetaType) => {
+        env.electron.createTab(blockMeta);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
-
         updateScrollDebounced();
-
         setNewTabIdDebounced(null);
+    };
+
+    const handleAddTabWithDefaultProfile = () => {
+        const profiles = fullConfig?.profiles;
+        const profile = defaultProfileKey && profiles ? profiles[defaultProfileKey] : null;
+        handleAddTab(profileToBlockMeta(profile));
+    };
+
+    const handleAddTabContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const profiles = fullConfig?.profiles;
+        const sorted = getSortedProfiles(profiles);
+        const menuItems: ContextMenuItem[] = sorted.map(({ key, profile }) => ({
+            label: getProfileDisplayName(key, profile),
+            click: () => handleAddTab(profileToBlockMeta(profile)),
+        }));
+        if (menuItems.length > 0) {
+            menuItems.push({ type: "separator" });
+        }
+        menuItems.push({
+            label: "Edit Profiles",
+            click: () => handleAddTab({ view: "waveconfig", file: "profiles.json" }),
+        });
+        env.showContextMenu(menuItems, e);
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
@@ -660,7 +685,8 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                 title="Add Tab"
                 className={`flex h-[22px] px-2 mb-1 mx-1 items-center rounded-md box-border cursor-pointer hover:bg-hoverbg transition-colors text-[12px] text-secondary hover:text-primary${noTabs ? " invisible" : ""}`}
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-                onClick={handleAddTab}
+                onClick={handleAddTabWithDefaultProfile}
+                onContextMenu={handleAddTabContextMenu}
             >
                 <i className="fa fa-solid fa-plus" />
             </button>

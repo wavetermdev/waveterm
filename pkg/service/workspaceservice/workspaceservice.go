@@ -121,7 +121,7 @@ func (svc *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 
 func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames:   []string{"workspaceId", "tabName", "activateTab"},
+		ArgNames:   []string{"workspaceId", "tabName", "activateTab", "blockMeta"},
 		ReturnDesc: "tabId",
 	}
 }
@@ -146,11 +146,11 @@ func (svc *WorkspaceService) GetIcons() []string {
 	return wcore.WorkspaceIcons[:]
 }
 
-func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
+func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool, blockMeta waveobj.MetaMapType) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, false)
+	tabId, err := wcore.CreateTab(ctx, workspaceId, tabName, activateTab, false, blockMeta)
 	if err != nil {
 		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}

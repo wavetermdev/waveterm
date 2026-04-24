@@ -657,8 +657,8 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     return rtn;
 }
 
-function createTab() {
-    getApi().createTab();
+function createTab(blockMeta?: MetaType) {
+    getApi().createTab(blockMeta);
 }
 
 function setActiveTab(tabId: string) {

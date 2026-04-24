@@ -241,6 +241,9 @@
         "tab:background": {
           "type": "string"
         },
+        "tab:profile": {
+          "type": "string"
+        },
         "widget:*": {
           "type": "boolean"
         },

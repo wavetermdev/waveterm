@@ -60,14 +60,16 @@ func GetStarterLayout() PortableLayout {
 	}
 }
 
-func GetNewTabLayout() PortableLayout {
+func GetNewTabLayout(blockMeta waveobj.MetaMapType) PortableLayout {
+	meta := waveobj.MetaMapType{
+		waveobj.MetaKey_View:       "term",
+		waveobj.MetaKey_Controller: "shell",
+	}
+	for k, v := range blockMeta {
+		meta[k] = v
+	}
 	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
-			},
-		}, Focused: true},
+		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{Meta: meta}, Focused: true},
 	}
 }
 

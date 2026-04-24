@@ -139,6 +139,7 @@ type SettingsType struct {
 	TabPreset       string `json:"tab:preset,omitempty"`
 	TabConfirmClose bool   `json:"tab:confirmclose,omitempty"`
 	TabBackground   string `json:"tab:background,omitempty"`
+	TabProfile      string `json:"tab:profile,omitempty"`
 
 	WidgetClear    bool  `json:"widget:*,omitempty"`
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
@@ -371,6 +372,7 @@ type FullConfigType struct {
 	DefaultWidgets map[string]WidgetConfigType     `json:"defaultwidgets"`
 	Widgets        map[string]WidgetConfigType     `json:"widgets"`
 	Presets        map[string]waveobj.MetaMapType  `json:"presets"`
+	Profiles       map[string]waveobj.MetaMapType  `json:"profiles"`
 	Backgrounds    map[string]BackgroundConfigType `json:"backgrounds"`
 	TermThemes     map[string]TermThemeType        `json:"termthemes"`
 	Connections    map[string]ConnKeywords         `json:"connections"`

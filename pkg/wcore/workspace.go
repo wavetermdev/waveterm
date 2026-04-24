@@ -62,7 +62,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 	if err != nil {
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, ws.OID, "", true, isInitialLaunch)
+	_, err = CreateTab(ctx, ws.OID, "", true, isInitialLaunch, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -220,7 +220,7 @@ func getNextTabName(tabNames []string) string {
 }
 
 // returns tabid
-func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, isInitialLaunch bool) (string, error) {
+func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, isInitialLaunch bool, blockMeta waveobj.MetaMapType) (string, error) {
 	if tabName == "" {
 		ws, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
@@ -250,7 +250,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after onboarding modal dismissal
 	if !isInitialLaunch {
-		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(), true)
+		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(blockMeta), true)
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}

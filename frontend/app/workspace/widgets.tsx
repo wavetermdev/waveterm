@@ -5,6 +5,7 @@ import { Tooltip } from "@/app/element/tooltip";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
+import { getProfileDisplayName, getSortedProfiles, profileToBlockMeta } from "@/app/tab/tabprofiles";
 import { modalsModel } from "@/store/modalmodel";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
@@ -53,6 +54,7 @@ type WidgetPropsType = {
     widget: WidgetConfigType;
     mode: "normal" | "compact" | "supercompact";
     env: WidgetsEnv;
+    profiles: { [key: string]: MetaType };
 };
 
 async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
@@ -60,7 +62,7 @@ async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
     env.createBlock(blockDef, widget.magnified);
 }
 
-const Widget = memo(({ widget, mode, env }: WidgetPropsType) => {
+const Widget = memo(({ widget, mode, env, profiles }: WidgetPropsType) => {
     const [isTruncated, setIsTruncated] = useState(false);
     const labelRef = useRef<HTMLDivElement>(null);
 
@@ -72,10 +74,47 @@ const Widget = memo(({ widget, mode, env }: WidgetPropsType) => {
     }, [mode, widget.label]);
 
     const shouldDisableTooltip = mode !== "normal" ? false : !isTruncated;
+    const isTermWidget = widget.blockdef?.meta?.view === "term";
+
+    const baseTooltipContent = widget.description || widget.label;
+    const tooltipContent = isTermWidget ? (
+        <div>
+            <div>{baseTooltipContent || "terminal"}</div>
+            <div className="text-muted text-[10px] mt-0.5">right-click for profiles</div>
+        </div>
+    ) : baseTooltipContent;
+
+    const handleContextMenu = isTermWidget
+        ? (e: React.MouseEvent) => {
+              e.preventDefault();
+              const sorted = getSortedProfiles(profiles);
+              const menuItems: ContextMenuItem[] = sorted.map(({ key, profile }) => ({
+                  label: getProfileDisplayName(key, profile),
+                  click: () => {
+                      const blockMeta = profileToBlockMeta(profile);
+                      const blockDef: BlockDef = {
+                          meta: { ...widget.blockdef.meta, ...(blockMeta ?? {}) },
+                      };
+                      env.createBlock(blockDef, widget.magnified);
+                  },
+              }));
+              if (menuItems.length > 0) menuItems.push({ type: "separator" });
+              menuItems.push({
+                  label: "Edit Profiles",
+                  click: () => {
+                      fireAndForget(async () => {
+                          const blockDef: BlockDef = { meta: { view: "waveconfig", file: "profiles.json" } };
+                          await env.createBlock(blockDef, false, true);
+                      });
+                  },
+              });
+              env.showContextMenu(menuItems, e);
+          }
+        : null;
 
     return (
         <Tooltip
-            content={widget.description || widget.label}
+            content={tooltipContent}
             placement="left"
             disable={shouldDisableTooltip}
             divClassName={clsx(
@@ -84,6 +123,7 @@ const Widget = memo(({ widget, mode, env }: WidgetPropsType) => {
                 widget["display:hidden"] && "hidden"
             )}
             divOnClick={() => handleWidgetSelect(widget, env)}
+            divOnContextMenu={handleContextMenu}
         >
             <div style={{ color: widget.color }}>
                 <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
@@ -378,6 +418,7 @@ const Widgets = memo(() => {
     const measurementRef = useRef<HTMLDivElement>(null);
 
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
+    const profiles = fullConfig?.profiles ?? {};
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = Object.fromEntries(
         Object.entries(widgetsMap).filter(([_key, widget]) => shouldIncludeWidgetForWorkspace(widget, workspaceId))
@@ -466,7 +507,7 @@ const Widgets = memo(() => {
                     <>
                         <div className="grid grid-cols-2 gap-0 w-full">
                             {widgets?.map((data, idx) => (
-                                <Widget key={`widget-${idx}`} widget={data} mode={mode} env={env} />
+                                <Widget key={`widget-${idx}`} widget={data} mode={mode} env={env} profiles={profiles} />
                             ))}
                         </div>
                         <div className="flex-grow" />
@@ -507,7 +548,7 @@ const Widgets = memo(() => {
                 ) : (
                     <>
                         {widgets?.map((data, idx) => (
-                            <Widget key={`widget-${idx}`} widget={data} mode={mode} env={env} />
+                            <Widget key={`widget-${idx}`} widget={data} mode={mode} env={env} profiles={profiles} />
                         ))}
                         <div className="flex-grow" />
                         {env.isDev() || featureWaveAppBuilder ? (
@@ -589,7 +630,7 @@ const Widgets = memo(() => {
                 className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
             >
                 {widgets?.map((data, idx) => (
-                    <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" env={env} />
+                    <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" env={env} profiles={profiles} />
                 ))}
                 <div className="flex-grow" />
                 <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">

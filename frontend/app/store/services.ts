@@ -169,7 +169,7 @@ export class WorkspaceServiceType {
     }
 
     // @returns tabId (and object updates)
-    CreateTab(workspaceId: string, tabName: string, activateTab: boolean): Promise<string> {
+    CreateTab(workspaceId: string, tabName: string, activateTab: boolean, blockMeta: MetaType): Promise<string> {
         return callBackendService(this?.waveEnv, "workspace", "CreateTab", Array.from(arguments))
     }
 
