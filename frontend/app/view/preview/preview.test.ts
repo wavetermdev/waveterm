@@ -2,36 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-
-// Note: These functions are tested by importing the module and accessing them
-// In a real setup, you'd export these from a shared utility module
-// For now, we'll duplicate the logic for testing purposes
-
-function posixEscapePath(path: string): string {
-    if (path === "~") return "~";
-    if (path.startsWith("~/")) {
-        return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
-    }
-    return "'" + path.replace(/'/g, "'\\''") + "'";
-}
-
-function pwshEscapePath(path: string): string {
-    return "'" + path.replace(/'/g, "''") + "'";
-}
-
-function cmdEscapePath(path: string): string {
-    return '"' + path.replace(/"/g, '""') + '"';
-}
-
-function buildCdCommand(shellType: string, path: string): string {
-    if (shellType === "pwsh" || shellType === "powershell") {
-        return "\x1bSet-Location -LiteralPath " + pwshEscapePath(path) + "\r";
-    }
-    if (shellType === "cmd") {
-        return "\x1bcd /d " + cmdEscapePath(path) + "\r";
-    }
-    return "\x15cd " + posixEscapePath(path) + "\r";
-}
+import { buildCdCommand, cmdEscapePath, posixEscapePath, pwshEscapePath } from "./shellescape";
 
 describe("posixEscapePath", () => {
     it("handles tilde-only path", () => {
@@ -108,6 +79,10 @@ describe("cmdEscapePath", () => {
 
     it("handles path with spaces", () => {
         expect(cmdEscapePath("C:\\Program Files")).toBe('"C:\\Program Files"');
+    });
+
+    it("handles path with percent signs in cmd.exe", () => {
+        expect(cmdEscapePath("C:\\100%complete")).toBe('"C:\\100%%complete"');
     });
 
     it("handles empty string", () => {

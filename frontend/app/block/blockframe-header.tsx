@@ -104,10 +104,6 @@ const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: Head
 
     const saveRename = React.useCallback(
         async (newTitle: string, sessionId: number) => {
-            if (cancelRef.current) {
-                cancelRef.current = false;
-                return;
-            }
             const val = newTitle.trim() || null;
             try {
                 await waveEnv.rpc.SetMetaCommand(TabRpcClient, {
@@ -127,6 +123,7 @@ const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: Head
     React.useEffect(() => {
         if (isRenaming) {
             sessionIdRef.current++;
+            cancelRef.current = false;
         }
     }, [isRenaming]);
 

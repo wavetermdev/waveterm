@@ -21,32 +21,7 @@ import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
-
-function posixEscapePath(path: string): string {
-    if (path === "~") return "~";
-    if (path.startsWith("~/")) {
-        return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
-    }
-    return "'" + path.replace(/'/g, "'\\''") + "'";
-}
-
-function pwshEscapePath(path: string): string {
-    return "'" + path.replace(/'/g, "''") + "'";
-}
-
-function cmdEscapePath(path: string): string {
-    return '"' + path.replace(/"/g, '""') + '"';
-}
-
-function buildCdCommand(shellType: string, path: string): string {
-    if (shellType === "pwsh" || shellType === "powershell") {
-        return "\x1bSet-Location -LiteralPath " + pwshEscapePath(path) + "\r";
-    }
-    if (shellType === "cmd") {
-        return "\x1bcd /d " + cmdEscapePath(path) + "\r";
-    }
-    return "\x15cd " + posixEscapePath(path) + "\r";
-}
+import { buildCdCommand } from "./shellescape";
 
 async function sendCdToTerminal(termBlockId: string, path: string) {
     const block = WOS.getObjectValue<Block>(WOS.makeORef("block", termBlockId), globalStore.get);
@@ -188,16 +163,14 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
 
     const { pos, terms, currentFollowId, bidir } = menuData;
     const linkTerm = (blockId: string) => {
-        BlockModel.getInstance().setBlockHighlight(null);
         fireAndForget(async () => {
-            const updates: Record<string, any> = { "preview:followtermid": blockId };
+            const updates: Record<string, string | boolean> = { "preview:followtermid": blockId };
             if (blockId !== currentFollowId) {
                 updates["preview:followterm:bidir"] = false;
             }
             await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), updates);
+            closeMenu();
         });
-        globalStore.set(model.followTermMenuDataAtom, null);
-        restoreFocus();
     };
     const toggleBidir = () => {
         fireAndForget(async () => {
@@ -213,9 +186,8 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
                 "preview:followtermid": null,
                 "preview:followterm:bidir": null,
             });
+            closeMenu();
         });
-        globalStore.set(model.followTermMenuDataAtom, null);
-        restoreFocus();
     };
 
     const dropdownStyle: React.CSSProperties = {
@@ -345,9 +317,16 @@ function PreviewView({
         if (!followTermId || !followTermCwd) return;
         const currentPath = globalStore.get(model.metaFilePath) ?? "";
         if (followTermCwd !== currentPath) {
-            suppressBidirRef.current = true;
+            fireAndForget(async () => {
+                const updated = await model.goHistory(followTermCwd);
+                if (updated) {
+                    suppressBidirRef.current = true;
+                    setTimeout(() => {
+                        suppressBidirRef.current = false;
+                    }, 400);
+                }
+            });
         }
-        fireAndForget(() => model.goHistory(followTermCwd));
     }, [followTermCwd, followTermId, model]);
 
     useEffect(() => {

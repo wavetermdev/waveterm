@@ -632,7 +632,7 @@ export class PreviewModel implements ViewModel {
         this.updateOpenFileModalAndError(!modalOpen);
     }
 
-    async goHistory(newPath: string) {
+    async goHistory(newPath: string): Promise<boolean> {
         let fileName = globalStore.get(this.metaFilePath);
         if (fileName == null) {
             fileName = "";
@@ -640,7 +640,7 @@ export class PreviewModel implements ViewModel {
         const blockMeta = globalStore.get(this.blockAtom)?.meta;
         const updateMeta = goHistory("file", fileName, newPath, blockMeta);
         if (updateMeta == null) {
-            return;
+            return false;
         }
         const blockOref = WOS.makeORef("block", this.blockId);
         await this.env.services.object.UpdateObjectMeta(blockOref, updateMeta);
@@ -648,6 +648,7 @@ export class PreviewModel implements ViewModel {
         // Clear the saved file buffers
         globalStore.set(this.fileContentSaved, null);
         globalStore.set(this.newFileContent, null);
+        return true;
     }
 
     async goParentDirectory({ fileInfo = null }: { fileInfo?: FileInfo | null }) {
