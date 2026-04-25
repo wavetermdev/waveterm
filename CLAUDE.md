@@ -16,3 +16,19 @@ This project uses a set of "skill" guides — focused how-to documents for commo
 | electron-api | `.kilocode/skills/electron-api/SKILL.md` | Guide for adding new Electron APIs to Wave Terminal. Use when implementing new frontend-to-electron communications via preload/IPC.                                                                                                         |
 | waveenv      | `.kilocode/skills/waveenv/SKILL.md`      | Guide for creating WaveEnv narrowings in Wave Terminal. Use when writing a named subset type of WaveEnv for a component tree, documenting environmental dependencies, or enabling mock environments for preview/test server usage.          |
 | wps-events   | `.kilocode/skills/wps-events/SKILL.md`   | Guide for working with Wave Terminal's WPS (Wave PubSub) event system. Use when implementing new event types, publishing events, subscribing to events, or adding asynchronous communication between components.                            |
+
+---
+
+## Dev Build & Packaging
+
+- **App ID & Name**: Changed to `dev.commandline.waveterm.custom` and productName to `Wave Dev` in `package.json` so the dev build appears as a completely separate app to macOS (avoids Electron single-instance lock conflict and Launch Services confusion).
+- **Build**: `task package` (requires `PATH="/opt/homebrew/bin:$PATH"` for Go/Task). Builds as `Wave Dev.app` in `make/mac-arm64/`.
+- **Launch**: Use `launch_wave_dev.command` or run directly:
+  ```bash
+  WAVETERM_HOME=~/.waveterm-dev \
+  WAVETERM_CONFIG_HOME=~/.waveterm-dev/config \
+  WAVETERM_DATA_HOME=~/.waveterm-dev/data \
+  make/mac-arm64/Wave\ Dev.app/Contents/MacOS/Wave\ Dev
+  ```
+  These variables create isolated config and data directories for the dev build. Note: `getWaveHomeDir()` only honors `WAVETERM_HOME` after `wave.lock` exists, so explicit `CONFIG/DATA` overrides are needed for clean installs and newly launched dev instances.
+- **Do not modify Info.plist or re-sign** the built app bundle — it breaks code signing on macOS and causes crashes.
