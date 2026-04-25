@@ -3,6 +3,7 @@
 
 import { CenteredDiv } from "@/app/element/quickelems";
 import { globalStore } from "@/app/store/jotaiStore";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
@@ -21,7 +22,7 @@ import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
 
-function shellEscapePath(path: string): string {
+function posixEscapePath(path: string): string {
     if (path === "~") return "~";
     if (path.startsWith("~/")) {
         return "~/" + "'" + path.slice(2).replace(/'/g, "'\\''") + "'";
@@ -29,9 +30,40 @@ function shellEscapePath(path: string): string {
     return "'" + path.replace(/'/g, "'\\''") + "'";
 }
 
-async function sendCdToTerminal(termBlockId: string, path: string, env: import("./previewenv").PreviewEnv) {
-    const command = "\x15cd " + shellEscapePath(path) + "\r";
-    await env.rpc.ControllerInputCommand(TabRpcClient, { blockid: termBlockId, inputdata64: stringToBase64(command) });
+function pwshEscapePath(path: string): string {
+    return "'" + path.replace(/'/g, "''") + "'";
+}
+
+function cmdEscapePath(path: string): string {
+    return '"' + path.replace(/"/g, '""') + '"';
+}
+
+function buildCdCommand(shellType: string, path: string): string {
+    if (shellType === "pwsh" || shellType === "powershell") {
+        return "\x1bSet-Location -LiteralPath " + pwshEscapePath(path) + "\r";
+    }
+    if (shellType === "cmd") {
+        return "\x1bcd /d " + cmdEscapePath(path) + "\r";
+    }
+    return "\x15cd " + posixEscapePath(path) + "\r";
+}
+
+async function sendCdToTerminal(termBlockId: string, path: string) {
+    const block = WOS.getObjectValue<Block>(WOS.makeORef("block", termBlockId), globalStore.get);
+    if (block?.meta?.view !== "term") {
+        return;
+    }
+    let shellType = "";
+    try {
+        const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", termBlockId),
+        });
+        shellType = rtInfo?.["shell:type"] ?? "";
+    } catch {
+        // fall through with empty shellType, defaults to POSIX
+    }
+    const command = buildCdCommand(shellType, path);
+    await RpcApi.ControllerInputCommand(TabRpcClient, { blockid: termBlockId, inputdata64: stringToBase64(command) });
 }
 
 export type SpecializedViewProps = {
@@ -117,17 +149,24 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
     const menuRef = useRef<HTMLDivElement>(null);
     const previousActiveElement = useRef<Element | null>(null);
 
-    const closeMenu = React.useCallback(() => {
-        BlockModel.getInstance().setBlockHighlight(null);
-        globalStore.set(model.followTermMenuDataAtom, null);
+    const restoreFocus = React.useCallback(() => {
         if (previousActiveElement.current instanceof HTMLElement) {
             previousActiveElement.current.focus();
         }
-    }, [model.followTermMenuDataAtom]);
+        previousActiveElement.current = null;
+    }, []);
+
+    const closeMenu = React.useCallback(() => {
+        BlockModel.getInstance().setBlockHighlight(null);
+        globalStore.set(model.followTermMenuDataAtom, null);
+        restoreFocus();
+    }, [model.followTermMenuDataAtom, restoreFocus]);
 
     useEffect(() => {
         if (!menuData) return;
-        previousActiveElement.current = document.activeElement;
+        if (previousActiveElement.current === null) {
+            previousActiveElement.current = document.activeElement;
+        }
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 closeMenu();
@@ -158,9 +197,7 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
             await model.env.services.object.UpdateObjectMeta(WOS.makeORef("block", model.blockId), updates);
         });
         globalStore.set(model.followTermMenuDataAtom, null);
-        if (previousActiveElement.current instanceof HTMLElement) {
-            previousActiveElement.current.focus();
-        }
+        restoreFocus();
     };
     const toggleBidir = () => {
         fireAndForget(async () => {
@@ -178,9 +215,7 @@ function FollowTermDropdown({ model }: { model: PreviewModel }) {
             });
         });
         globalStore.set(model.followTermMenuDataAtom, null);
-        if (previousActiveElement.current instanceof HTMLElement) {
-            previousActiveElement.current.focus();
-        }
+        restoreFocus();
     };
 
     const dropdownStyle: React.CSSProperties = {
@@ -308,9 +343,18 @@ function PreviewView({
 
     useEffect(() => {
         if (!followTermId || !followTermCwd) return;
-        suppressBidirRef.current = true;
+        const currentPath = globalStore.get(model.metaFilePath) ?? "";
+        if (followTermCwd !== currentPath) {
+            suppressBidirRef.current = true;
+        }
         fireAndForget(() => model.goHistory(followTermCwd));
     }, [followTermCwd, followTermId, model]);
+
+    useEffect(() => {
+        if (!followTermBidir) {
+            suppressBidirRef.current = false;
+        }
+    }, [followTermBidir]);
 
     useEffect(() => {
         if (!followTermId || !followTermBidir) return;
@@ -321,8 +365,8 @@ function PreviewView({
         if (loadableFileInfo.state !== "hasData") return;
         const fi = loadableFileInfo.data;
         if (!fi || fi.mimetype !== "directory" || !fi.path) return;
-        fireAndForget(() => sendCdToTerminal(followTermId, fi.path, env));
-    }, [loadableFileInfo, followTermId, followTermBidir, env]);
+        fireAndForget(() => sendCdToTerminal(followTermId, fi.path));
+    }, [loadableFileInfo, followTermId, followTermBidir]);
 
     if (connStatus?.status != "connected") {
         return null;

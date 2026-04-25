@@ -2,6 +2,7 @@
 frontend/dist
 dist/
 dist-dev/
+.waveterm-dev/
 frontend/node_modules
 node_modules/
 frontend/bindings

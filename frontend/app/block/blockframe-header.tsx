@@ -100,9 +100,10 @@ const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: Head
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     headerTextUnion = frameText ?? headerTextUnion;
     const cancelRef = React.useRef(false);
+    const sessionIdRef = React.useRef(0);
 
     const saveRename = React.useCallback(
-        async (newTitle: string) => {
+        async (newTitle: string, sessionId: number) => {
             if (cancelRef.current) {
                 cancelRef.current = false;
                 return;
@@ -113,13 +114,21 @@ const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: Head
                     oref: WOS.makeORef("block", blockId),
                     meta: { "frame:title": val },
                 });
-                stopBlockRename();
+                if (sessionIdRef.current === sessionId) {
+                    stopBlockRename();
+                }
             } catch (error) {
                 console.error("Failed to save block rename:", error);
             }
         },
         [blockId, waveEnv]
     );
+
+    React.useEffect(() => {
+        if (isRenaming) {
+            sessionIdRef.current++;
+        }
+    }, [isRenaming]);
 
     if (isRenaming) {
         return (
@@ -136,11 +145,12 @@ const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: Head
                             stopBlockRename();
                             return;
                         }
-                        saveRename(e.currentTarget.value);
+                        saveRename(e.currentTarget.value, sessionIdRef.current);
                     }}
                     onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                            saveRename(e.currentTarget.value);
+                            cancelRef.current = true;
+                            saveRename(e.currentTarget.value, sessionIdRef.current);
                         } else if (e.key === "Escape") {
                             cancelRef.current = true;
                             stopBlockRename();
