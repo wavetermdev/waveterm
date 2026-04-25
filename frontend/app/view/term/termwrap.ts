@@ -20,6 +20,7 @@ import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
+import { ImageAddon } from "@xterm/addon-image";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -70,6 +71,7 @@ let loggedWebGL = false;
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
+    useSixel?: boolean;
     sendDataHandler?: (data: string) => void;
     nodeModel?: BlockNodeModel;
 };
@@ -111,6 +113,12 @@ export class TermWrap {
     lastPasteData: string = "";
     lastPasteTime: number = 0;
 
+    // for scrollToBottom support during a resize
+    lastAtBottomTime: number = Date.now();
+    lastScrollAtBottom: boolean = true;
+    cachedAtBottomForResize: boolean | null = null;
+    viewportScrollTop: number = 0;
+
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
@@ -150,6 +158,20 @@ export class TermWrap {
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
+        if (waveOptions.useSixel !== false) {
+            try {
+                this.terminal.loadAddon(
+                    new ImageAddon({
+                        enableSizeReports: true,
+                        sixelSupport: true,
+                        iipSupport: false,
+                        kittySupport: false,
+                    })
+                );
+            } catch (e) {
+                console.log("error loading image addon", e);
+            }
+        }
         this.terminal.loadAddon(
             new WebLinksAddon(
                 (e, uri) => {
@@ -322,6 +344,18 @@ export class TermWrap {
                 this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
+        const viewportElem = this.connectElem.querySelector(".xterm-viewport") as HTMLElement;
+        if (viewportElem) {
+            const scrollHandler = () => {
+                this.handleViewportScroll(viewportElem);
+            };
+            viewportElem.addEventListener("scroll", scrollHandler);
+            this.toDispose.push({
+                dispose: () => {
+                    viewportElem.removeEventListener("scroll", scrollHandler);
+                },
+            });
+        }
     }
 
     getZoneId(): string {
@@ -518,6 +552,35 @@ export class TermWrap {
         return prtn;
     }
 
+    private getTerminalPixelSize(): { xpixel: number; ypixel: number } {
+        const screenElem = this.connectElem.querySelector(".xterm-screen") as HTMLElement | null;
+        const targetElem = screenElem ?? this.connectElem;
+        const rect = targetElem.getBoundingClientRect();
+        return {
+            xpixel: Math.max(0, Math.floor(rect.width)),
+            ypixel: Math.max(0, Math.floor(rect.height)),
+        };
+    }
+
+    private areTermSizesEqual(a: TermSize, b: TermSize): boolean {
+        return (
+            a.rows === b.rows &&
+            a.cols === b.cols &&
+            (a.xpixel ?? 0) === (b.xpixel ?? 0) &&
+            (a.ypixel ?? 0) === (b.ypixel ?? 0)
+        );
+    }
+
+    getTermSize(): TermSize {
+        const { xpixel, ypixel } = this.getTerminalPixelSize();
+        const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+        if (xpixel > 0 && ypixel > 0) {
+            termSize.xpixel = xpixel;
+            termSize.ypixel = ypixel;
+        }
+        return termSize;
+    }
+
     async loadInitialTerminalData(): Promise<void> {
         const startTs = Date.now();
         const zoneId = this.getZoneId();
@@ -526,7 +589,7 @@ export class TermWrap {
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
             if (cacheData.byteLength > 0) {
-                const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+                const curTermSize: TermSize = this.getTermSize();
                 const fileTermSize: TermSize = cacheFile.meta["termsize"];
                 let didResize = false;
                 if (
@@ -554,7 +617,7 @@ export class TermWrap {
 
     async resyncController(reason: string) {
         dlog("resync controller", this.blockId, reason);
-        const rtOpts: RuntimeOpts = { termsize: { rows: this.terminal.rows, cols: this.terminal.cols } };
+        const rtOpts: RuntimeOpts = { termsize: this.getTermSize() };
         try {
             await RpcApi.ControllerResyncCommand(TabRpcClient, {
                 tabid: this.tabId,
@@ -566,24 +629,72 @@ export class TermWrap {
         }
     }
 
+    setAtBottom(atBottom: boolean) {
+        if (this.lastScrollAtBottom && !atBottom) {
+            this.lastAtBottomTime = Date.now();
+        }
+        this.lastScrollAtBottom = atBottom;
+        if (atBottom) {
+            this.lastAtBottomTime = Date.now();
+        }
+    }
+
+    wasRecentlyAtBottom(): boolean {
+        if (this.lastScrollAtBottom) {
+            return true;
+        }
+        return Date.now() - this.lastAtBottomTime <= 1000;
+    }
+
+    handleViewportScroll(viewportElem: HTMLElement) {
+        const { scrollTop, scrollHeight, clientHeight } = viewportElem;
+        const atBottom = scrollTop + clientHeight >= scrollHeight - clientHeight * 0.5;
+        this.setAtBottom(atBottom);
+        const delta = this.viewportScrollTop - scrollTop;
+        if (isDev() && delta >= 500) {
+            console.log(
+                `[termwrap] large-scroll blockId=${this.blockId} delta=${Math.round(delta)}px scrollTop=${scrollTop} wasNearBottom=${atBottom}`
+            );
+        }
+        this.viewportScrollTop = scrollTop;
+    }
+
     handleResize() {
-        const oldRows = this.terminal.rows;
-        const oldCols = this.terminal.cols;
+        const oldTermSize = this.getTermSize();
+        const atBottom = this.cachedAtBottomForResize ?? this.wasRecentlyAtBottom();
+        if (!atBottom) {
+            this.cachedAtBottomForResize = null;
+        }
         this.fitAddon.fit();
-        if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
-            const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+        const newTermSize = this.getTermSize();
+        if (!this.areTermSizesEqual(oldTermSize, newTermSize)) {
             console.log(
                 "[termwrap] resize",
-                `${oldRows}x${oldCols}`,
+                `${oldTermSize.rows}x${oldTermSize.cols}`,
                 "->",
-                `${this.terminal.rows}x${this.terminal.cols}`
+                `${newTermSize.rows}x${newTermSize.cols}`,
+                "atBottom:",
+                atBottom
             );
-            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
+            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: newTermSize });
         }
-        dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
+        dlog(
+            "resize",
+            `${newTermSize.rows}x${newTermSize.cols}`,
+            `${oldTermSize.rows}x${oldTermSize.cols}`,
+            this.hasResized
+        );
         if (!this.hasResized) {
             this.hasResized = true;
             this.resyncController("initial resize");
+        }
+        if (atBottom) {
+            setTimeout(() => {
+                console.log("[termwrap] resize scroll-to-bottom");
+                this.cachedAtBottomForResize = null;
+                this.terminal.scrollToBottom();
+                this.setAtBottom(true);
+            }, 20);
         }
     }
 
@@ -592,7 +703,7 @@ export class TermWrap {
             return;
         }
         const serializedOutput = this.serializeAddon.serialize();
-        const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+        const termSize: TermSize = this.getTermSize();
         console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize);
         fireAndForget(() =>
             services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize)

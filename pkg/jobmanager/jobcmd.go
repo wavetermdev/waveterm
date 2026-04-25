@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/util/ptyutil"
 	"github.com/wavetermdev/waveterm/pkg/util/unixutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -59,7 +60,7 @@ func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
 			ecmd.Env = append(ecmd.Env, fmt.Sprintf("%s=%s", key, val))
 		}
 	}
-	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(cmdDef.TermSize.Rows), Cols: uint16(cmdDef.TermSize.Cols)})
+	cmdPty, err := pty.StartWithSize(ecmd, ptyutil.WinsizeFromTermSize(cmdDef.TermSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to start command: %w", err)
 	}
@@ -156,13 +157,13 @@ func (jm *JobCmd) setTermSize_withlock(termSize waveobj.TermSize) error {
 	if jm.cmdPty == nil {
 		return fmt.Errorf("no active pty")
 	}
-	if jm.termSize.Rows == termSize.Rows && jm.termSize.Cols == termSize.Cols {
+	if jm.termSize.Rows == termSize.Rows &&
+		jm.termSize.Cols == termSize.Cols &&
+		jm.termSize.XPixel == termSize.XPixel &&
+		jm.termSize.YPixel == termSize.YPixel {
 		return nil
 	}
-	err := pty.Setsize(jm.cmdPty, &pty.Winsize{
-		Rows: uint16(termSize.Rows),
-		Cols: uint16(termSize.Cols),
-	})
+	err := pty.Setsize(jm.cmdPty, ptyutil.WinsizeFromTermSize(termSize))
 	if err != nil {
 		return fmt.Errorf("error setting terminal size: %w", err)
 	}
