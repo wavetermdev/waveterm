@@ -14,6 +14,8 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 )
 
 const (
@@ -84,6 +86,9 @@ func (srv *TermListenSrv) Close() {
 
 // HandleOSC is the OSC 9010 handler. Register it with PtyBuffer using OSCNum as the key.
 func (srv *TermListenSrv) HandleOSC(payload []byte) {
+	defer func() {
+		panichandler.PanicHandler("termlistensrv:HandleOSC", recover())
+	}()
 	var msg oscMsg
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		return
@@ -192,6 +197,9 @@ func (srv *TermListenSrv) handleAccept(sess *srvSession, msg *oscMsg) {
 
 	go func() {
 		defer func() {
+			panichandler.PanicHandler("termlistensrv:accept", recover())
+		}()
+		defer func() {
 			sess.mu.Lock()
 			sess.acceptPending = false
 			sess.mu.Unlock()
@@ -237,6 +245,9 @@ func (srv *TermListenSrv) handleRead(sess *srvSession, msg *oscMsg) {
 	}
 
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("termlistensrv:read", recover())
+		}()
 		buf := make([]byte, n)
 		nr, err := sconn.conn.Read(buf)
 		if nr > 0 {
@@ -287,6 +298,9 @@ func (srv *TermListenSrv) handleWrite(sess *srvSession, msg *oscMsg) {
 	}
 
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("termlistensrv:write", recover())
+		}()
 		defer func() {
 			sconn.mu.Lock()
 			sconn.writePending = false

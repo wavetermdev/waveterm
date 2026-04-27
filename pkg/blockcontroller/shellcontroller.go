@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
+	"github.com/wavetermdev/waveterm/pkg/termlistensrv"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -531,7 +532,20 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		defer func() {
 			panichandler.PanicHandler("blockcontroller:shellproc-pty-read-loop", recover())
 		}()
+		var termSrv *termlistensrv.TermListenSrv
+		var ptyReader io.Reader = shellProc.Cmd
+		if AllowTermListen {
+			termSrv = termlistensrv.MakeTermListenSrv(func(data []byte) {
+				shellProc.Cmd.Write(data)
+			})
+			ptyReader = wshutil.MakePtyBuffer(shellProc.Cmd, map[string]func([]byte){
+				termlistensrv.OSCNum: termSrv.HandleOSC,
+			})
+		}
 		defer func() {
+			if termSrv != nil {
+				termSrv.Close()
+			}
 			log.Printf("[shellproc] pty-read loop done\n")
 			shellProc.Close()
 			bc.WithLock(func() {
@@ -551,7 +565,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}()
 		buf := make([]byte, 4096)
 		for {
-			nr, err := shellProc.Cmd.Read(buf)
+			nr, err := ptyReader.Read(buf)
 			if nr > 0 {
 				err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf[:nr])
 				if err != nil {

@@ -50,6 +50,8 @@ const (
 const DefaultTimeout = 2 * time.Second
 const DefaultGracefulKillWait = 400 * time.Millisecond
 
+const AllowTermListen = true
+
 type BlockInputUnion struct {
 	InputData []byte            `json:"inputdata,omitempty"`
 	SigName   string            `json:"signame,omitempty"`
