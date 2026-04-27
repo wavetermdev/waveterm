@@ -78,7 +78,6 @@ func loadJwtPrivateKey(dataDir string) (ed25519.PrivateKey, error) {
 	return ed25519.PrivateKey(keyBytes), nil
 }
 
-// Connect opens an authenticated wshrpc client to the running Wave daemon.
 func Connect() (*wshutil.WshRpc, string, error) {
 	dataDir, err := ResolveDataDir()
 	if err != nil {
@@ -110,8 +109,9 @@ func Connect() (*wshutil.WshRpc, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("connecting to %s: %w", sockPath, err)
 	}
-	if _, err := wshclient.AuthenticateCommand(rpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute}); err != nil {
+	authRtn, err := wshclient.AuthenticateCommand(rpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	if err != nil {
 		return nil, "", fmt.Errorf("authenticating: %w", err)
 	}
-	return rpcClient, routeId, nil
+	return rpcClient, authRtn.RouteId, nil
 }
