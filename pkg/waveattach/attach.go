@@ -75,6 +75,8 @@ func Attach(rpcClient *wshutil.WshRpc, blockId string) error {
 	}
 	defer term.Restore(fd, oldState)
 
+	origTermSize := getBlockTermSize(rpcClient, blockId)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -139,7 +141,15 @@ func Attach(rpcClient *wshutil.WshRpc, blockId string) error {
 
 	exitErr := <-exitCh
 	cancel()
-
+	if origTermSize != nil {
+		restoreData := wshrpc.CommandBlockInputData{
+			BlockId:  blockId,
+			TermSize: origTermSize,
+		}
+		_ = wshclient.ControllerInputCommand(rpcClient, restoreData, &wshrpc.RpcOpts{Timeout: 3000})
+	}
+	// ensure cursor is at column 0 before printing exit message
+	fmt.Fprintf(os.Stdout, "\r\n")
 	switch {
 	case errors.Is(exitErr, ErrDetached):
 		fmt.Fprintf(os.Stderr, "\r\n[detached]\r\n")
@@ -184,4 +194,16 @@ func inputLoop(ctx context.Context, rpcClient *wshutil.WshRpc, blockId string) e
 		default:
 		}
 	}
+}
+
+func getBlockTermSize(rpcClient *wshutil.WshRpc, blockId string) *waveobj.TermSize {
+	info, err := wshclient.BlockInfoCommand(rpcClient, blockId, &wshrpc.RpcOpts{Timeout: 3000})
+	if err != nil || info == nil || info.Block == nil {
+		return nil
+	}
+	rtOpts := info.Block.RuntimeOpts
+	if rtOpts == nil || (rtOpts.TermSize.Rows == 0 && rtOpts.TermSize.Cols == 0) {
+		return nil
+	}
+	return &waveobj.TermSize{Rows: rtOpts.TermSize.Rows, Cols: rtOpts.TermSize.Cols}
 }
