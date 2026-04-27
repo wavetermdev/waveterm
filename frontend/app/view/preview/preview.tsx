@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CenteredDiv } from "@/app/element/quickelems";
-import { globalStore } from "@/app/store/jotaiStore";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
-import { isBlank, makeConnRoute } from "@/util/util";
+import { globalStore } from "@/store/global";
+import { isBlank } from "@/util/util";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useEffect } from "react";
 import { CSVView } from "./csvview";
@@ -17,6 +16,7 @@ import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
+import { fetchPreviewFileSuggestions } from "./previewsuggestions";
 
 export type SpecializedViewProps = {
     model: PreviewModel;
@@ -63,38 +63,6 @@ const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     }
     return <SpecializedViewComponent key={path} model={model} parentRef={parentRef} />;
 });
-
-const fetchSuggestions = async (
-    env: PreviewEnv,
-    model: PreviewModel,
-    query: string,
-    reqContext: SuggestionRequestContext
-): Promise<FetchSuggestionsResponse> => {
-    const conn = await globalStore.get(model.connection);
-    let route = makeConnRoute(conn);
-    if (isBlank(conn)) {
-        route = null;
-    }
-    if (reqContext?.dispose) {
-        env.rpc.DisposeSuggestionsCommand(TabRpcClient, reqContext.widgetid, { noresponse: true, route: route });
-        return null;
-    }
-    const fileInfo = await globalStore.get(model.statFile);
-    if (fileInfo == null) {
-        return null;
-    }
-    const sdata = {
-        suggestiontype: "file",
-        "file:cwd": fileInfo.path,
-        query: query,
-        widgetid: reqContext.widgetid,
-        reqnum: reqContext.reqnum,
-        "file:connection": conn,
-    };
-    return await env.rpc.FetchSuggestionsCommand(TabRpcClient, sdata, {
-        route: route,
-    });
-};
 
 function PreviewView({
     blockRef,
@@ -143,7 +111,10 @@ function PreviewView({
         }
     };
     const fetchSuggestionsFn = async (query, ctx) => {
-        return await fetchSuggestions(env, model, query, ctx);
+        const conn = await globalStore.get(model.connection);
+        const file = await globalStore.get(model.statFile);
+        const cwd = file?.path;
+        return await fetchPreviewFileSuggestions(env, query, ctx, { cwd, connection: conn });
     };
 
     return (
