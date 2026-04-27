@@ -979,6 +979,7 @@ func TsunamiRun(opts BuildOpts) error {
 	oc.Printf("Running tsunami app from %s", opts.AppPath)
 
 	runCmd.Stdin = os.Stdin
+	runCmd.Env = append(os.Environ(), "TSUNAMI_TERMPROXY=0")
 
 	if opts.TermProxy {
 		runCmd.Stdout = os.Stdout

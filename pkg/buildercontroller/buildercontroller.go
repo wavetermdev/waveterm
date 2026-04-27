@@ -325,7 +325,7 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, ap
 	}
 
 	cmd := exec.Command(appBinPath)
-	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
+	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1", "TSUNAMI_TERMPROXY=0")
 
 	if wavebase.IsDevMode() {
 		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)

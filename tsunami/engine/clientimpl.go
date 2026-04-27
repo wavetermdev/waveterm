@@ -225,10 +225,10 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 	var listener net.Listener
 	var port int
 
-	if os.Getenv(TsunamiTermProxyEnvVar) != "" {
+	if os.Getenv(TsunamiTermProxyEnvVar) != "0" {
 		tl, passthrough, err := termlisten.MakeListener(os.Stdin)
 		if err != nil {
-			return fmt.Errorf("termproxy: %w", err)
+			return fmt.Errorf("terminal proxy unavailable: %v\nTo bind a regular TCP port instead, run with --tcp", err)
 		}
 		go io.Copy(io.Discard, passthrough)
 		termlisten.SetupSignals(tl, nil, nil)
@@ -248,7 +248,11 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 		port = listener.Addr().(*net.TCPAddr).Port
 	}
 
-	log.Printf("[tsunami] listening at http://localhost:%d", port)
+	if os.Getenv(TsunamiTermProxyEnvVar) != "0" {
+		log.Printf("[tsunami] listening via terminal proxy at http://localhost:%d", port)
+	} else {
+		log.Printf("[tsunami] listening at http://localhost:%d", port)
+	}
 
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
