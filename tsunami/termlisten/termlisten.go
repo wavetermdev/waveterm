@@ -17,10 +17,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -67,6 +69,7 @@ var (
 	listenerCreated bool // set on first MakeListener call; never cleared
 	stdoutMu        sync.Mutex
 	outputWriter    io.Writer = os.Stdout
+	debugLogging    atomic.Bool
 )
 
 // SetOutput overrides the writer used for outgoing OSC frames. Defaults to os.Stdout.
@@ -77,9 +80,20 @@ func SetOutput(w io.Writer) {
 	outputWriter = w
 }
 
-// resetForTesting resets all package-level state so MakeListener can be called again.
+// SetDebugLogging enables or disables verbose protocol logging to stderr.
+func SetDebugLogging(enabled bool) {
+	debugLogging.Store(enabled)
+}
+
+func debugLog(format string, args ...any) {
+	if debugLogging.Load() {
+		log.Printf(format, args...)
+	}
+}
+
+// ResetForTesting resets all package-level state so MakeListener can be called again.
 // Only for use in tests.
-func resetForTesting() {
+func ResetForTesting() {
 	globalSessLock.Lock()
 	listenerCreated = false
 	globalSess = nil
@@ -89,6 +103,8 @@ func resetForTesting() {
 	outputWriter = os.Stdout
 	stdoutMu.Unlock()
 }
+
+func resetForTesting() { ResetForTesting() }
 
 // claimListener marks the listener as created. Returns an error if already claimed.
 func claimListener() error {
@@ -123,13 +139,15 @@ func clearSessionIfEqual(s *session) {
 
 // startStdinReader starts the stdin reader goroutine on the first call; subsequent calls
 // are no-ops. pw receives all non-protocol bytes and is closed when r is exhausted.
-func startStdinReader(r io.Reader, pw *io.PipeWriter) {
+// ownerSess is the session this loop was created for; it is the only session the loop
+// will dispatch to or teardown, preventing a stale loop from interfering with a newer session.
+func startStdinReader(r io.Reader, pw *io.PipeWriter, ownerSess *session) {
 	stdinOnce.Do(func() {
-		go stdinReaderLoop(r, pw)
+		go stdinReaderLoop(r, pw, ownerSess)
 	})
 }
 
-func stdinReaderLoop(r io.Reader, pw *io.PipeWriter) {
+func stdinReaderLoop(r io.Reader, pw *io.PipeWriter, ownerSess *session) {
 	reader := bufio.NewReaderSize(r, stdinReaderBufSize)
 	for {
 		line, err := reader.ReadString('\n')
@@ -137,19 +155,25 @@ func stdinReaderLoop(r io.Reader, pw *io.PipeWriter) {
 			trimmed := strings.TrimRight(line, "\r\n")
 			if strings.HasPrefix(trimmed, stdinPrefix) {
 				jsonStr := trimmed[len(stdinPrefix):]
+				debugLog("[termlisten] stdin dispatch: %s", jsonStr)
 				var msg inMsg
 				if jsonErr := json.Unmarshal([]byte(jsonStr), &msg); jsonErr == nil && msg.Id != "" {
-					if s := getGlobalSession(); s != nil {
-						s.dispatch(&msg)
+					if ownerSess != nil {
+						ownerSess.dispatch(&msg)
 					}
+				} else if jsonErr != nil {
+					debugLog("[termlisten] stdin bad json: %v", jsonErr)
+				} else {
+					debugLog("[termlisten] stdin msg has no id, dropping")
 				}
 			} else if pw != nil {
 				pw.Write([]byte(line))
 			}
 		}
 		if err != nil {
-			if s := getGlobalSession(); s != nil {
-				s.teardown()
+			debugLog("[termlisten] stdinReaderLoop err: %v", err)
+			if ownerSess != nil {
+				ownerSess.teardown()
 			}
 			if pw != nil {
 				pw.CloseWithError(err)
@@ -272,7 +296,7 @@ func MakeListener(r io.Reader) (*Listener, io.Reader, error) {
 
 	sess := newSession(oldState, termFd)
 	setGlobalSession(sess)
-	startStdinReader(r, pw)
+	startStdinReader(r, pw, sess)
 
 	id := uuid.New().String()
 	ch := sess.registerPending(id)
@@ -336,11 +360,13 @@ func (l *Listener) Accept() (net.Conn, error) {
 
 	id := uuid.New().String()
 	ch := sess.registerPending(id)
+	debugLog("[termlisten] accept id=%s", id[:8])
 	if err := sendOSC(oscMsg{Id: id, Call: "accept"}); err != nil {
 		sess.mu.Lock()
 		sess.acceptPending = false
 		sess.mu.Unlock()
 		sess.unregisterPending(id)
+		debugLog("[termlisten] accept sendOSC err: %v", err)
 		return nil, err
 	}
 
@@ -351,8 +377,10 @@ func (l *Listener) Accept() (net.Conn, error) {
 	sess.mu.Unlock()
 
 	if msg.Error != "" {
+		debugLog("[termlisten] accept err: %s", msg.Error)
 		return nil, fmt.Errorf("termlisten: accept: %s", msg.Error)
 	}
+	debugLog("[termlisten] accept conn=%s addr=%s", msg.Conn, msg.Addr)
 
 	var remoteAddr net.Addr
 	if msg.Addr != "" {
@@ -435,7 +463,7 @@ func (l *Listener) Reenter() (int, error) {
 
 	sess := newSession(oldState, termFd)
 	setGlobalSession(sess)
-	startStdinReader(r, nil) // no-op: loop already running
+	startStdinReader(r, nil, sess) // no-op: loop already running
 
 	id := uuid.New().String()
 	ch := sess.registerPending(id)

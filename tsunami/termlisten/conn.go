@@ -60,23 +60,28 @@ func (c *Conn) Read(b []byte) (int, error) {
 
 	id := uuid.New().String()
 	ch := c.session.registerPending(id)
+	debugLog("[termlisten] read conn=%s n=%d id=%s", c.connId, n, id[:8])
 	if err := sendOSC(oscMsg{Id: id, Call: "read", Conn: c.connId, N: n}); err != nil {
 		c.session.unregisterPending(id)
+		debugLog("[termlisten] read conn=%s sendOSC err: %v", c.connId, err)
 		return 0, err
 	}
 
 	msg, err := waitMsg(ch, deadline)
 	if err != nil {
 		c.session.unregisterPending(id)
+		debugLog("[termlisten] read conn=%s waitMsg err: %v", c.connId, err)
 		sendFireAndForget(oscMsg{Call: "close", Conn: c.connId})
 		c.markClosed()
 		return 0, err
 	}
 
 	if msg.Error != "" {
+		debugLog("[termlisten] read conn=%s server err: %s", c.connId, msg.Error)
 		return 0, fmt.Errorf("termlisten: read: %s", msg.Error)
 	}
 	if msg.Data == "" {
+		debugLog("[termlisten] read conn=%s EOF", c.connId)
 		return 0, io.EOF
 	}
 
@@ -84,6 +89,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("termlisten: read base64 decode: %w", err)
 	}
+	debugLog("[termlisten] read conn=%s got %d bytes", c.connId, len(decoded))
 	return copy(b, decoded), nil
 }
 
@@ -112,22 +118,27 @@ func (c *Conn) Write(b []byte) (int, error) {
 		id := uuid.New().String()
 		ch := c.session.registerPending(id)
 		encoded := base64.StdEncoding.EncodeToString(chunk)
+		debugLog("[termlisten] write conn=%s len=%d id=%s", c.connId, len(chunk), id[:8])
 
 		if err := sendOSC(oscMsg{Id: id, Call: "write", Conn: c.connId, Data: encoded}); err != nil {
 			c.session.unregisterPending(id)
+			debugLog("[termlisten] write conn=%s sendOSC err: %v", c.connId, err)
 			return total, err
 		}
 
 		msg, err := waitMsg(ch, deadline)
 		if err != nil {
 			c.session.unregisterPending(id)
+			debugLog("[termlisten] write conn=%s waitMsg err: %v", c.connId, err)
 			sendFireAndForget(oscMsg{Call: "close", Conn: c.connId})
 			c.markClosed()
 			return total, err
 		}
 		if msg.Error != "" {
+			debugLog("[termlisten] write conn=%s server err: %s", c.connId, msg.Error)
 			return total, fmt.Errorf("termlisten: write: %s", msg.Error)
 		}
+		debugLog("[termlisten] write conn=%s ack", c.connId)
 
 		total += len(chunk)
 		b = b[len(chunk):]
@@ -152,6 +163,7 @@ func (c *Conn) Close() error {
 	delete(sess.conns, connId)
 	sess.mu.Unlock()
 
+	debugLog("[termlisten] close conn=%s", connId)
 	sendFireAndForget(oscMsg{Call: "close", Conn: connId})
 	return nil
 }
