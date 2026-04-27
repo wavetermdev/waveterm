@@ -173,10 +173,10 @@ The session is bound to the pty. Wave needs no PID watching — when the pty clo
 
 For cooperative teardown, the remote SDK should trap signals:
 
-| Signal                        | SDK action                                              |
-| ----------------------------- | ------------------------------------------------------- |
-| `SIGTERM`, `SIGINT`, `SIGHUP` | emit `listen-exit`, then exit normally             |
-| `SIGKILL`                     | uncatchable — pty closure handles implicit teardown     |
+| Signal                        | SDK action                                          |
+| ----------------------------- | --------------------------------------------------- |
+| `SIGTERM`, `SIGINT`, `SIGHUP` | emit `listen-exit`, then exit normally              |
+| `SIGKILL`                     | uncatchable — pty closure handles implicit teardown |
 
 ---
 
@@ -186,9 +186,9 @@ For cooperative teardown, the remote SDK should trap signals:
 
 SIGTSTP is the interesting case: the process cannot respond to anything while suspended, so the listen session must be torn down before suspending. On resume, a fresh `listen-enter` starts a new session with a new ephemeral port.
 
-| Signal    | SDK action                                             |
-| --------- | ------------------------------------------------------ |
-| `SIGTSTP` | emit `listen-exit` (protocol layer), then suspend |
+| Signal    | SDK action                                         |
+| --------- | -------------------------------------------------- |
+| `SIGTSTP` | emit `listen-exit` (protocol layer), then suspend  |
 | `SIGCONT` | re-emit `listen-enter` (fresh handshake, new port) |
 
 The SDK must handle `SIGTSTP` by calling `listen-exit` before suspending, then on `SIGCONT` issue a new `listen-enter` handshake to obtain a fresh ephemeral port.
