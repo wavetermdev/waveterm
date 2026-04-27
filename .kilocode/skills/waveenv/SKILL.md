@@ -1,21 +1,11 @@
 ---
 name: waveenv
-description: Guide for creating WaveEnv narrowings in Wave Terminal. Use when writing a named subset type of WaveEnv for a component tree, documenting environmental dependencies, or enabling mock environments for preview/test server usage.
+description: Guide for creating WaveEnv narrowings in Wave Terminal — define type constraints, enumerate used fields, and generate mock-compatible subset types. Use when writing a named subset type of WaveEnv for a component tree, scoping environment types for testing, documenting environmental dependencies, creating mock environments for preview/test server, or defining type subsets for isolated components.
 ---
 
 # WaveEnv Narrowing Skill
 
-## Purpose
-
-A WaveEnv narrowing creates a _named subset type_ of `WaveEnv` that:
-
-1. Documents exactly which parts of the environment a component tree actually uses.
-2. Forms a type contract so callers and tests know what to provide.
-3. Enables mocking in the preview/test server — you only need to implement what's listed.
-
-## When To Create One
-
-Create a narrowing whenever you are writing a component (or group of components) that you want to test in the preview server, or when you want to make the environmental dependencies of a component tree explicit.
+Create a `WaveEnvSubset<T>` type that documents exactly which environment fields a component tree uses, forms a type contract for callers and tests, and enables mocking in the preview/test server.
 
 ## Core Principle: Only Include What You Use
 
@@ -126,6 +116,14 @@ const MyComponent = memo(() => {
 ```
 
 The generic parameter on `useWaveEnv<MyEnv>()` casts the context to your narrowed type. The real production `WaveEnv` satisfies every narrowing; mock envs only need to implement the listed subset.
+
+## Validation Checklist
+
+- [ ] Every field listed is actually accessed by the component tree
+- [ ] No extra fields copied from `WaveEnv` that aren't used
+- [ ] Key-parameterized atom factories enumerate only the keys accessed
+- [ ] Type compiles with `tsc --noEmit` (catches missing or incorrect fields)
+- [ ] Mock environment in preview/test server implements all listed fields
 
 ## Real Examples
 
