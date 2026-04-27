@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -34,13 +35,38 @@ func ResolveDataDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cannot resolve home dir: %w", err)
 	}
-	for _, name := range []string{".waveterm", ".waveterm-dev"} {
-		candidate := filepath.Join(home, name)
+	var candidates []string
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = []string{
+			filepath.Join(home, "Library", "Application Support", "waveterm"),
+			filepath.Join(home, "Library", "Application Support", "waveterm-dev"),
+			filepath.Join(home, ".waveterm"),
+			filepath.Join(home, ".waveterm-dev"),
+		}
+	case "linux":
+		xdgData := os.Getenv("XDG_DATA_HOME")
+		if xdgData == "" {
+			xdgData = filepath.Join(home, ".local", "share")
+		}
+		candidates = []string{
+			filepath.Join(xdgData, "waveterm"),
+			filepath.Join(xdgData, "waveterm-dev"),
+			filepath.Join(home, ".waveterm"),
+			filepath.Join(home, ".waveterm-dev"),
+		}
+	default:
+		candidates = []string{
+			filepath.Join(home, ".waveterm"),
+			filepath.Join(home, ".waveterm-dev"),
+		}
+	}
+	for _, candidate := range candidates {
 		if st, err := os.Stat(candidate); err == nil && st.IsDir() {
 			return candidate, nil
 		}
 	}
-	return "", fmt.Errorf("Wave data directory not found (tried $WAVETERM_DATA_HOME, ~/.waveterm, ~/.waveterm-dev). Is Wave running?")
+	return "", fmt.Errorf("Wave data directory not found. Is Wave running? (set $WAVETERM_DATA_HOME to override)")
 }
 
 func loadJwtPrivateKey(dataDir string) (ed25519.PrivateKey, error) {
