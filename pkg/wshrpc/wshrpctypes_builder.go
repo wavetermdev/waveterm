@@ -115,6 +115,10 @@ type RestartBuilderAndWaitResult struct {
 	BuildOutput  string `json:"buildoutput"`
 }
 
+type TermListenDownData struct {
+	Port int `json:"port"`
+}
+
 type AppMeta struct {
 	Title     string `json:"title"`
 	ShortDesc string `json:"shortdesc"`

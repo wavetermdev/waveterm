@@ -538,6 +538,14 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 			termSrv = termlistensrv.MakeTermListenSrv(func(data []byte) {
 				shellProc.Cmd.Write(data)
 			})
+			blockId := bc.BlockId
+			termSrv.OnTeardown = func(port int) {
+				wps.Broker.Publish(wps.WaveEvent{
+					Event:  wps.Event_TermListenDown,
+					Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, blockId).String()},
+					Data:   wshrpc.TermListenDownData{Port: port},
+				})
+			}
 			ptyReader = wshutil.MakePtyBuffer(shellProc.Cmd, map[string]func([]byte){
 				termlistensrv.OSCNum: termSrv.HandleOSC,
 			})

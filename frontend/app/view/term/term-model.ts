@@ -148,6 +148,7 @@ export class TermViewModel implements ViewModel {
                 ];
             }
             const vdomBlockId = get(this.vdomBlockId);
+            const tsunamiBlockId = get(this.tsunamiBlockId);
             const rtn: HeaderElem[] = [];
             if (vdomBlockId) {
                 rtn.push({
@@ -156,6 +157,16 @@ export class TermViewModel implements ViewModel {
                     title: "Switch to Wave App",
                     click: () => {
                         this.setTermMode("vdom");
+                    },
+                });
+            }
+            if (tsunamiBlockId) {
+                rtn.push({
+                    elemtype: "iconbutton",
+                    icon: "browser",
+                    title: "Switch to App",
+                    click: () => {
+                        this.setTermMode("tsunami");
                     },
                 });
             }
@@ -519,7 +530,7 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
-    setTermMode(mode: "term" | "vdom") {
+    setTermMode(mode: "term" | "vdom" | "tsunami") {
         if (mode == "term") {
             mode = null;
         }

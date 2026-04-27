@@ -50,14 +50,16 @@ type TermListenSrv struct {
 	writerMu sync.Mutex
 	writer   func([]byte)
 
-	mu      sync.Mutex
-	session *srvSession
+	mu         sync.Mutex
+	session    *srvSession
+	OnTeardown func(port int)
 }
 
 type srvSession struct {
 	mu            sync.Mutex
 	closed        bool
 	listener      net.Listener
+	port          int
 	conns         map[string]*srvConn
 	connCounter   int32
 	acceptPending bool
@@ -80,7 +82,11 @@ func (srv *TermListenSrv) Close() {
 	srv.session = nil
 	srv.mu.Unlock()
 	if sess != nil {
+		port := sess.port
 		sess.teardown()
+		if srv.OnTeardown != nil {
+			go srv.OnTeardown(port)
+		}
 	}
 }
 
@@ -157,6 +163,7 @@ func (srv *TermListenSrv) handleListenEnter(msg *oscMsg) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	sess := &srvSession{
 		listener: listener,
+		port:     port,
 		conns:    make(map[string]*srvConn),
 	}
 
@@ -175,7 +182,11 @@ func (srv *TermListenSrv) handleListenExit() {
 	srv.session = nil
 	srv.mu.Unlock()
 	if sess != nil {
+		port := sess.port
 		sess.teardown()
+		if srv.OnTeardown != nil {
+			go srv.OnTeardown(port)
+		}
 	}
 }
 

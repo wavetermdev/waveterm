@@ -23,6 +23,7 @@ declare global {
         | "waveai:ratelimit"
         | "waveapp:appgoupdated"
         | "tsunami:updatemeta"
+        | "termlisten:down"
         | "waveai:modeconfig"
         | "block:jobstatus"
         | "badge"
@@ -51,6 +52,7 @@ declare global {
         { event: "waveai:ratelimit"; data?: RateLimitInfo; } | 
         { event: "waveapp:appgoupdated"; data?: null; } | 
         { event: "tsunami:updatemeta"; data?: AppMeta; } | 
+        { event: "termlisten:down"; data?: TermListenDownData; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
         { event: "badge"; data?: BadgeEvent; }

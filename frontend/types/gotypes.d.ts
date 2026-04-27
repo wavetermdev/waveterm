@@ -1686,6 +1686,11 @@ declare global {
         blockids: string[];
     };
 
+    // wshrpc.TermListenDownData
+    type TermListenDownData = {
+        port: number;
+    };
+
     // waveobj.TermSize
     type TermSize = {
         rows: number;

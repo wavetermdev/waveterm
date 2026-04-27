@@ -180,21 +180,37 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
 
 const TermTsunamiNodeSingleId = ({ tsunamiBlockId, blockId, model }: TerminalViewProps & { tsunamiBlockId: string }) => {
     React.useEffect(() => {
-        const unsub = waveEventSubscribeSingle({
+        const hardTeardown = () => {
+            RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", blockId),
+                meta: { "term:mode": null, "term:tsunamiblockid": null },
+            });
+        };
+        const unsubBlockClose = waveEventSubscribeSingle({
             eventType: "blockclose",
             scope: WOS.makeORef("block", tsunamiBlockId),
             handler: (_event) => {
                 RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
-                    meta: {
-                        "term:mode": null,
-                        "term:tsunamiblockid": null,
-                    },
+                    meta: { "term:mode": null, "term:tsunamiblockid": null },
                 });
             },
         });
+        const tsunamiUrl = globalStore.get(WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", tsunamiBlockId)))?.meta?.["tsunami:url"] ?? "";
+        const tsunamiPort = tsunamiUrl ? parseInt(new URL(tsunamiUrl).port) : 0;
+        const unsubTermListenDown = waveEventSubscribeSingle({
+            eventType: "termlisten:down",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                if (tsunamiPort > 0 && event.data?.port === tsunamiPort) {
+                    hardTeardown();
+                }
+            },
+        });
         return () => {
-            unsub();
+            unsubBlockClose();
+            unsubTermListenDown();
         };
     }, []);
     const tsunamiNodeModel: BlockNodeModel = React.useMemo(() => {
@@ -316,16 +332,6 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     );
     searchProps.onPrev = React.useCallback(() => executeSearch(searchVal, "previous"), [executeSearch, searchVal]);
     searchProps.onNext = React.useCallback(() => executeSearch(searchVal, "next"), [executeSearch, searchVal]);
-
-    React.useEffect(() => {
-        const tsunamiBlockId = globalStore.get(model.tsunamiBlockId);
-        if (!tsunamiBlockId) return;
-        RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
-        RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("block", blockId),
-            meta: { "term:tsunamiblockid": null, "term:mode": null },
-        });
-    }, [blockId]);
 
     // Return input focus to the terminal when the search is closed
     React.useEffect(() => {
