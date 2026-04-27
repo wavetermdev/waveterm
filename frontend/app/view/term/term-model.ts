@@ -63,6 +63,7 @@ export class TermViewModel implements ViewModel {
     termWshClient: TermWshClient;
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
+    tsunamiBlockId: jotai.Atom<string>;
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
@@ -101,6 +102,10 @@ export class TermViewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:vdomtoolbarblockid"];
         });
+        this.tsunamiBlockId = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:tsunamiblockid"];
+        });
         this.vdomToolbarTarget = jotai.atom<VDomTargetToolbar>(null) as jotai.PrimitiveAtom<VDomTargetToolbar>;
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -111,6 +116,9 @@ export class TermViewModel implements ViewModel {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
                 return { elemtype: "iconbutton", icon: "bolt" };
+            }
+            if (termMode == "tsunami") {
+                return { elemtype: "iconbutton", icon: "browser" };
             }
             return { elemtype: "iconbutton", icon: "terminal" };
         });
@@ -127,7 +135,7 @@ export class TermViewModel implements ViewModel {
         });
         this.viewText = jotai.atom((get) => {
             const termMode = get(this.termMode);
-            if (termMode == "vdom") {
+            if (termMode == "vdom" || termMode == "tsunami") {
                 return [
                     {
                         elemtype: "iconbutton",
@@ -487,7 +495,7 @@ export class TermViewModel implements ViewModel {
 
     isBasicTerm(getFn: jotai.Getter): boolean {
         const termMode = getFn(this.termMode);
-        if (termMode == "vdom") {
+        if (termMode == "vdom" || termMode == "tsunami") {
             return false;
         }
         const blockData = getFn(this.blockAtom);
@@ -604,6 +612,9 @@ export class TermViewModel implements ViewModel {
             return true;
         }
         const termMode = globalStore.get(this.termMode);
+        if (termMode == "tsunami") {
+            return false;
+        }
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.focus();

@@ -33,6 +33,7 @@ import {
     handleOsc16162Command,
     handleOsc52Command,
     handleOsc7Command,
+    handleOsc9009Command,
     isClaudeCodeCommand,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
@@ -204,6 +205,10 @@ export class TermWrap {
                 console.error("[termwrap] osc 16162 handler error", this.blockId, e);
                 return false;
             }
+        });
+        this.terminal.parser.registerOscHandler(9009, (data: string) => {
+            fireAndForget(() => handleOsc9009Command(data, this.blockId));
+            return true;
         });
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ final: "J" }, (params) => {

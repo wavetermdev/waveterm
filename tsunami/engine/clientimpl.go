@@ -205,9 +205,18 @@ func (c *ClientImpl) RegisterAppInitFn(fn func() error) {
 func (c *ClientImpl) RunMain() {
 	err := c.runMainE()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("[tsunami] %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func shouldRunTsunamiTermProxy() bool {
+	return os.Getenv(TsunamiTermProxyEnvVar) != "0"
+}
+
+func sendOsc9009Tsunami(port int) {
+	payload, _ := json.Marshal(map[string]any{"port": port, "termlisten": true})
+	fmt.Fprintf(os.Stdout, "\x1b]9009;wave-tsunami;%s\x07", payload)
 }
 
 func (c *ClientImpl) listenAndServe(ctx context.Context) error {
@@ -225,15 +234,16 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 	var listener net.Listener
 	var port int
 
-	if os.Getenv(TsunamiTermProxyEnvVar) != "0" {
+	if shouldRunTsunamiTermProxy() {
 		tl, passthrough, err := termlisten.MakeListener(os.Stdin)
 		if err != nil {
-			return fmt.Errorf("terminal proxy unavailable: %v\nTo bind a regular TCP port instead, run with --tcp", err)
+			return fmt.Errorf("terminal proxy unavailable: %v\n[tsunami] To bind a regular TCP port instead, run with --tcp", err)
 		}
 		go io.Copy(io.Discard, passthrough)
 		termlisten.SetupSignals(tl, nil, nil)
 		listener = tl
 		port = tl.Port()
+		sendOsc9009Tsunami(port)
 	} else {
 		listenAddr := os.Getenv(TsunamiListenAddrEnvVar)
 		if listenAddr == "" {
@@ -248,7 +258,7 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 		port = listener.Addr().(*net.TCPAddr).Port
 	}
 
-	if os.Getenv(TsunamiTermProxyEnvVar) != "0" {
+	if shouldRunTsunamiTermProxy() {
 		log.Printf("[tsunami] listening via terminal proxy at http://localhost:%d", port)
 	} else {
 		log.Printf("[tsunami] listening at http://localhost:%d", port)

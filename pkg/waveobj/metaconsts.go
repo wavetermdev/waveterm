@@ -118,6 +118,7 @@ const (
 	MetaKey_TermScrollback                   = "term:scrollback"
 	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
+	MetaKey_TermTsunamiSubBlockId            = "term:tsunamiblockid"
 	MetaKey_TermTransparency                 = "term:transparency"
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
@@ -144,6 +145,7 @@ const (
 	MetaKey_TsunamiAppId                     = "tsunami:appid"
 	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
 	MetaKey_TsunamiEnv                       = "tsunami:env"
+	MetaKey_TsunamiUrl                       = "tsunami:url"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

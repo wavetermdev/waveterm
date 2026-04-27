@@ -178,6 +178,66 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
+const TermTsunamiNodeSingleId = ({ tsunamiBlockId, blockId, model }: TerminalViewProps & { tsunamiBlockId: string }) => {
+    React.useEffect(() => {
+        const unsub = waveEventSubscribeSingle({
+            eventType: "blockclose",
+            scope: WOS.makeORef("block", tsunamiBlockId),
+            handler: (_event) => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", blockId),
+                    meta: {
+                        "term:mode": null,
+                        "term:tsunamiblockid": null,
+                    },
+                });
+            },
+        });
+        return () => {
+            unsub();
+        };
+    }, []);
+    const tsunamiNodeModel: BlockNodeModel = React.useMemo(() => {
+        const isFocusedAtom = jotai.atom((get) => {
+            return get(model.nodeModel.isFocused) && get(model.termMode) == "tsunami";
+        });
+        return {
+            blockId: tsunamiBlockId,
+            isFocused: isFocusedAtom,
+            isMagnified: jotai.atom(false),
+            focusNode: () => {
+                model.nodeModel.focusNode();
+            },
+            toggleMagnify: () => {},
+            onClose: () => {
+                if (tsunamiBlockId != null) {
+                    RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
+                }
+            },
+        };
+    }, [tsunamiBlockId, model]);
+    return (
+        <div key="tsunamiElem" className="term-tsunamielem">
+            <SubBlock key="tsunami" nodeModel={tsunamiNodeModel} />
+        </div>
+    );
+};
+
+const TermTsunamiNode = ({ blockId, model }: TerminalViewProps) => {
+    const tsunamiBlockId = jotai.useAtomValue(model.tsunamiBlockId);
+    if (tsunamiBlockId == null) {
+        return null;
+    }
+    return (
+        <TermTsunamiNodeSingleId
+            key={tsunamiBlockId}
+            tsunamiBlockId={tsunamiBlockId}
+            blockId={blockId}
+            model={model}
+        />
+    );
+};
+
 const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
@@ -186,7 +246,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     const termSettingsAtom = getSettingsPrefixAtom("term");
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     let termMode = blockData?.meta?.["term:mode"] ?? "term";
-    if (termMode != "term" && termMode != "vdom") {
+    if (termMode != "term" && termMode != "vdom" && termMode != "tsunami") {
         termMode = "term";
     }
     const termModeRef = React.useRef(termMode);
@@ -256,6 +316,17 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     );
     searchProps.onPrev = React.useCallback(() => executeSearch(searchVal, "previous"), [executeSearch, searchVal]);
     searchProps.onNext = React.useCallback(() => executeSearch(searchVal, "next"), [executeSearch, searchVal]);
+
+    React.useEffect(() => {
+        const tsunamiBlockId = globalStore.get(model.tsunamiBlockId);
+        if (!tsunamiBlockId) return;
+        RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", blockId),
+            meta: { "term:tsunamiblockid": null, "term:mode": null },
+        });
+    }, [blockId]);
+
     // Return input focus to the terminal when the search is closed
     React.useEffect(() => {
         if (!searchIsOpen) {
@@ -392,6 +463,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             <TermStickers config={stickerConfig} />
             <TermToolbarVDomNode key="vdom-toolbar" blockId={blockId} model={model} />
             <TermVDomNode key="vdom" blockId={blockId} model={model} />
+            <TermTsunamiNode key="tsunami" blockId={blockId} model={model} />
             <div key="connect-elem" className="term-connectelem" ref={connectElemRef} />
             <NullErrorBoundary debugName="TermLinkTooltip">
                 <TermLinkTooltip termWrap={termWrapInst} />

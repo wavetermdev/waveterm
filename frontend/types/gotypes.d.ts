@@ -1179,6 +1179,7 @@ declare global {
         "term:scrollback"?: number;
         "term:vdomblockid"?: string;
         "term:vdomtoolbarblockid"?: string;
+        "term:tsunamiblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
@@ -1202,6 +1203,7 @@ declare global {
         "tsunami:appid"?: string;
         "tsunami:scaffoldpath"?: string;
         "tsunami:env"?: {[key: string]: string};
+        "tsunami:url"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;

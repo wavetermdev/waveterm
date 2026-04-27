@@ -207,7 +207,9 @@ func (srv *TermListenSrv) handleAccept(sess *srvSession, msg *oscMsg) {
 
 		conn, err := listener.Accept()
 		if err != nil {
-			srv.sendMsg(outMsg{Id: msg.Id, Error: err.Error()})
+			if !sess.isClosed() {
+				srv.sendMsg(outMsg{Id: msg.Id, Error: err.Error()})
+			}
 			return
 		}
 
@@ -218,7 +220,6 @@ func (srv *TermListenSrv) handleAccept(sess *srvSession, msg *oscMsg) {
 		if sess.closed {
 			sess.mu.Unlock()
 			conn.Close()
-			srv.sendMsg(outMsg{Id: msg.Id, Error: "session closed"})
 			return
 		}
 		sess.conns[connId] = sconn
@@ -255,6 +256,9 @@ func (srv *TermListenSrv) handleRead(sess *srvSession, msg *oscMsg) {
 				Id:   msg.Id,
 				Data: base64.StdEncoding.EncodeToString(buf[:nr]),
 			})
+			return
+		}
+		if sess.isClosed() {
 			return
 		}
 		if err == io.EOF {
@@ -349,6 +353,12 @@ func (s *srvSession) teardown() {
 	for _, sconn := range conns {
 		sconn.conn.Close()
 	}
+}
+
+func (s *srvSession) isClosed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closed
 }
 
 func (s *srvSession) getConn(connId string) *srvConn {

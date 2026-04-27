@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
+import { splitORef } from "@/app/store/wos";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     getApi,
@@ -380,6 +381,45 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
             });
         }, 0);
     }
+
+    return true;
+}
+
+export async function handleOsc9009Command(data: string, blockId: string): Promise<boolean> {
+    const firstSemi = data.indexOf(";");
+    if (firstSemi === -1) return true;
+    const subtype = data.substring(0, firstSemi);
+    if (subtype !== "wave-tsunami") return true;
+    const jsonStr = data.substring(firstSemi + 1);
+    let payload: { port?: number; termlisten?: boolean };
+    try {
+        payload = JSON.parse(jsonStr);
+    } catch {
+        return true;
+    }
+    if (!payload.port || !payload.termlisten) return true;
+
+    const tsunamiUrl = `http://localhost:${payload.port}`;
+
+    const oldBlockId = globalStore.get(getBlockMetaKeyAtom(blockId, "term:tsunamiblockid"));
+    if (oldBlockId) {
+        setTimeout(() => {
+            RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: oldBlockId });
+        }, 500);
+    }
+
+    const oref = await RpcApi.CreateSubBlockCommand(TabRpcClient, {
+        parentblockid: blockId,
+        blockdef: { meta: { view: "tsunami", "tsunami:url": tsunamiUrl } },
+    });
+    const [, newBlockId] = splitORef(oref);
+
+    setTimeout(() => {
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", blockId),
+            meta: { "term:tsunamiblockid": newBlockId, "term:mode": "tsunami" },
+        });
+    }, 50);
 
     return true;
 }

@@ -113,6 +113,8 @@ class TsunamiViewModel extends WebViewModel {
     }
 
     resyncController() {
+        const blockData = globalStore.get(this.blockAtom);
+        if (blockData?.meta?.["tsunami:url"]) return;
         this.doControllerResync(false, "resync", false);
     }
 
@@ -191,8 +193,12 @@ class TsunamiViewModel extends WebViewModel {
             );
         });
 
-        // Check if we should show the Remix option
         const blockData = globalStore.get(this.blockAtom);
+        if (blockData?.meta?.["tsunami:url"]) {
+            return filteredItems;
+        }
+
+        // Check if we should show the Remix option
         const appId = blockData?.meta?.["tsunami:appid"];
         const showRemixOption = appId && appId.startsWith("local/");
 
@@ -241,6 +247,28 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     useEffect(() => {
         model.resyncController();
     }, [model]);
+
+    const tsunamiDirectUrl = blockData?.meta?.["tsunami:url"];
+
+    useEffect(() => {
+        if (!tsunamiDirectUrl) return;
+        fetch(`${tsunamiDirectUrl}/api/manifest`)
+            .then((r) => r.json())
+            .then((manifest: AppManifest) => {
+                if (manifest?.appmeta) {
+                    globalStore.set(model.appMeta, manifest.appmeta);
+                }
+            })
+            .catch(() => {});
+    }, [tsunamiDirectUrl]);
+
+    if (tsunamiDirectUrl) {
+        return (
+            <div className="w-full h-full">
+                <WebView {...props} initialSrc={tsunamiDirectUrl} />
+            </div>
+        );
+    }
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
     const appId = blockData?.meta?.["tsunami:appid"];

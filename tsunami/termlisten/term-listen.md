@@ -35,7 +35,7 @@ Wave → Remote:  ##listen{...json...}\n   (injected into stdin)
 
 The remote SDK reads stdin line by line, ignores any line that does not start with `##listen{`, and demultiplexes the rest by `id`.
 
-The terminal should be in raw mode. In cooked mode the injected `##listen{...}` lines would be echoed back to the terminal output as garbage. Raw mode is not enforced by Wave, but operating without it produces garbage output.
+The terminal must have echo disabled. In echo-on mode the injected `##listen{...}` lines would be echoed back to the terminal output as garbage. The SDK disables echo (and canonical mode, since injected frames can exceed the 4 KB canonical buffer) while keeping `ISIG` set so that ^C and ^Z still deliver signals to the process.
 
 Calls that receive a response carry a unique `id`; Wave's response references the same `id`. Calls that are fire-and-forget omit `id` entirely. Multiple calls can be in-flight simultaneously.
 

@@ -102,8 +102,8 @@ type MetaTSType struct {
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
 	// for workspace
-	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
-	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
+	LayoutVTabBarWidth   int   `json:"layout:vtabbarwidth,omitempty"`
+	LayoutWidgetsVisible *bool `json:"layout:widgetsvisible,omitempty"`
 
 	// for tabs+waveai
 	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`
@@ -122,6 +122,7 @@ type MetaTSType struct {
 	TermScrollback          *int     `json:"term:scrollback,omitempty"`
 	TermVDomSubBlockId      string   `json:"term:vdomblockid,omitempty"`
 	TermVDomToolbarBlockId  string   `json:"term:vdomtoolbarblockid,omitempty"`
+	TermTsunamiSubBlockId   string   `json:"term:tsunamiblockid,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
@@ -148,6 +149,7 @@ type MetaTSType struct {
 	TsunamiAppId          string            `json:"tsunami:appid,omitempty"`
 	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
 	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
+	TsunamiUrl            string            `json:"tsunami:url,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`

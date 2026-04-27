@@ -272,7 +272,8 @@ type Listener struct {
 }
 
 // MakeListener enters listen mode using r as the source of Wave→Remote frames.
-// If r is an *os.File backed by a terminal, raw mode is enabled automatically.
+// If r is an *os.File backed by a terminal, echo and canonical mode are disabled
+// automatically (ISIG is kept, so ^C/^Z still deliver signals).
 // Returns a Listener, a passthrough reader carrying all non-protocol bytes from r,
 // and an error if the handshake fails or the terminal does not support the protocol.
 func MakeListener(r io.Reader) (*Listener, io.Reader, error) {
@@ -286,9 +287,9 @@ func MakeListener(r io.Reader) (*Listener, io.Reader, error) {
 	if f, ok := r.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
 		termFd = int(f.Fd())
 		var err error
-		oldState, err = term.MakeRaw(termFd)
+		oldState, err = setTermMode(termFd)
 		if err != nil {
-			return nil, nil, fmt.Errorf("termlisten: set raw mode: %w", err)
+			return nil, nil, fmt.Errorf("termlisten: set term mode: %w", err)
 		}
 	}
 
@@ -442,8 +443,8 @@ func (l *Listener) Port() int {
 }
 
 // Reenter performs a fresh listen-enter handshake, intended to be called after SIGCONT.
-// It re-enables raw mode (if the reader is a terminal) and re-establishes the listen session
-// with a new ephemeral port. The listener's port and address are updated in place.
+// It re-applies echo-off mode (if the reader is a terminal) and re-establishes the listen
+// session with a new ephemeral port. The listener's port and address are updated in place.
 func (l *Listener) Reenter() (int, error) {
 	l.mu.Lock()
 	r := l.reader
@@ -455,9 +456,9 @@ func (l *Listener) Reenter() (int, error) {
 	if f, ok := r.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
 		termFd = int(f.Fd())
 		var err error
-		oldState, err = term.MakeRaw(termFd)
+		oldState, err = setTermMode(termFd)
 		if err != nil {
-			return 0, fmt.Errorf("termlisten: set raw mode: %w", err)
+			return 0, fmt.Errorf("termlisten: set term mode: %w", err)
 		}
 	}
 
