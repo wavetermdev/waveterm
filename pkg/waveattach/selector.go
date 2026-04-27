@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -32,7 +33,7 @@ func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
 
 	var entries []blockEntry
 	for _, blk := range allBlocks {
-		view := blk.Meta.GetString("view", "")
+		view := blk.Meta.GetString(waveobj.MetaKey_View, "")
 		if view != "term" {
 			continue
 		}
@@ -49,7 +50,11 @@ func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
 			}
 			wsName = wsCache[blk.WorkspaceId]
 			if wsName == "" {
-				wsName = blk.WorkspaceId[:8]
+				short := blk.WorkspaceId
+				if len(short) > 8 {
+					short = short[:8]
+				}
+				wsName = short
 			}
 			wsCache[blk.WorkspaceId] = wsName
 		}
@@ -61,12 +66,16 @@ func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
 				tabName = tab.Name
 			}
 			if tabName == "" {
-				tabName = blk.TabId[:8]
+				short := blk.TabId
+				if len(short) > 8 {
+					short = short[:8]
+				}
+				tabName = short
 			}
 			tabCache[blk.TabId] = tabName
 		}
 
-		cwd := blk.Meta.GetString("cmd:cwd", "")
+		cwd := blk.Meta.GetString(waveobj.MetaKey_CmdCwd, "")
 
 		entries = append(entries, blockEntry{
 			BlockId:   blk.BlockId,
@@ -94,6 +103,9 @@ func SelectBlock(rpcClient *wshutil.WshRpc) (string, error) {
 
 func runInteractiveSelector(entries []blockEntry) (string, error) {
 	fd := int(os.Stdin.Fd())
+	if !term.IsTerminal(fd) {
+		return "", fmt.Errorf("multiple blocks found but stdin is not a terminal — pass blockid explicitly")
+	}
 	oldState, err := term.MakeRaw(fd)
 	if err != nil {
 		return "", fmt.Errorf("entering raw mode: %w", err)
@@ -126,7 +138,6 @@ func runInteractiveSelector(entries []blockEntry) (string, error) {
 
 		totalLines := len(entries) + 5
 		fmt.Fprint(os.Stderr, sb.String())
-		// move cursor back up to allow re-rendering
 		fmt.Fprintf(os.Stderr, "\033[%dA", totalLines)
 	}
 
@@ -149,18 +160,18 @@ func runInteractiveSelector(entries []blockEntry) (string, error) {
 		b := buf[:n]
 
 		switch {
-		case n == 1 && (b[0] == 'q' || b[0] == 3): // q or Ctrl-C
+		case n == 1 && (b[0] == 'q' || b[0] == 3):
 			clear()
 			return "", fmt.Errorf("cancelled")
-		case n == 1 && b[0] == 13: // Enter
+		case n == 1 && b[0] == 13:
 			selected := entries[cur].BlockId
 			clear()
 			return selected, nil
-		case n == 3 && b[0] == 27 && b[1] == '[' && b[2] == 'A': // up arrow
+		case n == 3 && b[0] == 27 && b[1] == '[' && b[2] == 'A':
 			if cur > 0 {
 				cur--
 			}
-		case n == 3 && b[0] == 27 && b[1] == '[' && b[2] == 'B': // down arrow
+		case n == 3 && b[0] == 27 && b[1] == '[' && b[2] == 'B':
 			if cur < len(entries)-1 {
 				cur++
 			}
