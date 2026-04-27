@@ -15,10 +15,10 @@ import (
 )
 
 type blockEntry struct {
-	BlockId       string
-	WorkspaceName string
-	TabName       string
-	Cwd           string
+	BlockId   string
+	Workspace string
+	Tab       string
+	Cwd       string
 }
 
 func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
@@ -69,10 +69,10 @@ func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
 		cwd := blk.Meta.GetString("cmd:cwd", "")
 
 		entries = append(entries, blockEntry{
-			BlockId:       blk.BlockId,
-			WorkspaceName: wsName,
-			TabName:       tabName,
-			Cwd:           cwd,
+			BlockId:   blk.BlockId,
+			Workspace: wsName,
+			Tab:       tabName,
+			Cwd:       cwd,
 		})
 	}
 	return entries, nil
@@ -114,7 +114,7 @@ func runInteractiveSelector(entries []blockEntry) (string, error) {
 				cwd = "—"
 			}
 			line := fmt.Sprintf("%s [%d] term  │ workspace: %-16s │ tab: %-12s │ cwd: %s",
-				prefix, i+1, e.WorkspaceName, e.TabName, cwd)
+				prefix, i+1, e.Workspace, e.Tab, cwd)
 			if i == cur {
 				line += "\033[0m"
 			}
