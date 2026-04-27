@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -21,11 +22,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
+	"github.com/wavetermdev/waveterm/tsunami/termlisten"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
+const TsunamiTermProxyEnvVar = "TSUNAMI_TERMPROXY"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
 
@@ -208,10 +211,8 @@ func (c *ClientImpl) RunMain() {
 }
 
 func (c *ClientImpl) listenAndServe(ctx context.Context) error {
-	// Create HTTP handlers
 	handlers := newHTTPHandlers(c)
 
-	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()
 	handlers.registerHandlers(mux, handlerOpts{
 		AssetsFS:     c.AssetsFS,
@@ -219,39 +220,44 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 		ManifestFile: c.ManifestFileBytes,
 	})
 
-	// Determine listen address from environment variable or use default
-	listenAddr := os.Getenv(TsunamiListenAddrEnvVar)
-	if listenAddr == "" {
-		listenAddr = DefaultListenAddr
+	server := &http.Server{Handler: mux}
+
+	var listener net.Listener
+	var port int
+
+	if os.Getenv(TsunamiTermProxyEnvVar) != "" {
+		tl, passthrough, err := termlisten.MakeListener(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("termproxy: %w", err)
+		}
+		go io.Copy(io.Discard, passthrough)
+		termlisten.SetupSignals(tl, nil, nil)
+		listener = tl
+		port = tl.Port()
+	} else {
+		listenAddr := os.Getenv(TsunamiListenAddrEnvVar)
+		if listenAddr == "" {
+			listenAddr = DefaultListenAddr
+		}
+		server.Addr = listenAddr
+		var err error
+		listener, err = net.Listen("tcp", listenAddr)
+		if err != nil {
+			return fmt.Errorf("failed to listen: %v", err)
+		}
+		port = listener.Addr().(*net.TCPAddr).Port
 	}
 
-	// Create server and listen on specified address
-	server := &http.Server{
-		Addr:    listenAddr,
-		Handler: mux,
-	}
-
-	// Start listening
-	listener, err := net.Listen("tcp", listenAddr)
-	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
-	}
-
-	// Log the address we're listening on
-	port := listener.Addr().(*net.TCPAddr).Port
 	log.Printf("[tsunami] listening at http://localhost:%d", port)
 
-	// Serve in a goroutine so we don't block
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			log.Printf("HTTP server error: %v", err)
+			c.doShutdown("http server closed")
 		}
 	}()
 
-	// Wait for context cancellation and shutdown server gracefully
 	go func() {
 		<-ctx.Done()
-		log.Printf("Context canceled, shutting down server...")
 		if err := server.Shutdown(context.Background()); err != nil {
 			log.Printf("Server shutdown error: %v", err)
 		}

@@ -95,6 +95,7 @@ type BuildOpts struct {
 	Verbose        bool
 	Open           bool
 	KeepTemp       bool
+	TermProxy      bool
 	OutputFile     string
 	ScaffoldPath   string
 	SdkReplacePath string
@@ -979,7 +980,17 @@ func TsunamiRun(opts BuildOpts) error {
 
 	runCmd.Stdin = os.Stdin
 
-	if opts.Open {
+	if opts.TermProxy {
+		runCmd.Stdout = os.Stdout
+		runCmd.Stderr = os.Stderr
+		runCmd.Env = append(os.Environ(), "TSUNAMI_TERMPROXY=1")
+		if err := runCmd.Start(); err != nil {
+			return fmt.Errorf("failed to start application: %w", err)
+		}
+		if err := runCmd.Wait(); err != nil {
+			return fmt.Errorf("application exited with error: %w", err)
+		}
+	} else if opts.Open {
 		// If --open flag is set, we need to capture stderr to parse the listening message
 		stderr, err := runCmd.StderrPipe()
 		if err != nil {
