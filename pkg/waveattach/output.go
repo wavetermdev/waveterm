@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -30,17 +31,8 @@ type eventBuffer struct {
 	flushed bool
 }
 
-func newEventBuffer() *eventBuffer {
+func makeEventBuffer() *eventBuffer {
 	return &eventBuffer{}
-}
-
-func (b *eventBuffer) add(at time.Time, data []byte) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.flushed {
-		return
-	}
-	b.pending = append(b.pending, pendingEvent{at: at, data: data})
 }
 
 func (b *eventBuffer) flush(cutoff time.Time, w io.Writer) error {
@@ -69,15 +61,13 @@ func (b *eventBuffer) write(at time.Time, data []byte, w io.Writer) error {
 	return err
 }
 
-// StreamOutput subscribes to blockfile events, reads the term snapshot, then
-// forwards live appends to w. Returns when ctx is cancelled.
 func StreamOutput(ctx context.Context, rpcClient *wshutil.WshRpc, blockId string, w io.Writer) error {
-	buf := newEventBuffer()
+	buf := makeEventBuffer()
 	blockRef := waveobj.MakeORef(waveobj.OType_Block, blockId).String()
 
 	rpcClient.EventListener.On(wps.Event_BlockFile, func(ev *wps.WaveEvent) {
-		fed, ok := ev.Data.(*wps.WSFileEventData)
-		if !ok {
+		var fed wps.WSFileEventData
+		if err := utilfn.ReUnmarshal(&fed, ev.Data); err != nil {
 			return
 		}
 		if fed.ZoneId != blockId || fed.FileName != wavebase.BlockFile_Term {

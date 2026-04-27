@@ -10,12 +10,12 @@ import (
 )
 
 func TestEventBuffer_ReplayAfterCutoff(t *testing.T) {
-	buf := newEventBuffer()
+	buf := makeEventBuffer()
 	t0 := time.Now()
-	buf.add(t0, []byte("A"))
-	buf.add(t0.Add(10*time.Millisecond), []byte("B"))
+	_ = buf.write(t0, []byte("A"), nil)
+	_ = buf.write(t0.Add(10*time.Millisecond), []byte("B"), nil)
 	cutoff := t0.Add(20 * time.Millisecond)
-	buf.add(cutoff.Add(time.Millisecond), []byte("C"))
+	_ = buf.write(cutoff.Add(time.Millisecond), []byte("C"), nil)
 
 	var out bytes.Buffer
 	buf.flush(cutoff, &out)
@@ -25,7 +25,7 @@ func TestEventBuffer_ReplayAfterCutoff(t *testing.T) {
 }
 
 func TestEventBuffer_StreamModeAfterFlush(t *testing.T) {
-	buf := newEventBuffer()
+	buf := makeEventBuffer()
 	cutoff := time.Now()
 	buf.flush(cutoff, &bytes.Buffer{})
 
