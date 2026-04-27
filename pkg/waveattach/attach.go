@@ -172,9 +172,8 @@ func inputLoop(ctx context.Context, rpcClient *wshutil.WshRpc, blockId string) e
 				BlockId:     blockId,
 				InputData64: base64.StdEncoding.EncodeToString(forward.Bytes()),
 			}
-			if err := wshclient.ControllerInputCommand(rpcClient, data, nil); err != nil {
-				return fmt.Errorf("sending input: %w", err)
-			}
+			// ignore transient RPC errors (e.g. timeout under rapid input) to keep the attach alive
+			wshclient.ControllerInputCommand(rpcClient, data, &wshrpc.RpcOpts{Timeout: 2000})
 		}
 		if detach {
 			return ErrDetached
