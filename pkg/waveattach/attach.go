@@ -117,7 +117,7 @@ func Attach(rpcClient *wshutil.WshRpc, blockId string) error {
 		if err := utilfn.ReUnmarshal(&status, ev.Data); err != nil {
 			return
 		}
-		if status.ShellProcStatus == "done" {
+		if status.ShellProcStatus == blockcontroller.Status_Done {
 			exitCh <- ErrBlockClosed
 		}
 	})
@@ -143,12 +143,15 @@ func Attach(rpcClient *wshutil.WshRpc, blockId string) error {
 	switch {
 	case errors.Is(exitErr, ErrDetached):
 		fmt.Fprintf(os.Stderr, "\r\n[detached]")
+		return nil
 	case errors.Is(exitErr, ErrBlockClosed):
 		fmt.Fprintf(os.Stderr, "\r\n[block closed]")
+		return nil
 	case exitErr != nil:
 		fmt.Fprintf(os.Stderr, "\r\n[error] %v", exitErr)
+		return exitErr
 	}
-	return exitErr
+	return nil
 }
 
 func inputLoop(ctx context.Context, rpcClient *wshutil.WshRpc, blockId string) error {
