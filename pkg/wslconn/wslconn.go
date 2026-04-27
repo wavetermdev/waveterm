@@ -286,7 +286,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		return false, "", "", fmt.Errorf("unable to start conn controller cmd: %w", err)
 	}
 	linesChan := utilfn.StreamToLinesChan(pipeRead)
-	versionLine, err := utilfn.ReadLineWithTimeout(linesChan, 5*time.Second)
+	versionLine, err := utilfn.ReadLineWithTimeout(linesChan, 30*time.Second)
 	if err != nil {
 		cancelFn()
 		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)

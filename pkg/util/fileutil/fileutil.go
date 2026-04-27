@@ -1,10 +1,11 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package fileutil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,11 +15,41 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
+
+type ByteRangeType struct {
+	All     bool
+	Start   int64
+	End     int64 // inclusive; only valid when OpenEnd is false
+	OpenEnd bool  // true when range is "N-" (read from Start to EOF)
+}
+
+func ParseByteRange(rangeStr string) (ByteRangeType, error) {
+	if rangeStr == "" {
+		return ByteRangeType{All: true}, nil
+	}
+	// handle open-ended range "N-"
+	if len(rangeStr) > 0 && rangeStr[len(rangeStr)-1] == '-' {
+		var start int64
+		_, err := fmt.Sscanf(rangeStr, "%d-", &start)
+		if err != nil || start < 0 {
+			return ByteRangeType{}, errors.New("invalid byte range")
+		}
+		return ByteRangeType{Start: start, OpenEnd: true}, nil
+	}
+	var start, end int64
+	_, err := fmt.Sscanf(rangeStr, "%d-%d", &start, &end)
+	if err != nil {
+		return ByteRangeType{}, errors.New("invalid byte range")
+	}
+	if start < 0 || end < 0 || start > end {
+		return ByteRangeType{}, errors.New("invalid byte range")
+	}
+	// End is inclusive (HTTP byte range semantics: bytes=0-999 means 1000 bytes)
+	return ByteRangeType{Start: start, End: end}, nil
+}
 
 func FixPath(path string) (string, error) {
 	origPath := path
@@ -145,13 +176,21 @@ func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
 	return ""
 }
 
-func AddMimeTypeToFileInfo(path string, fileInfo *wshrpc.FileInfo) {
-	if fileInfo == nil {
-		return
+func AtomicWriteFile(fileName string, data []byte, perm os.FileMode) error {
+	tmpFileName := fileName + TempFileSuffix
+	if err := os.WriteFile(tmpFileName, data, perm); err != nil {
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to write temp file %q: %w (also failed to remove temp file: %v)", tmpFileName, err, removeErr)
+		}
+		return err
 	}
-	if fileInfo.MimeType == "" {
-		fileInfo.MimeType = DetectMimeType(path, ToFsFileInfo(fileInfo), false)
+	if err := os.Rename(tmpFileName, fileName); err != nil {
+		if removeErr := os.Remove(tmpFileName); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to rename temp file %q to %q: %w (also failed to remove temp file: %v)", tmpFileName, fileName, err, removeErr)
+		}
+		return err
 	}
+	return nil
 }
 
 var (
@@ -203,56 +242,8 @@ func IsInitScriptPath(input string) bool {
 	return true
 }
 
-type FsFileInfo struct {
-	NameInternal    string
-	ModeInternal    os.FileMode
-	SizeInternal    int64
-	ModTimeInternal int64
-	IsDirInternal   bool
-}
-
-func (f FsFileInfo) Name() string {
-	return f.NameInternal
-}
-
-func (f FsFileInfo) Size() int64 {
-	return f.SizeInternal
-}
-
-func (f FsFileInfo) Mode() os.FileMode {
-	return f.ModeInternal
-}
-
-func (f FsFileInfo) ModTime() time.Time {
-	return time.Unix(0, f.ModTimeInternal)
-}
-
-func (f FsFileInfo) IsDir() bool {
-	return f.IsDirInternal
-}
-
-func (f FsFileInfo) Sys() interface{} {
-	return nil
-}
-
-var _ fs.FileInfo = FsFileInfo{}
-
-// ToFsFileInfo converts wshrpc.FileInfo to FsFileInfo.
-// It panics if fi is nil.
-func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
-	if fi == nil {
-		panic("ToFsFileInfo: nil FileInfo")
-	}
-	return FsFileInfo{
-		NameInternal:    fi.Name,
-		ModeInternal:    fi.Mode,
-		SizeInternal:    fi.Size,
-		ModTimeInternal: fi.ModTime,
-		IsDirInternal:   fi.IsDir,
-	}
-}
-
 const (
+	TempFileSuffix  = ".tmp"
 	MaxEditFileSize = 5 * 1024 * 1024 // 5MB
 )
 

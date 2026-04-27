@@ -1,11 +1,11 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { CenteredDiv } from "@/app/element/quickelems";
-import { RpcApi } from "@/app/store/wshclientapi";
+import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
-import { globalStore } from "@/store/global";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { isBlank, makeConnRoute } from "@/util/util";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useEffect } from "react";
@@ -16,6 +16,7 @@ import { ErrorOverlay } from "./preview-error-overlay";
 import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
+import type { PreviewEnv } from "./previewenv";
 
 export type SpecializedViewProps = {
     model: PreviewModel;
@@ -64,6 +65,7 @@ const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
 });
 
 const fetchSuggestions = async (
+    env: PreviewEnv,
     model: PreviewModel,
     query: string,
     reqContext: SuggestionRequestContext
@@ -74,7 +76,7 @@ const fetchSuggestions = async (
         route = null;
     }
     if (reqContext?.dispose) {
-        RpcApi.DisposeSuggestionsCommand(TabRpcClient, reqContext.widgetid, { noresponse: true, route: route });
+        env.rpc.DisposeSuggestionsCommand(TabRpcClient, reqContext.widgetid, { noresponse: true, route: route });
         return null;
     }
     const fileInfo = await globalStore.get(model.statFile);
@@ -89,7 +91,7 @@ const fetchSuggestions = async (
         reqnum: reqContext.reqnum,
         "file:connection": conn,
     };
-    return await RpcApi.FetchSuggestionsCommand(TabRpcClient, sdata, {
+    return await env.rpc.FetchSuggestionsCommand(TabRpcClient, sdata, {
         route: route,
     });
 };
@@ -104,6 +106,7 @@ function PreviewView({
     contentRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
 }) {
+    const env = useWaveEnv<PreviewEnv>();
     const connStatus = useAtomValue(model.connStatus);
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
     const connection = useAtomValue(model.connectionImmediate);
@@ -140,7 +143,7 @@ function PreviewView({
         }
     };
     const fetchSuggestionsFn = async (query, ctx) => {
-        return await fetchSuggestions(model, query, ctx);
+        return await fetchSuggestions(env, model, query, ctx);
     };
 
     return (

@@ -1,5 +1,6 @@
 {
     "include": ["frontend/**/*", "emain/**/*"],
+    "exclude": ["node_modules"],
     "compilerOptions": {
         "target": "es6",
         "module": "es2020",
@@ -12,7 +13,6 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "experimentalDecorators": true,
-        "downlevelIteration": true,
         "baseUrl": "./",
         "paths": {
             "@/app/*": ["frontend/app/*"],
@@ -22,7 +22,8 @@
             "@/store/*": ["frontend/app/store/*"],
             "@/view/*": ["frontend/app/view/*"],
             "@/element/*": ["frontend/app/element/*"],
-            "@/shadcn/*": ["frontend/app/shadcn/*"]
+            "@/shadcn/*": ["frontend/app/shadcn/*"],
+            "@/preview/*": ["frontend/preview/*"]
         },
         "lib": ["dom", "dom.iterable", "es6"],
         "allowJs": true,

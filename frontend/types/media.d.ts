@@ -4,6 +4,9 @@
 // CSS modules
 type CSSModuleClasses = { readonly [key: string]: string };
 
+declare module "*.scss" {}
+declare module "*.css" {}
+
 declare module "*.module.css" {
     const classes: CSSModuleClasses;
     export default classes;
@@ -265,4 +268,16 @@ declare interface VitePreloadErrorEvent extends Event {
 
 declare interface WindowEventMap {
     "vite:preloadError": VitePreloadErrorEvent;
+}
+
+// import.meta.glob — provided by Vite at build time
+interface ImportMeta {
+    glob<T = Record<string, unknown>>(
+        pattern: string | string[],
+        options?: { eager?: boolean; import?: string; query?: string | Record<string, string> }
+    ): Record<string, () => Promise<T>>;
+    glob<T = Record<string, unknown>>(
+        pattern: string | string[],
+        options: { eager: true; import?: string; query?: string | Record<string, string> }
+    ): Record<string, T>;
 }

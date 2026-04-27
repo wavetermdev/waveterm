@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
@@ -9,7 +9,7 @@ import { focusedBuilderWindow, getBuilderWindowById } from "./emain-builder";
 import { openBuilderWindow } from "./emain-ipc";
 import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
-import { decreaseZoomLevel, increaseZoomLevel } from "./emain-util";
+import { decreaseZoomLevel, increaseZoomLevel, resetZoomLevel } from "./emain-util";
 import {
     createNewWaveWindow,
     createWorkspace,
@@ -58,7 +58,7 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
             return unamePlatform == "darwin" ? `Command+Control+${i + 1}` : `Alt+Control+${i + 1}`;
         }
     }
-    workspaceList?.length &&
+    if (workspaceList?.length) {
         workspaceMenu.push(
             { type: "separator" },
             ...workspaceList.map<Electron.MenuItemConstructorOptions>((workspace, i) => {
@@ -71,6 +71,7 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
                 };
             })
         );
+    }
     return workspaceMenu;
 }
 
@@ -226,7 +227,7 @@ function makeViewMenu(
             label: "Toggle DevTools",
             accelerator: devToolsAccel,
             click: (_, window) => {
-                let wc = getWindowWebContents(window) ?? webContents;
+                const wc = getWindowWebContents(window) ?? webContents;
                 wc?.toggleDevTools();
             },
         },
@@ -237,8 +238,7 @@ function makeViewMenu(
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
                 if (wc) {
-                    wc.setZoomFactor(1);
-                    wc.send("zoom-factor-change", 1);
+                    resetZoomLevel(wc);
                 }
             },
         },
@@ -310,6 +310,20 @@ function makeViewMenu(
         { type: "separator" },
         {
             role: "togglefullscreen",
+        },
+        { type: "separator" },
+        {
+            label: "Toggle Widgets Bar",
+            click: () => {
+                fireAndForget(async () => {
+                    const workspaceId = focusedWaveWindow?.workspaceId;
+                    if (!workspaceId) return;
+                    const oref = `workspace:${workspaceId}`;
+                    const meta = await RpcApi.GetMetaCommand(ElectronWshClient, { oref });
+                    const current = meta?.["layout:widgetsvisible"] ?? true;
+                    await RpcApi.SetMetaCommand(ElectronWshClient, { oref, meta: { "layout:widgetsvisible": !current } });
+                });
+            },
         },
     ];
 }
@@ -385,7 +399,7 @@ export function makeAndSetAppMenu() {
 }
 
 function initMenuEventSubscriptions() {
-    waveEventSubscribe({
+    waveEventSubscribeSingle({
         eventType: "workspace:update",
         handler: makeAndSetAppMenu,
     });
@@ -407,7 +421,8 @@ function getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId: string): ele
 
 function convertMenuDefArrToMenu(
     webContents: electron.WebContents,
-    menuDefArr: ElectronContextMenuItem[]
+    menuDefArr: ElectronContextMenuItem[],
+    menuState: { hasClick: boolean }
 ): electron.Menu {
     const menuItems: electron.MenuItem[] = [];
     for (const menuDef of menuDefArr) {
@@ -415,19 +430,15 @@ function convertMenuDefArrToMenu(
             role: menuDef.role as any,
             label: menuDef.label,
             type: menuDef.type,
-            click: (_, window) => {
-                const wc = getWindowWebContents(window) ?? webContents;
-                if (!wc) {
-                    console.error("invalid window for context menu click handler:", window);
-                    return;
-                }
-                wc.send("contextmenu-click", menuDef.id);
+            click: () => {
+                menuState.hasClick = true;
+                webContents.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
             enabled: menuDef.enabled,
         };
         if (menuDef.submenu != null) {
-            menuItemTemplate.submenu = convertMenuDefArrToMenu(webContents, menuDef.submenu);
+            menuItemTemplate.submenu = convertMenuDefArrToMenu(webContents, menuDef.submenu, menuState);
         }
         const menuItem = new electron.MenuItem(menuItemTemplate);
         menuItems.push(menuItem);
@@ -438,19 +449,27 @@ function convertMenuDefArrToMenu(
 electron.ipcMain.on(
     "contextmenu-show",
     (event, workspaceOrBuilderId: string, menuDefArr: ElectronContextMenuItem[]) => {
+        const webContents = getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId);
+        if (!webContents) {
+            console.error("invalid window for context menu:", workspaceOrBuilderId);
+            event.returnValue = true;
+            return;
+        }
         if (menuDefArr.length === 0) {
+            webContents.send("contextmenu-click", null);
             event.returnValue = true;
             return;
         }
         fireAndForget(async () => {
-            const webContents = getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId);
-            if (!webContents) {
-                console.error("invalid window for context menu:", workspaceOrBuilderId);
-                return;
-            }
-
-            const menu = convertMenuDefArrToMenu(webContents, menuDefArr);
-            menu.popup();
+            const menuState = { hasClick: false };
+            const menu = convertMenuDefArrToMenu(webContents, menuDefArr, menuState);
+            menu.popup({
+                callback: () => {
+                    if (!menuState.hasClick) {
+                        webContents.send("contextmenu-click", null);
+                    }
+                },
+            });
         });
         event.returnValue = true;
     }

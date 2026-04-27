@@ -4,12 +4,13 @@
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
+import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
-import { waveEventSubscribe } from "@/app/store/wps";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { TerminalView } from "@/app/view/term/term";
+import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
@@ -39,8 +40,8 @@ import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
-import { computeTheme, DefaultTermTheme } from "./termutil";
-import { TermWrap } from "./termwrap";
+import { computeTheme, DefaultTermTheme, isLikelyOnSameHost, trimTerminalSelection } from "./termutil";
+import { TermWrap, WebGLSupported } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
@@ -76,13 +77,15 @@ export class TermViewModel implements ViewModel {
     blockJobStatusVersionTs: number;
     blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
+    termCursorUnsubFn: () => void;
+    termCursorBlinkUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
     termDurableStatus: jotai.Atom<BlockJobStatusData | null>;
     termConfigedDurable: jotai.Atom<null | boolean>;
     searchAtoms?: SearchAtoms;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel }: ViewModelInitType) {
         this.viewType = "term";
         this.blockId = blockId;
         this.tabModel = tabModel;
@@ -152,7 +155,7 @@ export class TermViewModel implements ViewModel {
             if (isCmd) {
                 const blockMeta = get(this.blockAtom)?.meta;
                 let cmdText = blockMeta?.["cmd"];
-                let cmdArgs = blockMeta?.["cmd:args"];
+                const cmdArgs = blockMeta?.["cmd:args"];
                 if (cmdArgs != null && Array.isArray(cmdArgs) && cmdArgs.length > 0) {
                     cmdText += " " + cmdArgs.join(" ");
                 }
@@ -239,7 +242,7 @@ export class TermViewModel implements ViewModel {
         });
         this.termTransparencyAtom = useBlockAtom(blockId, "termtransparencyatom", () => {
             return jotai.atom<number>((get) => {
-                let value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
+                const value = get(getOverrideConfigAtom(this.blockId, "term:transparency")) ?? 0.5;
                 return boundNumber(value, 0, 1);
             });
         });
@@ -290,6 +293,13 @@ export class TermViewModel implements ViewModel {
                 }
             }
 
+            if (get(getSettingsKeyAtom("debug:webglstatus"))) {
+                const webglButton = this.getWebGlIconButton(get);
+                if (webglButton) {
+                    rtn.push(webglButton);
+                }
+            }
+
             if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
                 return rtn;
             }
@@ -329,12 +339,11 @@ export class TermViewModel implements ViewModel {
         initialShellProcStatus.then((rts) => {
             this.updateShellProcStatus(rts);
         });
-        this.shellProcStatusUnsubFn = waveEventSubscribe({
+        this.shellProcStatusUnsubFn = waveEventSubscribeSingle({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
-                let bcRTS: BlockControllerRuntimeStatus = event.data;
-                this.updateShellProcStatus(bcRTS);
+                this.updateShellProcStatus(event.data);
             },
         });
         this.shellProcStatus = jotai.atom((get) => {
@@ -363,7 +372,7 @@ export class TermViewModel implements ViewModel {
             .catch((error) => {
                 console.log("error getting initial block job status", error);
             });
-        this.blockJobStatusUnsubFn = waveEventSubscribe({
+        this.blockJobStatusUnsubFn = waveEventSubscribeSingle({
             eventType: "block:jobstatus",
             scope: `block:${blockId}`,
             handler: (event) => {
@@ -376,6 +385,18 @@ export class TermViewModel implements ViewModel {
                 this.termRef.current.terminal.options.ignoreBracketedPasteMode = !allowBPM;
             }
         });
+        const termCursorAtom = getOverrideConfigAtom(blockId, "term:cursor");
+        this.termCursorUnsubFn = globalStore.sub(termCursorAtom, () => {
+            if (this.termRef.current?.terminal) {
+                this.termRef.current.setCursorStyle(globalStore.get(termCursorAtom));
+            }
+        });
+        const termCursorBlinkAtom = getOverrideConfigAtom(blockId, "term:cursorblink");
+        this.termCursorBlinkUnsubFn = globalStore.sub(termCursorBlinkAtom, () => {
+            if (this.termRef.current?.terminal) {
+                this.termRef.current.setCursorBlink(globalStore.get(termCursorBlinkAtom) ?? false);
+            }
+        });
     }
 
     getShellIntegrationIconButton(get: jotai.Getter): IconButtonDecl | null {
@@ -383,10 +404,12 @@ export class TermViewModel implements ViewModel {
             return null;
         }
         const shellIntegrationStatus = get(this.termRef.current.shellIntegrationStatusAtom);
+        const claudeCodeActive = get(this.termRef.current.claudeCodeActiveAtom);
+        const icon = claudeCodeActive ? React.createElement(TermClaudeIcon) : "sparkles";
         if (shellIntegrationStatus == null) {
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-muted",
                 title: "No shell integration — Wave AI unable to run commands.",
                 noAction: true,
@@ -395,14 +418,16 @@ export class TermViewModel implements ViewModel {
         if (shellIntegrationStatus === "ready") {
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-accent",
                 title: "Shell ready — Wave AI can run commands in this terminal.",
                 noAction: true,
             };
         }
         if (shellIntegrationStatus === "running-command") {
-            let title = "Shell busy — Wave AI unable to run commands while another command is running.";
+            let title = claudeCodeActive
+                ? "Claude Code Detected"
+                : "Shell busy — Wave AI unable to run commands while another command is running.";
 
             if (this.termRef.current) {
                 const inAltBuffer = this.termRef.current.terminal?.buffer?.active?.type === "alternate";
@@ -415,13 +440,45 @@ export class TermViewModel implements ViewModel {
 
             return {
                 elemtype: "iconbutton",
-                icon: "sparkles",
+                icon,
                 className: "text-warning",
                 title: title,
                 noAction: true,
             };
         }
         return null;
+    }
+
+    getWebGlIconButton(get: jotai.Getter): IconButtonDecl | null {
+        if (!WebGLSupported) {
+            return {
+                elemtype: "iconbutton",
+                icon: "microchip",
+                iconColor: "var(--error-color)",
+                title: "WebGL not supported",
+                noAction: true,
+            };
+        }
+        if (!this.termRef.current?.webglEnabledAtom) {
+            return null;
+        }
+        const webglEnabled = get(this.termRef.current.webglEnabledAtom);
+        if (webglEnabled) {
+            return {
+                elemtype: "iconbutton",
+                icon: "microchip",
+                iconColor: "var(--success-color)",
+                title: "WebGL enabled (click to disable)",
+                click: () => this.toggleWebGl(),
+            };
+        }
+        return {
+            elemtype: "iconbutton",
+            icon: "microchip",
+            iconColor: "var(--secondary-text-color)",
+            title: "WebGL disabled (click to enable)",
+            click: () => this.toggleWebGl(),
+        };
     }
 
     get viewComponent(): ViewComponent {
@@ -462,6 +519,22 @@ export class TermViewModel implements ViewModel {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:mode": mode },
         });
+    }
+
+    getTermRenderer(): "webgl" | "dom" {
+        return this.termRef.current?.getTermRenderer() ?? "dom";
+    }
+
+    isWebGlEnabled(): boolean {
+        return this.termRef.current?.isWebGlEnabled() ?? false;
+    }
+
+    toggleWebGl() {
+        if (!this.termRef.current) {
+            return;
+        }
+        const renderer = this.termRef.current.getTermRenderer() === "webgl" ? "dom" : "webgl";
+        this.termRef.current.setTermRenderer(renderer);
     }
 
     triggerRestartAtom() {
@@ -521,6 +594,8 @@ export class TermViewModel implements ViewModel {
         this.shellProcStatusUnsubFn?.();
         this.blockJobStatusUnsubFn?.();
         this.termBPMUnsubFn?.();
+        this.termCursorUnsubFn?.();
+        this.termCursorBlinkUnsubFn?.();
     }
 
     giveFocus(): boolean {
@@ -528,7 +603,7 @@ export class TermViewModel implements ViewModel {
             console.log("search is open, not giving focus");
             return true;
         }
-        let termMode = globalStore.get(this.termMode);
+        const termMode = globalStore.get(this.termMode);
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.focus();
@@ -627,14 +702,6 @@ export class TermViewModel implements ViewModel {
             return true;
         }
 
-        // Handle Escape key during IME composition
-        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
-            if (this.termRef.current?.isComposing) {
-                // Reset composition state when Escape is pressed during composition
-                this.termRef.current.resetCompositionState();
-            }
-        }
-
         if (this.keyDownHandler(waveEvent)) {
             event.preventDefault();
             event.stopPropagation();
@@ -683,9 +750,12 @@ export class TermViewModel implements ViewModel {
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             event.preventDefault();
             event.stopPropagation();
-            const sel = this.termRef.current?.terminal.getSelection();
+            let sel = this.termRef.current?.terminal.getSelection();
             if (!sel) {
                 return false;
+            }
+            if (globalStore.get(getSettingsKeyAtom("term:trimtrailingwhitespace")) !== false) {
+                sel = trimTerminalSelection(sel);
             }
             navigator.clipboard.writeText(sel);
             return false;
@@ -762,7 +832,11 @@ export class TermViewModel implements ViewModel {
                 label: "Copy",
                 click: () => {
                     if (selection) {
-                        navigator.clipboard.writeText(selection);
+                        const text =
+                            globalStore.get(getSettingsKeyAtom("term:trimtrailingwhitespace")) !== false
+                                ? trimTerminalSelection(selection)
+                                : selection;
+                        navigator.clipboard.writeText(text);
                     }
                 },
             });
@@ -782,28 +856,25 @@ export class TermViewModel implements ViewModel {
                 },
             });
 
-            let selectionURL: URL = null;
-            if (selection) {
-                try {
-                    const trimmedSelection = selection.trim();
-                    const url = new URL(trimmedSelection);
-                    if (url.protocol.startsWith("http")) {
-                        selectionURL = url;
-                    }
-                } catch (e) {
-                    // not a valid URL
-                }
-            }
+            menu.push({ type: "separator" });
+        }
 
-            if (selectionURL) {
-                menu.push({ type: "separator" });
+        const hoveredLinkUri = this.termRef.current?.hoveredLinkUri;
+        if (hoveredLinkUri) {
+            let hoveredURL: URL = null;
+            try {
+                hoveredURL = new URL(hoveredLinkUri);
+            } catch (e) {
+                // not a valid URL
+            }
+            if (hoveredURL) {
                 menu.push({
-                    label: "Open URL (" + selectionURL.hostname + ")",
+                    label: hoveredURL.hostname ? "Open URL (" + hoveredURL.hostname + ")" : "Open URL",
                     click: () => {
                         createBlock({
                             meta: {
                                 view: "web",
-                                url: selectionURL.toString(),
+                                url: hoveredURL.toString(),
                             },
                         });
                     },
@@ -811,11 +882,11 @@ export class TermViewModel implements ViewModel {
                 menu.push({
                     label: "Open URL in External Browser",
                     click: () => {
-                        getApi().openExternal(selectionURL.toString());
+                        getApi().openExternal(hoveredURL.toString());
                     },
                 });
+                menu.push({ type: "separator" });
             }
-            menu.push({ type: "separator" });
         }
 
         menu.push({
@@ -887,9 +958,9 @@ export class TermViewModel implements ViewModel {
         });
         fullMenu.push({ type: "separator" });
 
-        const shellIntegrationStatus = globalStore.get(this.termRef?.current?.shellIntegrationStatusAtom);
+        const lastCommand = globalStore.get(this.termRef?.current?.lastCommandAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
-        const canShowFileBrowser = shellIntegrationStatus === "ready" && cwd != null;
+        const canShowFileBrowser = cwd != null && isLikelyOnSameHost(lastCommand);
 
         if (canShowFileBrowser) {
             fullMenu.push({
@@ -911,6 +982,36 @@ export class TermViewModel implements ViewModel {
             });
             fullMenu.push({ type: "separator" });
         }
+
+        fullMenu.push({
+            label: "Save Session As...",
+            click: () => {
+                if (this.termRef.current) {
+                    const content = this.termRef.current.getScrollbackContent();
+                    if (content) {
+                        fireAndForget(async () => {
+                            try {
+                                const success = await getApi().saveTextFile("session.log", content);
+                                if (!success) {
+                                    console.log("Save scrollback cancelled by user");
+                                }
+                            } catch (error) {
+                                console.error("Failed to save scrollback:", error);
+                                const errorMessage = error?.message || "An unknown error occurred";
+                                modalsModel.pushModal("MessageModal", {
+                                    children: `Failed to save session scrollback: ${errorMessage}`,
+                                });
+                            }
+                        });
+                    } else {
+                        modalsModel.pushModal("MessageModal", {
+                            children: "No scrollback content to save.",
+                        });
+                    }
+                }
+            },
+        });
+        fullMenu.push({ type: "separator" });
 
         const submenu: ContextMenuItem[] = termThemeKeys.map((themeName) => {
             return {
@@ -987,6 +1088,91 @@ export class TermViewModel implements ViewModel {
                 });
             },
         });
+        const overrideCursor = blockData?.meta?.["term:cursor"] as string | null | undefined;
+        const overrideCursorBlink = blockData?.meta?.["term:cursorblink"] as boolean | null | undefined;
+        const isCursorDefault = overrideCursor == null && overrideCursorBlink == null;
+        // normalize for comparison: null/undefined/"block" all mean "block"
+        const effectiveCursor = overrideCursor === "underline" || overrideCursor === "bar" ? overrideCursor : "block";
+        const effectiveCursorBlink = overrideCursorBlink === true;
+        const cursorSubMenu: ContextMenuItem[] = [
+            {
+                label: "Default",
+                type: "checkbox",
+                checked: isCursorDefault,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": null, "term:cursorblink": null },
+                    });
+                },
+            },
+            {
+                label: "Block",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "block" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "block", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Block (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "block" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "block", "term:cursorblink": true },
+                    });
+                },
+            },
+            {
+                label: "Bar",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "bar" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "bar", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Bar (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "bar" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "bar", "term:cursorblink": true },
+                    });
+                },
+            },
+            {
+                label: "Underline",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "underline" && !effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "underline", "term:cursorblink": false },
+                    });
+                },
+            },
+            {
+                label: "Underline (Blinking)",
+                type: "checkbox",
+                checked: !isCursorDefault && effectiveCursor === "underline" && effectiveCursorBlink,
+                click: () => {
+                    RpcApi.SetMetaCommand(TabRpcClient, {
+                        oref: WOS.makeORef("block", this.blockId),
+                        meta: { "term:cursor": "underline", "term:cursorblink": true },
+                    });
+                },
+            },
+        ];
         fullMenu.push({
             label: "Themes",
             submenu: submenu,
@@ -994,6 +1180,10 @@ export class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Font Size",
             submenu: fontSizeSubMenu,
+        });
+        fullMenu.push({
+            label: "Cursor",
+            submenu: cursorSubMenu,
         });
         fullMenu.push({
             label: "Transparency",

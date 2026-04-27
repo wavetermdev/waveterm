@@ -18,7 +18,7 @@ const markdownComponents: Partial<Components> = {
     h6: ({ children }) => <h6 className="text-sm font-bold mb-2 mt-3 text-foreground">{children}</h6>,
     p: ({ children }) => <p className="mb-4 leading-relaxed text-secondary">{children}</p>,
     a: ({ href, children }) => (
-        <a href={href} className="text-accent hover:text-accent-300 underline">
+        <a href={href} className="text-accent hover:underline">
             {children}
         </a>
     ),

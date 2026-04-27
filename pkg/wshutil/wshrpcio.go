@@ -16,10 +16,10 @@ import (
 // * stream (json lines)
 // * websocket (json packets)
 
-func AdaptStreamToMsgCh(input io.Reader, output chan baseds.RpcInputChType) error {
+func AdaptStreamToMsgCh(input io.Reader, output chan baseds.RpcInputChType, readCallback func()) error {
 	return utilfn.StreamToLines(input, func(line []byte) {
 		output <- baseds.RpcInputChType{MsgBytes: line}
-	})
+	}, readCallback)
 }
 
 func AdaptOutputChToStream(outputCh chan []byte, output io.Writer) error {

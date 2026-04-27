@@ -1,8 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { FakeBlock } from "./onboarding-layout";
+import { FakeTermBlock } from "./onboarding-layout-term";
 import waveLogo from "/logos/wave-logo.png";
 
 export type CommandRevealProps = {

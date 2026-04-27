@@ -99,6 +99,20 @@ func H(tag string, props map[string]any, children ...any) *VDomElem {
 	return rtn
 }
 
+// JSFunc creates a VDomFunc that executes client-side JS only, with no backend call.
+// jsCode must be a JS function expression whose signature matches the natural arguments of the event handler
+// (e.g. (e) => { ... } for DOM events, or whatever args the underlying handler receives).
+func JSFunc(jsCode string) *VDomFunc {
+	return &VDomFunc{Type: ObjectType_Func, JsCode: jsCode, PreventBackend: true}
+}
+
+// CombinedFunc creates a VDomFunc that executes client-side JS first, then fires to the backend.
+// jsCode must be a JS function expression whose signature matches the natural arguments of the event handler
+// (e.g. (e) => { ... } for DOM events, or whatever args the underlying handler receives).
+func CombinedFunc(jsCode string, fn any) *VDomFunc {
+	return &VDomFunc{Type: ObjectType_Func, JsCode: jsCode, Fn: fn}
+}
+
 // If returns the provided part if the condition is true, otherwise returns nil.
 // This is useful for conditional rendering in VDOM children lists, props, and style attributes.
 func If(cond bool, part any) any {

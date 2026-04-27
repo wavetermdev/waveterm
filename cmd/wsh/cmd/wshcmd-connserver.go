@@ -38,6 +38,12 @@ var serverCmd = &cobra.Command{
 	RunE:   serverRun,
 }
 
+const (
+	JobLogRetentionTime   = 48 * time.Hour
+	JobLogCleanupDelay    = 10 * time.Second
+	JobLogCleanupInterval = 1 * time.Hour
+)
+
 var connServerRouter bool
 var connServerRouterDomainSocket bool
 var connServerConnName string
@@ -51,6 +57,61 @@ func init() {
 	serverCmd.Flags().StringVar(&connServerConnName, "conn", "", "connection name")
 	serverCmd.Flags().BoolVar(&connServerDev, "dev", false, "enable dev mode with file logging and PID in logs")
 	rootCmd.AddCommand(serverCmd)
+}
+
+func cleanupOldJobLogs() {
+	jobDir := wavebase.GetRemoteJobLogDir()
+	entries, err := os.ReadDir(jobDir)
+	if err != nil {
+		return
+	}
+
+	cutoffTime := time.Now().Add(-JobLogRetentionTime)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".log") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		if info.ModTime().Before(cutoffTime) {
+			filePath := filepath.Join(jobDir, name)
+			err := os.Remove(filePath)
+			if err != nil {
+				log.Printf("error removing old job log file %s: %v", filePath, err)
+			} else {
+				log.Printf("removed old job log file: %s", filePath)
+			}
+		}
+	}
+}
+
+func startJobLogCleanup() {
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("startJobLogCleanup", recover())
+		}()
+
+		time.Sleep(JobLogCleanupDelay)
+
+		cleanupOldJobLogs()
+
+		ticker := time.NewTicker(JobLogCleanupInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			cleanupOldJobLogs()
+		}
+	}()
 }
 
 func getRemoteDomainSocketName() string {
@@ -97,7 +158,7 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 				router.UnregisterLink(baseds.LinkId(linkId))
 			}
 		}()
-		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
+		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh, nil)
 	}()
 	linkId := router.RegisterUntrustedLink(proxy)
 	linkIdContainer.Store(int32(linkId))
@@ -122,7 +183,7 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 	}
 }
 
-func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName string) (*wshutil.WshRpc, error) {
+func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName string) (*wshutil.WshRpc, string, error) {
 	routeId := wshutil.MakeConnectionRouteId(connServerConnName)
 	rpcCtx := wshrpc.RpcContext{
 		RouteId: routeId,
@@ -135,7 +196,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, sockName stri
 
 	connServerClient := wshutil.MakeWshRpc(rpcCtx, wshremote.MakeRemoteRpcServerImpl(os.Stdout, router, bareClient, false, connServerInitialEnv, sockName), routeId)
 	router.RegisterTrustedLeaf(connServerClient, routeId)
-	return connServerClient, nil
+	return connServerClient, routeId, nil
 }
 
 func serverRunRouter() error {
@@ -175,11 +236,12 @@ func serverRunRouter() error {
 	sockName := getRemoteDomainSocketName()
 
 	// setup the connserver rpc client first
-	client, err := setupConnServerRpcClientWithRouter(router, sockName)
+	client, bareRouteId, err := setupConnServerRpcClientWithRouter(router, sockName)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
 	wshfs.RpcClient = client
+	wshfs.RpcClientRouteId = bareRouteId
 
 	log.Printf("trying to get JWT public key")
 
@@ -218,6 +280,7 @@ func serverRunRouter() error {
 		}()
 		wshremote.RunSysInfoLoop(client, connServerConnName)
 	}()
+	startJobLogCleanup()
 	log.Printf("running server, successfully started")
 	select {}
 }
@@ -265,7 +328,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 			log.Printf("upstream domain socket closed, shutting down")
 			wshutil.DoShutdown("", 0, true)
 		}()
-		wshutil.AdaptStreamToMsgCh(conn, upstreamProxy.FromRemoteCh)
+		wshutil.AdaptStreamToMsgCh(conn, upstreamProxy.FromRemoteCh, nil)
 	}()
 
 	// register the domain socket connection as upstream
@@ -298,11 +361,12 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 	log.Printf("got JWT public key")
 
 	// now setup the connserver rpc client
-	client, err := setupConnServerRpcClientWithRouter(router, sockName)
+	client, bareRouteId, err := setupConnServerRpcClientWithRouter(router, sockName)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
 	wshfs.RpcClient = client
+	wshfs.RpcClientRouteId = bareRouteId
 
 	// set up the local domain socket listener for local wsh commands
 	unixListener, err := MakeRemoteUnixListener()
@@ -324,6 +388,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 		}()
 		wshremote.RunSysInfoLoop(client, connServerConnName)
 	}()
+	startJobLogCleanup()
 
 	log.Printf("running server (router-domainsocket mode), successfully started")
 	select {}
@@ -339,6 +404,7 @@ func serverRunNormal(jwtToken string) error {
 		return err
 	}
 	wshfs.RpcClient = RpcClient
+	wshfs.RpcClientRouteId = RpcClientRouteId
 	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
 	go func() {
 		defer func() {
@@ -346,6 +412,7 @@ func serverRunNormal(jwtToken string) error {
 		}()
 		wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
 	}()
+	startJobLogCleanup()
 	select {} // run forever
 }
 

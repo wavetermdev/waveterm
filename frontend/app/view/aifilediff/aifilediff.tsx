@@ -1,13 +1,13 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { base64ToString } from "@/util/util";
 import { DiffViewer } from "@/app/view/codeeditor/diffviewer";
-import { globalStore, WOS } from "@/store/global";
+import type { WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
+import { globalStore } from "@/store/jotaiStore";
+import { base64ToString } from "@/util/util";
 import * as jotai from "jotai";
 import { useEffect } from "react";
 
@@ -17,10 +17,18 @@ type DiffData = {
     fileName: string;
 };
 
+export type AiFileDiffEnv = WaveEnvSubset<{
+    rpc: {
+        WaveAIGetToolDiffCommand: WaveEnv["rpc"]["WaveAIGetToolDiffCommand"];
+    };
+    wos: WaveEnv["wos"];
+}>;
+
 export class AiFileDiffViewModel implements ViewModel {
     blockId: string;
     nodeModel: BlockNodeModel;
     tabModel: TabModel;
+    env: AiFileDiffEnv;
     viewType = "aifilediff";
     blockAtom: jotai.Atom<Block>;
     diffDataAtom: jotai.PrimitiveAtom<DiffData | null>;
@@ -30,11 +38,12 @@ export class AiFileDiffViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+    constructor({ blockId, nodeModel, tabModel, waveEnv }: ViewModelInitType) {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.env = waveEnv as AiFileDiffEnv;
+        this.blockAtom = this.env.wos.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.diffDataAtom = jotai.atom(null) as jotai.PrimitiveAtom<DiffData | null>;
         this.errorAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.loadingAtom = jotai.atom<boolean>(true);
@@ -76,7 +85,7 @@ function AiFileDiffView({ blockId, model }: ViewComponentProps<AiFileDiffViewMod
             }
 
             try {
-                const result = await RpcApi.WaveAIGetToolDiffCommand(TabRpcClient, {
+                const result = await model.env.rpc.WaveAIGetToolDiffCommand(TabRpcClient, {
                     chatid: chatId,
                     toolcallid: toolCallId,
                 });

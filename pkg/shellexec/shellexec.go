@@ -169,11 +169,14 @@ func StartWslShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdS
 	if err != nil {
 		return nil, err
 	}
-	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
+	cmdWrap := MakeCmdWrap(ecmd, cmdPty, true)
 	return &ShellProc{Cmd: cmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wslconn.WslConn) (*ShellProc, error) {
+	if cmdOpts.SwapToken == nil {
+		return nil, fmt.Errorf("SwapToken is required in CommandOptsType")
+	}
 	client := conn.GetClient()
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProc)")
 	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
@@ -284,7 +287,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	if err != nil {
 		return nil, err
 	}
-	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
+	cmdWrap := MakeCmdWrap(ecmd, cmdPty, true)
 	return &ShellProc{Cmd: cmdWrap, ConnName: conn.GetName(), CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
@@ -332,6 +335,9 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 }
 
 func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *conncontroller.SSHConn) (*ShellProc, error) {
+	if cmdOpts.SwapToken == nil {
+		return nil, fmt.Errorf("SwapToken is required in CommandOptsType")
+	}
 	client := conn.GetClient()
 	connRoute := wshutil.MakeConnectionRouteId(conn.GetName())
 	rpcClient := wshclient.GetBareRpcClient()
@@ -559,6 +565,7 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 
 	jobParams := jobcontroller.StartJobParams{
 		ConnName: conn.GetName(),
+		JobKind:  jobcontroller.JobKind_Shell,
 		Cmd:      shellPath,
 		Args:     shellOpts,
 		Env:      env,
@@ -574,6 +581,9 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 }
 
 func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, connName string) (*ShellProc, error) {
+	if cmdOpts.SwapToken == nil {
+		return nil, fmt.Errorf("SwapToken is required in CommandOptsType")
+	}
 	shellutil.InitCustomShellStartupFiles()
 	var ecmd *exec.Cmd
 	var shellOpts []string
@@ -583,7 +593,9 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 	}
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
+	var isShell bool
 	if cmdStr == "" {
+		isShell = true
 		if shellType == shellutil.ShellType_bash {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
@@ -612,6 +624,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetLocalZshZDotDir()})
 		}
 	} else {
+		isShell = false
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		ecmd = exec.Command(shellPath, shellOpts...)
 		ecmd.Env = os.Environ()
@@ -675,7 +688,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 	if err != nil {
 		return nil, err
 	}
-	cmdWrap := MakeCmdWrap(ecmd, cmdPty)
+	cmdWrap := MakeCmdWrap(ecmd, cmdPty, isShell)
 	return &ShellProc{Cmd: cmdWrap, ConnName: connName, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
@@ -746,6 +759,12 @@ func tryGetPamEnvVars() map[string]string {
 	maps.Copy(envVars, envVars3)
 	if runtime_dir, ok := envVars["XDG_RUNTIME_DIR"]; !ok || runtime_dir == "" {
 		envVars["XDG_RUNTIME_DIR"] = "/run/user/" + fmt.Sprint(os.Getuid())
+	}
+	if configDirs, ok := envVars["XDG_CONFIG_DIRS"]; !ok || configDirs == "" {
+		envVars["XDG_CONFIG_DIRS"] = "/etc/xdg"
+	}
+	if dataDirs, ok := envVars["XDG_DATA_DIRS"]; !ok || dataDirs == "" {
+		envVars["XDG_DATA_DIRS"] = "/usr/local/share:/usr/share"
 	}
 	return envVars
 }

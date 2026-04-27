@@ -16,6 +16,10 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     return  # skip OSC setup entirely
 }
 
+if ($PSStyle.FileInfo.Directory -eq "`e[44;1m") {
+    $PSStyle.FileInfo.Directory = "`e[34;1m"
+}
+
 $Global:_WAVETERM_SI_FIRSTPROMPT = $true
 
 # shell integration

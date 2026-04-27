@@ -48,6 +48,27 @@ _waveterm_si_urlencode() {
   fi
 }
 
+_waveterm_si_compmode() {
+  # fzf-based completion wins
+  if typeset -f _fzf_tab_complete >/dev/null 2>&1 || typeset -f _fzf_complete >/dev/null 2>&1; then
+    echo "fzf"
+    return
+  fi
+
+  # Check zstyle menu setting
+  local _menuval
+  if zstyle -s ':completion:*' menu _menuval 2>/dev/null; then
+    if [[ "$_menuval" == *select* ]]; then
+      echo "menu-select"
+    else
+      echo "menu"
+    fi
+    return
+  fi
+
+  echo "standard"
+}
+
 _waveterm_si_osc7() {
   _waveterm_si_blocked && return
   local encoded_pwd=$(_waveterm_si_urlencode "$PWD")
@@ -59,10 +80,13 @@ _waveterm_si_precmd() {
   _waveterm_si_blocked && return
   # D;status for previous command (skip before first prompt)
   if (( !_WAVETERM_SI_FIRSTPRECMD )); then
-    printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
+    printf '\033]16162;D;{"exitcode":%d}\007' "$_waveterm_si_status"
   else
     local uname_info=$(uname -smr 2>/dev/null)
-    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s","integration":true}\007' "$ZSH_VERSION" "$uname_info"
+    local omz=false
+    local comp=$(_waveterm_si_compmode)
+    [[ -n "$ZSH" && -r "$ZSH/oh-my-zsh.sh" ]] && omz=true
+    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s","integration":true,"omz":%s,"comp":"%s"}\007' "$ZSH_VERSION" "$uname_info" "$omz" "$comp"
     # OSC 7 only sent on first prompt - chpwd hook handles directory changes
     _waveterm_si_osc7
   fi

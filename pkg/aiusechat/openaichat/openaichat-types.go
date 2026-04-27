@@ -4,6 +4,9 @@
 package openaichat
 
 import (
+	"bytes"
+	"encoding/json"
+
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
@@ -20,22 +23,115 @@ type ChatRequest struct {
 	ToolChoice          any                  `json:"tool_choice,omitempty"` // "auto", "none", or struct
 }
 
+type ChatContentPart struct {
+	Type     string        `json:"type"`                // "text" or "image_url"
+	Text     string        `json:"text,omitempty"`      // for type "text"
+	ImageUrl *ChatImageUrl `json:"image_url,omitempty"` // for type "image_url"
+
+	FileName   string `json:"filename,omitempty"`   // internal: original filename
+	PreviewUrl string `json:"previewurl,omitempty"` // internal: 128x128 webp preview
+	MimeType   string `json:"mimetype,omitempty"`   // internal: original mimetype
+}
+
+func (cp *ChatContentPart) clean() *ChatContentPart {
+	if cp.FileName == "" && cp.PreviewUrl == "" && cp.MimeType == "" {
+		return cp
+	}
+	rtn := *cp
+	rtn.FileName = ""
+	rtn.PreviewUrl = ""
+	rtn.MimeType = ""
+	return &rtn
+}
+
+type ChatImageUrl struct {
+	Url    string `json:"url"`
+	Detail string `json:"detail,omitempty"` // "auto", "low", "high"
+}
+
 type ChatRequestMessage struct {
-	Role       string     `json:"role"`                   // "system","user","assistant","tool"
-	Content    string     `json:"content,omitempty"`      // normal text messages
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`   // assistant tool-call message
-	ToolCallID string     `json:"tool_call_id,omitempty"` // for role:"tool"
-	Name       string     `json:"name,omitempty"`         // tool name on role:"tool"
+	Role         string            `json:"role"`                   // "system","user","assistant","tool"
+	Content      string            `json:"-"`                      // plain text (used when ContentParts is nil)
+	ContentParts []ChatContentPart `json:"-"`                      // multimodal parts (used when images present)
+	ToolCalls    []ToolCall        `json:"tool_calls,omitempty"`   // assistant tool-call message
+	ToolCallID   string            `json:"tool_call_id,omitempty"` // for role:"tool"
+	Name         string            `json:"name,omitempty"`         // tool name on role:"tool"
+}
+
+// chatRequestMessageJSON is the wire format for ChatRequestMessage
+type chatRequestMessageJSON struct {
+	Role       string          `json:"role"`
+	Content    json.RawMessage `json:"content"`
+	ToolCalls  []ToolCall      `json:"tool_calls,omitempty"`
+	ToolCallID string          `json:"tool_call_id,omitempty"`
+	Name       string          `json:"name,omitempty"`
+}
+
+func (cm ChatRequestMessage) MarshalJSON() ([]byte, error) {
+	raw := chatRequestMessageJSON{
+		Role:       cm.Role,
+		ToolCalls:  cm.ToolCalls,
+		ToolCallID: cm.ToolCallID,
+		Name:       cm.Name,
+	}
+	if len(cm.ContentParts) > 0 {
+		b, err := json.Marshal(cm.ContentParts)
+		if err != nil {
+			return nil, err
+		}
+		raw.Content = b
+	} else if cm.Content != "" {
+		b, err := json.Marshal(cm.Content)
+		if err != nil {
+			return nil, err
+		}
+		raw.Content = b
+	}
+	return json.Marshal(raw)
+}
+
+func (cm *ChatRequestMessage) UnmarshalJSON(data []byte) error {
+	var raw chatRequestMessageJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	cm.Role = raw.Role
+	cm.ToolCalls = raw.ToolCalls
+	cm.ToolCallID = raw.ToolCallID
+	cm.Name = raw.Name
+	cm.Content = ""
+	cm.ContentParts = nil
+	if len(raw.Content) == 0 || bytes.Equal(raw.Content, []byte("null")) {
+		return nil
+	}
+	// try array first
+	var parts []ChatContentPart
+	if err := json.Unmarshal(raw.Content, &parts); err == nil {
+		cm.ContentParts = parts
+		return nil
+	}
+	// fall back to string
+	var s string
+	if err := json.Unmarshal(raw.Content, &s); err != nil {
+		return err
+	}
+	cm.Content = s
+	return nil
 }
 
 func (cm *ChatRequestMessage) clean() *ChatRequestMessage {
-	if len(cm.ToolCalls) == 0 {
-		return cm
-	}
 	rtn := *cm
-	rtn.ToolCalls = make([]ToolCall, len(cm.ToolCalls))
-	for i, tc := range cm.ToolCalls {
-		rtn.ToolCalls[i] = *tc.clean()
+	if len(cm.ToolCalls) > 0 {
+		rtn.ToolCalls = make([]ToolCall, len(cm.ToolCalls))
+		for i, tc := range cm.ToolCalls {
+			rtn.ToolCalls[i] = *tc.clean()
+		}
+	}
+	if len(cm.ContentParts) > 0 {
+		rtn.ContentParts = make([]ChatContentPart, len(cm.ContentParts))
+		for i, cp := range cm.ContentParts {
+			rtn.ContentParts[i] = *cp.clean()
+		}
 	}
 	return &rtn
 }
@@ -162,6 +258,10 @@ func (m *StoredChatMessage) Copy() *StoredChatMessage {
 				copied.Message.ToolCalls[i].ToolUseData = &toolUseDataCopy
 			}
 		}
+	}
+	if len(m.Message.ContentParts) > 0 {
+		copied.Message.ContentParts = make([]ChatContentPart, len(m.Message.ContentParts))
+		copy(copied.Message.ContentParts, m.Message.ContentParts)
 	}
 	if m.Usage != nil {
 		usageCopy := *m.Usage

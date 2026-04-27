@@ -155,5 +155,5 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         });
     }
 
-    ContextMenuModel.showContextMenu(menu, e);
+    ContextMenuModel.getInstance().showContextMenu(menu, e);
 }

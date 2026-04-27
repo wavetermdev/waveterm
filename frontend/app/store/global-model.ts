@@ -3,14 +3,18 @@
 
 import * as WOS from "@/app/store/wos";
 import { ClientModel } from "@/app/store/client-model";
+import { getApi } from "@/store/global";
+import * as util from "@/util/util";
 import { atom, Atom } from "jotai";
 
 class GlobalModel {
     private static instance: GlobalModel;
+    static readonly IsActiveThrottleMs = 5000;
 
     windowId: string;
     builderId: string;
     platform: NodeJS.Platform;
+    lastSetIsActiveTs = 0;
 
     windowDataAtom!: Atom<WaveWindow>;
     workspaceAtom!: Atom<Workspace>;
@@ -46,6 +50,15 @@ class GlobalModel {
             }
             return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
         });
+    }
+
+    setIsActive(): void {
+        const now = Date.now();
+        if (now - this.lastSetIsActiveTs < GlobalModel.IsActiveThrottleMs) {
+            return;
+        }
+        this.lastSetIsActiveTs = now;
+        util.fireAndForget(() => getApi().setIsActive());
     }
 }
 

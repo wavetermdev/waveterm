@@ -26,7 +26,9 @@ const (
 const (
 	AIProvider_Wave        = "wave"
 	AIProvider_Google      = "google"
+	AIProvider_Groq        = "groq"
 	AIProvider_OpenRouter  = "openrouter"
+	AIProvider_NanoGPT     = "nanogpt"
 	AIProvider_OpenAI      = "openai"
 	AIProvider_Azure       = "azure"
 	AIProvider_AzureLegacy = "azure-legacy"
@@ -154,12 +156,18 @@ const (
 	ThinkingLevelLow    = "low"
 	ThinkingLevelMedium = "medium"
 	ThinkingLevelHigh   = "high"
+
+	VerbosityLevelLow    = "low"
+	VerbosityLevelMedium = "medium"
+	VerbosityLevelHigh   = "high"
 )
 
 const (
-	AIModeQuick    = "waveai@quick"
-	AIModeBalanced = "waveai@balanced"
-	AIModeDeep     = "waveai@deep"
+	AIModeQuick          = "waveai@quick"
+	AIModeBalanced       = "waveai@balanced"
+	AIModeDeep           = "waveai@deep"
+	AIModeBuilderDefault = "waveaibuilder@default"
+	AIModeBuilderDeep    = "waveaibuilder@deep"
 )
 
 const (
@@ -182,29 +190,6 @@ const (
 	ApprovalAutoApproved  = "auto-approved"
 	ApprovalCanceled      = "canceled"
 )
-
-type AIModeConfig struct {
-	Mode               string   `json:"mode"`
-	DisplayName        string   `json:"display:name"`
-	DisplayOrder       float64  `json:"display:order,omitempty"`
-	DisplayIcon        string   `json:"display:icon"`
-	Provider           string   `json:"provider,omitempty"`
-	APIType            string   `json:"apitype"`
-	Model              string   `json:"model"`
-	ThinkingLevel      string   `json:"thinkinglevel"`
-	BaseURL            string   `json:"baseurl,omitempty"`
-	WaveAICloud        bool     `json:"waveaicloud,omitempty"`
-	APIVersion         string   `json:"apiversion,omitempty"`
-	APIToken           string   `json:"apitoken,omitempty"`
-	APITokenSecretName string   `json:"apitokensecretname,omitempty"`
-	Premium            bool     `json:"premium"`
-	Description        string   `json:"description"`
-	Capabilities       []string `json:"capabilities,omitempty"`
-}
-
-func (c *AIModeConfig) HasCapability(cap string) bool {
-	return slices.Contains(c.Capabilities, cap)
-}
 
 // when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
 type UIMessageDataToolUse struct {

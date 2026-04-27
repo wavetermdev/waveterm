@@ -35,6 +35,7 @@ export interface SubBlockProps {
 
 export interface BlockComponentModel2 {
     onClick?: () => void;
+    onPointerEnter?: React.PointerEventHandler<HTMLDivElement>;
     onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
     blockRef?: React.RefObject<HTMLDivElement>;
 }

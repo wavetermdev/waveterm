@@ -112,7 +112,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 	}
 	verbosity := config.Verbosity
 	if verbosity == "" {
-		verbosity = uctypes.ThinkingLevelMedium // default to medium
+		verbosity = uctypes.VerbosityLevelMedium // default to medium
 	}
 	opts := &uctypes.AIOptsType{
 		Provider:      config.Provider,
@@ -123,6 +123,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 		Verbosity:     verbosity,
 		AIMode:        aiMode,
 		Endpoint:      baseUrl,
+		ProxyURL:      config.ProxyURL,
 		Capabilities:  config.Capabilities,
 		WaveAIPremium: config.WaveAIPremium,
 	}
@@ -669,8 +670,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get WaveAI settings
-	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
+	premium := shouldUsePremium() || builderMode
 	if req.AIMode == "" {
 		http.Error(w, "aimode is required in request body", http.StatusBadRequest)
 		return

@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -46,14 +47,6 @@ func RunChatStep(
 	// Convert stored messages to chat completions format
 	var messages []ChatRequestMessage
 
-	// Add system prompt if provided
-	if len(chatOpts.SystemPrompt) > 0 {
-		messages = append(messages, ChatRequestMessage{
-			Role:    "system",
-			Content: strings.Join(chatOpts.SystemPrompt, "\n"),
-		})
-	}
-
 	// Convert native messages
 	for _, genMsg := range chat.NativeMessages {
 		chatMsg, ok := genMsg.(*StoredChatMessage)
@@ -68,7 +61,10 @@ func RunChatStep(
 		return nil, nil, nil, err
 	}
 
-	client := &http.Client{}
+	client, err := aiutil.MakeHTTPClient(chatOpts.Config.ProxyURL)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("request failed: %w", err)

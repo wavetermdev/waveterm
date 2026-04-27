@@ -112,7 +112,7 @@ const Input = memo(
                     setInternalValue(inputValue);
                 }
 
-                onChange && onChange(inputValue);
+                onChange?.(inputValue);
             };
 
             const handleFocus = () => {

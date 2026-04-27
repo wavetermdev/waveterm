@@ -40,6 +40,7 @@ const (
 ```
 
 **Naming Convention:**
+
 - Use descriptive PascalCase for the constant name with `Event_` prefix
 - Use lowercase with colons for the string value (e.g., "namespace:eventname")
 - Group related events with the same namespace prefix
@@ -118,6 +119,7 @@ go func() {
 ```
 
 **When to use goroutines:**
+
 - When publishing from performance-critical code paths
 - When the event is informational and doesn't need immediate delivery
 - When publishing from code that holds locks (to prevent deadlocks)
@@ -163,7 +165,7 @@ func updateRateLimit(info *uctypes.RateLimitInfo) {
     rateLimitLock.Lock()
     defer rateLimitLock.Unlock()
     globalRateLimitInfo = info
-    
+
     // Publish event in goroutine to avoid blocking
     go func() {
         wps.Broker.Publish(wps.WaveEvent{
@@ -181,8 +183,8 @@ In the frontend, subscribe to events via WebSocket:
 ```typescript
 // Subscribe to rate limit updates
 const subscription = {
-    event: "waveai:ratelimit",
-    allscopes: true  // Receive all rate limit events
+  event: "waveai:ratelimit",
+  allscopes: true, // Receive all rate limit events
 };
 ```
 
@@ -210,6 +212,7 @@ wps.Broker.Unsubscribe(routeId, wps.Event_YourNewEvent)
 ### Scope Matching
 
 Scopes support wildcard matching:
+
 - `*` matches a single scope segment
 - `**` matches multiple scope segments
 
@@ -233,7 +236,7 @@ wps.Broker.Subscribe(routeId, wps.SubscriptionRequest{
 
 5. **Document Events**: Add comments explaining when events are fired and what data they carry
 
-6. **Consider Persistence**: Use `Persist` for events that late subscribers might need (like status updates)
+6. **Consider Persistence**: Use `Persist` for events that late subscribers might need (like status updates). This is normally not used. We normally do a live RPC call to get the current value and then subscribe for updates.
 
 ## Common Event Patterns
 

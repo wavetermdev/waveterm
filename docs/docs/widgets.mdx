@@ -6,6 +6,7 @@ title: "Widgets"
 
 import { Kbd } from "@site/src/components/kbd";
 import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
+import { VersionBadge } from "@site/src/components/versionbadge";
 
 <PlatformProvider>
 
@@ -137,5 +138,11 @@ You can also save by pressing <Kbd k="Cmd:s" />.
 
 To exit **edit mode** without saving, click the cancel button to the right of the header.
 You can also exit without saving by pressing <Kbd k="Cmd:r" />.
+
+### Process Viewer <VersionBadge version="v0.14.5" />
+
+The Process Viewer shows a live list of running processes on any connected host. It is similar to `top` or `htop`, displaying PID, command, CPU%, and memory usage. On Linux it also shows process status and thread count.
+
+Columns are sortable by clicking their headers. Right-clicking a row lets you send Unix signals (SIGTERM, SIGKILL, etc.) or copy the PID. You can filter the list by pressing <Kbd k="Cmd:f"/> and typing a search term. Press <Kbd k="Space"/> to pause live updates (useful when inspecting a specific process); press it again to resume.
 
 </PlatformProvider>

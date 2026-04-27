@@ -4,15 +4,110 @@
 import { Button } from "@/app/element/button";
 import { CopyButton } from "@/app/element/copybutton";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
-import { atoms, getConnStatusAtom, WOS } from "@/app/store/global";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
+import { BlockEnv } from "./blockenv";
+
+function formatElapsedTime(elapsedMs: number): string {
+    if (elapsedMs <= 0) {
+        return "";
+    }
+
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+    if (elapsedSeconds < 60) {
+        return `${elapsedSeconds}s`;
+    }
+
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    if (elapsedMinutes < 60) {
+        return `${elapsedMinutes}m`;
+    }
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+    const remainingMinutes = elapsedMinutes % 60;
+
+    if (elapsedHours < 24) {
+        if (remainingMinutes === 0) {
+            return `${elapsedHours}h`;
+        }
+        return `${elapsedHours}h${remainingMinutes}m`;
+    }
+
+    return "more than a day";
+}
+
+const StalledOverlay = React.memo(
+    ({
+        connName,
+        connStatus,
+        overlayRefCallback,
+    }: {
+        connName: string;
+        connStatus: ConnStatus;
+        overlayRefCallback: (el: HTMLDivElement | null) => void;
+    }) => {
+        const [elapsedTime, setElapsedTime] = React.useState<string>("");
+
+        const waveEnv = useWaveEnv<BlockEnv>();
+        const handleDisconnect = React.useCallback(() => {
+            const prtn = waveEnv.rpc.ConnDisconnectCommand(TabRpcClient, connName, { timeout: 5000 });
+            prtn.catch((e) => console.log("error disconnecting", connName, e));
+        }, [connName, waveEnv]);
+
+        React.useEffect(() => {
+            if (!connStatus.lastactivitybeforestalledtime) {
+                return;
+            }
+
+            const updateElapsed = () => {
+                const now = Date.now();
+                const lastActivity = connStatus.lastactivitybeforestalledtime!;
+                const elapsed = now - lastActivity;
+                setElapsedTime(formatElapsedTime(elapsed));
+            };
+
+            updateElapsed();
+            const interval = setInterval(updateElapsed, 1000);
+
+            return () => clearInterval(interval);
+        }, [connStatus.lastactivitybeforestalledtime]);
+
+        return (
+            <div
+                className="@container absolute top-[calc(var(--header-height)+6px)] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden rounded-md bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] shadow-lg opacity-90"
+                ref={overlayRefCallback}
+            >
+                <div className="flex items-center gap-3 w-full pt-2.5 pb-2.5 pr-2 pl-3">
+                    <i
+                        className="fa-solid fa-triangle-exclamation text-warning text-base shrink-0"
+                        title="Connection Stalled"
+                    ></i>
+                    <div className="text-[11px] font-semibold leading-4 tracking-[0.11px] text-white min-w-0 flex-1 break-words @max-xxs:hidden">
+                        Connection to "{connName}" is stalled
+                        {elapsedTime && ` (no activity for ${elapsedTime})`}
+                    </div>
+                    <div className="flex-1 hidden @max-xxs:block"></div>
+                    <Button
+                        className="outlined grey text-[11px] py-[3px] px-[7px] @max-w350:text-[12px] @max-w350:py-[5px] @max-w350:px-[6px]"
+                        onClick={handleDisconnect}
+                        title="Disconnect"
+                    >
+                        <span className="@max-w350:hidden!">Disconnect</span>
+                        <i className="fa-solid fa-link-slash hidden! @max-w350:inline!"></i>
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+);
+StalledOverlay.displayName = "StalledOverlay";
 
 export const ConnStatusOverlay = React.memo(
     ({
@@ -24,15 +119,16 @@ export const ConnStatusOverlay = React.memo(
         viewModel: ViewModel;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
     }) => {
-        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+        const waveEnv = useWaveEnv<BlockEnv>();
+        const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
         const [connModalOpen] = jotai.useAtom(changeConnModalAtom);
-        const connName = blockData?.meta?.connection;
-        const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));
-        const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
+        const connStatus = jotai.useAtomValue(waveEnv.getConnStatusAtom(connName));
+        const isLayoutMode = jotai.useAtomValue(waveEnv.atoms.controlShiftDelayAtom);
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
         const [showError, setShowError] = React.useState(false);
-        const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+        const wshConfigEnabled =
+            jotai.useAtomValue(waveEnv.getConnConfigKeyAtom(connName, "conn:wshenabled")) ?? true;
         const [showWshError, setShowWshError] = React.useState(false);
 
         React.useEffect(() => {
@@ -44,13 +140,13 @@ export const ConnStatusOverlay = React.memo(
         }, [width, connStatus, setShowError]);
 
         const handleTryReconnect = React.useCallback(() => {
-            const prtn = RpcApi.ConnConnectCommand(
+            const prtn = waveEnv.rpc.ConnConnectCommand(
                 TabRpcClient,
                 { host: connName, logblockid: nodeModel.blockId },
                 { timeout: 60000 }
             );
             prtn.catch((e) => console.log("error reconnecting", connName, e));
-        }, [connName, nodeModel.blockId]);
+        }, [connName, nodeModel.blockId, waveEnv]);
 
         const handleDisableWsh = React.useCallback(async () => {
             const metamaptype: unknown = {
@@ -61,19 +157,19 @@ export const ConnStatusOverlay = React.memo(
                 metamaptype: metamaptype,
             };
             try {
-                await RpcApi.SetConnectionsConfigCommand(TabRpcClient, data);
+                await waveEnv.rpc.SetConnectionsConfigCommand(TabRpcClient, data);
             } catch (e) {
                 console.log("problem setting connection config: ", e);
             }
-        }, [connName]);
+        }, [connName, waveEnv]);
 
         const handleRemoveWshError = React.useCallback(async () => {
             try {
-                await RpcApi.DismissWshFailCommand(TabRpcClient, connName);
+                await waveEnv.rpc.DismissWshFailCommand(TabRpcClient, connName);
             } catch (e) {
                 console.log("unable to dismiss wsh error: ", e);
             }
-        }, [connName]);
+        }, [connName, waveEnv]);
 
         let statusText = `Disconnected from "${connName}"`;
         let showReconnect = true;
@@ -95,7 +191,6 @@ export const ConnStatusOverlay = React.memo(
         }
         const showIcon = connStatus.status != "connecting";
 
-        const wshConfigEnabled = fullConfig?.connections?.[connName]?.["conn:wshenabled"] ?? true;
         React.useEffect(() => {
             const showWshErrorTemp =
                 connStatus.status == "connected" &&
@@ -121,8 +216,15 @@ export const ConnStatusOverlay = React.memo(
             [showError, showWshError, connStatus.error, connStatus.wsherror]
         );
 
-        if (!showWshError && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
+        const showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
+        if (!showWshError && !showStalled && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
+        }
+
+        if (showStalled && !showWshError) {
+            return (
+                <StalledOverlay connName={connName} connStatus={connStatus} overlayRefCallback={overlayRefCallback} />
+            );
         }
 
         return (

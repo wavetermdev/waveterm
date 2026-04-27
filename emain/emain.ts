@@ -12,7 +12,10 @@ import { fireAndForget, sleep } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
 import {
     getActivityState,
+    getAndClearTermCommandsDurable,
+    getAndClearTermCommandsRemote,
     getAndClearTermCommandsRun,
+    getAndClearTermCommandsWsl,
     getForceQuit,
     getGlobalIsRelaunching,
     getUserConfirmedQuit,
@@ -43,8 +46,10 @@ import {
     createNewWaveWindow,
     focusedWaveWindow,
     getAllWaveWindows,
+    getQuakeWindow,
     getWaveWindowById,
     getWaveWindowByWorkspaceId,
+    initGlobalHotkeyEventSubscription,
     registerGlobalHotkey,
     relaunchBrowserWindows,
     WaveBrowserWindow,
@@ -182,6 +187,9 @@ function logActiveState() {
         if (termCmdCount > 0) {
             activity.termcommandsrun = termCmdCount;
         }
+        const termCmdRemoteCount = getAndClearTermCommandsRemote();
+        const termCmdWslCount = getAndClearTermCommandsWsl();
+        const termCmdDurableCount = getAndClearTermCommandsDurable();
 
         const props: TEventProps = {
             "activity:activeminutes": activity.activeminutes,
@@ -190,6 +198,15 @@ function logActiveState() {
         };
         if (termCmdCount > 0) {
             props["activity:termcommandsrun"] = termCmdCount;
+        }
+        if (termCmdRemoteCount > 0) {
+            props["activity:termcommands:remote"] = termCmdRemoteCount;
+        }
+        if (termCmdWslCount > 0) {
+            props["activity:termcommands:wsl"] = termCmdWslCount;
+        }
+        if (termCmdDurableCount > 0) {
+            props["activity:termcommands:durable"] = termCmdDurableCount;
         }
         if (astate.wasActive && isWaveAIOpen) {
             props["activity:waveaiactiveminutes"] = 1;
@@ -369,6 +386,10 @@ async function appMain() {
         electronApp.quit();
         return;
     }
+    electronApp.on("second-instance", (_event, argv, workingDirectory) => {
+        console.log("second-instance event, argv:", argv, "workingDirectory:", workingDirectory);
+        fireAndForget(createNewWaveWindow);
+    });
     try {
         await runWaveSrv(handleWSEvent);
     } catch (e) {
@@ -408,14 +429,35 @@ async function appMain() {
 
     electronApp.on("activate", () => {
         const allWindows = getAllWaveWindows();
+        const anyVisible = allWindows.some((w) => !w.isDestroyed() && w.isVisible());
+        if (anyVisible) {
+            return;
+        }
+        const qw = getQuakeWindow();
+        if (qw != null && !qw.isDestroyed()) {
+            qw.show();
+            qw.focus();
+            return;
+        }
         if (allWindows.length === 0) {
             fireAndForget(createNewWaveWindow);
         }
+    });
+    electron.powerMonitor.on("resume", () => {
+        console.log("system resumed from sleep, notifying server");
+        fireAndForget(async () => {
+            try {
+                await RpcApi.NotifySystemResumeCommand(ElectronWshClient, { noresponse: true });
+            } catch (e) {
+                console.log("error calling NotifySystemResumeCommand", e);
+            }
+        });
     });
     const rawGlobalHotKey = launchSettings?.["app:globalhotkey"];
     if (rawGlobalHotKey) {
         registerGlobalHotkey(rawGlobalHotKey);
     }
+    initGlobalHotkeyEventSubscription();
 }
 
 appMain().catch((e) => {

@@ -1,69 +1,62 @@
-import { Button } from "@/element/button";
-import { atoms, getApi } from "@/store/global";
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+import { Tooltip } from "@/element/tooltip";
+import { WaveEnv, WaveEnvSubset, useWaveEnv } from "@/app/waveenv/waveenv";
 import { useAtomValue } from "jotai";
-import { forwardRef, memo, useEffect, useState } from "react";
+import { memo, useCallback } from "react";
 
-const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
-    let appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
-    let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
-    const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
+type UpdateBannerEnv = WaveEnvSubset<{
+    electron: {
+        installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
+    };
+    atoms: {
+        updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
+    };
+}>;
 
-    useEffect(() => {
-        let message: string;
-        let dismissBanner = false;
-        switch (appUpdateStatus) {
-            case "ready":
-                message = "Update Available";
-                break;
-            case "downloading":
-                message = "Downloading Update";
-                break;
-            case "installing":
-                message = "Installing Update";
-                break;
-            case "error":
-                message = "Updater Error: Try Checking Again";
-                dismissBanner = true;
-                break;
-            default:
-                break;
-        }
-        setUpdateStatusMessage(message);
-
-        // Clear any existing timeout
-        if (dismissBannerTimeout) {
-            clearTimeout(dismissBannerTimeout);
-        }
-
-        // If we want to dismiss the banner, set the new timeout, otherwise clear the state
-        if (dismissBanner) {
-            setDismissBannerTimeout(
-                setTimeout(() => {
-                    setUpdateStatusMessage(null);
-                    setDismissBannerTimeout(null);
-                }, 10000)
-            );
-        } else {
-            setDismissBannerTimeout(null);
-        }
-    }, [appUpdateStatus]);
-
-    function onClick() {
-        getApi().installAppUpdate();
+function getUpdateStatusMessage(status: string): string {
+    switch (status) {
+        case "ready":
+            return "Update";
+        case "downloading":
+            return "Downloading";
+        case "installing":
+            return "Installing";
+        default:
+            return null;
     }
-    if (updateStatusMessage) {
-        return (
-            <Button
-                className="text-black bg-[var(--accent-color)] flex-[0_0_fit-content] !h-full !px-3 disabled:!opacity-[unset]"
-                title={appUpdateStatus === "ready" ? "Click to Install Update" : updateStatusMessage}
-                onClick={onClick}
-                disabled={appUpdateStatus !== "ready"}
-                ref={ref}
-            >
-                {updateStatusMessage}
-            </Button>
-        );
-    }
-});
+}
 
-export const UpdateStatusBanner = memo(UpdateStatusBannerComponent) as typeof UpdateStatusBannerComponent;
+const UpdateStatusBannerComponent = () => {
+    const env = useWaveEnv<UpdateBannerEnv>();
+    const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
+    const updateStatusMessage = getUpdateStatusMessage(appUpdateStatus);
+
+    const onClick = useCallback(() => {
+        env.electron.installAppUpdate();
+    }, [env]);
+
+    if (!updateStatusMessage) {
+        return null;
+    }
+
+    const isReady = appUpdateStatus === "ready";
+    const tooltipContent = isReady ? "Click to Install Update" : updateStatusMessage;
+
+    return (
+        <Tooltip
+            content={tooltipContent}
+            placement="bottom"
+            divOnClick={isReady ? onClick : undefined}
+            divClassName={`flex items-center gap-1 px-2 mb-1 h-[22px] text-xs font-medium text-black bg-accent rounded-sm transition-all ${isReady ? "cursor-pointer hover:bg-[var(--button-green-border-color)]" : ""}`}
+            divStyle={{ WebkitAppRegion: "no-drag" } as any}
+        >
+            <i className="fa fa-download" />
+            {updateStatusMessage}
+        </Tooltip>
+    );
+};
+UpdateStatusBannerComponent.displayName = "UpdateStatusBannerComponent";
+
+export const UpdateStatusBanner = memo(UpdateStatusBannerComponent);

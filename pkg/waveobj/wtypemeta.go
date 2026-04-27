@@ -92,12 +92,18 @@ type MetaTSType struct {
 	SysinfoType string `json:"sysinfo:type,omitempty"`
 
 	// for tabs
+	TabFlagColor        string  `json:"tab:flagcolor,omitempty"`
+	TabBackground       string  `json:"tab:background,omitempty"`
 	BgClear             bool    `json:"bg:*,omitempty"`
 	Bg                  string  `json:"bg,omitempty"`
 	BgOpacity           float64 `json:"bg:opacity,omitempty"`
 	BgBlendMode         string  `json:"bg:blendmode,omitempty"`
 	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
+
+	// for workspace
+	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
+	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
 
 	// for tabs+waveai
 	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`
@@ -120,9 +126,12 @@ type MetaTSType struct {
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
+	TermCursor              string   `json:"term:cursor,omitempty"`
+	TermCursorBlink         *bool    `json:"term:cursorblink,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 	TermBellSound           *bool    `json:"term:bellsound,omitempty"`
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
+	TermOsc52               string   `json:"term:osc52,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
 
 	WebZoom          float64 `json:"web:zoom,omitempty"`

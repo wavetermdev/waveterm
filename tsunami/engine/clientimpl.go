@@ -5,6 +5,7 @@ package engine
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -302,6 +303,18 @@ func (c *ClientImpl) SendSSEvent(event ssEvent) error {
 
 func (c *ClientImpl) SendAsyncInitiation() error {
 	return c.SendSSEvent(ssEvent{Event: "asyncinitiation", Data: nil})
+}
+
+func (c *ClientImpl) SendTermWrite(refId string, data string) error {
+	payload := rpctypes.TermWritePacket{
+		RefId:  refId,
+		Data64: base64.StdEncoding.EncodeToString([]byte(data)),
+	}
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return c.SendSSEvent(ssEvent{Event: "termwrite", Data: jsonData})
 }
 
 func makeNullRendered() *rpctypes.RenderedElem {

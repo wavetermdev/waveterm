@@ -33,6 +33,18 @@ type VDomElem = {
     text?: string;
 };
 
+// vdom.VDomTermSize
+type VDomTermSize = {
+    rows: number;
+    cols: number;
+};
+
+// vdom.VDomTermInputData
+type VDomTermInputData = {
+    termsize?: VDomTermSize;
+    data?: string;
+};
+
 // vdom.VDomEvent
 type VDomEvent = {
     waveid: string;
@@ -46,6 +58,7 @@ type VDomEvent = {
     keydata?: VDomKeyboardEvent;
     mousedata?: VDomPointerData;
     formdata?: VDomFormData;
+    terminput?: VDomTermInputData;
 };
 
 // vdom.VDomFrontendUpdate
@@ -69,8 +82,10 @@ type VDomFunc = {
     type: "func";
     stoppropagation?: boolean;
     preventdefault?: boolean;
+    preventbackend?: boolean;
     globalevent?: string;
     keys?: string[];
+    jscode?: string;
 };
 
 // vdom.VDomMessage
@@ -103,7 +118,6 @@ type VDomRef = {
     type: "ref";
     refid: string;
     trackposition?: boolean;
-    position?: VDomRefPosition;
     hascurrent?: boolean;
 };
 
@@ -130,6 +144,7 @@ type VDomRefUpdate = {
     refid: string;
     hascurrent: boolean;
     position?: VDomRefPosition;
+    termsize?: VDomTermSize;
 };
 
 // rpctypes.VDomRenderContext

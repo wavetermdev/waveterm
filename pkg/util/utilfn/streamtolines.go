@@ -20,7 +20,9 @@ type lineBuf struct {
 	inLongLine bool
 }
 
-const maxLineLength = 128 * 1024
+// needs to be large enough to read the largest RPC packet
+// there are some legacy file transfer packets that can send up to 32m (base64 encoded)
+const maxLineLength = 64 * 1024 * 1024
 
 func ReadLineWithTimeout(ch chan LineOutput, timeout time.Duration) (string, error) {
 	select {
@@ -56,7 +58,7 @@ func streamToLines_processBuf(lineBuf *lineBuf, readBuf []byte, lineFn func([]by
 	}
 }
 
-func StreamToLines(input io.Reader, lineFn func([]byte)) error {
+func StreamToLines(input io.Reader, lineFn func([]byte), readCallback func()) error {
 	var lineBuf lineBuf
 	readBuf := make([]byte, 64*1024)
 	for {
@@ -64,6 +66,9 @@ func StreamToLines(input io.Reader, lineFn func([]byte)) error {
 		streamToLines_processBuf(&lineBuf, readBuf[:n], lineFn)
 		if err != nil {
 			return err
+		}
+		if readCallback != nil {
+			readCallback()
 		}
 	}
 }
@@ -76,7 +81,7 @@ func StreamToLinesChan(input io.Reader) chan LineOutput {
 		defer close(ch)
 		err := StreamToLines(input, func(line []byte) {
 			ch <- LineOutput{Line: string(line)}
-		})
+		}, nil)
 		if err != nil && err != io.EOF {
 			ch <- LineOutput{Error: err}
 		}

@@ -7,7 +7,6 @@ import { createBlock } from "@/store/global";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { stringToBase64 } from "@/util/util";
 import clsx from "clsx";
-import * as jotai from "jotai";
 import * as React from "react";
 import "./term.scss";
 
@@ -54,10 +53,8 @@ function convertHeightDimToPx(dim: number, config: StickerTermConfig) {
     return dim * config.charHeight;
 }
 
-var valueAtom = jotai.atom(Math.random() * 100);
-
 function TermSticker({ sticker, config }: { sticker: StickerType; config: StickerTermConfig }) {
-    let style: React.CSSProperties = {
+    const style: React.CSSProperties = {
         position: sticker.position,
         top: convertHeightDimToPx(sticker.top, config),
         left: convertWidthDimToPx(sticker.left, config),

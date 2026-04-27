@@ -18,6 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 const SSEKeepAliveDuration = 5 * time.Second
@@ -83,6 +84,7 @@ func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/schemas", h.handleSchemas)
 	mux.HandleFunc("/api/manifest", h.handleManifest(opts.ManifestFile))
 	mux.HandleFunc("/api/modalresult", h.handleModalResult)
+	mux.HandleFunc("/api/terminput", h.handleTermInput)
 	mux.HandleFunc("/dyn/", h.handleDynContent)
 
 	// Add handler for static files at /static/ path
@@ -390,6 +392,48 @@ func (h *httpHandlers) handleModalResult(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]any{"success": true})
+}
+
+func (h *httpHandlers) handleTermInput(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleTermInput", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	setNoCacheHeaders(w)
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	var event vdom.VDomEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		http.Error(w, fmt.Sprintf("failed to parse JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(event.WaveId) == "" {
+		http.Error(w, "waveid is required", http.StatusBadRequest)
+		return
+	}
+	if event.TermInput == nil {
+		http.Error(w, "terminput is required", http.StatusBadRequest)
+		return
+	}
+
+	h.renderLock.Lock()
+	h.Client.Root.Event(event, h.Client.GlobalEventHandler)
+	h.renderLock.Unlock()
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *httpHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {

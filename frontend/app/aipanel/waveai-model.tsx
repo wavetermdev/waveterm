@@ -10,6 +10,7 @@ import {
 import { FocusManager } from "@/app/store/focusManager";
 import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import { isBuilderWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -39,6 +40,27 @@ export interface DroppedFile {
     size: number;
     previewUrl?: string;
 }
+
+const BuilderAIModeConfigs: Record<string, AIModeConfigType> = {
+    "waveaibuilder@default": {
+        "display:name": "Builder Default",
+        "display:order": -2,
+        "display:icon": "sparkles",
+        "display:description": "Good mix of speed and accuracy\n(gpt-5.4 with minimal thinking)",
+        "ai:provider": "wave",
+        "ai:switchcompat": ["wavecloud"],
+        "waveai:premium": true,
+    },
+    "waveaibuilder@deep": {
+        "display:name": "Builder Deep",
+        "display:order": -1,
+        "display:icon": "lightbulb",
+        "display:description": "Slower but most capable\n(gpt-5.4 with full reasoning)",
+        "ai:provider": "wave",
+        "ai:switchcompat": ["wavecloud"],
+        "waveai:premium": true,
+    },
+};
 
 export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
@@ -79,7 +101,11 @@ export class WaveAIModel {
         this.orefContext = orefContext;
         this.inBuilder = inBuilder;
         this.chatId = jotai.atom(null) as jotai.PrimitiveAtom<string>;
-        this.aiModeConfigs = atoms.waveaiModeConfigAtom;
+        if (inBuilder) {
+            this.aiModeConfigs = jotai.atom(BuilderAIModeConfigs) as jotai.Atom<Record<string, AIModeConfigType>>;
+        } else {
+            this.aiModeConfigs = atoms.waveaiModeConfigAtom;
+        }
 
         this.hasPremiumAtom = jotai.atom((get) => {
             const rateLimitInfo = get(atoms.waveAIRateLimitInfoAtom);
@@ -117,7 +143,7 @@ export class WaveAIModel {
         this.defaultModeAtom = jotai.atom((get) => {
             const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
             if (this.inBuilder) {
-                return telemetryEnabled ? "waveai@balanced" : "invalid";
+                return telemetryEnabled ? "waveaibuilder@default" : "invalid";
             }
             const aiModeConfigs = get(this.aiModeConfigs);
             if (!telemetryEnabled) {
@@ -150,17 +176,15 @@ export class WaveAIModel {
 
     static getInstance(): WaveAIModel {
         if (!WaveAIModel.instance) {
-            const windowType = globalStore.get(atoms.waveWindowType);
             let orefContext: ORef;
-            const inBuilder = windowType === "builder";
-            if (inBuilder) {
+            if (isBuilderWindow()) {
                 const builderId = globalStore.get(atoms.builderId);
                 orefContext = WOS.makeORef("builder", builderId);
             } else {
                 const tabId = globalStore.get(atoms.staticTabId);
                 orefContext = WOS.makeORef("tab", tabId);
             }
-            WaveAIModel.instance = new WaveAIModel(orefContext, inBuilder);
+            WaveAIModel.instance = new WaveAIModel(orefContext, isBuilderWindow());
             (window as any).WaveAIModel = WaveAIModel.instance;
         }
         return WaveAIModel.instance;

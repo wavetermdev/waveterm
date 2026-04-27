@@ -5,6 +5,7 @@ package engine
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"unicode"
 
@@ -247,12 +248,6 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 			vdomProps[k] = vdomFuncPtr
 			continue
 		}
-		if vdomRef, ok := v.(vdom.VDomRef); ok {
-			// ensure Type is set on all VDomRefs
-			vdomRef.Type = vdom.ObjectType_Ref
-			vdomProps[k] = vdomRef
-			continue
-		}
 		if vdomRefPtr, ok := v.(*vdom.VDomRef); ok {
 			if vdomRefPtr == nil {
 				continue // handle typed-nil
@@ -263,6 +258,10 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 			continue
 		}
 		val := reflect.ValueOf(v)
+		if val.Type() == reflect.TypeOf(vdom.VDomRef{}) {
+			log.Printf("warning: VDomRef passed as non-pointer for prop %q (VDomRef contains atomics and must be passed as *VDomRef); dropping prop\n", k)
+			continue
+		}
 		if val.Kind() == reflect.Func {
 			// convert go functions passed to event handlers to VDomFuncs
 			vdomProps[k] = vdom.VDomFunc{Type: vdom.ObjectType_Func}

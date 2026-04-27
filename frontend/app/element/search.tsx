@@ -26,6 +26,7 @@ const SearchComponent = ({
     caseSensitive: caseSensitiveAtom,
     wholeWord: wholeWordAtom,
     isOpen: isOpenAtom,
+    focusInput: focusInputAtom,
     anchorRef,
     offsetX = 10,
     offsetY = 10,
@@ -37,6 +38,8 @@ const SearchComponent = ({
     const [search, setSearch] = useAtom<string>(searchAtom);
     const [index, setIndex] = useAtom<number>(indexAtom);
     const [numResults, setNumResults] = useAtom<number>(numResultsAtom);
+    const [focusInputCounter, setFocusInputCounter] = useAtom<number>(focusInputAtom);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleOpenChange = useCallback((open: boolean) => {
         setIsOpen(open);
@@ -47,6 +50,7 @@ const SearchComponent = ({
             setSearch("");
             setIndex(0);
             setNumResults(0);
+            setFocusInputCounter(0);
         }
     }, [isOpen]);
 
@@ -55,6 +59,15 @@ const SearchComponent = ({
         setNumResults(0);
         onSearch?.(search);
     }, [search]);
+
+    // When activateSearch fires while already open, it increments focusInputCounter
+    // to signal this specific instance to grab focus (avoids global DOM queries).
+    useEffect(() => {
+        if (focusInputCounter > 0 && isOpen) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+        }
+    }, [focusInputCounter]);
 
     const middleware: Middleware[] = [];
     const offsetCallback = useCallback(
@@ -146,6 +159,7 @@ const SearchComponent = ({
                 <FloatingPortal>
                     <div className="search-container" style={{ ...floatingStyles }} ref={refs.setFloating}>
                         <Input
+                            ref={inputRef}
                             placeholder="Search"
                             value={search}
                             onChange={setSearch}
@@ -197,6 +211,7 @@ export function useSearch(options?: SearchOptions): SearchProps {
             resultsIndex: atom(0),
             resultsCount: atom(0),
             isOpen: atom(false),
+            focusInput: atom(0),
             regex: options?.regex !== undefined ? atom(options.regex) : undefined,
             caseSensitive: options?.caseSensitive !== undefined ? atom(options.caseSensitive) : undefined,
             wholeWord: options?.wholeWord !== undefined ? atom(options.wholeWord) : undefined,

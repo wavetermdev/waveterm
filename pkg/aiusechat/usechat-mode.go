@@ -21,6 +21,8 @@ const (
 	OpenAIResponsesEndpoint        = "https://api.openai.com/v1/responses"
 	OpenAIChatEndpoint             = "https://api.openai.com/v1/chat/completions"
 	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
+	NanoGPTChatEndpoint            = "https://nano-gpt.com/api/v1/chat/completions"
+	GroqChatEndpoint               = "https://api.groq.com/openai/v1/chat/completions"
 	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
 	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
 	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
@@ -30,6 +32,8 @@ const (
 
 	OpenAIAPITokenSecretName      = "OPENAI_KEY"
 	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
+	NanoGPTAPITokenSecretName     = "NANOGPT_KEY"
+	GroqAPITokenSecretName        = "GROQ_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
 )
@@ -97,6 +101,28 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = OpenRouterAPITokenSecretName
+		}
+	}
+	if config.Provider == uctypes.AIProvider_NanoGPT {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = NanoGPTChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = NanoGPTAPITokenSecretName
+		}
+	}
+	if config.Provider == uctypes.AIProvider_Groq {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = GroqChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = GroqAPITokenSecretName
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
@@ -221,7 +247,44 @@ func isValidAzureResourceName(name string) bool {
 	return AzureResourceNameRegex.MatchString(name)
 }
 
+var builderModeConfigs = map[string]wconfig.AIModeConfigType{
+	uctypes.AIModeBuilderDefault: {
+		DisplayName:        "Builder Default",
+		DisplayOrder:       -2,
+		DisplayIcon:        "sparkles",
+		DisplayDescription: "Good mix of speed and accuracy\n(gpt-5.4 with minimal thinking)",
+		Provider:           uctypes.AIProvider_Wave,
+		APIType:            uctypes.APIType_OpenAIResponses,
+		Model:              "gpt-5.4",
+		ThinkingLevel:      uctypes.ThinkingLevelLow,
+		Verbosity:          uctypes.VerbosityLevelLow,
+		Capabilities:       []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
+		WaveAIPremium:      true,
+		SwitchCompat:       []string{"wavecloud"},
+	},
+	uctypes.AIModeBuilderDeep: {
+		DisplayName:        "Builder Deep",
+		DisplayOrder:       -1,
+		DisplayIcon:        "lightbulb",
+		DisplayDescription: "Slower but most capable\n(gpt-5.4 with full reasoning)",
+		Provider:           uctypes.AIProvider_Wave,
+		APIType:            uctypes.APIType_OpenAIResponses,
+		Model:              "gpt-5.4",
+		ThinkingLevel:      uctypes.ThinkingLevelMedium,
+		Verbosity:          uctypes.VerbosityLevelLow,
+		Capabilities:       []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
+		WaveAIPremium:      true,
+		SwitchCompat:       []string{"wavecloud"},
+	},
+}
+
 func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {
+	if config, ok := builderModeConfigs[aiMode]; ok {
+		resolved := config
+		applyProviderDefaults(&resolved)
+		return &resolved, nil
+	}
+
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	config, ok := fullConfig.WaveAIModes[aiMode]
 	if !ok {
@@ -245,13 +308,13 @@ func handleConfigUpdate(fullConfig wconfig.FullConfigType) {
 
 func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModeConfigType {
 	resolvedConfigs := make(map[string]wconfig.AIModeConfigType)
-	
+
 	for modeName, modeConfig := range fullConfig.WaveAIModes {
 		resolved := modeConfig
 		applyProviderDefaults(&resolved)
 		resolvedConfigs[modeName] = resolved
 	}
-	
+
 	return resolvedConfigs
 }
 
@@ -259,7 +322,7 @@ func broadcastAIModeConfigs(configs map[string]wconfig.AIModeConfigType) {
 	update := wconfig.AIModeConfigUpdate{
 		Configs: configs,
 	}
-	
+
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_AIModeConfig,
 		Data:  update,

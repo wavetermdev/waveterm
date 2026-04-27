@@ -12,16 +12,36 @@ const MinZoomLevel = 0.4;
 const MaxZoomLevel = 2.6;
 const ZoomDelta = 0.2;
 
+// Note: Chromium automatically syncs zoom factor across all WebContents
+// sharing the same origin/session, so we only need to notify renderers
+// to update their CSS/state — not call setZoomFactor on each one.
+// We broadcast to all WebContents (including devtools, webviews, etc.) but
+// that is safe because "zoom-factor-change" is a custom app-defined event
+// that only our renderers listen to; unrecognized IPC messages are ignored.
+function broadcastZoomFactorChanged(newZoomFactor: number): void {
+    for (const wc of electron.webContents.getAllWebContents()) {
+        if (wc.isDestroyed()) {
+            continue;
+        }
+        wc.send("zoom-factor-change", newZoomFactor);
+    }
+}
+
 export function increaseZoomLevel(webContents: electron.WebContents): void {
     const newZoom = Math.min(MaxZoomLevel, webContents.getZoomFactor() + ZoomDelta);
     webContents.setZoomFactor(newZoom);
-    webContents.send("zoom-factor-change", newZoom);
+    broadcastZoomFactorChanged(newZoom);
 }
 
 export function decreaseZoomLevel(webContents: electron.WebContents): void {
     const newZoom = Math.max(MinZoomLevel, webContents.getZoomFactor() - ZoomDelta);
     webContents.setZoomFactor(newZoom);
-    webContents.send("zoom-factor-change", newZoom);
+    broadcastZoomFactorChanged(newZoom);
+}
+
+export function resetZoomLevel(webContents: electron.WebContents): void {
+    webContents.setZoomFactor(1);
+    broadcastZoomFactorChanged(1);
 }
 
 export function getElectronExecPath(): string {
@@ -99,6 +119,17 @@ export function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavig
     }
 }
 
+function frameOrAncestorHasName(frame: Electron.WebFrameMain, name: string): boolean {
+    let cur: Electron.WebFrameMain = frame;
+    while (cur != null) {
+        if (cur.name === name) {
+            return true;
+        }
+        cur = cur.parent;
+    }
+    return false;
+}
+
 export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
     if (!event.frame?.parent) {
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
@@ -115,8 +146,9 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         return;
     }
     if (
-        event.frame.name == "pdfview" &&
+        frameOrAncestorHasName(event.frame, "pdfview") &&
         (url.startsWith("blob:file:///") ||
+            url.startsWith("chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-file?") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-file/") ||
             url.startsWith(getWebServerEndpoint() + "/wave/stream-local-file?"))
@@ -149,7 +181,7 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         }
     }
     event.preventDefault();
-    console.log("frame navigation canceled");
+    console.log("frame navigation canceled", event.frame.name, url);
 }
 
 function isWindowFullyVisible(bounds: electron.Rectangle): boolean {

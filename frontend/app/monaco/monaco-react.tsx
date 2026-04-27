@@ -5,6 +5,7 @@ import { loadMonaco } from "@/app/monaco/monaco-env";
 import type * as MonacoTypes from "monaco-editor";
 import * as monaco from "monaco-editor";
 import { useEffect, useRef } from "react";
+import { debounce } from "throttle-debounce";
 
 function createModel(value: string, path: string, language?: string) {
     const uri = monaco.Uri.parse(`wave://editor/${encodeURIComponent(path)}`);
@@ -21,15 +22,7 @@ type CodeEditorProps = {
     options: MonacoTypes.editor.IEditorOptions;
 };
 
-export function MonacoCodeEditor({
-    text,
-    readonly,
-    language,
-    onChange,
-    onMount,
-    path,
-    options,
-}: CodeEditorProps) {
+export function MonacoCodeEditor({ text, readonly, language, onChange, onMount, path, options }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
     const onUnmountRef = useRef<(() => void) | null>(null);
@@ -63,13 +56,30 @@ export function MonacoCodeEditor({
         return () => {
             sub.dispose();
             if (onUnmountRef.current) onUnmountRef.current();
+            editor.setModel(null);
             editor.dispose();
             model.dispose();
             console.log("[monaco] dispose model");
             editorRef.current = null;
         };
         // mount/unmount only
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        const editor = editorRef.current;
+        const el = divRef.current;
+        if (!editor || !el) return;
+
+        const debouncedLayout = debounce(100, () => {
+            editor.layout();
+        });
+        const resizeObserver = new ResizeObserver(debouncedLayout);
+        resizeObserver.observe(el);
+
+        return () => {
+            resizeObserver.disconnect();
+            debouncedLayout.cancel();
+        };
     }, []);
 
     // Keep model value in sync with props
@@ -137,12 +147,29 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
         diff.setModel({ original: originalModel, modified: modifiedModel });
 
         return () => {
+            diff.setModel(null);
             diff.dispose();
             originalModel.dispose();
             modifiedModel.dispose();
             diffRef.current = null;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        const diff = diffRef.current;
+        const el = divRef.current;
+        if (!diff || !el) return;
+
+        const debouncedLayout = debounce(100, () => {
+            diff.layout();
+        });
+        const resizeObserver = new ResizeObserver(debouncedLayout);
+        resizeObserver.observe(el);
+
+        return () => {
+            resizeObserver.disconnect();
+            debouncedLayout.cancel();
+        };
     }, []);
 
     // Update models on prop change

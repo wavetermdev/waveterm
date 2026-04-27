@@ -6,10 +6,8 @@ package windowservice
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -79,63 +77,6 @@ func (ws *WindowService) SetWindowPosAndSize(ctx context.Context, windowId strin
 	if err != nil {
 		return nil, err
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
-}
-
-func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
-	return tsgenmeta.MethodMeta{
-		Desc:     "move block to new window",
-		ArgNames: []string{"ctx", "currentTabId", "blockId"},
-	}
-}
-
-func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId string, blockId string) (waveobj.UpdatesRtnType, error) {
-	log.Printf("MoveBlockToNewWindow(%s, %s)", currentTabId, blockId)
-	ctx = waveobj.ContextWithUpdates(ctx)
-	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, currentTabId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting tab: %w", err)
-	}
-	log.Printf("tab.BlockIds[%s]: %v", tab.OID, tab.BlockIds)
-	var foundBlock bool
-	for _, tabBlockId := range tab.BlockIds {
-		if tabBlockId == blockId {
-			foundBlock = true
-			break
-		}
-	}
-	if !foundBlock {
-		return nil, fmt.Errorf("block not found in current tab")
-	}
-	newWindow, err := wcore.CreateWindow(ctx, nil, "")
-	if err != nil {
-		return nil, fmt.Errorf("error creating window: %w", err)
-	}
-	ws, err := wcore.GetWorkspace(ctx, newWindow.WorkspaceId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting workspace: %w", err)
-	}
-	err = wstore.MoveBlockToTab(ctx, currentTabId, ws.ActiveTabId, blockId)
-	if err != nil {
-		return nil, fmt.Errorf("error moving block to tab: %w", err)
-	}
-	eventbus.SendEventToElectron(eventbus.WSEventType{
-		EventType: eventbus.WSEvent_ElectronNewWindow,
-		Data:      newWindow.OID,
-	})
-	windowCreated := eventbus.BusyWaitForWindowId(newWindow.OID, 2*time.Second)
-	if !windowCreated {
-		return nil, fmt.Errorf("new window not created")
-	}
-	wcore.QueueLayoutActionForTab(ctx, currentTabId, waveobj.LayoutActionData{
-		ActionType: wcore.LayoutActionDataType_Remove,
-		BlockId:    blockId,
-	})
-	wcore.QueueLayoutActionForTab(ctx, ws.ActiveTabId, waveobj.LayoutActionData{
-		ActionType: wcore.LayoutActionDataType_Insert,
-		BlockId:    blockId,
-		Focused:    true,
-	})
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
 }
 

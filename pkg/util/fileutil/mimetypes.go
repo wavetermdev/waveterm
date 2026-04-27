@@ -842,6 +842,7 @@ var StaticMimeTypeMap = map[string]string{
 	".xspf":                      "application/xspf+xml",
 	".mxml":                      "application/xv+xml",
 	".yaml":                      "application/x-yaml",
+	".yml":                       "application/x-yaml",
 	".yang":                      "application/yang",
 	".yin":                       "application/yin+xml",
 	".zip":                       "application/zip",

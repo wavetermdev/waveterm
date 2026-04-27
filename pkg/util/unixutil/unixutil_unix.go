@@ -60,3 +60,35 @@ func GetSignalName(sig os.Signal) string {
 func SetCloseOnExec(fd int) {
 	unix.CloseOnExec(fd)
 }
+
+func SignalTerm(pid int) error {
+	return syscall.Kill(pid, syscall.SIGTERM)
+}
+
+func SignalHup(pid int) error {
+	return syscall.Kill(pid, syscall.SIGHUP)
+}
+
+func IsPidRunning(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	err := syscall.Kill(pid, 0)
+	// EPERM means no permission, but it exists (ESRCH is not found)
+	if err == nil || err == syscall.EPERM {
+		return true
+	}
+	return false
+}
+
+func SendSignalByName(pid int, sigName string) error {
+	sig := ParseSignal(sigName)
+	if sig == nil {
+		return fmt.Errorf("unsupported or invalid signal %q", sigName)
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("process %d not found: %w", pid, err)
+	}
+	return p.Signal(sig)
+}

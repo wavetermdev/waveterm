@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -31,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"golang.org/x/crypto/ssh"
@@ -39,6 +41,47 @@ import (
 )
 
 const SshProxyJumpMaxDepth = 10
+
+const (
+	ConnErrCode_ConfigParse    = "config-parse"
+	ConnErrCode_ConfigDefault  = "config-default"
+	ConnErrCode_ProxyDepth     = "proxy-depth"
+	ConnErrCode_ProxyParse     = "proxy-parse"
+	ConnErrCode_SecretStore    = "secret-error"
+	ConnErrCode_SecretNotFound = "secret-notfound"
+	ConnErrCode_KnownHostsNone = "knownhosts-none"
+	ConnErrCode_KnownHostsFmt  = "knownhosts-format"
+	ConnErrCode_Dial           = "dial-error"
+	ConnErrCode_ProxyJumpDial  = "dial-proxy-jump"
+	ConnErrCode_HostKeyRevoked = "hostkey-revoked"
+	ConnErrCode_HostKeyChanged = "hostkey-changed"
+	ConnErrCode_HostKeyVerify  = "hostkey-verify"
+	ConnErrCode_UserCancelled  = "user-cancelled"
+	ConnErrCode_UserTimeout    = "user-timeout"
+	ConnErrCode_AuthFailed     = "auth-failed"
+	ConnErrCode_Unknown        = "unknown"
+)
+
+// Dial error subcodes for more granular classification
+const (
+	DialSubCode_DNS             = "dns"
+	DialSubCode_Refused         = "refused"
+	DialSubCode_Timeout         = "timeout"
+	DialSubCode_ContextCanceled = "context-canceled"
+	DialSubCode_NoRoute         = "no-route"
+	DialSubCode_HostUnreach     = "host-unreachable"
+	DialSubCode_NetUnreach      = "net-unreachable"
+	DialSubCode_ConnReset       = "conn-reset"
+	DialSubCode_PermDenied      = "perm-denied"
+	DialSubCode_ProxyJump       = "proxy-jump"
+	DialSubCode_Other           = "other"
+)
+
+// Auth error subcodes for more granular classification
+const (
+	AuthSubCode_UnableToAuth    = "unable-to-auth"
+	AuthSubCode_HandshakeFailed = "handshake-failed"
+)
 
 var waveSshConfigUserSettingsInternal *ssh_config.UserSettings
 var configUserSettingsOnce = &sync.Once{}
@@ -61,6 +104,10 @@ func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
 }
 
+func (uice UserInputCancelError) Unwrap() error {
+	return uice.Err
+}
+
 type ConnectionDebugInfo struct {
 	CurrentClient *ssh.Client
 	NextOpts      *SSHOpts
@@ -79,6 +126,10 @@ func (ce ConnectionError) Error() string {
 	return fmt.Sprintf("Connecting from %v to %s (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
 }
 
+func (ce ConnectionError) Unwrap() error {
+	return ce.Err
+}
+
 func SimpleMessageFromPossibleConnectionError(err error) string {
 	if err == nil {
 		return ""
@@ -87,6 +138,112 @@ func SimpleMessageFromPossibleConnectionError(err error) string {
 		return ce.Err.Error()
 	}
 	return err.Error()
+}
+
+func ClassifyConnError(err error) (string, string) {
+	code := utilds.GetErrorCode(err)
+	subCode := utilds.GetErrorSubCode(err)
+	if code != "" {
+		return code, subCode
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
+	}
+	errStr := err.Error()
+	if strings.Contains(errStr, "unable to authenticate") {
+		return ConnErrCode_AuthFailed, AuthSubCode_UnableToAuth
+	}
+	if strings.Contains(errStr, "handshake failed") {
+		return ConnErrCode_AuthFailed, AuthSubCode_HandshakeFailed
+	}
+	if strings.Contains(errStr, "connection refused") {
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
+	}
+	if strings.Contains(errStr, "timed out") || strings.Contains(errStr, "timeout") {
+		return ConnErrCode_Dial, ClassifyDialErrorSubCode(err)
+	}
+	return ConnErrCode_Unknown, ""
+}
+
+// ClassifyDialErrorSubCode provides more granular classification of dial errors
+// to help identify root causes (DNS, VPN, timeouts, etc.)
+func ClassifyDialErrorSubCode(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Check for context cancellation first
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return DialSubCode_ContextCanceled
+	}
+
+	// Check if it's a DNS error
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return DialSubCode_DNS
+	}
+
+	// Check if it's a network operation error
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		// Check the underlying error for more details
+		if opErr.Err != nil {
+			errStr := opErr.Err.Error()
+			if strings.Contains(errStr, "connection refused") {
+				return DialSubCode_Refused
+			}
+			if strings.Contains(errStr, "no route to host") {
+				return DialSubCode_NoRoute
+			}
+			if strings.Contains(errStr, "host is unreachable") || strings.Contains(errStr, "host unreachable") {
+				return DialSubCode_HostUnreach
+			}
+			if strings.Contains(errStr, "network is unreachable") || strings.Contains(errStr, "network unreachable") {
+				return DialSubCode_NetUnreach
+			}
+			if strings.Contains(errStr, "connection reset") {
+				return DialSubCode_ConnReset
+			}
+			if strings.Contains(errStr, "permission denied") {
+				return DialSubCode_PermDenied
+			}
+		}
+		// Generic timeout detection in OpError
+		if opErr.Timeout() {
+			return DialSubCode_Timeout
+		}
+	}
+
+	// Check error string for common patterns
+	errStr := err.Error()
+	if strings.Contains(errStr, "connection refused") {
+		return DialSubCode_Refused
+	}
+	if strings.Contains(errStr, "timed out") || strings.Contains(errStr, "timeout") || strings.Contains(errStr, "i/o timeout") {
+		return DialSubCode_Timeout
+	}
+	if strings.Contains(errStr, "no route to host") {
+		return DialSubCode_NoRoute
+	}
+	if strings.Contains(errStr, "host is unreachable") || strings.Contains(errStr, "host unreachable") {
+		return DialSubCode_HostUnreach
+	}
+	if strings.Contains(errStr, "network is unreachable") || strings.Contains(errStr, "network unreachable") {
+		return DialSubCode_NetUnreach
+	}
+	if strings.Contains(errStr, "connection reset") {
+		return DialSubCode_ConnReset
+	}
+	if strings.Contains(errStr, "permission denied") {
+		return DialSubCode_PermDenied
+	}
+
+	return DialSubCode_Other
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -204,7 +361,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 			// this is an error where we actually do want to stop
 			// trying keys
 
-			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: UserInputCancelError{Err: err}}
+			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_UserCancelled, UserInputCancelError{Err: err})}
 		}
 		unencryptedPrivateKey, err = ssh.ParseRawPrivateKeyWithPassphrase(privateKey, []byte([]byte(response.Text)))
 		if err != nil {
@@ -277,7 +434,7 @@ func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteNam
 			echo := echos[i]
 			answer, err := promptChallengeQuestion(connCtx, question, echo, remoteName)
 			if err != nil {
-				return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+				return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_UserCancelled, err)}
 			}
 			answers = append(answers, answer)
 		}
@@ -433,7 +590,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 
 	osUser, err := user.Current()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, utilds.MakeCodedError(ConnErrCode_ConfigParse, err)
 	}
 	var unexpandedKnownHostsFiles []string
 	if osUser.Username == "root" {
@@ -453,7 +610,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 
 	// there are no good known hosts files
 	if len(knownHostsFiles) == 0 {
-		return nil, nil, fmt.Errorf("no known_hosts files provided by ssh. defaults are overridden")
+		return nil, nil, utilds.Errorf(ConnErrCode_KnownHostsNone, "no known_hosts files provided by ssh. defaults are overridden")
 	}
 
 	var unreadableFiles []string
@@ -475,12 +632,11 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 				}
 			}
 			if len(okFiles) >= len(knownHostsFiles) {
-				return nil, nil, fmt.Errorf("problem file (%s) doesn't exist. this should not be possible", badFile)
+				return nil, nil, utilds.Errorf(ConnErrCode_KnownHostsFmt, "problem file (%s) doesn't exist. this should not be possible", badFile)
 			}
 			knownHostsFiles = okFiles
 		} else if err != nil {
-			// TODO handle obscure problems if possible
-			return nil, nil, fmt.Errorf("known_hosts formatting error: %+v", err)
+			return nil, nil, utilds.Errorf(ConnErrCode_KnownHostsFmt, "known_hosts formatting error: %w", err)
 		} else {
 			basicCallback = keyDb.HostKeyCallback()
 			hostKeyAlgorithms = keyDb.HostKeyAlgorithms
@@ -510,8 +666,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 			// success
 			return nil
 		} else if _, ok := err.(*xknownhosts.RevokedError); ok {
-			// revoked credentials are refused outright
-			return err
+			return utilds.MakeCodedError(ConnErrCode_HostKeyRevoked, err)
 		} else if _, ok := err.(*xknownhosts.KeyError); !ok {
 			// this is an unknown error (note the !ok is opposite of usual)
 			return err
@@ -530,7 +685,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 					break
 				}
 				if serr, ok := err.(UserInputCancelError); ok {
-					return serr
+					return utilds.MakeCodedError(ConnErrCode_UserCancelled, serr)
 				}
 			}
 
@@ -546,12 +701,12 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 						break
 					}
 					if serr, ok := err.(UserInputCancelError); ok {
-						return serr
+						return utilds.MakeCodedError(ConnErrCode_UserCancelled, serr)
 					}
 				}
 			}
 			if err != nil {
-				return fmt.Errorf("unable to create new knownhost key: %e", err)
+				return utilds.Errorf(ConnErrCode_HostKeyVerify, "unable to create new knownhost key: %w", err)
 			}
 		} else {
 			// the key changed
@@ -585,7 +740,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 			// create update into alert message
 
 			//send update via bus?
-			return fmt.Errorf("remote host identification has changed")
+			return utilds.Errorf(ConnErrCode_HostKeyChanged, "remote host identification has changed")
 		}
 
 		updatedCallback, err := xknownhosts.New(knownHostsFiles...)
@@ -629,10 +784,10 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		secretName := *sshKeywords.SshPasswordSecretName
 		password, exists, err := secretstore.GetSecret(secretName)
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving ssh:passwordsecretname %q: %w", secretName, err)
+			return nil, utilds.Errorf(ConnErrCode_SecretStore, "error retrieving ssh:passwordsecretname %q: %w", secretName, err)
 		}
 		if !exists {
-			return nil, fmt.Errorf("ssh:passwordsecretname %q not found in secret store", secretName)
+			return nil, utilds.Errorf(ConnErrCode_SecretNotFound, "ssh:passwordsecretname %q not found in secret store", secretName)
 		}
 		blocklogger.Infof(connCtx, "[conndebug] successfully retrieved ssh:passwordsecretname %q from secret store\n", secretName)
 		sshPassword = &password
@@ -691,15 +846,17 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
-			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
-			return nil, err
+			subCode := ClassifyDialErrorSubCode(err)
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
+			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, subCode, err)
 		}
 	} else {
 		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
-			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
-			return nil, err
+			subCode := ClassifyDialErrorSubCode(err)
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
+			return nil, utilds.MakeSubCodedError(ConnErrCode_ProxyJumpDial, subCode, err)
 		}
 	}
 	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
@@ -719,7 +876,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		JumpNum:       jumpNum,
 	}
 	if jumpNum > SshProxyJumpMaxDepth {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
+		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
 
 	rawName := opts.String()
@@ -734,14 +891,14 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		var err error
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
-			err = fmt.Errorf("cannot determine default config keywords: %w", err)
+			err = utilds.MakeCodedError(ConnErrCode_ConfigDefault, fmt.Errorf("cannot determine default config keywords: %w", err))
 			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	} else {
 		var err error
 		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
 		if err != nil {
-			err = fmt.Errorf("cannot determine config keywords: %w", err)
+			err = utilds.MakeCodedError(ConnErrCode_ConfigParse, fmt.Errorf("cannot determine config keywords: %w", err))
 			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	}
@@ -773,7 +930,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	for _, proxyName := range sshKeywords.SshProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
 		}
 
 		// ensure no overflow (this will likely never happen)
