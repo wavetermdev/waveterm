@@ -142,13 +142,13 @@ func Attach(rpcClient *wshutil.WshRpc, blockId string) error {
 
 	switch {
 	case errors.Is(exitErr, ErrDetached):
-		fmt.Fprintf(os.Stderr, "\r\n[detached]")
+		fmt.Fprintf(os.Stderr, "\r\n[detached]\r\n")
 		return nil
 	case errors.Is(exitErr, ErrBlockClosed):
-		fmt.Fprintf(os.Stderr, "\r\n[block closed]")
+		fmt.Fprintf(os.Stderr, "\r\n[block closed]\r\n")
 		return nil
 	case exitErr != nil:
-		fmt.Fprintf(os.Stderr, "\r\n[error] %v", exitErr)
+		fmt.Fprintf(os.Stderr, "\r\n[error] %v\r\n", exitErr)
 		return exitErr
 	}
 	return nil
