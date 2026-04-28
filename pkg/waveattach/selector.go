@@ -29,6 +29,13 @@ func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
 	}
 
 	wsCache := make(map[string]string)
+	if wsList, err := wshclient.WorkspaceListCommand(rpcClient, nil); err == nil {
+		for _, ws := range wsList {
+			if ws.WorkspaceData != nil {
+				wsCache[ws.WorkspaceData.OID] = ws.WorkspaceData.Name
+			}
+		}
+	}
 	tabCache := make(map[string]string)
 
 	var entries []blockEntry
@@ -38,25 +45,12 @@ func ListTermBlocks(rpcClient *wshutil.WshRpc) ([]blockEntry, error) {
 			continue
 		}
 
-		wsName, ok := wsCache[blk.WorkspaceId]
-		if !ok {
-			wsList, err := wshclient.WorkspaceListCommand(rpcClient, nil)
-			if err == nil {
-				for _, ws := range wsList {
-					if ws.WorkspaceData != nil {
-						wsCache[ws.WorkspaceData.OID] = ws.WorkspaceData.Name
-					}
-				}
+		wsName := wsCache[blk.WorkspaceId]
+		if wsName == "" {
+			wsName = blk.WorkspaceId
+			if len(wsName) > 8 {
+				wsName = wsName[:8]
 			}
-			wsName = wsCache[blk.WorkspaceId]
-			if wsName == "" {
-				short := blk.WorkspaceId
-				if len(short) > 8 {
-					short = short[:8]
-				}
-				wsName = short
-			}
-			wsCache[blk.WorkspaceId] = wsName
 		}
 
 		tabName, ok := tabCache[blk.TabId]
@@ -115,7 +109,7 @@ func runInteractiveSelector(entries []blockEntry) (string, error) {
 	cur := 0
 	render := func() {
 		var sb strings.Builder
-		sb.WriteString("\r\n选择要 attach 的 Block：\r\n\r\n")
+		sb.WriteString("\r\nSelect a block to attach to:\r\n\r\n")
 		for i, e := range entries {
 			prefix := "  "
 			if i == cur {
@@ -132,7 +126,7 @@ func runInteractiveSelector(entries []blockEntry) (string, error) {
 			}
 			sb.WriteString(line + "\r\n")
 		}
-		sb.WriteString("\r\n↑/↓ 选择  Enter 确认  q 退出  │ block: ")
+		sb.WriteString("\r\n↑/↓ move  Enter select  q quit  │ block: ")
 		sb.WriteString(entries[cur].BlockId)
 		sb.WriteString("\r\n")
 
