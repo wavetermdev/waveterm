@@ -593,7 +593,7 @@ func (h *httpHandlers) handleManifest(manifestFileBytes []byte) http.HandlerFunc
 			}
 		}()
 
-		setCORSHeaders(w, r)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		setNoCacheHeaders(w)
 
 		if r.Method == http.MethodOptions {
@@ -607,7 +607,12 @@ func (h *httpHandlers) handleManifest(manifestFileBytes []byte) http.HandlerFunc
 		}
 
 		if manifestFileBytes == nil {
-			http.NotFound(w, r)
+			manifest := h.Client.GetAppManifest()
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(manifest); err != nil {
+				log.Printf("failed to encode manifest response: %v", err)
+				http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			}
 			return
 		}
 
