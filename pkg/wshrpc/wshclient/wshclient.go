@@ -924,6 +924,12 @@ func TermGetScrollbackLinesCommand(w *wshutil.WshRpc, data wshrpc.CommandTermGet
 	return resp, err
 }
 
+// command "termlistencheckport", wshserver.TermListenCheckPortCommand
+func TermListenCheckPortCommand(w *wshutil.WshRpc, data wshrpc.CommandTermListenCheckPortData, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "termlistencheckport", data, opts)
+	return resp, err
+}
+
 // command "test", wshserver.TestCommand
 func TestCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "test", data, opts)

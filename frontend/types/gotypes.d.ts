@@ -705,6 +705,11 @@ declare global {
         lastupdated: number;
     };
 
+    // wshrpc.CommandTermListenCheckPortData
+    type CommandTermListenCheckPortData = {
+        port: number;
+    };
+
     // wshrpc.CommandVarData
     type CommandVarData = {
         key: string;
@@ -1204,6 +1209,8 @@ declare global {
         "tsunami:scaffoldpath"?: string;
         "tsunami:env"?: {[key: string]: string};
         "tsunami:url"?: string;
+        "tsunami:termlisten"?: boolean;
+        "tsunami:port"?: number;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;

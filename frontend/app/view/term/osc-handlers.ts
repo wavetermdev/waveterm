@@ -385,7 +385,8 @@ export function handleOsc16162Command(data: string, blockId: string, loaded: boo
     return true;
 }
 
-export async function handleOsc9009Command(data: string, blockId: string): Promise<boolean> {
+export async function handleOsc9009Command(data: string, blockId: string, loaded: boolean): Promise<boolean> {
+    if (!loaded) return true;
     const firstSemi = data.indexOf(";");
     if (firstSemi === -1) return true;
     const subtype = data.substring(0, firstSemi);
@@ -410,7 +411,7 @@ export async function handleOsc9009Command(data: string, blockId: string): Promi
 
     const oref = await RpcApi.CreateSubBlockCommand(TabRpcClient, {
         parentblockid: blockId,
-        blockdef: { meta: { view: "tsunami", "tsunami:url": tsunamiUrl } },
+        blockdef: { meta: { view: "tsunami", "tsunami:url": tsunamiUrl, "tsunami:termlisten": true, "tsunami:port": payload.port } },
     });
     const [, newBlockId] = splitORef(oref);
 

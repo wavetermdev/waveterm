@@ -930,6 +930,12 @@ export class RpcApiType {
         return client.wshRpcCall("termgetscrollbacklines", data, opts);
     }
 
+    // command "termlistencheckport" [call]
+    TermListenCheckPortCommand(client: WshClient, data: CommandTermListenCheckPortData, opts?: RpcOpts): Promise<boolean> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "termlistencheckport", data, opts);
+        return client.wshRpcCall("termlistencheckport", data, opts);
+    }
+
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "test", data, opts);

@@ -11,11 +11,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const (
@@ -23,6 +25,32 @@ const (
 	StdinPrefix    = "##listen"
 	MaxPayloadSize = 65536
 )
+
+var (
+	activePortsMu sync.Mutex
+	activePorts   = make(map[int]bool)
+)
+
+func registerActivePort(port int) {
+	activePortsMu.Lock()
+	defer activePortsMu.Unlock()
+	activePorts[port] = true
+}
+
+func unregisterActivePort(port int) {
+	activePortsMu.Lock()
+	defer activePortsMu.Unlock()
+	delete(activePorts, port)
+}
+
+func IsPortActive(port int) bool {
+	if port <= 0 {
+		return false
+	}
+	activePortsMu.Lock()
+	defer activePortsMu.Unlock()
+	return activePorts[port]
+}
 
 // oscMsg is received Remote→Wave via OSC 9010.
 type oscMsg struct {
@@ -171,6 +199,10 @@ func (srv *TermListenSrv) handleListenEnter(msg *oscMsg) {
 	srv.session = sess
 	srv.mu.Unlock()
 
+	registerActivePort(port)
+	if wavebase.IsDevMode() {
+		log.Printf("termlistensrv: opened ephemeral port %d\n", port)
+	}
 	if msg.Id != "" {
 		srv.sendMsg(outMsg{Id: msg.Id, Port: port})
 	}
@@ -236,6 +268,9 @@ func (srv *TermListenSrv) handleAccept(sess *srvSession, msg *oscMsg) {
 		sess.conns[connId] = sconn
 		sess.mu.Unlock()
 
+		if wavebase.IsDevMode() {
+			log.Printf("termlistensrv: new conn %s on port %d from %s\n", connId, sess.port, conn.RemoteAddr())
+		}
 		srv.sendMsg(outMsg{
 			Id:   msg.Id,
 			Conn: connId,
@@ -358,6 +393,10 @@ func (s *srvSession) teardown() {
 	s.conns = make(map[string]*srvConn)
 	s.mu.Unlock()
 
+	unregisterActivePort(s.port)
+	if wavebase.IsDevMode() {
+		log.Printf("termlistensrv: tore down ephemeral port %d\n", s.port)
+	}
 	if listener != nil {
 		listener.Close()
 	}

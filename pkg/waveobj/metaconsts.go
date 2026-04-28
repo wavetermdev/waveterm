@@ -146,6 +146,8 @@ const (
 	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
 	MetaKey_TsunamiEnv                       = "tsunami:env"
 	MetaKey_TsunamiUrl                       = "tsunami:url"
+	MetaKey_TsunamiTermListen                = "tsunami:termlisten"
+	MetaKey_TsunamiPort                      = "tsunami:port"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

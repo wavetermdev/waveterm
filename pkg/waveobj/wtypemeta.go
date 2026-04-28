@@ -150,6 +150,8 @@ type MetaTSType struct {
 	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
 	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
 	TsunamiUrl            string            `json:"tsunami:url,omitempty"`
+	TsunamiTermListen     bool              `json:"tsunami:termlisten,omitempty"`
+	TsunamiPort           int               `json:"tsunami:port,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`

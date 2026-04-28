@@ -207,7 +207,7 @@ export class TermWrap {
             }
         });
         this.terminal.parser.registerOscHandler(9009, (data: string) => {
-            fireAndForget(() => handleOsc9009Command(data, this.blockId));
+            fireAndForget(() => handleOsc9009Command(data, this.blockId, this.loaded));
             return true;
         });
         this.toDispose.push(

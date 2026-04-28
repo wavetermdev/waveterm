@@ -540,6 +540,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 			})
 			blockId := bc.BlockId
 			termSrv.OnTeardown = func(port int) {
+				log.Printf("[termlistensrv] OnTeardown fired for blockId=%s port=%d\n", blockId, port)
 				wps.Broker.Publish(wps.WaveEvent{
 					Event:  wps.Event_TermListenDown,
 					Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, blockId).String()},
