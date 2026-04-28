@@ -78,6 +78,7 @@ export class TermViewModel implements ViewModel {
     blockJobStatusVersionTs: number;
     blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
+    termModeUnsubFn: () => void;
     termCursorUnsubFn: () => void;
     termCursorBlinkUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
@@ -416,6 +417,16 @@ export class TermViewModel implements ViewModel {
                 this.termRef.current.setCursorBlink(globalStore.get(termCursorBlinkAtom) ?? false);
             }
         });
+        this.termModeUnsubFn = globalStore.sub(this.termMode, () => {
+            const termMode = globalStore.get(this.termMode);
+            setTimeout(() => {
+                if (termMode == "tsunami") {
+                    this.focusTsunamiSubBlock();
+                } else if (!termMode || termMode == "term") {
+                    this.termRef.current?.terminal?.focus();
+                }
+            }, 10);
+        });
     }
 
     getShellIntegrationIconButton(get: jotai.Getter): IconButtonDecl | null {
@@ -608,11 +619,19 @@ export class TermViewModel implements ViewModel {
         return bcm.viewModel as VDomModel;
     }
 
+    focusTsunamiSubBlock() {
+        const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+        if (!tsunamiBlockId) return;
+        const bcm = getBlockComponentModel(tsunamiBlockId);
+        bcm?.viewModel?.giveFocus?.();
+    }
+
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
         this.shellProcStatusUnsubFn?.();
         this.blockJobStatusUnsubFn?.();
         this.termBPMUnsubFn?.();
+        this.termModeUnsubFn?.();
         this.termCursorUnsubFn?.();
         this.termCursorBlinkUnsubFn?.();
     }
@@ -624,7 +643,8 @@ export class TermViewModel implements ViewModel {
         }
         const termMode = globalStore.get(this.termMode);
         if (termMode == "tsunami") {
-            return false;
+            this.focusTsunamiSubBlock();
+            return true;
         }
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
@@ -647,13 +667,22 @@ export class TermViewModel implements ViewModel {
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
             const blockData = globalStore.get(blockAtom);
-            const newTermMode = blockData?.meta?.["term:mode"] == "vdom" ? null : "vdom";
-            const vdomBlockId = globalStore.get(this.vdomBlockId);
-            if (newTermMode == "vdom" && !vdomBlockId) {
-                return;
+            const termMode = blockData?.meta?.["term:mode"];
+            if (termMode == "vdom" || termMode == "tsunami") {
+                this.setTermMode("term");
+                return true;
             }
-            this.setTermMode(newTermMode);
-            return true;
+            const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+            if (tsunamiBlockId) {
+                this.setTermMode("tsunami");
+                return true;
+            }
+            const vdomBlockId = globalStore.get(this.vdomBlockId);
+            if (vdomBlockId) {
+                this.setTermMode("vdom");
+                return true;
+            }
+            return;
         }
         if (keyutil.checkKeyPressed(waveEvent, "Shift:End")) {
             if (this.termRef?.current?.terminal) {

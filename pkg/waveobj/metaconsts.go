@@ -148,6 +148,7 @@ const (
 	MetaKey_TsunamiUrl                       = "tsunami:url"
 	MetaKey_TsunamiTermListen                = "tsunami:termlisten"
 	MetaKey_TsunamiPort                      = "tsunami:port"
+	MetaKey_TsunamiParentBlockId             = "tsunami:parentblockid"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

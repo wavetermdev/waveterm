@@ -411,7 +411,7 @@ export async function handleOsc9009Command(data: string, blockId: string, loaded
 
     const oref = await RpcApi.CreateSubBlockCommand(TabRpcClient, {
         parentblockid: blockId,
-        blockdef: { meta: { view: "tsunami", "tsunami:url": tsunamiUrl, "tsunami:termlisten": true, "tsunami:port": payload.port } },
+        blockdef: { meta: { view: "tsunami", "tsunami:url": tsunamiUrl, "tsunami:termlisten": true, "tsunami:port": payload.port, "tsunami:parentblockid": blockId } },
     });
     const [, newBlockId] = splitORef(oref);
 

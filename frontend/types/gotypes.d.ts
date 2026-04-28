@@ -1211,6 +1211,7 @@ declare global {
         "tsunami:url"?: string;
         "tsunami:termlisten"?: boolean;
         "tsunami:port"?: number;
+        "tsunami:parentblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;

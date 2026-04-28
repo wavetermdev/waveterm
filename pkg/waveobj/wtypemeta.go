@@ -152,6 +152,7 @@ type MetaTSType struct {
 	TsunamiUrl            string            `json:"tsunami:url,omitempty"`
 	TsunamiTermListen     bool              `json:"tsunami:termlisten,omitempty"`
 	TsunamiPort           int               `json:"tsunami:port,omitempty"`
+	TsunamiParentBlockId  string            `json:"tsunami:parentblockid,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
