@@ -539,56 +539,54 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
 
     const handleAddTab = (e: React.MouseEvent) => {
         fireAndForget(async () => {
+            let templates: TabTemplate[] = [];
             try {
-                const templates = await TabTemplateService.ListTabTemplates();
-                if (templates && templates.length > 0) {
-                    const menu: ContextMenuItem[] = [
-                        {
-                            label: "New Tab",
-                            click: () => {
-                                env.electron.createTab();
-                                applyTabTransition();
-                                setNewTabIdDebounced(null);
-                            },
-                        },
-                        { type: "separator" },
-                        {
-                            label: "From Template",
-                            type: "submenu",
-                            submenu: templates.map((t) => ({
-                                label: t.name,
-                                click: () => {
-                                    fireAndForget(async () => {
-                                        try {
-                                            await TabTemplateService.CreateTabFromTemplate(workspace.oid, t.oid);
-                                            applyTabTransition();
-                                        } catch (err) {
-                                            console.error("Failed to create tab from template:", err);
-                                        }
-                                    });
-                                },
-                            })),
-                        },
-                        { type: "separator" },
-                        {
-                            label: "Manage Templates...",
-                            click: () => {
-                                modalsModel.pushModal("TemplateManagerModal", {});
-                            },
-                        },
-                    ];
-                    env.showContextMenu(menu, e);
-                } else {
-                    env.electron.createTab();
-                    applyTabTransition();
-                    setNewTabIdDebounced(null);
-                }
+                templates = (await TabTemplateService.ListTabTemplates()) ?? [];
             } catch (err) {
                 console.error("Failed to load templates:", err);
-                env.electron.createTab();
-                applyTabTransition();
-                setNewTabIdDebounced(null);
             }
+
+            const menu: ContextMenuItem[] = [
+                {
+                    label: "New Tab",
+                    click: () => {
+                        env.electron.createTab();
+                        applyTabTransition();
+                        setNewTabIdDebounced(null);
+                    },
+                },
+            ];
+
+            if (templates.length > 0) {
+                menu.push({ type: "separator" });
+                menu.push({
+                    label: "From Template",
+                    type: "submenu",
+                    submenu: templates.map((t) => ({
+                        label: t.name,
+                        click: () => {
+                            fireAndForget(async () => {
+                                try {
+                                    await TabTemplateService.CreateTabFromTemplate(workspace.oid, t.oid);
+                                    applyTabTransition();
+                                } catch (err) {
+                                    console.error("Failed to create tab from template:", err);
+                                }
+                            });
+                        },
+                    })),
+                });
+            }
+
+            menu.push({ type: "separator" });
+            menu.push({
+                label: "Manage Templates...",
+                click: () => {
+                    modalsModel.pushModal("TemplateManagerModal", {});
+                },
+            });
+
+            env.showContextMenu(menu, e);
         });
     };
 
