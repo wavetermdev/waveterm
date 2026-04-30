@@ -544,6 +544,9 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                 templates = (await TabTemplateService.ListTabTemplates()) ?? [];
             } catch (err) {
                 console.error("Failed to load templates:", err);
+                modalsModel.pushModal("MessageModal", {
+                    children: `Failed to load tab templates: ${err?.message ?? "unknown error"}`,
+                });
             }
 
             const menu: ContextMenuItem[] = [
@@ -571,6 +574,9 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                                     applyTabTransition();
                                 } catch (err) {
                                     console.error("Failed to create tab from template:", err);
+                                    modalsModel.pushModal("MessageModal", {
+                                        children: `Failed to create tab from template: ${err?.message ?? "unknown error"}`,
+                                    });
                                 }
                             });
                         },
