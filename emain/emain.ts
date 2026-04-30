@@ -10,6 +10,7 @@ import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil-base";
 import { fireAndForget, sleep } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
+import { registerGeolocationIPC } from "./geolocation";
 import {
     getActivityState,
     getAndClearTermCommandsDurable,
@@ -371,6 +372,25 @@ globalEvents.on("windows-updated", () => {
     makeAndSetAppMenu();
 });
 
+function configureWebviewPermissions() {
+    // Set up permission handler for web widgets that need geolocation, media, etc.
+    // Using a named partition allows for persistent session storage and proper permission handling
+    const webviewSession = electron.session.fromPartition("persist:webwidgets");
+
+    webviewSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ["geolocation", "media", "mediaKeySystem"];
+        if (allowedPermissions.includes(permission)) {
+            console.log(`[webview-session] Granting permission: ${permission}`);
+            callback(true);
+        } else {
+            console.log(`[webview-session] Denying permission: ${permission}`);
+            callback(false);
+        }
+    });
+
+    console.log("[webview-session] Permission handler configured for persist:webwidgets partition");
+}
+
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
     const launchSettings = getLaunchSettings();
@@ -399,6 +419,8 @@ async function appMain() {
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
+    configureWebviewPermissions();
+    registerGeolocationIPC();
     initIpcHandlers();
 
     await sleep(10); // wait a bit for wavesrv to be ready

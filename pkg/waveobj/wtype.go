@@ -31,7 +31,8 @@ const (
 	OType_MainServer  = "mainserver"
 	OType_Job         = "job"
 	OType_Temp        = "temp"
-	OType_Builder     = "builder" // not persisted to DB
+	OType_Builder     = "builder"     // not persisted to DB
+	OType_TabTemplate = "tabtemplate"
 )
 
 var ValidOTypes = map[string]bool{
@@ -45,6 +46,7 @@ var ValidOTypes = map[string]bool{
 	OType_Job:         true,
 	OType_Temp:        true,
 	OType_Builder:     true,
+	OType_TabTemplate: true,
 }
 
 type WaveObjUpdate struct {
@@ -218,6 +220,7 @@ type LayoutActionData struct {
 	Ephemeral     bool   `json:"ephemeral"`
 	TargetBlockId string `json:"targetblockid,omitempty"`
 	Position      string `json:"position,omitempty"`
+	RootNode      any    `json:"rootnode,omitempty"`
 }
 
 type LeafOrderEntry struct {
@@ -354,6 +357,41 @@ func (*Job) GetOType() string {
 	return OType_Job
 }
 
+// PortableLayoutEntry represents a single entry in a portable layout
+type PortableLayoutEntry struct {
+	IndexArr []int     `json:"indexarr"`
+	Size     *uint     `json:"size,omitempty"`
+	BlockDef *BlockDef `json:"blockdef"`
+	Focused  bool      `json:"focused"`
+}
+
+// PortableLayout is a slice of portable layout entries
+type PortableLayout []PortableLayoutEntry
+
+// PortableLayoutNode is a full layout tree for template serialization.
+// Leaf nodes have BlockDef set; branch nodes have Children set.
+type PortableLayoutNode struct {
+	FlexDirection string                `json:"flexdirection"`
+	Size          float64               `json:"size,omitempty"`
+	Children      []*PortableLayoutNode `json:"children,omitempty"`
+	BlockDef      *BlockDef             `json:"blockdef,omitempty"`
+	Focused       bool                  `json:"focused,omitempty"`
+}
+
+type TabTemplate struct {
+	OID        string              `json:"oid"`
+	Version    int                 `json:"version"`
+	Name       string              `json:"name"`
+	SrcTabId   string              `json:"srctabid,omitempty"`
+	Layout     PortableLayout      `json:"layout,omitempty"`
+	LayoutTree *PortableLayoutNode `json:"layouttree,omitempty"`
+	Meta       MetaMapType         `json:"meta"`
+}
+
+func (*TabTemplate) GetOType() string {
+	return OType_TabTemplate
+}
+
 func AllWaveObjTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeOf(&Client{}),
@@ -364,6 +402,7 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&LayoutState{}),
 		reflect.TypeOf(&MainServer{}),
 		reflect.TypeOf(&Job{}),
+		reflect.TypeOf(&TabTemplate{}),
 	}
 }
 

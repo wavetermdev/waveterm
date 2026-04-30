@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { TabTemplateService } from "@/app/store/services";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
+import { modalsModel } from "@/store/modalmodel";
 import { isMacOSTahoeOrLater } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -530,13 +532,67 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         []
     );
 
-    const handleAddTab = () => {
-        env.electron.createTab();
-        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
-
-        updateScrollDebounced();
-
-        setNewTabIdDebounced(null);
+    const handleAddTab = (e: React.MouseEvent) => {
+        fireAndForget(async () => {
+            try {
+                const templates = await TabTemplateService.ListTabTemplates();
+                if (templates && templates.length > 0) {
+                    const menu: ContextMenuItem[] = [
+                        {
+                            label: "New Tab",
+                            click: () => {
+                                env.electron.createTab();
+                                tabsWrapperRef.current.style.setProperty(
+                                    "--tabs-wrapper-transition",
+                                    "width 0.1s ease"
+                                );
+                                updateScrollDebounced();
+                                setNewTabIdDebounced(null);
+                            },
+                        },
+                        { type: "separator" },
+                        {
+                            label: "From Template",
+                            type: "submenu",
+                            submenu: templates.map((t) => ({
+                                label: t.name,
+                                click: () => {
+                                    fireAndForget(async () => {
+                                        await TabTemplateService.CreateTabFromTemplate(workspace.oid, t.oid);
+                                        tabsWrapperRef.current?.style.setProperty(
+                                            "--tabs-wrapper-transition",
+                                            "width 0.1s ease"
+                                        );
+                                        updateScrollDebounced();
+                                    });
+                                },
+                            })),
+                        },
+                        { type: "separator" },
+                        {
+                            label: "Manage Templates...",
+                            click: () => {
+                                modalsModel.pushModal("TemplateManagerModal", {});
+                            },
+                        },
+                    ];
+                    env.showContextMenu(menu, e);
+                } else {
+                    // No templates, just create a new tab directly
+                    env.electron.createTab();
+                    tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+                    updateScrollDebounced();
+                    setNewTabIdDebounced(null);
+                }
+            } catch (err) {
+                console.error("Failed to load templates:", err);
+                // Fall back to creating a new tab directly
+                env.electron.createTab();
+                tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+                updateScrollDebounced();
+                setNewTabIdDebounced(null);
+            }
+        });
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
