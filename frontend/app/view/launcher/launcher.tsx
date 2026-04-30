@@ -3,6 +3,7 @@
 
 import logoUrl from "@/app/asset/logo.svg?url";
 import type { BlockNodeModel } from "@/app/block/blocktypes";
+import { t } from "@/app/i18n";
 import { atoms, globalStore, replaceBlock } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -26,7 +27,7 @@ export class LauncherViewModel implements ViewModel {
     tabModel: TabModel;
     viewType = "launcher";
     viewIcon = atom("shapes");
-    viewName = atom("Widget Launcher");
+    viewName = atom(t("Widget Launcher"));
     viewComponent = LauncherView;
     noHeader = atom(true);
     inputRef = { current: null } as React.RefObject<HTMLInputElement>;
@@ -219,7 +220,7 @@ function LauncherView({ blockId, model }: ViewComponentProps<LauncherViewModel>)
                 onKeyDown={keydownWrapper(model.keyDownHandler.bind(model))}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="sr-only dummy"
-                aria-label="Search widgets"
+                aria-label={t("Search widgets")}
             />
 
             {/* Logo */}
@@ -240,7 +241,7 @@ function LauncherView({ blockId, model }: ViewComponentProps<LauncherViewModel>)
                     <div
                         key={index}
                         onClick={() => model.handleWidgetSelect(widget)}
-                        title={widget.description || widget.label}
+                        title={widget.description ? t(widget.description) : t(widget.label)}
                         className={clsx(
                             "flex flex-col items-center justify-center cursor-pointer rounded-md p-2 text-center",
                             "transition-colors duration-150",
@@ -262,7 +263,7 @@ function LauncherView({ blockId, model }: ViewComponentProps<LauncherViewModel>)
                         </div>
                         {gridLayout.showLabel && !isBlank(widget.label) && (
                             <div className="mt-1 w-full text-[11px] leading-4 overflow-hidden text-ellipsis whitespace-nowrap">
-                                {widget.label}
+                                {t(widget.label)}
                             </div>
                         )}
                     </div>
@@ -272,11 +273,12 @@ function LauncherView({ blockId, model }: ViewComponentProps<LauncherViewModel>)
             {/* Search instructions */}
             <div className="mt-4 text-secondary text-xs">
                 {filteredWidgets.length === 0 ? (
-                    <span>No widgets found. Press Escape to clear search.</span>
+                    <span>{t("No widgets found. Press Escape to clear search.")}</span>
                 ) : (
                     <span>
-                        {searchTerm == "" ? "Type to Filter" : "Searching " + '"' + searchTerm + '"'}, Enter to Launch,
-                        {searchTerm == "" ? "Arrow Keys to Navigate" : null}
+                        {searchTerm == "" ? t("Type to Filter") : t('Searching "{search}"', { search: searchTerm })},{" "}
+                        {t("Enter to Launch")}
+                        {searchTerm == "" ? `, ${t("Arrow Keys to Navigate")}` : null}
                     </span>
                 )}
             </div>

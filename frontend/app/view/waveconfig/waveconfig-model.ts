@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { t } from "@/app/i18n";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { TabModel } from "@/app/store/tab-model";
 import { makeORef } from "@/app/store/wos";
@@ -36,7 +37,7 @@ function validateAiJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
     for (const key of keys) {
         if (!key.startsWith("ai@")) {
-            return { error: `Invalid key "${key}": all top-level keys must start with "ai@"` };
+            return { error: t('Invalid key "{key}": all top-level keys must start with "ai@"', { key }) };
         }
     }
     return { success: true };
@@ -48,7 +49,10 @@ function validateWaveAiJson(parsed: any): ValidationResult {
     for (const key of keys) {
         if (!keyPattern.test(key)) {
             return {
-                error: `Invalid key "${key}": keys must only contain letters, numbers, underscores, @, dots, and hyphens`,
+                error: t(
+                    'Invalid key "{key}": keys must only contain letters, numbers, underscores, @, dots, and hyphens',
+                    { key }
+                ),
             };
         }
     }
@@ -58,46 +62,46 @@ function validateWaveAiJson(parsed: any): ValidationResult {
 function makeConfigFiles(isWindows: boolean): ConfigFile[] {
     return [
         {
-            name: "General",
+            name: t("General"),
             path: "settings.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/config",
             hasJsonView: true,
         },
         {
-            name: "Connections",
+            name: t("Connections"),
             path: "connections.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/connections",
-            description: isWindows ? "SSH hosts and WSL distros" : "SSH hosts",
+            description: isWindows ? t("SSH hosts and WSL distros") : t("SSH hosts"),
             hasJsonView: true,
         },
         {
-            name: "Sidebar Widgets",
+            name: t("Sidebar Widgets"),
             path: "widgets.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/customwidgets",
             hasJsonView: true,
         },
         {
-            name: "Wave AI Modes",
+            name: t("Wave AI Modes"),
             path: "waveai.json",
             language: "json",
-            description: "Local models and BYOK",
+            description: t("Local models and BYOK"),
             docsUrl: "https://docs.waveterm.dev/waveai-modes",
             validator: validateWaveAiJson,
             hasJsonView: true,
             // visualComponent: WaveAIVisualContent,
         },
         {
-            name: "Tab Backgrounds",
+            name: t("Tab Backgrounds"),
             path: "backgrounds.json",
             language: "json",
             docsUrl: "https://docs.waveterm.dev/tab-backgrounds",
             hasJsonView: true,
         },
         {
-            name: "Secrets",
+            name: t("Secrets"),
             path: "secrets",
             isSecrets: true,
             hasJsonView: false,
@@ -108,14 +112,14 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
 
 const deprecatedConfigFiles: ConfigFile[] = [
     {
-        name: "Presets",
+        name: t("Presets"),
         path: "presets.json",
         language: "json",
         deprecated: true,
         hasJsonView: true,
     },
     {
-        name: "AI Presets",
+        name: t("AI Presets"),
         path: "presets/ai.json",
         language: "json",
         deprecated: true,
@@ -129,7 +133,7 @@ export class WaveConfigViewModel implements ViewModel {
     blockId: string;
     viewType = "waveconfig";
     viewIcon = atom("gear");
-    viewName = atom("Wave Config");
+    viewName = atom(t("Wave Config"));
     viewComponent = WaveConfigView;
     noPadding = atom(true);
     nodeModel: BlockNodeModel;
@@ -267,7 +271,7 @@ export class WaveConfigViewModel implements ViewModel {
         if (!this.hasChanges()) {
             return true;
         }
-        return window.confirm("You have unsaved changes. Discard and continue?");
+        return window.confirm(t("You have unsaved changes. Discard and continue?"));
     }
 
     discardChanges() {
@@ -360,7 +364,7 @@ export class WaveConfigViewModel implements ViewModel {
             const parsed = JSON.parse(fileContent);
 
             if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
-                globalStore.set(this.validationErrorAtom, "JSON must be an object, not an array, primitive, or null");
+                globalStore.set(this.validationErrorAtom, t("JSON must be an object, not an array, primitive, or null"));
                 return;
             }
 
@@ -414,7 +418,7 @@ export class WaveConfigViewModel implements ViewModel {
             if (backend === "basic_text" || backend === "unknown") {
                 globalStore.set(
                     this.storageBackendErrorAtom,
-                    "No appropriate secret manager found. Cannot manage secrets securely."
+                    t("No appropriate secret manager found. Cannot manage secrets securely.")
                 );
             } else {
                 globalStore.set(this.storageBackendErrorAtom, null);
@@ -547,14 +551,14 @@ export class WaveConfigViewModel implements ViewModel {
         const value = globalStore.get(this.newSecretValueAtom);
 
         if (!name) {
-            globalStore.set(this.errorMessageAtom, "Secret name cannot be empty");
+            globalStore.set(this.errorMessageAtom, t("Secret name cannot be empty"));
             return;
         }
 
         if (!SecretNameRegex.test(name)) {
             globalStore.set(
                 this.errorMessageAtom,
-                "Invalid secret name: must start with a letter and contain only letters, numbers, and underscores"
+                t("Invalid secret name: must start with a letter and contain only letters, numbers, and underscores")
             );
             return;
         }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { t } from "@/app/i18n";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -75,7 +76,7 @@ export class ProcessViewerViewModel implements ViewModel {
     env: ProcessViewerEnv;
 
     viewIcon = jotai.atom<string>("microchip");
-    viewName = jotai.atom<string>("Processes");
+    viewName = jotai.atom<string>(t("Processes"));
     manageConnection = jotai.atom<boolean>(true);
     filterOutNowsh = jotai.atom<boolean>(true);
     noPadding = jotai.atom<boolean>(true);
@@ -390,10 +391,10 @@ export class ProcessViewerViewModel implements ViewModel {
     async sendSignal(pid: number, signal: string, killLabel?: boolean) {
         const conn = globalStore.get(this.connection);
         const route = makeConnRoute(conn);
-        const label = killLabel ? "Killed" : `sent ${signal}`;
+        const label = killLabel ? t("Killed") : t("sent {signal}", { signal });
         try {
             await this.env.rpc.RemoteProcessSignalCommand(TabRpcClient, { pid, signal }, { route });
-            this.setActionStatus({ pid, message: `Process #${pid} ${label}`, isError: false });
+            this.setActionStatus({ pid, message: t("Process #{pid} {label}", { pid, label }), isError: false });
         } catch (e) {
             this.setActionStatus({ pid, message: String(e), isError: true });
         }
@@ -424,23 +425,23 @@ export class ProcessViewerViewModel implements ViewModel {
         const currentInterval = globalStore.get(this.fetchIntervalAtom);
         return [
             {
-                label: "Refresh Interval",
+                label: t("Refresh Interval"),
                 type: "submenu",
                 submenu: [
                     {
-                        label: "1 second",
+                        label: t("1 second"),
                         type: "checkbox",
                         checked: currentInterval === 1000,
                         click: () => this.setFetchInterval(1000),
                     },
                     {
-                        label: "2 seconds",
+                        label: t("2 seconds"),
                         type: "checkbox",
                         checked: currentInterval === 2000,
                         click: () => this.setFetchInterval(2000),
                     },
                     {
-                        label: "5 seconds",
+                        label: t("5 seconds"),
                         type: "checkbox",
                         checked: currentInterval === 5000,
                         click: () => this.setFetchInterval(5000),
@@ -513,8 +514,8 @@ const StatusIndicator = React.memo(function StatusIndicator({ model }: { model: 
     if (paused) {
         const tooltipContent = (
             <div className="flex flex-col gap-0.5">
-                <span>Paused</span>
-                <span className="text-muted">Click to resume</span>
+                <span>{t("Paused")}</span>
+                <span className="text-muted">{t("Click to resume")}</span>
             </div>
         );
         return (
@@ -534,11 +535,11 @@ const StatusIndicator = React.memo(function StatusIndicator({ model }: { model: 
 
     const stalled = lastSuccess > 0 && now - lastSuccess > 5000;
     const circleColor = error != null ? "text-error" : stalled ? "text-warning" : "text-success";
-    const statusLabel = error != null ? "Error" : stalled ? "Stalled" : "Updating";
+    const statusLabel = error != null ? t("Error") : stalled ? t("Stalled") : t("Updating");
     const tooltipContent = (
         <div className="flex flex-col gap-0.5">
             <span>{statusLabel}</span>
-            <span className="text-muted">Click to pause</span>
+            <span className="text-muted">{t("Click to pause")}</span>
         </div>
     );
 
@@ -578,12 +579,12 @@ const TableHeader = React.memo(function TableHeader({
             {cols.map((col) => (
                 <Tooltip
                     key={col.key}
-                    content={col.tooltip}
+                    content={col.tooltip ? t(col.tooltip) : col.tooltip}
                     disable={!col.tooltip}
                     divClassName={`px-2 py-1 cursor-pointer hover:text-primary hover:bg-white/5 transition-colors truncate flex items-center${col.align === "right" ? " justify-end" : ""}`}
                     divOnClick={() => model.setSort(col.key)}
                 >
-                    <span className="truncate">{col.label}</span>
+                    <span className="truncate">{t(col.label)}</span>
                     <SortIndicator active={sortBy === col.key} desc={sortDesc} />
                 </Tooltip>
             ))}
@@ -621,7 +622,7 @@ const ProcessRow = React.memo(function ProcessRow({
                 <div className="px-2 flex items-center truncate justify-end text-secondary font-mono text-[11px]">
                     {proc.pid}
                 </div>
-                <div className="px-2 flex items-center truncate text-muted italic">(gone)</div>
+                <div className="px-2 flex items-center truncate text-muted italic">{t("(gone)")}</div>
                 {visibleKeys.has("status") && <div className="px-2 flex items-center truncate" />}
                 {visibleKeys.has("user") && <div className="px-2 flex items-center truncate" />}
                 {visibleKeys.has("threads") && <div className="px-2 flex items-center truncate" />}
@@ -670,7 +671,7 @@ const ActionStatusBar = React.memo(function ActionStatusBar({ model }: { model: 
             className={`shrink-0 flex items-center px-3 py-1 text-xs border-t border-white/10 ${actionStatus.isError ? "text-error" : "text-secondary"}`}
         >
             <span className="flex-1 truncate">
-                {actionStatus.isError ? `Error: ${actionStatus.message}` : actionStatus.message}
+                {actionStatus.isError ? t("Error: {message}", { message: actionStatus.message }) : actionStatus.message}
             </span>
             {actionStatus.isError && (
                 <button
@@ -720,7 +721,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
     const hasSummaryMem = summary != null && memUsedFmt != null;
     const hasSummaryCpu = summary != null && cpuPct != null;
 
-    const searchTooltip = isMacOS() ? "Search (Cmd-F)" : "Search (Alt-F)";
+    const searchTooltip = isMacOS() ? t("Search (Cmd-F)") : t("Search (Alt-F)");
 
     if (wide) {
         return (
@@ -730,7 +731,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 </div>
                 {hasSummaryLoad && (
                     <span className="shrink-0 whitespace-pre">
-                        Load{" "}
+                        {t("Load")}{" "}
                         <span className="font-mono text-[11px]">
                             {fmtLoad(summary.load1)} {fmtLoad(summary.load5)} {fmtLoad(summary.load15)}
                         </span>
@@ -740,7 +741,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                     <>
                         <div className="w-px self-stretch bg-white/10 shrink-0" />
                         <span className="shrink-0 whitespace-pre">
-                            Mem{" "}
+                            {t("Mem")}{" "}
                             <span className="font-mono text-[11px]">
                                 {memUsedFmt} / {memTotalFmt}
                             </span>
@@ -751,7 +752,11 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                     <>
                         <div className="w-px self-stretch bg-white/10 shrink-0" />
                         <Tooltip
-                            content={`100% per core · ${summary.numcpu} ${summary.numcpu === 1 ? "core" : "cores"} = ${summary.numcpu * 100}% max`}
+                            content={t("100% per core · {numcpu} {cores} = {max}% max", {
+                                numcpu: summary.numcpu,
+                                cores: summary.numcpu === 1 ? t("core") : t("cores"),
+                                max: summary.numcpu * 100,
+                            })}
                             placement="bottom"
                         >
                             <span className="shrink-0 cursor-default whitespace-pre">
@@ -762,7 +767,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                     </>
                 )}
                 <span className="ml-auto whitespace-pre">
-                    Procs <span className="font-mono text-[11px]">{procCountValue}</span>
+                    {t("Procs")} <span className="font-mono text-[11px]">{procCountValue}</span>
                 </span>
                 <Tooltip content={searchTooltip} placement="bottom">
                     <button
@@ -785,7 +790,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
             <div className="flex flex-row flex-1 min-w-0 items-center">
                 {hasSummaryLoad && (
                     <div className="flex flex-col shrink-0 w-[100px] mr-1">
-                        <div>Load</div>
+                        <div>{t("Load")}</div>
                         <div className="font-mono text-[11px] whitespace-pre">
                             {fmtLoad(summary.load1)} {fmtLoad(summary.load5)} {fmtLoad(summary.load15)}
                         </div>
@@ -794,7 +799,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 {hasSummaryLoad && <div className="flex-1 max-w-3" />}
                 {hasSummaryMem && (
                     <div className="flex flex-col shrink-0 w-[95px] mr-1">
-                        <div>Mem</div>
+                        <div>{t("Mem")}</div>
                         <div className="font-mono text-[11px] whitespace-pre">
                             {memUsedFmt} / {memTotalFmt}
                         </div>
@@ -804,7 +809,11 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 {hasSummaryCpu && (
                     <div className="flex flex-col shrink-0 w-[55px] mr-1">
                         <Tooltip
-                            content={`100% per core · ${summary.numcpu} ${summary.numcpu === 1 ? "core" : "cores"} = ${summary.numcpu * 100}% max`}
+                            content={t("100% per core · {numcpu} {cores} = {max}% max", {
+                                numcpu: summary.numcpu,
+                                cores: summary.numcpu === 1 ? t("core") : t("cores"),
+                                max: summary.numcpu * 100,
+                            })}
                             placement="bottom"
                         >
                             <div className="cursor-default">
@@ -817,7 +826,7 @@ const StatusBar = React.memo(function StatusBar({ model, data, loading, error, w
                 {hasSummaryCpu && <div className="flex-1 max-w-3" />}
                 <div className="flex-1" />
                 <div className="flex flex-col w-[38px] shrink-0">
-                    <div>Procs</div>
+                    <div>{t("Procs")}</div>
                     <div className="font-mono text-[11px] whitespace-pre">{procCountValue}</div>
                 </div>
                 <Tooltip content={searchTooltip} placement="bottom">
@@ -854,7 +863,7 @@ const SearchBar = React.memo(function SearchBar({ model }: { model: ProcessViewe
                 ref={inputRef}
                 type="text"
                 value={textSearch}
-                placeholder="Filter processes…"
+                placeholder={t("Filter processes...")}
                 className="flex-1 bg-transparent text-xs text-primary placeholder-secondary outline-none min-w-0"
                 onChange={(e) => model.setTextSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -917,7 +926,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
 
                 const menu: ContextMenuItem[] = [
                     {
-                        label: "Copy PID",
+                        label: t("Copy PID"),
                         click: () => navigator.clipboard.writeText(String(pid)),
                     },
                     { type: "separator" },
@@ -925,7 +934,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
 
                 if (!isWindows) {
                     menu.push({
-                        label: "Signal",
+                        label: t("Signal"),
                         type: "submenu",
                         submenu: [
                             { label: "SIGTERM", click: () => model.sendSignal(pid, "SIGTERM") },
@@ -938,7 +947,7 @@ export const ProcessViewerView: React.FC<ViewComponentProps<ProcessViewerViewMod
                     });
                     menu.push({ type: "separator" });
                     menu.push({
-                        label: "Kill Process",
+                        label: t("Kill Process"),
                         click: () => model.sendSignal(pid, "SIGTERM", true),
                     });
                 }

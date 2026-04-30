@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { t } from "@/app/i18n";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { TabModel } from "@/app/store/tab-model";
@@ -24,11 +25,11 @@ import type { PreviewEnv } from "./previewenv";
 
 // TODO drive this using config
 const BOOKMARKS: { label: string; path: string }[] = [
-    { label: "Home", path: "~" },
-    { label: "Desktop", path: "~/Desktop" },
-    { label: "Downloads", path: "~/Downloads" },
-    { label: "Documents", path: "~/Documents" },
-    { label: "Root", path: "/" },
+    { label: t("Home"), path: "~" },
+    { label: t("Desktop"), path: "~/Desktop" },
+    { label: t("Downloads"), path: "~/Downloads" },
+    { label: t("Documents"), path: "~/Documents" },
+    { label: t("Root"), path: "/" },
 ];
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
@@ -280,7 +281,7 @@ export class PreviewModel implements ViewModel {
                 } else {
                     viewTextChildren.push({
                         elemtype: "textbutton",
-                        text: "Save",
+                        text: t("Save"),
                         className: clsx(`${saveClassName} rounded-[4px] !py-[2px] !px-[10px] text-[11px] font-[500]`),
                         onClick: () => fireAndForget(this.handleFileSave.bind(this)),
                     });
@@ -667,7 +668,7 @@ export class PreviewModel implements ViewModel {
             console.log("saved file", filePath);
         } catch (e) {
             const errorStatus: ErrorMsg = {
-                status: "Save Failed",
+                status: t("Save Failed"),
                 text: `${e}`,
             };
             globalStore.set(this.errorMsgAtom, errorStatus);
@@ -706,7 +707,7 @@ export class PreviewModel implements ViewModel {
         const overrideFontSize = blockData?.meta?.["editor:fontsize"];
         const menuItems: ContextMenuItem[] = [];
         menuItems.push({
-            label: "Copy Full Path",
+            label: t("Copy Full Path"),
             click: () =>
                 fireAndForget(async () => {
                     const filePath = await globalStore.get(this.statFilePath);
@@ -724,7 +725,7 @@ export class PreviewModel implements ViewModel {
                 }),
         });
         menuItems.push({
-            label: "Copy File Name",
+            label: t("Copy File Name"),
             click: () =>
                 fireAndForget(async () => {
                     const fileInfo = await globalStore.get(this.statFile);
@@ -769,23 +770,23 @@ export class PreviewModel implements ViewModel {
                 },
             });
             menuItems.push({
-                label: "Editor Font Size",
+                label: t("Editor Font Size"),
                 submenu: fontSizeSubMenu,
             });
             if (globalStore.get(this.newFileContent) != null) {
                 menuItems.push({ type: "separator" });
                 menuItems.push({
-                    label: "Save File",
+                    label: t("Save File"),
                     click: () => fireAndForget(this.handleFileSave.bind(this)),
                 });
                 menuItems.push({
-                    label: "Revert File",
+                    label: t("Revert File"),
                     click: () => fireAndForget(this.handleFileRevert.bind(this)),
                 });
             }
             menuItems.push({ type: "separator" });
             menuItems.push({
-                label: "Word Wrap",
+                label: t("Word Wrap"),
                 type: "checkbox",
                 checked: wordWrap,
                 click: () =>
@@ -799,7 +800,7 @@ export class PreviewModel implements ViewModel {
         }
         if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "directory") {
             menuItems.push({ type: "separator" });
-            menuItems.push({ label: "Default Settings", enabled: false });
+            menuItems.push({ label: t("Default Settings"), enabled: false });
             menuItems.push(...makeDirectoryDefaultMenuItems(this));
         }
         return menuItems;
