@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms } from "@/app/store/global";
+import { t } from "@/app/i18n";
 import * as jotai from "jotai";
 import { memo, useEffect, useState } from "react";
 
@@ -32,7 +33,7 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
                 {showClose && (
                     <i className={`close fa fa-xmark ${iconColor}/60 hover:${iconColor} transition-colors`}></i>
                 )}
-                <span>Get More</span>
+                <span>{t("Get More")}</span>
                 <i className={`fa fa-arrow-right ${iconColor}`}></i>
             </button>
         </div>
@@ -46,7 +47,7 @@ function formatTimeRemaining(expirationEpoch: number): string {
     const secondsRemaining = expirationEpoch - now;
 
     if (secondsRemaining <= 0) {
-        return "soon";
+        return t("soon");
     }
 
     const hours = Math.floor(secondsRemaining / 3600);
@@ -91,10 +92,10 @@ const AIRateLimitStripComponent = memo(() => {
                 <div className="bg-yellow-900/30 border-b border-yellow-700/50 px-2 py-1.5 flex items-center gap-1 text-[11px] text-yellow-200">
                     <i className="fa fa-sparkles text-yellow-400"></i>
                     <span>
-                        {preqlimit - preq}/{preqlimit} Premium Used
+                        {preqlimit - preq}/{preqlimit} {t("Premium Used")}
                     </span>
                     <div className="flex-1"></div>
-                    <span className="text-yellow-300/80">Resets in {timeRemaining}</span>
+                    <span className="text-yellow-300/80">{t("Resets in {time}", { time: timeRemaining })}</span>
                 </div>
                 <GetMoreButton variant="yellow" />
             </div>
@@ -107,12 +108,12 @@ const AIRateLimitStripComponent = memo(() => {
                 <div className="bg-yellow-900/30 border-b border-yellow-700/50 px-2 pr-1 py-1.5 flex items-center gap-1 text-[11px] text-yellow-200">
                     <i className="fa fa-check text-yellow-400"></i>
                     <span>
-                        {preqlimit}/{preqlimit} Premium
+                        {preqlimit}/{preqlimit} {t("Premium")}
                     </span>
                     <span className="text-yellow-400">•</span>
-                    <span className="font-medium">Now on Basic</span>
+                    <span className="font-medium">{t("Now on Basic")}</span>
                     <div className="flex-1"></div>
-                    <span className="text-yellow-300/80">Resets in {timeRemaining}</span>
+                    <span className="text-yellow-300/80">{t("Resets in {time}", { time: timeRemaining })}</span>
                 </div>
                 <GetMoreButton variant="yellow" />
             </div>
@@ -125,12 +126,12 @@ const AIRateLimitStripComponent = memo(() => {
                 <div className="bg-red-900/30 border-b border-red-700/50 px-2 py-1.5 flex items-center gap-2 text-[11px] text-red-200">
                     <i className="fa fa-check text-red-400"></i>
                     <span>
-                        {totalLimit}/{totalLimit} Reqs
+                        {totalLimit}/{totalLimit} {t("Reqs")}
                     </span>
                     <span className="text-red-400">•</span>
-                    <span className="font-medium">Limit Reached</span>
+                    <span className="font-medium">{t("Limit Reached")}</span>
                     <div className="flex-1"></div>
-                    <span className="text-red-300/80">Resets in {timeRemaining}</span>
+                    <span className="text-red-300/80">{t("Resets in {time}", { time: timeRemaining })}</span>
                 </div>
                 <GetMoreButton variant="red" showClose={false} />
             </div>

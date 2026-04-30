@@ -9,6 +9,7 @@ import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { useTabModelMaybe } from "@/app/store/tab-model";
 import { isBuilderWindow } from "@/app/store/windowtype";
+import { t } from "@/app/i18n";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
@@ -62,8 +63,8 @@ const AIDragOverlay = memo(() => {
         >
             <div className="text-accent text-center">
                 <i className="fa fa-upload text-3xl mb-2"></i>
-                <div className="text-lg font-semibold">Drop files here</div>
-                <div className="text-sm">Images, PDFs, and text/code files supported</div>
+                <div className="text-lg font-semibold">{t("Drop files here")}</div>
+                <div className="text-sm">{t("Images, PDFs, and text/code files supported")}</div>
             </div>
         </div>
     );
@@ -94,31 +95,32 @@ const AIWelcomeMessage = memo(() => {
         <div className="text-secondary py-8">
             <div className="text-center">
                 <i className="fa fa-sparkles text-4xl text-accent mb-2 block"></i>
-                <p className="text-lg font-bold text-primary">Welcome to Wave AI</p>
+                <p className="text-lg font-bold text-primary">Wave AI</p>
             </div>
             <div className="mt-4 text-left max-w-md mx-auto">
                 <p className="text-sm mb-6">
-                    Wave AI is your terminal assistant with context. I can read your terminal output, analyze widgets,
-                    access files, and help you solve problems faster.
+                    {t(
+                        "Wave AI is your terminal assistant with context. I can read your terminal output, analyze widgets, access files, and help you solve problems faster."
+                    )}
                 </p>
                 <div className="bg-accent/10 border border-accent/30 rounded-lg p-4">
-                    <div className="text-sm font-semibold mb-3 text-accent">Getting Started:</div>
+                    <div className="text-sm font-semibold mb-3 text-accent">{t("Getting Started:")}</div>
                     <div className="space-y-3 text-sm">
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
                                 <i className="fa-solid fa-plug text-accent"></i>
                             </div>
                             <div>
-                                <span className="font-bold">Widget Context</span>
-                                <div className="">When ON, I can read your terminal and analyze widgets.</div>
-                                <div className="">When OFF, I'm sandboxed with no system access.</div>
+                                <span className="font-bold">{t("Widget Context")}</span>
+                                <div className="">{t("When ON, I can read your terminal and analyze widgets.")}</div>
+                                <div className="">{t("When OFF, I'm sandboxed with no system access.")}</div>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
                                 <i className="fa-solid fa-file-import text-accent"></i>
                             </div>
-                            <div>Drag & drop files or images for analysis</div>
+                            <div>{t("Drag & drop files or images for analysis")}</div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
@@ -128,27 +130,27 @@ const AIWelcomeMessage = memo(() => {
                                 <div>
                                     <KeyCap>{modKey}</KeyCap>
                                     <KeyCap className="ml-1">K</KeyCap>
-                                    <span className="ml-1.5">to start a new chat</span>
+                                    <span className="ml-1.5">{t("to start a new chat")}</span>
                                 </div>
                                 <div>
                                     <KeyCap>{modKey}</KeyCap>
                                     <KeyCap className="ml-1">Shift</KeyCap>
                                     <KeyCap className="ml-1">A</KeyCap>
-                                    <span className="ml-1.5">to toggle panel</span>
+                                    <span className="ml-1.5">{t("to toggle panel")}</span>
                                 </div>
                                 <div>
                                     {isWindows() ? (
                                         <>
                                             <KeyCap>Alt</KeyCap>
                                             <KeyCap className="ml-1">0</KeyCap>
-                                            <span className="ml-1.5">to focus</span>
+                                            <span className="ml-1.5">{t("to focus")}</span>
                                         </>
                                     ) : (
                                         <>
                                             <KeyCap>Ctrl</KeyCap>
                                             <KeyCap className="ml-1">Shift</KeyCap>
                                             <KeyCap className="ml-1">0</KeyCap>
-                                            <span className="ml-1.5">to focus</span>
+                                            <span className="ml-1.5">{t("to focus")}</span>
                                         </>
                                     )}
                                 </div>
@@ -159,14 +161,14 @@ const AIWelcomeMessage = memo(() => {
                                 <i className="fa-brands fa-discord text-accent"></i>
                             </div>
                             <div>
-                                Questions or feedback?{" "}
+                                {t("Questions or feedback?")}{" "}
                                 <a
                                     target="_blank"
                                     href="https://discord.gg/XfvZ334gwU"
                                     rel="noopener"
                                     className="text-accent hover:underline cursor-pointer"
                                 >
-                                    Join our Discord
+                                    {t("Join our Discord")}
                                 </a>
                             </div>
                         </div>
@@ -174,7 +176,7 @@ const AIWelcomeMessage = memo(() => {
                 </div>
                 {!hasCustomModes && <BYOKAnnouncement />}
                 <div className="mt-4 text-center text-[12px] text-muted">
-                    BETA: Free to use. Daily limits keep our costs in check.
+                    {t("BETA: Free to use. Daily limits keep our costs in check.")}
                 </div>
             </div>
         </div>
@@ -188,11 +190,11 @@ const AIBuilderWelcomeMessage = memo(() => {
         <div className="text-secondary py-8">
             <div className="text-center">
                 <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
-                <p className="text-lg font-bold text-primary">WaveApp Builder</p>
+                <p className="text-lg font-bold text-primary">{t("WaveApp Builder")}</p>
             </div>
             <div className="mt-4 text-left max-w-md mx-auto">
                 <p className="text-sm mb-6">
-                    The WaveApp builder helps create wave widgets that integrate seamlessly into Wave Terminal.
+                    {t("The WaveApp builder helps create wave widgets that integrate seamlessly into Wave Terminal.")}
                 </p>
             </div>
         </div>
@@ -214,7 +216,7 @@ const AIErrorMessage = memo(() => {
             <button
                 onClick={() => model.clearError()}
                 className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
-                aria-label="Close error"
+                aria-label={t("Close error")}
             >
                 <i className="fa fa-times text-sm"></i>
             </button>
@@ -224,7 +226,7 @@ const AIErrorMessage = memo(() => {
                     onClick={() => model.clearChat()}
                     className="ml-2 text-xs text-red-300 hover:text-red-200 cursor-pointer underline"
                 >
-                    New Chat
+                    {t("New Chat")}
                 </button>
             </div>
         </div>
@@ -295,7 +297,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
         }),
         onError: (error) => {
             console.error("AI Chat error:", error);
-            model.setError(error.message || "An error occurred");
+            model.setError(error.message || t("An error occurred"));
         },
     });
 

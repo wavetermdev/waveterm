@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { t } from "@/app/i18n";
 import { sortByDisplayOrder } from "@/util/util";
 
 const TextFileLimit = 200 * 1024; // 200KB
@@ -372,8 +373,13 @@ export const validateFileSizeFromInfo = (
 };
 
 export const formatFileSizeError = (error: FileSizeError): string => {
-    const typeLabel = error.fileType === "image" ? "Image" : error.fileType === "pdf" ? "PDF" : "Text file";
-    return `${typeLabel} "${error.fileName}" is too large (${formatFileSize(error.fileSize)}). Maximum size is ${formatFileSize(error.maxSize)}.`;
+    const typeLabel = error.fileType === "image" ? t("Image") : error.fileType === "pdf" ? "PDF" : t("Text file");
+    return t('{type} "{fileName}" is too large ({fileSize}). Maximum size is {maxSize}.', {
+        type: typeLabel,
+        fileName: error.fileName,
+        fileSize: formatFileSize(error.fileSize),
+        maxSize: formatFileSize(error.maxSize),
+    });
 };
 
 /**

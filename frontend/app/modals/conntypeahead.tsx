@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computeConnColorNum } from "@/app/block/blockutil";
+import { t } from "@/app/i18n";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ConnectionsModel } from "@/app/store/connections-model";
 import {
@@ -239,7 +240,7 @@ function getConnectionsEditItem(
         icon: "gear",
         iconColor: "var(--grey-text-color)",
         value: "Edit Connections",
-        label: "Edit Connections",
+        label: t("Edit Connections"),
         onSelect: () => {
             util.fireAndForget(async () => {
                 globalStore.set(changeConnModalAtom, false);
@@ -486,7 +487,7 @@ const ChangeConnectionBlockModal = React.memo(
                 onKeyDown={(e) => keyutil.keydownWrapper(handleTypeAheadKeyDown)(e)}
                 onChange={(current: string) => setConnSelected(current)}
                 value={connSelected}
-                label="Connect to (username@host)..."
+                label={t("Connect to (username@host)...")}
                 onClickBackdrop={() => globalStore.set(changeConnModalAtom, false)}
             />
         );

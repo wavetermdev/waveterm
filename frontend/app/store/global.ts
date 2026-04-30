@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
+import { setI18nLocaleFromConfig } from "@/app/i18n";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     getLayoutModelForStaticTab,
@@ -64,6 +65,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         eventType: "config",
         handler: (event) => {
             // console.log("config wave event handler", event);
+            setI18nLocaleFromConfig(event.data.fullconfig?.settings);
             globalStore.set(atoms.fullConfigAtom, event.data.fullconfig);
         },
     });
