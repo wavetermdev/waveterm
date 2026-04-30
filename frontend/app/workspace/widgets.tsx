@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { setI18nLocaleFromConfig, supportedLocales, t, type Locale } from "@/app/i18n";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
@@ -27,6 +28,7 @@ export type WidgetsEnv = WaveEnvSubset<{
     };
     rpc: {
         ListAllAppsCommand: WaveEnv["rpc"]["ListAllAppsCommand"];
+        SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
@@ -63,6 +65,8 @@ async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
 const Widget = memo(({ widget, mode, env }: WidgetPropsType) => {
     const [isTruncated, setIsTruncated] = useState(false);
     const labelRef = useRef<HTMLDivElement>(null);
+    const label = t(widget.label);
+    const description = widget.description ? t(widget.description) : label;
 
     useEffect(() => {
         if (mode === "normal" && labelRef.current) {
@@ -75,7 +79,7 @@ const Widget = memo(({ widget, mode, env }: WidgetPropsType) => {
 
     return (
         <Tooltip
-            content={widget.description || widget.label}
+            content={description}
             placement="left"
             disable={shouldDisableTooltip}
             divClassName={clsx(
@@ -93,7 +97,7 @@ const Widget = memo(({ widget, mode, env }: WidgetPropsType) => {
                     ref={labelRef}
                     className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
                 >
-                    {widget.label}
+                    {label}
                 </div>
             ) : null}
         </Tooltip>
@@ -110,14 +114,14 @@ function calculateGridSize(appCount: number): number {
 
 function SettingsTooltipContent({ hasConfigErrors }: { hasConfigErrors: boolean }) {
     if (!hasConfigErrors) {
-        return "Settings & Help";
+        return t("Settings & Help");
     }
     return (
         <div className="flex flex-col p-1">
-            <div className="mb-1">Settings &amp; Help</div>
+            <div className="mb-1">{t("Settings & Help")}</div>
             <div className="flex items-center gap-1 mt-0.5 text-error">
                 <i className="fa fa-solid fa-circle-exclamation"></i>
-                <span>Config Errors</span>
+                <span>{t("Config Errors")}</span>
             </div>
         </div>
     );
@@ -197,7 +201,7 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
                             <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
                         </div>
                     ) : apps.length === 0 ? (
-                        <div className="text-muted text-sm p-4 text-center">No local apps found</div>
+                        <div className="text-muted text-sm p-4 text-center">{t("No local apps found")}</div>
                     ) : (
                         <div
                             className="grid gap-3"
@@ -246,7 +250,7 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
                     onClick={handleOpenBuilder}
                 >
                     <i className="fa fa-solid fa-hammer"></i>
-                    Build/Edit Apps
+                    {t("Build/Edit Apps")}
                 </button>
             </div>
         </FloatingPortal>
@@ -256,6 +260,8 @@ const AppsFloatingWindow = memo(({ isOpen, onClose, referenceElement }: Floating
 const SettingsFloatingWindow = memo(
     ({ isOpen, onClose, referenceElement, hasConfigErrors }: FloatingWindowPropsType) => {
         const env = useWaveEnv<WidgetsEnv>();
+        const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
+        const [showLanguageMenu, setShowLanguageMenu] = useState(false);
         const { refs, floatingStyles, context } = useFloating({
             open: isOpen,
             onOpenChange: onClose,
@@ -270,12 +276,33 @@ const SettingsFloatingWindow = memo(
         const dismiss = useDismiss(context);
         const { getFloatingProps } = useInteractions([dismiss]);
 
+        useEffect(() => {
+            if (!isOpen) {
+                setShowLanguageMenu(false);
+            }
+        }, [isOpen]);
+
         if (!isOpen) return null;
+
+        const configuredLocale = fullConfig?.settings?.["app:locale"] ?? "system";
+        const languageOptions: Array<{ locale: Locale | "system"; label: string }> = [
+            { locale: "system", label: "System default" },
+            ...supportedLocales,
+        ];
+
+        const handleLocaleSelect = (locale: Locale | "system") => {
+            const settings: SettingsType = { "app:locale": locale };
+            setI18nLocaleFromConfig(settings);
+            fireAndForget(async () => {
+                await env.rpc.SetConfigCommand(TabRpcClient, settings);
+            });
+            onClose();
+        };
 
         const menuItems = [
             {
                 icon: "gear",
-                label: "Settings",
+                label: t("Settings"),
                 hasError: hasConfigErrors,
                 onClick: () => {
                     const blockDef: BlockDef = {
@@ -289,7 +316,7 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "lightbulb",
-                label: "Tips",
+                label: t("Tips"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -302,7 +329,7 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "lock",
-                label: "Secrets",
+                label: t("Secrets"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -316,7 +343,7 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "book-open",
-                label: "Release Notes",
+                label: t("Release Notes"),
                 onClick: () => {
                     modalsModel.pushModal("UpgradeOnboardingPatch", { isReleaseNotes: true });
                     onClose();
@@ -324,7 +351,7 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "circle-question",
-                label: "Help",
+                label: t("Help"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -333,6 +360,13 @@ const SettingsFloatingWindow = memo(
                     };
                     env.createBlock(blockDef);
                     onClose();
+                },
+            },
+            {
+                icon: "language",
+                label: t("Language"),
+                onClick: () => {
+                    setShowLanguageMenu(true);
                 },
             },
         ];
@@ -345,21 +379,65 @@ const SettingsFloatingWindow = memo(
                     {...getFloatingProps()}
                     className="bg-modalbg border border-border rounded-lg shadow-xl p-2 z-50"
                 >
-                    {menuItems.map((item, idx) => (
-                        <div
-                            key={idx}
-                            className="flex items-center gap-3 px-3 py-2 rounded hover:bg-hoverbg cursor-pointer transition-colors text-secondary hover:text-white"
-                            onClick={item.onClick}
-                        >
-                            <div className="text-lg w-5 flex justify-center">
-                                <i className={makeIconClass(item.icon, false)}></i>
+                    {showLanguageMenu ? (
+                        <>
+                            <div
+                                className="flex items-center gap-3 px-3 py-2 rounded hover:bg-hoverbg cursor-pointer transition-colors text-secondary hover:text-white"
+                                onClick={() => setShowLanguageMenu(false)}
+                            >
+                                <div className="text-lg w-5 flex justify-center">
+                                    <i className={makeIconClass("arrow-left", false)}></i>
+                                </div>
+                                <div className="text-sm whitespace-nowrap">{t("Back")}</div>
                             </div>
-                            <div className="text-sm whitespace-nowrap">{item.label}</div>
-                            {item.hasError && (
-                                <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] ml-auto"></i>
-                            )}
-                        </div>
-                    ))}
+                            <div className="border-t border-border mt-1 pt-1">
+                                <div className="flex items-center gap-3 px-3 py-1.5 text-muted">
+                                    <div className="text-lg w-5 flex justify-center">
+                                        <i className={makeIconClass("language", false)}></i>
+                                    </div>
+                                    <div className="text-xs font-semibold uppercase tracking-wide whitespace-nowrap">
+                                        {t("Language")}
+                                    </div>
+                                </div>
+                                {languageOptions.map((option) => {
+                                    const selected = configuredLocale === option.locale;
+                                    return (
+                                        <div
+                                            key={option.locale}
+                                            className={clsx(
+                                                "flex items-center gap-3 px-3 py-2 rounded cursor-pointer transition-colors",
+                                                selected
+                                                    ? "bg-hoverbg text-white"
+                                                    : "text-secondary hover:bg-hoverbg hover:text-white"
+                                            )}
+                                            onClick={() => handleLocaleSelect(option.locale)}
+                                        >
+                                            <div className="text-lg w-5 flex justify-center">
+                                                {selected ? <i className={makeIconClass("check", false)}></i> : null}
+                                            </div>
+                                            <div className="text-sm whitespace-nowrap">{t(option.label)}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    ) : (
+                        menuItems.map((item, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center gap-3 px-3 py-2 rounded hover:bg-hoverbg cursor-pointer transition-colors text-secondary hover:text-white"
+                                onClick={item.onClick}
+                            >
+                                <div className="text-lg w-5 flex justify-center">
+                                    <i className={makeIconClass(item.icon, false)}></i>
+                                </div>
+                                <div className="text-sm whitespace-nowrap">{item.label}</div>
+                                {item.hasError && (
+                                    <i className="fa fa-solid fa-circle-exclamation text-error text-[14px] ml-auto"></i>
+                                )}
+                            </div>
+                        ))
+                    )}
                 </div>
             </FloatingPortal>
         );
@@ -438,7 +516,7 @@ const Widgets = memo(() => {
         e.preventDefault();
         const menu: ContextMenuItem[] = [
             {
-                label: "Edit widgets.json",
+                label: t("Edit widgets.json"),
                 click: () => {
                     fireAndForget(async () => {
                         const blockDef: BlockDef = {
@@ -477,7 +555,7 @@ const Widgets = memo(() => {
                                     className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                                     onClick={() => setIsAppsOpen(!isAppsOpen)}
                                 >
-                                    <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                    <Tooltip content={t("Local WaveApps")} placement="left" disable={isAppsOpen}>
                                         <div>
                                             <i className={makeIconClass("cube", true)}></i>
                                         </div>
@@ -516,14 +594,14 @@ const Widgets = memo(() => {
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                                 onClick={() => setIsAppsOpen(!isAppsOpen)}
                             >
-                                <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                <Tooltip content={t("Local WaveApps")} placement="left" disable={isAppsOpen}>
                                     <div className="flex flex-col items-center w-full">
                                         <div>
                                             <i className={makeIconClass("cube", true)}></i>
                                         </div>
                                         {mode === "normal" && (
                                             <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                                apps
+                                                {t("apps")}
                                             </div>
                                         )}
                                     </div>
@@ -551,7 +629,7 @@ const Widgets = memo(() => {
                                     </div>
                                     {mode === "normal" && (
                                         <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                            settings
+                                            {t("settings")}
                                         </div>
                                     )}
                                 </div>
@@ -562,7 +640,7 @@ const Widgets = memo(() => {
                 {env.isDev() ? (
                     <div
                         className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running Wave Dev Build"
+                        title={t("Running Wave Dev Build")}
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
                     </div>
@@ -596,20 +674,20 @@ const Widgets = memo(() => {
                     <div>
                         <i className={makeIconClass("gear", true)}></i>
                     </div>
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">settings</div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{t("settings")}</div>
                 </div>
                 {env.isDev() ? (
                     <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                         <div>
                             <i className={makeIconClass("cube", true)}></i>
                         </div>
-                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center">apps</div>
+                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center">{t("apps")}</div>
                     </div>
                 ) : null}
                 {env.isDev() ? (
                     <div
                         className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running Wave Dev Build"
+                        title={t("Running Wave Dev Build")}
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
                     </div>

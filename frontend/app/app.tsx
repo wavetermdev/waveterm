@@ -15,6 +15,7 @@ import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
 import { Workspace } from "@/app/workspace/workspace";
+import { setI18nLocaleFromConfig, t } from "@/app/i18n";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, refocusNode } from "@/store/global";
@@ -112,18 +113,18 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     }
     const menu: ContextMenuItem[] = [];
     if (canCut) {
-        menu.push({ label: "Cut", role: "cut" });
+        menu.push({ label: t("Cut"), role: "cut" });
     }
     if (canCopy) {
-        menu.push({ label: "Copy", role: "copy" });
+        menu.push({ label: t("Copy"), role: "copy" });
     }
     if (canPaste) {
-        menu.push({ label: "Paste", role: "paste" });
+        menu.push({ label: t("Paste"), role: "paste" });
     }
     if (clipboardURL) {
         menu.push({ type: "separator" });
         menu.push({
-            label: "Open Clipboard URL (" + clipboardURL.hostname + ")",
+            label: t("Open Clipboard URL ({host})", { host: clipboardURL.hostname }),
             click: () => {
                 createBlock({
                     meta: {
@@ -355,10 +356,14 @@ const BadgeAutoClearing = () => {
 };
 
 const AppInner = () => {
+    const settings = useAtomValue(atoms.settingsAtom);
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const client = useAtomValue(ClientModel.getInstance().clientAtom);
     const windowData = useAtomValue(GlobalModel.getInstance().windowDataAtom);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+    useEffect(() => {
+        setI18nLocaleFromConfig(settings);
+    }, [settings]);
 
     if (client == null || windowData == null) {
         return (

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { t } from "@/app/i18n";
 import {
     MetaKeyAtomFnType,
     WaveEnv,
@@ -50,28 +51,28 @@ export function blockViewToIcon(view: string): string {
 
 export function blockViewToName(view: string): string {
     if (util.isBlank(view)) {
-        return "(No View)";
+        return t("(No View)");
     }
     if (view == "term") {
-        return "Terminal";
+        return t("Terminal");
     }
     if (view == "preview") {
-        return "Preview";
+        return t("Preview");
     }
     if (view == "web") {
-        return "Web";
+        return t("Web");
     }
     if (view == "waveai") {
-        return "WaveAI";
+        return t("WaveAI");
     }
     if (view == "help") {
-        return "Help";
+        return t("Help");
     }
     if (view == "tips") {
-        return "Tips";
+        return t("Tips");
     }
     if (view == "processviewer") {
-        return "Processes";
+        return t("Processes");
     }
     return view;
 }
