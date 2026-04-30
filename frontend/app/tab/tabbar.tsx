@@ -143,7 +143,8 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     // Update refs when tabIds change
     useEffect(() => {
         tabRefs.current = tabIds.map((_, index) => tabRefs.current[index] || createRef());
-    }, [tabIds]);
+        updateScrollDebounced();
+    }, [tabIds, updateScrollDebounced]);
 
     useEffect(() => {
         if (!workspace) {
@@ -534,8 +535,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
 
     const applyTabTransition = useCallback(() => {
         tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
-        updateScrollDebounced();
-    }, [updateScrollDebounced]);
+    }, []);
 
     const handleAddTab = (e: React.MouseEvent) => {
         fireAndForget(async () => {
