@@ -532,6 +532,11 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         []
     );
 
+    const applyTabTransition = useCallback(() => {
+        tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+        updateScrollDebounced();
+    }, [updateScrollDebounced]);
+
     const handleAddTab = (e: React.MouseEvent) => {
         fireAndForget(async () => {
             try {
@@ -542,11 +547,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                             label: "New Tab",
                             click: () => {
                                 env.electron.createTab();
-                                tabsWrapperRef.current?.style.setProperty(
-                                    "--tabs-wrapper-transition",
-                                    "width 0.1s ease"
-                                );
-                                updateScrollDebounced();
+                                applyTabTransition();
                                 setNewTabIdDebounced(null);
                             },
                         },
@@ -558,12 +559,12 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                                 label: t.name,
                                 click: () => {
                                     fireAndForget(async () => {
-                                        await TabTemplateService.CreateTabFromTemplate(workspace.oid, t.oid);
-                                        tabsWrapperRef.current?.style.setProperty(
-                                            "--tabs-wrapper-transition",
-                                            "width 0.1s ease"
-                                        );
-                                        updateScrollDebounced();
+                                        try {
+                                            await TabTemplateService.CreateTabFromTemplate(workspace.oid, t.oid);
+                                            applyTabTransition();
+                                        } catch (err) {
+                                            console.error("Failed to create tab from template:", err);
+                                        }
                                     });
                                 },
                             })),
@@ -578,18 +579,14 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                     ];
                     env.showContextMenu(menu, e);
                 } else {
-                    // No templates, just create a new tab directly
                     env.electron.createTab();
-                    tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
-                    updateScrollDebounced();
+                    applyTabTransition();
                     setNewTabIdDebounced(null);
                 }
             } catch (err) {
                 console.error("Failed to load templates:", err);
-                // Fall back to creating a new tab directly
                 env.electron.createTab();
-                tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
-                updateScrollDebounced();
+                applyTabTransition();
                 setNewTabIdDebounced(null);
             }
         });
