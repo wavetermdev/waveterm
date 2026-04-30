@@ -542,7 +542,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                             label: "New Tab",
                             click: () => {
                                 env.electron.createTab();
-                                tabsWrapperRef.current.style.setProperty(
+                                tabsWrapperRef.current?.style.setProperty(
                                     "--tabs-wrapper-transition",
                                     "width 0.1s ease"
                                 );
@@ -580,7 +580,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                 } else {
                     // No templates, just create a new tab directly
                     env.electron.createTab();
-                    tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+                    tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
                     updateScrollDebounced();
                     setNewTabIdDebounced(null);
                 }
@@ -588,7 +588,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                 console.error("Failed to load templates:", err);
                 // Fall back to creating a new tab directly
                 env.electron.createTab();
-                tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+                tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
                 updateScrollDebounced();
                 setNewTabIdDebounced(null);
             }

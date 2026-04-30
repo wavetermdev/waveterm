@@ -9,9 +9,7 @@ import { fireAndForget } from "@/util/util";
 import { useCallback, useEffect, useState } from "react";
 import { TabTemplateService } from "../store/services";
 
-interface TemplateManagerModalProps {}
-
-const TemplateManagerModal = ({}: TemplateManagerModalProps) => {
+const TemplateManagerModal = () => {
     const [templates, setTemplates] = useState<TabTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState<string | null>(null);

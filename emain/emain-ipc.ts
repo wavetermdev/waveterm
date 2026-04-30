@@ -276,26 +276,6 @@ export function initIpcHandlers() {
         return `data:image/png;base64,${base64String}`;
     });
 
-    electron.ipcMain.handle("inject-cookies", async (event, cookies: Electron.CookiesSetDetails[]) => {
-        try {
-            const webviewSession = electron.session.fromPartition("persist:webwidgets");
-            const results = [];
-
-            for (const cookie of cookies) {
-                try {
-                    await webviewSession.cookies.set(cookie);
-                    results.push({ success: true, name: cookie.name });
-                } catch (error) {
-                    results.push({ success: false, name: cookie.name, error: error.message });
-                }
-            }
-
-            return { success: true, results };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    });
-
     electron.ipcMain.on("get-env", (event, varName) => {
         event.returnValue = process.env[varName] ?? null;
     });

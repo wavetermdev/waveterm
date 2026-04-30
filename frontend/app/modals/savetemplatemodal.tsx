@@ -18,10 +18,12 @@ const SaveTemplateModal = ({ tabId }: SaveTemplateModalProps) => {
     const [error, setError] = useState<string | null>(null);
 
     const handleClose = useCallback(() => {
+        if (saving) return;
         modalsModel.popModal();
-    }, []);
+    }, [saving]);
 
     const handleSave = useCallback(() => {
+        if (saving) return;
         if (!templateName.trim()) {
             setError("Please enter a template name");
             return;
