@@ -88,6 +88,7 @@ export enum LayoutTreeActionType {
     ReplaceNode = "replace",
     SplitHorizontal = "splithorizontal",
     SplitVertical = "splitvertical",
+    SetRoot = "setroot",
 }
 
 /**
@@ -288,6 +289,12 @@ export interface LayoutTreeMagnifyNodeToggleAction extends LayoutTreeAction {
  */
 export interface LayoutTreeClearTreeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.ClearTree;
+}
+
+export interface LayoutTreeSetRootAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.SetRoot;
+    rootNode: any;
+    focusedBlockId?: string;
 }
 
 /**

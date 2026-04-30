@@ -15,6 +15,7 @@ import {
     DefaultNodeSize,
     DropDirection,
     FlexDirection,
+    LayoutNode,
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
@@ -24,13 +25,18 @@ import {
     LayoutTreeMagnifyNodeToggleAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeResizeNodeAction,
+    LayoutTreeSetRootAction,
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     MoveOperation,
 } from "./types";
 
 import { newLayoutNode } from "./layoutNode";
-import { LayoutTreeReplaceNodeAction, LayoutTreeSplitHorizontalAction, LayoutTreeSplitVerticalAction } from "./types";
+import {
+    LayoutTreeReplaceNodeAction,
+    LayoutTreeSplitHorizontalAction,
+    LayoutTreeSplitVerticalAction,
+} from "./types";
 
 export const DEFAULT_MAX_CHILDREN = 5;
 
@@ -530,5 +536,39 @@ export function splitVertical(layoutState: LayoutTreeState, action: LayoutTreeSp
     }
     if (action.focused) {
         layoutState.focusedNodeId = newNode.id;
+    }
+}
+
+
+function findLeafByBlockId(node: LayoutNode, blockId: string): LayoutNode | undefined {
+    if (node.data?.blockId === blockId) return node;
+    for (const child of node.children ?? []) {
+        const found = findLeafByBlockId(child, blockId);
+        if (found) return found;
+    }
+    return undefined;
+}
+
+export function setRoot(layoutState: LayoutTreeState, action: LayoutTreeSetRootAction) {
+    function deserialize(raw: any): LayoutNode {
+        const node: LayoutNode = {
+            id: crypto.randomUUID(),
+            flexDirection: raw.flexdirection === "column" ? FlexDirection.Column : FlexDirection.Row,
+            size: raw.size ?? DefaultNodeSize,
+        };
+        if (raw.children?.length) {
+            node.children = (raw.children as any[]).map(deserialize);
+        } else if (raw.data) {
+            node.data = raw.data as TabLayoutData;
+        }
+        return node;
+    }
+
+    if (!action.rootNode) return;
+    layoutState.rootNode = deserialize(action.rootNode);
+
+    if (action.focusedBlockId) {
+        const leaf = findLeafByBlockId(layoutState.rootNode, action.focusedBlockId);
+        if (leaf) layoutState.focusedNodeId = leaf.id;
     }
 }
