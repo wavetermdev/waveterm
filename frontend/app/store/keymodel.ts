@@ -28,6 +28,8 @@ import { isWindows } from "@/util/platformutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
+import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { modalsModel } from "./modalmodel";
 import { isBuilderWindow, isTabWindow } from "./windowtype";
 
@@ -768,6 +770,34 @@ function registerGlobalKeys() {
 function registerBuilderGlobalKeys() {
     globalKeyMap.set("Cmd:w", () => {
         getApi().closeBuilderWindow();
+        return true;
+    });
+    globalKeyMap.set("Cmd:Shift:a", () => {
+        BuilderFocusManager.getInstance().setWaveAIFocused();
+        WaveAIModel.getInstance().focusInput();
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowLeft", () => {
+        BuilderFocusManager.getInstance().setWaveAIFocused();
+        WaveAIModel.getInstance().focusInput();
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowRight", () => {
+        BuilderFocusManager.getInstance().setAppFocused();
+        BuilderAppPanelModel.getInstance().giveFocus();
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowUp", () => {
+        if (BuilderFocusManager.getInstance().getFocusType() === "build") {
+            BuilderFocusManager.getInstance().setAppFocused();
+            BuilderAppPanelModel.getInstance().giveFocus();
+        }
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:ArrowDown", () => {
+        if (BuilderFocusManager.getInstance().getFocusType() === "app") {
+            BuilderFocusManager.getInstance().setBuildFocused();
+        }
         return true;
     });
     const allKeys = Array.from(globalKeyMap.keys());
