@@ -50,9 +50,9 @@ const TelemetryRequiredMessage = ({ className }: TelemetryRequiredMessageProps) 
                                 <div className="text-blue-400 font-medium mb-1">{t("Telemetry keeps Wave AI free")}</div>
                                 <div className="text-secondary text-sm mb-3">
                                     <p className="mb-2">
-                                        {t("To keep Wave AI free for everyone, we require a small amount of")}{" "}
-                                        <i>{t("anonymous")}</i>{" "}
-                                        {t("usage data (app version, feature usage, system info).")}
+                                        {t(
+                                            "To keep Wave AI free for everyone, we require a small amount of anonymous usage data (app version, feature usage, system info)."
+                                        )}
                                     </p>
                                     <p className="mb-2">
                                         {t("This helps us block abuse by automated systems and ensure it's used by real people like you.")}

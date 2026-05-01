@@ -360,6 +360,28 @@ export const jaJP: I18nCatalog = {
     "Tab Switching ({modifier})": "タブ切り替え（{modifier}）",
     Tabs: "タブ",
     "Web View": "Web ビュー",
+    "Wave AI Cloud": "Wave AI Cloud",
+    "{count} file{plural} rejected (unsupported type): {fileNames}. Supported: images, PDFs, and text/code files.":
+        "{count} 個のファイルが拒否されました（未対応の種類）: {fileNames}。画像、PDF、テキスト/コードファイルに対応しています。",
+    "{hours}h": "{hours} 時間",
+    "{minutes}m": "{minutes} 分",
+    "The file {filename} has been restored to its previous state.":
+        "ファイル {filename} は以前の状態に復元されました。",
+    "This will restore {filename} to its state before this edit was made{timestamp}.":
+        "{filename} をこの編集前の状態に復元します{timestamp}。",
+    "To keep Wave AI free for everyone, we require a small amount of anonymous usage data (app version, feature usage, system info).":
+        "Wave AI をすべてのユーザーに無料で提供し続けるため、少量の匿名利用データ（アプリバージョン、機能利用状況、システム情報）が必要です。",
+    "Deleting a directory requires the recursive flag. Proceed?":
+        "ディレクトリを削除するには再帰フラグが必要です。続行しますか？",
+    "Go to {label} ({path})": "{label} ({path}) に移動",
+    "Wave AI integration disabled while you're inside {command}.":
+        "{command} の内部では Wave AI 連携が無効です。",
+    "Must start with a letter and contain only letters, numbers, and underscores":
+        "英字で始まり、英字、数字、アンダースコアのみを含める必要があります",
+    "The current secret value is not shown by default for security purposes.":
+        "セキュリティ上の理由により、現在のシークレット値は既定では表示されません。",
+    "Deleting...": "削除中...",
+    'Secret "{name}" already exists': 'シークレット「{name}」は既に存在します',
     "wsh commands": "wsh コマンド",
     anonymous: "匿名",
     apps: "アプリ",

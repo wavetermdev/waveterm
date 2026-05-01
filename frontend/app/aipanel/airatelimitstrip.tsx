@@ -54,9 +54,9 @@ function formatTimeRemaining(expirationEpoch: number): string {
     const minutes = Math.floor((secondsRemaining % 3600) / 60);
 
     if (hours > 0) {
-        return `${hours}h`;
+        return t("{hours}h", { hours });
     }
-    return `${minutes}m`;
+    return t("{minutes}m", { minutes });
 }
 
 const AIRateLimitStripComponent = memo(() => {

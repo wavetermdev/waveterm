@@ -469,7 +469,14 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             const rejectedFiles = files.filter((f) => !isAcceptableFile(f));
             const fileNames = rejectedFiles.map((f) => f.name).join(", ");
             model.setError(
-                `${rejectedCount} file${rejectedCount > 1 ? "s" : ""} rejected (unsupported type): ${fileNames}. Supported: images, PDFs, and text/code files.`
+                t(
+                    "{count} file{plural} rejected (unsupported type): {fileNames}. Supported: images, PDFs, and text/code files.",
+                    {
+                        count: rejectedCount,
+                        plural: rejectedCount > 1 ? "s" : "",
+                        fileNames,
+                    }
+                )
             );
         }
     };

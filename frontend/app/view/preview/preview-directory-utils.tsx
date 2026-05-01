@@ -132,7 +132,7 @@ export function handleFileDelete(
             if (errorText.includes(recursiveError) && !recursive) {
                 errorMsg = {
                     status: t("Confirm Delete Directory"),
-                    text: "Deleting a directory requires the recursive flag. Proceed?",
+                    text: t("Deleting a directory requires the recursive flag. Proceed?"),
                     level: "warning",
                     buttons: [
                         {

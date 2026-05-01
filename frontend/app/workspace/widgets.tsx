@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { setI18nLocaleFromConfig, supportedLocales, t, type Locale } from "@/app/i18n";
+import { normalizeLocale, setI18nLocaleFromConfig, supportedLocales, t, type Locale } from "@/app/i18n";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
@@ -285,6 +285,8 @@ const SettingsFloatingWindow = memo(
         if (!isOpen) return null;
 
         const configuredLocale = fullConfig?.settings?.["app:locale"] ?? "system";
+        const selectedLocale: Locale | "system" =
+            configuredLocale === "system" ? "system" : normalizeLocale(configuredLocale) ?? "system";
         const languageOptions: Array<{ locale: Locale | "system"; label: string }> = [
             { locale: "system", label: "System default" },
             ...supportedLocales,
@@ -400,7 +402,7 @@ const SettingsFloatingWindow = memo(
                                     </div>
                                 </div>
                                 {languageOptions.map((option) => {
-                                    const selected = configuredLocale === option.locale;
+                                    const selected = selectedLocale === option.locale;
                                     return (
                                         <div
                                             key={option.locale}

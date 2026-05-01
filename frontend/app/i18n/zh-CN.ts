@@ -537,5 +537,25 @@ export const zhCN: Record<string, string> = {
     "Tab Switching ({modifier})": "标签切换（{modifier}）",
     Tabs: "标签",
     "Web View": "网页视图",
+    "Wave AI Cloud": "Wave AI Cloud",
+    "{count} file{plural} rejected (unsupported type): {fileNames}. Supported: images, PDFs, and text/code files.":
+        "已拒绝 {count} 个文件（不支持的类型）：{fileNames}。支持图片、PDF、文本和代码文件。",
+    "{hours}h": "{hours} 小时",
+    "{minutes}m": "{minutes} 分钟",
+    "The file {filename} has been restored to its previous state.": "文件 {filename} 已恢复到之前的状态。",
+    "This will restore {filename} to its state before this edit was made{timestamp}.":
+        "这会将 {filename} 恢复到本次编辑前的状态{timestamp}。",
+    "To keep Wave AI free for everyone, we require a small amount of anonymous usage data (app version, feature usage, system info).":
+        "为了让 Wave AI 对所有人保持免费，我们需要少量匿名使用数据（应用版本、功能使用情况、系统信息）。",
+    "Deleting a directory requires the recursive flag. Proceed?": "删除目录需要递归标志。是否继续？",
+    "Go to {label} ({path})": "转到 {label}（{path}）",
+    "Wave AI integration disabled while you're inside {command}.":
+        "当你位于 {command} 内部时，Wave AI 集成已禁用。",
+    "Must start with a letter and contain only letters, numbers, and underscores":
+        "必须以字母开头，且只能包含字母、数字和下划线",
+    "The current secret value is not shown by default for security purposes.":
+        "出于安全考虑，当前密钥值默认不会显示。",
+    "Deleting...": "正在删除...",
+    'Secret "{name}" already exists': '密钥“{name}”已存在',
     "wsh commands": "wsh 命令",
 };

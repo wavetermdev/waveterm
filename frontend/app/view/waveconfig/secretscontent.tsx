@@ -156,7 +156,7 @@ const AddSecretForm = memo(
                         disabled={isLoading}
                     />
                     <div className="text-xs text-zinc-400">
-                        Must start with a letter and contain only letters, numbers, and underscores
+                        {t("Must start with a letter and contain only letters, numbers, and underscores")}
                     </div>
                 </div>
                 <div className="flex flex-col gap-2">
@@ -243,7 +243,7 @@ const SecretDetailView = memo(({ model }: SecretDetailViewProps) => {
                 />
                 {!secretShown && (
                     <div className="text-sm text-zinc-400">
-                        The current secret value is not shown by default for security purposes.{" "}
+                        {t("The current secret value is not shown by default for security purposes.")}{" "}
                         {isLoading ? (
                             <span className="text-zinc-500">
                                 <i className="fa-sharp fa-solid fa-spinner fa-spin" /> {t("Loading...")}
@@ -270,7 +270,7 @@ const SecretDetailView = memo(({ model }: SecretDetailViewProps) => {
                     {isLoading ? (
                         <>
                             <i className="fa-sharp fa-solid fa-spinner fa-spin" />
-                            Deleting...
+                            {t("Deleting...")}
                         </>
                     ) : (
                         <>

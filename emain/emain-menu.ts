@@ -345,6 +345,7 @@ async function makeFullAppMenu(callbacks: AppMenuCallbacks, workspaceOrBuilderId
     const isBuilderWindowFocused = focusedBuilderWindow != null;
     let fullscreenOnLaunch = false;
     let fullConfig: FullConfigType = null;
+    setI18nLocale(resolveLocale(undefined, electron.app.getLocale()));
     try {
         fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
         setI18nLocale(resolveLocale(fullConfig?.settings?.["app:locale"], electron.app.getLocale()));

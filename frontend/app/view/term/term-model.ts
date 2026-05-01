@@ -435,7 +435,9 @@ export class TermViewModel implements ViewModel {
                 const lastCommand = get(this.termRef.current.lastCommandAtom);
                 const blockingCmd = getBlockingCommand(lastCommand, inAltBuffer);
                 if (blockingCmd) {
-                    title = `Wave AI integration disabled while you're inside ${blockingCmd}.`;
+                    title = t("Wave AI integration disabled while you're inside {command}.", {
+                        command: blockingCmd,
+                    });
                 }
             }
 

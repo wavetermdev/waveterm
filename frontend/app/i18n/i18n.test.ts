@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, describe, expect, it } from "vitest";
-import { getI18nLocale, resolveLocale, setI18nLocale, supportedLocales, t } from "./index";
+import { getI18nLocale, normalizeLocale, resolveLocale, setI18nLocale, supportedLocales, t } from "./index";
 
 describe("i18n", () => {
     afterEach(() => {
@@ -46,6 +46,22 @@ describe("i18n", () => {
         setI18nLocale("zh-CN");
         expect(t("Client Version {version}", { version: "0.14.5" })).toBe("客户端版本 0.14.5");
         expect(t("Open Clipboard URL ({host})", { host: "example.com" })).toBe("打开剪贴板 URL（example.com）");
+        expect(t('Secret "{name}" already exists', { name: "MY_TOKEN" })).toBe("密钥“MY_TOKEN”已存在");
+        expect(t("Go to {label} ({path})", { label: "桌面", path: "~/Desktop" })).toBe("转到 桌面（~/Desktop）");
+    });
+
+    it("translates review feedback strings", () => {
+        setI18nLocale("zh-CN");
+        expect(t("The current secret value is not shown by default for security purposes.")).toBe(
+            "出于安全考虑，当前密钥值默认不会显示。"
+        );
+        expect(t("{minutes}m", { minutes: 5 })).toBe("5 分钟");
+        expect(
+            t(
+                "{count} file{plural} rejected (unsupported type): {fileNames}. Supported: images, PDFs, and text/code files.",
+                { count: 2, plural: "s", fileNames: "demo.exe" }
+            )
+        ).toBe("已拒绝 2 个文件（不支持的类型）：demo.exe。支持图片、PDF、文本和代码文件。");
     });
 
     it("falls back to the original key when a translation is missing", () => {
@@ -58,5 +74,7 @@ describe("i18n", () => {
         expect(resolveLocale(null, "ja-JP")).toBe("ja-JP");
         expect(resolveLocale("en", "zh-CN")).toBe("en-US");
         expect(resolveLocale("fr-FR", "fr-FR")).toBe("en-US");
+        expect(normalizeLocale("en")).toBe("en-US");
+        expect(normalizeLocale("zh_Hans_CN")).toBe("zh-CN");
     });
 });

@@ -24,12 +24,12 @@ import { makeDirectoryDefaultMenuItems } from "./preview-directory-utils";
 import type { PreviewEnv } from "./previewenv";
 
 // TODO drive this using config
-const BOOKMARKS: { label: string; path: string }[] = [
-    { label: t("Home"), path: "~" },
-    { label: t("Desktop"), path: "~/Desktop" },
-    { label: t("Downloads"), path: "~/Downloads" },
-    { label: t("Documents"), path: "~/Documents" },
-    { label: t("Root"), path: "/" },
+const BOOKMARKS: { labelKey: string; path: string }[] = [
+    { labelKey: "Home", path: "~" },
+    { labelKey: "Desktop", path: "~/Desktop" },
+    { labelKey: "Downloads", path: "~/Downloads" },
+    { labelKey: "Documents", path: "~/Documents" },
+    { labelKey: "Root", path: "/" },
 ];
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
@@ -210,7 +210,7 @@ export class PreviewModel implements ViewModel {
                     icon: "folder-open",
                     longClick: (e: React.MouseEvent<any>) => {
                         const menuItems: ContextMenuItem[] = BOOKMARKS.map((bookmark) => ({
-                            label: `Go to ${bookmark.label} (${bookmark.path})`,
+                            label: t("Go to {label} ({path})", { label: t(bookmark.labelKey), path: bookmark.path }),
                             click: () => this.goHistory(bookmark.path),
                         }));
                         ContextMenuModel.getInstance().showContextMenu(menuItems, e);

@@ -441,7 +441,7 @@ function TableBody({
                     <span>
                         {search === ""
                             ? t("Type to search (Esc to cancel)")
-                            : t('Searching for "{search}"', { search })}
+                            : t('Searching "{search}"', { search })}
                     </span>
                     <div
                         className="ml-auto bg-transparent flex justify-center items-center flex-col p-0.5 rounded-md hover:bg-hoverbg focus:bg-hoverbg focus-within:bg-hoverbg cursor-pointer"

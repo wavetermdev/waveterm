@@ -45,8 +45,9 @@ export const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
                 <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
                     <div className="font-semibold text-lg text-green-500">{t("Backup Successfully Restored")}</div>
                     <div className="text-sm text-gray-300 leading-relaxed">
-                        {t("The file")} <span className="font-mono text-white break-all">{toolData.inputfilename}</span>{" "}
-                        {t("has been restored to its previous state.")}
+                        {t("The file {filename} has been restored to its previous state.", {
+                            filename: toolData.inputfilename,
+                        })}
                     </div>
                 </div>
             </Modal>
@@ -83,10 +84,10 @@ export const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
             <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
                 <div className="font-semibold text-lg">{t("Restore File Backup")}</div>
                 <div className="text-sm text-gray-300 leading-relaxed">
-                    {t("This will restore")}{" "}
-                    <span className="font-mono text-white break-all">{toolData.inputfilename}</span>{" "}
-                    {t("to its state before this edit was made")}
-                    {toolData.runts && <span> ({formatTimestamp(toolData.runts)})</span>}.
+                    {t("This will restore {filename} to its state before this edit was made{timestamp}.", {
+                        filename: toolData.inputfilename,
+                        timestamp: toolData.runts ? ` (${formatTimestamp(toolData.runts)})` : "",
+                    })}
                 </div>
                 <div className="text-sm text-gray-300 leading-relaxed">
                     {t("Any changes made by this edit and subsequent edits will be lost.")}

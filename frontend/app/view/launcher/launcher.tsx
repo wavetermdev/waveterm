@@ -43,13 +43,22 @@ export class LauncherViewModel implements ViewModel {
     }
 
     filteredWidgetsAtom = atom((get) => {
-        const searchTerm = get(this.searchTerm);
+        const searchTerm = get(this.searchTerm).trim().toLowerCase();
         const widgets = sortByDisplayOrder(get(atoms.fullConfigAtom)?.widgets || {});
-        return widgets.filter(
-            (widget) =>
-                !widget["display:hidden"] &&
-                (!searchTerm || widget.label?.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
+        return widgets.filter((widget) => {
+            if (widget["display:hidden"]) {
+                return false;
+            }
+            if (!searchTerm) {
+                return true;
+            }
+            const searchableText = [widget.label, widget.description]
+                .filter(Boolean)
+                .flatMap((value) => [value, t(value)])
+                .join(" ")
+                .toLowerCase();
+            return searchableText.includes(searchTerm);
+        });
     });
 
     giveFocus(): boolean {

@@ -565,7 +565,7 @@ export class WaveConfigViewModel implements ViewModel {
 
         const existingNames = globalStore.get(this.secretNamesAtom);
         if (existingNames.includes(name)) {
-            globalStore.set(this.errorMessageAtom, `Secret "${name}" already exists`);
+            globalStore.set(this.errorMessageAtom, t('Secret "{name}" already exists', { name }));
             return;
         }
 
