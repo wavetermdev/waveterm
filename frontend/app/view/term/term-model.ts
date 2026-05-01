@@ -12,6 +12,7 @@ import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
+import type { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
@@ -21,7 +22,7 @@ import {
     createBlockSplitVertically,
     getAllBlockComponentModels,
     getApi,
-    getBlockComponentModel,
+    getBlockComponentModelAtom,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
     getConnStatusAtom,
@@ -64,7 +65,6 @@ export class TermViewModel implements ViewModel {
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
     tsunamiBlockId: jotai.Atom<string>;
-    tsunamiAppMeta: jotai.PrimitiveAtom<AppMeta>;
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
@@ -108,7 +108,6 @@ export class TermViewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:tsunamiblockid"];
         });
-        this.tsunamiAppMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
         this.vdomToolbarTarget = jotai.atom<VDomTargetToolbar>(null) as jotai.PrimitiveAtom<VDomTargetToolbar>;
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -121,8 +120,13 @@ export class TermViewModel implements ViewModel {
                 return { elemtype: "iconbutton", icon: "bolt" };
             }
             if (termMode == "tsunami") {
-                const appMeta = get(this.tsunamiAppMeta);
-                return { elemtype: "iconbutton", icon: appMeta?.icon || "browser", iconColor: appMeta?.iconcolor };
+                const tsunamiBlockId = get(this.tsunamiBlockId);
+                const tsunamiBcm = tsunamiBlockId ? get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
+                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiViewModel;
+                if (tsunamiVM?.viewIcon) {
+                    return get(tsunamiVM.viewIcon);
+                }
+                return { elemtype: "iconbutton", icon: "browser" };
             }
             return { elemtype: "iconbutton", icon: "terminal" };
         });
@@ -133,8 +137,13 @@ export class TermViewModel implements ViewModel {
                 return "Wave App";
             }
             if (termMode == "tsunami") {
-                const appMeta = get(this.tsunamiAppMeta);
-                return appMeta?.title || "WaveApp";
+                const tsunamiBlockId = get(this.tsunamiBlockId);
+                const tsunamiBcm = tsunamiBlockId ? get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
+                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiViewModel;
+                if (tsunamiVM?.viewName) {
+                    return get(tsunamiVM.viewName);
+                }
+                return "WaveApp";
             }
             if (blockData?.meta?.controller == "cmd") {
                 return "";
@@ -607,7 +616,7 @@ export class TermViewModel implements ViewModel {
         if (!vdomBlockId) {
             return null;
         }
-        const bcm = getBlockComponentModel(vdomBlockId);
+        const bcm = globalStore.get(getBlockComponentModelAtom(vdomBlockId));
         if (!bcm) {
             return null;
         }
@@ -619,7 +628,7 @@ export class TermViewModel implements ViewModel {
         if (!vdomToolbarBlockId) {
             return null;
         }
-        const bcm = getBlockComponentModel(vdomToolbarBlockId);
+        const bcm = globalStore.get(getBlockComponentModelAtom(vdomToolbarBlockId));
         if (!bcm) {
             return null;
         }
@@ -629,7 +638,7 @@ export class TermViewModel implements ViewModel {
     focusTsunamiSubBlock() {
         const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
         if (!tsunamiBlockId) return;
-        const bcm = getBlockComponentModel(tsunamiBlockId);
+        const bcm = globalStore.get(getBlockComponentModelAtom(tsunamiBlockId));
         bcm?.viewModel?.giveFocus?.();
     }
 
