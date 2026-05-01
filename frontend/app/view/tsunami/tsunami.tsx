@@ -25,8 +25,8 @@ class TsunamiViewModel extends WebViewModel {
         this.viewType = "tsunami";
         this.isRestarting = jotai.atom(false);
 
-        // Hide navigation bar (URL bar, back/forward/home buttons)
         this.hideNav = jotai.atom(true);
+        this.hideViewName = jotai.atom(false);
 
         // Set custom partition for tsunami WebView isolation
         this.partitionOverride = jotai.atom(`tsunami:${this.blockId}`);
