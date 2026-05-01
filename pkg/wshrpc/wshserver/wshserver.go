@@ -1242,6 +1242,14 @@ func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.
 	}, nil
 }
 
+func (ws *WshServer) DraftHasLocalVersionCommand(ctx context.Context, draftAppId string) (bool, error) {
+	hasLocal, err := waveappstore.DraftHasLocalVersion(draftAppId)
+	if err != nil {
+		return false, fmt.Errorf("error checking draft local version: %w", err)
+	}
+	return hasLocal, nil
+}
+
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	err := telemetry.RecordTEvent(ctx, &data)
 	if err != nil {

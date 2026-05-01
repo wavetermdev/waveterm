@@ -240,6 +240,12 @@ export class RpcApiType {
         return client.wshRpcCall("disposesuggestions", data, opts);
     }
 
+    // command "drafthaslocalversion" [call]
+    DraftHasLocalVersionCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<boolean> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "drafthaslocalversion", data, opts);
+        return client.wshRpcCall("drafthaslocalversion", data, opts);
+    }
+
     // command "electrondecrypt" [call]
     ElectronDecryptCommand(client: WshClient, data: CommandElectronDecryptData, opts?: RpcOpts): Promise<CommandElectronDecryptRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "electrondecrypt", data, opts);
