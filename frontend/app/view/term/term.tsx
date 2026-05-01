@@ -13,7 +13,7 @@ import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { TermViewModel } from "@/app/view/term/term-model";
-import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, WOS } from "@/store/global";
+import { atoms, getBlockComponentModel, getOverrideConfigAtom, getSettingsPrefixAtom, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
@@ -29,6 +29,8 @@ import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
 const dlog = debug("wave:term");
+
+const nullAppMetaAtom = jotai.atom<AppMeta>(null) as jotai.Atom<AppMeta>;
 
 interface TerminalViewProps {
     blockId: string;
@@ -178,6 +180,25 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
+const TsunamiAppMetaSync = React.memo(({ tsunamiBlockId, model }: { tsunamiBlockId: string; model: TermViewModel }) => {
+    const bcm = getBlockComponentModel(tsunamiBlockId);
+    const appMetaAtom = (bcm?.viewModel as any)?.appMeta ?? nullAppMetaAtom;
+    const appMeta = jotai.useAtomValue(appMetaAtom);
+
+    React.useEffect(() => {
+        globalStore.set(model.tsunamiAppMeta, appMeta);
+    }, [appMeta, model]);
+
+    React.useEffect(() => {
+        return () => {
+            globalStore.set(model.tsunamiAppMeta, null);
+        };
+    }, [model]);
+
+    return null;
+});
+TsunamiAppMetaSync.displayName = "TsunamiAppMetaSync";
+
 const TermTsunamiNodeSingleId = ({ tsunamiBlockId, blockId, model }: TerminalViewProps & { tsunamiBlockId: string }) => {
     const [tsunamiBlock] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", tsunamiBlockId));
     const tsunamiPort = tsunamiBlock?.meta?.["tsunami:port"] ?? 0;
@@ -260,6 +281,7 @@ const TermTsunamiNodeSingleId = ({ tsunamiBlockId, blockId, model }: TerminalVie
     return (
         <div key="tsunamiElem" className="term-tsunamielem">
             <SubBlock key="tsunami" nodeModel={tsunamiNodeModel} />
+            <TsunamiAppMetaSync tsunamiBlockId={tsunamiBlockId} model={model} />
         </div>
     );
 };

@@ -64,6 +64,7 @@ export class TermViewModel implements ViewModel {
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
     tsunamiBlockId: jotai.Atom<string>;
+    tsunamiAppMeta: jotai.PrimitiveAtom<AppMeta>;
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
@@ -107,6 +108,7 @@ export class TermViewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:tsunamiblockid"];
         });
+        this.tsunamiAppMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
         this.vdomToolbarTarget = jotai.atom<VDomTargetToolbar>(null) as jotai.PrimitiveAtom<VDomTargetToolbar>;
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -119,7 +121,8 @@ export class TermViewModel implements ViewModel {
                 return { elemtype: "iconbutton", icon: "bolt" };
             }
             if (termMode == "tsunami") {
-                return { elemtype: "iconbutton", icon: "browser" };
+                const appMeta = get(this.tsunamiAppMeta);
+                return { elemtype: "iconbutton", icon: appMeta?.icon || "browser", iconColor: appMeta?.iconcolor };
             }
             return { elemtype: "iconbutton", icon: "terminal" };
         });
@@ -128,6 +131,10 @@ export class TermViewModel implements ViewModel {
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
                 return "Wave App";
+            }
+            if (termMode == "tsunami") {
+                const appMeta = get(this.tsunamiAppMeta);
+                return appMeta?.title || "WaveApp";
             }
             if (blockData?.meta?.controller == "cmd") {
                 return "";
@@ -244,7 +251,7 @@ export class TermViewModel implements ViewModel {
         });
         this.useTermHeader = jotai.atom((get) => {
             const termMode = get(this.termMode);
-            if (termMode == "vdom") {
+            if (termMode == "vdom" || termMode == "tsunami") {
                 return false;
             }
             const isCmd = get(this.isCmdController);
