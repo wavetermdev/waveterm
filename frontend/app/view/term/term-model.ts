@@ -1003,6 +1003,24 @@ export class TermViewModel implements ViewModel {
         };
 
         const fullMenu: ContextMenuItem[] = [];
+
+        const termMode = globalStore.get(this.termMode);
+        if (termMode === "tsunami") {
+            const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+            const bcm = tsunamiBlockId ? globalStore.get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
+            const tsunamiVM = bcm?.viewModel as TsunamiViewModel;
+            const promotedItems = tsunamiVM?.getPromotedContextMenuItems?.() ?? [];
+            fullMenu.push({
+                label: "Send ^C to Tsunami App",
+                click: () => this.sendDataToController("\x03"),
+            });
+            if (promotedItems.length > 0) {
+                fullMenu.push({ type: "separator" });
+                fullMenu.push(...promotedItems);
+            }
+            fullMenu.push({ type: "separator" });
+        }
+
         fullMenu.push({
             label: "Split Horizontally",
             click: () => {

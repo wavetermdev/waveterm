@@ -181,9 +181,19 @@ class TsunamiViewModel extends WebViewModel {
         }
     }
 
+    // NOTE: label-string matching is brittle — if WebViewModel ever renames these items this will silently break.
+    // A cleaner fix would be giving menu items stable IDs in WebViewModel, but that's a larger refactor.
+    getPromotedContextMenuItems(): ContextMenuItem[] {
+        const items = super.getSettingsMenuItems();
+        return items.filter((item) => {
+            const label = item.label || "";
+            return label === "Copy URL to Clipboard" || label === "Set Zoom Factor" || label.includes("DevTools");
+        });
+    }
+
     getSettingsMenuItems(): ContextMenuItem[] {
         const items = super.getSettingsMenuItems();
-        // Filter out homepage and navigation-related menu items for tsunami view
+        // NOTE: same label-string brittleness as getPromotedContextMenuItems above.
         const filteredItems = items.filter((item) => {
             const label = item.label?.toLowerCase() || "";
             return (
