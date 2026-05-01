@@ -24,7 +24,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.40
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sawka/txwrap v0.2.0
-	github.com/shirou/gopsutil/v4 v4.26.3
+	github.com/shirou/gopsutil/v4 v4.26.4
 	github.com/skeema/knownhosts v1.3.1
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/spf13/cobra v1.10.2
