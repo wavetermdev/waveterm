@@ -534,7 +534,8 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}()
 		var termSrv *termlistensrv.TermListenSrv
 		var ptyReader io.Reader = shellProc.Cmd
-		if AllowTermListen {
+		allowTermListen := wconfig.DefaultBoolPtr(wconfig.GetWatcher().GetFullConfig().Settings.TermAllowTermListen, true)
+		if allowTermListen {
 			termSrv = termlistensrv.MakeTermListenSrv(func(data []byte) {
 				shellProc.Cmd.Write(data)
 			})

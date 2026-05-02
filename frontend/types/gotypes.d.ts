@@ -1432,6 +1432,7 @@ declare global {
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
+        "term:allowtermlisten"?: boolean;
         "term:durable"?: boolean;
         "term:showsplitbuttons"?: boolean;
         "term:trimtrailingwhitespace"?: boolean;
