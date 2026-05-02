@@ -130,7 +130,7 @@
         "throttle-debounce": "^5.0.2",
         "unist-util-visit": "^5.1.0",
         "use-device-pixel-ratio": "^1.1.2",
-        "uuid": "^13.0.0",
+        "uuid": "^14.0.0",
         "winston": "^3.19.0",
         "ws": "^8.19.0",
         "yaml": "^2.8.3"
