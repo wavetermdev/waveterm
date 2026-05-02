@@ -113,8 +113,6 @@ class TsunamiViewModel extends WebViewModel {
     }
 
     resyncController() {
-        const blockData = globalStore.get(this.blockAtom);
-        if (blockData?.meta?.["tsunami:url"]) return;
         this.doControllerResync(false, "resync", false);
     }
 
@@ -180,19 +178,8 @@ class TsunamiViewModel extends WebViewModel {
         }
     }
 
-    // NOTE: label-string matching is brittle — if WebViewModel ever renames these items this will silently break.
-    // A cleaner fix would be giving menu items stable IDs in WebViewModel, but that's a larger refactor.
-    getPromotedContextMenuItems(): ContextMenuItem[] {
-        const items = super.getSettingsMenuItems();
-        return items.filter((item) => {
-            const label = item.label || "";
-            return label === "Copy URL to Clipboard" || label === "Set Zoom Factor" || label.includes("DevTools");
-        });
-    }
-
     getSettingsMenuItems(): ContextMenuItem[] {
         const items = super.getSettingsMenuItems();
-        // NOTE: same label-string brittleness as getPromotedContextMenuItems above.
         const filteredItems = items.filter((item) => {
             const label = item.label?.toLowerCase() || "";
             return (
@@ -204,11 +191,6 @@ class TsunamiViewModel extends WebViewModel {
         });
 
         const blockData = globalStore.get(this.blockAtom);
-        if (blockData?.meta?.["tsunami:url"]) {
-            return filteredItems;
-        }
-
-        // Check if we should show the Remix option
         const appId = blockData?.meta?.["tsunami:appid"];
         const showRemixOption = appId && appId.startsWith("local/");
 
