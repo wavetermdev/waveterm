@@ -183,61 +183,46 @@ const TermTsunamiNodeSingleId = ({
     blockId,
     model,
 }: TerminalViewProps & { tsunamiBlockId: string }) => {
-    const [tsunamiBlock] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", tsunamiBlockId));
-    const tsunamiPort = tsunamiBlock?.meta?.["tsunami:port"] ?? 0;
+    const tsunamiPort = jotai.useAtomValue(model.tsunamiLocalPort);
 
     React.useEffect(() => {
-        console.log("[tsunami] TermTsunamiNodeSingleId effect", { tsunamiBlockId, blockId, tsunamiPort });
-        const hardTeardown = (reason: string) => {
-            console.log("[tsunami] hardTeardown", reason, { tsunamiBlockId, blockId });
-            RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
-            RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("block", blockId),
-                meta: { "term:mode": null, "term:tsunamiblockid": null },
-            });
-        };
-        let cancelled = false;
-        if (tsunamiPort > 0) {
-            console.log("[tsunami] checking port", tsunamiPort);
-            RpcApi.TermListenCheckPortCommand(TabRpcClient, { port: tsunamiPort })
-                .then((active) => {
-                    console.log("[tsunami] port check result", { port: tsunamiPort, active, cancelled });
-                    if (!cancelled && !active) {
-                        hardTeardown("port-check-inactive");
-                    }
-                })
-                .catch((err) => {
-                    console.log("[tsunami] port check error", err);
-                    if (!cancelled) {
-                        hardTeardown("port-check-error");
-                    }
-                });
-        } else {
-            console.log("[tsunami] tsunamiPort=0, skipping port check");
+        if (!(tsunamiPort > 0)) {
+            model.teardownTsunamiSubBlock();
+            return;
         }
+        let cancelled = false;
+        RpcApi.TermListenCheckPortCommand(TabRpcClient, { port: tsunamiPort })
+            .then((active) => {
+                if (!cancelled && !active) {
+                    model.teardownTsunamiSubBlock();
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    model.teardownTsunamiSubBlock();
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [tsunamiPort]);
+
+    React.useEffect(() => {
         const unsubBlockClose = waveEventSubscribeSingle({
             eventType: "blockclose",
             scope: WOS.makeORef("block", tsunamiBlockId),
-            handler: (_event) => {
-                console.log("[tsunami] blockclose event fired", { tsunamiBlockId });
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("block", blockId),
-                    meta: { "term:mode": null, "term:tsunamiblockid": null },
-                });
-            },
+            handler: () => model.teardownTsunamiSubBlock(),
         });
         const unsubTermListenDown = waveEventSubscribeSingle({
             eventType: "termlisten:down",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
-                console.log("[tsunami] termlisten:down event", { port: event.data?.port, tsunamiPort });
                 if (tsunamiPort > 0 && event.data?.port === tsunamiPort) {
-                    hardTeardown("termlisten-down");
+                    model.teardownTsunamiSubBlock();
                 }
             },
         });
         return () => {
-            cancelled = true;
             unsubBlockClose();
             unsubTermListenDown();
         };

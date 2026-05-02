@@ -130,6 +130,7 @@ const (
 	MetaKey_TermBellIndicator                = "term:bellindicator"
 	MetaKey_TermOsc52                        = "term:osc52"
 	MetaKey_TermDurable                      = "term:durable"
+	MetaKey_TermTsunamiLocalPort             = "term:tsunamilocalport"
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"
@@ -146,8 +147,6 @@ const (
 	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
 	MetaKey_TsunamiEnv                       = "tsunami:env"
 	MetaKey_TsunamiUrl                       = "tsunami:url"
-	MetaKey_TsunamiTermListen                = "tsunami:termlisten"
-	MetaKey_TsunamiPort                      = "tsunami:port"
 	MetaKey_TsunamiParentBlockId             = "tsunami:parentblockid"
 
 	MetaKey_VDomClear                        = "vdom:*"

@@ -411,14 +411,14 @@ export async function handleOsc9009Command(data: string, blockId: string, loaded
 
     const oref = await RpcApi.CreateSubBlockCommand(TabRpcClient, {
         parentblockid: blockId,
-        blockdef: { meta: { view: "tsunami", "tsunami:url": tsunamiUrl, "tsunami:termlisten": true, "tsunami:port": payload.port, "tsunami:parentblockid": blockId } },
+        blockdef: { meta: { view: "tsunamidirect", "tsunami:url": tsunamiUrl, "tsunami:parentblockid": blockId } },
     });
     const [, newBlockId] = splitORef(oref);
 
     setTimeout(() => {
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("block", blockId),
-            meta: { "term:tsunamiblockid": newBlockId, "term:mode": "tsunami" },
+            meta: { "term:tsunamiblockid": newBlockId, "term:mode": "tsunami", "term:tsunamilocalport": payload.port },
         });
     }, 50);
 

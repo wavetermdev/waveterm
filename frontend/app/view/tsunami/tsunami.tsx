@@ -7,7 +7,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import * as services from "@/store/services";
-import { stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import { memo, useEffect } from "react";
 
@@ -253,63 +252,10 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     const shellProcFullStatus = jotai.useAtomValue(model.shellProcFullStatus);
     const blockData = jotai.useAtomValue(model.blockAtom);
     const isRestarting = jotai.useAtomValue(model.isRestarting);
-    const domReady = jotai.useAtomValue(model.domReady);
 
     useEffect(() => {
         model.resyncController();
     }, [model]);
-
-    const tsunamiDirectUrl = blockData?.meta?.["tsunami:url"];
-    const tsunamiParentBlockId = blockData?.meta?.["tsunami:parentblockid"];
-
-    useEffect(() => {
-        if (!domReady || !tsunamiParentBlockId || !model.webviewRef.current) return;
-        const webview = model.webviewRef.current;
-        webview.send("enable-tsunami-termlisten", tsunamiParentBlockId);
-        const handler = (event: any) => {
-            if (event.channel !== "tsunami-key") return;
-            const { key } = event.args[0];
-            if (key === "cmd-escape") {
-                RpcApi.SetMetaCommand(TabRpcClient, {
-                    oref: WOS.makeORef("block", tsunamiParentBlockId),
-                    meta: { "term:mode": null },
-                });
-                return;
-            }
-            let inputData: string | null = null;
-            if (key === "ctrl-c") inputData = "\x03";
-            else if (key === "ctrl-z") inputData = "\x1a";
-            if (!inputData) return;
-            RpcApi.ControllerInputCommand(TabRpcClient, {
-                blockid: tsunamiParentBlockId,
-                inputdata64: stringToBase64(inputData),
-            });
-        };
-        webview.addEventListener("ipc-message", handler);
-        return () => {
-            webview.removeEventListener("ipc-message", handler);
-        };
-    }, [domReady, tsunamiParentBlockId]);
-
-    useEffect(() => {
-        if (!tsunamiDirectUrl) return;
-        fetch(`${tsunamiDirectUrl}/api/manifest`)
-            .then((r) => r.json())
-            .then((manifest: AppManifest) => {
-                if (manifest?.appmeta) {
-                    globalStore.set(model.appMeta, manifest.appmeta);
-                }
-            })
-            .catch(() => {});
-    }, [tsunamiDirectUrl]);
-
-    if (tsunamiDirectUrl) {
-        return (
-            <div className="w-full h-full">
-                <WebView {...props} initialSrc={`${tsunamiDirectUrl}/?clientid=wave:${model.blockId}`} />
-            </div>
-        );
-    }
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
     const appId = blockData?.meta?.["tsunami:appid"];

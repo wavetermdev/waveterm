@@ -134,6 +134,7 @@ type MetaTSType struct {
 	TermBellIndicator       *bool    `json:"term:bellindicator,omitempty"`
 	TermOsc52               string   `json:"term:osc52,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
+	TermTsunamiLocalPort    int      `json:"term:tsunamilocalport,omitempty"`
 
 	WebZoom          float64 `json:"web:zoom,omitempty"`
 	WebHideNav       *bool   `json:"web:hidenav,omitempty"`
@@ -150,8 +151,6 @@ type MetaTSType struct {
 	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
 	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
 	TsunamiUrl            string            `json:"tsunami:url,omitempty"`
-	TsunamiTermListen     bool              `json:"tsunami:termlisten,omitempty"`
-	TsunamiPort           int               `json:"tsunami:port,omitempty"`
 	TsunamiParentBlockId  string            `json:"tsunami:parentblockid,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`

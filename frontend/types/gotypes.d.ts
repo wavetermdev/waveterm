@@ -1196,6 +1196,7 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
+        "term:tsunamilocalport"?: number;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
@@ -1209,8 +1210,6 @@ declare global {
         "tsunami:scaffoldpath"?: string;
         "tsunami:env"?: {[key: string]: string};
         "tsunami:url"?: string;
-        "tsunami:termlisten"?: boolean;
-        "tsunami:port"?: number;
         "tsunami:parentblockid"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;

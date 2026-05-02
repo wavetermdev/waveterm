@@ -12,7 +12,7 @@ import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
-import type { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
+import type { TsunamiDirectViewModel } from "@/app/view/tsunamidirect/tsunamidirect";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
@@ -65,6 +65,7 @@ export class TermViewModel implements ViewModel {
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
     tsunamiBlockId: jotai.Atom<string>;
+    tsunamiLocalPort: jotai.Atom<number>;
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
@@ -108,6 +109,10 @@ export class TermViewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:tsunamiblockid"];
         });
+        this.tsunamiLocalPort = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:tsunamilocalport"] ?? 0;
+        });
         this.vdomToolbarTarget = jotai.atom<VDomTargetToolbar>(null) as jotai.PrimitiveAtom<VDomTargetToolbar>;
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -122,7 +127,7 @@ export class TermViewModel implements ViewModel {
             if (termMode == "tsunami") {
                 const tsunamiBlockId = get(this.tsunamiBlockId);
                 const tsunamiBcm = tsunamiBlockId ? get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
-                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiViewModel;
+                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiDirectViewModel;
                 if (tsunamiVM?.viewIcon) {
                     return get(tsunamiVM.viewIcon);
                 }
@@ -139,7 +144,7 @@ export class TermViewModel implements ViewModel {
             if (termMode == "tsunami") {
                 const tsunamiBlockId = get(this.tsunamiBlockId);
                 const tsunamiBcm = tsunamiBlockId ? get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
-                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiViewModel;
+                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiDirectViewModel;
                 if (tsunamiVM?.viewName) {
                     return get(tsunamiVM.viewName);
                 }
@@ -635,6 +640,17 @@ export class TermViewModel implements ViewModel {
         return bcm.viewModel as VDomModel;
     }
 
+    teardownTsunamiSubBlock() {
+        const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+        if (tsunamiBlockId) {
+            RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
+        }
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:mode": null, "term:tsunamiblockid": null, "term:tsunamilocalport": null },
+        });
+    }
+
     focusTsunamiSubBlock() {
         const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
         if (!tsunamiBlockId) return;
@@ -1008,7 +1024,7 @@ export class TermViewModel implements ViewModel {
         if (termMode === "tsunami") {
             const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
             const bcm = tsunamiBlockId ? globalStore.get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
-            const tsunamiVM = bcm?.viewModel as TsunamiViewModel;
+            const tsunamiVM = bcm?.viewModel as TsunamiDirectViewModel;
             const promotedItems = tsunamiVM?.getPromotedContextMenuItems?.() ?? [];
             fullMenu.push({
                 label: "Send ^C to Tsunami App",
