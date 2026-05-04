@@ -45,12 +45,15 @@ const WorkspaceElem = memo(() => {
     const ws = useAtomValue(atoms.workspace);
     const tabBarPosition = useAtomValue(getSettingsKeyAtom("app:tabbar")) ?? "top";
     const showLeftTabBar = tabBarPosition === "left";
+    const showRightTabBar = tabBarPosition === "right";
+    const showVTabBar = showLeftTabBar || showRightTabBar;
+    const tabBarOnRight = showRightTabBar;
     const aiPanelVisible = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
     const widgetsSidebarVisible = useAtomValue(workspaceLayoutModel.widgetsSidebarVisibleAtom);
     const windowWidth = window.innerWidth;
-    const leftGroupInitialPct = workspaceLayoutModel.getLeftGroupInitialPercentage(windowWidth, showLeftTabBar);
-    const innerVTabInitialPct = workspaceLayoutModel.getInnerVTabInitialPercentage(windowWidth, showLeftTabBar);
-    const innerAIPanelInitialPct = workspaceLayoutModel.getInnerAIPanelInitialPercentage(windowWidth, showLeftTabBar);
+    const leftGroupInitialPct = workspaceLayoutModel.getLeftGroupInitialPercentage(windowWidth, showVTabBar);
+    const innerVTabInitialPct = workspaceLayoutModel.getInnerVTabInitialPercentage(windowWidth, showVTabBar);
+    const innerAIPanelInitialPct = workspaceLayoutModel.getInnerAIPanelInitialPercentage(windowWidth, showVTabBar);
     const outerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const innerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
@@ -59,8 +62,8 @@ const WorkspaceElem = memo(() => {
     const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
     const vtabPanelWrapperRef = useRef<HTMLDivElement>(null);
 
-    // showLeftTabBar is passed as a seed value only; subsequent changes are handled by setShowLeftTabBar below.
-    // Do NOT add showLeftTabBar as a dep here — re-registering refs on config changes would redundantly re-run commitLayouts.
+    // showVTabBar / tabBarOnRight are passed as seed values only; subsequent changes flow through setShowVTabBar below.
+    // Do NOT add them as deps here — re-registering refs on config changes would redundantly re-run commitLayouts.
     useEffect(() => {
         if (
             aiPanelRef.current &&
@@ -77,7 +80,8 @@ const WorkspaceElem = memo(() => {
                 aiPanelWrapperRef.current,
                 vtabPanelRef.current ?? undefined,
                 vtabPanelWrapperRef.current ?? undefined,
-                showLeftTabBar
+                showVTabBar,
+                tabBarOnRight
             );
         }
     }, []);
@@ -93,8 +97,8 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     useEffect(() => {
-        workspaceLayoutModel.setShowLeftTabBar(showLeftTabBar);
-    }, [showLeftTabBar]);
+        workspaceLayoutModel.setShowVTabBar(showVTabBar, tabBarOnRight);
+    }, [showVTabBar, tabBarOnRight]);
 
     useEffect(() => {
         const handleFocus = () => workspaceLayoutModel.syncVTabWidthFromMeta();
@@ -102,15 +106,25 @@ const WorkspaceElem = memo(() => {
         return () => window.removeEventListener("focus", handleFocus);
     }, []);
 
-    const innerHandleVisible = showLeftTabBar && aiPanelVisible;
+    const innerHandleVisible = showVTabBar && aiPanelVisible;
     const innerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${innerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
-    const outerHandleVisible = showLeftTabBar || aiPanelVisible;
+    const outerHandleVisible = showVTabBar || aiPanelVisible;
     const outerHandleClass = `bg-transparent hover:bg-zinc-500/20 transition-colors ${outerHandleVisible ? "w-0.5" : "w-0 pointer-events-none"}`;
+
+    // When tabBarOnRight, mirror panel ordering so vtab sits at the outer-right edge
+    // and content moves to the leftmost panel. The defaultSize percentages stay the
+    // same; only the `order` prop flips, which is what react-resizable-panels uses
+    // to determine left-to-right placement.
+    const sideGroupOrder = tabBarOnRight ? 1 : 0;
+    const contentOrder = tabBarOnRight ? 0 : 1;
+    const vtabOrder = tabBarOnRight ? 1 : 0;
+    const aiPanelOrder = tabBarOnRight ? 0 : 1;
+    const aiWrapperPaddingClass = tabBarOnRight ? "pl-0.5" : "pr-0.5";
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
-            {!(showLeftTabBar && isMacOS()) && <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />}
-            {showLeftTabBar && isMacOS() && <MacOSTabBarSpacer />}
+            {!(showVTabBar && isMacOS()) && <TabBar key={ws.oid} workspace={ws} noTabs={showVTabBar} />}
+            {showVTabBar && isMacOS() && <MacOSTabBarSpacer />}
             <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
@@ -118,7 +132,7 @@ const WorkspaceElem = memo(() => {
                         onLayout={workspaceLayoutModel.handleOuterPanelLayout}
                         ref={outerPanelGroupRef}
                     >
-                        <Panel order={0} defaultSize={leftGroupInitialPct} className="overflow-hidden">
+                        <Panel order={sideGroupOrder} defaultSize={leftGroupInitialPct} className="overflow-hidden">
                             <PanelGroup
                                 direction="horizontal"
                                 onLayout={workspaceLayoutModel.handleInnerPanelLayout}
@@ -128,11 +142,11 @@ const WorkspaceElem = memo(() => {
                                     ref={vtabPanelRef}
                                     collapsible
                                     defaultSize={innerVTabInitialPct}
-                                    order={0}
+                                    order={vtabOrder}
                                     className="overflow-hidden"
                                 >
                                     <div ref={vtabPanelWrapperRef} className="w-full h-full">
-                                        {showLeftTabBar && <VTabBar workspace={ws} />}
+                                        {showVTabBar && <VTabBar workspace={ws} />}
                                     </div>
                                 </Panel>
                                 <PanelResizeHandle className={innerHandleClass} />
@@ -140,12 +154,12 @@ const WorkspaceElem = memo(() => {
                                     ref={aiPanelRef}
                                     collapsible
                                     defaultSize={innerAIPanelInitialPct}
-                                    order={1}
+                                    order={aiPanelOrder}
                                     className="overflow-hidden"
                                 >
                                     <div
                                         ref={aiPanelWrapperRef}
-                                        className={`w-full h-full pr-0.5 ${aiPanelVisible ? "" : "opacity-0"}`}
+                                        className={`w-full h-full ${aiWrapperPaddingClass} ${aiPanelVisible ? "" : "opacity-0"}`}
                                     >
                                         {tabId !== "" && <AIPanel roundTopLeft={showLeftTabBar} />}
                                     </div>
@@ -153,12 +167,12 @@ const WorkspaceElem = memo(() => {
                             </PanelGroup>
                         </Panel>
                         <PanelResizeHandle className={outerHandleClass} />
-                        <Panel order={1} defaultSize={100 - leftGroupInitialPct}>
+                        <Panel order={contentOrder} defaultSize={100 - leftGroupInitialPct}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
                                 <div className="flex flex-row h-full">
-                                    <TabContent key={tabId} tabId={tabId} noTopPadding={showLeftTabBar && isMacOS()} />
+                                    <TabContent key={tabId} tabId={tabId} noTopPadding={showVTabBar && isMacOS()} />
                                     {widgetsSidebarVisible && <Widgets />}
                                 </div>
                             )}
