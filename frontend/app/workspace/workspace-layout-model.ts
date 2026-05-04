@@ -52,6 +52,7 @@ class WorkspaceLayoutModel {
     private aiPanelWidth: number | null;
     private vtabWidth: number;
     private vtabVisible: boolean;
+    private tabBarOnRight: boolean;
     private transitionTimeoutRef: NodeJS.Timeout | null = null;
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     private debouncedPersistAIWidth: () => void;
@@ -71,6 +72,7 @@ class WorkspaceLayoutModel {
         this.aiPanelWidth = null;
         this.vtabWidth = VTabBar_DefaultWidth;
         this.vtabVisible = false;
+        this.tabBarOnRight = false;
         this.panelVisibleAtom = jotai.atom(false);
         this.widgetsSidebarVisibleAtom = jotai.atom(
             (get) =>
@@ -157,8 +159,9 @@ class WorkspaceLayoutModel {
                 this.vtabWidth = savedVTabWidth;
             }
             const tabBarPosition = globalStore.get(getSettingsKeyAtom("app:tabbar")) ?? "top";
-            const showLeftTabBar = tabBarPosition === "left" && !isBuilderWindow();
-            this.vtabVisible = showLeftTabBar;
+            const showVTabBar = (tabBarPosition === "left" || tabBarPosition === "right") && !isBuilderWindow();
+            this.vtabVisible = showVTabBar;
+            this.tabBarOnRight = tabBarPosition === "right" && !isBuilderWindow();
         } catch (e) {
             console.warn("Failed to initialize from tab meta:", e);
         }
@@ -224,7 +227,8 @@ class WorkspaceLayoutModel {
     handleOuterPanelLayout(sizes: number[]): void {
         if (this.inResize) return;
         const windowWidth = window.innerWidth;
-        const newLeftGroupPx = (sizes[0] / 100) * windowWidth;
+        const sideGroupPct = this.tabBarOnRight ? sizes[1] : sizes[0];
+        const newLeftGroupPx = (sideGroupPct / 100) * windowWidth;
 
         if (this.vtabVisible && this.aiPanelVisible) {
             // vtab stays constant, aipanel absorbs the change
@@ -251,7 +255,8 @@ class WorkspaceLayoutModel {
         const aiW = this.getResolvedAIWidth(windowWidth);
         const leftGroupW = vtabW + aiW;
 
-        const newVTabW = (sizes[0] / 100) * leftGroupW;
+        const vtabPct = this.tabBarOnRight ? sizes[1] : sizes[0];
+        const newVTabW = (vtabPct / 100) * leftGroupW;
         const clampedVTab = clampVTabWidth(newVTabW);
         const newAIW = clampAIPanelWidth(leftGroupW - clampedVTab, windowWidth);
 
@@ -289,7 +294,8 @@ class WorkspaceLayoutModel {
         aiPanelWrapperRef: HTMLDivElement,
         vtabPanelRef?: ImperativePanelHandle,
         vtabPanelWrapperRef?: HTMLDivElement,
-        showLeftTabBar?: boolean
+        showVTabBar?: boolean,
+        tabBarOnRight?: boolean
     ): void {
         this.aiPanelRef = aiPanelRef;
         this.vtabPanelRef = vtabPanelRef ?? null;
@@ -298,7 +304,8 @@ class WorkspaceLayoutModel {
         this.panelContainerRef = panelContainerRef;
         this.aiPanelWrapperRef = aiPanelWrapperRef;
         this.vtabPanelWrapperRef = vtabPanelWrapperRef ?? null;
-        this.vtabVisible = showLeftTabBar ?? false;
+        this.vtabVisible = showVTabBar ?? false;
+        this.tabBarOnRight = tabBarOnRight ?? false;
         this.syncPanelCollapse();
         this.commitLayouts(window.innerWidth);
     }
@@ -360,14 +367,14 @@ class WorkspaceLayoutModel {
 
     // ---- Initial percentage helpers (used by workspace.tsx for defaultSize) ----
 
-    getLeftGroupInitialPercentage(windowWidth: number, showLeftTabBar: boolean): number {
-        const vtabW = showLeftTabBar && !isBuilderWindow() ? this.getResolvedVTabWidth() : 0;
+    getLeftGroupInitialPercentage(windowWidth: number, showVTabBar: boolean): number {
+        const vtabW = showVTabBar && !isBuilderWindow() ? this.getResolvedVTabWidth() : 0;
         const aiW = this.aiPanelVisible ? this.getResolvedAIWidth(windowWidth) : 0;
         return ((vtabW + aiW) / windowWidth) * 100;
     }
 
-    getInnerVTabInitialPercentage(windowWidth: number, showLeftTabBar: boolean): number {
-        if (!showLeftTabBar || isBuilderWindow()) return 0;
+    getInnerVTabInitialPercentage(windowWidth: number, showVTabBar: boolean): number {
+        if (!showVTabBar || isBuilderWindow()) return 0;
         const vtabW = this.getResolvedVTabWidth();
         const aiW = this.aiPanelVisible ? this.getResolvedAIWidth(windowWidth) : 0;
         const total = vtabW + aiW;
@@ -375,8 +382,8 @@ class WorkspaceLayoutModel {
         return (vtabW / total) * 100;
     }
 
-    getInnerAIPanelInitialPercentage(windowWidth: number, showLeftTabBar: boolean): number {
-        const vtabW = showLeftTabBar && !isBuilderWindow() ? this.getResolvedVTabWidth() : 0;
+    getInnerAIPanelInitialPercentage(windowWidth: number, showVTabBar: boolean): number {
+        const vtabW = showVTabBar && !isBuilderWindow() ? this.getResolvedVTabWidth() : 0;
         const aiW = this.aiPanelVisible ? this.getResolvedAIWidth(windowWidth) : 0;
         const total = vtabW + aiW;
         if (total === 0) return 50;
@@ -426,9 +433,11 @@ class WorkspaceLayoutModel {
         }
     }
 
-    setShowLeftTabBar(showLeftTabBar: boolean): void {
-        if (this.vtabVisible === showLeftTabBar) return;
-        this.vtabVisible = showLeftTabBar;
+    setShowVTabBar(showVTabBar: boolean, tabBarOnRight?: boolean): void {
+        const newRight = tabBarOnRight ?? this.tabBarOnRight;
+        if (this.vtabVisible === showVTabBar && this.tabBarOnRight === newRight) return;
+        this.vtabVisible = showVTabBar;
+        this.tabBarOnRight = newRight;
         this.enableTransitions(250);
         this.syncPanelCollapse();
         this.commitLayouts(window.innerWidth);

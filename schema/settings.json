@@ -47,7 +47,8 @@
           "type": "string",
           "enum": [
             "top",
-            "left"
+            "left",
+            "right"
           ]
         },
         "feature:waveappbuilder": {
