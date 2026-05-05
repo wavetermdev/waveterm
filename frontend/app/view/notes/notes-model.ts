@@ -117,7 +117,6 @@ export class NotesViewModel implements ViewModel {
             return [];
         });
 
-        (window as any).notesmodel = this;
         this.loadFile();
         this.unsubscribeNotes = waveEventSubscribeSingle({
             eventType: "notes:updated",
