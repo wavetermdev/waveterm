@@ -162,6 +162,10 @@ func processChatStream(
 
 		choice := chunk.Choices[0]
 		if choice.Delta.Content != "" {
+			if reasoningStarted {
+				reasoningStarted = false
+				_ = sseHandler.AiMsgReasoningEnd(msgID)
+			}
 			if !textStarted {
 				_ = sseHandler.AiMsgTextStart(textID)
 				textStarted = true
@@ -261,11 +265,13 @@ func processChatStream(
 		assistantMsg.Message.Content = textBuilder.String()
 	}
 
-	if textStarted {
-		_ = sseHandler.AiMsgTextEnd(textID)
-	}
+	// reasoning-end is emitted inline on first content delta (if reasoning was active);
+	// if no content ever arrived (e.g. max_tokens during reasoning), close it here.
 	if reasoningStarted {
 		_ = sseHandler.AiMsgReasoningEnd(msgID)
+	}
+	if textStarted {
+		_ = sseHandler.AiMsgTextEnd(textID)
 	}
 	_ = sseHandler.AiMsgFinishStep()
 	if stopKind != uctypes.StopKindToolUse {
