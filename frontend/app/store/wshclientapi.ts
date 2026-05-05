@@ -444,6 +444,12 @@ export class RpcApiType {
         return client.wshRpcCall("getmeta", data, opts);
     }
 
+    // command "getnote" [call]
+    GetNoteCommand(client: WshClient, opts?: RpcOpts): Promise<NoteData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getnote", null, opts);
+        return client.wshRpcCall("getnote", null, opts);
+    }
+
     // command "getrtinfo" [call]
     GetRTInfoCommand(client: WshClient, data: CommandGetRTInfoData, opts?: RpcOpts): Promise<ObjRTInfo> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getrtinfo", data, opts);
@@ -1048,6 +1054,12 @@ export class RpcApiType {
     WriteAppSecretBindingsCommand(client: WshClient, data: CommandWriteAppSecretBindingsData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "writeappsecretbindings", data, opts);
         return client.wshRpcCall("writeappsecretbindings", data, opts);
+    }
+
+    // command "writenote" [call]
+    WriteNoteCommand(client: WshClient, data: CommandWriteNoteData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "writenote", data, opts);
+        return client.wshRpcCall("writenote", data, opts);
     }
 
     // command "writetempfile" [call]

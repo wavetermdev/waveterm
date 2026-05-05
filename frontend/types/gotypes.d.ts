@@ -793,6 +793,12 @@ declare global {
         bindings: {[key: string]: string};
     };
 
+    // wshrpc.CommandWriteNoteData
+    type CommandWriteNoteData = {
+        content: string;
+        sourceoref: string;
+    };
+
     // wshrpc.CommandWriteTempFileData
     type CommandWriteTempFileData = {
         filename: string;
@@ -1223,6 +1229,19 @@ declare global {
     type MimeTypeConfigType = {
         icon: string;
         color: string;
+    };
+
+    // wshrpc.NoteData
+    type NoteData = {
+        content: string;
+        readonly?: boolean;
+    };
+
+    // wshrpc.NotesUpdatedData
+    type NotesUpdatedData = {
+        content: string;
+        sourceoref: string;
+        readonly?: boolean;
     };
 
     // waveobj.ORef

@@ -22,6 +22,9 @@ export function NotesView({ model }: ViewComponentProps<NotesViewModel>) {
             editorRef.current = editor;
             model.setEditorRef(editorRef);
             model.restoreCursorPos();
+            editor.onDidBlurEditorWidget(() => {
+                model.onBlur();
+            });
             editor.onDidChangeCursorPosition(() => {
                 const offset = editor.getModel()?.getOffsetAt(editor.getPosition());
                 if (offset != null) {

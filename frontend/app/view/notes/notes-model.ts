@@ -1,30 +1,31 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { showErrorAlert } from "@/app/modals/alertmodal";
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { globalStore } from "@/app/store/jotaiStore";
+import { showErrorAlert } from "@/app/modals/alertmodal";
 import { ClientModel } from "@/app/store/client-model";
+import { globalStore } from "@/app/store/jotaiStore";
+import * as WOS from "@/app/store/wos";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { NotesView } from "@/app/view/notes/notes";
-import * as WOS from "@/app/store/wos";
 import { WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
-import { base64ToString, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
+import type * as MonacoTypes from "monaco-editor";
+import React from "react";
 import { debounce } from "throttle-debounce";
 
 type NotesEnv = WaveEnvSubset<{
     rpc: {
-        FileReadCommand: WaveEnv["rpc"]["FileReadCommand"];
-        FileWriteCommand: WaveEnv["rpc"]["FileWriteCommand"];
+        GetNoteCommand: WaveEnv["rpc"]["GetNoteCommand"];
+        WriteNoteCommand: WaveEnv["rpc"]["WriteNoteCommand"];
         GetRTInfoCommand: WaveEnv["rpc"]["GetRTInfoCommand"];
         SetRTInfoCommand: WaveEnv["rpc"]["SetRTInfoCommand"];
     };
 }>;
 
-type SaveStatus = "idle" | "dirty" | "saved" | "error";
+type SaveStatus = "idle" | "dirty" | "saved" | "synced" | "error";
 
-const NotesFilePath = "~/notes.md";
 const SavedDisplayMs = 3000;
 
 export class NotesViewModel implements ViewModel {
@@ -42,17 +43,22 @@ export class NotesViewModel implements ViewModel {
     loadedAtom: jotai.PrimitiveAtom<boolean>;
     saveStatusAtom: jotai.PrimitiveAtom<SaveStatus>;
     saveErrorAtom: jotai.PrimitiveAtom<string>;
+    readOnlyAtom: jotai.PrimitiveAtom<boolean>;
 
     viewText!: jotai.Atom<HeaderElem[]>;
 
-    private editorRef: { current: any } = { current: null };
-    private savedClearTimer: ReturnType<typeof setTimeout> = null;
+    myOref: string;
+    editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor> = { current: null };
+    savedClearTimer: ReturnType<typeof setTimeout> = null;
+    unsubscribeNotes: () => void = null;
+    pendingContent: string = null;
+    isApplyingRemoteEdit = false;
 
-    private debouncedSave = debounce(1000, (text: string) => {
+    debouncedSave = debounce(1000, (text: string) => {
         this.saveContent(text);
     });
 
-    private debouncedSaveCursorPos = debounce(500, (pos: number) => {
+    debouncedSaveCursorPos = debounce(500, (pos: number) => {
         this.env.rpc
             .SetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("client", ClientModel.getInstance().clientId),
@@ -65,22 +71,36 @@ export class NotesViewModel implements ViewModel {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.env = waveEnv as NotesEnv;
+        this.myOref = WOS.makeORef("block", blockId);
         this.contentAtom = jotai.atom("");
         this.loadErrorAtom = jotai.atom("");
         this.loadedAtom = jotai.atom(false);
         this.saveStatusAtom = jotai.atom<SaveStatus>("idle");
         this.saveErrorAtom = jotai.atom("");
+        this.readOnlyAtom = jotai.atom(false);
 
         this.viewText = jotai.atom((get) => {
             const status = get(this.saveStatusAtom);
             const saveError = get(this.saveErrorAtom);
+            const readOnly = get(this.readOnlyAtom);
             const spacer: HeaderElem = { elemtype: "div", className: "flex-1", children: [] };
+            if (readOnly) {
+                return [
+                    spacer,
+                    { elemtype: "text", text: "Read-only", noGrow: true, className: "opacity-50" },
+                ] as HeaderElem[];
+            }
             if (status === "dirty") {
                 return [spacer, { elemtype: "text", text: "Editing...", noGrow: true }] as HeaderElem[];
             } else if (status === "saved") {
                 return [
                     spacer,
                     { elemtype: "text", text: "Saved ✓", noGrow: true, className: "text-accent" },
+                ] as HeaderElem[];
+            } else if (status === "synced") {
+                return [
+                    spacer,
+                    { elemtype: "text", text: "Synced ↓", noGrow: true, className: "text-accent" },
                 ] as HeaderElem[];
             } else if (status === "error") {
                 return [
@@ -97,22 +117,31 @@ export class NotesViewModel implements ViewModel {
             return [];
         });
 
+        (window as any).notesmodel = this;
         this.loadFile();
+        this.unsubscribeNotes = waveEventSubscribeSingle({
+            eventType: "notes:updated",
+            handler: (event) => this.handleNotesUpdated(event.data),
+        });
     }
 
     get viewComponent(): ViewComponent {
         return NotesView;
     }
 
-    setEditorRef(ref: any) {
+    setEditorRef(ref: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>) {
         this.editorRef = ref;
     }
 
     onContentChange(text: string) {
+        if (this.isApplyingRemoteEdit) {
+            return;
+        }
         if (this.savedClearTimer != null) {
             clearTimeout(this.savedClearTimer);
             this.savedClearTimer = null;
         }
+        this.pendingContent = text;
         globalStore.set(this.saveStatusAtom, "dirty");
         this.debouncedSave(text);
     }
@@ -121,22 +150,21 @@ export class NotesViewModel implements ViewModel {
         this.debouncedSaveCursorPos(pos);
     }
 
+    onBlur() {
+        if (this.pendingContent != null) {
+            this.debouncedSave.cancel({ upcomingOnly: true });
+            this.saveContent(this.pendingContent);
+        }
+    }
+
     async loadFile() {
         try {
-            const fileData = await this.env.rpc.FileReadCommand(TabRpcClient, {
-                info: { path: NotesFilePath },
-            });
-            const content = fileData?.data64 ? base64ToString(fileData.data64) : "";
-            globalStore.set(this.contentAtom, content);
+            const noteData = await this.env.rpc.GetNoteCommand(TabRpcClient);
+            globalStore.set(this.contentAtom, noteData?.content ?? "");
+            globalStore.set(this.readOnlyAtom, noteData?.readonly ?? false);
             globalStore.set(this.loadErrorAtom, "");
         } catch (err) {
-            const msg: string = err?.message ?? String(err);
-            if (msg.includes("no such file") || msg.includes("not found") || msg.includes("does not exist")) {
-                globalStore.set(this.contentAtom, "");
-                globalStore.set(this.loadErrorAtom, "");
-            } else {
-                globalStore.set(this.loadErrorAtom, `Cannot open ${NotesFilePath}: ${msg}`);
-            }
+            globalStore.set(this.loadErrorAtom, `Cannot load notes: ${err?.message ?? String(err)}`);
         } finally {
             globalStore.set(this.loadedAtom, true);
         }
@@ -166,11 +194,14 @@ export class NotesViewModel implements ViewModel {
     }
 
     async saveContent(text: string) {
+        this.pendingContent = null;
+        console.log("[notes] saveContent start, text.len=", text.length);
         try {
-            await this.env.rpc.FileWriteCommand(TabRpcClient, {
-                info: { path: NotesFilePath },
-                data64: stringToBase64(text),
+            await this.env.rpc.WriteNoteCommand(TabRpcClient, {
+                content: text,
+                sourceoref: this.myOref,
             });
+            console.log("[notes] saveContent success, setting saved");
             globalStore.set(this.saveStatusAtom, "saved");
             globalStore.set(this.saveErrorAtom, "");
             this.savedClearTimer = setTimeout(() => {
@@ -178,9 +209,52 @@ export class NotesViewModel implements ViewModel {
                 this.savedClearTimer = null;
             }, SavedDisplayMs);
         } catch (err) {
+            console.log("[notes] saveContent error:", err);
             globalStore.set(this.saveStatusAtom, "error");
             globalStore.set(this.saveErrorAtom, err?.message ?? String(err));
         }
+    }
+
+    handleNotesUpdated(data: NotesUpdatedData) {
+        console.log(
+            "[notes] handleNotesUpdated, sourceoref=",
+            data?.sourceoref,
+            "myOref=",
+            this.myOref,
+            "currentStatus=",
+            globalStore.get(this.saveStatusAtom)
+        );
+        if (data?.sourceoref === this.myOref) {
+            console.log("[notes] handleNotesUpdated skipping (own update)");
+            return;
+        }
+        this.debouncedSave.cancel({ upcomingOnly: true });
+        this.pendingContent = null;
+        const editor = this.editorRef.current;
+        const content = data?.content ?? "";
+        if (editor != null) {
+            const editorModel = editor.getModel();
+            if (editorModel != null) {
+                this.isApplyingRemoteEdit = true;
+                try {
+                    editorModel.applyEdits([{ range: editorModel.getFullModelRange(), text: content }]);
+                } finally {
+                    this.isApplyingRemoteEdit = false;
+                }
+            }
+        }
+        globalStore.set(this.contentAtom, content);
+        if (data?.readonly != null) {
+            globalStore.set(this.readOnlyAtom, data.readonly);
+        }
+        if (this.savedClearTimer != null) {
+            clearTimeout(this.savedClearTimer);
+        }
+        globalStore.set(this.saveStatusAtom, "synced");
+        this.savedClearTimer = setTimeout(() => {
+            globalStore.set(this.saveStatusAtom, "idle");
+            this.savedClearTimer = null;
+        }, SavedDisplayMs);
     }
 
     giveFocus(): boolean {
@@ -193,9 +267,15 @@ export class NotesViewModel implements ViewModel {
 
     dispose() {
         this.debouncedSave.cancel();
+        if (this.pendingContent != null) {
+            this.saveContent(this.pendingContent);
+        }
         this.debouncedSaveCursorPos.cancel();
         if (this.savedClearTimer != null) {
             clearTimeout(this.savedClearTimer);
+        }
+        if (this.unsubscribeNotes != null) {
+            this.unsubscribeNotes();
         }
     }
 }
