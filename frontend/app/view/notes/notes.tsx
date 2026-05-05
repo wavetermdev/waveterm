@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MonacoCodeEditor } from "@/app/monaco/monaco-react";
-import { tryReinjectKey } from "@/app/store/keymodel";
 import { globalStore } from "@/app/store/jotaiStore";
+import { tryReinjectKey } from "@/app/store/keymodel";
 import { NotesViewModel } from "@/app/view/notes/notes-model";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { useAtomValue } from "jotai";
@@ -14,6 +14,7 @@ export function NotesView({ model }: ViewComponentProps<NotesViewModel>) {
     const content = useAtomValue(model.contentAtom);
     const loadError = useAtomValue(model.loadErrorAtom);
     const loaded = useAtomValue(model.loadedAtom);
+    const wordWrap = useAtomValue(model.wordWrapAtom);
 
     const editorRef = useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
 
@@ -69,13 +70,15 @@ export function NotesView({ model }: ViewComponentProps<NotesViewModel>) {
             language="markdown"
             onChange={(text) => model.onContentChange(text)}
             onMount={handleMount}
-            path="~/notes.md"
+            path={`notes-${model.blockId}.md`}
             options={{
-                wordWrap: "on",
+                wordWrap: wordWrap ? "on" : "off",
                 minimap: { enabled: false },
                 lineNumbers: "off",
                 folding: false,
                 scrollBeyondLastLine: false,
+                quickSuggestions: false,
+                suggestOnTriggerCharacters: false,
             }}
         />
     );

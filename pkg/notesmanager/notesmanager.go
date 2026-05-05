@@ -14,11 +14,10 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
-
-const defaultNotesPath = "~/notes.md"
 
 type NotesManager struct {
 	lock               sync.Mutex
@@ -45,7 +44,11 @@ func GetNotesManager() *NotesManager {
 }
 
 func notesFilePaths() (string, string, error) {
-	notesPath, err := wavebase.ExpandHomeDir(defaultNotesPath)
+	configuredPath := wconfig.GetWatcher().GetFullConfig().Settings.NotesFile
+	if configuredPath == "" {
+		configuredPath = "~/notes.md"
+	}
+	notesPath, err := wavebase.ExpandHomeDir(configuredPath)
 	if err != nil {
 		return "", "", fmt.Errorf("expanding notes path: %w", err)
 	}
@@ -189,6 +192,7 @@ func (nm *NotesManager) handleExternalChange() {
 			Content:    content,
 			SourceOref: "external",
 			ReadOnly:   nm.readOnlyErr != nil,
+			FilePath:   nm.notesPath,
 		},
 	})
 }
@@ -202,6 +206,7 @@ func (nm *NotesManager) GetNote(ctx context.Context) (wshrpc.NoteData, error) {
 	return wshrpc.NoteData{
 		Content:  nm.currentContent,
 		ReadOnly: nm.readOnlyErr != nil,
+		FilePath: nm.notesPath,
 	}, nil
 }
 
@@ -237,6 +242,7 @@ func (nm *NotesManager) WriteNote(ctx context.Context, data wshrpc.CommandWriteN
 		Data: wshrpc.NotesUpdatedData{
 			Content:    content,
 			SourceOref: data.SourceOref,
+			FilePath:   nm.notesPath,
 		},
 	})
 	return nil

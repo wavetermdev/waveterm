@@ -1235,6 +1235,7 @@ declare global {
     type NoteData = {
         content: string;
         readonly?: boolean;
+        filepath?: string;
     };
 
     // wshrpc.NotesUpdatedData
@@ -1242,6 +1243,7 @@ declare global {
         content: string;
         sourceoref: string;
         readonly?: boolean;
+        filepath?: string;
     };
 
     // waveobj.ORef

@@ -21,7 +21,9 @@ type NotesEnv = WaveEnvSubset<{
         WriteNoteCommand: WaveEnv["rpc"]["WriteNoteCommand"];
         GetRTInfoCommand: WaveEnv["rpc"]["GetRTInfoCommand"];
         SetRTInfoCommand: WaveEnv["rpc"]["SetRTInfoCommand"];
+        SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
     };
+    getSettingsKeyAtom: WaveEnv["getSettingsKeyAtom"];
 }>;
 
 type SaveStatus = "idle" | "dirty" | "saved" | "synced" | "error";
@@ -39,6 +41,7 @@ export class NotesViewModel implements ViewModel {
     noPadding = jotai.atom<boolean>(true);
 
     contentAtom: jotai.PrimitiveAtom<string>;
+    filePathAtom: jotai.PrimitiveAtom<string>;
     loadErrorAtom: jotai.PrimitiveAtom<string>;
     loadedAtom: jotai.PrimitiveAtom<boolean>;
     saveStatusAtom: jotai.PrimitiveAtom<SaveStatus>;
@@ -46,6 +49,7 @@ export class NotesViewModel implements ViewModel {
     readOnlyAtom: jotai.PrimitiveAtom<boolean>;
 
     viewText!: jotai.Atom<HeaderElem[]>;
+    wordWrapAtom!: jotai.Atom<boolean>;
 
     myOref: string;
     editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor> = { current: null };
@@ -73,6 +77,7 @@ export class NotesViewModel implements ViewModel {
         this.env = waveEnv as NotesEnv;
         this.myOref = WOS.makeORef("block", blockId);
         this.contentAtom = jotai.atom("");
+        this.filePathAtom = jotai.atom("");
         this.loadErrorAtom = jotai.atom("");
         this.loadedAtom = jotai.atom(false);
         this.saveStatusAtom = jotai.atom<SaveStatus>("idle");
@@ -116,6 +121,8 @@ export class NotesViewModel implements ViewModel {
             }
             return [];
         });
+
+        this.wordWrapAtom = jotai.atom((get) => get(waveEnv.getSettingsKeyAtom("editor:wordwrap")) ?? false);
 
         this.loadFile();
         this.unsubscribeNotes = waveEventSubscribeSingle({
@@ -172,6 +179,7 @@ export class NotesViewModel implements ViewModel {
         try {
             const noteData = await this.env.rpc.GetNoteCommand(TabRpcClient);
             globalStore.set(this.contentAtom, noteData?.content ?? "");
+            globalStore.set(this.filePathAtom, noteData?.filepath ?? "");
             globalStore.set(this.readOnlyAtom, noteData?.readonly ?? false);
             globalStore.set(this.loadErrorAtom, "");
         } catch (err) {
@@ -252,11 +260,38 @@ export class NotesViewModel implements ViewModel {
             }
         }
         globalStore.set(this.contentAtom, content);
+        if (data?.filepath) {
+            globalStore.set(this.filePathAtom, data.filepath);
+        }
         if (data?.readonly != null) {
             globalStore.set(this.readOnlyAtom, data.readonly);
         }
         globalStore.set(this.saveStatusAtom, "synced");
         this.setSavedTimer();
+    }
+
+    getSettingsMenuItems(): ContextMenuItem[] {
+        const wordWrap = globalStore.get(this.wordWrapAtom);
+        const filePath = globalStore.get(this.filePathAtom);
+        const items: ContextMenuItem[] = [];
+        if (filePath) {
+            items.push({
+                label: "Copy Notes File Path",
+                click: () => {
+                    navigator.clipboard.writeText(filePath);
+                },
+            });
+            items.push({ type: "separator" });
+        }
+        items.push({
+            label: "Word Wrap",
+            type: "checkbox",
+            checked: wordWrap,
+            click: () => {
+                this.env.rpc.SetConfigCommand(TabRpcClient, { "editor:wordwrap": !wordWrap });
+            },
+        });
+        return items;
     }
 
     giveFocus(): boolean {

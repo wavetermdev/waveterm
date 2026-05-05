@@ -931,12 +931,14 @@ type CommandWriteNoteData struct {
 type NoteData struct {
 	Content  string `json:"content"`
 	ReadOnly bool   `json:"readonly,omitempty"`
+	FilePath string `json:"filepath,omitempty"`
 }
 
 type NotesUpdatedData struct {
 	Content    string `json:"content"`
 	SourceOref string `json:"sourceoref"`
 	ReadOnly   bool   `json:"readonly,omitempty"`
+	FilePath   string `json:"filepath,omitempty"`
 }
 
 type CommandRemoteProcessSignalData struct {
