@@ -133,14 +133,26 @@ export class NotesViewModel implements ViewModel {
         this.editorRef = ref;
     }
 
-    onContentChange(text: string) {
-        if (this.isApplyingRemoteEdit) {
-            return;
-        }
+    clearSavedTimer() {
         if (this.savedClearTimer != null) {
             clearTimeout(this.savedClearTimer);
             this.savedClearTimer = null;
         }
+    }
+
+    setSavedTimer() {
+        this.clearSavedTimer();
+        this.savedClearTimer = setTimeout(() => {
+            globalStore.set(this.saveStatusAtom, "idle");
+            this.savedClearTimer = null;
+        }, SavedDisplayMs);
+    }
+
+    onContentChange(text: string) {
+        if (this.isApplyingRemoteEdit) {
+            return;
+        }
+        this.clearSavedTimer();
         this.pendingContent = text;
         globalStore.set(this.saveStatusAtom, "dirty");
         this.debouncedSave(text);
@@ -204,10 +216,7 @@ export class NotesViewModel implements ViewModel {
             console.log("[notes] saveContent success, setting saved");
             globalStore.set(this.saveStatusAtom, "saved");
             globalStore.set(this.saveErrorAtom, "");
-            this.savedClearTimer = setTimeout(() => {
-                globalStore.set(this.saveStatusAtom, "idle");
-                this.savedClearTimer = null;
-            }, SavedDisplayMs);
+            this.setSavedTimer();
         } catch (err) {
             console.log("[notes] saveContent error:", err);
             globalStore.set(this.saveStatusAtom, "error");
@@ -247,14 +256,8 @@ export class NotesViewModel implements ViewModel {
         if (data?.readonly != null) {
             globalStore.set(this.readOnlyAtom, data.readonly);
         }
-        if (this.savedClearTimer != null) {
-            clearTimeout(this.savedClearTimer);
-        }
         globalStore.set(this.saveStatusAtom, "synced");
-        this.savedClearTimer = setTimeout(() => {
-            globalStore.set(this.saveStatusAtom, "idle");
-            this.savedClearTimer = null;
-        }, SavedDisplayMs);
+        this.setSavedTimer();
     }
 
     giveFocus(): boolean {
@@ -271,9 +274,7 @@ export class NotesViewModel implements ViewModel {
             this.saveContent(this.pendingContent);
         }
         this.debouncedSaveCursorPos.cancel();
-        if (this.savedClearTimer != null) {
-            clearTimeout(this.savedClearTimer);
-        }
+        this.clearSavedTimer();
         if (this.unsubscribeNotes != null) {
             this.unsubscribeNotes();
         }
