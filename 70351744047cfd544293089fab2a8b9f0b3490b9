@@ -1,0 +1,181 @@
+pkg/notesmanager/notesmanager.go
+  7a656849-ce57-423c-bd7c-146055690865 9,28,49,56,59,62,78,80,91,93,96,224,232
+  human 34,50,57-58,77,79,81,86-90,216-223,225-231,233-280
+schema/settings.json
+  human 354-356
+frontend/types/gotypes.d.ts
+  human 1239,1248,1511
+pkg/wconfig/metaconsts.go
+  human 134-135
+pkg/wconfig/settingsconfig.go
+  human 186
+pkg/wconfig/defaultconfig/settings.json
+  human 44
+docs/docs/config.mdx
+  human 87
+pkg/wshrpc/wshrpctypes.go
+  human 934,942
+frontend/app/view/notes/notes-model.ts
+  human 181-191,256-275,290
+---
+{
+  "attestations": [
+    {
+      "entries": [
+        {
+          "accepted_lines": 13,
+          "added_lines": 13,
+          "deleted_lines": 7,
+          "hash": "7a656849-ce57-423c-bd7c-146055690865",
+          "lines": "9,28,49,56,59,62,78,80,91,93,96,224,232",
+          "overridden_lines": 0
+        },
+        {
+          "accepted_lines": 75,
+          "added_lines": 75,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "34,50,57-58,77,79,81,86-90,216-223,225-231,233-280",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "pkg/notesmanager/notesmanager.go"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 3,
+          "added_lines": 3,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "354-356",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "schema/settings.json"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 3,
+          "added_lines": 3,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "1239,1248,1511",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "frontend/types/gotypes.d.ts"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 2,
+          "added_lines": 2,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "134-135",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "pkg/wconfig/metaconsts.go"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 1,
+          "added_lines": 1,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "186",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "pkg/wconfig/settingsconfig.go"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 1,
+          "added_lines": 1,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "44",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "pkg/wconfig/defaultconfig/settings.json"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 1,
+          "added_lines": 1,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "87",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "docs/docs/config.mdx"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 2,
+          "added_lines": 2,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "934,942",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "pkg/wshrpc/wshrpctypes.go"
+    },
+    {
+      "entries": [
+        {
+          "accepted_lines": 32,
+          "added_lines": 32,
+          "deleted_lines": 0,
+          "hash": "human",
+          "lines": "181-191,256-275,290",
+          "overridden_lines": 0
+        }
+      ],
+      "file": "frontend/app/view/notes/notes-model.ts"
+    }
+  ],
+  "base_commit_sha": "843f8c460e029255dd589032cc050c8236cc5ce4",
+  "branch": "sawka/scratchpad",
+  "commit_sha": "70351744047cfd544293089fab2a8b9f0b3490b9",
+  "commit_time": "2026-05-04T23:41:29-07:00",
+  "commit_type": "direct_commit",
+  "git_ai_version": "1.4.2",
+  "prompts": {
+    "7a656849-ce57-423c-bd7c-146055690865": {
+      "accepted_lines": 13,
+      "agent_id": {
+        "id": "7a656849-ce57-423c-bd7c-146055690865",
+        "model": "claude-sonnet-4-6",
+        "tool": "claude"
+      },
+      "human_author": "Mike Sawka <mike@commandline.dev>",
+      "messages": [],
+      "overriden_lines": 0,
+      "total_additions": 13,
+      "total_deletions": 7
+    },
+    "human": {
+      "accepted_lines": 120,
+      "agent_id": null,
+      "human_author": "Mike Sawka <mike@commandline.dev>",
+      "messages": [],
+      "overriden_lines": 0,
+      "total_additions": 120,
+      "total_deletions": 0
+    }
+  },
+  "repo": "git@github.com:wavetermdev/waveterm.git",
+  "schema_version": "authorship/3.0.0"
+}
