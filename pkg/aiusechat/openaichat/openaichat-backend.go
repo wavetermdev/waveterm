@@ -101,6 +101,8 @@ func processChatStream(
 ) (*uctypes.WaveStopReason, *StoredChatMessage, error) {
 	decoder := eventsource.NewDecoder(body)
 	var textBuilder strings.Builder
+	var reasoningBuilder strings.Builder
+	reasoningStarted := false
 	msgID := uuid.New().String()
 	textID := uuid.New().String()
 	var finishReason string
@@ -128,7 +130,7 @@ func processChatStream(
 				break
 			}
 			if sseHandler.Err() != nil {
-				partialMsg := extractPartialTextMessage(msgID, textBuilder.String())
+				partialMsg := extractPartialTextMessage(msgID, textBuilder.String(), reasoningBuilder.String())
 				return &uctypes.WaveStopReason{
 					Kind:      uctypes.StopKindCanceled,
 					ErrorType: "client_disconnect",
@@ -166,6 +168,15 @@ func processChatStream(
 			}
 			textBuilder.WriteString(choice.Delta.Content)
 			_ = sseHandler.AiMsgTextDelta(textID, choice.Delta.Content)
+		}
+
+		if choice.Delta.ReasoningContent != "" {
+			if !reasoningStarted {
+				reasoningStarted = true
+				_ = sseHandler.AiMsgReasoningStart(msgID)
+			}
+			reasoningBuilder.WriteString(choice.Delta.ReasoningContent)
+			_ = sseHandler.AiMsgReasoningDelta(msgID, choice.Delta.ReasoningContent)
 		}
 
 		if len(choice.Delta.ToolCalls) > 0 {
@@ -239,7 +250,8 @@ func processChatStream(
 	assistantMsg := &StoredChatMessage{
 		MessageId: msgID,
 		Message: ChatRequestMessage{
-			Role: "assistant",
+			Role:             "assistant",
+			ReasoningContent: reasoningBuilder.String(),
 		},
 	}
 
@@ -252,6 +264,9 @@ func processChatStream(
 	if textStarted {
 		_ = sseHandler.AiMsgTextEnd(textID)
 	}
+	if reasoningStarted {
+		_ = sseHandler.AiMsgReasoningEnd(msgID)
+	}
 	_ = sseHandler.AiMsgFinishStep()
 	if stopKind != uctypes.StopKindToolUse {
 		_ = sseHandler.AiMsgFinish(finishReason, nil)
@@ -260,16 +275,17 @@ func processChatStream(
 	return stopReason, assistantMsg, nil
 }
 
-func extractPartialTextMessage(msgID string, text string) *StoredChatMessage {
-	if text == "" {
+func extractPartialTextMessage(msgID string, text string, reasoning string) *StoredChatMessage {
+	if text == "" && reasoning == "" {
 		return nil
 	}
 
 	return &StoredChatMessage{
 		MessageId: msgID,
 		Message: ChatRequestMessage{
-			Role:    "assistant",
-			Content: text,
+			Role:             "assistant",
+			Content:          text,
+			ReasoningContent: reasoning,
 		},
 	}
 }
