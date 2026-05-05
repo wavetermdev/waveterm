@@ -6,6 +6,7 @@ package notesmanager
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,11 +25,13 @@ type NotesManager struct {
 	currentContent     string
 	lastWrittenModTime time.Time
 	watcher            *fsnotify.Watcher
+	configuredPath     string
 	notesPath          string
 	tmpPath            string
 	initialized        bool
 	initErr            error // fatal: reads and writes both fail
 	readOnlyErr        error // non-fatal: reads work, writes fail
+	handlerRegistered  bool
 }
 
 var instance *NotesManager
@@ -43,18 +46,20 @@ func GetNotesManager() *NotesManager {
 	return instance
 }
 
-func notesFilePaths() (string, string, error) {
-	configuredPath := wconfig.GetWatcher().GetFullConfig().Settings.NotesFile
+func notesFilePaths() (string, string, string, error) {
+	configuredPath := wconfig.GetWatcher().GetFullConfig().Settings.NotesPath
 	if configuredPath == "" {
 		configuredPath = "~/notes.md"
 	}
 	notesPath, err := wavebase.ExpandHomeDir(configuredPath)
 	if err != nil {
-		return "", "", fmt.Errorf("expanding notes path: %w", err)
+		return configuredPath, "", "", fmt.Errorf("expanding notes path: %w", err)
 	}
-	// derive tmp path: ~/notes.md -> ~/notes.md.tmp
+	if !filepath.IsAbs(notesPath) {
+		return configuredPath, "", "", fmt.Errorf("notes path %q must be an absolute path (fix via config key \"notes:path\")", configuredPath)
+	}
 	tmpPath := notesPath + ".tmp"
-	return notesPath, tmpPath, nil
+	return configuredPath, notesPath, tmpPath, nil
 }
 
 func normalizeContent(s string) string {
@@ -69,14 +74,26 @@ func (nm *NotesManager) ensureInit() error {
 	}
 	nm.initialized = true
 	nm.initErr = nm.doInit()
+	if nm.initErr != nil {
+		log.Printf("notesmanager: init error (configured path: %q): %v\n", nm.configuredPath, nm.initErr)
+	} else {
+		log.Printf("notesmanager: init success, path: %s\n", nm.notesPath)
+	}
 	return nm.initErr
 }
 
 func (nm *NotesManager) doInit() error {
-	notesPath, tmpPath, err := notesFilePaths()
+	if !nm.handlerRegistered {
+		wconfig.GetWatcher().RegisterUpdateHandler(nm.onConfigUpdate)
+		nm.handlerRegistered = true
+	}
+
+	configuredPath, notesPath, tmpPath, err := notesFilePaths()
 	if err != nil {
+		nm.configuredPath = configuredPath
 		return err
 	}
+	nm.configuredPath = configuredPath
 
 	// reject if path is a directory or otherwise not a regular file
 	if info, statErr := os.Stat(notesPath); statErr == nil {
@@ -97,7 +114,6 @@ func (nm *NotesManager) doInit() error {
 
 	nm.notesPath = notesPath
 	nm.tmpPath = tmpPath
-	fmt.Printf("notesmanager: notes path: %s\n", notesPath)
 
 	// probe directory write+delete permissions using the tmp path
 	probeWriteErr := os.WriteFile(tmpPath, []byte{}, 0644)
@@ -193,6 +209,71 @@ func (nm *NotesManager) handleExternalChange() {
 			SourceOref: "external",
 			ReadOnly:   nm.readOnlyErr != nil,
 			FilePath:   nm.notesPath,
+		},
+	})
+}
+
+func (nm *NotesManager) resetInit() {
+	if nm.watcher != nil {
+		nm.watcher.Close()
+		nm.watcher = nil
+	}
+	nm.initialized = false
+	nm.initErr = nil
+	nm.readOnlyErr = nil
+	nm.configuredPath = ""
+	nm.notesPath = ""
+	nm.tmpPath = ""
+	nm.lastWrittenModTime = time.Time{}
+	nm.currentContent = ""
+}
+
+func (nm *NotesManager) onConfigUpdate(_ wconfig.FullConfigType) {
+	_, newNotesPath, _, pathErr := notesFilePaths()
+
+	nm.lock.Lock()
+	if pathErr == nil && newNotesPath == nm.notesPath && nm.initErr == nil {
+		nm.lock.Unlock()
+		return
+	}
+	nm.resetInit()
+	nm.lock.Unlock()
+
+	if pathErr != nil {
+		wps.Broker.Publish(wps.WaveEvent{
+			Event: wps.Event_NotesUpdated,
+			Data: wshrpc.NotesUpdatedData{
+				SourceOref: "pathchange",
+				Error:      pathErr.Error(),
+			},
+		})
+		return
+	}
+
+	nm.lock.Lock()
+	initErr := nm.ensureInit()
+	content := nm.currentContent
+	notesPath := nm.notesPath
+	readOnly := nm.readOnlyErr != nil
+	nm.lock.Unlock()
+
+	if initErr != nil {
+		wps.Broker.Publish(wps.WaveEvent{
+			Event: wps.Event_NotesUpdated,
+			Data: wshrpc.NotesUpdatedData{
+				SourceOref: "pathchange",
+				Error:      initErr.Error(),
+			},
+		})
+		return
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_NotesUpdated,
+		Data: wshrpc.NotesUpdatedData{
+			Content:    content,
+			SourceOref: "pathchange",
+			ReadOnly:   readOnly,
+			FilePath:   notesPath,
 		},
 	})
 }

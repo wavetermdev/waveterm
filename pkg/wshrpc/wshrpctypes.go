@@ -343,7 +343,6 @@ type CommandEventReadHistoryData struct {
 	MaxItems int    `json:"maxitems"`
 }
 
-
 type CpuDataRequest struct {
 	Id    string `json:"id"`
 	Count int    `json:"count"`
@@ -932,6 +931,7 @@ type NoteData struct {
 	Content  string `json:"content"`
 	ReadOnly bool   `json:"readonly,omitempty"`
 	FilePath string `json:"filepath,omitempty"`
+	Error    string `json:"error,omitempty"`
 }
 
 type NotesUpdatedData struct {
@@ -939,6 +939,7 @@ type NotesUpdatedData struct {
 	SourceOref string `json:"sourceoref"`
 	ReadOnly   bool   `json:"readonly,omitempty"`
 	FilePath   string `json:"filepath,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 type CommandRemoteProcessSignalData struct {

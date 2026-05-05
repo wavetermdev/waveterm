@@ -41,5 +41,5 @@
     "waveai:showcloudmodes": true,
     "waveai:defaultmode": "waveai@balanced",
     "preview:defaultsort": "name",
-    "notes:file": "~/notes.md"
+    "notes:path": "~/notes.md"
 }

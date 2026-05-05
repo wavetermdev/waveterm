@@ -178,10 +178,17 @@ export class NotesViewModel implements ViewModel {
     async loadFile() {
         try {
             const noteData = await this.env.rpc.GetNoteCommand(TabRpcClient);
-            globalStore.set(this.contentAtom, noteData?.content ?? "");
-            globalStore.set(this.filePathAtom, noteData?.filepath ?? "");
-            globalStore.set(this.readOnlyAtom, noteData?.readonly ?? false);
-            globalStore.set(this.loadErrorAtom, "");
+            if (noteData?.error) {
+                globalStore.set(this.loadErrorAtom, noteData.error);
+                globalStore.set(this.contentAtom, "");
+                globalStore.set(this.filePathAtom, "");
+                globalStore.set(this.readOnlyAtom, false);
+            } else {
+                globalStore.set(this.contentAtom, noteData?.content ?? "");
+                globalStore.set(this.filePathAtom, noteData?.filepath ?? "");
+                globalStore.set(this.readOnlyAtom, noteData?.readonly ?? false);
+                globalStore.set(this.loadErrorAtom, "");
+            }
         } catch (err) {
             globalStore.set(this.loadErrorAtom, `Cannot load notes: ${err?.message ?? String(err)}`);
         } finally {
@@ -246,6 +253,26 @@ export class NotesViewModel implements ViewModel {
         }
         this.debouncedSave.cancel({ upcomingOnly: true });
         this.pendingContent = null;
+        if (data?.error) {
+            const editor = this.editorRef.current;
+            if (editor != null) {
+                const editorModel = editor.getModel();
+                if (editorModel != null) {
+                    this.isApplyingRemoteEdit = true;
+                    try {
+                        editorModel.applyEdits([{ range: editorModel.getFullModelRange(), text: "" }]);
+                    } finally {
+                        this.isApplyingRemoteEdit = false;
+                    }
+                }
+            }
+            globalStore.set(this.contentAtom, "");
+            globalStore.set(this.filePathAtom, "");
+            globalStore.set(this.readOnlyAtom, false);
+            globalStore.set(this.loadErrorAtom, data.error);
+            globalStore.set(this.saveStatusAtom, "idle");
+            return;
+        }
         const editor = this.editorRef.current;
         const content = data?.content ?? "";
         if (editor != null) {
@@ -260,6 +287,7 @@ export class NotesViewModel implements ViewModel {
             }
         }
         globalStore.set(this.contentAtom, content);
+        globalStore.set(this.loadErrorAtom, "");
         if (data?.filepath) {
             globalStore.set(this.filePathAtom, data.filepath);
         }

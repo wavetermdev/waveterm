@@ -1236,6 +1236,7 @@ declare global {
         content: string;
         readonly?: boolean;
         filepath?: string;
+        error?: string;
     };
 
     // wshrpc.NotesUpdatedData
@@ -1244,6 +1245,7 @@ declare global {
         sourceoref: string;
         readonly?: boolean;
         filepath?: string;
+        error?: string;
     };
 
     // waveobj.ORef
@@ -1506,6 +1508,7 @@ declare global {
         "tsunami:sdkreplacepath"?: string;
         "tsunami:sdkversion"?: string;
         "tsunami:gopath"?: string;
+        "notes:path"?: string;
     };
 
     // waveobj.StickerClickOptsType
