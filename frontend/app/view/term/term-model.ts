@@ -581,7 +581,8 @@ export class TermViewModel implements ViewModel {
         const term = this.termRef.current?.terminal;
         if (term == null) return "";
         const buf = term.buffer.active;
-        for (let i = buf.length - 1; i >= 0; i--) {
+        const start = Math.max(0, buf.length - 200);
+        for (let i = buf.length - 1; i >= start; i--) {
             const line = buf.getLine(i);
             if (line == null) continue;
             const text = line.translateToString(true).trim();
@@ -672,6 +673,7 @@ export class TermViewModel implements ViewModel {
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
         this.shellProcStatusUnsubFn?.();
+        this.blockDoneUnsubFn?.();
         this.blockJobStatusUnsubFn?.();
         this.termBPMUnsubFn?.();
         this.termCursorUnsubFn?.();

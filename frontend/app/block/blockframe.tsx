@@ -73,11 +73,6 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         style.boxShadow = `0 0 8px 2px ${highlightColor}`;
     }
 
-    if (isFocused && completionHighlight != null) {
-        style.borderColor = "";
-        style.boxShadow = "";
-    }
-
     React.useEffect(() => {
         if (isFocused && completionHighlight != null) {
             BlockModel.getInstance().clearCompletionHighlight(nodeModel.blockId);

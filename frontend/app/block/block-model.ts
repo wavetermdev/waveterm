@@ -15,7 +15,7 @@ export class BlockModel {
     private completionHighlightAtomCache = new Map<string, jotai.Atom<number | null>>();
 
     blockHighlightAtom: jotai.PrimitiveAtom<BlockHighlightType> = jotai.atom(null) as jotai.PrimitiveAtom<BlockHighlightType>;
-    completionHighlightAtom: jotai.PrimitiveAtom<Map<string, number>> = jotai.atom(new Map()) as jotai.PrimitiveAtom<Map<string, number>>;
+    completionHighlightAtom: jotai.PrimitiveAtom<Map<string, number>> = jotai.atom(new Map<string, number>());
 
     private constructor() {}
 
@@ -52,7 +52,6 @@ export class BlockModel {
 
     setCompletionHighlight(blockId: string, exitCode: number) {
         const currentMap = new Map(globalStore.get(this.completionHighlightAtom));
-        currentMap.clear();
         currentMap.set(blockId, exitCode);
         globalStore.set(this.completionHighlightAtom, currentMap);
     }

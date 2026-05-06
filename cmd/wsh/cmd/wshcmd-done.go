@@ -46,13 +46,13 @@ func doneRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	err := wshclient.EventPublishCommand(RpcClient, wps.WaveEvent{
-		Event:  "block:done",
+		Event:  wps.Event_BlockDone,
 		Scopes: []string{fmt.Sprintf("block:%s", blockId)},
-		Data: map[string]any{
-			"blockid":  blockId,
-			"exitcode": doneExitCode,
-			"title":    doneTitle,
-			"message":  doneMessage,
+		Data: wshrpc.BlockDoneEventData{
+			BlockId:  blockId,
+			ExitCode: doneExitCode,
+			Title:    doneTitle,
+			Message:  doneMessage,
 		},
 	}, &wshrpc.RpcOpts{NoResponse: true})
 	if err != nil {
