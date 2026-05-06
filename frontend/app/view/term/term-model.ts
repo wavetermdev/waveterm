@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { BlockModel } from "@/app/block/block-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
+import { FocusManager } from "@/app/store/focusManager";
 import { modalsModel } from "@/app/store/modalmodel";
+import { setBadge } from "@/app/store/badge";
 import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -14,6 +17,7 @@ import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import {
     atoms,
     createBlock,
@@ -73,6 +77,7 @@ export class TermViewModel implements ViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
+    blockDoneUnsubFn: () => void;
     blockJobStatusAtom: jotai.PrimitiveAtom<BlockJobStatusData>;
     blockJobStatusVersionTs: number;
     blockJobStatusUnsubFn: () => void;
@@ -346,6 +351,13 @@ export class TermViewModel implements ViewModel {
                 this.updateShellProcStatus(event.data);
             },
         });
+        this.blockDoneUnsubFn = waveEventSubscribeSingle({
+            eventType: "block:done",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                this.handleBlockDoneEvent(event.data);
+            },
+        });
         this.shellProcStatus = jotai.atom((get) => {
             const fullStatus = get(this.shellProcFullStatus);
             return fullStatus?.shellprocstatus ?? "init";
@@ -563,6 +575,74 @@ export class TermViewModel implements ViewModel {
         if (curStatus == null || curStatus.version < fullStatus.version) {
             globalStore.set(this.shellProcFullStatus, fullStatus);
         }
+    }
+
+    getLastTerminalLine(): string {
+        const term = this.termRef.current?.terminal;
+        if (term == null) return "";
+        const buf = term.buffer.active;
+        for (let i = buf.length - 1; i >= 0; i--) {
+            const line = buf.getLine(i);
+            if (line == null) continue;
+            const text = line.translateToString(true).trim();
+            if (text.length > 0) return text;
+        }
+        return "";
+    }
+
+    handleBlockDoneEvent(data: BlockDoneEventData) {
+        if (data == null || data.blockid !== this.blockId) {
+            return;
+        }
+        const exitCode = data.exitcode ?? 0;
+        const title = data.title || (exitCode === 0 ? "Command Finished" : "Command Failed");
+        let body = data.message;
+        if (!body) {
+            body = this.getLastTerminalLine() || `exit code ${exitCode}`;
+        }
+        this.triggerCompletionNotifications(exitCode, title, body);
+    }
+
+    triggerCompletionNotifications(exitCode: number, title: string, notifyBody?: string) {
+        const focusManager = FocusManager.getInstance();
+        const focusedBlockId = globalStore.get(focusManager.blockFocusAtom);
+        if (focusedBlockId === this.blockId) {
+            return;
+        }
+
+        const doneSoundEnabled = globalStore.get(getOverrideConfigAtom(this.blockId, "term:donesound")) ?? true;
+        if (doneSoundEnabled) {
+            fireAndForget(() =>
+                RpcApi.ElectronSystemBellCommand(TabRpcClient, { route: "electron" })
+            );
+        }
+
+        const doneNotifyEnabled = globalStore.get(getOverrideConfigAtom(this.blockId, "term:donenotify")) ?? true;
+        if (doneNotifyEnabled) {
+            const body = notifyBody || `exit code ${exitCode}`;
+            getApi().showCompletionNotification(this.tabModel.tabId, this.blockId, title, body);
+        }
+
+        const doneAutoFocusEnabled = globalStore.get(getOverrideConfigAtom(this.blockId, "term:doneautofocus")) ?? false;
+        if (doneAutoFocusEnabled) {
+            getApi().setActiveTab(this.tabModel.tabId);
+            setTimeout(() => {
+                const layoutModel = getLayoutModelForStaticTab();
+                const node = layoutModel?.getNodeByBlockId(this.blockId);
+                if (node?.id) {
+                    layoutModel.focusNode(node.id);
+                }
+            }, 150);
+        }
+
+        BlockModel.getInstance().setCompletionHighlight(this.blockId, exitCode);
+
+        setBadge(this.blockId, {
+            badgeid: `done-${this.blockId}`,
+            icon: "bell",
+            color: exitCode === 0 ? "#3b82f6" : "#ef4444",
+            priority: 5,
+        });
     }
 
     getVDomModel(): VDomModel {

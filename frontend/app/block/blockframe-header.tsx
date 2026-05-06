@@ -23,7 +23,7 @@ import { uxCloseBlock } from "@/app/store/keymodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { IconButton } from "@/element/iconbutton";
-import { NodeModel } from "@/layout/index";
+import { NodeModel, getLayoutModelForStaticTab } from "@/layout/index";
 import * as util from "@/util/util";
 import { cn, makeIconClass } from "@/util/util";
 import * as jotai from "jotai";
@@ -281,7 +281,17 @@ const BlockFrame_Header = ({
                 />
             )}
             {useTermHeader && badge && (
-                <div className="pointer-events-none flex items-center px-1" style={{ color: badge.color || "#fbbf24" }}>
+                <div
+                    className="flex cursor-pointer items-center px-1"
+                    style={{ color: badge.color || "#fbbf24" }}
+                    onClick={() => {
+                        const layoutModel = getLayoutModelForStaticTab();
+                        const node = layoutModel?.getNodeByBlockId(nodeModel.blockId);
+                        if (node?.id) {
+                            layoutModel.focusNode(node.id);
+                        }
+                    }}
+                >
                     <i className={makeIconClass(badge.icon, true, { defaultIcon: "circle-small" })} />
                 </div>
             )}

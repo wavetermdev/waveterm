@@ -504,6 +504,32 @@ export function initIpcHandlers() {
         bw.destroy();
     });
 
+    electron.ipcMain.on(
+        "show-completion-notification",
+        (event, tabId: string, blockId: string, title: string, body: string) => {
+            const senderWcId = event.sender.id;
+            const { Notification: ElectronNotification } = electron;
+            if (ElectronNotification == null || !ElectronNotification.isSupported()) {
+                return;
+            }
+            const notification = new ElectronNotification({ title, body, silent: false });
+            notification.on("click", () => {
+                const ww = getWaveWindowByWebContentsId(senderWcId);
+                if (ww == null) return;
+                if (ww.isMinimized()) {
+                    ww.restore();
+                }
+                ww.focus();
+                ww.setActiveTab(tabId, false);
+                const tabView = ww.allLoadedTabViews.get(tabId);
+                if (tabView) {
+                    tabView.webContents.send("focus-block", blockId);
+                }
+            });
+            notification.show();
+        }
+    );
+
     electron.ipcMain.on("do-refresh", (event) => {
         event.sender.reloadIgnoringCache();
     });

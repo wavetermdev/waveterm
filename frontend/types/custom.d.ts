@@ -136,6 +136,8 @@ declare global {
         getPathForFile: (file: File) => string; // webUtils.getPathForFile
         saveTextFile: (fileName: string, content: string) => Promise<boolean>; // save-text-file
         setIsActive: () => Promise<void>; // set-is-active
+        showCompletionNotification: (tabId: string, blockId: string, title: string, body: string) => void; // show-completion-notification
+        onFocusBlock: (callback: (blockId: string) => void) => void; // focus-block
     };
 
     type ElectronContextMenuItem = {

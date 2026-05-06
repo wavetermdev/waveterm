@@ -59,6 +59,8 @@ const previewElectronApi: ElectronApi = {
     doRefresh: () => {},
     saveTextFile: (_fileName: string, _content: string) => Promise.resolve(false),
     setIsActive: async () => {},
+    showCompletionNotification: (_tabId: string, _blockId: string, _title: string, _body: string) => {},
+    onFocusBlock: (_callback: (blockId: string) => void) => {},
 };
 
 function installPreviewElectronApi() {

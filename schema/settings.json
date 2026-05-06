@@ -158,6 +158,15 @@
         "term:bellindicator": {
           "type": "boolean"
         },
+        "term:donenotify": {
+          "type": "boolean"
+        },
+        "term:donesound": {
+          "type": "boolean"
+        },
+        "term:doneautofocus": {
+          "type": "boolean"
+        },
         "term:osc52": {
           "type": "string",
           "enum": [

@@ -69,6 +69,13 @@ async function initBare() {
     getApi().onZoomFactorChange((zoomFactor) => {
         updateZoomFactor(zoomFactor);
     });
+    getApi().onFocusBlock((blockId) => {
+        const layoutModel = getLayoutModelForStaticTab();
+        const node = layoutModel?.getNodeByBlockId(blockId);
+        if (node?.id) {
+            layoutModel.focusNode(node.id);
+        }
+    });
     document.fonts.ready.then(() => {
         console.log("Init Bare Done");
         getApi().setWindowInitStatus("ready");
