@@ -59,8 +59,12 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Build
-              run: task package
+            - name: Build backend
+              run: task build:backend
+            - name: Build tsunami scaffold
+              run: task build:tsunamiscaffold
+            - name: Build frontend and package
+              run: npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never
               env:
                   USE_SYSTEM_FPM: true
               shell: bash
