@@ -50,5 +50,16 @@
                 "view": "processviewer"
             }
         }
+    },
+    "defwidget@gitchanges": {
+        "display:order": 0,
+        "icon": "code-branch",
+        "label": "changes",
+        "description": "Git changed files - click to open, double-click for diff",
+        "blockdef": {
+            "meta": {
+                "view": "gitstatus"
+            }
+        }
     }
 }

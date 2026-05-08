@@ -736,6 +736,12 @@ func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.Remot
 	return resp, err
 }
 
+// command "remotegitstatus", wshserver.RemoteGitStatusCommand
+func RemoteGitStatusCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteGitStatusData, opts *wshrpc.RpcOpts) (*wshrpc.GitStatusResponse, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.GitStatusResponse](w, "remotegitstatus", data, opts)
+	return resp, err
+}
+
 // command "remoteinstallrcfiles", wshserver.RemoteInstallRcFilesCommand
 func RemoteInstallRcFilesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remoteinstallrcfiles", nil, opts)

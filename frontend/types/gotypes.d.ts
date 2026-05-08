@@ -546,6 +546,11 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandRemoteGitStatusData
+    type CommandRemoteGitStatusData = {
+        cwd: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -1022,6 +1027,19 @@ declare global {
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
+    };
+
+    // wshrpc.GitStatusFile
+    type GitStatusFile = {
+        status: string;
+        file: string;
+    };
+
+    // wshrpc.GitStatusResponse
+    type GitStatusResponse = {
+        branch: string;
+        files: GitStatusFile[];
+        error?: string;
     };
 
     // waveobj.Job
@@ -1589,6 +1607,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

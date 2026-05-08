@@ -129,6 +129,7 @@ type WshRpcInterface interface {
 	BadgeWatchPidCommand(ctx context.Context, data CommandBadgeWatchPidData) error
 	RemoteProcessListCommand(ctx context.Context, data CommandRemoteProcessListData) (*ProcessListResponse, error)
 	RemoteProcessSignalCommand(ctx context.Context, data CommandRemoteProcessSignalData) error
+	RemoteGitStatusCommand(ctx context.Context, data CommandRemoteGitStatusData) (*GitStatusResponse, error)
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -924,4 +925,19 @@ type CommandRemoteProcessListData struct {
 type CommandRemoteProcessSignalData struct {
 	Pid    int32  `json:"pid"`
 	Signal string `json:"signal"`
+}
+
+type CommandRemoteGitStatusData struct {
+	Cwd string `json:"cwd"`
+}
+
+type GitStatusFile struct {
+	Status string `json:"status"`
+	File   string `json:"file"`
+}
+
+type GitStatusResponse struct {
+	Branch string          `json:"branch"`
+	Files  []GitStatusFile `json:"files"`
+	Error  string          `json:"error,omitempty"`
 }

@@ -66,7 +66,9 @@ async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
         if (cwd) {
             if (blockDef?.meta?.view === "preview" && blockDef?.meta?.file) {
                 blockDef = { ...blockDef, meta: { ...blockDef.meta, file: cwd } };
-            } else if (blockDef?.meta?.view === "term" && blockDef?.meta?.controller === "shell") {
+            } else if (blockDef?.meta?.view === "term") {
+                blockDef = { ...blockDef, meta: { ...blockDef.meta, "cmd:cwd": cwd } };
+            } else if (blockDef?.meta?.view === "gitstatus") {
                 blockDef = { ...blockDef, meta: { ...blockDef.meta, "cmd:cwd": cwd } };
             }
         }
