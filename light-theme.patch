@@ -1,0 +1,237 @@
+From 52d8c0f feat: 分析项目
+Subject: [PATCH] feat: 添加亮色主题支持
+Date: Thu, 8 May 2025 13:00:00 +0000
+
+ frontend/app/app.tsx                      |  2 +
+ frontend/app/theme.scss                   | 94 +++++++++++++++++++++++++++++++
+ frontend/types/gotypes.d.ts               |  1 +
+ pkg/wconfig/defaultconfig/settings.json   |  1 +
+ pkg/wconfig/defaultconfig/termthemes.json | 51 +++++++++++++++++
+ schema/settings.json                      |  7 +++
+ 6 files changed, 156 insertions(+)
+
+diff --git a/frontend/app/app.tsx b/frontend/app/app.tsx
+index e9c70a3..903109f 100644
+--- a/frontend/app/app.tsx
++++ b/frontend/app/app.tsx
+@@ -145,6 +145,7 @@ function AppSettingsUpdater() {
+             (windowSettings?.["window:transparent"] || windowSettings?.["window:blur"]) ?? false;
+         const opacity = util.boundNumber(windowSettings?.["window:opacity"] ?? 0.8, 0, 1);
+         const baseBgColor = windowSettings?.["window:bgcolor"];
++        const theme = windowSettings?.["window:theme"] ?? "dark";
+         const mainDiv = document.getElementById("main");
+         // console.log("window settings", windowSettings, isTransparentOrBlur, opacity, baseBgColor, mainDiv);
+         if (isTransparentOrBlur) {
+@@ -163,6 +164,7 @@ function AppSettingsUpdater() {
+         } else {
+             document.body.style.removeProperty("--main-bg-color");
+         }
++        document.documentElement.setAttribute("data-theme", theme);
+     }, [windowSettings]);
+     return null;
+ }
+diff --git a/frontend/app/theme.scss b/frontend/app/theme.scss
+index 287a004..a061ce3 100644
+--- a/frontend/app/theme.scss
++++ b/frontend/app/theme.scss
+@@ -158,3 +158,97 @@
+     --button-yellow-bg: #c4a000;
+     --button-yellow-hover-bg: #fce94f;
+ }
++
++:root[data-theme="light"] {
++    --main-text-color: #1a1a1a;
++    --secondary-text-color: #5a5a5a;
++    --grey-text-color: #888;
++    --main-bg-color: rgb(248, 248, 248);
++    --border-color: rgba(0, 0, 0, 0.12);
++    --accent-color: #2d8f2d;
++    --panel-bg-color: rgba(255, 255, 255, 0.85);
++    --highlight-bg-color: rgba(0, 0, 0, 0.08);
++    --error-color: #d32f2f;
++    --warning-color: #f57c00;
++    --success-color: #388e3c;
++    --hover-bg-color: rgba(0, 0, 0, 0.06);
++    --block-bg-color: rgba(255, 255, 255, 0.85);
++    --block-bg-solid-color: rgb(255, 255, 255);
++
++    --keybinding-color: #333;
++    --keybinding-bg-color: #e8e8e8;
++    --keybinding-border-color: #ccc;
++
++    --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
++    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.35);
++    --scrollbar-thumb-active-color: rgba(0, 0, 0, 0.45);
++
++    --tab-green: #2d8f2d;
++
++    --modal-bg-color: #ffffff;
++    --modal-header-bottom-border-color: rgba(0, 0, 0, 0.1);
++    --modal-border-color: rgba(0, 0, 0, 0.12);
++    --modal-shadow-color: rgba(0, 0, 0, 0.15);
++    --toggle-bg-color: rgba(0, 0, 0, 0.15);
++    --toggle-thumb-color: #fff;
++
++    --link-color: #2d8f2d;
++
++    --form-element-border-color: rgba(0, 0, 0, 0.15);
++    --form-element-bg-color: #ffffff;
++    --form-element-text-color: #1a1a1a;
++    --form-element-primary-text-color: #ffffff;
++    --form-element-secondary-color: rgba(0, 0, 0, 0.08);
++
++    --conn-icon-color: #1976d2;
++    --conn-icon-color-1: #1976d2;
++    --conn-icon-color-2: #7b1fa2;
++    --conn-icon-color-3: #c2185b;
++    --conn-icon-color-4: #d32f2f;
++    --conn-icon-color-5: #1976d2;
++    --conn-icon-color-6: #e65100;
++    --conn-icon-color-7: #558b2f;
++    --conn-icon-color-8: #2d8f2d;
++    --conn-status-overlay-bg-color: rgba(255, 193, 7, 0.2);
++
++    --sysinfo-cpu-color: #2d8f2d;
++    --sysinfo-mem-color: #1976d2;
++
++    --bulb-color: #f9a825;
++
++    --term-black: #000000;
++    --term-red: #cc0000;
++    --term-green: #4e9a06;
++    --term-yellow: #c4a000;
++    --term-blue: #3465a4;
++    --term-magenta: #bc3fbc;
++    --term-cyan: #06989a;
++    --term-white: #d0d0d0;
++    --term-bright-black: #555753;
++    --term-bright-red: #ef2929;
++    --term-bright-green: #58c142;
++    --term-bright-yellow: #fce94f;
++    --term-bright-blue: #32afff;
++    --term-bright-magenta: #ad7fa8;
++    --term-bright-cyan: #34e2e2;
++    --term-bright-white: #e7e7e7;
++
++    --term-foreground: #333333;
++    --term-background: #ffffff;
++    --term-selection-background: #00000020;
++    --term-cursor-accent: #ffffff;
++
++    --button-text-color: #ffffff;
++    --button-green-bg: #2d8f2d;
++    --button-green-border-color: #3cb043;
++    --button-grey-bg: rgba(0, 0, 0, 0.06);
++    --button-grey-hover-bg: rgba(0, 0, 0, 0.1);
++    --button-grey-border-color: rgba(0, 0, 0, 0.12);
++    --button-grey-outlined-color: #666;
++    --button-red-bg: #d32f2f;
++    --button-red-hover-bg: #e53935;
++    --button-red-border-color: #ef5350;
++    --button-red-outlined-color: #d32f2f;
++    --button-yellow-bg: #f9a825;
++    --button-yellow-hover-bg: #ffc107;
++}
+diff --git a/frontend/types/gotypes.d.ts b/frontend/types/gotypes.d.ts
+index c5b870d..db6c8eb 100644
+--- a/frontend/types/gotypes.d.ts
++++ b/frontend/types/gotypes.d.ts
+@@ -1451,6 +1451,7 @@ declare global {
+         "widget:showhelp"?: boolean;
+         "window:*"?: boolean;
+         "window:fullscreenonlaunch"?: boolean;
++        "window:theme"?: string;
+         "window:transparent"?: boolean;
+         "window:blur"?: boolean;
+         "window:opacity"?: number;
+diff --git a/pkg/wconfig/defaultconfig/settings.json b/pkg/wconfig/defaultconfig/settings.json
+index d8847ca..353ce79 100644
+--- a/pkg/wconfig/defaultconfig/settings.json
++++ b/pkg/wconfig/defaultconfig/settings.json
+@@ -22,6 +22,7 @@
+     "window:tilegapsize": 3,
+     "window:maxtabcachesize": 10,
+     "window:nativetitlebar": true,
++    "window:theme": "dark",
+     "window:magnifiedblockopacity": 0.6,
+     "window:magnifiedblocksize": 0.95,
+     "window:magnifiedblockblurprimarypx": 10,
+diff --git a/pkg/wconfig/defaultconfig/termthemes.json b/pkg/wconfig/defaultconfig/termthemes.json
+index d0a667f..24e6822 100644
+--- a/pkg/wconfig/defaultconfig/termthemes.json
++++ b/pkg/wconfig/defaultconfig/termthemes.json
+@@ -174,5 +174,56 @@
+         "foreground": "#e0def4",
+         "background": "#191724",
+         "cursor": "#524f67"
++    },
++    "github-light": {
++        "display:name": "GitHub Light",
++        "display:order": 8,
++        "black": "#24292e",
++        "red": "#d73a49",
++        "green": "#22863a",
++        "yellow": "#b08800",
++        "blue": "#005cc5",
++        "magenta": "#6f42c1",
++        "cyan": "#0598bc",
++        "white": "#e1e4e8",
++        "brightBlack": "#586069",
++        "brightRed": "#cb2431",
++        "brightGreen": "#28a745",
++        "brightYellow": "#dbab09",
++        "brightBlue": "#0366d6",
++        "brightMagenta": "#8a5cf6",
++        "brightCyan": "#06b4c9",
++        "brightWhite": "#ffffff",
++        "gray": "#586069",
++        "cmdtext": "#24292e",
++        "foreground": "#24292e",
++        "background": "#ffffff",
++        "cursor": "#24292e",
++        "selectionBackground": "#0366d640"
++    },
++    "solarized-light": {
++        "display:name": "Solarized Light",
++        "display:order": 9,
++        "black": "#657b83",
++        "red": "#dc322f",
++        "green": "#859900",
++        "yellow": "#b58900",
++        "blue": "#268bd2",
++        "magenta": "#d33682",
++        "cyan": "#2aa198",
++        "white": "#fdf6e3",
++        "brightBlack": "#839496",
++        "brightRed": "#cb4b16",
++        "brightGreen": "#586e75",
++        "brightYellow": "#657b83",
++        "brightBlue": "#839496",
++        "brightMagenta": "#6c71c4",
++        "brightCyan": "#93a1a1",
++        "brightWhite": "#fdf6e3",
++        "gray": "#657b83",
++        "cmdtext": "#002b36",
++        "foreground": "#657b83",
++        "background": "#fdf6e3",
++        "cursor": "#657b83"
++    }
+ }
+diff --git a/schema/settings.json b/schema/settings.json
+index f341a0f..248d3bd 100644
+--- a/schema/settings.json
++++ b/schema/settings.json
+@@ -253,6 +253,13 @@
+         "window:fullscreenonlaunch": {
+           "type": "boolean"
+         },
++        "window:theme": {
++          "type": "string",
++          "enum": [
++            "dark",
++            "light"
++          ]
++        },
+         "window:transparent": {
+           "type": "boolean"
+         },
