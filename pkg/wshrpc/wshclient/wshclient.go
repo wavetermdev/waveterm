@@ -736,6 +736,12 @@ func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.Remot
 	return resp, err
 }
 
+// command "remotegitlinediff", wshserver.RemoteGitLineDiffCommand
+func RemoteGitLineDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteGitLineDiffData, opts *wshrpc.RpcOpts) (*wshrpc.GitLineDiffResponse, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.GitLineDiffResponse](w, "remotegitlinediff", data, opts)
+	return resp, err
+}
+
 // command "remotegitstatus", wshserver.RemoteGitStatusCommand
 func RemoteGitStatusCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteGitStatusData, opts *wshrpc.RpcOpts) (*wshrpc.GitStatusResponse, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.GitStatusResponse](w, "remotegitstatus", data, opts)

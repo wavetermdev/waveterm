@@ -546,6 +546,12 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandRemoteGitLineDiffData
+    type CommandRemoteGitLineDiffData = {
+        cwd: string;
+        file: string;
+    };
+
     // wshrpc.CommandRemoteGitStatusData
     type CommandRemoteGitStatusData = {
         cwd: string;
@@ -1027,6 +1033,19 @@ declare global {
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
+    };
+
+    // wshrpc.GitLineDiffHunk
+    type GitLineDiffHunk = {
+        type: string;
+        startline: number;
+        endline: number;
+    };
+
+    // wshrpc.GitLineDiffResponse
+    type GitLineDiffResponse = {
+        hunks: GitLineDiffHunk[];
+        error?: string;
     };
 
     // wshrpc.GitStatusFile

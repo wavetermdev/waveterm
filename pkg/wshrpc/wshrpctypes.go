@@ -130,6 +130,7 @@ type WshRpcInterface interface {
 	RemoteProcessListCommand(ctx context.Context, data CommandRemoteProcessListData) (*ProcessListResponse, error)
 	RemoteProcessSignalCommand(ctx context.Context, data CommandRemoteProcessSignalData) error
 	RemoteGitStatusCommand(ctx context.Context, data CommandRemoteGitStatusData) (*GitStatusResponse, error)
+	RemoteGitLineDiffCommand(ctx context.Context, data CommandRemoteGitLineDiffData) (*GitLineDiffResponse, error)
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -940,4 +941,20 @@ type GitStatusResponse struct {
 	Branch string          `json:"branch"`
 	Files  []GitStatusFile `json:"files"`
 	Error  string          `json:"error,omitempty"`
+}
+
+type CommandRemoteGitLineDiffData struct {
+	Cwd  string `json:"cwd"`
+	File string `json:"file"`
+}
+
+type GitLineDiffHunk struct {
+	Type      string `json:"type"`
+	StartLine int    `json:"startline"`
+	EndLine   int    `json:"endline"`
+}
+
+type GitLineDiffResponse struct {
+	Hunks []GitLineDiffHunk `json:"hunks"`
+	Error string            `json:"error,omitempty"`
 }

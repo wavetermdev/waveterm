@@ -8,6 +8,9 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -71,4 +74,79 @@ func getGitStatusFiles(ctx context.Context, cwd string) ([]wshrpc.GitStatusFile,
 		})
 	}
 	return files, nil
+}
+
+var hunkHeaderRegex = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
+
+func (impl *ServerImpl) RemoteGitLineDiffCommand(ctx context.Context, data wshrpc.CommandRemoteGitLineDiffData) (*wshrpc.GitLineDiffResponse, error) {
+	if data.Cwd == "" || data.File == "" {
+		return nil, fmt.Errorf("cwd and file are required")
+	}
+
+	relPath := data.File
+	if filepath.IsAbs(relPath) {
+		rel, err := filepath.Rel(data.Cwd, relPath)
+		if err == nil {
+			relPath = rel
+		}
+	}
+
+	cmd := exec.CommandContext(ctx, "git", "diff", "HEAD", "--unified=0", "--", relPath)
+	cmd.Dir = data.Cwd
+	out, err := cmd.Output()
+	if err != nil {
+		exitErr, ok := err.(*exec.ExitError)
+		if ok && exitErr.ExitCode() == 1 {
+			// diff returns 1 when there are differences - that's fine, use stdout
+		} else {
+			return &wshrpc.GitLineDiffResponse{Error: fmt.Sprintf("git diff failed: %v", err)}, nil
+		}
+	}
+
+	hunks := parseUnifiedDiffHunks(string(out))
+	return &wshrpc.GitLineDiffResponse{Hunks: hunks}, nil
+}
+
+func parseUnifiedDiffHunks(diffOutput string) []wshrpc.GitLineDiffHunk {
+	var hunks []wshrpc.GitLineDiffHunk
+	scanner := bufio.NewScanner(strings.NewReader(diffOutput))
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		matches := hunkHeaderRegex.FindStringSubmatch(line)
+		if matches == nil {
+			continue
+		}
+
+		oldCount := 1
+		if matches[2] != "" {
+			oldCount, _ = strconv.Atoi(matches[2])
+		}
+		newStart, _ := strconv.Atoi(matches[3])
+		newCount := 1
+		if matches[4] != "" {
+			newCount, _ = strconv.Atoi(matches[4])
+		}
+
+		if oldCount == 0 && newCount > 0 {
+			hunks = append(hunks, wshrpc.GitLineDiffHunk{
+				Type:      "added",
+				StartLine: newStart,
+				EndLine:   newStart + newCount - 1,
+			})
+		} else if newCount == 0 && oldCount > 0 {
+			hunks = append(hunks, wshrpc.GitLineDiffHunk{
+				Type:      "deleted",
+				StartLine: newStart,
+				EndLine:   newStart,
+			})
+		} else {
+			hunks = append(hunks, wshrpc.GitLineDiffHunk{
+				Type:      "modified",
+				StartLine: newStart,
+				EndLine:   newStart + newCount - 1,
+			})
+		}
+	}
+	return hunks
 }
