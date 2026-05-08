@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { getFocusedBlockId, globalStore, WOS } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
@@ -56,7 +57,20 @@ type WidgetPropsType = {
 };
 
 async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
-    const blockDef = widget.blockdef;
+    let blockDef = widget.blockdef;
+    const focusedBlockId = getFocusedBlockId();
+    if (focusedBlockId) {
+        const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedBlockId));
+        const blockData = globalStore.get(blockAtom);
+        const cwd = blockData?.meta?.["cmd:cwd"];
+        if (cwd) {
+            if (blockDef?.meta?.view === "preview" && blockDef?.meta?.file) {
+                blockDef = { ...blockDef, meta: { ...blockDef.meta, file: cwd } };
+            } else if (blockDef?.meta?.view === "term" && blockDef?.meta?.controller === "shell") {
+                blockDef = { ...blockDef, meta: { ...blockDef.meta, "cmd:cwd": cwd } };
+            }
+        }
+    }
     env.createBlock(blockDef, widget.magnified);
 }
 
