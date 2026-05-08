@@ -253,6 +253,13 @@
         "window:fullscreenonlaunch": {
           "type": "boolean"
         },
+        "window:theme": {
+          "type": "string",
+          "enum": [
+            "dark",
+            "light"
+          ]
+        },
         "window:transparent": {
           "type": "boolean"
         },

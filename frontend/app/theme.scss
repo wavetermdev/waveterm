@@ -158,3 +158,97 @@
     --button-yellow-bg: #c4a000;
     --button-yellow-hover-bg: #fce94f;
 }
+
+:root[data-theme="light"] {
+    --main-text-color: #1a1a1a;
+    --secondary-text-color: #5a5a5a;
+    --grey-text-color: #888;
+    --main-bg-color: rgb(248, 248, 248);
+    --border-color: rgba(0, 0, 0, 0.12);
+    --accent-color: #2d8f2d;
+    --panel-bg-color: rgba(255, 255, 255, 0.85);
+    --highlight-bg-color: rgba(0, 0, 0, 0.08);
+    --error-color: #d32f2f;
+    --warning-color: #f57c00;
+    --success-color: #388e3c;
+    --hover-bg-color: rgba(0, 0, 0, 0.06);
+    --block-bg-color: rgba(255, 255, 255, 0.85);
+    --block-bg-solid-color: rgb(255, 255, 255);
+
+    --keybinding-color: #333;
+    --keybinding-bg-color: #e8e8e8;
+    --keybinding-border-color: #ccc;
+
+    --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
+    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.35);
+    --scrollbar-thumb-active-color: rgba(0, 0, 0, 0.45);
+
+    --tab-green: #2d8f2d;
+
+    --modal-bg-color: #ffffff;
+    --modal-header-bottom-border-color: rgba(0, 0, 0, 0.1);
+    --modal-border-color: rgba(0, 0, 0, 0.12);
+    --modal-shadow-color: rgba(0, 0, 0, 0.15);
+    --toggle-bg-color: rgba(0, 0, 0, 0.15);
+    --toggle-thumb-color: #fff;
+
+    --link-color: #2d8f2d;
+
+    --form-element-border-color: rgba(0, 0, 0, 0.15);
+    --form-element-bg-color: #ffffff;
+    --form-element-text-color: #1a1a1a;
+    --form-element-primary-text-color: #ffffff;
+    --form-element-secondary-color: rgba(0, 0, 0, 0.08);
+
+    --conn-icon-color: #1976d2;
+    --conn-icon-color-1: #1976d2;
+    --conn-icon-color-2: #7b1fa2;
+    --conn-icon-color-3: #c2185b;
+    --conn-icon-color-4: #d32f2f;
+    --conn-icon-color-5: #1976d2;
+    --conn-icon-color-6: #e65100;
+    --conn-icon-color-7: #558b2f;
+    --conn-icon-color-8: #2d8f2d;
+    --conn-status-overlay-bg-color: rgba(255, 193, 7, 0.2);
+
+    --sysinfo-cpu-color: #2d8f2d;
+    --sysinfo-mem-color: #1976d2;
+
+    --bulb-color: #f9a825;
+
+    --term-black: #000000;
+    --term-red: #cc0000;
+    --term-green: #4e9a06;
+    --term-yellow: #c4a000;
+    --term-blue: #3465a4;
+    --term-magenta: #bc3fbc;
+    --term-cyan: #06989a;
+    --term-white: #d0d0d0;
+    --term-bright-black: #555753;
+    --term-bright-red: #ef2929;
+    --term-bright-green: #58c142;
+    --term-bright-yellow: #fce94f;
+    --term-bright-blue: #32afff;
+    --term-bright-magenta: #ad7fa8;
+    --term-bright-cyan: #34e2e2;
+    --term-bright-white: #e7e7e7;
+
+    --term-foreground: #333333;
+    --term-background: #ffffff;
+    --term-selection-background: #00000020;
+    --term-cursor-accent: #ffffff;
+
+    --button-text-color: #ffffff;
+    --button-green-bg: #2d8f2d;
+    --button-green-border-color: #3cb043;
+    --button-grey-bg: rgba(0, 0, 0, 0.06);
+    --button-grey-hover-bg: rgba(0, 0, 0, 0.1);
+    --button-grey-border-color: rgba(0, 0, 0, 0.12);
+    --button-grey-outlined-color: #666;
+    --button-red-bg: #d32f2f;
+    --button-red-hover-bg: #e53935;
+    --button-red-border-color: #ef5350;
+    --button-red-outlined-color: #d32f2f;
+    --button-yellow-bg: #f9a825;
+    --button-yellow-hover-bg: #ffc107;
+}
