@@ -45,14 +45,14 @@ describe("ContextMenuModel", () => {
 
         vi.resetModules();
         vi.doMock("./global", () => ({
-            atoms: { workspace: "workspace", builderId: "builderId" },
+            atoms: { workspaceId: "workspace" },
             getApi,
             globalStore: {
                 get: vi.fn((atom) => {
                     if (atom === "workspace") {
                         return workspace;
                     }
-                    return "builder-1";
+                    return null;
                 }),
             },
         }));
@@ -98,14 +98,14 @@ describe("ContextMenuModel", () => {
 
         vi.resetModules();
         vi.doMock("./global", () => ({
-            atoms: { workspace: "workspace", builderId: "builderId" },
+            atoms: { workspaceId: "workspace" },
             getApi,
             globalStore: {
                 get: vi.fn((atom) => {
                     if (atom === "workspace") {
                         return workspace;
                     }
-                    return "builder-1";
+                    return null;
                 }),
             },
         }));

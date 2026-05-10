@@ -80,10 +80,10 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
             hasJsonView: true,
         },
         {
-            name: "Wave AI Modes",
-            path: "waveai.json",
+            name: "AI Providers",
+            path: "waveaimodels.json",
             language: "json",
-            description: "Local models and BYOK",
+            description: "BYOK providers and models",
             docsUrl: "https://docs.waveterm.dev/waveai-modes",
             validator: validateWaveAiJson,
             hasJsonView: true,

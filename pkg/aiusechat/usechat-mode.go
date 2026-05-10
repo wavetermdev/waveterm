@@ -8,6 +8,8 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -36,25 +38,109 @@ const (
 	GroqAPITokenSecretName        = "GROQ_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
+
+	// builtInModePrefix identifies built-in Wave AI modes (e.g. waveai@ask).
+	// Only entries with this prefix are exposed as selectable modes; any other
+	// entry in waveai.json is ignored by the mode resolver.
+	builtInModePrefix = "waveai@"
 )
 
-func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
-	mode := requestedMode
-
-	config, err := getAIModeConfig(mode)
+func resolveAIMode(requestedMode string) (string, *wconfig.AIModeConfigType, error) {
+	config, err := getAIModeConfig(requestedMode)
 	if err != nil {
 		return "", nil, err
 	}
+	return requestedMode, config, nil
+}
 
-	if config.WaveAICloud && !premium {
-		mode = uctypes.AIModeQuick
-		config, err = getAIModeConfig(mode)
-		if err != nil {
-			return "", nil, err
+func resolveAIModel(requestedModel string) (string, *wconfig.AIModelConfigType, error) {
+	if requestedModel != "" {
+		if config, err := getAIModelConfig(requestedModel); err == nil {
+			return requestedModel, config, nil
 		}
 	}
+	// Fall back to the first model in display:order.
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	resolved := ComputeResolvedAIModelConfigs(fullConfig)
+	fallbackName, fallbackCfg := pickFallbackModel(resolved)
+	if fallbackName == "" {
+		return "", nil, fmt.Errorf("no AI models configured (add one to ~/.config/waveterm/waveai.json or waveaimodels.json)")
+	}
+	return fallbackName, &fallbackCfg, nil
+}
 
-	return mode, config, nil
+// pickFallbackModel returns the first model sorted by display:order then key.
+func pickFallbackModel(resolved map[string]wconfig.AIModelConfigType) (string, wconfig.AIModelConfigType) {
+	type entry struct {
+		name string
+		cfg  wconfig.AIModelConfigType
+	}
+	entries := make([]entry, 0, len(resolved))
+	for name, cfg := range resolved {
+		entries = append(entries, entry{name, cfg})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].cfg.DisplayOrder != entries[j].cfg.DisplayOrder {
+			return entries[i].cfg.DisplayOrder < entries[j].cfg.DisplayOrder
+		}
+		return entries[i].name < entries[j].name
+	})
+	if len(entries) == 0 {
+		return "", wconfig.AIModelConfigType{}
+	}
+	return entries[0].name, entries[0].cfg
+}
+
+// modelToModeConfig copies provider-specific fields from a model config into a
+// throwaway mode config so that we can reuse applyProviderDefaults without
+// duplicating the per-provider defaulting logic.
+func modelToModeConfig(m *wconfig.AIModelConfigType) wconfig.AIModeConfigType {
+	return wconfig.AIModeConfigType{
+		Provider:           m.Provider,
+		APIType:            m.APIType,
+		Model:              m.Model,
+		ThinkingLevel:      m.ThinkingLevel,
+		Verbosity:          m.Verbosity,
+		Endpoint:           m.Endpoint,
+		ProxyURL:           m.ProxyURL,
+		AzureAPIVersion:    m.AzureAPIVersion,
+		APIToken:           m.APIToken,
+		APITokenSecretName: m.APITokenSecretName,
+		AzureResourceName:  m.AzureResourceName,
+		AzureDeployment:    m.AzureDeployment,
+		Capabilities:       m.Capabilities,
+		WaveAICloud:        m.WaveAICloud,
+	}
+}
+
+// applyModelProviderDefaults reuses the mode-side provider defaulting logic
+// for an AIModelConfigType, then copies any newly-populated fields back.
+func applyModelProviderDefaults(model *wconfig.AIModelConfigType) {
+	tmp := modelToModeConfig(model)
+	applyProviderDefaults(&tmp)
+	model.Provider = tmp.Provider
+	model.APIType = tmp.APIType
+	model.Endpoint = tmp.Endpoint
+	model.ProxyURL = tmp.ProxyURL
+	model.AzureAPIVersion = tmp.AzureAPIVersion
+	model.APIToken = tmp.APIToken
+	model.APITokenSecretName = tmp.APITokenSecretName
+	model.AzureResourceName = tmp.AzureResourceName
+	model.AzureDeployment = tmp.AzureDeployment
+	model.Capabilities = tmp.Capabilities
+	model.WaveAICloud = tmp.WaveAICloud
+}
+
+func getAIModelConfig(aiModel string) (*wconfig.AIModelConfigType, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	// Resolved set includes legacy custom waveai.json entries, so user BYOK
+	// configurations resolve here too.
+	resolved := ComputeResolvedAIModelConfigs(fullConfig)
+	config, ok := resolved[aiModel]
+	if !ok {
+		return nil, fmt.Errorf("invalid AI model: %s", aiModel)
+	}
+	return &config, nil
 }
 
 func applyProviderDefaults(config *wconfig.AIModeConfigType) {
@@ -247,44 +333,7 @@ func isValidAzureResourceName(name string) bool {
 	return AzureResourceNameRegex.MatchString(name)
 }
 
-var builderModeConfigs = map[string]wconfig.AIModeConfigType{
-	uctypes.AIModeBuilderDefault: {
-		DisplayName:        "Builder Default",
-		DisplayOrder:       -2,
-		DisplayIcon:        "sparkles",
-		DisplayDescription: "Good mix of speed and accuracy\n(gpt-5.4 with minimal thinking)",
-		Provider:           uctypes.AIProvider_Wave,
-		APIType:            uctypes.APIType_OpenAIResponses,
-		Model:              "gpt-5.4",
-		ThinkingLevel:      uctypes.ThinkingLevelLow,
-		Verbosity:          uctypes.VerbosityLevelLow,
-		Capabilities:       []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
-		WaveAIPremium:      true,
-		SwitchCompat:       []string{"wavecloud"},
-	},
-	uctypes.AIModeBuilderDeep: {
-		DisplayName:        "Builder Deep",
-		DisplayOrder:       -1,
-		DisplayIcon:        "lightbulb",
-		DisplayDescription: "Slower but most capable\n(gpt-5.4 with full reasoning)",
-		Provider:           uctypes.AIProvider_Wave,
-		APIType:            uctypes.APIType_OpenAIResponses,
-		Model:              "gpt-5.4",
-		ThinkingLevel:      uctypes.ThinkingLevelMedium,
-		Verbosity:          uctypes.VerbosityLevelLow,
-		Capabilities:       []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
-		WaveAIPremium:      true,
-		SwitchCompat:       []string{"wavecloud"},
-	},
-}
-
 func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {
-	if config, ok := builderModeConfigs[aiMode]; ok {
-		resolved := config
-		applyProviderDefaults(&resolved)
-		return &resolved, nil
-	}
-
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	config, ok := fullConfig.WaveAIModes[aiMode]
 	if !ok {
@@ -302,19 +351,34 @@ func InitAIModeConfigWatcher() {
 }
 
 func handleConfigUpdate(fullConfig wconfig.FullConfigType) {
-	resolvedConfigs := ComputeResolvedAIModeConfigs(fullConfig)
-	broadcastAIModeConfigs(resolvedConfigs)
+	resolvedModes := ComputeResolvedAIModeConfigs(fullConfig)
+	broadcastAIModeConfigs(resolvedModes)
+	resolvedModels := ComputeResolvedAIModelConfigs(fullConfig)
+	broadcastAIModelConfigs(resolvedModels)
 }
 
 func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModeConfigType {
 	resolvedConfigs := make(map[string]wconfig.AIModeConfigType)
 
 	for modeName, modeConfig := range fullConfig.WaveAIModes {
+		if !strings.HasPrefix(modeName, builtInModePrefix) {
+			continue
+		}
 		resolved := modeConfig
 		applyProviderDefaults(&resolved)
 		resolvedConfigs[modeName] = resolved
 	}
 
+	return resolvedConfigs
+}
+
+func ComputeResolvedAIModelConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModelConfigType {
+	resolvedConfigs := make(map[string]wconfig.AIModelConfigType)
+	for modelName, modelConfig := range fullConfig.WaveAIModels {
+		resolved := modelConfig
+		applyModelProviderDefaults(&resolved)
+		resolvedConfigs[modelName] = resolved
+	}
 	return resolvedConfigs
 }
 
@@ -325,6 +389,17 @@ func broadcastAIModeConfigs(configs map[string]wconfig.AIModeConfigType) {
 
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_AIModeConfig,
+		Data:  update,
+	})
+}
+
+func broadcastAIModelConfigs(configs map[string]wconfig.AIModelConfigType) {
+	update := wconfig.AIModelConfigUpdate{
+		Configs: configs,
+	}
+
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_AIModelConfig,
 		Data:  update,
 	})
 }

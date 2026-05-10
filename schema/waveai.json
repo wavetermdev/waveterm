@@ -15,6 +15,9 @@
         "display:description": {
           "type": "string"
         },
+        "display:color": {
+          "type": "string"
+        },
         "ai:provider": {
           "type": "string",
           "enum": [
@@ -98,7 +101,7 @@
         "waveai:cloud": {
           "type": "boolean"
         },
-        "waveai:premium": {
+        "ai:agentmode": {
           "type": "boolean"
         }
       },

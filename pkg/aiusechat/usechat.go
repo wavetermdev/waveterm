@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/user"
 	"regexp"
 	"strings"
 	"sync"
@@ -27,7 +26,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -37,7 +35,6 @@ import (
 
 const DefaultAPI = uctypes.APIType_OpenAIResponses
 const DefaultMaxTokens = 4 * 1024
-const BuilderMaxTokens = 24 * 1024
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -46,21 +43,22 @@ var (
 	activeChats = ds.MakeSyncMap[bool]() // key is chatid
 )
 
-func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool) []string {
-	if isBuilder {
-		return []string{}
-	}
+func getSystemPrompt(apiType string, model string, hasToolsCapability bool, widgetAccess bool, agentMode bool) []string {
 	useNoToolsPrompt := !hasToolsCapability || !widgetAccess
-	basePrompt := SystemPromptText_OpenAI
+	basePrompt := BuildSystemPromptOpenAI(agentMode && !useNoToolsPrompt)
 	if useNoToolsPrompt {
 		basePrompt = SystemPromptText_NoTools
 	}
+	prompts := []string{basePrompt}
 	modelLower := strings.ToLower(model)
 	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
 	if needsStrictToolAddOn && !useNoToolsPrompt {
-		return []string{basePrompt, SystemPromptText_StrictToolAddOn}
+		prompts = append(prompts, SystemPromptText_StrictToolAddOn)
 	}
-	return []string{basePrompt}
+	if agentMode && !useNoToolsPrompt {
+		prompts = append(prompts, SystemPromptText_AgentModeAddOn)
+	}
+	return prompts
 }
 
 func isLocalEndpoint(endpoint string) bool {
@@ -71,17 +69,47 @@ func isLocalEndpoint(endpoint string) bool {
 	return strings.Contains(endpointLower, "localhost") || strings.Contains(endpointLower, "127.0.0.1")
 }
 
-func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo, aiModeName string) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(rtInfo waveobj.ObjRTInfo, aiModeName string, aiModelName string) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
-	if builderMode {
-		maxTokens = BuilderMaxTokens
-	}
 	if rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
-	aiMode, config, err := resolveAIMode(aiModeName, premium)
+	aiMode, modeConfig, err := resolveAIMode(aiModeName)
 	if err != nil {
 		return nil, err
+	}
+	_, modelConfig, err := resolveAIModel(aiModelName)
+	if err != nil {
+		return nil, err
+	}
+	// Merge: provider/endpoint/model come from the chosen MODEL,
+	// behavior (capabilities, agentmode) comes from MODE.
+	config := *modeConfig
+	config.Provider = modelConfig.Provider
+	config.APIType = modelConfig.APIType
+	config.Model = modelConfig.Model
+	config.Endpoint = modelConfig.Endpoint
+	config.ProxyURL = modelConfig.ProxyURL
+	config.AzureAPIVersion = modelConfig.AzureAPIVersion
+	config.APIToken = modelConfig.APIToken
+	config.APITokenSecretName = modelConfig.APITokenSecretName
+	config.AzureResourceName = modelConfig.AzureResourceName
+	config.AzureDeployment = modelConfig.AzureDeployment
+	if modelConfig.ThinkingLevel != "" {
+		config.ThinkingLevel = modelConfig.ThinkingLevel
+	}
+	if modelConfig.Verbosity != "" {
+		config.Verbosity = modelConfig.Verbosity
+	}
+	if modelConfig.WaveAICloud {
+		config.WaveAICloud = true
+	}
+	// Capabilities: intersect mode + model so a tool-incapable model can't
+	// silently advertise tools just because the mode permits them.
+	if len(modelConfig.Capabilities) > 0 && len(modeConfig.Capabilities) > 0 {
+		config.Capabilities = intersectStringSlices(modeConfig.Capabilities, modelConfig.Capabilities)
+	} else if len(modelConfig.Capabilities) > 0 {
+		config.Capabilities = modelConfig.Capabilities
 	}
 	if config.WaveAICloud && !telemetry.IsTelemetryEnabled() {
 		return nil, fmt.Errorf("Wave AI cloud modes require telemetry to be enabled")
@@ -125,7 +153,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 		Endpoint:      baseUrl,
 		ProxyURL:      config.ProxyURL,
 		Capabilities:  config.Capabilities,
-		WaveAIPremium: config.WaveAIPremium,
+		AgentMode:     config.AgentMode,
 	}
 	if apiToken != "" {
 		opts.APIToken = apiToken
@@ -140,21 +168,6 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "gpt-4-") ||
 		m == "gpt-4" ||
 		strings.HasPrefix(m, "o1-")
-}
-
-func shouldUsePremium() bool {
-	info := GetGlobalRateLimit()
-	if info == nil || info.Unknown {
-		return true
-	}
-	if info.PReq > 0 {
-		return true
-	}
-	nowEpoch := time.Now().Unix()
-	if nowEpoch >= info.ResetEpoch {
-		return true
-	}
-	return false
 }
 
 func updateRateLimit(info *uctypes.RateLimitInfo) {
@@ -423,21 +436,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				chatOpts.TabId = tabId
 			}
 		}
-		if chatOpts.BuilderAppGenerator != nil {
-			appGoFile, appStaticFiles, platformInfo, appErr := chatOpts.BuilderAppGenerator()
-			if appErr == nil {
-				chatOpts.AppGoFile = appGoFile
-				chatOpts.AppStaticFiles = appStaticFiles
-				chatOpts.PlatformInfo = platformInfo
-			}
-		}
 		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsWaveProxy() {
 			metrics.ProxyReqCount++
-			if chatOpts.Config.IsPremiumModel() {
-				metrics.PremiumReqCount++
-			}
 		}
 		if stopReason != nil {
 			logutil.DevPrintf("stopreason: %s (%s) (%s) (%s)\n", stopReason.Kind, stopReason.ErrorText, stopReason.ErrorType, stopReason.RawReason)
@@ -470,14 +472,6 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			}
 		}
 		firstStep = false
-		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
-			log.Printf("Premium rate limit hit with %s, switching to %s\n", uctypes.PremiumOpenAIModel, uctypes.DefaultOpenAIModel)
-			cont = &uctypes.WaveContinueResponse{
-				Model:            uctypes.DefaultOpenAIModel,
-				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
-			}
-			continue
-		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
 			processAllToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
@@ -581,8 +575,8 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 				}
 			}
 		}
-		log.Printf("WaveAI call metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
-			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
+		log.Printf("WaveAI call metrics: requests=%d tools=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
+			metrics.RequestCount, metrics.ToolUseCount, metrics.ProxyReqCount,
 			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
 
 		sendAIMetricsTelemetry(ctx, metrics)
@@ -603,7 +597,6 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIToolUseCount:         metrics.ToolUseCount,
 		WaveAIToolUseErrorCount:    metrics.ToolUseErrorCount,
 		WaveAIToolDetail:           metrics.ToolDetail,
-		WaveAIPremiumReq:           metrics.PremiumReqCount,
 		WaveAIProxyReq:             metrics.ProxyReqCount,
 		WaveAIHadError:             metrics.HadError,
 		WaveAIImageCount:           metrics.ImageCount,
@@ -624,12 +617,11 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 // PostMessageRequest represents the request body for posting a message
 type PostMessageRequest struct {
 	TabId        string            `json:"tabid,omitempty"`
-	BuilderId    string            `json:"builderid,omitempty"`
-	BuilderAppId string            `json:"builderappid,omitempty"`
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
 	AIMode       string            `json:"aimode"`
+	AIModel      string            `json:"aimodel,omitempty"`
 }
 
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
@@ -656,13 +648,10 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get RTInfo from TabId or BuilderId
+	// Get RTInfo from TabId
 	var rtInfo *waveobj.ObjRTInfo
 	if req.TabId != "" {
 		oref := waveobj.MakeORef(waveobj.OType_Tab, req.TabId)
-		rtInfo = wstore.GetRTInfo(oref)
-	} else if req.BuilderId != "" {
-		oref := waveobj.MakeORef(waveobj.OType_Builder, req.BuilderId)
 		rtInfo = wstore.GetRTInfo(oref)
 	}
 	if rtInfo == nil {
@@ -670,13 +659,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get WaveAI settings
-	builderMode := req.BuilderId != ""
-	premium := shouldUsePremium() || builderMode
 	if req.AIMode == "" {
 		http.Error(w, "aimode is required in request body", http.StatusBadRequest)
 		return
 	}
-	aiOpts, err := getWaveAISettings(premium, builderMode, *rtInfo, req.AIMode)
+	aiOpts, err := getWaveAISettings(*rtInfo, req.AIMode, req.AIModel)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return
@@ -689,30 +676,14 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		Config:               *aiOpts,
 		WidgetAccess:         req.WidgetAccess,
 		AllowNativeWebSearch: true,
-		BuilderId:            req.BuilderId,
-		BuilderAppId:         req.BuilderAppId,
 	}
-	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess)
+	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess, chatOpts.Config.AgentMode)
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
 			tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess, &chatOpts)
 			return tabState, tabTools, req.TabId, err
 		}
-	}
-
-	if req.BuilderAppId != "" {
-		chatOpts.BuilderAppGenerator = func() (string, string, string, error) {
-			return generateBuilderAppData(req.BuilderAppId)
-		}
-	}
-
-	if req.BuilderAppId != "" {
-		chatOpts.Tools = append(chatOpts.Tools,
-			GetBuilderWriteAppFileToolDefinition(req.BuilderAppId, req.BuilderId),
-			GetBuilderEditAppFileToolDefinition(req.BuilderAppId, req.BuilderId),
-			GetBuilderListFilesToolDefinition(req.BuilderAppId),
-		)
 	}
 
 	// Validate the message
@@ -834,51 +805,4 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 
 	modifiedContent := []byte(params.Contents)
 	return originalContent, modifiedContent, nil
-}
-
-type StaticFileInfo struct {
-	Name         string `json:"name"`
-	Size         int64  `json:"size"`
-	Modified     string `json:"modified"`
-	ModifiedTime string `json:"modified_time"`
-}
-
-func generateBuilderAppData(appId string) (string, string, string, error) {
-	appGoFile := ""
-	fileData, err := waveappstore.ReadAppFile(appId, "app.go")
-	if err == nil {
-		appGoFile = string(fileData.Contents)
-	}
-
-	staticFilesJSON := ""
-	allFiles, err := waveappstore.ListAllAppFiles(appId)
-	if err == nil {
-		var staticFiles []StaticFileInfo
-		for _, entry := range allFiles.Entries {
-			if strings.HasPrefix(entry.Name, "static/") {
-				staticFiles = append(staticFiles, StaticFileInfo{
-					Name:         entry.Name,
-					Size:         entry.Size,
-					Modified:     entry.Modified,
-					ModifiedTime: entry.ModifiedTime,
-				})
-			}
-		}
-
-		if len(staticFiles) > 0 {
-			staticFilesBytes, marshalErr := json.Marshal(staticFiles)
-			if marshalErr == nil {
-				staticFilesJSON = string(staticFilesBytes)
-			}
-		}
-	}
-
-	platformInfo := wavebase.GetSystemSummary()
-	if currentUser, userErr := user.Current(); userErr == nil && currentUser.Username != "" {
-		platformInfo = fmt.Sprintf("Local Machine: %s, User: %s", platformInfo, currentUser.Username)
-	} else {
-		platformInfo = fmt.Sprintf("Local Machine: %s", platformInfo)
-	}
-
-	return appGoFile, staticFilesJSON, platformInfo, nil
 }

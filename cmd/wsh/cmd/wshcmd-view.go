@@ -59,54 +59,42 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	fileArg := args[0]
 	conn := RpcContext.Conn
-	var wshCmd *wshrpc.CommandCreateBlockData
 	if strings.HasPrefix(fileArg, "http://") || strings.HasPrefix(fileArg, "https://") {
-		wshCmd = &wshrpc.CommandCreateBlockData{
-			TabId: tabId,
-			BlockDef: &waveobj.BlockDef{
-				Meta: map[string]any{
-					waveobj.MetaKey_View: "web",
-					waveobj.MetaKey_Url:  fileArg,
-				},
-			},
-			Magnified: viewMagnified,
-			Focused:   true,
-		}
-	} else {
-		absFile, err := filepath.Abs(fileArg)
-		if err != nil {
-			return fmt.Errorf("getting absolute path: %w", err)
-		}
-		absParent, err := filepath.Abs(filepath.Dir(fileArg))
-		if err != nil {
-			return fmt.Errorf("getting absolute path of parent dir: %w", err)
-		}
-		_, err = os.Stat(absParent)
-		if err == fs.ErrNotExist {
-			return fmt.Errorf("parent directory does not exist: %q", absParent)
-		}
-		if err != nil {
-			return fmt.Errorf("getting file info: %w", err)
-		}
-		wshCmd = &wshrpc.CommandCreateBlockData{
-			TabId: tabId,
-			BlockDef: &waveobj.BlockDef{
-				Meta: map[string]interface{}{
-					waveobj.MetaKey_View: "preview",
-					waveobj.MetaKey_File: absFile,
-				},
-			},
-			Magnified: viewMagnified,
-			Focused:   true,
-		}
-		if cmdName == "edit" {
-			wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true
-		}
-		if conn != "" {
-			wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn
-		}
+		return fmt.Errorf("URL viewing is not supported; the in-app web browser has been removed")
 	}
-	_, err := wshclient.CreateBlockCommand(RpcClient, *wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
+	absFile, err := filepath.Abs(fileArg)
+	if err != nil {
+		return fmt.Errorf("getting absolute path: %w", err)
+	}
+	absParent, err := filepath.Abs(filepath.Dir(fileArg))
+	if err != nil {
+		return fmt.Errorf("getting absolute path of parent dir: %w", err)
+	}
+	_, err = os.Stat(absParent)
+	if err == fs.ErrNotExist {
+		return fmt.Errorf("parent directory does not exist: %q", absParent)
+	}
+	if err != nil {
+		return fmt.Errorf("getting file info: %w", err)
+	}
+	wshCmd := &wshrpc.CommandCreateBlockData{
+		TabId: tabId,
+		BlockDef: &waveobj.BlockDef{
+			Meta: map[string]interface{}{
+				waveobj.MetaKey_View: "preview",
+				waveobj.MetaKey_File: absFile,
+			},
+		},
+		Magnified: viewMagnified,
+		Focused:   true,
+	}
+	if cmdName == "edit" {
+		wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true
+	}
+	if conn != "" {
+		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn
+	}
+	_, err = wshclient.CreateBlockCommand(RpcClient, *wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return fmt.Errorf("running view command: %w", err)
 	}

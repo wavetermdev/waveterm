@@ -192,13 +192,6 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*http.Request, error) {
 	opts := chatOpts.Config
 
-	// If continuing from premium rate limit, downgrade to default model and medium thinking
-	// (medium is more widely supported than low across different models)
-	if cont != nil && cont.ContinueFromKind == uctypes.StopKindPremiumRateLimit {
-		opts.Model = uctypes.DefaultOpenAIModel
-		opts.ThinkingLevel = uctypes.ThinkingLevelMedium
-	}
-
 	if opts.Model == "" {
 		return nil, errors.New("ai:model is required")
 	}
@@ -220,15 +213,6 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	// injected data
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(inputs, chatOpts.TabState)
-	}
-	if chatOpts.PlatformInfo != "" {
-		appendToLastUserMessage(inputs, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
-	}
-	if chatOpts.AppStaticFiles != "" {
-		appendToLastUserMessage(inputs, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
-	}
-	if chatOpts.AppGoFile != "" {
-		appendToLastUserMessage(inputs, "<CurrentAppGoFile>\n"+chatOpts.AppGoFile+"\n</CurrentAppGoFile>")
 	}
 
 	// Build request body

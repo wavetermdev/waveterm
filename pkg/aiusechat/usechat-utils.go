@@ -7,6 +7,21 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
+// intersectStringSlices returns the elements present in both a and b, preserving order from a.
+func intersectStringSlices(a, b []string) []string {
+	bset := make(map[string]bool, len(b))
+	for _, v := range b {
+		bset[v] = true
+	}
+	rtn := make([]string, 0, len(a))
+	for _, v := range a {
+		if bset[v] {
+			rtn = append(rtn, v)
+		}
+	}
+	return rtn
+}
+
 // CombineConsecutiveSameRoleMessages combines consecutive UIMessages with the same role
 // by appending their Parts together. This is useful for APIs like OpenAI that may split
 // assistant messages into separate messages (e.g., one for text and one for tool calls).
@@ -62,7 +77,6 @@ func CombineConsecutiveSameRoleMessages(uiChat *uctypes.UIChat) *uctypes.UIChat 
 		Messages:   combined,
 	}
 }
-
 
 // ConvertAIChatToUIChat converts an AIChat to a UIChat by routing to the appropriate
 // provider-specific converter based on APIType, then combining consecutive same-role messages.

@@ -71,37 +71,6 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		}
 	}
 
-	// inject chatOpts.PlatformInfo, AppStaticFiles, and AppGoFile as "text" blocks at the END of the LAST "user" message found (append to Content)
-	if chatOpts.PlatformInfo != "" || chatOpts.AppStaticFiles != "" || chatOpts.AppGoFile != "" {
-		// Find the last "user" message
-		for i := len(convertedMsgs) - 1; i >= 0; i-- {
-			if convertedMsgs[i].Role == "user" {
-				if chatOpts.PlatformInfo != "" {
-					platformInfoBlock := anthropicMessageContentBlock{
-						Type: "text",
-						Text: "<PlatformInfo>\n" + chatOpts.PlatformInfo + "\n</PlatformInfo>",
-					}
-					convertedMsgs[i].Content = append(convertedMsgs[i].Content, platformInfoBlock)
-				}
-				if chatOpts.AppStaticFiles != "" {
-					appStaticFilesBlock := anthropicMessageContentBlock{
-						Type: "text",
-						Text: "<CurrentAppStaticFiles>\n" + chatOpts.AppStaticFiles + "\n</CurrentAppStaticFiles>",
-					}
-					convertedMsgs[i].Content = append(convertedMsgs[i].Content, appStaticFilesBlock)
-				}
-				if chatOpts.AppGoFile != "" {
-					appGoFileBlock := anthropicMessageContentBlock{
-						Type: "text",
-						Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
-					}
-					convertedMsgs[i].Content = append(convertedMsgs[i].Content, appGoFileBlock)
-				}
-				break
-			}
-		}
-	}
-
 	// Build request body
 	reqBody := &anthropicStreamRequest{
 		Model:     opts.Model,

@@ -15,34 +15,27 @@ import (
 //     - Use reflect.TypeOf((*YourType)(nil)) for pointer types
 //     - Use nil if no data is sent for the event
 const (
-	Event_BlockClose          = "blockclose"           // type: string
-	Event_ConnChange          = "connchange"           // type: wshrpc.ConnStatus
-	Event_SysInfo             = "sysinfo"              // type: wshrpc.TimeSeriesData
-	Event_ControllerStatus    = "controllerstatus"     // type: *blockcontroller.BlockControllerRuntimeStatus
-	Event_BuilderStatus       = "builderstatus"        // type: wshrpc.BuilderStatusData
-	Event_BuilderOutput       = "builderoutput"        // type: map[string]any
-	Event_WaveObjUpdate       = "waveobj:update"       // type: waveobj.WaveObjUpdate
-	Event_BlockFile           = "blockfile"            // type: *WSFileEventData
-	Event_Config              = "config"               // type: wconfig.WatcherUpdate
-	Event_UserInput           = "userinput"            // type: *userinput.UserInputRequest
-	Event_RouteDown           = "route:down"           // type: none
-	Event_RouteUp             = "route:up"             // type: none
-	Event_WorkspaceUpdate     = "workspace:update"     // type: none
-	Event_WaveAIRateLimit     = "waveai:ratelimit"     // type: *uctypes.RateLimitInfo
-	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated" // type: none
-	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"   // type: wshrpc.AppMeta
-	Event_AIModeConfig        = "waveai:modeconfig"    // type: wconfig.AIModeConfigUpdate
-	Event_BlockJobStatus      = "block:jobstatus"      // type: wshrpc.BlockJobStatusData
-	Event_Badge               = "badge"                // type: baseds.BadgeEvent
+	Event_BlockClose       = "blockclose"         // type: string
+	Event_ConnChange       = "connchange"         // type: wshrpc.ConnStatus
+	Event_ControllerStatus = "controllerstatus"   // type: *blockcontroller.BlockControllerRuntimeStatus
+	Event_WaveObjUpdate    = "waveobj:update"     // type: waveobj.WaveObjUpdate
+	Event_BlockFile        = "blockfile"          // type: *WSFileEventData
+	Event_Config           = "config"             // type: wconfig.WatcherUpdate
+	Event_UserInput        = "userinput"          // type: *userinput.UserInputRequest
+	Event_RouteDown        = "route:down"         // type: none
+	Event_RouteUp          = "route:up"           // type: none
+	Event_WorkspaceUpdate  = "workspace:update"   // type: none
+	Event_WaveAIRateLimit  = "waveai:ratelimit"   // type: *uctypes.RateLimitInfo
+	Event_AIModeConfig     = "waveai:modeconfig"  // type: wconfig.AIModeConfigUpdate
+	Event_AIModelConfig    = "waveai:modelconfig" // type: wconfig.AIModelConfigUpdate
+	Event_BlockJobStatus   = "block:jobstatus"    // type: wshrpc.BlockJobStatusData
+	Event_Badge            = "badge"              // type: baseds.BadgeEvent
 )
 
 var AllEvents []string = []string{
 	Event_BlockClose,
 	Event_ConnChange,
-	Event_SysInfo,
 	Event_ControllerStatus,
-	Event_BuilderStatus,
-	Event_BuilderOutput,
 	Event_WaveObjUpdate,
 	Event_BlockFile,
 	Event_Config,
@@ -51,9 +44,8 @@ var AllEvents []string = []string{
 	Event_RouteUp,
 	Event_WorkspaceUpdate,
 	Event_WaveAIRateLimit,
-	Event_WaveAppAppGoUpdated,
-	Event_TsunamiUpdateMeta,
 	Event_AIModeConfig,
+	Event_AIModelConfig,
 	Event_BlockJobStatus,
 	Event_Badge,
 }

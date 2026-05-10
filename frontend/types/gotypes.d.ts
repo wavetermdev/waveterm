@@ -19,6 +19,7 @@ declare global {
         "display:order"?: number;
         "display:icon"?: string;
         "display:description"?: string;
+        "display:color"?: string;
         "ai:provider"?: string;
         "ai:apitype"?: string;
         "ai:model"?: string;
@@ -34,12 +35,39 @@ declare global {
         "ai:capabilities"?: string[];
         "ai:switchcompat"?: string[];
         "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
+        "ai:agentmode"?: boolean;
     };
 
     // wconfig.AIModeConfigUpdate
     type AIModeConfigUpdate = {
         configs: {[key: string]: AIModeConfigType};
+    };
+
+    // wconfig.AIModelConfigType
+    type AIModelConfigType = {
+        "display:name": string;
+        "display:order"?: number;
+        "display:icon"?: string;
+        "display:description"?: string;
+        "ai:provider"?: string;
+        "ai:apitype"?: string;
+        "ai:model"?: string;
+        "ai:thinkinglevel"?: string;
+        "ai:verbosity"?: string;
+        "ai:endpoint"?: string;
+        "ai:proxyurl"?: string;
+        "ai:azureapiversion"?: string;
+        "ai:apitoken"?: string;
+        "ai:apitokensecretname"?: string;
+        "ai:azureresourcename"?: string;
+        "ai:azuredeployment"?: string;
+        "ai:capabilities"?: string[];
+        "waveai:cloud"?: boolean;
+    };
+
+    // wconfig.AIModelConfigUpdate
+    type AIModelConfigUpdate = {
+        configs: {[key: string]: AIModelConfigType};
     };
 
     // wshrpc.ActivityDisplayType
@@ -83,29 +111,6 @@ declare global {
     // wshrpc.AiMessageData
     type AiMessageData = {
         message?: string;
-    };
-
-    // wshrpc.AppInfo
-    type AppInfo = {
-        appid: string;
-        modtime: number;
-        manifest?: AppManifest;
-    };
-
-    // wshrpc.AppManifest
-    type AppManifest = {
-        appmeta: AppMeta;
-        configschema: {[key: string]: any};
-        dataschema: {[key: string]: any};
-        secrets: {[key: string]: SecretMeta};
-    };
-
-    // wshrpc.AppMeta
-    type AppMeta = {
-        title: string;
-        shortdesc: string;
-        icon: string;
-        iconcolor: string;
     };
 
     // wconfig.BackgroundConfigType
@@ -153,7 +158,6 @@ declare global {
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
-        tsunamiport?: number;
     };
 
     // waveobj.BlockDef
@@ -197,18 +201,6 @@ declare global {
     type BlocksListRequest = {
         windowid?: string;
         workspaceid?: string;
-    };
-
-    // wshrpc.BuilderStatusData
-    type BuilderStatusData = {
-        status: string;
-        port?: number;
-        exitcode?: number;
-        errormsg?: string;
-        version: number;
-        manifest?: AppManifest;
-        secretbindings?: {[key: string]: string};
-        secretbindingscomplete: boolean;
     };
 
     // waveobj.Client
@@ -270,14 +262,6 @@ declare global {
         blockid: string;
     };
 
-    // wshrpc.CommandCheckGoVersionRtnData
-    type CommandCheckGoVersionRtnData = {
-        gostatus: string;
-        gopath: string;
-        goversion: string;
-        errorstring?: string;
-    };
-
     // wshrpc.CommandConnServerInitData
     type CommandConnServerInitData = {
         clientid: string;
@@ -325,12 +309,6 @@ declare global {
     type CommandDebugTermRtnData = {
         offset: number;
         data64: string;
-    };
-
-    // wshrpc.CommandDeleteAppFileData
-    type CommandDeleteAppFileData = {
-        appid: string;
-        filename: string;
     };
 
     // wshrpc.CommandDeleteBlockData
@@ -474,58 +452,9 @@ declare global {
     // wshrpc.CommandJobStartStreamData
     type CommandJobStartStreamData = object;
 
-    // wshrpc.CommandListAllAppFilesData
-    type CommandListAllAppFilesData = {
-        appid: string;
-    };
-
-    // wshrpc.CommandListAllAppFilesRtnData
-    type CommandListAllAppFilesRtnData = {
-        path: string;
-        absolutepath: string;
-        parentdir?: string;
-        entries: DirEntryOut[];
-        entrycount: number;
-        totalentries: number;
-        truncated?: boolean;
-    };
-
-    // wshrpc.CommandMakeDraftFromLocalData
-    type CommandMakeDraftFromLocalData = {
-        localappid: string;
-    };
-
-    // wshrpc.CommandMakeDraftFromLocalRtnData
-    type CommandMakeDraftFromLocalRtnData = {
-        draftappid: string;
-    };
-
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         message: string;
-    };
-
-    // wshrpc.CommandPublishAppData
-    type CommandPublishAppData = {
-        appid: string;
-    };
-
-    // wshrpc.CommandPublishAppRtnData
-    type CommandPublishAppRtnData = {
-        publishedappid: string;
-    };
-
-    // wshrpc.CommandReadAppFileData
-    type CommandReadAppFileData = {
-        appid: string;
-        filename: string;
-    };
-
-    // wshrpc.CommandReadAppFileRtnData
-    type CommandReadAppFileRtnData = {
-        data64: string;
-        notfound?: boolean;
-        modts?: number;
     };
 
     // wshrpc.CommandRemoteDisconnectFromJobManagerData
@@ -612,13 +541,6 @@ declare global {
         jobmanagerstartts: number;
     };
 
-    // wshrpc.CommandRenameAppFileData
-    type CommandRenameAppFileData = {
-        appid: string;
-        fromfilename: string;
-        tofilename: string;
-    };
-
     // wshrpc.CommandResolveIdsData
     type CommandResolveIdsData = {
         blockid: string;
@@ -628,11 +550,6 @@ declare global {
     // wshrpc.CommandResolveIdsRtnData
     type CommandResolveIdsRtnData = {
         resolvedids: {[key: string]: ORef};
-    };
-
-    // wshrpc.CommandRestartBuilderAndWaitData
-    type CommandRestartBuilderAndWaitData = {
-        builderid: string;
     };
 
     // wshrpc.CommandSetMetaData
@@ -646,11 +563,6 @@ declare global {
         oref: ORef;
         data: ObjRTInfo;
         delete?: boolean;
-    };
-
-    // wshrpc.CommandStartBuilderData
-    type CommandStartBuilderData = {
-        builderid: string;
     };
 
     // wshrpc.CommandStartJobData
@@ -769,30 +681,6 @@ declare global {
         opts?: WebSelectorOpts;
     };
 
-    // wshrpc.CommandWriteAppFileData
-    type CommandWriteAppFileData = {
-        appid: string;
-        filename: string;
-        data64: string;
-    };
-
-    // wshrpc.CommandWriteAppGoFileData
-    type CommandWriteAppGoFileData = {
-        appid: string;
-        data64: string;
-    };
-
-    // wshrpc.CommandWriteAppGoFileRtnData
-    type CommandWriteAppGoFileRtnData = {
-        data64: string;
-    };
-
-    // wshrpc.CommandWriteAppSecretBindingsData
-    type CommandWriteAppSecretBindingsData = {
-        appid: string;
-        bindings: {[key: string]: string};
-    };
-
     // wshrpc.CommandWriteTempFileData
     type CommandWriteTempFileData = {
         filename: string;
@@ -884,17 +772,6 @@ declare global {
     type CpuDataRequest = {
         id: string;
         count: number;
-    };
-
-    // wshrpc.DirEntryOut
-    type DirEntryOut = {
-        name: string;
-        dir?: boolean;
-        symlink?: boolean;
-        size?: number;
-        mode: string;
-        modified: string;
-        modifiedtime: string;
     };
 
     // vdom.DomRect
@@ -1019,6 +896,7 @@ declare global {
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
+        waveaimodels: {[key: string]: AIModelConfigType};
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
@@ -1190,18 +1068,8 @@ declare global {
         "term:bellindicator"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
-        "web:zoom"?: number;
-        "web:hidenav"?: boolean;
-        "web:partition"?: string;
-        "web:useragenttype"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
-        "tsunami:*"?: boolean;
-        "tsunami:sdkreplacepath"?: string;
-        "tsunami:apppath"?: string;
-        "tsunami:appid"?: string;
-        "tsunami:scaffoldpath"?: string;
-        "tsunami:env"?: {[key: string]: string};
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -1230,8 +1098,6 @@ declare global {
 
     // waveobj.ObjRTInfo
     type ObjRTInfo = {
-        "tsunami:appmeta"?: AppMeta;
-        "tsunami:schemas"?: any;
         "shell:hascurcwd"?: boolean;
         "shell:state"?: string;
         "shell:type"?: string;
@@ -1243,11 +1109,9 @@ declare global {
         "shell:inputempty"?: boolean;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
-        "builder:layout"?: {[key: string]: number};
-        "builder:appid"?: string;
-        "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
+        "waveai:model"?: string;
         "waveai:maxoutputtokens"?: number;
     };
 
@@ -1322,13 +1186,6 @@ declare global {
         homedir: string;
     };
 
-    // wshrpc.RestartBuilderAndWaitResult
-    type RestartBuilderAndWaitResult = {
-        success: boolean;
-        errormessage?: string;
-        buildoutput: string;
-    };
-
     // wshrpc.RpcContext
     type RpcContext = {
         sockname?: string;
@@ -1367,12 +1224,6 @@ declare global {
         winsize?: WinSize;
     };
 
-    // wshrpc.SecretMeta
-    type SecretMeta = {
-        desc: string;
-        optional: boolean;
-    };
-
     // wconfig.SettingsType
     type SettingsType = {
         "app:*"?: boolean;
@@ -1387,7 +1238,6 @@ declare global {
         "app:disablectrlshiftdisplay"?: boolean;
         "app:focusfollowscursor"?: string;
         "app:tabbar"?: string;
-        "feature:waveappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -1404,6 +1254,7 @@ declare global {
         "ai:fixedfontsize"?: number;
         "waveai:showcloudmodes"?: boolean;
         "waveai:defaultmode"?: string;
+        "waveai:defaultmodel"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1479,11 +1330,6 @@ declare global {
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
         "debug:webglstatus"?: boolean;
-        "tsunami:*"?: boolean;
-        "tsunami:scaffoldpath"?: string;
-        "tsunami:sdkreplacepath"?: string;
-        "tsunami:sdkversion"?: string;
-        "tsunami:gopath"?: string;
     };
 
     // waveobj.StickerClickOptsType
@@ -1589,6 +1435,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
@@ -1628,7 +1475,6 @@ declare global {
         "waveai:toolusecount"?: number;
         "waveai:tooluseerrorcount"?: number;
         "waveai:tooldetail"?: {[key: string]: number};
-        "waveai:premiumreq"?: number;
         "waveai:proxyreq"?: number;
         "waveai:haderror"?: boolean;
         "waveai:imagecount"?: number;

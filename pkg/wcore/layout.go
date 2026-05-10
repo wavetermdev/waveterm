@@ -42,17 +42,6 @@ func GetStarterLayout() PortableLayout {
 		}, Focused: true},
 		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
 			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "sysinfo",
-			},
-		}},
-		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  "https://github.com/wavetermdev/waveterm",
-			},
-		}},
-		{IndexArr: []int{1, 2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
 				waveobj.MetaKey_View: "preview",
 				waveobj.MetaKey_File: "~",
 			},

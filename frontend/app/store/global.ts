@@ -74,6 +74,12 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         },
     });
     waveEventSubscribeSingle({
+        eventType: "waveai:modelconfig",
+        handler: (event) => {
+            globalStore.set(atoms.waveaiModelConfigAtom, event.data.configs);
+        },
+    });
+    waveEventSubscribeSingle({
         eventType: "userinput",
         handler: (event) => {
             // console.log("userinput event handler", event);

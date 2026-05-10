@@ -130,20 +130,8 @@ const (
 	MetaKey_TermOsc52                        = "term:osc52"
 	MetaKey_TermDurable                      = "term:durable"
 
-	MetaKey_WebZoom                          = "web:zoom"
-	MetaKey_WebHideNav                       = "web:hidenav"
-	MetaKey_WebPartition                     = "web:partition"
-	MetaKey_WebUserAgentType                 = "web:useragenttype"
-
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
-
-	MetaKey_TsunamiClear                     = "tsunami:*"
-	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
-	MetaKey_TsunamiAppPath                   = "tsunami:apppath"
-	MetaKey_TsunamiAppId                     = "tsunami:appid"
-	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
-	MetaKey_TsunamiEnv                       = "tsunami:env"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"
