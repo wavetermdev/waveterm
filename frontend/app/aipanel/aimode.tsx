@@ -44,11 +44,7 @@ const AIModeMenuItem = memo(({ modeKey, config, isSelected, onClick }: AIModeMen
 });
 AIModeMenuItem.displayName = "AIModeMenuItem";
 
-interface AIModeDropdownProps {
-    compatibilityMode?: boolean;
-}
-
-export const AIModeDropdown = memo((_props: AIModeDropdownProps) => {
+export const AIModeDropdown = memo(() => {
     const model = WaveAIModel.getInstance();
     const currentMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);

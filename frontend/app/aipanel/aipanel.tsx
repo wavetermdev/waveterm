@@ -88,8 +88,8 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
-    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom);
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
+    const aiModelConfigs = jotai.useAtomValue(atoms.waveaiModelConfigAtom);
+    const hasCustomModels = aiModelConfigs != null && Object.keys(aiModelConfigs).length > 0;
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
@@ -154,28 +154,9 @@ const AIWelcomeMessage = memo(() => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-4 text-center flex-shrink-0">
-                                <i className="fa-brands fa-discord text-accent"></i>
-                            </div>
-                            <div>
-                                Questions or feedback?{" "}
-                                <a
-                                    target="_blank"
-                                    href="https://discord.gg/XfvZ334gwU"
-                                    rel="noopener"
-                                    className="text-accent hover:underline cursor-pointer"
-                                >
-                                    Join our Discord
-                                </a>
-                            </div>
-                        </div>
                     </div>
                 </div>
-                {!hasCustomModes && <BYOKAnnouncement />}
-                <div className="mt-4 text-center text-[12px] text-muted">
-                    BETA: Free to use. Daily limits keep our costs in check.
-                </div>
+                {!hasCustomModels && <BYOKAnnouncement />}
             </div>
         </div>
     );
@@ -248,12 +229,10 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = useTabModelMaybe();
     const [tabBorderColor, tabActiveBorderColor] = useTabBackground(waveEnv, tabModel?.tabId);
-    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+    const aiModelConfigs = jotai.useAtomValue(model.aiModelConfigs);
 
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
-    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
-    const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
+    const hasCustomModels = aiModelConfigs != null && Object.keys(aiModelConfigs).length > 0;
+    const allowAccess = telemetryEnabled || hasCustomModels;
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({

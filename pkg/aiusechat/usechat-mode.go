@@ -38,6 +38,11 @@ const (
 	GroqAPITokenSecretName        = "GROQ_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
+
+	// builtInModePrefix identifies built-in Wave AI modes (e.g. waveai@ask).
+	// Only entries with this prefix are exposed as selectable modes; any other
+	// entry in waveai.json is ignored by the mode resolver.
+	builtInModePrefix = "waveai@"
 )
 
 func resolveAIMode(requestedMode string) (string, *wconfig.AIModeConfigType, error) {
@@ -356,6 +361,9 @@ func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]
 	resolvedConfigs := make(map[string]wconfig.AIModeConfigType)
 
 	for modeName, modeConfig := range fullConfig.WaveAIModes {
+		if !strings.HasPrefix(modeName, builtInModePrefix) {
+			continue
+		}
 		resolved := modeConfig
 		applyProviderDefaults(&resolved)
 		resolvedConfigs[modeName] = resolved
@@ -370,44 +378,6 @@ func ComputeResolvedAIModelConfigs(fullConfig wconfig.FullConfigType) map[string
 		resolved := modelConfig
 		applyModelProviderDefaults(&resolved)
 		resolvedConfigs[modelName] = resolved
-	}
-	// Backwards-compat: legacy custom entries in waveai.json (where mode and
-	// model were the same thing) used a non-wave provider or carried a model.
-	// Surface them in the model dropdown so user-configured BYOK providers keep
-	// working after the mode/model split. Built-in waveai@... entries are pure
-	// modes and intentionally excluded.
-	for entryName, modeConfig := range fullConfig.WaveAIModes {
-		if strings.HasPrefix(entryName, "waveai@") {
-			continue
-		}
-		if _, exists := resolvedConfigs[entryName]; exists {
-			continue
-		}
-		if modeConfig.Provider == "" && modeConfig.Model == "" && modeConfig.Endpoint == "" {
-			continue
-		}
-		modelConfig := wconfig.AIModelConfigType{
-			DisplayName:        modeConfig.DisplayName,
-			DisplayOrder:       modeConfig.DisplayOrder,
-			DisplayIcon:        modeConfig.DisplayIcon,
-			DisplayDescription: modeConfig.DisplayDescription,
-			Provider:           modeConfig.Provider,
-			APIType:            modeConfig.APIType,
-			Model:              modeConfig.Model,
-			ThinkingLevel:      modeConfig.ThinkingLevel,
-			Verbosity:          modeConfig.Verbosity,
-			Endpoint:           modeConfig.Endpoint,
-			ProxyURL:           modeConfig.ProxyURL,
-			AzureAPIVersion:    modeConfig.AzureAPIVersion,
-			APIToken:           modeConfig.APIToken,
-			APITokenSecretName: modeConfig.APITokenSecretName,
-			AzureResourceName:  modeConfig.AzureResourceName,
-			AzureDeployment:    modeConfig.AzureDeployment,
-			Capabilities:       modeConfig.Capabilities,
-			WaveAICloud:        modeConfig.WaveAICloud,
-		}
-		applyModelProviderDefaults(&modelConfig)
-		resolvedConfigs[entryName] = modelConfig
 	}
 	return resolvedConfigs
 }
