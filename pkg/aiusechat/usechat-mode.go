@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -17,27 +16,19 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
-var AzureResourceNameRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
-
 const (
-	OpenAIResponsesEndpoint        = "https://api.openai.com/v1/responses"
-	OpenAIChatEndpoint             = "https://api.openai.com/v1/chat/completions"
-	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
-	NanoGPTChatEndpoint            = "https://nano-gpt.com/api/v1/chat/completions"
-	GroqChatEndpoint               = "https://api.groq.com/openai/v1/chat/completions"
-	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
-	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
-	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
-	GoogleGeminiEndpointTemplate   = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent"
+	OpenAIResponsesEndpoint      = "https://api.openai.com/v1/responses"
+	OpenAIChatEndpoint           = "https://api.openai.com/v1/chat/completions"
+	OpenRouterChatEndpoint       = "https://openrouter.ai/api/v1/chat/completions"
+	NanoGPTChatEndpoint          = "https://nano-gpt.com/api/v1/chat/completions"
+	GroqChatEndpoint             = "https://api.groq.com/openai/v1/chat/completions"
+	GoogleGeminiEndpointTemplate = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent"
 
-	AzureLegacyDefaultAPIVersion = "2025-04-01-preview"
-
-	OpenAIAPITokenSecretName      = "OPENAI_KEY"
-	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
-	NanoGPTAPITokenSecretName     = "NANOGPT_KEY"
-	GroqAPITokenSecretName        = "GROQ_KEY"
-	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
-	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
+	OpenAIAPITokenSecretName     = "OPENAI_KEY"
+	OpenRouterAPITokenSecretName = "OPENROUTER_KEY"
+	NanoGPTAPITokenSecretName    = "NANOGPT_KEY"
+	GroqAPITokenSecretName       = "GROQ_KEY"
+	GoogleAIAPITokenSecretName   = "GOOGLE_AI_KEY"
 
 	// builtInModePrefix identifies built-in Wave AI modes (e.g. waveai@ask).
 	// Only entries with this prefix are exposed as selectable modes; any other
@@ -96,20 +87,15 @@ func pickFallbackModel(resolved map[string]wconfig.AIModelConfigType) (string, w
 // duplicating the per-provider defaulting logic.
 func modelToModeConfig(m *wconfig.AIModelConfigType) wconfig.AIModeConfigType {
 	return wconfig.AIModeConfigType{
-		Provider:           m.Provider,
 		APIType:            m.APIType,
 		Model:              m.Model,
 		ThinkingLevel:      m.ThinkingLevel,
 		Verbosity:          m.Verbosity,
 		Endpoint:           m.Endpoint,
 		ProxyURL:           m.ProxyURL,
-		AzureAPIVersion:    m.AzureAPIVersion,
 		APIToken:           m.APIToken,
 		APITokenSecretName: m.APITokenSecretName,
-		AzureResourceName:  m.AzureResourceName,
-		AzureDeployment:    m.AzureDeployment,
 		Capabilities:       m.Capabilities,
-		WaveAICloud:        m.WaveAICloud,
 	}
 }
 
@@ -117,18 +103,13 @@ func modelToModeConfig(m *wconfig.AIModelConfigType) wconfig.AIModeConfigType {
 // for an AIModelConfigType, then copies any newly-populated fields back.
 func applyModelProviderDefaults(model *wconfig.AIModelConfigType) {
 	tmp := modelToModeConfig(model)
-	applyProviderDefaults(&tmp)
-	model.Provider = tmp.Provider
+	applyProviderDefaults(model.Provider, &tmp)
 	model.APIType = tmp.APIType
 	model.Endpoint = tmp.Endpoint
 	model.ProxyURL = tmp.ProxyURL
-	model.AzureAPIVersion = tmp.AzureAPIVersion
 	model.APIToken = tmp.APIToken
 	model.APITokenSecretName = tmp.APITokenSecretName
-	model.AzureResourceName = tmp.AzureResourceName
-	model.AzureDeployment = tmp.AzureDeployment
 	model.Capabilities = tmp.Capabilities
-	model.WaveAICloud = tmp.WaveAICloud
 }
 
 func getAIModelConfig(aiModel string) (*wconfig.AIModelConfigType, error) {
@@ -143,9 +124,8 @@ func getAIModelConfig(aiModel string) (*wconfig.AIModelConfigType, error) {
 	return &config, nil
 }
 
-func applyProviderDefaults(config *wconfig.AIModeConfigType) {
-	if config.Provider == uctypes.AIProvider_Wave {
-		config.WaveAICloud = true
+func applyProviderDefaults(provider string, config *wconfig.AIModeConfigType) {
+	if provider == uctypes.AIProvider_Wave {
 		if config.Endpoint == "" {
 			config.Endpoint = uctypes.DefaultAIEndpoint
 			if os.Getenv(uctypes.WaveAIEndpointEnvName) != "" {
@@ -153,7 +133,7 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			}
 		}
 	}
-	if config.Provider == uctypes.AIProvider_OpenAI {
+	if provider == uctypes.AIProvider_OpenAI {
 		if config.APIType == "" {
 			config.APIType = getOpenAIAPIType(config.Model)
 		}
@@ -178,7 +158,7 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			}
 		}
 	}
-	if config.Provider == uctypes.AIProvider_OpenRouter {
+	if provider == uctypes.AIProvider_OpenRouter {
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
 		}
@@ -189,7 +169,7 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APITokenSecretName = OpenRouterAPITokenSecretName
 		}
 	}
-	if config.Provider == uctypes.AIProvider_NanoGPT {
+	if provider == uctypes.AIProvider_NanoGPT {
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
 		}
@@ -200,7 +180,7 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APITokenSecretName = NanoGPTAPITokenSecretName
 		}
 	}
-	if config.Provider == uctypes.AIProvider_Groq {
+	if provider == uctypes.AIProvider_Groq {
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
 		}
@@ -211,41 +191,17 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APITokenSecretName = GroqAPITokenSecretName
 		}
 	}
-	if config.Provider == uctypes.AIProvider_AzureLegacy {
-		if config.AzureAPIVersion == "" {
-			config.AzureAPIVersion = AzureLegacyDefaultAPIVersion
-		}
-		if config.Endpoint == "" && isValidAzureResourceName(config.AzureResourceName) && config.AzureDeployment != "" {
-			config.Endpoint = fmt.Sprintf(AzureLegacyEndpointTemplate,
-				config.AzureResourceName, config.AzureDeployment, config.AzureAPIVersion)
-		}
+	if provider == uctypes.AIProvider_AzureLegacy {
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
 		}
-		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = AzureOpenAIAPITokenSecretName
-		}
 	}
-	if config.Provider == uctypes.AIProvider_Azure {
-		if config.AzureAPIVersion == "" {
-			config.AzureAPIVersion = "v1" // purely informational for now
-		}
+	if provider == uctypes.AIProvider_Azure {
 		if config.APIType == "" {
-			config.APIType = getAzureAPIType(config.Model)
-		}
-		if config.Endpoint == "" && isValidAzureResourceName(config.AzureResourceName) && isAzureAPIType(config.APIType) {
-			switch config.APIType {
-			case uctypes.APIType_OpenAIResponses:
-				config.Endpoint = fmt.Sprintf(AzureResponsesEndpointTemplate, config.AzureResourceName)
-			case uctypes.APIType_OpenAIChat:
-				config.Endpoint = fmt.Sprintf(AzureChatEndpointTemplate, config.AzureResourceName)
-			}
-		}
-		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = AzureOpenAIAPITokenSecretName
+			config.APIType = uctypes.APIType_OpenAIChat
 		}
 	}
-	if config.Provider == uctypes.AIProvider_Google {
+	if provider == uctypes.AIProvider_Google {
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_GoogleGemini
 		}
@@ -264,10 +220,6 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 	}
 }
 
-func isAzureAPIType(apiType string) bool {
-	return apiType == uctypes.APIType_OpenAIChat || apiType == uctypes.APIType_OpenAIResponses
-}
-
 func getOpenAIAPIType(model string) string {
 	if isLegacyOpenAIModel(model) {
 		return uctypes.APIType_OpenAIChat
@@ -275,13 +227,6 @@ func getOpenAIAPIType(model string) string {
 	// All newer OpenAI models support openai-responses API:
 	// gpt-5*, gpt-4.1*, o1*, o3*, and any future models
 	return uctypes.APIType_OpenAIResponses
-}
-
-func getAzureAPIType(model string) string {
-	if isNewOpenAIModel(model) {
-		return uctypes.APIType_OpenAIResponses
-	}
-	return uctypes.APIType_OpenAIChat
 }
 
 func isNewOpenAIModel(model string) bool {
@@ -326,13 +271,6 @@ func isO1Model(model string) bool {
 	return false
 }
 
-func isValidAzureResourceName(name string) bool {
-	if name == "" || len(name) > 63 {
-		return false
-	}
-	return AzureResourceNameRegex.MatchString(name)
-}
-
 func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	config, ok := fullConfig.WaveAIModes[aiMode]
@@ -340,7 +278,7 @@ func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {
 		return nil, fmt.Errorf("invalid AI mode: %s", aiMode)
 	}
 
-	applyProviderDefaults(&config)
+	applyProviderDefaults("", &config)
 	return &config, nil
 }
 
@@ -365,7 +303,7 @@ func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]
 			continue
 		}
 		resolved := modeConfig
-		applyProviderDefaults(&resolved)
+		applyProviderDefaults("", &resolved)
 		resolvedConfigs[modeName] = resolved
 	}
 

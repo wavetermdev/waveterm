@@ -18,20 +18,6 @@
         "display:color": {
           "type": "string"
         },
-        "ai:provider": {
-          "type": "string",
-          "enum": [
-            "wave",
-            "google",
-            "groq",
-            "openrouter",
-            "nanogpt",
-            "openai",
-            "azure",
-            "azure-legacy",
-            "custom"
-          ]
-        },
         "ai:apitype": {
           "type": "string",
           "enum": [
@@ -66,19 +52,10 @@
         "ai:proxyurl": {
           "type": "string"
         },
-        "ai:azureapiversion": {
-          "type": "string"
-        },
         "ai:apitoken": {
           "type": "string"
         },
         "ai:apitokensecretname": {
-          "type": "string"
-        },
-        "ai:azureresourcename": {
-          "type": "string"
-        },
-        "ai:azuredeployment": {
           "type": "string"
         },
         "ai:capabilities": {
@@ -97,9 +74,6 @@
             "type": "string"
           },
           "type": "array"
-        },
-        "waveai:cloud": {
-          "type": "boolean"
         },
         "ai:agentmode": {
           "type": "boolean"
