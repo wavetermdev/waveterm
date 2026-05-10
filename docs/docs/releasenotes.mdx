@@ -175,7 +175,7 @@ This release focuses on significant Windows platform improvements, Wave AI visua
 
 **Wave AI Updates:**
 - **Refreshed Visual Design** - Complete UI refresh removing blue accents and adding transparency support for better integration with custom backgrounds
-- **BYOK Without Telemetry** - Wave AI now works with bring-your-own-key and local models without requiring telemetry to be enabled
+- **BYOK Support** - Wave AI now works with bring-your-own-key and local models
 - [bugfix] Fixed tool type "function" compatibility with providers like Mistral
 
 **Terminal Improvements:**
@@ -376,7 +376,6 @@ Lots of other features and bug fixes as well:
 - New block splitting support -- Use Cmd-D and Cmd-Shift-D to split horizontally and vertically. For more control you can use Ctrl-Shift-S and then Up/Down/Left/Right to split in the given direction.
 - Delete block (without removing it from the layout). You can use Ctrl-Shift-D to remove a block, while keeping it in the layout. you can then launch a new widget in its place.
 - `wsh file` now supports copying files between your local machine, remote machines, and to/from S3
-- New analytics framework (event based as opposed to counter based). See Telemetry Docs for more information.
 - Web bookmarks! Edit in your bookmarks.json file, can open them in the web widget using Cmd+O
 - Edits to your ai.json presets file will now take effect _immediately_ in AI widgets
 - Much better error handling and messaging when errors occur in the preview or editor widget
@@ -502,7 +501,6 @@ New minor release that introduces Wave's connected computing extensions. We've i
 - `wsh file` operations (cat, write, append, rm, info, cp, and ls) -- [Docs](https://docs.waveterm.dev/wsh-reference#file)
 - Improved golang panic handling to prevent backend crashes
 - Improved SSH config logging and fixes a reused connection bug
-- Updated telemetry to track additional counters
 - New configuration settings (under "window:magnifiedblock") to control magnified block margins and display
 - New block/zone aliases (client, global, block, workspace, temp)
 - `wsh ai` file attachments are now rendered with special handling in the AI block
@@ -687,7 +685,6 @@ Minor cleanup release.
 - fix number parsing for certain config file values
 - add link to docs site
 - add new back button for directory view
-- telemetry fixes
 
 ### v0.8.0 &mdash; Sep 20, 2024
 

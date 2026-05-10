@@ -101,15 +101,7 @@ export class WaveAIModel {
         });
 
         this.defaultModeAtom = jotai.atom((get) => {
-            const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
             const aiModeConfigs = get(this.aiModeConfigs);
-            if (!telemetryEnabled) {
-                let mode = get(getSettingsKeyAtom("waveai:defaultmode"));
-                if (mode == null || mode.startsWith("waveai@")) {
-                    return "unknown";
-                }
-                return mode;
-            }
             const waveFallback = "waveai@ask";
             let mode = get(getSettingsKeyAtom("waveai:defaultmode")) ?? waveFallback;
             const modeExists = aiModeConfigs != null && mode in aiModeConfigs;
@@ -385,11 +377,6 @@ export class WaveAIModel {
     }
 
     isValidMode(mode: string): boolean {
-        const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-        if (mode.startsWith("waveai@") && !telemetryEnabled) {
-            return false;
-        }
-
         const aiModeConfigs = globalStore.get(this.aiModeConfigs);
         if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
             return false;
@@ -599,19 +586,6 @@ export class WaveAIModel {
         } catch (error) {
             console.error("Failed to fetch rate limit info:", error);
         }
-    }
-
-    handleAIFeedback(feedback: "good" | "bad") {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "waveai:feedback",
-                props: {
-                    "waveai:feedback": feedback,
-                },
-            },
-            { noresponse: true }
-        );
     }
 
     requestWaveAIFocus() {

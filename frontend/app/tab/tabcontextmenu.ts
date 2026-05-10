@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getOrefMetaKeyAtom, globalStore, recordTEvent } from "@/app/store/global";
+import { getOrefMetaKeyAtom, globalStore } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget } from "@/util/util";
 import { makeORef } from "../store/wos";
@@ -93,8 +93,6 @@ export function buildTabContextMenu(
                         oref,
                         meta: { "bg:*": true, "tab:background": null },
                     });
-                    env.rpc.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
-                    recordTEvent("action:settabtheme");
                 }),
         });
         for (const bgKey of bgKeys) {
@@ -107,8 +105,6 @@ export function buildTabContextMenu(
                             oref,
                             meta: { "bg:*": true, "tab:background": bgKey },
                         });
-                        env.rpc.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
-                        recordTEvent("action:settabtheme");
                     }),
             });
         }

@@ -3,7 +3,6 @@
 
 import { cn, makeIconClass } from "@/util/util";
 import { memo, useState } from "react";
-import { WaveAIModel } from "./waveai-model";
 
 interface AIFeedbackButtonsProps {
     messageText: string;
@@ -19,18 +18,12 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
         if (thumbsDownClicked) {
             setThumbsDownClicked(false);
         }
-        if (!thumbsUpClicked) {
-            WaveAIModel.getInstance().handleAIFeedback("good");
-        }
     };
 
     const handleThumbsDown = () => {
         setThumbsDownClicked(!thumbsDownClicked);
         if (thumbsUpClicked) {
             setThumbsUpClicked(false);
-        }
-        if (!thumbsDownClicked) {
-            WaveAIModel.getInstance().handleAIFeedback("bad");
         }
     };
 

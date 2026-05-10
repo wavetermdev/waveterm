@@ -15,7 +15,6 @@ import {
     getFocusedBlockId,
     getSettingsKeyAtom,
     globalStore,
-    recordTEvent,
     refocusNode,
     replaceBlock,
     WOS,
@@ -646,7 +645,6 @@ function registerGlobalKeys() {
     globalKeyMap.set("Cmd:g", () => {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         if (bcm.openSwitchConnection != null) {
-            recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "keyboard" });
             bcm.openSwitchConnection();
             return true;
         }

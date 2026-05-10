@@ -21,8 +21,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -110,9 +108,6 @@ func getWaveAISettings(rtInfo waveobj.ObjRTInfo, aiModeName string, aiModelName 
 		config.Capabilities = intersectStringSlices(modeConfig.Capabilities, modelConfig.Capabilities)
 	} else if len(modelConfig.Capabilities) > 0 {
 		config.Capabilities = modelConfig.Capabilities
-	}
-	if config.WaveAICloud && !telemetry.IsTelemetryEnabled() {
-		return nil, fmt.Errorf("Wave AI cloud modes require telemetry to be enabled")
 	}
 	apiToken := config.APIToken
 	if apiToken == "" && config.APITokenSecretName != "" {
@@ -578,40 +573,8 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 		log.Printf("WaveAI call metrics: requests=%d tools=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
 			metrics.RequestCount, metrics.ToolUseCount, metrics.ProxyReqCount,
 			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
-
-		sendAIMetricsTelemetry(ctx, metrics)
 	}
 	return err
-}
-
-func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
-	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
-		WaveAIAPIType:              metrics.Usage.APIType,
-		WaveAIModel:                metrics.Usage.Model,
-		WaveAIChatId:               metrics.ChatId,
-		WaveAIStepNum:              metrics.StepNum,
-		WaveAIInputTokens:          metrics.Usage.InputTokens,
-		WaveAIOutputTokens:         metrics.Usage.OutputTokens,
-		WaveAINativeWebSearchCount: metrics.Usage.NativeWebSearchCount,
-		WaveAIRequestCount:         metrics.RequestCount,
-		WaveAIToolUseCount:         metrics.ToolUseCount,
-		WaveAIToolUseErrorCount:    metrics.ToolUseErrorCount,
-		WaveAIToolDetail:           metrics.ToolDetail,
-		WaveAIProxyReq:             metrics.ProxyReqCount,
-		WaveAIHadError:             metrics.HadError,
-		WaveAIImageCount:           metrics.ImageCount,
-		WaveAIPDFCount:             metrics.PDFCount,
-		WaveAITextDocCount:         metrics.TextDocCount,
-		WaveAITextLen:              metrics.TextLen,
-		WaveAIFirstByteMs:          metrics.FirstByteLatency,
-		WaveAIRequestDurMs:         metrics.RequestDuration,
-		WaveAIWidgetAccess:         metrics.WidgetAccess,
-		WaveAIThinkingLevel:        metrics.ThinkingLevel,
-		WaveAIMode:                 metrics.AIMode,
-		WaveAIProvider:             metrics.AIProvider,
-		WaveAIIsLocal:              metrics.IsLocal,
-	})
-	_ = telemetry.RecordTEvent(ctx, event)
 }
 
 // PostMessageRequest represents the request body for posting a message

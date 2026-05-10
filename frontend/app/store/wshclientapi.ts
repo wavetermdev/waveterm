@@ -18,12 +18,6 @@ export class RpcApiType {
         this.mockClient = client;
     }
 
-    // command "activity" [call]
-    ActivityCommand(client: WshClient, data: ActivityUpdate, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "activity", data, opts);
-        return client.wshRpcCall("activity", data, opts);
-    }
-
     // command "aisendmessage" [call]
     AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "aisendmessage", data, opts);
@@ -612,12 +606,6 @@ export class RpcApiType {
         return client.wshRpcCall("path", data, opts);
     }
 
-    // command "recordtevent" [call]
-    RecordTEventCommand(client: WshClient, data: TEvent, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "recordtevent", data, opts);
-        return client.wshRpcCall("recordtevent", data, opts);
-    }
-
     // command "remotedisconnectfromjobmanager" [call]
     RemoteDisconnectFromJobManagerCommand(client: WshClient, data: CommandRemoteDisconnectFromJobManagerData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotedisconnectfromjobmanager", data, opts);
@@ -754,12 +742,6 @@ export class RpcApiType {
     RouteUnannounceCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "routeunannounce", null, opts);
         return client.wshRpcCall("routeunannounce", null, opts);
-    }
-
-    // command "sendtelemetry" [call]
-    SendTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sendtelemetry", null, opts);
-        return client.wshRpcCall("sendtelemetry", null, opts);
     }
 
     // command "setblockfocus" [call]
@@ -906,12 +888,6 @@ export class RpcApiType {
         return client.wshRpcCall("waveaiaddcontext", data, opts);
     }
 
-    // command "waveaienabletelemetry" [call]
-    WaveAIEnableTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "waveaienabletelemetry", null, opts);
-        return client.wshRpcCall("waveaienabletelemetry", null, opts);
-    }
-
     // command "waveaigettooldiff" [call]
     WaveAIGetToolDiffCommand(client: WshClient, data: CommandWaveAIGetToolDiffData, opts?: RpcOpts): Promise<CommandWaveAIGetToolDiffRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "waveaigettooldiff", data, opts);
@@ -952,12 +928,6 @@ export class RpcApiType {
     WriteTempFileCommand(client: WshClient, data: CommandWriteTempFileData, opts?: RpcOpts): Promise<string> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "writetempfile", data, opts);
         return client.wshRpcCall("writetempfile", data, opts);
-    }
-
-    // command "wshactivity" [call]
-    WshActivityCommand(client: WshClient, data: {[key: string]: number}, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "wshactivity", data, opts);
-        return client.wshRpcCall("wshactivity", data, opts);
     }
 
     // command "wsldefaultdistro" [call]

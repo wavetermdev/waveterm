@@ -1,0 +1,2 @@
+-- This migration cannot be reversed
+-- Telemetry tables have been permanently removed

@@ -90,7 +90,7 @@ var fileListCmd = &cobra.Command{
 	Short:   "list files",
 	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
 	Example: "  wsh file ls wsh://user@ec2/home/user/",
-	RunE:    activityWrap("file", fileListRun),
+	RunE:    fileListRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -100,7 +100,7 @@ var fileCatCmd = &cobra.Command{
 	Long:    "Display the contents of a file." + UriHelpText,
 	Example: "  wsh file cat wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    activityWrap("file", fileCatRun),
+	RunE:    fileCatRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -110,7 +110,7 @@ var fileInfoCmd = &cobra.Command{
 	Long:    "Show information about a file." + UriHelpText,
 	Example: "  wsh file info wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    activityWrap("file", fileInfoRun),
+	RunE:    fileInfoRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -120,7 +120,7 @@ var fileRmCmd = &cobra.Command{
 	Long:    "Remove a file." + UriHelpText,
 	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    activityWrap("file", fileRmRun),
+	RunE:    fileRmRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -130,7 +130,7 @@ var fileWriteCmd = &cobra.Command{
 	Long:    "Write stdin into a file, buffering input (10MB total file size limit)." + UriHelpText,
 	Example: "  echo 'hello' | wsh file write ./greeting.txt",
 	Args:    cobra.ExactArgs(1),
-	RunE:    activityWrap("file", fileWriteRun),
+	RunE:    fileWriteRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -140,7 +140,7 @@ var fileAppendCmd = &cobra.Command{
 	Long:    "Append stdin to a file, buffering input (10MB total file size limit)." + UriHelpText,
 	Example: "  tail -f log.txt | wsh file append ./app.log",
 	Args:    cobra.ExactArgs(1),
-	RunE:    activityWrap("file", fileAppendRun),
+	RunE:    fileAppendRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -151,7 +151,7 @@ var fileCpCmd = &cobra.Command{
 	Long:    "Copy files between different storage systems." + UriHelpText,
 	Example: "  wsh file cp wsh://user@ec2/home/user/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(2),
-	RunE:    activityWrap("file", fileCpRun),
+	RunE:    fileCpRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
@@ -162,7 +162,7 @@ var fileMvCmd = &cobra.Command{
 	Long:    "Move files between different storage systems. The source file will be deleted once the operation completes successfully." + UriHelpText,
 	Example: "  wsh file mv wsh://user@ec2/home/user/config.txt ./local-config.txt\n  wsh file mv ./local-config.txt wsh://user@ec2/home/user/config.txt",
 	Args:    cobra.ExactArgs(2),
-	RunE:    activityWrap("file", fileMvRun),
+	RunE:    fileMvRun,
 	PreRunE: preRunSetupRpcClient,
 }
 

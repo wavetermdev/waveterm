@@ -29,7 +29,6 @@ import {
     getSettingsKeyAtom,
     globalStore,
     readAtom,
-    recordTEvent,
     useBlockAtom,
     WOS,
 } from "@/store/global";
@@ -617,9 +616,8 @@ export class TermViewModel implements ViewModel {
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:r")) {
             const shellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
             if (shellIntegrationStatus === "ready") {
-                recordTEvent("action:term", { "action:type": "term:ctrlr" });
+                // allow this keybinding through, back to the terminal
             }
-            // just for telemetry, we allow this keybinding through, back to the terminal
             return false;
         }
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {

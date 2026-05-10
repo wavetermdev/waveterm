@@ -24,8 +24,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -749,26 +747,13 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 	conn.FireConnChangeEvent()
 	err := conn.connectInternal(ctx, connFlags)
 	if err != nil {
-		errorCode, subCode := remote.ClassifyConnError(err)
-		isContextError := errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+		errorCode, _ := remote.ClassifyConnError(err)
 		conn.Infof(ctx, "ERROR [%s] %v\n\n", errorCode, err)
 		conn.WithLock(func() {
 			conn.Status = Status_Error
 			conn.Error = err.Error()
 		})
 		conn.closeInternal_withlifecyclelock()
-		telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
-			Conn: map[string]int{"ssh:connecterror": 1},
-		}, "ssh-connconnect")
-		telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-			Event: "conn:connecterror",
-			Props: telemetrydata.TEventProps{
-				ConnType:         "ssh",
-				ConnErrorCode:    errorCode,
-				ConnSubErrorCode: subCode,
-				ConnContextError: isContextError,
-			},
-		})
 	} else {
 		conn.Infof(ctx, "successfully connected (wsh:%v)\n\n", conn.WshEnabled.Load())
 		conn.WithLock(func() {
@@ -777,15 +762,6 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 			if conn.ActiveConnNum == 0 {
 				conn.ActiveConnNum = int(activeConnCounter.Add(1))
 			}
-		})
-		telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
-			Conn: map[string]int{"ssh:connect": 1},
-		}, "ssh-connconnect")
-		telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-			Event: "conn:connect",
-			Props: telemetrydata.TEventProps{
-				ConnType: "ssh",
-			},
 		})
 	}
 	conn.FireConnChangeEvent()
@@ -984,13 +960,6 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		} else {
 			conn.Infof(ctx, "wsh not enabled: %s\n", wshResult.NoWshReason)
 		}
-		telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-			Event: "conn:nowsh",
-			Props: telemetrydata.TEventProps{
-				ConnType:         "ssh",
-				ConnWshErrorCode: wshResult.NoWshCode,
-			},
-		})
 	}
 	conn.persistWshInstalled(ctx, wshResult)
 	return nil

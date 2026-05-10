@@ -45,11 +45,9 @@ const previewElectronApi: ElectronApi = {
     captureScreenshot: (_rect: Electron.Rectangle) => Promise.resolve(""),
     setKeyboardChordMode: () => {},
     setWaveAIOpen: (_isOpen: boolean) => {},
-    incrementTermCommands: (_opts?: { isRemote?: boolean; isWsl?: boolean; isDurable?: boolean }) => {},
     nativePaste: () => {},
     doRefresh: () => {},
     saveTextFile: (_fileName: string, _content: string) => Promise.resolve(false),
-    setIsActive: async () => {},
     getPathForFile: (_file: File) => "",
 };
 

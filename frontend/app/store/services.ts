@@ -62,9 +62,6 @@ export class ClientServiceType {
     GetTab(arg1: string): Promise<Tab> {
         return callBackendService(this?.waveEnv, "client", "GetTab", Array.from(arguments))
     }
-    TelemetryUpdate(arg2: boolean): Promise<void> {
-        return callBackendService(this?.waveEnv, "client", "TelemetryUpdate", Array.from(arguments))
-    }
 }
 
 export const ClientService = new ClientServiceType();
