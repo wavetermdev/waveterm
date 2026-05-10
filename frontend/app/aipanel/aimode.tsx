@@ -151,7 +151,6 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
         showCloudModes,
-        model.inBuilder,
         hasPremium,
         currentMode
     );

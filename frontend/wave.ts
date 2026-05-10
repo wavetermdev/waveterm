@@ -7,16 +7,14 @@ import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
-    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
+import { makeTabRouteId } from "@/app/store/wshrouter";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
-import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { countersClear, countersPrint } from "@/store/counters";
 import {
@@ -62,7 +60,6 @@ async function initBare() {
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
-    getApi().onBuilderInit(initBuilderWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
     updateZoomFactor(getApi().getZoomFactor());
@@ -210,73 +207,3 @@ async function initWave(initOpts: WaveInitOpts) {
     getApi().setWindowInitStatus("wave-ready");
 }
 
-async function initBuilderWrap(initOpts: BuilderInitOpts) {
-    try {
-        await initBuilder(initOpts);
-    } catch (e) {
-        getApi().sendLog("Error in initBuilder " + e.message + "\n" + e.stack);
-        console.error("Error in initBuilder", e);
-    } finally {
-        document.body.style.visibility = null;
-        document.body.style.opacity = null;
-        document.body.classList.remove("is-transparent");
-    }
-}
-
-async function initBuilder(initOpts: BuilderInitOpts) {
-    getApi().sendLog("Init Builder " + JSON.stringify(initOpts));
-    const globalInitOpts: GlobalInitOptions = {
-        clientId: initOpts.clientId,
-        windowId: initOpts.windowId,
-        platform,
-        environment: "renderer",
-        builderId: initOpts.builderId,
-    };
-    console.log("Tsunami Builder Init", globalInitOpts);
-    await GlobalModel.getInstance().initialize(globalInitOpts);
-    initGlobal(globalInitOpts);
-    (window as any).globalAtoms = atoms;
-
-    const globalWS = initWshrpc(makeBuilderRouteId(initOpts.builderId));
-    (window as any).globalWS = globalWS;
-    (window as any).TabRpcClient = TabRpcClient;
-    await loadConnStatus();
-
-    let appIdToUse: string = null;
-    try {
-        const oref = WOS.makeORef("builder", initOpts.builderId);
-        const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, { oref });
-        if (rtInfo && rtInfo["builder:appid"]) {
-            appIdToUse = rtInfo["builder:appid"];
-        }
-    } catch (e) {
-        console.log("Could not load saved builder appId from rtinfo:", e);
-    }
-
-    document.title = appIdToUse ? `WaveApp Builder (${appIdToUse})` : "WaveApp Builder";
-
-    globalStore.set(atoms.builderAppId, appIdToUse);
-
-    const _client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
-
-    registerBuilderGlobalKeys();
-    registerElectronReinjectKeyHandler();
-    await loadMonaco();
-    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
-    console.log("fullconfig", fullConfig);
-    globalStore.set(atoms.fullConfigAtom, fullConfig);
-    const waveaiModeConfig = await RpcApi.GetWaveAIModeConfigCommand(TabRpcClient);
-    globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
-
-    console.log("Tsunami Builder First Render");
-    let firstRenderResolveFn: () => void = null;
-    const firstRenderPromise = new Promise<void>((resolve) => {
-        firstRenderResolveFn = resolve;
-    });
-    const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn }, null);
-    const elem = document.getElementById("main");
-    const root = createRoot(elem);
-    root.render(reactElem);
-    await firstRenderPromise;
-    console.log("Tsunami Builder First Render Done");
-}

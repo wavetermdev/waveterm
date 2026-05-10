@@ -96,9 +96,6 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(finalMessages, chatOpts.TabState)
 	}
-	if chatOpts.PlatformInfo != "" {
-		appendToLastUserMessage(finalMessages, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
-	}
 
 	reqBody := &ChatRequest{
 		Messages: finalMessages,

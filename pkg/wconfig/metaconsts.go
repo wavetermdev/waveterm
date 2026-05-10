@@ -19,8 +19,6 @@ const (
 	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
 	ConfigKey_AppTabBar                      = "app:tabbar"
 
-	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
-
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
 	ConfigKey_AiApiType                      = "ai:apitype"
@@ -125,11 +123,5 @@ const (
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
 	ConfigKey_DebugWebGlStatus               = "debug:webglstatus"
-
-	ConfigKey_TsunamiClear                   = "tsunami:*"
-	ConfigKey_TsunamiScaffoldPath            = "tsunami:scaffoldpath"
-	ConfigKey_TsunamiSdkReplacePath          = "tsunami:sdkreplacepath"
-	ConfigKey_TsunamiSdkVersion              = "tsunami:sdkversion"
-	ConfigKey_TsunamiGoPath                  = "tsunami:gopath"
 )
 

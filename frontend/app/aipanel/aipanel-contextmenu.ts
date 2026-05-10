@@ -39,86 +39,58 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         oref: model.orefContext,
     });
 
-    const defaultTokens = model.inBuilder ? 24576 : 4096;
-    const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
+    const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? 4096;
 
     const maxTokensSubmenu: ContextMenuItem[] = [];
 
-    if (model.inBuilder) {
-        maxTokensSubmenu.push(
-            {
-                label: "24k",
-                type: "checkbox",
-                checked: currentMaxTokens === 24576,
-                click: () => {
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 24576 },
-                    });
-                },
+    if (isDev()) {
+        maxTokensSubmenu.push({
+            label: "1k (Dev Testing)",
+            type: "checkbox",
+            checked: currentMaxTokens === 1024,
+            click: () => {
+                RpcApi.SetRTInfoCommand(TabRpcClient, {
+                    oref: model.orefContext,
+                    data: { "waveai:maxoutputtokens": 1024 },
+                });
             },
-            {
-                label: "64k (Pro)",
-                type: "checkbox",
-                checked: currentMaxTokens === 65536,
-                click: () => {
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 65536 },
-                    });
-                },
-            }
-        );
-    } else {
-        if (isDev()) {
-            maxTokensSubmenu.push({
-                label: "1k (Dev Testing)",
-                type: "checkbox",
-                checked: currentMaxTokens === 1024,
-                click: () => {
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 1024 },
-                    });
-                },
-            });
-        }
-        maxTokensSubmenu.push(
-            {
-                label: "4k",
-                type: "checkbox",
-                checked: currentMaxTokens === 4096,
-                click: () => {
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 4096 },
-                    });
-                },
-            },
-            {
-                label: "16k (Pro)",
-                type: "checkbox",
-                checked: currentMaxTokens === 16384,
-                click: () => {
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 16384 },
-                    });
-                },
-            },
-            {
-                label: "64k (Pro)",
-                type: "checkbox",
-                checked: currentMaxTokens === 65536,
-                click: () => {
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 65536 },
-                    });
-                },
-            }
-        );
+        });
     }
+    maxTokensSubmenu.push(
+        {
+            label: "4k",
+            type: "checkbox",
+            checked: currentMaxTokens === 4096,
+            click: () => {
+                RpcApi.SetRTInfoCommand(TabRpcClient, {
+                    oref: model.orefContext,
+                    data: { "waveai:maxoutputtokens": 4096 },
+                });
+            },
+        },
+        {
+            label: "16k (Pro)",
+            type: "checkbox",
+            checked: currentMaxTokens === 16384,
+            click: () => {
+                RpcApi.SetRTInfoCommand(TabRpcClient, {
+                    oref: model.orefContext,
+                    data: { "waveai:maxoutputtokens": 16384 },
+                });
+            },
+        },
+        {
+            label: "64k (Pro)",
+            type: "checkbox",
+            checked: currentMaxTokens === 65536,
+            click: () => {
+                RpcApi.SetRTInfoCommand(TabRpcClient, {
+                    oref: model.orefContext,
+                    data: { "waveai:maxoutputtokens": 65536 },
+                });
+            },
+        }
+    );
 
     menu.push({
         label: "Max Output Tokens",

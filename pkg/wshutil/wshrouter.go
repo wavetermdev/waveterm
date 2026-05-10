@@ -34,7 +34,6 @@ const (
 	RoutePrefix_Proc       = "proc:"
 	RoutePrefix_Tab        = "tab:"
 	RoutePrefix_FeBlock    = "feblock:"
-	RoutePrefix_Builder    = "builder:"
 	RoutePrefix_Link       = "link:"
 	RoutePrefix_Job        = "job:"
 	RoutePrefix_Bare       = "bare:"
@@ -130,10 +129,6 @@ func MakeTabRouteId(tabId string) string {
 
 func MakeFeBlockRouteId(blockId string) string {
 	return "feblock:" + blockId
-}
-
-func MakeBuilderRouteId(builderId string) string {
-	return "builder:" + builderId
 }
 
 func MakeJobRouteId(jobId string) string {

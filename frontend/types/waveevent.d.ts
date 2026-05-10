@@ -9,10 +9,7 @@ declare global {
     type WaveEventName =
         | "blockclose"
         | "connchange"
-        | "sysinfo"
         | "controllerstatus"
-        | "builderstatus"
-        | "builderoutput"
         | "waveobj:update"
         | "blockfile"
         | "config"
@@ -21,8 +18,6 @@ declare global {
         | "route:up"
         | "workspace:update"
         | "waveai:ratelimit"
-        | "waveapp:appgoupdated"
-        | "tsunami:updatemeta"
         | "waveai:modeconfig"
         | "block:jobstatus"
         | "badge"
@@ -37,10 +32,7 @@ declare global {
     } & (
         { event: "blockclose"; data?: string; } | 
         { event: "connchange"; data?: ConnStatus; } | 
-        { event: "sysinfo"; data?: TimeSeriesData; } | 
         { event: "controllerstatus"; data?: BlockControllerRuntimeStatus; } | 
-        { event: "builderstatus"; data?: BuilderStatusData; } | 
-        { event: "builderoutput"; data?: {[key: string]: any}; } | 
         { event: "waveobj:update"; data?: WaveObjUpdate; } | 
         { event: "blockfile"; data?: WSFileEventData; } | 
         { event: "config"; data?: WatcherUpdate; } | 
@@ -49,8 +41,6 @@ declare global {
         { event: "route:up"; data?: null; } | 
         { event: "workspace:update"; data?: null; } | 
         { event: "waveai:ratelimit"; data?: RateLimitInfo; } | 
-        { event: "waveapp:appgoupdated"; data?: null; } | 
-        { event: "tsunami:updatemeta"; data?: AppMeta; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
         { event: "badge"; data?: BadgeEvent; }

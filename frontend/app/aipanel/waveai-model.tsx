@@ -10,12 +10,10 @@ import {
 import { FocusManager } from "@/app/store/focusManager";
 import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { isBuilderWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { base64ToArrayBuffer } from "@/util/util";
 import { ChatStatus } from "ai";
@@ -41,27 +39,6 @@ export interface DroppedFile {
     previewUrl?: string;
 }
 
-const BuilderAIModeConfigs: Record<string, AIModeConfigType> = {
-    "waveaibuilder@default": {
-        "display:name": "Builder Default",
-        "display:order": -2,
-        "display:icon": "sparkles",
-        "display:description": "Good mix of speed and accuracy\n(gpt-5.4 with minimal thinking)",
-        "ai:provider": "wave",
-        "ai:switchcompat": ["wavecloud"],
-        "waveai:premium": true,
-    },
-    "waveaibuilder@deep": {
-        "display:name": "Builder Deep",
-        "display:order": -1,
-        "display:icon": "lightbulb",
-        "display:description": "Slower but most capable\n(gpt-5.4 with full reasoning)",
-        "ai:provider": "wave",
-        "ai:switchcompat": ["wavecloud"],
-        "waveai:premium": true,
-    },
-};
-
 export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
     inputRef: React.RefObject<AIPanelInputRef> | null = null;
@@ -73,7 +50,6 @@ export class WaveAIModel {
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
     orefContext: ORef;
-    inBuilder: boolean = false;
     isAIStreaming = jotai.atom(false);
 
     widgetAccessAtom!: jotai.Atom<boolean>;
@@ -97,15 +73,10 @@ export class WaveAIModel {
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 
-    private constructor(orefContext: ORef, inBuilder: boolean) {
+    private constructor(orefContext: ORef) {
         this.orefContext = orefContext;
-        this.inBuilder = inBuilder;
         this.chatId = jotai.atom(null) as jotai.PrimitiveAtom<string>;
-        if (inBuilder) {
-            this.aiModeConfigs = jotai.atom(BuilderAIModeConfigs) as jotai.Atom<Record<string, AIModeConfigType>>;
-        } else {
-            this.aiModeConfigs = atoms.waveaiModeConfigAtom;
-        }
+        this.aiModeConfigs = atoms.waveaiModeConfigAtom;
 
         this.hasPremiumAtom = jotai.atom((get) => {
             const rateLimitInfo = get(atoms.waveAIRateLimitInfoAtom);
@@ -113,9 +84,6 @@ export class WaveAIModel {
         });
 
         this.widgetAccessAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return true;
-            }
             const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
             return value ?? true;
@@ -127,24 +95,15 @@ export class WaveAIModel {
         });
 
         this.isWaveAIFocusedAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return get(BuilderFocusManager.getInstance().focusType) === "waveai";
-            }
             return get(FocusManager.getInstance().focusType) === "waveai";
         });
 
         this.panelVisibleAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return true;
-            }
             return get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
         });
 
         this.defaultModeAtom = jotai.atom((get) => {
             const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-            if (this.inBuilder) {
-                return telemetryEnabled ? "waveaibuilder@default" : "invalid";
-            }
             const aiModeConfigs = get(this.aiModeConfigs);
             if (!telemetryEnabled) {
                 let mode = get(getSettingsKeyAtom("waveai:defaultmode"));
@@ -176,15 +135,9 @@ export class WaveAIModel {
 
     static getInstance(): WaveAIModel {
         if (!WaveAIModel.instance) {
-            let orefContext: ORef;
-            if (isBuilderWindow()) {
-                const builderId = globalStore.get(atoms.builderId);
-                orefContext = WOS.makeORef("builder", builderId);
-            } else {
-                const tabId = globalStore.get(atoms.staticTabId);
-                orefContext = WOS.makeORef("tab", tabId);
-            }
-            WaveAIModel.instance = new WaveAIModel(orefContext, isBuilderWindow());
+            const tabId = globalStore.get(atoms.staticTabId);
+            const orefContext = WOS.makeORef("tab", tabId);
+            WaveAIModel.instance = new WaveAIModel(orefContext);
             (window as any).WaveAIModel = WaveAIModel.instance;
         }
         return WaveAIModel.instance;
@@ -340,7 +293,7 @@ export class WaveAIModel {
     }
 
     focusInput() {
-        if (!this.inBuilder && !WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
+        if (!WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
         }
         if (this.inputRef?.current) {
@@ -611,19 +564,11 @@ export class WaveAIModel {
     }
 
     requestWaveAIFocus() {
-        if (this.inBuilder) {
-            BuilderFocusManager.getInstance().setWaveAIFocused();
-        } else {
-            FocusManager.getInstance().requestWaveAIFocus();
-        }
+        FocusManager.getInstance().requestWaveAIFocus();
     }
 
     requestNodeFocus() {
-        if (this.inBuilder) {
-            BuilderFocusManager.getInstance().setAppFocused();
-        } else {
-            FocusManager.getInstance().requestNodeFocus();
-        }
+        FocusManager.getInstance().requestNodeFocus();
     }
 
     getChatId(): string {
@@ -695,16 +640,10 @@ export class WaveAIModel {
     }
 
     canCloseWaveAIPanel(): boolean {
-        if (this.inBuilder) {
-            return false;
-        }
         return true;
     }
 
     closeWaveAIPanel() {
-        if (this.inBuilder) {
-            return;
-        }
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
     }
 }

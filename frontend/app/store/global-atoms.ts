@@ -13,9 +13,7 @@ const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
-    const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
-    const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
-    setWaveWindowType(initOpts.isPreview ? "preview" : initOpts.builderId != null ? "builder" : "tab");
+    setWaveWindowType(initOpts.isPreview ? "preview" : "tab");
     const uiContextAtom = atom((get) => {
         const uiContext: UIContext = {
             windowid: initOpts.windowId,
@@ -128,8 +126,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
-        builderId: builderIdAtom,
-        builderAppId: builderAppIdAtom,
         uiContext: uiContextAtom,
         workspaceId: workspaceIdAtom,
         workspace: workspaceAtom,

@@ -12,28 +12,6 @@ const hasConfigErrorsAtom = atom(false);
 const isDevAtom = atom(true);
 const mockVersionAtom = atom(0);
 
-function makeMockApp(name: string, icon: string, iconcolor: string): AppInfo {
-    return {
-        appid: `local/${name.toLowerCase().replace(/\s+/g, "-")}`,
-        modtime: 0,
-        manifest: {
-            appmeta: { title: name, shortdesc: "", icon, iconcolor },
-            configschema: {},
-            dataschema: {},
-            secrets: {},
-        },
-    };
-}
-
-const mockApps: AppInfo[] = [
-    makeMockApp("Weather", "cloud-sun", "#60a5fa"),
-    makeMockApp("Stocks", "chart-line", "#34d399"),
-    makeMockApp("Notes", "note-sticky", "#fbbf24"),
-    makeMockApp("Pomodoro", "clock", "#f87171"),
-    makeMockApp("GitHub PRs", "code-pull-request", "#a78bfa"),
-    makeMockApp("Server Monitor", "server", "#4ade80"),
-];
-
 const mockWidgets: { [key: string]: WidgetConfigType } = {
     "defwidget@term": {
         icon: "terminal",
@@ -51,14 +29,6 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
         "display:order": 1,
         blockdef: { meta: { view: "codeeditor" } },
     },
-    "defwidget@web": {
-        icon: "globe",
-        color: "#f472b6",
-        label: "Web",
-        description: "Open a web browser",
-        "display:order": 2,
-        blockdef: { meta: { view: "web", url: "https://waveterm.dev" } },
-    },
     "defwidget@files": {
         icon: "folder",
         color: "#fbbf24",
@@ -67,14 +37,6 @@ const mockWidgets: { [key: string]: WidgetConfigType } = {
         "display:order": 3,
         blockdef: { meta: { view: "preview", connection: "local" } },
     },
-    "defwidget@sysinfo": {
-        icon: "chart-line",
-        color: "#34d399",
-        label: "Sysinfo",
-        description: "Open system info",
-        "display:order": 4,
-        blockdef: { meta: { view: "sysinfo" } },
-    },
 };
 
 const fullConfigAtom = atom<FullConfigType>({ settings: {}, widgets: mockWidgets } as unknown as FullConfigType);
@@ -82,12 +44,10 @@ const fullConfigAtom = atom<FullConfigType>({ settings: {}, widgets: mockWidgets
 function makeWidgetsEnv(
     baseEnv: WaveEnv,
     isDev: boolean,
-    apps?: AppInfo[],
     atomOverrides?: Partial<GlobalAtomsType>
 ) {
     return applyMockEnvOverrides(baseEnv, {
         isDev,
-        rpc: { ListAllAppsCommand: () => Promise.resolve(apps ?? []) },
         atoms: {
             fullConfigAtom,
             ...atomOverrides,
@@ -99,17 +59,15 @@ function WidgetsScenario({
     label,
     isDev = false,
     height,
-    apps,
 }: {
     label: string;
     isDev?: boolean;
     height?: number;
-    apps?: AppInfo[];
 }) {
     const baseEnv = useWaveEnv();
     const envRef = useRef<WaveEnv>(null);
     if (envRef.current == null) {
-        envRef.current = makeWidgetsEnv(baseEnv, isDev, apps, {
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, {
             hasConfigErrors: hasConfigErrorsAtom,
         });
     }
@@ -137,7 +95,7 @@ function WidgetsResizable({ isDev }: { isDev: boolean }) {
     const baseEnv = useWaveEnv();
     const envRef = useRef<WaveEnv>(null);
     if (envRef.current == null) {
-        envRef.current = makeWidgetsEnv(baseEnv, isDev, mockApps, { hasConfigErrors: hasConfigErrorsAtom });
+        envRef.current = makeWidgetsEnv(baseEnv, isDev, { hasConfigErrors: hasConfigErrorsAtom });
     }
 
     return (
@@ -213,8 +171,7 @@ export function WidgetsPreview() {
             <div key={mockVersion} className="flex flex-col gap-8">
                 <div className="flex flex-row gap-8 items-start flex-wrap">
                     <WidgetsScenario label="normal" height={550} isDev={isDev} />
-                    <WidgetsScenario label="dev mode (apps button)" height={550} isDev={isDev} apps={mockApps} />
-                    <WidgetsScenario label="compact (200px)" height={200} isDev={isDev} apps={mockApps} />
+                    <WidgetsScenario label="compact (200px)" height={200} isDev={isDev} />
                 </div>
                 <WidgetsResizable isDev={isDev} />
             </div>

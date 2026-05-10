@@ -102,8 +102,8 @@ type MetaTSType struct {
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
 	// for workspace
-	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
-	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
+	LayoutVTabBarWidth   int   `json:"layout:vtabbarwidth,omitempty"`
+	LayoutWidgetsVisible *bool `json:"layout:widgetsvisible,omitempty"`
 
 	// for tabs+waveai
 	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`
@@ -134,20 +134,8 @@ type MetaTSType struct {
 	TermOsc52               string   `json:"term:osc52,omitempty"`
 	TermDurable             *bool    `json:"term:durable,omitempty"`
 
-	WebZoom          float64 `json:"web:zoom,omitempty"`
-	WebHideNav       *bool   `json:"web:hidenav,omitempty"`
-	WebPartition     string  `json:"web:partition,omitempty"`
-	WebUserAgentType string  `json:"web:useragenttype,omitempty"`
-
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
-
-	TsunamiClear          bool              `json:"tsunami:*,omitempty"`
-	TsunamiSdkReplacePath string            `json:"tsunami:sdkreplacepath,omitempty"`
-	TsunamiAppPath        string            `json:"tsunami:apppath,omitempty"`
-	TsunamiAppId          string            `json:"tsunami:appid,omitempty"`
-	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
-	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`

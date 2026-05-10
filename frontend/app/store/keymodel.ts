@@ -29,7 +29,7 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
-import { isBuilderWindow, isTabWindow } from "./windowtype";
+import { isTabWindow } from "./windowtype";
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -323,10 +323,6 @@ function globalRefocusWithTimeout(timeoutVal: number) {
 }
 
 function globalRefocus() {
-    if (isBuilderWindow()) {
-        return;
-    }
-
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
@@ -745,11 +741,6 @@ function registerGlobalKeys() {
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
         return true;
     });
-    const allKeys = Array.from(globalKeyMap.keys());
-    // special case keys, handled by web view
-    allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");
-    getApi().registerGlobalWebviewKeys(allKeys);
-
     const splitBlockKeys = new Map<string, KeyHandler>();
     splitBlockKeys.set("ArrowUp", () => {
         handleSplitVertical("before");
@@ -770,15 +761,6 @@ function registerGlobalKeys() {
     globalChordMap.set("Ctrl:Shift:s", splitBlockKeys);
 }
 
-function registerBuilderGlobalKeys() {
-    globalKeyMap.set("Cmd:w", () => {
-        getApi().closeBuilderWindow();
-        return true;
-    });
-    const allKeys = Array.from(globalKeyMap.keys());
-    getApi().registerGlobalWebviewKeys(allKeys);
-}
-
 function getAllGlobalKeyBindings(): string[] {
     const allKeys = Array.from(globalKeyMap.keys());
     return allKeys;
@@ -791,7 +773,6 @@ export {
     getSimpleControlShiftAtom,
     globalRefocus,
     globalRefocusWithTimeout,
-    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,

@@ -21,26 +21,6 @@
             }
         }
     },
-    "defwidget@web": {
-        "display:order": -3,
-        "icon": "globe",
-        "label": "web",
-        "blockdef": {
-            "meta": {
-                "view": "web"
-            }
-        }
-    },
-    "defwidget@sysinfo": {
-        "display:order": -2,
-        "icon": "chart-line",
-        "label": "sysinfo",
-        "blockdef": {
-            "meta": {
-                "view": "sysinfo"
-            }
-        }
-    },
     "defwidget@processviewer": {
         "display:order": -1,
         "icon": "list-tree",

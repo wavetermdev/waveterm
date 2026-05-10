@@ -107,7 +107,6 @@ export default defineConfig({
             rollupOptions: {
                 input: {
                     index: "emain/preload.ts",
-                    "preload-webview": "emain/preload-webview.ts",
                 },
                 output: {
                     format: "cjs",

@@ -32,8 +32,6 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     let placeholder: string;
     if (!isChatEmpty) {
         placeholder = "Continue...";
-    } else if (model.inBuilder) {
-        placeholder = "What would you like to build...";
     } else {
         placeholder = "Ask Wave AI anything...";
     }

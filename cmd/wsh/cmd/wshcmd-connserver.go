@@ -273,13 +273,6 @@ func serverRunRouter() error {
 		}()
 		runListener(unixListener, router)
 	}()
-	// run the sysinfo loop
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("serverRunRouter:RunSysInfoLoop", recover())
-		}()
-		wshremote.RunSysInfoLoop(client, connServerConnName)
-	}()
 	startJobLogCleanup()
 	log.Printf("running server, successfully started")
 	select {}
@@ -381,13 +374,6 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 		runListener(unixListener, router)
 	}()
 
-	// run the sysinfo loop
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("serverRunRouterDomainSocket:RunSysInfoLoop", recover())
-		}()
-		wshremote.RunSysInfoLoop(client, connServerConnName)
-	}()
 	startJobLogCleanup()
 
 	log.Printf("running server (router-domainsocket mode), successfully started")
@@ -406,12 +392,6 @@ func serverRunNormal(jwtToken string) error {
 	wshfs.RpcClient = RpcClient
 	wshfs.RpcClientRouteId = RpcClientRouteId
 	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("serverRunNormal:RunSysInfoLoop", recover())
-		}()
-		wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
-	}()
 	startJobLogCleanup()
 	select {} // run forever
 }

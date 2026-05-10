@@ -8,7 +8,6 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { useTabModelMaybe } from "@/app/store/tab-model";
-import { isBuilderWindow } from "@/app/store/windowtype";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
@@ -183,24 +182,6 @@ const AIWelcomeMessage = memo(() => {
 
 AIWelcomeMessage.displayName = "AIWelcomeMessage";
 
-const AIBuilderWelcomeMessage = memo(() => {
-    return (
-        <div className="text-secondary py-8">
-            <div className="text-center">
-                <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
-                <p className="text-lg font-bold text-primary">WaveApp Builder</p>
-            </div>
-            <div className="mt-4 text-left max-w-md mx-auto">
-                <p className="text-sm mb-6">
-                    The WaveApp builder helps create wave widgets that integrate seamlessly into Wave Terminal.
-                </p>
-            </div>
-        </div>
-    );
-});
-
-AIBuilderWelcomeMessage.displayName = "AIBuilderWelcomeMessage";
-
 const AIErrorMessage = memo(() => {
     const model = WaveAIModel.getInstance();
     const errorMessage = jotai.useAtomValue(model.errorMessage);
@@ -284,12 +265,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
                     aimode: globalStore.get(model.currentAIMode),
                 };
-                if (isBuilderWindow()) {
-                    body.builderid = globalStore.get(atoms.builderId);
-                    body.builderappid = globalStore.get(atoms.builderAppId);
-                } else {
-                    body.tabid = tabModel.tabId;
-                }
+                body.tabid = tabModel.tabId;
                 return { body };
             },
         }),
@@ -557,15 +533,14 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "@container bg-zinc-900/70 flex flex-col relative",
-                model.inBuilder ? "mt-0 h-full" : "mt-1 h-[calc(100%-4px)]",
+                "@container bg-zinc-900/70 flex flex-col relative mt-1 h-[calc(100%-4px)]",
                 (isDragOver || isReactDndDragOver) && "bg-zinc-800 border-accent",
                 isFocused && !borderColor ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
                 borderTopLeftRadius: roundTopLeft ? 10 : 0,
-                borderTopRightRadius: model.inBuilder ? 0 : 10,
-                borderBottomRightRadius: model.inBuilder ? 0 : 10,
+                borderTopRightRadius: 10,
+                borderBottomRightRadius: 10,
                 borderBottomLeftRadius: 10,
                 borderColor: borderColor ?? undefined,
             }}
@@ -598,7 +573,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                                 <div className="absolute top-2 left-2 z-10">
                                     <AIModeDropdown />
                                 </div>
-                                {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
+                                <AIWelcomeMessage />
                             </div>
                         ) : (
                             <AIPanelMessages
