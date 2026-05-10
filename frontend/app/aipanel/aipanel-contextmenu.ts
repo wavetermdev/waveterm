@@ -99,23 +99,6 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
 
     menu.push({ type: "separator" });
 
-    menu.push({
-        label: "Configure Modes",
-        click: () => {
-            RpcApi.RecordTEventCommand(
-                TabRpcClient,
-                {
-                    event: "action:other",
-                    props: {
-                        "action:type": "waveai:configuremodes:contextmenu",
-                    },
-                },
-                { noresponse: true }
-            );
-            model.openWaveAIConfig();
-        },
-    });
-
     if (model.canCloseWaveAIPanel()) {
         menu.push({ type: "separator" });
 

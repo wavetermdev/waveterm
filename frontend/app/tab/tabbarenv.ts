@@ -12,7 +12,6 @@ export type TabBarEnv = WaveEnvSubset<{
         installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
     };
     rpc: {
-        ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
         SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
         UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];

@@ -286,7 +286,6 @@ const AppKeyHandlers = () => {
         const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
         const staticMouseDownHandler = (e: MouseEvent) => {
             keyboardMouseDownHandler(e);
-            GlobalModel.getInstance().setIsActive();
         };
         document.addEventListener("keydown", staticKeyDownHandler);
         document.addEventListener("mousedown", staticMouseDownHandler);

@@ -5,12 +5,9 @@ import Logo from "@/app/asset/logo.svg";
 import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { atoms } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isDev } from "@/util/isdev";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
 import { Modal } from "./modal";
 
 interface AboutModalVProps {
@@ -88,16 +85,6 @@ const AboutModal = () => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const versionString = `${fullConfig?.version ?? ""} (${isDev() ? "dev-" : ""}${fullConfig?.buildtime ?? ""})`;
     const updaterChannel = fullConfig?.settings?.["autoupdate:channel"] ?? "latest";
-
-    useEffect(() => {
-        fireAndForget(async () => {
-            RpcApi.RecordTEventCommand(
-                TabRpcClient,
-                { event: "action:other", props: { "action:type": "about" } },
-                { noresponse: true }
-            );
-        });
-    }, []);
 
     return (
         <AboutModalV

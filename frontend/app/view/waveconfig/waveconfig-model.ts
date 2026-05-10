@@ -489,16 +489,6 @@ export class WaveConfigViewModel implements ViewModel {
 
         try {
             await this.env.rpc.SetSecretsCommand(TabRpcClient, { [selectedSecret]: secretValue });
-            this.env.rpc.RecordTEventCommand(
-                TabRpcClient,
-                {
-                    event: "action:other",
-                    props: {
-                        "action:type": "waveconfig:savesecret",
-                    },
-                },
-                { noresponse: true }
-            );
             this.closeSecretView();
         } catch (error) {
             globalStore.set(this.errorMessageAtom, `Failed to save secret: ${error.message}`);
@@ -570,16 +560,6 @@ export class WaveConfigViewModel implements ViewModel {
 
         try {
             await this.env.rpc.SetSecretsCommand(TabRpcClient, { [name]: value });
-            this.env.rpc.RecordTEventCommand(
-                TabRpcClient,
-                {
-                    event: "action:other",
-                    props: {
-                        "action:type": "waveconfig:savesecret",
-                    },
-                },
-                { noresponse: true }
-            );
             globalStore.set(this.isAddingNewAtom, false);
             globalStore.set(this.newSecretNameAtom, "");
             globalStore.set(this.newSecretValueAtom, "");

@@ -11,7 +11,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
@@ -64,15 +63,4 @@ func (cs *ClientService) AgreeTos(ctx context.Context) (waveobj.UpdatesRtnType, 
 	}
 	wcore.BootstrapStarterLayout(ctx)
 	return waveobj.ContextGetUpdatesRtn(ctx), nil
-}
-
-func (cs *ClientService) TelemetryUpdate(ctx context.Context, telemetryEnabled bool) error {
-	meta := waveobj.MetaMapType{
-		wconfig.ConfigKey_TelemetryEnabled: telemetryEnabled,
-	}
-	err := wconfig.SetBaseConfigValue(meta)
-	if err != nil {
-		return fmt.Errorf("error setting telemetry value: %w", err)
-	}
-	return nil
 }

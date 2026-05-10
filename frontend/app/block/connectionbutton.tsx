@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computeConnColorNum } from "@/app/block/blockutil";
-import { recordTEvent } from "@/app/store/global";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { IconButton } from "@/element/iconbutton";
 import * as util from "@/util/util";
@@ -30,7 +29,6 @@ export const ConnectionButton = React.memo(
             const connColorNum = computeConnColorNum(connStatus);
             let color = `var(--conn-icon-color-${connColorNum})`;
             const clickHandler = function () {
-                recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "mouse" });
                 setConnModalOpen(true);
             };
             let titleText = null;

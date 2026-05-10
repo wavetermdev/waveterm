@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Modal } from "@/app/modals/modal";
-import { recordTEvent } from "@/app/store/global";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveUIMessagePart } from "./aitypes";
@@ -25,12 +24,10 @@ export const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
     };
 
     const handleConfirm = () => {
-        recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:confirm" });
         model.restoreBackup(toolData.toolcallid, toolData.writebackupfilename, toolData.inputfilename);
     };
 
     const handleCancel = () => {
-        recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:cancel" });
         model.closeRestoreBackupModal();
     };
 

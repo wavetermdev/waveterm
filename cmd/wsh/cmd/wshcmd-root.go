@@ -213,22 +213,7 @@ func getTabIdFromEnv() string {
 	return os.Getenv("WAVETERM_TABID")
 }
 
-// this will send wsh activity to the client running on *your* local machine (it does not contact any wave cloud infrastructure)
-// if you've turned off telemetry in your local client, this data never gets sent to us
-// no parameters or timestamps are sent, as you can see below, it just sends the name of the command (and if there was an error)
-// (e.g. "wsh ai ..." would send "ai")
-// this helps us understand which commands are actually being used so we know where to concentrate our effort
-func sendActivity(wshCmdName string, success bool) {
-	if RpcClient == nil || wshCmdName == "" {
-		return
-	}
-	dataMap := make(map[string]int)
-	dataMap[wshCmdName] = 1
-	if !success {
-		dataMap[wshCmdName+"#"+"error"] = 1
-	}
-	wshclient.WshActivityCommand(RpcClient, dataMap, nil)
-}
+func sendActivity(wshCmdName string, success bool) {}
 
 // Execute executes the root command.
 func Execute() {

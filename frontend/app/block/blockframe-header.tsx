@@ -14,13 +14,11 @@ import { getBlockBadgeAtom } from "@/app/store/badge";
 import {
     createBlockSplitHorizontally,
     createBlockSplitVertically,
-    recordTEvent,
     refocusNode,
     WOS,
 } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
@@ -237,10 +235,6 @@ const BlockFrame_Header = ({
     viewIconUnion = metaFrameIcon ?? viewIconUnion;
 
     React.useEffect(() => {
-        if (magnified && !preview && !prevMagifiedState.current) {
-            waveEnv.rpc.ActivityCommand(TabRpcClient, { nummagnify: 1 });
-            recordTEvent("action:magnify", { "block:view": viewName });
-        }
         prevMagifiedState.current = magnified;
     }, [magnified]);
 

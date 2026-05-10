@@ -1,38 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
 
 const BYOKAnnouncement = () => {
     const model = WaveAIModel.getInstance();
 
     const handleOpenConfig = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "action:other",
-                props: {
-                    "action:type": "waveai:configuremodes:panel",
-                },
-            },
-            { noresponse: true }
-        );
         await model.openWaveAIConfig();
-    };
-
-    const handleViewDocs = () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "action:other",
-                props: {
-                    "action:type": "waveai:viewdocs:panel",
-                },
-            },
-            { noresponse: true }
-        );
     };
 
     return (
@@ -56,7 +31,6 @@ const BYOKAnnouncement = () => {
                             href="https://docs.waveterm.dev/waveai-modes"
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={handleViewDocs}
                             className="text-blue-400! hover:text-blue-300! hover:underline text-sm cursor-pointer transition-colors flex items-center gap-1"
                         >
                             View Docs <i className="fa fa-external-link text-xs"></i>

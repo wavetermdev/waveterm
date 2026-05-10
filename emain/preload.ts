@@ -57,12 +57,9 @@ contextBridge.exposeInMainWorld("api", {
     captureScreenshot: (rect: Rectangle) => ipcRenderer.invoke("capture-screenshot", rect),
     setKeyboardChordMode: () => ipcRenderer.send("set-keyboard-chord-mode"),
     setWaveAIOpen: (isOpen: boolean) => ipcRenderer.send("set-waveai-open", isOpen),
-    incrementTermCommands: (opts?: { isRemote?: boolean; isWsl?: boolean; isDurable?: boolean }) =>
-        ipcRenderer.send("increment-term-commands", opts),
     nativePaste: () => ipcRenderer.send("native-paste"),
     doRefresh: () => ipcRenderer.send("do-refresh"),
     getPathForFile: (file: File): string => webUtils.getPathForFile(file),
     saveTextFile: (fileName: string, content: string) => ipcRenderer.invoke("save-text-file", fileName, content),
-    setIsActive: () => ipcRenderer.invoke("set-is-active"),
 });
 

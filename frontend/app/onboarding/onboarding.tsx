@@ -22,34 +22,21 @@ import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
 // Page flow:
-//   init -> (telemetry enabled) -> features
-//   init -> (telemetry disabled) -> notelemetrystar -> features
+//   init -> features
 
-type PageName = "init" | "notelemetrystar" | "features";
+type PageName = "init" | "features";
 
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({
     isCompact,
-    telemetryUpdateFn,
 }: {
     isCompact: boolean;
-    telemetryUpdateFn: (value: boolean) => Promise<void>;
 }) => {
-    const telemetrySetting = useSettingsKeyAtom("telemetry:enabled");
     const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
-    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!telemetrySetting);
     const setPageName = useSetAtom(pageNameAtom);
 
     const handleStarClick = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "star", "onboarding:page": "init" },
-            },
-            { noresponse: true }
-        );
         const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
@@ -61,21 +48,9 @@ const InitPage = ({
         if (!clientData?.tosagreed) {
             fireAndForget(() => services.ClientService.AgreeTos());
         }
-        if (telemetryEnabled) {
-            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
-        }
-        setPageName(telemetryEnabled ? "features" : "notelemetrystar");
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+        setPageName("features");
     };
-
-    const setTelemetry = (value: boolean) => {
-        fireAndForget(() =>
-            telemetryUpdateFn(value).then(() => {
-                setTelemetryEnabled(value);
-            })
-        );
-    };
-
-    const label = telemetryEnabled ? "Enabled" : "Disabled";
 
     return (
         <div className="flex flex-col h-full">
@@ -149,34 +124,6 @@ const InitPage = ({
                             </div>
                         </div>
                     </div>
-                    <div className="flex w-full items-center gap-[18px]">
-                        <div>
-                            <i className="text-[32px] text-white/50 fa-solid fa-chart-line"></i>
-                        </div>
-                        <div className="flex flex-col items-start gap-1 flex-1">
-                            <div className="text-secondary leading-5">
-                                Anonymous usage data helps us improve features you use.
-                                <br />
-                                <a
-                                    className="text-secondary! hover:underline!"
-                                    target="_blank"
-                                    href="https://waveterm.dev/privacy"
-                                    rel="noopener"
-                                >
-                                    Privacy Policy
-                                </a>
-                            </div>
-                            <label className="flex items-center gap-2 cursor-pointer text-secondary">
-                                <input
-                                    type="checkbox"
-                                    checked={telemetryEnabled}
-                                    onChange={(e) => setTelemetry(e.target.checked)}
-                                    className="cursor-pointer accent-gray-500"
-                                />
-                                <span>{label}</span>
-                            </label>
-                        </div>
-                    </div>
                 </div>
             </OverlayScrollbarsComponent>
             <footer className={`unselectable flex-shrink-0 ${isCompact ? "mt-2" : "mt-5"}`}>
@@ -190,79 +137,6 @@ const InitPage = ({
     );
 };
 
-const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
-    const setPageName = useSetAtom(pageNameAtom);
-
-    const handleStarClick = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "star", "onboarding:page": "notelemetry" },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
-        await RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("client", clientId),
-            meta: { "onboarding:githubstar": true },
-        });
-        window.open("https://github.com/wavetermdev/waveterm?ref=not", "_blank");
-        setPageName("features");
-    };
-
-    const handleMaybeLater = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "later", "onboarding:page": "notelemetry" },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
-        await RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("client", clientId),
-            meta: { "onboarding:githubstar": false },
-        });
-        setPageName("features");
-    };
-
-    return (
-        <div className="flex flex-col h-full">
-            <header className={`flex flex-col gap-2 border-b-0 p-0 mt-1 mb-4 w-full unselectable flex-shrink-0`}>
-                <div className={`flex justify-center`}>
-                    <Logo />
-                </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Telemetry Disabled ✓</div>
-            </header>
-            <OverlayScrollbarsComponent
-                className="flex-1 overflow-y-auto min-h-0"
-                options={{ scrollbars: { autoHide: "never" } }}
-            >
-                <div className="flex flex-col items-center gap-6 w-full mb-2 unselectable">
-                    <div className="text-center text-secondary leading-relaxed max-w-md">
-                        <p className="mb-4">No problem, we respect your privacy.</p>
-                        <p className="mb-4">
-                            But, without usage data, we're flying blind. A GitHub star helps us know Wave is useful and
-                            worth maintaining.
-                        </p>
-                    </div>
-                </div>
-            </OverlayScrollbarsComponent>
-            <footer className={`unselectable flex-shrink-0 mt-2`}>
-                <div className="flex flex-row items-center justify-center gap-2.5 [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button]:!h-[37px]">
-                    <Button className="outlined green font-[600]" onClick={handleStarClick}>
-                        ⭐ Star on GitHub
-                    </Button>
-                    <Button className="outlined grey font-[600]" onClick={handleMaybeLater}>
-                        Maybe Later
-                    </Button>
-                </div>
-            </footer>
-        </div>
-    );
-};
 
 const FeaturesPage = () => {
     const [newInstallOnboardingOpen, setNewInstallOnboardingOpen] = useAtom(modalsModel.newInstallOnboardingOpen);
@@ -325,10 +199,7 @@ const NewInstallOnboardingModal = () => {
     let pageComp: React.JSX.Element = null;
     switch (pageName) {
         case "init":
-            pageComp = <InitPage isCompact={isCompact} telemetryUpdateFn={(value) => services.ClientService.TelemetryUpdate(value)} />;
-            break;
-        case "notelemetrystar":
-            pageComp = <NoTelemetryStarPage isCompact={isCompact} />;
+            pageComp = <InitPage isCompact={isCompact} />;
             break;
         case "features":
             pageComp = <FeaturesPage />;
@@ -351,4 +222,4 @@ const NewInstallOnboardingModal = () => {
 
 NewInstallOnboardingModal.displayName = "NewInstallOnboardingModal";
 
-export { InitPage, NewInstallOnboardingModal, NoTelemetryStarPage };
+export { InitPage, NewInstallOnboardingModal };

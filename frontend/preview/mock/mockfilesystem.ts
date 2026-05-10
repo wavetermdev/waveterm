@@ -314,7 +314,6 @@ function createMockFilesystemEntries(): MockFsEntryInput[] {
         ),
         makeMockFsInput(`${MockHomePath}/.config/preview-cache.json`),
         makeMockFsInput(`${MockHomePath}/.config/recent-workspaces.json`),
-        makeMockFsInput(`${MockHomePath}/.config/telemetry.log`),
     ];
     return entries;
 }

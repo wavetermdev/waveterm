@@ -53,8 +53,7 @@ const UpgradeOnboardingModal_v0_13_1_Content = () => {
                                 support for custom backgrounds
                             </li>
                             <li>
-                                <strong>BYOK Without Telemetry</strong> - Wave AI now works with bring-your-own-key and
-                                local models without requiring telemetry
+                                <strong>BYOK Support</strong> - Wave AI now works with bring-your-own-key and local models
                             </li>
                         </ul>
                     </div>

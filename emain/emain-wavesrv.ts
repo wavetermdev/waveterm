@@ -6,7 +6,7 @@ import * as child_process from "node:child_process";
 import * as readline from "readline";
 import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
 import { AuthKey, WaveAuthKeyEnv } from "./authkey";
-import { setForceQuit, setUserConfirmedQuit } from "./emain-activity";
+import { setForceQuit, setUserConfirmedQuit } from "./emain";
 import {
     getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,

@@ -102,7 +102,7 @@ type ToolDefinition struct {
 	DisplayName          string         `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
 	Description          string         `json:"description"`
 	ShortDescription     string         `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	ToolLogName          string         `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
+	ToolLogName          string         `json:"-"`                          // short name for logging (e.g., "term:getscrollback")
 	InputSchema          map[string]any `json:"input_schema"`
 	Strict               bool           `json:"strict,omitempty"`
 	RequiredCapabilities []string       `json:"requiredcapabilities,omitempty"`

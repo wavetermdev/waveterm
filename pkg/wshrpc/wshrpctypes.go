@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -84,14 +83,10 @@ type WshRpcInterface interface {
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	MacOSVersionCommand(ctx context.Context) (string, error)
-	WshActivityCommand(ct context.Context, data map[string]int) error
-	ActivityCommand(ctx context.Context, data ActivityUpdate) error
-	RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
 	GetAllVarsCommand(ctx context.Context, data CommandVarData) ([]CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
-	SendTelemetryCommand(ctx context.Context) error
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
@@ -155,7 +150,6 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
-	WaveAIEnableTelemetryCommand(ctx context.Context) error
 	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
 	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
 	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
@@ -562,42 +556,6 @@ type PathCommandData struct {
 	Open         bool   `json:"open"`
 	OpenExternal bool   `json:"openexternal"`
 	TabId        string `json:"tabid"`
-}
-
-type ActivityDisplayType struct {
-	Width    int     `json:"width"`
-	Height   int     `json:"height"`
-	DPR      float64 `json:"dpr"`
-	Internal bool    `json:"internal,omitempty"`
-}
-
-type ActivityUpdate struct {
-	FgMinutes           int                   `json:"fgminutes,omitempty"`
-	ActiveMinutes       int                   `json:"activeminutes,omitempty"`
-	OpenMinutes         int                   `json:"openminutes,omitempty"`
-	WaveAIFgMinutes     int                   `json:"waveaifgminutes,omitempty"`
-	WaveAIActiveMinutes int                   `json:"waveaiactiveminutes,omitempty"`
-	NumTabs             int                   `json:"numtabs,omitempty"`
-	NewTab              int                   `json:"newtab,omitempty"`
-	NumBlocks           int                   `json:"numblocks,omitempty"`
-	NumWindows          int                   `json:"numwindows,omitempty"`
-	NumWS               int                   `json:"numws,omitempty"`
-	NumWSNamed          int                   `json:"numwsnamed,omitempty"`
-	NumSSHConn          int                   `json:"numsshconn,omitempty"`
-	NumWSLConn          int                   `json:"numwslconn,omitempty"`
-	NumMagnify          int                   `json:"nummagnify,omitempty"`
-	TermCommandsRun     int                   `json:"termcommandsrun,omitempty"`
-	NumPanics           int                   `json:"numpanics,omitempty"`
-	NumAIReqs           int                   `json:"numaireqs,omitempty"`
-	Startup             int                   `json:"startup,omitempty"`
-	Shutdown            int                   `json:"shutdown,omitempty"`
-	SetTabTheme         int                   `json:"settabtheme,omitempty"`
-	BuildTime           string                `json:"buildtime,omitempty"`
-	Displays            []ActivityDisplayType `json:"displays,omitempty"`
-	Renderers           map[string]int        `json:"renderers,omitempty"`
-	Blocks              map[string]int        `json:"blocks,omitempty"`
-	WshCmds             map[string]int        `json:"wshcmds,omitempty"`
-	Conn                map[string]int        `json:"conn,omitempty"`
 }
 
 type ConnExtData struct {
