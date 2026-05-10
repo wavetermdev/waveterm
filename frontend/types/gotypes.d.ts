@@ -20,21 +20,16 @@ declare global {
         "display:icon"?: string;
         "display:description"?: string;
         "display:color"?: string;
-        "ai:provider"?: string;
         "ai:apitype"?: string;
         "ai:model"?: string;
         "ai:thinkinglevel"?: string;
         "ai:verbosity"?: string;
         "ai:endpoint"?: string;
         "ai:proxyurl"?: string;
-        "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
-        "ai:azureresourcename"?: string;
-        "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
         "ai:switchcompat"?: string[];
-        "waveai:cloud"?: boolean;
         "ai:agentmode"?: boolean;
     };
 
@@ -56,13 +51,10 @@ declare global {
         "ai:verbosity"?: string;
         "ai:endpoint"?: string;
         "ai:proxyurl"?: string;
-        "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
-        "ai:azureresourcename"?: string;
-        "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
-        "waveai:cloud"?: boolean;
+        "ai:contextwindow"?: number;
     };
 
     // wconfig.AIModelConfigUpdate

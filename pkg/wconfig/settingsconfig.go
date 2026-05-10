@@ -280,21 +280,16 @@ type AIModeConfigType struct {
 	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
 	DisplayColor       string   `json:"display:color,omitempty"`
-	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=groq,enum=openrouter,enum=nanogpt,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
 	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
 	Model              string   `json:"ai:model,omitempty"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
 	Verbosity          string   `json:"ai:verbosity,omitempty" jsonschema:"enum=low,enum=medium,enum=high,description=Text verbosity level (OpenAI Responses API only)"`
 	Endpoint           string   `json:"ai:endpoint,omitempty"`
 	ProxyURL           string   `json:"ai:proxyurl,omitempty"`
-	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
-	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
-	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
-	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
 	AgentMode          bool     `json:"ai:agentmode,omitempty"`
 }
 
@@ -312,13 +307,10 @@ type AIModelConfigType struct {
 	Verbosity          string   `json:"ai:verbosity,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
 	Endpoint           string   `json:"ai:endpoint,omitempty"`
 	ProxyURL           string   `json:"ai:proxyurl,omitempty"`
-	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
-	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
-	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
-	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
+	ContextWindow      int      `json:"ai:contextwindow,omitempty"`
 }
 
 type AIModeConfigUpdate struct {

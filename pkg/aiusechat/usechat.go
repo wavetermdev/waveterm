@@ -83,24 +83,17 @@ func getWaveAISettings(rtInfo waveobj.ObjRTInfo, aiModeName string, aiModelName 
 	// Merge: provider/endpoint/model come from the chosen MODEL,
 	// behavior (capabilities, agentmode) comes from MODE.
 	config := *modeConfig
-	config.Provider = modelConfig.Provider
 	config.APIType = modelConfig.APIType
 	config.Model = modelConfig.Model
 	config.Endpoint = modelConfig.Endpoint
 	config.ProxyURL = modelConfig.ProxyURL
-	config.AzureAPIVersion = modelConfig.AzureAPIVersion
 	config.APIToken = modelConfig.APIToken
 	config.APITokenSecretName = modelConfig.APITokenSecretName
-	config.AzureResourceName = modelConfig.AzureResourceName
-	config.AzureDeployment = modelConfig.AzureDeployment
 	if modelConfig.ThinkingLevel != "" {
 		config.ThinkingLevel = modelConfig.ThinkingLevel
 	}
 	if modelConfig.Verbosity != "" {
 		config.Verbosity = modelConfig.Verbosity
-	}
-	if modelConfig.WaveAICloud {
-		config.WaveAICloud = true
 	}
 	// Capabilities: intersect mode + model so a tool-incapable model can't
 	// silently advertise tools just because the mode permits them.
@@ -138,7 +131,7 @@ func getWaveAISettings(rtInfo waveobj.ObjRTInfo, aiModeName string, aiModelName 
 		verbosity = uctypes.VerbosityLevelMedium // default to medium
 	}
 	opts := &uctypes.AIOptsType{
-		Provider:      config.Provider,
+		Provider:      modelConfig.Provider,
 		APIType:       config.APIType,
 		Model:         config.Model,
 		MaxTokens:     maxTokens,
@@ -301,8 +294,10 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 	if result.ErrorText != "" {
 		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 		toolCall.ToolUseData.ErrorMessage = result.ErrorText
+		toolCall.ToolUseData.Output = ""
 	} else {
 		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
+		toolCall.ToolUseData.Output = result.Text
 	}
 
 	return result

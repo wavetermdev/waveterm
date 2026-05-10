@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
+import { AIContextWindowIndicator } from "@/app/aipanel/aicontextwindowindicator";
 import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
+import { type WaveUIMessage } from "@/app/aipanel/aitypes";
 import { type WaveAIModel } from "@/app/aipanel/waveai-model";
 import { Tooltip } from "@/element/tooltip";
 import { cn } from "@/util/util";
@@ -13,6 +15,7 @@ interface AIPanelInputProps {
     onSubmit: (e: React.FormEvent) => void;
     status: string;
     model: WaveAIModel;
+    messages: WaveUIMessage[];
 }
 
 export interface AIPanelInputRef {
@@ -21,7 +24,7 @@ export interface AIPanelInputRef {
     scrollToBottom: () => void;
 }
 
-export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
+export const AIPanelInput = memo(({ onSubmit, status, model, messages }: AIPanelInputProps) => {
     const [input, setInput] = useAtom(model.inputAtom);
     const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
     const isChatEmpty = useAtomValue(model.isChatEmptyAtom);
@@ -33,7 +36,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     if (!isChatEmpty) {
         placeholder = "Continue...";
     } else {
-        placeholder = "Ask Wave AI anything...";
+        placeholder = "Ask Assistant anything...";
     }
 
     const resizeTextarea = useCallback(() => {
@@ -197,6 +200,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         </Tooltip>
                     )}
                 </div>
+                <AIContextWindowIndicator messages={messages} />
             </form>
         </div>
     );

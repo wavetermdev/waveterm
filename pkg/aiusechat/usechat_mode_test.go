@@ -11,10 +11,8 @@ import (
 )
 
 func TestApplyProviderDefaultsGroq(t *testing.T) {
-	config := wconfig.AIModeConfigType{
-		Provider: uctypes.AIProvider_Groq,
-	}
-	applyProviderDefaults(&config)
+	config := wconfig.AIModeConfigType{}
+	applyProviderDefaults(uctypes.AIProvider_Groq, &config)
 	if config.APIType != uctypes.APIType_OpenAIChat {
 		t.Fatalf("expected API type %q, got %q", uctypes.APIType_OpenAIChat, config.APIType)
 	}
@@ -28,11 +26,10 @@ func TestApplyProviderDefaultsGroq(t *testing.T) {
 
 func TestApplyProviderDefaultsKeepsProxyURL(t *testing.T) {
 	config := wconfig.AIModeConfigType{
-		Provider: uctypes.AIProvider_OpenAI,
 		Model:    "gpt-5-mini",
 		ProxyURL: "http://localhost:8080",
 	}
-	applyProviderDefaults(&config)
+	applyProviderDefaults(uctypes.AIProvider_OpenAI, &config)
 	if config.ProxyURL != "http://localhost:8080" {
 		t.Fatalf("expected proxy URL to be preserved, got %q", config.ProxyURL)
 	}

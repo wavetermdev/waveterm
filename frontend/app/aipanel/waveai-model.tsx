@@ -8,7 +8,7 @@ import {
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
-import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, createBlock, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -81,11 +81,7 @@ export class WaveAIModel {
         this.aiModeConfigs = atoms.waveaiModeConfigAtom;
         this.aiModelConfigs = atoms.waveaiModelConfigAtom;
 
-        this.widgetAccessAtom = jotai.atom((get) => {
-            const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
-            const value = get(widgetAccessMetaAtom);
-            return value ?? true;
-        });
+        this.widgetAccessAtom = jotai.atom(() => true);
 
         this.codeBlockMaxWidth = jotai.atom((get) => {
             const width = get(this.containerWidth);
@@ -184,7 +180,7 @@ export class WaveAIModel {
 
     async addFileFromRemoteUri(draggedFile: DraggedFile): Promise<void> {
         if (draggedFile.isDir) {
-            this.setError("Cannot add directories to Wave AI. Please select a file.");
+            this.setError("Cannot add directories to Assistant. Please select a file.");
             return;
         }
 
@@ -195,7 +191,7 @@ export class WaveAIModel {
                 return;
             }
             if (fileInfo.isdir) {
-                this.setError("Cannot add directories to Wave AI. Please select a file.");
+                this.setError("Cannot add directories to Assistant. Please select a file.");
                 return;
             }
 
@@ -369,11 +365,8 @@ export class WaveAIModel {
         });
     }
 
-    setWidgetAccess(enabled: boolean) {
-        RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: this.orefContext,
-            meta: { "waveai:widgetcontext": enabled },
-        });
+    setWidgetAccess(_enabled: boolean) {
+        // no-op: widget context is always enabled
     }
 
     isValidMode(mode: string): boolean {
