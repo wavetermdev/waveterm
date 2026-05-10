@@ -376,9 +376,6 @@ func termSendInputDescribe(text string, pressEnter bool) string {
 	display = strings.ReplaceAll(display, "\n", "\\n")
 	display = strings.ReplaceAll(display, "\r", "\\r")
 	display = strings.ReplaceAll(display, "\t", "\\t")
-	if len(display) > 80 {
-		display = display[:77] + "..."
-	}
 	if pressEnter {
 		return display + " <Enter>"
 	}
