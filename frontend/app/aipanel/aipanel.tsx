@@ -569,10 +569,10 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                     <>
                         {messages.length === 0 && initialLoadDone ? (
                             <div
-                                className="flex-1 overflow-y-auto p-2 relative"
+                                className="flex-1 overflow-y-auto px-2 pb-2"
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
-                                <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
+                                <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-2 bg-zinc-900/95 backdrop-blur-sm flex items-center gap-2">
                                     <AIModeDropdown />
                                     <AIModelDropdown />
                                 </div>

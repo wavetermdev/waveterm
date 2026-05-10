@@ -101,9 +101,6 @@
         "waveai:cloud": {
           "type": "boolean"
         },
-        "waveai:premium": {
-          "type": "boolean"
-        },
         "ai:agentmode": {
           "type": "boolean"
         }
