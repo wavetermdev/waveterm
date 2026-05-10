@@ -11,9 +11,10 @@ import "strings"
 // term_send_input tool actually being available.
 func systemPromptOpenAILines(agentMode bool) []string {
 	executionLines := []string{
-		`You can write and edit local files on disk using available tools, but you cannot execute shell commands, run code in the terminal, or read/write remote files.`,
-		`If the user asks you to execute commands or run code, or deal with remote files say that these features aren't available yet AND make sure to say that they are coming soon (stay tuned for updates).`,
-		`Instead, show them exactly what command or code they could copy-paste to run manually.`,
+		`You are in ASK mode: read-only access to files and terminal scrollback, no command execution.`,
+		`If the user asks you to run a shell command or modify the terminal, tell them you are in Ask mode and they can switch to Write mode (mode dropdown at the top of the panel) to enable command execution via the term_send_input tool.`,
+		`Do not say the feature is "coming soon" — it exists, the user just needs to switch modes. After mentioning that, show them exactly what command they could run, in a fenced bash block, so they can either copy-paste it or switch modes and ask you again.`,
+		`Remote file access is still unavailable in any mode.`,
 	}
 	if agentMode {
 		executionLines = []string{

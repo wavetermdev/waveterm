@@ -1,8 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { sortByDisplayOrder } from "@/util/util";
-
 const TextFileLimit = 200 * 1024; // 200KB
 const PdfLimit = 5 * 1024 * 1024; // 5MB
 const ImageLimit = 10 * 1024 * 1024; // 10MB
@@ -531,63 +529,3 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
         img.src = url;
     });
 };
-
-
-/**
- * Filter and organize AI mode configs into Wave and custom provider groups
- * Returns organized configs that should be displayed based on settings and premium status
- */
-export interface FilteredAIModeConfigs {
-    waveProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
-    otherProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
-    shouldShowCloudModes: boolean;
-}
-
-export const getFilteredAIModeConfigs = (
-    aiModeConfigs: Record<string, AIModeConfigType>,
-    showCloudModes: boolean,
-    hasPremium: boolean,
-    currentMode?: string
-): FilteredAIModeConfigs => {
-    const allConfigs = Object.entries(aiModeConfigs).map(([mode, config]) => ({ mode, ...config }));
-
-    const otherProviderConfigs = allConfigs
-        .filter((config) => config["ai:provider"] !== "wave")
-        .sort(sortByDisplayOrder);
-
-    const hasCustomModels = otherProviderConfigs.length > 0;
-    const isCurrentModeCloud = currentMode?.startsWith("waveai@") ?? false;
-    const shouldShowCloudModes = showCloudModes || !hasCustomModels || isCurrentModeCloud;
-
-    const waveProviderConfigs = shouldShowCloudModes
-        ? allConfigs.filter((config) => config["ai:provider"] === "wave").sort(sortByDisplayOrder)
-        : [];
-
-    return {
-        waveProviderConfigs,
-        otherProviderConfigs,
-        shouldShowCloudModes,
-    };
-};
-
-/**
- * Get the display name for an AI mode configuration.
- * If display:name is set, use that. Otherwise, construct from model/provider.
- * For azure-legacy, show "azureresourcename (azure)".
- * For other providers, show "model (provider)".
- */
-export function getModeDisplayName(config: AIModeConfigType): string {
-    if (config["display:name"]) {
-        return config["display:name"];
-    }
-
-    const provider = config["ai:provider"];
-    const model = config["ai:model"];
-    const azureResourceName = config["ai:azureresourcename"];
-
-    if (provider === "azure-legacy") {
-        return `${azureResourceName || "unknown"} (azure)`;
-    }
-
-    return `${model || "unknown"} (${provider || "custom"})`;
-}

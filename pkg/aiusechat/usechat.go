@@ -69,21 +69,21 @@ func isLocalEndpoint(endpoint string) bool {
 	return strings.Contains(endpointLower, "localhost") || strings.Contains(endpointLower, "127.0.0.1")
 }
 
-func getWaveAISettings(premium bool, rtInfo waveobj.ObjRTInfo, aiModeName string, aiModelName string) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(rtInfo waveobj.ObjRTInfo, aiModeName string, aiModelName string) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
 	if rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
-	aiMode, modeConfig, err := resolveAIMode(aiModeName, premium)
+	aiMode, modeConfig, err := resolveAIMode(aiModeName)
 	if err != nil {
 		return nil, err
 	}
-	_, modelConfig, err := resolveAIModel(aiModelName, premium)
+	_, modelConfig, err := resolveAIModel(aiModelName)
 	if err != nil {
 		return nil, err
 	}
 	// Merge: provider/endpoint/model come from the chosen MODEL,
-	// behavior (capabilities, agentmode, premium gating) comes from MODE.
+	// behavior (capabilities, agentmode) comes from MODE.
 	config := *modeConfig
 	config.Provider = modelConfig.Provider
 	config.APIType = modelConfig.APIType
@@ -103,9 +103,6 @@ func getWaveAISettings(premium bool, rtInfo waveobj.ObjRTInfo, aiModeName string
 	}
 	if modelConfig.WaveAICloud {
 		config.WaveAICloud = true
-	}
-	if modelConfig.WaveAIPremium {
-		config.WaveAIPremium = true
 	}
 	// Capabilities: intersect mode + model so a tool-incapable model can't
 	// silently advertise tools just because the mode permits them.
@@ -156,7 +153,6 @@ func getWaveAISettings(premium bool, rtInfo waveobj.ObjRTInfo, aiModeName string
 		Endpoint:      baseUrl,
 		ProxyURL:      config.ProxyURL,
 		Capabilities:  config.Capabilities,
-		WaveAIPremium: config.WaveAIPremium,
 		AgentMode:     config.AgentMode,
 	}
 	if apiToken != "" {
@@ -172,21 +168,6 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "gpt-4-") ||
 		m == "gpt-4" ||
 		strings.HasPrefix(m, "o1-")
-}
-
-func shouldUsePremium() bool {
-	info := GetGlobalRateLimit()
-	if info == nil || info.Unknown {
-		return true
-	}
-	if info.PReq > 0 {
-		return true
-	}
-	nowEpoch := time.Now().Unix()
-	if nowEpoch >= info.ResetEpoch {
-		return true
-	}
-	return false
 }
 
 func updateRateLimit(info *uctypes.RateLimitInfo) {
@@ -459,9 +440,6 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		metrics.RequestCount++
 		if chatOpts.Config.IsWaveProxy() {
 			metrics.ProxyReqCount++
-			if chatOpts.Config.IsPremiumModel() {
-				metrics.PremiumReqCount++
-			}
 		}
 		if stopReason != nil {
 			logutil.DevPrintf("stopreason: %s (%s) (%s) (%s)\n", stopReason.Kind, stopReason.ErrorText, stopReason.ErrorType, stopReason.RawReason)
@@ -494,14 +472,6 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			}
 		}
 		firstStep = false
-		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
-			log.Printf("Premium rate limit hit with %s, switching to %s\n", uctypes.PremiumOpenAIModel, uctypes.DefaultOpenAIModel)
-			cont = &uctypes.WaveContinueResponse{
-				Model:            uctypes.DefaultOpenAIModel,
-				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
-			}
-			continue
-		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
 			processAllToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
@@ -605,8 +575,8 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 				}
 			}
 		}
-		log.Printf("WaveAI call metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
-			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
+		log.Printf("WaveAI call metrics: requests=%d tools=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
+			metrics.RequestCount, metrics.ToolUseCount, metrics.ProxyReqCount,
 			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
 
 		sendAIMetricsTelemetry(ctx, metrics)
@@ -627,7 +597,6 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIToolUseCount:         metrics.ToolUseCount,
 		WaveAIToolUseErrorCount:    metrics.ToolUseErrorCount,
 		WaveAIToolDetail:           metrics.ToolDetail,
-		WaveAIPremiumReq:           metrics.PremiumReqCount,
 		WaveAIProxyReq:             metrics.ProxyReqCount,
 		WaveAIHadError:             metrics.HadError,
 		WaveAIImageCount:           metrics.ImageCount,
@@ -690,12 +659,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get WaveAI settings
-	premium := shouldUsePremium()
 	if req.AIMode == "" {
 		http.Error(w, "aimode is required in request body", http.StatusBadRequest)
 		return
 	}
-	aiOpts, err := getWaveAISettings(premium, *rtInfo, req.AIMode, req.AIModel)
+	aiOpts, err := getWaveAISettings(*rtInfo, req.AIMode, req.AIModel)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return

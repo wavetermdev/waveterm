@@ -12,33 +12,26 @@ interface AIModelMenuItemProps {
     modelKey: string;
     config: AIModelConfigType;
     isSelected: boolean;
-    isDisabled: boolean;
-    isPremiumDisabled: boolean;
     onClick: () => void;
 }
 
 const AIModelMenuItem = memo(
-    ({ modelKey, config, isSelected, isDisabled, isPremiumDisabled, onClick }: AIModelMenuItemProps) => {
+    ({ modelKey, config, isSelected, onClick }: AIModelMenuItemProps) => {
         return (
             <button
                 key={modelKey}
                 onClick={onClick}
-                disabled={isDisabled}
-                className={cn(
-                    "w-full flex flex-col gap-0.5 px-3 py-1 transition-colors text-left",
-                    isDisabled ? "text-zinc-500" : "text-zinc-300 hover:bg-zinc-700 cursor-pointer"
-                )}
+                className="w-full flex flex-col gap-0.5 px-3 py-1 transition-colors text-left text-zinc-300 hover:bg-zinc-700 cursor-pointer"
             >
                 <div className="flex items-center gap-2 w-full">
                     <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
                     <span className={cn("text-sm", isSelected && "font-bold")}>
                         {config["display:name"] || modelKey}
-                        {isPremiumDisabled && " (premium)"}
                     </span>
                     {isSelected && <i className="fa fa-check ml-auto"></i>}
                 </div>
                 {config["display:description"] && (
-                    <div className={cn("text-xs pl-5", isDisabled ? "text-gray-500" : "text-muted")}>
+                    <div className="text-xs pl-5 text-muted">
                         {config["display:description"]}
                     </div>
                 )}
@@ -52,7 +45,6 @@ export const AIModelDropdown = memo(() => {
     const model = WaveAIModel.getInstance();
     const currentModel = useAtomValue(model.currentAIModel);
     const aiModelConfigs = useAtomValue(model.aiModelConfigs);
-    const hasPremium = useAtomValue(model.hasPremiumAtom);
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -98,20 +90,15 @@ export const AIModelDropdown = memo(() => {
                         {modelEntries.length === 0 && (
                             <div className="px-3 py-2 text-xs text-zinc-500">No models configured</div>
                         )}
-                        {modelEntries.map(({ key, ...cfg }) => {
-                            const isPremiumDisabled = !!cfg["waveai:premium"] && !hasPremium;
-                            return (
-                                <AIModelMenuItem
-                                    key={key}
-                                    modelKey={key}
-                                    config={cfg}
-                                    isSelected={currentModel === key}
-                                    isDisabled={isPremiumDisabled}
-                                    isPremiumDisabled={isPremiumDisabled}
-                                    onClick={() => handleSelect(key)}
-                                />
-                            );
-                        })}
+                        {modelEntries.map(({ key, ...cfg }) => (
+                            <AIModelMenuItem
+                                key={key}
+                                modelKey={key}
+                                config={cfg}
+                                isSelected={currentModel === key}
+                                onClick={() => handleSelect(key)}
+                            />
+                        ))}
                     </div>
                 </>
             )}

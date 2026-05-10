@@ -298,7 +298,6 @@ type AIModeConfigType struct {
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
-	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
 	AgentMode          bool     `json:"ai:agentmode,omitempty"`
 }
 
@@ -323,7 +322,6 @@ type AIModelConfigType struct {
 	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
-	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
 }
 
 type AIModeConfigUpdate struct {

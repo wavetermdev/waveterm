@@ -59,7 +59,6 @@ export class WaveAIModel {
     aiModeConfigs!: jotai.Atom<Record<string, AIModeConfigType>>;
     currentAIModel!: jotai.PrimitiveAtom<string>;
     aiModelConfigs!: jotai.Atom<Record<string, AIModelConfigType>>;
-    hasPremiumAtom!: jotai.Atom<boolean>;
     defaultModeAtom!: jotai.Atom<string>;
     defaultModelAtom!: jotai.Atom<string>;
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
@@ -81,11 +80,6 @@ export class WaveAIModel {
         this.chatId = jotai.atom(null) as jotai.PrimitiveAtom<string>;
         this.aiModeConfigs = atoms.waveaiModeConfigAtom;
         this.aiModelConfigs = atoms.waveaiModelConfigAtom;
-
-        this.hasPremiumAtom = jotai.atom((get) => {
-            const rateLimitInfo = get(atoms.waveAIRateLimitInfoAtom);
-            return !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
-        });
 
         this.widgetAccessAtom = jotai.atom((get) => {
             const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
@@ -127,17 +121,10 @@ export class WaveAIModel {
 
         this.defaultModelAtom = jotai.atom((get) => {
             const aiModelConfigs = get(this.aiModelConfigs);
-            const hasPremium = get(this.hasPremiumAtom);
             const settingDefault = get(getSettingsKeyAtom("waveai:defaultmodel"));
-            // Prefer user setting if it points to a valid model that the user
-            // can actually use.
             if (settingDefault != null && aiModelConfigs?.[settingDefault]) {
-                const cfg = aiModelConfigs[settingDefault];
-                if (!cfg["waveai:premium"] || hasPremium) {
-                    return settingDefault;
-                }
+                return settingDefault;
             }
-            // Otherwise: first non-premium model by display:order, then key.
             const entries = Object.entries(aiModelConfigs ?? {});
             const score = (cfg: AIModelConfigType) => cfg["display:order"] ?? 0;
             const sorted = entries.sort(([ak, ac], [bk, bc]) => {
@@ -146,10 +133,7 @@ export class WaveAIModel {
                 if (sa !== sb) return sa - sb;
                 return ak.localeCompare(bk);
             });
-            const nonPremium = sorted.find(([, cfg]) => !cfg["waveai:premium"]);
-            if (nonPremium) return nonPremium[0];
-            if (hasPremium && sorted.length > 0) return sorted[0][0];
-            return "";
+            return sorted.length > 0 ? sorted[0][0] : "";
         });
 
         const defaultMode = globalStore.get(this.defaultModeAtom);
@@ -456,12 +440,6 @@ export class WaveAIModel {
 
     setAIModel(model: string) {
         if (!this.isValidModel(model)) {
-            this.setAIModelToDefault();
-            return;
-        }
-        const aiModelConfigs = globalStore.get(this.aiModelConfigs);
-        const hasPremium = globalStore.get(this.hasPremiumAtom);
-        if (aiModelConfigs?.[model]?.["waveai:premium"] && !hasPremium) {
             this.setAIModelToDefault();
             return;
         }

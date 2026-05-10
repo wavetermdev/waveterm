@@ -301,16 +301,16 @@ type partialJSON struct {
 }
 
 type streamingState struct {
-	blockMap        map[int]*blockState
-	toolCalls       []uctypes.WaveToolCall
-	stopFromDelta   string
-	msgID           string
-	model           string
-	stepStarted     bool
-	rtnMessage      *anthropicChatMessage
-	usage           *anthropicUsageType
-	chatOpts        uctypes.WaveChatOpts
-	webSearchCount  int
+	blockMap       map[int]*blockState
+	toolCalls      []uctypes.WaveToolCall
+	stopFromDelta  string
+	msgID          string
+	model          string
+	stepStarted    bool
+	rtnMessage     *anthropicChatMessage
+	usage          *anthropicUsageType
+	chatOpts       uctypes.WaveChatOpts
+	webSearchCount int
 }
 
 func (p *partialJSON) Write(s string) {
@@ -499,13 +499,6 @@ func RunAnthropicChatStep(
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
 		// Handle 429 rate limit with special logic
 		if resp.StatusCode == http.StatusTooManyRequests && rateLimitInfo != nil {
-			if rateLimitInfo.PReq == 0 && rateLimitInfo.Req > 0 {
-				// Premium requests exhausted, but regular requests available
-				stopReason := &uctypes.WaveStopReason{
-					Kind: uctypes.StopKindPremiumRateLimit,
-				}
-				return stopReason, nil, rateLimitInfo, nil
-			}
 			if rateLimitInfo.Req == 0 {
 				// All requests exhausted
 				stopReason := &uctypes.WaveStopReason{

@@ -169,7 +169,6 @@ type TEventProps struct {
 	WaveAIToolUseCount         int            `json:"waveai:toolusecount,omitempty"`
 	WaveAIToolUseErrorCount    int            `json:"waveai:tooluseerrorcount,omitempty"`
 	WaveAIToolDetail           map[string]int `json:"waveai:tooldetail,omitempty"`
-	WaveAIPremiumReq           int            `json:"waveai:premiumreq,omitempty"`
 	WaveAIProxyReq             int            `json:"waveai:proxyreq,omitempty"`
 	WaveAIHadError             bool           `json:"waveai:haderror,omitempty"`
 	WaveAIImageCount           int            `json:"waveai:imagecount,omitempty"`

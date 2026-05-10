@@ -14,7 +14,6 @@ const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultOpenAIModel = "gpt-5-mini"
-const PremiumOpenAIModel = "gpt-5.1"
 
 const (
 	APIType_AnthropicMessages = "anthropic-messages"
@@ -216,15 +215,14 @@ type UIMessageDataToolProgress struct {
 type StopReasonKind string
 
 const (
-	StopKindDone             StopReasonKind = "done"
-	StopKindToolUse          StopReasonKind = "tool_use"
-	StopKindMaxTokens        StopReasonKind = "max_tokens"
-	StopKindContent          StopReasonKind = "content_filter"
-	StopKindCanceled         StopReasonKind = "canceled"
-	StopKindError            StopReasonKind = "error"
-	StopKindPauseTurn        StopReasonKind = "pause_turn"
-	StopKindPremiumRateLimit StopReasonKind = "premium_rate_limit"
-	StopKindRateLimit        StopReasonKind = "rate_limit"
+	StopKindDone      StopReasonKind = "done"
+	StopKindToolUse   StopReasonKind = "tool_use"
+	StopKindMaxTokens StopReasonKind = "max_tokens"
+	StopKindContent   StopReasonKind = "content_filter"
+	StopKindCanceled  StopReasonKind = "canceled"
+	StopKindError     StopReasonKind = "error"
+	StopKindPauseTurn StopReasonKind = "pause_turn"
+	StopKindRateLimit StopReasonKind = "rate_limit"
 )
 
 type WaveToolCall struct {
@@ -263,16 +261,11 @@ type AIOptsType struct {
 	Verbosity     string   `json:"verbosity,omitempty"`     // Text verbosity level (OpenAI Responses API only, ignored by other backends)
 	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
-	WaveAIPremium bool     `json:"waveaipremium,omitempty"`
 	AgentMode     bool     `json:"agentmode,omitempty"`
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
 	return opts.Provider == AIProvider_Wave
-}
-
-func (opts AIOptsType) IsPremiumModel() bool {
-	return opts.WaveAIPremium
 }
 
 func (opts AIOptsType) HasCapability(cap string) bool {
@@ -303,7 +296,6 @@ type AIMetrics struct {
 	ToolUseCount      int            `json:"toolusecount"`
 	ToolUseErrorCount int            `json:"tooluseerrorcount"`
 	ToolDetail        map[string]int `json:"tooldetail,omitempty"`
-	PremiumReqCount   int            `json:"premiumreqcount"`
 	ProxyReqCount     int            `json:"proxyreqcount"`
 	HadError          bool           `json:"haderror"`
 	ImageCount        int            `json:"imagecount"`

@@ -35,7 +35,6 @@ declare global {
         "ai:capabilities"?: string[];
         "ai:switchcompat"?: string[];
         "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
         "ai:agentmode"?: boolean;
     };
 
@@ -64,7 +63,6 @@ declare global {
         "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
         "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
     };
 
     // wconfig.AIModelConfigUpdate
@@ -1477,7 +1475,6 @@ declare global {
         "waveai:toolusecount"?: number;
         "waveai:tooluseerrorcount"?: number;
         "waveai:tooldetail"?: {[key: string]: number};
-        "waveai:premiumreq"?: number;
         "waveai:proxyreq"?: number;
         "waveai:haderror"?: boolean;
         "waveai:imagecount"?: number;

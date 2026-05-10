@@ -40,77 +40,50 @@ const (
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
 )
 
-func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
-	mode := requestedMode
-
-	config, err := getAIModeConfig(mode)
+func resolveAIMode(requestedMode string) (string, *wconfig.AIModeConfigType, error) {
+	config, err := getAIModeConfig(requestedMode)
 	if err != nil {
 		return "", nil, err
 	}
-
-	// Premium-gated modes fall back to Ask
-	if config.WaveAIPremium && !premium {
-		mode = uctypes.AIModeAsk
-		config, err = getAIModeConfig(mode)
-		if err != nil {
-			return "", nil, err
-		}
-	}
-
-	return mode, config, nil
+	return requestedMode, config, nil
 }
 
-func resolveAIModel(requestedModel string, premium bool) (string, *wconfig.AIModelConfigType, error) {
-	model := requestedModel
-	if model != "" {
-		if config, err := getAIModelConfig(model); err == nil {
-			if !config.WaveAIPremium || premium {
-				return model, config, nil
-			}
+func resolveAIModel(requestedModel string) (string, *wconfig.AIModelConfigType, error) {
+	if requestedModel != "" {
+		if config, err := getAIModelConfig(requestedModel); err == nil {
+			return requestedModel, config, nil
 		}
 	}
-	// Fall back to the first non-premium model in display:order.
+	// Fall back to the first model in display:order.
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	resolved := ComputeResolvedAIModelConfigs(fullConfig)
-	fallbackName, fallbackCfg := pickFallbackModel(resolved, premium)
+	fallbackName, fallbackCfg := pickFallbackModel(resolved)
 	if fallbackName == "" {
 		return "", nil, fmt.Errorf("no AI models configured (add one to ~/.config/waveterm/waveai.json or waveaimodels.json)")
 	}
 	return fallbackName, &fallbackCfg, nil
 }
 
-// pickFallbackModel returns the first model sorted by display:order then key,
-// preferring non-premium when premium access is unavailable.
-func pickFallbackModel(resolved map[string]wconfig.AIModelConfigType, premium bool) (string, wconfig.AIModelConfigType) {
+// pickFallbackModel returns the first model sorted by display:order then key.
+func pickFallbackModel(resolved map[string]wconfig.AIModelConfigType) (string, wconfig.AIModelConfigType) {
 	type entry struct {
 		name string
 		cfg  wconfig.AIModelConfigType
 	}
-	var nonPremium, premiumOnly []entry
+	entries := make([]entry, 0, len(resolved))
 	for name, cfg := range resolved {
-		if cfg.WaveAIPremium {
-			premiumOnly = append(premiumOnly, entry{name, cfg})
-		} else {
-			nonPremium = append(nonPremium, entry{name, cfg})
+		entries = append(entries, entry{name, cfg})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].cfg.DisplayOrder != entries[j].cfg.DisplayOrder {
+			return entries[i].cfg.DisplayOrder < entries[j].cfg.DisplayOrder
 		}
+		return entries[i].name < entries[j].name
+	})
+	if len(entries) == 0 {
+		return "", wconfig.AIModelConfigType{}
 	}
-	sortEntries := func(es []entry) {
-		sort.Slice(es, func(i, j int) bool {
-			if es[i].cfg.DisplayOrder != es[j].cfg.DisplayOrder {
-				return es[i].cfg.DisplayOrder < es[j].cfg.DisplayOrder
-			}
-			return es[i].name < es[j].name
-		})
-	}
-	sortEntries(nonPremium)
-	sortEntries(premiumOnly)
-	if len(nonPremium) > 0 {
-		return nonPremium[0].name, nonPremium[0].cfg
-	}
-	if premium && len(premiumOnly) > 0 {
-		return premiumOnly[0].name, premiumOnly[0].cfg
-	}
-	return "", wconfig.AIModelConfigType{}
+	return entries[0].name, entries[0].cfg
 }
 
 // modelToModeConfig copies provider-specific fields from a model config into a
@@ -132,7 +105,6 @@ func modelToModeConfig(m *wconfig.AIModelConfigType) wconfig.AIModeConfigType {
 		AzureDeployment:    m.AzureDeployment,
 		Capabilities:       m.Capabilities,
 		WaveAICloud:        m.WaveAICloud,
-		WaveAIPremium:      m.WaveAIPremium,
 	}
 }
 
@@ -433,7 +405,6 @@ func ComputeResolvedAIModelConfigs(fullConfig wconfig.FullConfigType) map[string
 			AzureDeployment:    modeConfig.AzureDeployment,
 			Capabilities:       modeConfig.Capabilities,
 			WaveAICloud:        modeConfig.WaveAICloud,
-			WaveAIPremium:      modeConfig.WaveAIPremium,
 		}
 		applyModelProviderDefaults(&modelConfig)
 		resolvedConfigs[entryName] = modelConfig
