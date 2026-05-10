@@ -19,6 +19,7 @@ declare global {
         | "workspace:update"
         | "waveai:ratelimit"
         | "waveai:modeconfig"
+        | "waveai:modelconfig"
         | "block:jobstatus"
         | "badge"
     ;
@@ -42,6 +43,7 @@ declare global {
         { event: "workspace:update"; data?: null; } | 
         { event: "waveai:ratelimit"; data?: RateLimitInfo; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
+        { event: "waveai:modelconfig"; data?: AIModelConfigUpdate; } | 
         { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
         { event: "badge"; data?: BadgeEvent; }
     );

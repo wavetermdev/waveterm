@@ -472,6 +472,12 @@ func GetWaveAIModeConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wconfi
 	return resp, err
 }
 
+// command "getwaveaimodelconfig", wshserver.GetWaveAIModelConfigCommand
+func GetWaveAIModelConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wconfig.AIModelConfigUpdate, error) {
+	resp, err := sendRpcRequestCallHelper[wconfig.AIModelConfigUpdate](w, "getwaveaimodelconfig", nil, opts)
+	return resp, err
+}
+
 // command "getwaveairatelimit", wshserver.GetWaveAIRateLimitCommand
 func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctypes.RateLimitInfo, error) {
 	resp, err := sendRpcRequestCallHelper[*uctypes.RateLimitInfo](w, "getwaveairatelimit", nil, opts)

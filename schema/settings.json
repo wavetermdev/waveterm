@@ -98,6 +98,9 @@
         "waveai:defaultmode": {
           "type": "string"
         },
+        "waveai:defaultmodel": {
+          "type": "string"
+        },
         "term:*": {
           "type": "boolean"
         },

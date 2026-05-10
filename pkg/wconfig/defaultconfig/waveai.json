@@ -1,43 +1,21 @@
 {
-    "waveai@quick": {
-        "display:name": "Quick",
-        "display:order": -3,
-        "display:icon": "bolt",
-        "display:description": "Fastest responses (gpt-5-mini)",
-        "ai:provider": "wave",
-        "ai:apitype": "openai-responses",
-        "ai:model": "gpt-5-mini",
-        "ai:thinkinglevel": "low",
-        "ai:verbosity": "low",
-        "ai:capabilities": ["tools", "images", "pdfs"],
-        "ai:switchcompat": ["wavecloud"]
-    },
-    "waveai@balanced": {
-        "display:name": "Balanced",
+    "waveai@ask": {
+        "display:name": "Ask",
         "display:order": -2,
-        "display:icon": "sparkles",
-        "display:description": "Good mix of speed and accuracy\n(gpt-5.1 with minimal thinking)",
-        "ai:provider": "wave",
-        "ai:apitype": "openai-responses",
-        "ai:model": "gpt-5.1",
-        "ai:thinkinglevel": "low",
-        "ai:verbosity": "low",
+        "display:icon": "comment",
+        "display:color": "#16a34a",
+        "display:description": "Read-only assistant. Can browse files and terminal scrollback,\nbut cannot execute commands.",
         "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:premium": true,
         "ai:switchcompat": ["wavecloud"]
     },
-    "waveai@deep": {
-        "display:name": "Deep",
+    "waveai@write": {
+        "display:name": "Write",
         "display:order": -1,
-        "display:icon": "lightbulb",
-        "display:description": "Slower but most capable\n(gpt-5.1 with full reasoning)",
-        "ai:provider": "wave",
-        "ai:apitype": "openai-responses",
-        "ai:model": "gpt-5.1",
-        "ai:thinkinglevel": "medium",
-        "ai:verbosity": "low",
+        "display:icon": "pen-to-square",
+        "display:color": "#dc2626",
+        "display:description": "Write & execute mode. Can run shell commands in your terminals\nvia term_send_input (every command requires approval).",
         "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:premium": true,
+        "ai:agentmode": true,
         "ai:switchcompat": ["wavecloud"]
     }
 }

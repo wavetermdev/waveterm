@@ -20,6 +20,7 @@ import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIModeDropdown } from "./aimode";
+import { AIModelDropdown } from "./aimodel-dropdown";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
@@ -87,8 +88,8 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
-    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom);
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
+    const aiModelConfigs = jotai.useAtomValue(atoms.waveaiModelConfigAtom);
+    const hasCustomModels = aiModelConfigs != null && Object.keys(aiModelConfigs).length > 0;
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
@@ -153,28 +154,9 @@ const AIWelcomeMessage = memo(() => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-4 text-center flex-shrink-0">
-                                <i className="fa-brands fa-discord text-accent"></i>
-                            </div>
-                            <div>
-                                Questions or feedback?{" "}
-                                <a
-                                    target="_blank"
-                                    href="https://discord.gg/XfvZ334gwU"
-                                    rel="noopener"
-                                    className="text-accent hover:underline cursor-pointer"
-                                >
-                                    Join our Discord
-                                </a>
-                            </div>
-                        </div>
                     </div>
                 </div>
-                {!hasCustomModes && <BYOKAnnouncement />}
-                <div className="mt-4 text-center text-[12px] text-muted">
-                    BETA: Free to use. Daily limits keep our costs in check.
-                </div>
+                {!hasCustomModels && <BYOKAnnouncement />}
             </div>
         </div>
     );
@@ -247,12 +229,10 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = useTabModelMaybe();
     const [tabBorderColor, tabActiveBorderColor] = useTabBackground(waveEnv, tabModel?.tabId);
-    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+    const aiModelConfigs = jotai.useAtomValue(model.aiModelConfigs);
 
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
-    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
-    const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
+    const hasCustomModels = aiModelConfigs != null && Object.keys(aiModelConfigs).length > 0;
+    const allowAccess = telemetryEnabled || hasCustomModels;
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
@@ -264,6 +244,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
                     aimode: globalStore.get(model.currentAIMode),
+                    aimodel: globalStore.get(model.currentAIModel),
                 };
                 body.tabid = tabModel.tabId;
                 return { body };
@@ -567,11 +548,12 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                     <>
                         {messages.length === 0 && initialLoadDone ? (
                             <div
-                                className="flex-1 overflow-y-auto p-2 relative"
+                                className="flex-1 overflow-y-auto px-2 pb-2"
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
-                                <div className="absolute top-2 left-2 z-10">
+                                <div className="sticky top-0 z-10 -mx-2 px-2 pt-2 pb-2 bg-zinc-900/95 backdrop-blur-sm flex items-center gap-2">
                                     <AIModeDropdown />
+                                    <AIModelDropdown />
                                 </div>
                                 <AIWelcomeMessage />
                             </div>

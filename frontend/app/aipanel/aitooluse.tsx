@@ -77,6 +77,52 @@ const ToolDesc = memo(({ text, className }: ToolDescProps) => {
 
 ToolDesc.displayName = "ToolDesc";
 
+const TERM_SEND_INPUT_TOOLNAME = "term_send_input";
+const TERM_SEND_INPUT_DESC_REGEX = /^send to (\S+):\s([\s\S]*?)(\s<Enter>)?$/;
+
+interface ParsedTermSendInput {
+    widgetId: string;
+    command: string;
+    pressEnter: boolean;
+}
+
+function parseTermSendInputDesc(desc: string): ParsedTermSendInput | null {
+    const match = desc.match(TERM_SEND_INPUT_DESC_REGEX);
+    if (!match) return null;
+    return {
+        widgetId: match[1],
+        command: match[2],
+        pressEnter: match[3] != null,
+    };
+}
+
+interface TermSendInputBodyProps {
+    parsed: ParsedTermSendInput;
+}
+
+const TermSendInputBody = memo(({ parsed }: TermSendInputBodyProps) => {
+    return (
+        <div className="pl-6">
+            <div className="flex items-center rounded border border-zinc-700 bg-black/40 px-2.5 py-1.5 overflow-x-auto">
+                <pre className="flex-1 m-0 font-mono text-[13px] leading-5 whitespace-pre text-zinc-100">
+                    <span className="text-zinc-500 select-none">$ </span>
+                    {parsed.command}
+                </pre>
+                {parsed.pressEnter && (
+                    <span
+                        className="ml-2 flex-shrink-0 px-1.5 py-0.5 text-[11px] rounded border border-zinc-600 bg-zinc-800 text-zinc-300 font-sans"
+                        title="Enter will be pressed after sending"
+                    >
+                        ⏎ Enter
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+});
+
+TermSendInputBody.displayName = "TermSendInputBody";
+
 function getEffectiveApprovalStatus(baseApproval: string, isStreaming: boolean): string {
     return !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
 }
@@ -130,7 +176,7 @@ const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItem
         <div className="text-sm pl-2 flex items-start gap-1.5">
             <span className={cn("font-bold flex-shrink-0", statusColor)}>{statusIcon}</span>
             <div className="flex-1">
-                <span className="text-gray-400">{part.data.tooldesc}</span>
+                <span className="text-zinc-300">{part.data.tooldesc}</span>
                 {effectiveErrorMessage && <div className="text-red-300 mt-0.5">{effectiveErrorMessage}</div>}
             </div>
         </div>
@@ -206,6 +252,10 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
 
     const isFileWriteTool = toolData.toolname === "write_text_file" || toolData.toolname === "edit_text_file";
+    const termSendInputParsed =
+        toolData.toolname === TERM_SEND_INPUT_TOOLNAME && toolData.tooldesc
+            ? parseTermSendInputDesc(toolData.tooldesc)
+            : null;
 
     useEffect(() => {
         return () => {
@@ -273,7 +323,16 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         >
             <div className="flex items-center gap-2">
                 <span className="font-bold">{statusIcon}</span>
-                <div className="font-semibold">{toolData.toolname}</div>
+                <div className="font-semibold">
+                    {toolData.toolname === TERM_SEND_INPUT_TOOLNAME && termSendInputParsed ? (
+                        <>
+                            Run in terminal
+                            <span className="ml-1 text-zinc-500 font-normal">· {termSendInputParsed.widgetId}</span>
+                        </>
+                    ) : (
+                        toolData.toolname
+                    )}
+                </div>
                 <div className="flex-1" />
                 {isFileWriteTool &&
                     toolData.inputfilename &&
@@ -303,7 +362,11 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     </button>
                 )}
             </div>
-            {toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-gray-400 pl-6" />}
+            {toolData.toolname === TERM_SEND_INPUT_TOOLNAME && termSendInputParsed ? (
+                <TermSendInputBody parsed={termSendInputParsed} />
+            ) : (
+                toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-zinc-300 pl-6" />
+            )}
             {(toolData.errormessage || effectiveApproval === "timeout") && (
                 <div className="text-sm text-red-300 pl-6">{toolData.errormessage || "Not approved"}</div>
             )}

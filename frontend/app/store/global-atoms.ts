@@ -54,6 +54,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
     const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
+    const waveaiModelConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModelConfigType>>;
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
@@ -131,6 +132,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom,
+        waveaiModelConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
         hasConfigErrors,

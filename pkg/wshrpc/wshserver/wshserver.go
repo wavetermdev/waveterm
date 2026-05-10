@@ -533,6 +533,12 @@ func (ws *WshServer) GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AI
 	return wconfig.AIModeConfigUpdate{Configs: resolvedConfigs}, nil
 }
 
+func (ws *WshServer) GetWaveAIModelConfigCommand(ctx context.Context) (wconfig.AIModelConfigUpdate, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	resolvedConfigs := aiusechat.ComputeResolvedAIModelConfigs(fullConfig)
+	return wconfig.AIModelConfigUpdate{Configs: resolvedConfigs}, nil
+}
+
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
 	rtn := conncontroller.GetAllConnStatus()
 	return rtn, nil

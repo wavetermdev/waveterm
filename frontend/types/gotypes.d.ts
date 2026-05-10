@@ -19,6 +19,7 @@ declare global {
         "display:order"?: number;
         "display:icon"?: string;
         "display:description"?: string;
+        "display:color"?: string;
         "ai:provider"?: string;
         "ai:apitype"?: string;
         "ai:model"?: string;
@@ -34,12 +35,39 @@ declare global {
         "ai:capabilities"?: string[];
         "ai:switchcompat"?: string[];
         "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
+        "ai:agentmode"?: boolean;
     };
 
     // wconfig.AIModeConfigUpdate
     type AIModeConfigUpdate = {
         configs: {[key: string]: AIModeConfigType};
+    };
+
+    // wconfig.AIModelConfigType
+    type AIModelConfigType = {
+        "display:name": string;
+        "display:order"?: number;
+        "display:icon"?: string;
+        "display:description"?: string;
+        "ai:provider"?: string;
+        "ai:apitype"?: string;
+        "ai:model"?: string;
+        "ai:thinkinglevel"?: string;
+        "ai:verbosity"?: string;
+        "ai:endpoint"?: string;
+        "ai:proxyurl"?: string;
+        "ai:azureapiversion"?: string;
+        "ai:apitoken"?: string;
+        "ai:apitokensecretname"?: string;
+        "ai:azureresourcename"?: string;
+        "ai:azuredeployment"?: string;
+        "ai:capabilities"?: string[];
+        "waveai:cloud"?: boolean;
+    };
+
+    // wconfig.AIModelConfigUpdate
+    type AIModelConfigUpdate = {
+        configs: {[key: string]: AIModelConfigType};
     };
 
     // wshrpc.ActivityDisplayType
@@ -868,6 +896,7 @@ declare global {
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
+        waveaimodels: {[key: string]: AIModelConfigType};
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
@@ -1082,6 +1111,7 @@ declare global {
         "shell:lastcmdexitcode"?: number;
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
+        "waveai:model"?: string;
         "waveai:maxoutputtokens"?: number;
     };
 
@@ -1224,6 +1254,7 @@ declare global {
         "ai:fixedfontsize"?: number;
         "waveai:showcloudmodes"?: boolean;
         "waveai:defaultmode"?: string;
+        "waveai:defaultmodel"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1444,7 +1475,6 @@ declare global {
         "waveai:toolusecount"?: number;
         "waveai:tooluseerrorcount"?: number;
         "waveai:tooldetail"?: {[key: string]: number};
-        "waveai:premiumreq"?: number;
         "waveai:proxyreq"?: number;
         "waveai:haderror"?: boolean;
         "waveai:imagecount"?: number;
