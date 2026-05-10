@@ -50,7 +50,7 @@ const ToolDescLine = memo(({ text }: ToolDescLineProps) => {
         parts.push(displayText.slice(lastIndex));
     }
 
-    return <div>{parts.length > 0 ? parts : displayText}</div>;
+    return <div className="break-words min-w-0">{parts.length > 0 ? parts : displayText}</div>;
 });
 
 ToolDescLine.displayName = "ToolDescLine";
@@ -66,7 +66,7 @@ const ToolDesc = memo(({ text, className }: ToolDescProps) => {
     if (lines.length === 0) return null;
 
     return (
-        <div className={className}>
+        <div className={cn("min-w-0", className)}>
             {lines.map((line, idx) => (
                 <ToolDescLine key={idx} text={line} />
             ))}
@@ -95,17 +95,40 @@ function parseTermSendInputDesc(desc: string): ParsedTermSendInput | null {
     };
 }
 
+function splitCommandByOperators(cmd: string): string[] {
+    const parts: string[] = [];
+    const regex = /&&|\|\|/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(cmd)) !== null) {
+        parts.push(cmd.slice(lastIndex, match.index + match[0].length).trim());
+        lastIndex = regex.lastIndex;
+    }
+    const remainder = cmd.slice(lastIndex).trim();
+    if (remainder) {
+        parts.push(remainder);
+    }
+    return parts;
+}
+
 interface TermSendInputBodyProps {
     parsed: ParsedTermSendInput;
 }
 
 const TermSendInputBody = memo(({ parsed }: TermSendInputBodyProps) => {
+    const parts = splitCommandByOperators(parsed.command);
     return (
         <div className="pl-6">
             <div className="flex items-center rounded border border-zinc-700 bg-black/40 px-2.5 py-1.5 overflow-x-auto">
-                <pre className="flex-1 m-0 font-mono text-[13px] leading-5 whitespace-pre text-zinc-100">
+                <pre className="flex-1 m-0 font-mono text-[13px] leading-5 whitespace-pre-wrap break-words text-zinc-100">
                     <span className="text-zinc-500 select-none">$ </span>
-                    {parsed.command}
+                    {parts.map((part, idx) => (
+                        <span key={idx}>
+                            {idx > 0 && <span className="text-zinc-500 select-none">  </span>}
+                            {part}
+                            {idx < parts.length - 1 && "\n"}
+                        </span>
+                    ))}
                 </pre>
                 {parsed.pressEnter && (
                     <span
@@ -174,8 +197,8 @@ const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItem
     return (
         <div className="text-sm pl-2 flex items-start gap-1.5">
             <span className={cn("font-bold flex-shrink-0", statusColor)}>{statusIcon}</span>
-            <div className="flex-1">
-                <span className="text-zinc-300">{part.data.tooldesc}</span>
+            <div className="flex-1 min-w-0">
+                <span className="text-zinc-300 break-words">{part.data.tooldesc}</span>
                 {effectiveErrorMessage && <div className="text-red-300 mt-0.5">{effectiveErrorMessage}</div>}
             </div>
         </div>
