@@ -163,9 +163,8 @@ const (
 )
 
 const (
-	AIModeQuick    = "waveai@quick"
-	AIModeBalanced = "waveai@balanced"
-	AIModeDeep     = "waveai@deep"
+	AIModeAsk   = "waveai@ask"
+	AIModeWrite = "waveai@write"
 )
 
 const (
@@ -265,6 +264,7 @@ type AIOptsType struct {
 	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
 	WaveAIPremium bool     `json:"waveaipremium,omitempty"`
+	AgentMode     bool     `json:"agentmode,omitempty"`
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {

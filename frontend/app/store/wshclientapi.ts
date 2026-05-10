@@ -474,6 +474,12 @@ export class RpcApiType {
         return client.wshRpcCall("getwaveaimodeconfig", null, opts);
     }
 
+    // command "getwaveaimodelconfig" [call]
+    GetWaveAIModelConfigCommand(client: WshClient, opts?: RpcOpts): Promise<AIModelConfigUpdate> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getwaveaimodelconfig", null, opts);
+        return client.wshRpcCall("getwaveaimodelconfig", null, opts);
+    }
+
     // command "getwaveairatelimit" [call]
     GetWaveAIRateLimitCommand(client: WshClient, opts?: RpcOpts): Promise<RateLimitInfo> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getwaveairatelimit", null, opts);

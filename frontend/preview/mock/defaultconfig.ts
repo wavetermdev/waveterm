@@ -7,6 +7,7 @@ import presetsJson from "../../../pkg/wconfig/defaultconfig/presets.json";
 import settingsJson from "../../../pkg/wconfig/defaultconfig/settings.json";
 import termthemesJson from "../../../pkg/wconfig/defaultconfig/termthemes.json";
 import waveaiJson from "../../../pkg/wconfig/defaultconfig/waveai.json";
+import waveaimodelsJson from "../../../pkg/wconfig/defaultconfig/waveaimodels.json";
 import widgetsJson from "../../../pkg/wconfig/defaultconfig/widgets.json";
 
 export const DefaultFullConfig: FullConfigType = {
@@ -19,6 +20,7 @@ export const DefaultFullConfig: FullConfigType = {
     connections: {},
     bookmarks: {},
     waveai: waveaiJson as unknown as { [key: string]: AIModeConfigType },
+    waveaimodels: waveaimodelsJson as unknown as { [key: string]: AIModelConfigType },
     backgrounds: backgroundsJson as { [key: string]: BackgroundConfigType },
     configerrors: [],
     version: "preview",

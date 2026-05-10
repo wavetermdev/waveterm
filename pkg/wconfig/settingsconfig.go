@@ -87,6 +87,7 @@ type SettingsType struct {
 
 	WaveAiShowCloudModes bool   `json:"waveai:showcloudmodes,omitempty"`
 	WaveAiDefaultMode    string `json:"waveai:defaultmode,omitempty"`
+	WaveAiDefaultModel   string `json:"waveai:defaultmodel,omitempty"`
 
 	TermClear                  bool     `json:"term:*,omitempty"`
 	TermFontSize               float64  `json:"term:fontsize,omitempty"`
@@ -281,6 +282,7 @@ type AIModeConfigType struct {
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
+	DisplayColor       string   `json:"display:color,omitempty"`
 	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=groq,enum=openrouter,enum=nanogpt,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
 	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
 	Model              string   `json:"ai:model,omitempty"`
@@ -297,10 +299,39 @@ type AIModeConfigType struct {
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
 	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
+	AgentMode          bool     `json:"ai:agentmode,omitempty"`
+}
+
+// Wave AI model configuration. Independent from mode: a mode picks behavior
+// (capabilities, agent mode, system prompt), a model picks provider/endpoint/model id.
+type AIModelConfigType struct {
+	DisplayName        string   `json:"display:name"`
+	DisplayOrder       float64  `json:"display:order,omitempty"`
+	DisplayIcon        string   `json:"display:icon,omitempty"`
+	DisplayDescription string   `json:"display:description,omitempty"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=groq,enum=openrouter,enum=nanogpt,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
+	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
+	Model              string   `json:"ai:model,omitempty"`
+	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
+	Verbosity          string   `json:"ai:verbosity,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
+	Endpoint           string   `json:"ai:endpoint,omitempty"`
+	ProxyURL           string   `json:"ai:proxyurl,omitempty"`
+	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
+	APIToken           string   `json:"ai:apitoken,omitempty"`
+	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
+	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
+	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
+	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
+	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
+	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
 }
 
 type AIModeConfigUpdate struct {
 	Configs map[string]AIModeConfigType `json:"configs"`
+}
+
+type AIModelConfigUpdate struct {
+	Configs map[string]AIModelConfigType `json:"configs"`
 }
 
 type WidgetConfigType struct {
@@ -368,6 +399,7 @@ type FullConfigType struct {
 	Connections    map[string]ConnKeywords         `json:"connections"`
 	Bookmarks      map[string]WebBookmark          `json:"bookmarks"`
 	WaveAIModes    map[string]AIModeConfigType     `json:"waveai"`
+	WaveAIModels   map[string]AIModelConfigType    `json:"waveaimodels"`
 	ConfigErrors   []ConfigError                   `json:"configerrors" configfile:"-"`
 	Version        string                          `json:"version" configfile:"-"`
 	BuildTime      string                          `json:"buildtime" configfile:"-"`

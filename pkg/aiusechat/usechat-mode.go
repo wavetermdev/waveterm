@@ -8,6 +8,8 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -46,8 +48,9 @@ func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeC
 		return "", nil, err
 	}
 
-	if config.WaveAICloud && !premium {
-		mode = uctypes.AIModeQuick
+	// Premium-gated modes fall back to Ask
+	if config.WaveAIPremium && !premium {
+		mode = uctypes.AIModeAsk
 		config, err = getAIModeConfig(mode)
 		if err != nil {
 			return "", nil, err
@@ -55,6 +58,112 @@ func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeC
 	}
 
 	return mode, config, nil
+}
+
+func resolveAIModel(requestedModel string, premium bool) (string, *wconfig.AIModelConfigType, error) {
+	model := requestedModel
+	if model != "" {
+		if config, err := getAIModelConfig(model); err == nil {
+			if !config.WaveAIPremium || premium {
+				return model, config, nil
+			}
+		}
+	}
+	// Fall back to the first non-premium model in display:order.
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	resolved := ComputeResolvedAIModelConfigs(fullConfig)
+	fallbackName, fallbackCfg := pickFallbackModel(resolved, premium)
+	if fallbackName == "" {
+		return "", nil, fmt.Errorf("no AI models configured (add one to ~/.config/waveterm/waveai.json or waveaimodels.json)")
+	}
+	return fallbackName, &fallbackCfg, nil
+}
+
+// pickFallbackModel returns the first model sorted by display:order then key,
+// preferring non-premium when premium access is unavailable.
+func pickFallbackModel(resolved map[string]wconfig.AIModelConfigType, premium bool) (string, wconfig.AIModelConfigType) {
+	type entry struct {
+		name string
+		cfg  wconfig.AIModelConfigType
+	}
+	var nonPremium, premiumOnly []entry
+	for name, cfg := range resolved {
+		if cfg.WaveAIPremium {
+			premiumOnly = append(premiumOnly, entry{name, cfg})
+		} else {
+			nonPremium = append(nonPremium, entry{name, cfg})
+		}
+	}
+	sortEntries := func(es []entry) {
+		sort.Slice(es, func(i, j int) bool {
+			if es[i].cfg.DisplayOrder != es[j].cfg.DisplayOrder {
+				return es[i].cfg.DisplayOrder < es[j].cfg.DisplayOrder
+			}
+			return es[i].name < es[j].name
+		})
+	}
+	sortEntries(nonPremium)
+	sortEntries(premiumOnly)
+	if len(nonPremium) > 0 {
+		return nonPremium[0].name, nonPremium[0].cfg
+	}
+	if premium && len(premiumOnly) > 0 {
+		return premiumOnly[0].name, premiumOnly[0].cfg
+	}
+	return "", wconfig.AIModelConfigType{}
+}
+
+// modelToModeConfig copies provider-specific fields from a model config into a
+// throwaway mode config so that we can reuse applyProviderDefaults without
+// duplicating the per-provider defaulting logic.
+func modelToModeConfig(m *wconfig.AIModelConfigType) wconfig.AIModeConfigType {
+	return wconfig.AIModeConfigType{
+		Provider:           m.Provider,
+		APIType:            m.APIType,
+		Model:              m.Model,
+		ThinkingLevel:      m.ThinkingLevel,
+		Verbosity:          m.Verbosity,
+		Endpoint:           m.Endpoint,
+		ProxyURL:           m.ProxyURL,
+		AzureAPIVersion:    m.AzureAPIVersion,
+		APIToken:           m.APIToken,
+		APITokenSecretName: m.APITokenSecretName,
+		AzureResourceName:  m.AzureResourceName,
+		AzureDeployment:    m.AzureDeployment,
+		Capabilities:       m.Capabilities,
+		WaveAICloud:        m.WaveAICloud,
+		WaveAIPremium:      m.WaveAIPremium,
+	}
+}
+
+// applyModelProviderDefaults reuses the mode-side provider defaulting logic
+// for an AIModelConfigType, then copies any newly-populated fields back.
+func applyModelProviderDefaults(model *wconfig.AIModelConfigType) {
+	tmp := modelToModeConfig(model)
+	applyProviderDefaults(&tmp)
+	model.Provider = tmp.Provider
+	model.APIType = tmp.APIType
+	model.Endpoint = tmp.Endpoint
+	model.ProxyURL = tmp.ProxyURL
+	model.AzureAPIVersion = tmp.AzureAPIVersion
+	model.APIToken = tmp.APIToken
+	model.APITokenSecretName = tmp.APITokenSecretName
+	model.AzureResourceName = tmp.AzureResourceName
+	model.AzureDeployment = tmp.AzureDeployment
+	model.Capabilities = tmp.Capabilities
+	model.WaveAICloud = tmp.WaveAICloud
+}
+
+func getAIModelConfig(aiModel string) (*wconfig.AIModelConfigType, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	// Resolved set includes legacy custom waveai.json entries, so user BYOK
+	// configurations resolve here too.
+	resolved := ComputeResolvedAIModelConfigs(fullConfig)
+	config, ok := resolved[aiModel]
+	if !ok {
+		return nil, fmt.Errorf("invalid AI model: %s", aiModel)
+	}
+	return &config, nil
 }
 
 func applyProviderDefaults(config *wconfig.AIModeConfigType) {
@@ -265,8 +374,10 @@ func InitAIModeConfigWatcher() {
 }
 
 func handleConfigUpdate(fullConfig wconfig.FullConfigType) {
-	resolvedConfigs := ComputeResolvedAIModeConfigs(fullConfig)
-	broadcastAIModeConfigs(resolvedConfigs)
+	resolvedModes := ComputeResolvedAIModeConfigs(fullConfig)
+	broadcastAIModeConfigs(resolvedModes)
+	resolvedModels := ComputeResolvedAIModelConfigs(fullConfig)
+	broadcastAIModelConfigs(resolvedModels)
 }
 
 func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModeConfigType {
@@ -281,6 +392,55 @@ func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]
 	return resolvedConfigs
 }
 
+func ComputeResolvedAIModelConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModelConfigType {
+	resolvedConfigs := make(map[string]wconfig.AIModelConfigType)
+	for modelName, modelConfig := range fullConfig.WaveAIModels {
+		resolved := modelConfig
+		applyModelProviderDefaults(&resolved)
+		resolvedConfigs[modelName] = resolved
+	}
+	// Backwards-compat: legacy custom entries in waveai.json (where mode and
+	// model were the same thing) used a non-wave provider or carried a model.
+	// Surface them in the model dropdown so user-configured BYOK providers keep
+	// working after the mode/model split. Built-in waveai@... entries are pure
+	// modes and intentionally excluded.
+	for entryName, modeConfig := range fullConfig.WaveAIModes {
+		if strings.HasPrefix(entryName, "waveai@") {
+			continue
+		}
+		if _, exists := resolvedConfigs[entryName]; exists {
+			continue
+		}
+		if modeConfig.Provider == "" && modeConfig.Model == "" && modeConfig.Endpoint == "" {
+			continue
+		}
+		modelConfig := wconfig.AIModelConfigType{
+			DisplayName:        modeConfig.DisplayName,
+			DisplayOrder:       modeConfig.DisplayOrder,
+			DisplayIcon:        modeConfig.DisplayIcon,
+			DisplayDescription: modeConfig.DisplayDescription,
+			Provider:           modeConfig.Provider,
+			APIType:            modeConfig.APIType,
+			Model:              modeConfig.Model,
+			ThinkingLevel:      modeConfig.ThinkingLevel,
+			Verbosity:          modeConfig.Verbosity,
+			Endpoint:           modeConfig.Endpoint,
+			ProxyURL:           modeConfig.ProxyURL,
+			AzureAPIVersion:    modeConfig.AzureAPIVersion,
+			APIToken:           modeConfig.APIToken,
+			APITokenSecretName: modeConfig.APITokenSecretName,
+			AzureResourceName:  modeConfig.AzureResourceName,
+			AzureDeployment:    modeConfig.AzureDeployment,
+			Capabilities:       modeConfig.Capabilities,
+			WaveAICloud:        modeConfig.WaveAICloud,
+			WaveAIPremium:      modeConfig.WaveAIPremium,
+		}
+		applyModelProviderDefaults(&modelConfig)
+		resolvedConfigs[entryName] = modelConfig
+	}
+	return resolvedConfigs
+}
+
 func broadcastAIModeConfigs(configs map[string]wconfig.AIModeConfigType) {
 	update := wconfig.AIModeConfigUpdate{
 		Configs: configs,
@@ -288,6 +448,17 @@ func broadcastAIModeConfigs(configs map[string]wconfig.AIModeConfigType) {
 
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_AIModeConfig,
+		Data:  update,
+	})
+}
+
+func broadcastAIModelConfigs(configs map[string]wconfig.AIModelConfigType) {
+	update := wconfig.AIModelConfigUpdate{
+		Configs: configs,
+	}
+
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_AIModelConfig,
 		Data:  update,
 	})
 }

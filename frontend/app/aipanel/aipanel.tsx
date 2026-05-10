@@ -20,6 +20,7 @@ import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIModeDropdown } from "./aimode";
+import { AIModelDropdown } from "./aimodel-dropdown";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
@@ -264,6 +265,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
                     aimode: globalStore.get(model.currentAIMode),
+                    aimodel: globalStore.get(model.currentAIModel),
                 };
                 body.tabid = tabModel.tabId;
                 return { body };
@@ -570,8 +572,9 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                                 className="flex-1 overflow-y-auto p-2 relative"
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
-                                <div className="absolute top-2 left-2 z-10">
+                                <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
                                     <AIModeDropdown />
+                                    <AIModelDropdown />
                                 </div>
                                 <AIWelcomeMessage />
                             </div>
