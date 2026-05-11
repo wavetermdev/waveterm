@@ -89,6 +89,9 @@ func RunChatStep(
 		return nil, nil, nil, err
 	}
 
+	if assistantMsg == nil {
+		return stopReason, nil, nil, nil
+	}
 	return stopReason, []*StoredChatMessage{assistantMsg}, nil, nil
 }
 

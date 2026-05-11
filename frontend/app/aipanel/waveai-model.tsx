@@ -39,6 +39,13 @@ export interface DroppedFile {
     previewUrl?: string;
 }
 
+export interface QueuedMessage {
+    text: string;
+    files: DroppedFile[];
+    uiParts: WaveUIMessagePart[];
+    aiParts: AIMessagePart[];
+}
+
 export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
     inputRef: React.RefObject<AIPanelInputRef> | null = null;
@@ -50,6 +57,7 @@ export class WaveAIModel {
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
     orefContext: ORef;
+    private isSendingQueued = false;
     isAIStreaming = jotai.atom(false);
 
     widgetAccessAtom!: jotai.Atom<boolean>;
@@ -74,6 +82,8 @@ export class WaveAIModel {
     >;
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+    queuedMessageAtom: jotai.PrimitiveAtom<QueuedMessage | null> = jotai.atom(null) as jotai.PrimitiveAtom<QueuedMessage | null>;
+    hasQueuedMessageAtom: jotai.Atom<boolean> = jotai.atom((get) => get(this.queuedMessageAtom) != null);
 
     private constructor(orefContext: ORef) {
         this.orefContext = orefContext;
@@ -249,6 +259,7 @@ export class WaveAIModel {
         this.useChatStop?.();
         this.clearFiles();
         this.clearError();
+        this.deleteQueuedMessage();
         globalStore.set(this.isChatEmptyAtom, true);
         const newChatId = crypto.randomUUID();
         globalStore.set(this.chatId, newChatId);
@@ -311,18 +322,6 @@ export class WaveAIModel {
 
     async stopResponse() {
         this.useChatStop?.();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        const chatIdValue = globalStore.get(this.chatId);
-        if (!chatIdValue) {
-            return;
-        }
-        try {
-            const messages = await this.reloadChatFromBackend(chatIdValue);
-            this.useChatSetMessages?.(messages);
-        } catch (error) {
-            console.error("Failed to reload chat after stop:", error);
-        }
     }
 
     getAndClearMessage(): AIMessage | null {
@@ -489,7 +488,7 @@ export class WaveAIModel {
         }
     }
 
-    async handleSubmit() {
+    async handleSubmit(currentStatus?: ChatStatus) {
         const input = globalStore.get(this.inputAtom);
         const droppedFiles = globalStore.get(this.droppedFiles);
 
@@ -499,11 +498,12 @@ export class WaveAIModel {
             return;
         }
 
-        if (
-            (!input.trim() && droppedFiles.length === 0) ||
-            (this.useChatStatus !== "ready" && this.useChatStatus !== "error") ||
-            globalStore.get(this.isLoadingChatAtom)
-        ) {
+        if ((!input.trim() && droppedFiles.length === 0) || globalStore.get(this.isLoadingChatAtom)) {
+            return;
+        }
+
+        // If already queued, ignore
+        if (globalStore.get(this.queuedMessageAtom) != null) {
             return;
         }
 
@@ -541,19 +541,89 @@ export class WaveAIModel {
             });
         }
 
+        const status = currentStatus ?? this.useChatStatus;
+        if (status !== "ready" && status !== "error") {
+            // Queue the message instead of sending immediately
+            const queued: QueuedMessage = {
+                text: input.trim(),
+                files: droppedFiles,
+                uiParts: uiMessageParts,
+                aiParts: aiMessageParts,
+            };
+            globalStore.set(this.queuedMessageAtom, queued);
+            globalStore.set(this.inputAtom, "");
+            this.clearFiles();
+            return;
+        }
+
         const realMessage: AIMessage = {
             messageid: crypto.randomUUID(),
             parts: aiMessageParts,
         };
         this.realMessage = realMessage;
 
-        // console.log("SUBMIT MESSAGE", realMessage);
-
         this.useChatSendMessage?.({ parts: uiMessageParts });
 
         globalStore.set(this.isChatEmptyAtom, false);
         globalStore.set(this.inputAtom, "");
         this.clearFiles();
+    }
+
+    async sendQueuedMessage() {
+        if (this.isSendingQueued) {
+            return;
+        }
+        const queued = globalStore.get(this.queuedMessageAtom);
+        if (queued == null) {
+            return;
+        }
+        this.isSendingQueued = true;
+        globalStore.set(this.queuedMessageAtom, null);
+        const realMessage: AIMessage = {
+            messageid: crypto.randomUUID(),
+            parts: queued.aiParts,
+        };
+        this.realMessage = realMessage;
+        try {
+            await this.useChatSendMessage?.({ parts: queued.uiParts });
+            globalStore.set(this.isChatEmptyAtom, false);
+        } catch (error) {
+            console.error("Failed to send queued message:", error);
+        } finally {
+            this.isSendingQueued = false;
+        }
+    }
+
+    async sendQueuedMessageNow() {
+        const queued = globalStore.get(this.queuedMessageAtom);
+        if (queued == null) {
+            return;
+        }
+        await this.stopResponse();
+        await this.sendQueuedMessage();
+    }
+
+    editQueuedMessage() {
+        const queued = globalStore.get(this.queuedMessageAtom);
+        if (queued == null) {
+            return;
+        }
+        globalStore.set(this.inputAtom, queued.text);
+        globalStore.set(this.droppedFiles, queued.files);
+        globalStore.set(this.queuedMessageAtom, null);
+    }
+
+    deleteQueuedMessage() {
+        const queued = globalStore.get(this.queuedMessageAtom);
+        if (queued == null) {
+            return;
+        }
+        queued.files.forEach((file) => {
+            if (file.previewUrl) {
+                URL.revokeObjectURL(file.previewUrl);
+            }
+        });
+        globalStore.set(this.queuedMessageAtom, null);
     }
 
     async uiLoadInitialChat() {

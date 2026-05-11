@@ -24,6 +24,7 @@ import { AIModelDropdown } from "./aimodel-dropdown";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
+import { AIQueuedMessage } from "./aiqueuedmessage";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { WaveUIMessage } from "./aitypes";
 import { BYOKAnnouncement } from "./byokannouncement";
@@ -238,8 +239,15 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             },
         }),
         onError: (error) => {
+            const msg = error.message || "";
+            // Suppress spurious "already running" when a queued message is being
+            // retried — the backend now waits gracefully for the lock.
+            if (msg.toLowerCase().includes("already running") && globalStore.get(model.hasQueuedMessageAtom)) {
+                console.log("AI Chat suppressed 'already running' — retrying via queued message");
+                return;
+            }
             console.error("AI Chat error:", error);
-            model.setError(error.message || "An error occurred");
+            model.setError(msg || "An error occurred");
         },
     });
 
@@ -260,6 +268,14 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     useEffect(() => {
         globalStore.set(model.isAIStreaming, status === "streaming" || status === "submitted");
     }, [status]);
+
+    useEffect(() => {
+        if (status === "ready" || status === "error") {
+            if (globalStore.get(model.hasQueuedMessageAtom)) {
+                model.sendQueuedMessage();
+            }
+        }
+    }, [status, model]);
 
     useEffect(() => {
         const keyHandler = keydownWrapper(handleKeyDown);
@@ -302,7 +318,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await model.handleSubmit();
+        await model.handleSubmit(status);
         setTimeout(() => {
             model.focusInput();
         }, 100);
@@ -550,6 +566,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                         )}
                         <AIErrorMessage />
                         <AIDroppedFiles model={model} />
+                        <AIQueuedMessage model={model} />
                         <AIPanelInput onSubmit={handleSubmit} status={status} model={model} messages={messages} />
                     </>
             </div>

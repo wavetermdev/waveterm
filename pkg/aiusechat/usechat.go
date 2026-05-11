@@ -192,6 +192,9 @@ func getUsage(msgs []uctypes.GenAIMessage) uctypes.AIUsage {
 	var rtn uctypes.AIUsage
 	var found bool
 	for _, msg := range msgs {
+		if msg == nil {
+			continue
+		}
 		if usage := msg.GetUsage(); usage != nil {
 			if !found {
 				rtn = *usage
@@ -390,7 +393,18 @@ func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopRea
 }
 
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
-	if !activeChats.SetUnless(chatOpts.ChatId, true) {
+	// Wait up to 2s if another request for the same chat is still winding down.
+	// This avoids spurious "already running" errors when the client queues
+	// a message while the previous stream is finishing.
+	acquired := false
+	for i := 0; i < 20; i++ {
+		if activeChats.SetUnless(chatOpts.ChatId, true) {
+			acquired = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if !acquired {
 		return nil, fmt.Errorf("chat %s is already running", chatOpts.ChatId)
 	}
 	defer activeChats.Delete(chatOpts.ChatId)

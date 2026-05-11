@@ -184,15 +184,21 @@ export const AIPanelInput = memo(({ onSubmit, status, model, messages }: AIPanel
                             </button>
                         </Tooltip>
                     ) : (
-                        <Tooltip content="Send message (Enter)" placement="top" divClassName="absolute bottom-1.5 right-1">
+                        <Tooltip
+                            content={status === "ready" ? "Send message (Enter)" : "Queue message"}
+                            placement="top"
+                            divClassName="absolute bottom-1.5 right-1"
+                        >
                             <button
                                 type="submit"
-                                disabled={status !== "ready" || !input.trim()}
+                                disabled={!input.trim()}
                                 className={cn(
                                     "w-5 h-5 transition-colors flex items-center justify-center",
-                                    status !== "ready" || !input.trim()
+                                    !input.trim()
                                         ? "text-gray-400"
-                                        : "text-accent/80 hover:text-accent cursor-pointer"
+                                        : status === "ready"
+                                          ? "text-accent/80 hover:text-accent cursor-pointer"
+                                          : "text-yellow-500/80 hover:text-yellow-400 cursor-pointer"
                                 )}
                             >
                                 <i className="fa fa-paper-plane text-sm"></i>
