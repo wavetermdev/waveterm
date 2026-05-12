@@ -9,6 +9,8 @@
   <br/>
 </p>
 
+> **Fork:** This is a fork of [Wave Terminal](https://github.com/wavetermdev/waveterm) optimized for remote development workflows.
+
 # Wave Terminal
 
 <div align="center">
