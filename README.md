@@ -95,6 +95,14 @@ Want to provide input to our future releases? Connect with us on [Discord](https
 
 See [Building Wave Terminal](BUILD.md).
 
+### Fork Notes
+
+This fork is optimized for remote development workflows with a focus on macOS.
+
+- **Local toolchain** — Go and Task are installed locally (not global), no system dependencies required
+- **macOS builds** — CI builds macOS `.dmg` via GitHub Actions (manual trigger)
+- **Planned changes** — SSH port forwarding, reduced AI features, MOSH support, vertical tabs, SSH config as source of truth for connections
+
 ## Contributing
 
 Wave uses GitHub Issues for issue tracking.

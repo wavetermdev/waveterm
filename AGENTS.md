@@ -8,17 +8,21 @@ This fork of Wave Terminal is optimized for remote development workflows. The lo
 - `upstream` → `https://github.com/wavetermdev/waveterm` (original)
 - Do not run `git push` — the user handles pushes interactively with 2FA
 
-## Dev Environment Status
+## Dev Environment
 
 | Tool | Status |
 |------|--------|
 | NodeJS v24.14.0 | Available |
 | npm 11.9.0 | Available |
 | git 2.43.0 | Available |
-| Go 1.25+ | **Missing** — must install before building |
-| Task (build runner) | **Missing** — must install before building |
+| Go 1.26.2 | Local install in `golang-1.26.2/` |
+| Task (build runner) | Local npm dep (`@go-task/cli`) |
 
-Install Task and Go before attempting builds. Then run `task init` and `task dev`.
+Go and Task are installed locally (not globally). The Taskfile uses `{{.GO_DIR}}` and `{{.GO}}` vars to reference the local Go binary.
+
+**When upgrading Go**: download to `golang-<version>/`, update `GO_DIR` in Taskfile.yml vars, and run `echo "module golang" > golang-<version>/go.mod` (prevents `go mod tidy` from scanning the Go install dir as part of the project module).
+
+Run `./node_modules/.bin/task init` then `./node_modules/.bin/task dev`.
 
 ## Planning Documents
 
@@ -40,10 +44,9 @@ Current active spec: `.pi/specs/portforwarding.md`
 
 ## Priorities
 
-1. Install missing build tools (Task, Go)
-2. Verify `task dev` and `task start` work
-3. Implement SSH port forwarding (`LocalForward`/`RemoteForward`) — spec ready
-4. Later: remove/disable AI features, MOSH support, vertical tabs, UX improvements
+1. Verify `task dev` and `task start` work (build tools installed)
+2. Implement SSH port forwarding (`LocalForward`/`RemoteForward`) — spec ready
+3. Later: remove/disable AI features, MOSH support, vertical tabs, UX improvements
 
 ## Conventions
 

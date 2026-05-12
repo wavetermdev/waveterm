@@ -1,0 +1,51 @@
+name: Build macOS
+on:
+    workflow_dispatch:
+
+env:
+    GO_VERSION: "1.26.2"
+    NODE_VERSION: 22
+    NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+    build:
+        runs-on: macos-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - uses: actions/setup-go@v6
+              with:
+                  go-version: ${{ env.GO_VERSION }}
+                  cache-dependency-path: go.sum
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Install FPM
+              run: sudo gem install fpm
+
+            - name: Install deps
+              run: npm ci --no-audit --no-fund
+              env:
+                  GIT_ASKPASS: "echo"
+                  GIT_TERMINAL_PROMPT: "0"
+
+            - name: Build
+              run: task package
+              env:
+                  USE_SYSTEM_FPM: true
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v5
+              with:
+                  name: macos-build
+                  path: make/

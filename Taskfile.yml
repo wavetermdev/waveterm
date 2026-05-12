@@ -13,6 +13,10 @@ vars:
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
     WINGET_PACKAGE: CommandLine.Wave
+    GO_DIR: "golang-1.26.2"
+    GO: "{{.ROOT_DIR}}/{{.GO_DIR}}/bin/go"
+    ZIG_DIR: "zig-0.14.0"
+    ZIG: "{{.ROOT_DIR}}/{{.ZIG_DIR}}/zig"
 
 tasks:
     electron:dev:
@@ -166,7 +170,7 @@ tasks:
         generates:
             - "dist/schema/**/*"
         cmds:
-            - go run cmd/generateschema/main-generateschema.go
+            - "{{.GO}} run cmd/generateschema/main-generateschema.go"
             - cmd: '{{.RMRF}} "dist/schema"'
               ignore_error: true
             - task: copyfiles:'schema':'dist/schema'
@@ -225,7 +229,7 @@ tasks:
             - task: build:server:internal
               vars:
                   ARCHS: amd64
-                  GO_ENV_VARS: CC="zig cc -target x86_64-windows-gnu"
+                  GO_ENV_VARS: CC="{{.ZIG}} cc -target x86_64-windows-gnu"
         deps:
             - go:mod:tidy
         sources:
@@ -248,7 +252,7 @@ tasks:
                   ARCHS:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
                   GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-windows-gnu\"{{else}}CC=\"zig cc -target aarch64-windows-gnu\"{{end}}"
+                      sh: echo "{{if eq "amd64" ARCH}}CC=\"{{.ZIG}} cc -target x86_64-windows-gnu\"{{else}}CC=\"{{.ZIG}} cc -target aarch64-windows-gnu\"{{end}}"
 
     build:server:linux:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
@@ -261,14 +265,14 @@ tasks:
                   ARCHS:
                       sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
                   GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-linux-gnu.2.28\"{{else}}CC=\"zig cc -target aarch64-linux-gnu.2.28\"{{end}}"
+                      sh: echo "{{if eq "amd64" ARCH}}CC=\"{{.ZIG}} cc -target x86_64-linux-gnu.2.28\"{{else}}CC=\"{{.ZIG}} cc -target aarch64-linux-gnu.2.28\"{{end}}"
 
     build:server:internal:
         requires:
             vars:
                 - ARCHS
         cmd:
-            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
+            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} {{.GO}} build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
             for:
                 var: ARCHS
                 split: ","
@@ -342,7 +346,7 @@ tasks:
                 - GOOS
                 - GOARCH
                 - VERSION
-        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} {{.GO}} build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
 
     build:tsunamiscaffold:
@@ -363,8 +367,8 @@ tasks:
     generate:
         desc: Generate Typescript bindings for the Go backend.
         cmds:
-            - go run cmd/generatets/main-generatets.go
-            - go run cmd/generatego/main-generatego.go
+            - "{{.GO}} run cmd/generatets/main-generatets.go"
+            - "{{.GO}} run cmd/generatego/main-generatego.go"
         deps:
             - build:schema
         sources:
@@ -469,7 +473,7 @@ tasks:
         desc: Initialize the project for development.
         cmds:
             - npm install
-            - go mod tidy
+            - "{{.GO}} mod tidy"
             - cd docs && npm install
 
     dev:cleardata:windows:
@@ -505,7 +509,7 @@ tasks:
             - go.sum
         sources:
             - go.mod
-        cmd: go mod tidy
+        cmd: "{{.GO}} mod tidy"
 
     copyfiles:*:*:
         desc: Recursively copy directory and its contents.
@@ -522,7 +526,7 @@ tasks:
 
     tsunami:demo:todo:
         desc: Run the tsunami todo demo application
-        cmd: go run demo/todo/*.go
+        cmd: "{{.GO}} run demo/todo/*.go"
         dir: tsunami
         env:
             TSUNAMI_LISTENADDR: "localhost:12026"
@@ -632,7 +636,7 @@ tasks:
               platforms: [windows]
               ignore_error: true
             - mkdir -p bin
-            - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
+            - cd tsunami && {{.GO}} build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
         sources:
             - "tsunami/**/*.go"
             - "tsunami/go.mod"
@@ -651,9 +655,9 @@ tasks:
 
     godoc:
         desc: Start the Go documentation server for the root module
-        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+        cmd: $({{.GO}} env GOPATH)/bin/pkgsite -http=:6060
 
     tsunami:godoc:
         desc: Start the Go documentation server for the tsunami module
-        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+        cmd: $({{.GO}} env GOPATH)/bin/pkgsite -http=:6060
         dir: tsunami
