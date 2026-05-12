@@ -12,25 +12,7 @@
 name: "CodeQL"
 
 on:
-    push:
-        branches: ["main"]
-        paths:
-            - "**/*.go"
-            - "**/*.ts"
-            - "**/*.tsx"
-    pull_request:
-        branches: ["main"]
-        paths:
-            - "**/*.go"
-            - "**/*.ts"
-            - "**/*.tsx"
-        types:
-            - opened
-            - synchronize
-            - reopened
-            - ready_for_review
-    schedule:
-        - cron: "36 5 * * 5"
+    workflow_dispatch:
 
 env:
     NODE_VERSION: 22
