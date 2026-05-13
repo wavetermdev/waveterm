@@ -19,11 +19,18 @@
 
 </div>
 
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
-
 Wave is an open-source, AI-integrated terminal for macOS, Linux, and Windows. It works with any AI model. Bring your own API keys for OpenAI, Claude, or Gemini, or run local models via Ollama and LM Studio. No accounts required.
 
 Wave also supports durable SSH sessions that survive network interruptions and restarts, with automatic reconnection. Edit remote files with a built-in graphical editor and preview files inline without leaving the terminal.
+
+## Fork Notes
+
+This fork is optimized for remote development workflows with a focus on macOS.
+
+- **No telemetry** — All analytics, telemetry, and cloud data collection have been completely removed; no usage data is sent to external servers
+- **Local toolchain** — Go and Task are installed locally (not global), no system dependencies required
+- **macOS builds** — CI builds macOS `.dmg` via GitHub Actions (manual trigger)
+- **Planned changes** — SSH port forwarding, reduced AI features, MOSH support, vertical tabs, SSH config as source of truth for connections
 
 ![WaveTerm Screenshot](./assets/wave-screenshot.webp)
 
@@ -52,18 +59,11 @@ Wave AI is your context-aware terminal assistant with access to your workspace:
 - **CLI Integration**: Use `wsh ai` to pipe output or attach files directly from the command line
 - **BYOK Support**: Bring your own API keys for OpenAI, Claude, Gemini, Azure, and other providers
 - **Local Models**: Run local models with Ollama, LM Studio, and other OpenAI-compatible providers
-- **Free Beta**: Included AI credits while we refine the experience
 - **Coming Soon**: Command execution (with approval)
-
-Learn more in our [Wave AI documentation](https://docs.waveterm.dev/waveai) and [Wave AI Modes documentation](https://docs.waveterm.dev/waveai-modes).
 
 ## Installation
 
 Wave Terminal works on macOS, Linux, and Windows.
-
-Platform-specific installation instructions can be found [here](https://docs.waveterm.dev/gettingstarted).
-
-You can also install Wave Terminal directly from: [www.waveterm.dev/download](https://www.waveterm.dev/download).
 
 ### Minimum requirements
 
@@ -79,31 +79,9 @@ The WSH helper runs on the following platforms:
 - Windows 10 or later (x64)
 - Linux Kernel 2.6.32 or later (x64), Linux Kernel 3.1 or later (arm64)
 
-## Roadmap
-
-Wave is constantly improving! Our roadmap will be continuously updated with our goals for each release. You can find it [here](./ROADMAP.md).
-
-Want to provide input to our future releases? Connect with us on [Discord](https://discord.gg/XfvZ334gwU) or open a [Feature Request](https://github.com/wavetermdev/waveterm/issues/new/choose)!
-
-## Links
-
-- Homepage &mdash; https://www.waveterm.dev
-- Download Page &mdash; https://www.waveterm.dev/download
-- Documentation &mdash; https://docs.waveterm.dev
-- X &mdash; https://x.com/wavetermdev
-- Discord Community &mdash; https://discord.gg/XfvZ334gwU
-
 ## Building from Source
 
 See [Building Wave Terminal](BUILD.md).
-
-### Fork Notes
-
-This fork is optimized for remote development workflows with a focus on macOS.
-
-- **Local toolchain** — Go and Task are installed locally (not global), no system dependencies required
-- **macOS builds** — CI builds macOS `.dmg` via GitHub Actions (manual trigger)
-- **Planned changes** — SSH port forwarding, reduced AI features, MOSH support, vertical tabs, SSH config as source of truth for connections
 
 ## Contributing
 
@@ -113,14 +91,6 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 - [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 - [Contribution guidelines](CONTRIBUTING.md#before-you-start)
-
-### Sponsoring Wave ❤️
-
-If Wave Terminal is useful to you or your company, consider sponsoring development.
-
-Sponsorship helps support the time spent building and maintaining the project.
-
-- https://github.com/sponsors/wavetermdev
 
 ## License
 
