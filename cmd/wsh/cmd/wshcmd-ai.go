@@ -68,7 +68,6 @@ func getMaxFileSize(mimeType string) (int, string) {
 
 func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("ai", rtnErr == nil)
 	}()
 
 	if len(args) == 0 && aiMessageFlag == "" {

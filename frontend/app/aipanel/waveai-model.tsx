@@ -141,7 +141,7 @@ export class WaveAIModel {
         });
 
         this.defaultModeAtom = jotai.atom((get) => {
-            const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+            const telemetryEnabled = true;
             if (this.inBuilder) {
                 return telemetryEnabled ? "waveaibuilder@default" : "invalid";
             }
@@ -419,7 +419,7 @@ export class WaveAIModel {
     }
 
     isValidMode(mode: string): boolean {
-        const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+        const telemetryEnabled = true;
         if (mode.startsWith("waveai@") && !telemetryEnabled) {
             return false;
         }
@@ -598,16 +598,6 @@ export class WaveAIModel {
     }
 
     handleAIFeedback(feedback: "good" | "bad") {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "waveai:feedback",
-                props: {
-                    "waveai:feedback": feedback,
-                },
-            },
-            { noresponse: true }
-        );
     }
 
     requestWaveAIFocus() {

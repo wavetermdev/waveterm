@@ -30,7 +30,6 @@ func init() {
 
 func editConfigRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("editconfig", rtnErr == nil)
 	}()
 
 	configFile := "settings.json" // default

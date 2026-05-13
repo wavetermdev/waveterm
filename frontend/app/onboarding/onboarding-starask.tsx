@@ -14,16 +14,7 @@ type StarAskPageProps = {
 };
 
 export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
-    const handleStarClick = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "star", "onboarding:page": page },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
+    const handleStarClick = async () => {        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -32,16 +23,7 @@ export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
         onClose();
     };
 
-    const handleAlreadyStarred = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "already", "onboarding:page": page },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
+    const handleAlreadyStarred = async () => {        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -49,28 +31,10 @@ export function StarAskPage({ onClose, page = "upgrade" }: StarAskPageProps) {
         onClose();
     };
 
-    const handleRepoLinkClick = () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "action:link",
-                props: { "action:type": "githubrepo", "onboarding:page": page },
-            },
-            { noresponse: true }
-        );
-        window.open("https://github.com/wavetermdev/waveterm", "_blank");
+    const handleRepoLinkClick = () => {        window.open("https://github.com/wavetermdev/waveterm", "_blank");
     };
 
-    const handleMaybeLater = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "later", "onboarding:page": page },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
+    const handleMaybeLater = async () => {        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": false },

@@ -39,7 +39,6 @@ func init() {
 
 func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("ssh", rtnErr == nil)
 	}()
 
 	sshArg := args[0]

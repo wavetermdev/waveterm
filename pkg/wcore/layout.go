@@ -113,13 +113,13 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 	return QueueLayoutAction(ctx, layoutStateId, actions...)
 }
 
-func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
+func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout) error {
 	actions := make([]waveobj.LayoutActionData, len(layout)+1)
 	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
-		blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
+		blockData, err := CreateBlock(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{})
 		if err != nil {
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}
@@ -169,7 +169,7 @@ func BootstrapStarterLayout(ctx context.Context) error {
 	tabId := workspace.ActiveTabId
 
 	starterLayout := GetStarterLayout()
-	err = ApplyPortableLayout(ctx, tabId, starterLayout, false)
+	err = ApplyPortableLayout(ctx, tabId, starterLayout)
 	if err != nil {
 		return fmt.Errorf("error applying starter layout: %w", err)
 	}

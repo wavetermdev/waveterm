@@ -43,7 +43,6 @@ func init() {
 
 func tabIndicatorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("tabindicator", rtnErr == nil)
 	}()
 
 	fmt.Fprintf(os.Stderr, "tabindicator is deprecated, use 'wsh badge' instead\n")

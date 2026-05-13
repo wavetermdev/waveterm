@@ -26,7 +26,6 @@ func GenerateWshClient() error {
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
 		"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes",
 		"github.com/wavetermdev/waveterm/pkg/baseds",
-		"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata",
 		"github.com/wavetermdev/waveterm/pkg/vdom",
 		"github.com/wavetermdev/waveterm/pkg/waveobj",
 		"github.com/wavetermdev/waveterm/pkg/wconfig",

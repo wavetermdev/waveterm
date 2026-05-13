@@ -43,7 +43,6 @@ func init() {
 func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	cmdName := cmd.Name()
 	defer func() {
-		sendActivity(cmdName, rtnErr == nil)
 	}()
 	if len(args) == 0 {
 		OutputHelpMessage(cmd)

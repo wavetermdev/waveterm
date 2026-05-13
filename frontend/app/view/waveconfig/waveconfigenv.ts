@@ -16,9 +16,7 @@ export type WaveConfigEnv = WaveEnvSubset<{
         GetSecretsLinuxStorageBackendCommand: WaveEnv["rpc"]["GetSecretsLinuxStorageBackendCommand"];
         GetSecretsNamesCommand: WaveEnv["rpc"]["GetSecretsNamesCommand"];
         GetSecretsCommand: WaveEnv["rpc"]["GetSecretsCommand"];
-        SetSecretsCommand: WaveEnv["rpc"]["SetSecretsCommand"];
-        RecordTEventCommand: WaveEnv["rpc"]["RecordTEventCommand"];
-    };
+        SetSecretsCommand: WaveEnv["rpc"]["SetSecretsCommand"];    };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };

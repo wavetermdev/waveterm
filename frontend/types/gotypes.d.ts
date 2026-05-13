@@ -42,44 +42,6 @@ declare global {
         configs: {[key: string]: AIModeConfigType};
     };
 
-    // wshrpc.ActivityDisplayType
-    type ActivityDisplayType = {
-        width: number;
-        height: number;
-        dpr: number;
-        internal?: boolean;
-    };
-
-    // wshrpc.ActivityUpdate
-    type ActivityUpdate = {
-        fgminutes?: number;
-        activeminutes?: number;
-        openminutes?: number;
-        waveaifgminutes?: number;
-        waveaiactiveminutes?: number;
-        numtabs?: number;
-        newtab?: number;
-        numblocks?: number;
-        numwindows?: number;
-        numws?: number;
-        numwsnamed?: number;
-        numsshconn?: number;
-        numwslconn?: number;
-        nummagnify?: number;
-        termcommandsrun?: number;
-        numpanics?: number;
-        numaireqs?: number;
-        startup?: number;
-        shutdown?: number;
-        settabtheme?: number;
-        buildtime?: string;
-        displays?: ActivityDisplayType[];
-        renderers?: {[key: string]: number};
-        blocks?: {[key: string]: number};
-        wshcmds?: {[key: string]: number};
-        conn?: {[key: string]: number};
-    };
-
     // wshrpc.AiMessageData
     type AiMessageData = {
         message?: string;
@@ -1469,8 +1431,6 @@ declare global {
         "window:savelastwindow"?: boolean;
         "window:dimensions"?: string;
         "window:zoom"?: number;
-        "telemetry:*"?: boolean;
-        "telemetry:enabled"?: boolean;
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
@@ -1538,143 +1498,6 @@ declare global {
         "file:path"?: string;
         "file:name"?: string;
         "url:url"?: string;
-    };
-
-    // telemetrydata.TEvent
-    type TEvent = {
-        uuid?: string;
-        ts?: number;
-        tslocal?: string;
-        event: string;
-        props: TEventProps;
-    };
-
-    // telemetrydata.TEventProps
-    type TEventProps = {
-        "client:arch"?: string;
-        "client:version"?: string;
-        "client:initial_version"?: string;
-        "client:buildtime"?: string;
-        "client:osrelease"?: string;
-        "client:isdev"?: boolean;
-        "client:packagetype"?: string;
-        "client:macos"?: string;
-        "cohort:month"?: string;
-        "cohort:isoweek"?: string;
-        "autoupdate:channel"?: string;
-        "autoupdate:enabled"?: boolean;
-        "localshell:type"?: string;
-        "localshell:version"?: string;
-        "loc:countrycode"?: string;
-        "loc:regioncode"?: string;
-        "settings:customwidgets"?: number;
-        "settings:customaipresets"?: number;
-        "settings:customsettings"?: number;
-        "settings:customaimodes"?: number;
-        "settings:secretscount"?: number;
-        "settings:transparent"?: boolean;
-        "activity:activeminutes"?: number;
-        "activity:fgminutes"?: number;
-        "activity:openminutes"?: number;
-        "activity:waveaiactiveminutes"?: number;
-        "activity:waveaifgminutes"?: number;
-        "activity:termcommandsrun"?: number;
-        "activity:termcommands:remote"?: number;
-        "activity:termcommands:durable"?: number;
-        "activity:termcommands:wsl"?: number;
-        "app:firstday"?: boolean;
-        "app:firstlaunch"?: boolean;
-        "action:initiator"?: "keyboard" | "mouse";
-        "action:type"?: string;
-        "debug:panictype"?: string;
-        "block:view"?: string;
-        "block:controller"?: string;
-        "block:subblock"?: boolean;
-        "ai:backendtype"?: string;
-        "ai:local"?: boolean;
-        "wsh:cmd"?: string;
-        "wsh:errorcount"?: number;
-        "wsh:count"?: number;
-        "conn:conntype"?: string;
-        "conn:wsherrorcode"?: string;
-        "conn:errorcode"?: string;
-        "conn:suberrorcode"?: string;
-        "conn:contexterror"?: boolean;
-        "onboarding:feature"?: "waveai" | "durable" | "magnify" | "wsh";
-        "onboarding:version"?: string;
-        "onboarding:githubstar"?: "already" | "star" | "later";
-        "onboarding:page"?: string;
-        "display:height"?: number;
-        "display:width"?: number;
-        "display:dpr"?: number;
-        "display:count"?: number;
-        "display:all"?: any;
-        "count:blocks"?: number;
-        "count:tabs"?: number;
-        "count:windows"?: number;
-        "count:workspaces"?: number;
-        "count:sshconn"?: number;
-        "count:wslconn"?: number;
-        "count:jobs"?: number;
-        "count:jobsconnected"?: number;
-        "count:views"?: {[key: string]: number};
-        "waveai:apitype"?: string;
-        "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:stepnum"?: number;
-        "waveai:inputtokens"?: number;
-        "waveai:outputtokens"?: number;
-        "waveai:nativewebsearchcount"?: number;
-        "waveai:requestcount"?: number;
-        "waveai:toolusecount"?: number;
-        "waveai:tooluseerrorcount"?: number;
-        "waveai:tooldetail"?: {[key: string]: number};
-        "waveai:premiumreq"?: number;
-        "waveai:proxyreq"?: number;
-        "waveai:haderror"?: boolean;
-        "waveai:imagecount"?: number;
-        "waveai:pdfcount"?: number;
-        "waveai:textdoccount"?: number;
-        "waveai:textlen"?: number;
-        "waveai:firstbytems"?: number;
-        "waveai:requestdurms"?: number;
-        "waveai:widgetaccess"?: boolean;
-        "waveai:thinkinglevel"?: string;
-        "waveai:mode"?: string;
-        "waveai:provider"?: string;
-        "waveai:islocal"?: boolean;
-        "waveai:feedback"?: "good" | "bad";
-        "waveai:action"?: string;
-        "job:donereason"?: string;
-        "job:kind"?: string;
-        $set?: TEventUserProps;
-        $set_once?: TEventUserProps;
-    };
-
-    // telemetrydata.TEventUserProps
-    type TEventUserProps = {
-        "client:arch"?: string;
-        "client:version"?: string;
-        "client:initial_version"?: string;
-        "client:buildtime"?: string;
-        "client:osrelease"?: string;
-        "client:isdev"?: boolean;
-        "client:packagetype"?: string;
-        "client:macos"?: string;
-        "cohort:month"?: string;
-        "cohort:isoweek"?: string;
-        "autoupdate:channel"?: string;
-        "autoupdate:enabled"?: boolean;
-        "localshell:type"?: string;
-        "localshell:version"?: string;
-        "loc:countrycode"?: string;
-        "loc:regioncode"?: string;
-        "settings:customwidgets"?: number;
-        "settings:customaipresets"?: number;
-        "settings:customsettings"?: number;
-        "settings:customaimodes"?: number;
-        "settings:secretscount"?: number;
-        "settings:transparent"?: boolean;
     };
 
     // waveobj.Tab

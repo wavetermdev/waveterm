@@ -9,18 +9,6 @@ import (
 	"runtime/debug"
 )
 
-// to log NumPanics into the local telemetry system
-// gets around import cycles
-var PanicTelemetryHandler func(panicType string)
-
-func PanicHandlerNoTelemetry(debugStr string, recoverVal any) {
-	if recoverVal == nil {
-		return
-	}
-	log.Printf("[panic] in %s: %v\n", debugStr, recoverVal)
-	debug.PrintStack()
-}
-
 // returns an error (wrapping the panic) if a panic occurred
 func PanicHandler(debugStr string, recoverVal any) error {
 	if recoverVal == nil {
@@ -28,14 +16,6 @@ func PanicHandler(debugStr string, recoverVal any) error {
 	}
 	log.Printf("[panic] in %s: %v\n", debugStr, recoverVal)
 	debug.PrintStack()
-	if PanicTelemetryHandler != nil {
-		go func() {
-			defer func() {
-				PanicHandlerNoTelemetry("PanicTelemetryHandler", recover())
-			}()
-			PanicTelemetryHandler(debugStr)
-		}()
-	}
 	if err, ok := recoverVal.(error); ok {
 		return fmt.Errorf("panic in %s: %w", debugStr, err)
 	}

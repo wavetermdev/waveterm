@@ -13,9 +13,7 @@ import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
 import { getBlockBadgeAtom } from "@/app/store/badge";
 import {
     createBlockSplitHorizontally,
-    createBlockSplitVertically,
-    recordTEvent,
-    refocusNode,
+    createBlockSplitVertically,    refocusNode,
     WOS,
 } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
@@ -237,10 +235,7 @@ const BlockFrame_Header = ({
     viewIconUnion = metaFrameIcon ?? viewIconUnion;
 
     React.useEffect(() => {
-        if (magnified && !preview && !prevMagifiedState.current) {
-            waveEnv.rpc.ActivityCommand(TabRpcClient, { nummagnify: 1 });
-            recordTEvent("action:magnify", { "block:view": viewName });
-        }
+        if (magnified && !preview && !prevMagifiedState.current) {        }
         prevMagifiedState.current = magnified;
     }, [magnified]);
 

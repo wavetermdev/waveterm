@@ -3,7 +3,7 @@
 
 import { BlockModel } from "@/app/block/block-model";
 import { Modal } from "@/app/modals/modal";
-import { recordTEvent } from "@/app/store/global";
+
 import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
@@ -261,7 +261,6 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     };
 
     const handleOpenDiff = () => {
-        recordTEvent("waveai:showdiff");
         fireAndForget(() => WaveAIModel.getInstance().openDiff(toolData.inputfilename, toolData.toolcallid));
     };
 
@@ -282,7 +281,6 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     Date.now() - toolData.runts < BackupRetentionDays * 24 * 60 * 60 * 1000 && (
                         <button
                             onClick={() => {
-                                recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:open" });
                                 model.openRestoreBackupModal(toolData.toolcallid);
                             }}
                             className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"

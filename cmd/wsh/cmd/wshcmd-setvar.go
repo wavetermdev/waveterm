@@ -58,7 +58,6 @@ func parseKeyValue(arg string) (key, value string, err error) {
 
 func setVarRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("setvar", rtnErr == nil)
 	}()
 
 	// Resolve block to get zoneId

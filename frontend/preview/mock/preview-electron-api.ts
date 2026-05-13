@@ -52,7 +52,7 @@ const previewElectronApi: ElectronApi = {
     clearWebviewStorage: (_webContentsId: number) => Promise.resolve(),
     setWaveAIOpen: (_isOpen: boolean) => {},
     closeBuilderWindow: () => {},
-    incrementTermCommands: (_opts?: { isRemote?: boolean; isWsl?: boolean; isDurable?: boolean }) => {},
+
     nativePaste: () => {},
     openBuilder: (_appId?: string) => {},
     setBuilderWindowAppId: (_appId: string) => {},

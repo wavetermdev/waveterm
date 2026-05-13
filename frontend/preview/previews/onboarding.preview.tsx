@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import { InitPage, NoTelemetryStarPage } from "@/app/onboarding/onboarding";
+import { InitPage } from "@/app/onboarding/onboarding";
 import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { DurableSessionPage } from "@/app/onboarding/onboarding-durable";
 import { FilesPage, MagnifyBlocksPage, WaveAIPage } from "@/app/onboarding/onboarding-features";
@@ -24,10 +24,7 @@ function OnboardingFeaturesV() {
     return (
         <div className="flex flex-col w-full gap-8">
             <OnboardingModalWrapper width="w-[560px]">
-                <InitPage isCompact={false} telemetryUpdateFn={async () => {}} />
-            </OnboardingModalWrapper>
-            <OnboardingModalWrapper width="w-[560px]">
-                <NoTelemetryStarPage isCompact={false} />
+                <InitPage isCompact={false} />
             </OnboardingModalWrapper>
             <OnboardingModalWrapper width="w-[800px]">
                 <WaveAIPage onNext={noop} onSkip={noop} />

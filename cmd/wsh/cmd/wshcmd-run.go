@@ -40,7 +40,6 @@ func init() {
 
 func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("run", rtnErr == nil)
 	}()
 
 	flags := cmd.Flags()

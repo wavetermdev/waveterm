@@ -45,7 +45,6 @@ func init() {
 
 func termScrollbackRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("termscrollback", rtnErr == nil)
 	}()
 
 	// Resolve the block argument

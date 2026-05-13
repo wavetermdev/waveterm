@@ -44,7 +44,6 @@ func init() {
 
 func badgeRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("badge", rtnErr == nil)
 	}()
 
 	if badgePid > 0 && runtime.GOOS == "windows" {

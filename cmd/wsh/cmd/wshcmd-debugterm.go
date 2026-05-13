@@ -50,7 +50,6 @@ func init() {
 
 func debugTermRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("debugterm", rtnErr == nil)
 	}()
 	mode, err := getDebugTermMode()
 	if err != nil {

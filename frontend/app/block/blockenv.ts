@@ -25,9 +25,7 @@ export type BlockEnv = WaveEnvSubset<{
     electron: {
         openExternal: WaveEnv["electron"]["openExternal"];
     };
-    rpc: {
-        ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
-        ConnEnsureCommand: WaveEnv["rpc"]["ConnEnsureCommand"];
+    rpc: {        ConnEnsureCommand: WaveEnv["rpc"]["ConnEnsureCommand"];
         ConnDisconnectCommand: WaveEnv["rpc"]["ConnDisconnectCommand"];
         ConnConnectCommand: WaveEnv["rpc"]["ConnConnectCommand"];
         SetConnectionsConfigCommand: WaveEnv["rpc"]["SetConnectionsConfigCommand"];

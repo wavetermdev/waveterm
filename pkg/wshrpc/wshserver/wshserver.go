@@ -15,7 +15,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -38,8 +37,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -48,7 +45,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -1241,44 +1237,6 @@ func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.
 	}, nil
 }
 
-func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
-	err := telemetry.RecordTEvent(ctx, &data)
-	if err != nil {
-		log.Printf("error recording telemetry event: %v", err)
-	}
-	return err
-}
-
-func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
-	return wcloud.SendAllTelemetry(wstore.GetClientId())
-}
-
-func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
-	// Enable telemetry in config
-	meta := waveobj.MetaMapType{
-		wconfig.ConfigKey_TelemetryEnabled: true,
-	}
-	err := wconfig.SetBaseConfigValue(meta)
-	if err != nil {
-		return fmt.Errorf("error setting telemetry enabled: %w", err)
-	}
-
-	// Record the telemetry event
-	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
-	err = telemetry.RecordTEvent(ctx, event)
-	if err != nil {
-		log.Printf("error recording waveai:enabletelemetry event: %v", err)
-	}
-
-	// Immediately send telemetry to cloud
-	err = wcloud.SendAllTelemetry(wstore.GetClientId())
-	if err != nil {
-		log.Printf("error sending telemetry after enabling: %v", err)
-	}
-
-	return nil
-}
-
 func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
 	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
 	if aiChat == nil {
@@ -1309,46 +1267,6 @@ func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.C
 		OriginalContents64: base64.StdEncoding.EncodeToString(originalContent),
 		ModifiedContents64: base64.StdEncoding.EncodeToString(modifiedContent),
 	}, nil
-}
-
-var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
-
-func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
-	if len(data) == 0 {
-		return nil
-	}
-	props := telemetrydata.TEventProps{}
-	for key, value := range data {
-		if len(key) > 20 {
-			delete(data, key)
-		}
-		if !wshActivityRe.MatchString(key) {
-			delete(data, key)
-		}
-		if value != 1 {
-			delete(data, key)
-		}
-		if strings.HasSuffix(key, "#error") {
-			props.WshCmd = strings.TrimSuffix(key, "#error")
-			props.WshErrorCount = 1
-		} else {
-			props.WshCmd = key
-		}
-	}
-	activityUpdate := wshrpc.ActivityUpdate{
-		WshCmds: data,
-	}
-	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
-	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
-		Event: telemetry.WshRunEventName,
-		Props: props,
-	})
-	return nil
-}
-
-func (ws *WshServer) ActivityCommand(ctx context.Context, activity wshrpc.ActivityUpdate) error {
-	telemetry.GoUpdateActivityWrap(activity, "wshrpc-activity")
-	return nil
 }
 
 func (ws *WshServer) GetVarCommand(ctx context.Context, data wshrpc.CommandVarData) (*wshrpc.CommandVarResponseData, error) {

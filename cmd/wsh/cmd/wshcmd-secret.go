@@ -77,7 +77,6 @@ func init() {
 
 func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("secret", rtnErr == nil)
 	}()
 
 	name := args[0]
@@ -101,7 +100,6 @@ func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 func secretSetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("secret", rtnErr == nil)
 	}()
 
 	parts := strings.SplitN(args[0], "=", 2)
@@ -137,7 +135,6 @@ func secretSetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 func secretListRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("secret", rtnErr == nil)
 	}()
 
 	names, err := wshclient.GetSecretsNamesCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
@@ -153,7 +150,6 @@ func secretListRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 func secretDeleteRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("secret", rtnErr == nil)
 	}()
 
 	name := args[0]
@@ -173,7 +169,6 @@ func secretDeleteRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 func secretUiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("secret", rtnErr == nil)
 	}()
 
 	tabId := getTabIdFromEnv()

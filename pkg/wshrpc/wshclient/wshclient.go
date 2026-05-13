@@ -8,7 +8,6 @@ package wshclient
 import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -16,12 +15,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
-
-// command "activity", wshserver.ActivityCommand
-func ActivityCommand(w *wshutil.WshRpc, data wshrpc.ActivityUpdate, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "activity", data, opts)
-	return err
-}
 
 // command "aisendmessage", wshserver.AiSendMessageCommand
 func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
@@ -670,12 +663,6 @@ func ReadAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandReadAppFileData, o
 	return resp, err
 }
 
-// command "recordtevent", wshserver.RecordTEventCommand
-func RecordTEventCommand(w *wshutil.WshRpc, data telemetrydata.TEvent, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "recordtevent", data, opts)
-	return err
-}
-
 // command "remotedisconnectfromjobmanager", wshserver.RemoteDisconnectFromJobManagerCommand
 func RemoteDisconnectFromJobManagerCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteDisconnectFromJobManagerData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotedisconnectfromjobmanager", data, opts)
@@ -821,12 +808,6 @@ func RouteAnnounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 // command "routeunannounce", wshserver.RouteUnannounceCommand
 func RouteUnannounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "routeunannounce", nil, opts)
-	return err
-}
-
-// command "sendtelemetry", wshserver.SendTelemetryCommand
-func SendTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "sendtelemetry", nil, opts)
 	return err
 }
 
@@ -982,12 +963,6 @@ func WaveAIAddContextCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIAddCont
 	return err
 }
 
-// command "waveaienabletelemetry", wshserver.WaveAIEnableTelemetryCommand
-func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaienabletelemetry", nil, opts)
-	return err
-}
-
 // command "waveaigettooldiff", wshserver.WaveAIGetToolDiffCommand
 func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToolDiffData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWaveAIGetToolDiffRtnData](w, "waveaigettooldiff", data, opts)
@@ -1046,12 +1021,6 @@ func WriteAppSecretBindingsCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAp
 func WriteTempFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteTempFileData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "writetempfile", data, opts)
 	return resp, err
-}
-
-// command "wshactivity", wshserver.WshActivityCommand
-func WshActivityCommand(w *wshutil.WshRpc, data map[string]int, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "wshactivity", data, opts)
-	return err
 }
 
 // command "wsldefaultdistro", wshserver.WslDefaultDistroCommand

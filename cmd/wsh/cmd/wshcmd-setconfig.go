@@ -25,7 +25,6 @@ func init() {
 
 func setConfigRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("setconfig", rtnErr == nil)
 	}()
 
 	metaSetsStrs := args[:]

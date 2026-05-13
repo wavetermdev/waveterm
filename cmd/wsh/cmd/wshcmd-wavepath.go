@@ -30,7 +30,6 @@ func init() {
 
 func wavepathRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("wavepath", rtnErr == nil)
 	}()
 
 	if len(args) == 0 {

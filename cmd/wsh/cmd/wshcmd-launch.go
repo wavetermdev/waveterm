@@ -28,7 +28,6 @@ func init() {
 
 func launchRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("launch", rtnErr == nil)
 	}()
 
 	widgetId := args[0]

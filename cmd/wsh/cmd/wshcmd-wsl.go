@@ -30,7 +30,6 @@ func init() {
 
 func wslRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("wsl", rtnErr == nil)
 	}()
 
 	var err error

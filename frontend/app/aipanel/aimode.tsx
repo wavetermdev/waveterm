@@ -144,7 +144,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const widgetContextEnabled = useAtomValue(model.widgetAccessAtom);
     const hasPremium = useAtomValue(model.hasPremiumAtom);
     const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
-    const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+    const telemetryEnabled = true;
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -186,16 +186,6 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
 
     const handleConfigureClick = () => {
         fireAndForget(async () => {
-            RpcApi.RecordTEventCommand(
-                TabRpcClient,
-                {
-                    event: "action:other",
-                    props: {
-                        "action:type": "waveai:configuremodes:contextmenu",
-                    },
-                },
-                { noresponse: true }
-            );
             await model.openWaveAIConfig();
             setIsOpen(false);
         });
@@ -203,7 +193,6 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
 
     const handleEnableTelemetry = () => {
         fireAndForget(async () => {
-            await RpcApi.WaveAIEnableTelemetryCommand(TabRpcClient);
             setTimeout(() => {
                 model.focusInput();
             }, 100);

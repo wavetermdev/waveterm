@@ -8,9 +8,7 @@ import {
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
     getOverrideConfigAtom,
-    globalStore,
-    recordTEvent,
-    WOS,
+    globalStore,    WOS,
 } from "@/store/global";
 import { base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/util/util";
 import debug from "debug";
@@ -59,32 +57,22 @@ function checkCommandForTelemetry(decodedCmd: string) {
 
     const normalizedCmd = normalizeCmd(decodedCmd);
 
-    if (normalizedCmd.startsWith("ssh ")) {
-        recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
-        return;
+    if (normalizedCmd.startsWith("ssh ")) {        return;
     }
 
     const editorsRegex = /^(vim|vi|nano|nvim)\b/;
-    if (editorsRegex.test(normalizedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-edit" });
-        return;
+    if (editorsRegex.test(normalizedCmd)) {        return;
     }
 
     const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
-    if (tailFollowRegex.test(normalizedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-tailf" });
-        return;
+    if (tailFollowRegex.test(normalizedCmd)) {        return;
     }
 
-    if (ClaudeCodeRegex.test(normalizedCmd)) {
-        recordTEvent("action:term", { "action:type": "claude" });
-        return;
+    if (ClaudeCodeRegex.test(normalizedCmd)) {        return;
     }
 
     const opencodeRegex = /^opencode\b/;
-    if (opencodeRegex.test(normalizedCmd)) {
-        recordTEvent("action:term", { "action:type": "opencode" });
-        return;
+    if (opencodeRegex.test(normalizedCmd)) {        return;
     }
 }
 
@@ -106,9 +94,7 @@ function handleShellIntegrationCommandStart(
     const connName = globalStore.get(getBlockMetaKeyAtom(blockId, "connection")) ?? "";
     const isRemote = isSshConnName(connName);
     const isWsl = isWslConnName(connName);
-    const isDurable = globalStore.get(getBlockTermDurableAtom(blockId)) ?? false;
-    getApi().incrementTermCommands({ isRemote, isWsl, isDurable });
-    if (cmd.data.cmd64) {
+    const isDurable = globalStore.get(getBlockTermDurableAtom(blockId)) ?? false;    if (cmd.data.cmd64) {
         const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
         if (decodedLen > 8192) {
             rtInfo["shell:lastcmd"] = `# command too large (${decodedLen} bytes)`;

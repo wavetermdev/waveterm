@@ -26,7 +26,6 @@ func init() {
 
 func focusBlockRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("focusblock", rtnErr == nil)
 	}()
 
 	tabId := os.Getenv("WAVETERM_TABID")

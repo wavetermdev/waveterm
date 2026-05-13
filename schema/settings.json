@@ -307,12 +307,6 @@
         "window:zoom": {
           "type": "number"
         },
-        "telemetry:*": {
-          "type": "boolean"
-        },
-        "telemetry:enabled": {
-          "type": "boolean"
-        },
         "conn:*": {
           "type": "boolean"
         },

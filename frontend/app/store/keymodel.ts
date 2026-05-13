@@ -14,9 +14,7 @@ import {
     getBlockComponentModel,
     getFocusedBlockId,
     getSettingsKeyAtom,
-    globalStore,
-    recordTEvent,
-    refocusNode,
+    globalStore,    refocusNode,
     replaceBlock,
     WOS,
 } from "@/app/store/global";
@@ -649,9 +647,7 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:g", () => {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.openSwitchConnection != null) {
-            recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "keyboard" });
-            bcm.openSwitchConnection();
+        if (bcm.openSwitchConnection != null) {            bcm.openSwitchConnection();
             return true;
         }
     });

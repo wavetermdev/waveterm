@@ -90,13 +90,7 @@ const AboutModal = () => {
     const updaterChannel = fullConfig?.settings?.["autoupdate:channel"] ?? "latest";
 
     useEffect(() => {
-        fireAndForget(async () => {
-            RpcApi.RecordTEventCommand(
-                TabRpcClient,
-                { event: "action:other", props: { "action:type": "about" } },
-                { noresponse: true }
-            );
-        });
+        fireAndForget(async () => {        });
     }, []);
 
     return (

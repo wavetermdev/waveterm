@@ -90,7 +90,6 @@ func validateColor(color string) error {
 
 func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("setbg", rtnErr == nil)
 	}()
 
 	borderColorChanged := cmd.Flags().Changed("border-color")

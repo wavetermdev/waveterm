@@ -31,7 +31,6 @@ func init() {
 
 func notifyRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("notify", rtnErr == nil)
 	}()
 	message := args[0]
 	notificationOptions := &wshrpc.WaveNotificationOptions{

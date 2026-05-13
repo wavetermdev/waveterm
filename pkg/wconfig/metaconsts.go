@@ -113,9 +113,6 @@ const (
 	ConfigKey_WindowDimensions               = "window:dimensions"
 	ConfigKey_WindowZoom                     = "window:zoom"
 
-	ConfigKey_TelemetryClear                 = "telemetry:*"
-	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
-
 	ConfigKey_ConnClear                      = "conn:*"
 	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
 	ConfigKey_ConnWshEnabled                 = "conn:wshenabled"

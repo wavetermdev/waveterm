@@ -32,7 +32,6 @@ func init() {
 
 func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("term", rtnErr == nil)
 	}()
 
 	var cwd string

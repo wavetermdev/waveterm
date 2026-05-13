@@ -23,15 +23,7 @@ export const DurableSessionPage = ({
 
     const handleFireClick = () => {
         setFireClicked(!fireClicked);
-        if (!fireClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "onboarding:fire",
-                props: {
-                    "onboarding:feature": "durable",
-                    "onboarding:version": CurrentOnboardingVersion,
-                },
-            });
-        }
+        if (!fireClicked) {        }
     };
 
     return (

@@ -158,7 +158,6 @@ func simpleMergeMeta(meta map[string]interface{}, metaUpdate map[string]interfac
 
 func setMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("setmeta", rtnErr == nil)
 	}()
 	var jsonMeta map[string]interface{}
 	if setMetaJsonFilePath != "" {

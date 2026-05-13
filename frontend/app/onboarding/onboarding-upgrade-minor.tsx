@@ -130,16 +130,7 @@ const UpgradeOnboardingMinor = () => {
         };
     }, []);
 
-    const handleStarClick = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "star", "onboarding:page": "minorupgrade" },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
+    const handleStarClick = async () => {        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -148,16 +139,7 @@ const UpgradeOnboardingMinor = () => {
         setPageName("features");
     };
 
-    const handleAlreadyStarred = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "already", "onboarding:page": "minorupgrade" },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
+    const handleAlreadyStarred = async () => {        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -165,16 +147,7 @@ const UpgradeOnboardingMinor = () => {
         setPageName("features");
     };
 
-    const handleMaybeLater = async () => {
-        RpcApi.RecordTEventCommand(
-            TabRpcClient,
-            {
-                event: "onboarding:githubstar",
-                props: { "onboarding:githubstar": "later", "onboarding:page": "minorupgrade" },
-            },
-            { noresponse: true }
-        );
-        const clientId = ClientModel.getInstance().clientId;
+    const handleMaybeLater = async () => {        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": false },

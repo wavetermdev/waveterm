@@ -97,7 +97,6 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 
 func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("web", rtnErr == nil)
 	}()
 
 	var replaceBlockORef *waveobj.ORef

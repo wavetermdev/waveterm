@@ -74,7 +74,6 @@ func filterMetaKeys(meta map[string]interface{}, keys []string) map[string]inter
 
 func getMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("getmeta", rtnErr == nil)
 	}()
 	fullORef, err := resolveBlockArg()
 	if err != nil {

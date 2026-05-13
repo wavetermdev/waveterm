@@ -1,0 +1,1 @@
+-- Recreating these tables is not necessary; the data is obsolete

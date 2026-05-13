@@ -53,7 +53,6 @@ func shouldPrintNewline() bool {
 
 func getVarRun(cmd *cobra.Command, args []string) error {
 	defer func() {
-		sendActivity("getvar", WshExitCode == 0)
 	}()
 
 	// Resolve block to get zoneId

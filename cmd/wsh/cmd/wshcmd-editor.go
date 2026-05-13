@@ -32,7 +32,6 @@ func init() {
 
 func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
-		sendActivity("editor", rtnErr == nil)
 	}()
 	if len(args) == 0 {
 		OutputHelpMessage(cmd)
