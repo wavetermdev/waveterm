@@ -625,15 +625,9 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
-                if ((action as LayoutTreeInsertNodeAction).focused) {
-                    FocusManager.getInstance().requestNodeFocus();
-                }
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
-                if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
-                    FocusManager.getInstance().requestNodeFocus();
-                }
                 break;
             case LayoutTreeActionType.DeleteNode:
                 deleteNode(this.treeState, action as LayoutTreeDeleteNodeAction);
@@ -668,11 +662,9 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.FocusNode:
                 focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
-                FocusManager.getInstance().requestNodeFocus();
                 break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
-                FocusManager.getInstance().requestNodeFocus();
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
@@ -1064,9 +1056,7 @@ export class LayoutModel {
                 blockNum: atom((get) => get(this.leafOrder).findIndex((leafEntry) => leafEntry.nodeid === nodeid) + 1),
                 isFocused: atom((get) => {
                     const treeState = get(this.localTreeStateAtom);
-                    const isFocused = treeState.focusedNodeId === nodeid;
-                    const focusType = get(FocusManager.getInstance().focusType);
-                    return isFocused && focusType === "node";
+                    return treeState.focusedNodeId === nodeid;
                 }),
                 numLeafs: this.numLeafs,
                 isResizing: this.isResizing,

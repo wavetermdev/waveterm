@@ -169,9 +169,7 @@ function makeMockGlobalAtoms(
         workspaceId: workspaceIdAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
-        waveaiModeConfigAtom: atom({}) as any,
         settingsAtom,
-        hasCustomAIPresetsAtom: atom(false),
         hasConfigErrors: atom((get) => {
             const c = get(fullConfigAtom);
             return c?.configerrors != null && c.configerrors.length > 0;
@@ -186,7 +184,6 @@ function makeMockGlobalAtoms(
         modalOpen: atom(false) as any,
         allConnStatus: atom([] as ConnStatus[]),
         reinitVersion: atom(0) as any,
-        waveAIRateLimitInfoAtom: atom(null) as any,
     };
     if (!atomOverrides) {
         return defaults;

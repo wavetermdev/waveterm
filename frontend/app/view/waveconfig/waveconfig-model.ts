@@ -42,19 +42,6 @@ function validateAiJson(parsed: any): ValidationResult {
     return { success: true };
 }
 
-function validateWaveAiJson(parsed: any): ValidationResult {
-    const keys = Object.keys(parsed);
-    const keyPattern = /^[a-zA-Z0-9_@.-]+$/;
-    for (const key of keys) {
-        if (!keyPattern.test(key)) {
-            return {
-                error: `Invalid key "${key}": keys must only contain letters, numbers, underscores, @, dots, and hyphens`,
-            };
-        }
-    }
-    return { success: true };
-}
-
 function makeConfigFiles(isWindows: boolean): ConfigFile[] {
     return [
         {
@@ -78,16 +65,6 @@ function makeConfigFiles(isWindows: boolean): ConfigFile[] {
             language: "json",
             docsUrl: "https://docs.waveterm.dev/customwidgets",
             hasJsonView: true,
-        },
-        {
-            name: "Wave AI Modes",
-            path: "waveai.json",
-            language: "json",
-            description: "Local models and BYOK",
-            docsUrl: "https://docs.waveterm.dev/waveai-modes",
-            validator: validateWaveAiJson,
-            hasJsonView: true,
-            // visualComponent: WaveAIVisualContent,
         },
         {
             name: "Tab Backgrounds",

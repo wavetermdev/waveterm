@@ -757,13 +757,6 @@ ipcMain.on("create-tab", async (event, _opts) => {
     return null;
 });
 
-ipcMain.on("set-waveai-open", (event, isOpen: boolean) => {
-    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
-    if (tabView) {
-        tabView.isWaveAIOpen = isOpen;
-    }
-});
-
 ipcMain.handle("close-tab", async (event, workspaceId: string, tabId: string, confirmClose: boolean) => {
     const ww = getWaveWindowByWorkspaceId(workspaceId);
     if (ww == null) {

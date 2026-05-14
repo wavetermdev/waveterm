@@ -194,7 +194,6 @@ func (dsc *DurableShellController) Stop(graceful bool, newStatus string, destroy
 		return
 	}
 	jobId := dsc.getJobId()
-	log.Printf("[durableshellcontroller] Stop block=%s jobId=%s destroy=%v", dsc.BlockId, jobId, destroy)
 	if jobId == "" {
 		return
 	}
