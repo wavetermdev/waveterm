@@ -52,24 +52,27 @@ type ShellProc struct {
 	CloseOnce *sync.Once
 	DoneCh    chan any // closed after proc.Wait() returns
 	WaitErr   error    // WaitErr is synchronized by DoneCh (written before DoneCh is closed) and CloseOnce
+	closeOnce sync.Once // ensures Close() is idempotent; defends against double-close races
 }
 
 func (sp *ShellProc) Close() {
-	sp.Cmd.KillGraceful(DefaultGracefulKillWait)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("ShellProc.Close", recover())
-		}()
-		waitErr := sp.Cmd.Wait()
-		sp.SetWaitErrorAndSignalDone(waitErr)
+	sp.closeOnce.Do(func() {
+		sp.Cmd.KillGraceful(DefaultGracefulKillWait)
+		go func() {
+			defer func() {
+				panichandler.PanicHandler("ShellProc.Close", recover())
+			}()
+			waitErr := sp.Cmd.Wait()
+			sp.SetWaitErrorAndSignalDone(waitErr)
 
-		// windows cannot handle the pty being
-		// closed twice, so we let the pty
-		// close itself instead
-		if runtime.GOOS != "windows" {
-			sp.Cmd.Close()
-		}
-	}()
+			// windows cannot handle the pty being
+			// closed twice, so we let the pty
+			// close itself instead
+			if runtime.GOOS != "windows" {
+				sp.Cmd.Close()
+			}
+		}()
+	})
 }
 
 func (sp *ShellProc) SetWaitErrorAndSignalDone(waitErr error) {

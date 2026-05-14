@@ -143,6 +143,7 @@ func handleBlockCloseEvent(event *wps.WaveEvent) {
 		log.Printf("[blockclose] invalid event data type")
 		return
 	}
+	log.Printf("[blockclose] block=%s: launching DestroyBlockController goroutine from event handler", blockId)
 	go DestroyBlockController(blockId)
 }
 
@@ -295,11 +296,14 @@ func GetBlockControllerRuntimeStatus(blockId string) *BlockControllerRuntimeStat
 func DestroyBlockController(blockId string) {
 	controller := getController(blockId)
 	if controller == nil {
+		log.Printf("[destroy] block=%s: controller already nil (possible double-destroy)", blockId)
 		return
 	}
+	log.Printf("[destroy] block=%s: stopping controller (type=%T, connName=%s)", blockId, controller, controller.GetConnName())
 	controller.Stop(true, Status_Done, true)
 	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	deleteController(blockId)
+	log.Printf("[destroy] block=%s: controller deleted from registry", blockId)
 }
 
 func sendConnMonitorInputNotification(controller Controller) {
