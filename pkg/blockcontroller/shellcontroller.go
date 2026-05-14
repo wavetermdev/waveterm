@@ -97,7 +97,6 @@ func (sc *ShellController) Start(ctx context.Context, blockMeta waveobj.MetaMapT
 func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) {
 	sc.Lock.Lock()
 	defer sc.Lock.Unlock()
-	log.Printf("[shellcontroller] Stop block=%s procStatus=%s shellProcNil=%v destroy=%v", sc.BlockId, sc.ProcStatus, sc.ShellProc == nil, destroy)
 
 	if sc.ShellProc == nil || sc.ProcStatus == Status_Done || sc.ProcStatus == Status_Init {
 		if newStatus != sc.ProcStatus {
@@ -111,10 +110,8 @@ func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) {
 	if graceful {
 		doneCh := sc.ShellProc.DoneCh
 		sc.Lock.Unlock() // Unlock before waiting
-		log.Printf("[shellcontroller] Stop block=%s waiting on DoneCh (lock released)", sc.BlockId)
 		<-doneCh
 		sc.Lock.Lock() // Re-lock after waiting
-		log.Printf("[shellcontroller] Stop block=%s DoneCh closed (lock reacquired)", sc.BlockId)
 	}
 
 	// Update status

@@ -6,7 +6,6 @@ package workspaceservice
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -217,7 +216,6 @@ func (svc *WorkspaceService) CloseTab_Meta() tsgenmeta.MethodMeta {
 // returns the new active tabid
 func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, tabId string, fromElectron bool) (*CloseTabRtnType, waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	log.Printf("[closetab] tab=%s: starting close via DeleteTab (blocks will be destroyed by BlockCloseEvent)", tabId)
 	// DeleteTab iterates blocks and calls DeleteBlock, which fires
 	// BlockCloseEvent -> handleBlockCloseEvent -> DestroyBlockController.
 	// Do NOT call DestroyBlockController here; doing so creates a race
