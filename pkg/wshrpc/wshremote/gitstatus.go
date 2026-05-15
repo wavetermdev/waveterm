@@ -12,9 +12,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
+
+const GitCommandTimeout = 10 * time.Second
 
 func (impl *ServerImpl) RemoteGitStatusCommand(ctx context.Context, data wshrpc.CommandRemoteGitStatusData) (*wshrpc.GitStatusResponse, error) {
 	cwd := data.Cwd
@@ -39,6 +42,8 @@ func (impl *ServerImpl) RemoteGitStatusCommand(ctx context.Context, data wshrpc.
 }
 
 func getGitBranch(ctx context.Context, cwd string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, GitCommandTimeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "branch", "--show-current")
 	cmd.Dir = cwd
 	out, err := cmd.Output()
@@ -49,6 +54,8 @@ func getGitBranch(ctx context.Context, cwd string) (string, error) {
 }
 
 func getGitStatusFiles(ctx context.Context, cwd string) ([]wshrpc.GitStatusFile, error) {
+	ctx, cancel := context.WithTimeout(ctx, GitCommandTimeout)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
 	cmd.Dir = cwd
 	out, err := cmd.Output()
@@ -91,7 +98,9 @@ func (impl *ServerImpl) RemoteGitLineDiffCommand(ctx context.Context, data wshrp
 		}
 	}
 
-	cmd := exec.CommandContext(ctx, "git", "diff", "HEAD", "--unified=0", "--", relPath)
+	gitCtx, cancel := context.WithTimeout(ctx, GitCommandTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(gitCtx, "git", "diff", "HEAD", "--unified=0", "--", relPath)
 	cmd.Dir = data.Cwd
 	out, err := cmd.Output()
 	if err != nil {

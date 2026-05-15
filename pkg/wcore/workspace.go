@@ -369,7 +369,7 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
 		workspace.ActiveTabId = tabId
-		if utilfn.FindStringInSlice(workspace.PinnedTabIds, tabId) == -1 {
+		if utilfn.FindStringInSlice(workspace.TabIds, tabId) != -1 && utilfn.FindStringInSlice(workspace.PinnedTabIds, tabId) == -1 {
 			workspace.PinnedTabIds = append(workspace.PinnedTabIds, tabId)
 		}
 		wstore.DBUpdate(ctx, workspace)
@@ -433,7 +433,19 @@ func UpdateWorkspacePinnedTabIds(ctx context.Context, workspaceId string, pinned
 	if ws == nil {
 		return fmt.Errorf("workspace not found: %q", workspaceId)
 	}
-	ws.PinnedTabIds = pinnedTabIds
+	tabSet := make(map[string]bool, len(ws.TabIds))
+	for _, id := range ws.TabIds {
+		tabSet[id] = true
+	}
+	seen := make(map[string]bool, len(pinnedTabIds))
+	var filtered []string
+	for _, id := range pinnedTabIds {
+		if tabSet[id] && !seen[id] {
+			seen[id] = true
+			filtered = append(filtered, id)
+		}
+	}
+	ws.PinnedTabIds = filtered
 	wstore.DBUpdate(ctx, ws)
 	return nil
 }

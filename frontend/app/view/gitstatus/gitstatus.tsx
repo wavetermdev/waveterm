@@ -107,7 +107,11 @@ export class GitStatusViewModel implements ViewModel {
             );
             if (this.disposed || this.fetchEpoch !== epoch) return;
 
-            if (resp.error) {
+            if (resp == null || typeof resp !== "object") {
+                globalStore.set(this.errorAtom, "Invalid RPC response");
+                globalStore.set(this.filesAtom, []);
+                globalStore.set(this.branchAtom, "");
+            } else if (resp.error) {
                 globalStore.set(this.errorAtom, resp.error);
                 globalStore.set(this.filesAtom, []);
                 globalStore.set(this.branchAtom, "");
