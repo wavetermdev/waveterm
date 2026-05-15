@@ -658,6 +658,12 @@ func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.Rp
 	return resp, err
 }
 
+// command "pintab", wshserver.PinTabCommand
+func PinTabCommand(w *wshutil.WshRpc, arg1 string, arg2 string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "pintab", wshrpc.MultiArg{Args: []any{arg1, arg2}}, opts)
+	return err
+}
+
 // command "publishapp", wshserver.PublishAppCommand
 func PublishAppCommand(w *wshutil.WshRpc, data wshrpc.CommandPublishAppData, opts *wshrpc.RpcOpts) (*wshrpc.CommandPublishAppRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandPublishAppRtnData](w, "publishapp", data, opts)
@@ -948,9 +954,21 @@ func TestMultiArgCommand(w *wshutil.WshRpc, arg1 string, arg2 int, arg3 bool, op
 	return resp, err
 }
 
+// command "unpintab", wshserver.UnpinTabCommand
+func UnpinTabCommand(w *wshutil.WshRpc, arg1 string, arg2 string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "unpintab", wshrpc.MultiArg{Args: []any{arg1, arg2}}, opts)
+	return err
+}
+
 // command "updatetabname", wshserver.UpdateTabNameCommand
 func UpdateTabNameCommand(w *wshutil.WshRpc, arg1 string, arg2 string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "updatetabname", wshrpc.MultiArg{Args: []any{arg1, arg2}}, opts)
+	return err
+}
+
+// command "updateworkspacepinnedtabids", wshserver.UpdateWorkspacePinnedTabIdsCommand
+func UpdateWorkspacePinnedTabIdsCommand(w *wshutil.WshRpc, arg1 string, arg2 []string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "updateworkspacepinnedtabids", wshrpc.MultiArg{Args: []any{arg1, arg2}}, opts)
 	return err
 }
 

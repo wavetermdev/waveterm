@@ -40,7 +40,8 @@ export function buildTabContextMenu(
     id: string,
     renameRef: React.RefObject<(() => void) | null>,
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void,
-    env: TabEnv
+    env: TabEnv,
+    isPinned?: boolean
 ): ContextMenuItem[] {
     const menu: ContextMenuItem[] = [];
     menu.push(
@@ -51,6 +52,24 @@ export function buildTabContextMenu(
         },
         { type: "separator" }
     );
+
+    if (isPinned != null) {
+        const workspace = globalStore.get(env.atoms.workspace);
+        if (workspace != null) {
+            if (isPinned) {
+                menu.push({
+                    label: "Archive Tab",
+                    click: () => fireAndForget(() => env.rpc.UnpinTabCommand(TabRpcClient, workspace.oid, id)),
+                });
+            } else {
+                menu.push({
+                    label: "Move to Working Queue",
+                    click: () => fireAndForget(() => env.rpc.PinTabCommand(TabRpcClient, workspace.oid, id)),
+                });
+            }
+            menu.push({ type: "separator" });
+        }
+    }
     const tabORef = makeORef("tab", id);
     const currentFlagColor = globalStore.get(getOrefMetaKeyAtom(tabORef, "tab:flagcolor")) ?? null;
     const flagSubmenu: ContextMenuItem[] = [

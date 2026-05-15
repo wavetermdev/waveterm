@@ -96,6 +96,9 @@ type WshRpcInterface interface {
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
 	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
+	PinTabCommand(ctx context.Context, workspaceId string, tabId string) error
+	UnpinTabCommand(ctx context.Context, workspaceId string, tabId string) error
+	UpdateWorkspacePinnedTabIdsCommand(ctx context.Context, workspaceId string, pinnedTabIds []string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions

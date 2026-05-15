@@ -19,6 +19,9 @@ export type VTabBarEnv = WaveEnvSubset<{
         ActivityCommand: WaveEnv["rpc"]["ActivityCommand"];
         SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
+        PinTabCommand: WaveEnv["rpc"]["PinTabCommand"];
+        UnpinTabCommand: WaveEnv["rpc"]["UnpinTabCommand"];
+        UpdateWorkspacePinnedTabIdsCommand: WaveEnv["rpc"]["UpdateWorkspacePinnedTabIdsCommand"];
     };
     atoms: {
         staticTabId: WaveEnv["atoms"]["staticTabId"];
