@@ -15,7 +15,6 @@ import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import {
     ImperativePanelGroupHandle,
-    ImperativePanelHandle,
     Panel,
     PanelGroup,
     PanelResizeHandle,
@@ -48,7 +47,6 @@ const WorkspaceElem = memo(() => {
     const windowWidth = window.innerWidth;
     const leftGroupInitialPct = workspaceLayoutModel.getLeftGroupInitialPercentage(windowWidth, showLeftTabBar);
     const outerPanelGroupRef = useRef<ImperativePanelGroupHandle>(null);
-    const vtabPanelRef = useRef<ImperativePanelHandle>(null);
     const panelContainerRef = useRef<HTMLDivElement>(null);
     const vtabPanelWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +60,6 @@ const WorkspaceElem = memo(() => {
             workspaceLayoutModel.registerRefs(
                 outerPanelGroupRef.current,
                 panelContainerRef.current,
-                vtabPanelRef.current ?? undefined,
                 vtabPanelWrapperRef.current ?? undefined,
                 showLeftTabBar
             );
@@ -99,15 +96,9 @@ const WorkspaceElem = memo(() => {
                         ref={outerPanelGroupRef}
                     >
                         <Panel order={0} defaultSize={leftGroupInitialPct} className="overflow-hidden">
-                            <Panel
-                                ref={vtabPanelRef}
-                                collapsible
-                                className="overflow-hidden"
-                            >
-                                <div ref={vtabPanelWrapperRef} className="w-full h-full">
-                                    {showLeftTabBar && <VTabBar workspace={ws} />}
-                                </div>
-                            </Panel>
+                            <div ref={vtabPanelWrapperRef} className="w-full h-full">
+                                {showLeftTabBar && <VTabBar workspace={ws} />}
+                            </div>
                         </Panel>
                         <PanelResizeHandle className={outerHandleClass} />
                         <Panel order={1} defaultSize={100 - leftGroupInitialPct}>

@@ -11,7 +11,7 @@ import { atoms, getApi, getOrefMetaKeyAtom, getSettingsKeyAtom, refocusNode } fr
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
-import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
+import { ImperativePanelGroupHandle } from "react-resizable-panels";
 
 const dlog = debug("wave:workspace");
 
@@ -26,7 +26,6 @@ function clampVTabWidth(w: number): number {
 class WorkspaceLayoutModel {
     private static instance: WorkspaceLayoutModel | null = null;
 
-    vtabPanelRef: ImperativePanelHandle | null;
     outerPanelGroupRef: ImperativePanelGroupHandle | null;
     panelContainerRef: HTMLDivElement | null;
     vtabPanelWrapperRef: HTMLDivElement | null;
@@ -39,7 +38,6 @@ class WorkspaceLayoutModel {
     widgetsSidebarVisibleAtom: jotai.Atom<boolean>;
 
     private constructor() {
-        this.vtabPanelRef = null;
         this.outerPanelGroupRef = null;
         this.panelContainerRef = null;
         this.vtabPanelWrapperRef = null;
@@ -166,27 +164,14 @@ class WorkspaceLayoutModel {
     registerRefs(
         outerPanelGroupRef: ImperativePanelGroupHandle,
         panelContainerRef: HTMLDivElement,
-        vtabPanelRef?: ImperativePanelHandle,
         vtabPanelWrapperRef?: HTMLDivElement,
         showLeftTabBar?: boolean
     ): void {
-        this.vtabPanelRef = vtabPanelRef ?? null;
         this.outerPanelGroupRef = outerPanelGroupRef;
         this.panelContainerRef = panelContainerRef;
         this.vtabPanelWrapperRef = vtabPanelWrapperRef ?? null;
         this.vtabVisible = showLeftTabBar ?? false;
-        this.syncPanelCollapse();
         this.commitLayouts(window.innerWidth);
-    }
-
-    private syncPanelCollapse(): void {
-        if (this.vtabPanelRef) {
-            if (this.vtabVisible) {
-                this.vtabPanelRef.expand();
-            } else {
-                this.vtabPanelRef.collapse();
-            }
-        }
     }
 
     // ---- Transitions ----
@@ -220,7 +205,6 @@ class WorkspaceLayoutModel {
         if (this.vtabVisible === showLeftTabBar) return;
         this.vtabVisible = showLeftTabBar;
         this.enableTransitions(250);
-        this.syncPanelCollapse();
         this.commitLayouts(window.innerWidth);
     }
 }
