@@ -32,16 +32,6 @@ export type ConfigFile = {
 
 export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
 
-function validateAiJson(parsed: any): ValidationResult {
-    const keys = Object.keys(parsed);
-    for (const key of keys) {
-        if (!key.startsWith("ai@")) {
-            return { error: `Invalid key "${key}": all top-level keys must start with "ai@"` };
-        }
-    }
-    return { success: true };
-}
-
 function makeConfigFiles(isWindows: boolean): ConfigFile[] {
     return [
         {
@@ -89,15 +79,6 @@ const deprecatedConfigFiles: ConfigFile[] = [
         path: "presets.json",
         language: "json",
         deprecated: true,
-        hasJsonView: true,
-    },
-    {
-        name: "AI Presets",
-        path: "presets/ai.json",
-        language: "json",
-        deprecated: true,
-        docsUrl: "https://docs.waveterm.dev/ai-presets",
-        validator: validateAiJson,
         hasJsonView: true,
     },
 ];

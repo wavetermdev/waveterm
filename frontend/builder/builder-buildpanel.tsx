@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
@@ -20,16 +19,6 @@ function handleBuildPanelContextMenu(e: React.MouseEvent, selectedText: string):
 
     const menu: ContextMenuItem[] = [
         { role: "copy" },
-        { type: "separator" },
-        {
-            label: "Add to Context",
-            click: () => {
-                const model = WaveAIModel.getInstance();
-                const formattedText = `from builder output:\n\`\`\`\n${selectedText}\n\`\`\``;
-                model.appendText(formattedText, true);
-                model.focusInput();
-            },
-        },
     ];
     ContextMenuModel.getInstance().showContextMenu(menu, e);
 }
@@ -82,21 +71,6 @@ const BuilderBuildPanel = memo(() => {
         BuilderAppPanelModel.getInstance().restartBuilder();
     }, []);
 
-    const handleSendToAI = useCallback(() => {
-        const currentShowDebug = globalStore.get(model.showDebug);
-        const currentOutputLines = globalStore.get(model.outputLines);
-        const filtered = currentShowDebug
-            ? currentOutputLines
-            : currentOutputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
-
-        const linesToSend = filtered.slice(-200);
-        const text = linesToSend.join("\n");
-        const aiModel = WaveAIModel.getInstance();
-        const formattedText = `from builder output:\n\`\`\`\n${text}\n\`\`\`\n`;
-        aiModel.appendText(formattedText, true, { scrollToBottom: true });
-        aiModel.focusInput();
-    }, [model]);
-
     const filteredLines = showDebug
         ? outputLines
         : outputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
@@ -115,12 +89,6 @@ const BuilderBuildPanel = memo(() => {
                         />
                         Debug
                     </label>
-                    <button
-                        className="px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
-                        onClick={handleSendToAI}
-                    >
-                        Send Output to AI
-                    </button>
                     <button
                         className="px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
                         onClick={handleRestart}

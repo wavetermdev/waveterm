@@ -50,7 +50,6 @@ const previewElectronApi: ElectronApi = {
     captureScreenshot: (_rect: Electron.Rectangle) => Promise.resolve(""),
     setKeyboardChordMode: () => {},
     clearWebviewStorage: (_webContentsId: number) => Promise.resolve(),
-    setWaveAIOpen: (_isOpen: boolean) => {},
     closeBuilderWindow: () => {},
 
     nativePaste: () => {},

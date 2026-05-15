@@ -112,7 +112,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return connStatuses;
     });
     const reinitVersion = atom(0);
-    const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         builderId: builderIdAtom,
