@@ -44,7 +44,7 @@
   - [x] Phase A: Disable UI (frontend) — completed 2026-05-16
     - [x] Fix blank screen: invalid nested `<Panel>` in `workspace.tsx` (removed inner PanelGroup but left VTabBar `<Panel>` orphaned inside outer `<Panel>`)
     - [x] Remove sparkle/Claude icon from terminal block header (`getShellIntegrationIconButton` → no-op stub)
-    - [ ] Minor: update misleading AI text in `builder-previewtab.tsx` EmptyStateView ("AI chat interface" → general message) — still has AI references
+    - [x] Minor: update misleading AI text in `builder-previewtab.tsx` EmptyStateView — fixed 2026-05-16
   - [x] Phase B: Remove backend wiring (Go) — 2026-05-15
   - [x] Phase C: Clean up docs & schemas — 2026-05-16
   - [ ] Phase D: Delete unused code (optional, later)
