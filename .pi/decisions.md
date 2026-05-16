@@ -1,4 +1,77 @@
-# Architecture Decisions — waveterm-remote Fork
+# Architecture Decisions
+
+## 2026-05-10: Fork Purpose
+
+**Decision:** Fork Wave Terminal to create a remote-development-optimized variant.
+
+**Context:** Most terminals assume local-first workflows. This fork treats remote SSH environments as primary workspaces.
+
+**Consequences:**
+- Upstream remains the base; we merge regularly
+- Features evaluated against "remote-first" usefulness
+- Local-first features may be removed/diminished if they conflict with remote workflow
+
+## 2026-05-10: `.pi/` as Planning Hub
+
+**Decision:** Use `.pi/` directory for all fork planning, specs, and agent context.
+
+**Context:** Keeps planning centralized and agent-accessible without cluttering the root or public docs.
+
+**Files:**
+- `.pi/index.md` — entry point
+- `.pi/context.md` — project background
+- `.pi/todos.md` — active tasks
+- `.pi/decisions.md` — this file
+- `.pi/specs/` — feature specifications
+
+## 2026-05-10: Port Forwarding — Config-First Approach
+
+**Decision:** Implement `LocalForward`/`RemoteForward` from `~/.ssh/config` and `connections.json`, not CLI flags.
+
+**Context:** SSH config is the standard place developers already define forwarding rules. Making Wave respect them is the least-surprise approach.
+
+**Approach:**
+1. Parse `LocalForward`/`RemoteForward` in `findSshConfigKeywords()`
+2. Add to `ConnKeywords` struct
+3. Return merged keywords from `ConnectToClient()`
+4. Start forwarding goroutines in `SSHConn.connectInternal()`
+5. Clean up listeners in `closeInternal_withlifecyclelock()`
+
+**Deferred:**
+- `DynamicForward` (needs SOCKS5 handler)
+- CLI flags on `wsh ssh` (can add later)
+- UI status indicator
+
+## 2026-05-14: Tab-Close Crash — Root Cause Found & Fixed
+
+**Decision:** Remove redundant `DestroyBlockController` goroutine from `CloseTab`; add `sync.Once` to `ShellProc.Close()` as defense-in-depth.
+
+**Context:** Investigation confirmed a race where `CloseTab` explicitly launched `DestroyBlockController` in a goroutine while `DeleteTab` → `DeleteBlock` → `BlockCloseEvent` triggered the same destruction again. This caused concurrent double-`Stop` on `ShellController` (with its Lock/Unlock/Relock window) and `DurableShellController` (which has no lock), leading to double `Session.Close()` / double `TerminateAndDetachJob`.
+
+**Fix applied:**
+1. `pkg/service/workspaceservice/workspaceservice.go` — removed the explicit `go DestroyBlockController()` loop; `DeleteTab` already triggers cleanup via events.
+2. `pkg/shellexec/shellexec.go` — added `closeOnce sync.Once` to `ShellProc` and wrapped `Close()` in `sp.closeOnce.Do`, preventing double `KillGraceful` / double goroutine spawn even if two Stops race.
+3. Added trace logging to `CloseTab`, `DestroyBlockController`, `ShellController.Stop`, `DurableShellController.Stop`, `handleBlockCloseEvent` for interactive diagnosis.
+4. Fixed 2 test-code panics (manual `close` of channel already closed by mock `KillGraceful`).
+
+**Consequences:**
+- `CloseTab` now has a single cleanup path: `DeleteTab` → `DeleteBlock` → event → `DestroyBlockController`
+- `ShellProc.Close()` is idempotent; any future code path that calls it twice is safe
+- 14 unit tests pass under `-race`
+
+## 2026-05-12: Secret Store — Keep
+
+**Decision:** Keep the secret store infrastructure; it's not AI-specific.
+
+**Context:** The secret store (`pkg/secretstore/`) is an encrypted key-value store backed by the OS keychain. It has three consumers:
+1. **AI API tokens** (`ai:apitokensecretname`) — going away with AI removal
+2. **SSH password auth** (`ssh:passwordsecretname`) — stays, useful for password-authenticated hosts
+3. **Wave App Store** — stays, general-purpose
+
+**Consequences:**
+- Remove `ai:apitokensecretname` field from `ConnKeywords` as part of AI cleanup
+- Keep `pkg/secretstore/`, `wsh secret` CLI, and `ssh:passwordsecretname` intact
+- Lightweight general infrastructure; useful for future features (e.g., file transfer credentials)
 
 ## 2026-05-15: Claude Code Shell Integration — Analysis for Future Pi Agent Support
 
@@ -23,7 +96,7 @@
 ### What Remains (Dead Code, Phase D Cleanup)
 
 - `claudeCodeActiveAtom` in `termwrap.ts` — still set by OSC handlers, never read
-- `shellIntegrationStatusAtom` in `termwrap.ts` — still set by OSC handlers, never read  
+- `shellIntegrationStatusAtom` in `termwrap.ts` — still set by OSC handlers, never read
 - `isClaudeCodeCommand()` and `ClaudeCodeRegex` in `osc-handlers.ts` — still execute, results unused
 - `TermClaudeIcon` component in `term.tsx` — still exported, never imported
 - `checkCommandForTelemetry()` in `osc-handlers.ts` — still runs, telemetry already removed
