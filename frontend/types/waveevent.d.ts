@@ -20,10 +20,8 @@ declare global {
         | "route:down"
         | "route:up"
         | "workspace:update"
-        | "waveai:ratelimit"
         | "waveapp:appgoupdated"
         | "tsunami:updatemeta"
-        | "waveai:modeconfig"
         | "block:jobstatus"
         | "badge"
     ;
@@ -48,10 +46,8 @@ declare global {
         { event: "route:down"; data?: null; } | 
         { event: "route:up"; data?: null; } | 
         { event: "workspace:update"; data?: null; } | 
-        { event: "waveai:ratelimit"; data?: RateLimitInfo; } | 
         { event: "waveapp:appgoupdated"; data?: null; } | 
         { event: "tsunami:updatemeta"; data?: AppMeta; } | 
-        { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
         { event: "badge"; data?: BadgeEvent; }
     );

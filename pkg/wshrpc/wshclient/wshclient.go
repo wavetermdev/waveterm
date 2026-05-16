@@ -6,7 +6,6 @@
 package wshclient
 
 import (
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -15,12 +14,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
-
-// command "aisendmessage", wshserver.AiSendMessageCommand
-func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "aisendmessage", data, opts)
-	return err
-}
 
 // command "authenticate", wshserver.AuthenticateCommand
 func AuthenticateCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
@@ -483,24 +476,6 @@ func GetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.R
 	return resp, err
 }
 
-// command "getwaveaichat", wshserver.GetWaveAIChatCommand
-func GetWaveAIChatCommand(w *wshutil.WshRpc, data wshrpc.CommandGetWaveAIChatData, opts *wshrpc.RpcOpts) (*uctypes.UIChat, error) {
-	resp, err := sendRpcRequestCallHelper[*uctypes.UIChat](w, "getwaveaichat", data, opts)
-	return resp, err
-}
-
-// command "getwaveaimodeconfig", wshserver.GetWaveAIModeConfigCommand
-func GetWaveAIModeConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wconfig.AIModeConfigUpdate, error) {
-	resp, err := sendRpcRequestCallHelper[wconfig.AIModeConfigUpdate](w, "getwaveaimodeconfig", nil, opts)
-	return resp, err
-}
-
-// command "getwaveairatelimit", wshserver.GetWaveAIRateLimitCommand
-func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctypes.RateLimitInfo, error) {
-	resp, err := sendRpcRequestCallHelper[*uctypes.RateLimitInfo](w, "getwaveairatelimit", nil, opts)
-	return resp, err
-}
-
 // command "jobcmdexited", wshserver.JobCmdExitedCommand
 func JobCmdExitedCommand(w *wshutil.WshRpc, data wshrpc.CommandJobCmdExitedData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobcmdexited", data, opts)
@@ -955,24 +930,6 @@ func VDomUrlRequestCommand(w *wshutil.WshRpc, data wshrpc.VDomUrlRequestData, op
 func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData, opts *wshrpc.RpcOpts) (bool, error) {
 	resp, err := sendRpcRequestCallHelper[bool](w, "waitforroute", data, opts)
 	return resp, err
-}
-
-// command "waveaiaddcontext", wshserver.WaveAIAddContextCommand
-func WaveAIAddContextCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIAddContextData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaiaddcontext", data, opts)
-	return err
-}
-
-// command "waveaigettooldiff", wshserver.WaveAIGetToolDiffCommand
-func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToolDiffData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
-	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWaveAIGetToolDiffRtnData](w, "waveaigettooldiff", data, opts)
-	return resp, err
-}
-
-// command "waveaitoolapprove", wshserver.WaveAIToolApproveCommand
-func WaveAIToolApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIToolApproveData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaitoolapprove", data, opts)
-	return err
 }
 
 // command "wavefilereadstream", wshserver.WaveFileReadStreamCommand

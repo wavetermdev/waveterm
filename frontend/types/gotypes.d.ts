@@ -5,14 +5,6 @@
 
 declare global {
 
-    // wshrpc.AIAttachedFile
-    type AIAttachedFile = {
-        name: string;
-        type: string;
-        size: number;
-        data64: string;
-    };
-
     // wconfig.AIModeConfigType
     type AIModeConfigType = {
         "display:name": string;
@@ -35,16 +27,6 @@ declare global {
         "ai:switchcompat"?: string[];
         "waveai:cloud"?: boolean;
         "waveai:premium"?: boolean;
-    };
-
-    // wconfig.AIModeConfigUpdate
-    type AIModeConfigUpdate = {
-        configs: {[key: string]: AIModeConfigType};
-    };
-
-    // wshrpc.AiMessageData
-    type AiMessageData = {
-        message?: string;
     };
 
     // wshrpc.AppInfo
@@ -375,11 +357,6 @@ declare global {
         filename?: string;
     };
 
-    // wshrpc.CommandGetWaveAIChatData
-    type CommandGetWaveAIChatData = {
-        chatid: string;
-    };
-
     // wshrpc.CommandJobCmdExitedData
     type CommandJobCmdExitedData = {
         jobid: string;
@@ -687,32 +664,6 @@ declare global {
     type CommandWaitForRouteData = {
         routeid: string;
         waitms: number;
-    };
-
-    // wshrpc.CommandWaveAIAddContextData
-    type CommandWaveAIAddContextData = {
-        files?: AIAttachedFile[];
-        text?: string;
-        submit?: boolean;
-        newchat?: boolean;
-    };
-
-    // wshrpc.CommandWaveAIGetToolDiffData
-    type CommandWaveAIGetToolDiffData = {
-        chatid: string;
-        toolcallid: string;
-    };
-
-    // wshrpc.CommandWaveAIGetToolDiffRtnData
-    type CommandWaveAIGetToolDiffRtnData = {
-        originalcontents64: string;
-        modifiedcontents64: string;
-    };
-
-    // wshrpc.CommandWaveAIToolApproveData
-    type CommandWaveAIToolApproveData = {
-        toolcallid: string;
-        approval?: string;
     };
 
     // wshrpc.CommandWaveFileReadStreamData
@@ -1265,16 +1216,6 @@ declare global {
         cpusum?: number;
     };
 
-    // uctypes.RateLimitInfo
-    type RateLimitInfo = {
-        req: number;
-        reqlimit: number;
-        preq: number;
-        preqlimit: number;
-        resetepoch: number;
-        unknown?: boolean;
-    };
-
     // wshrpc.RemoteInfo
     type RemoteInfo = {
         clientarch: string;
@@ -1547,47 +1488,10 @@ declare global {
         values: {[key: string]: number};
     };
 
-    // uctypes.UIChat
-    type UIChat = {
-        chatid: string;
-        apitype: string;
-        model: string;
-        apiversion: string;
-        messages: UIMessage[];
-    };
-
     // waveobj.UIContext
     type UIContext = {
         windowid: string;
         activetabid: string;
-    };
-
-    // uctypes.UIMessage
-    type UIMessage = {
-        id: string;
-        role: string;
-        metadata?: any;
-        parts?: UIMessagePart[];
-    };
-
-    // uctypes.UIMessagePart
-    type UIMessagePart = {
-        type: string;
-        text?: string;
-        state?: string;
-        toolCallId?: string;
-        input?: any;
-        output?: any;
-        errorText?: string;
-        providerExecuted?: boolean;
-        sourceId?: string;
-        url?: string;
-        title?: string;
-        filename?: string;
-        mediaType?: string;
-        id?: string;
-        data?: any;
-        providerMetadata?: {[key: string]: any};
     };
 
     // userinput.UserInputRequest

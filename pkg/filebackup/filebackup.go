@@ -51,7 +51,7 @@ func MakeFileBackup(absFilePath string) (string, error) {
 	now := time.Now()
 	dateStr := now.Format("2006-01-02")
 
-	backupDir := filepath.Join(wavebase.GetWaveCachesDir(), "waveai-backups", dateStr)
+	backupDir := filepath.Join(wavebase.GetWaveCachesDir(), "file-backups", dateStr)
 	err = os.MkdirAll(backupDir, 0700)
 	if err != nil {
 		return "", fmt.Errorf("failed to create backup directory: %w", err)
@@ -124,7 +124,7 @@ func RestoreBackup(backupFilePath string, restoreToFileName string) error {
 }
 
 func CleanupOldBackups() error {
-	backupBaseDir := filepath.Join(wavebase.GetWaveCachesDir(), "waveai-backups")
+	backupBaseDir := filepath.Join(wavebase.GetWaveCachesDir(), "file-backups")
 
 	if _, err := os.Stat(backupBaseDir); os.IsNotExist(err) {
 		return nil

@@ -47,15 +47,14 @@
     - [x] Minor: update misleading AI text in `builder-previewtab.tsx` EmptyStateView — fixed 2026-05-16
   - [x] Phase B: Remove backend wiring (Go) — 2026-05-15
   - [x] Phase C: Clean up docs & schemas — 2026-05-16
-  - [ ] Phase D: Delete unused code (optional, later)
+  - [ ] **ACTIVE:** Phase D: Delete unused code
+    - [ ] Remove builder AI dependencies (A.15: `AIPanel`, `WaveAIModel`, `formatFileSize`, `builder-focusmanager.ts`)
+    - [ ] Move `formatFileSize` to shared utility (currently trapped in `aipanel/ai-utils`)
+    - [ ] Delete `pkg/aiusechat/` (entire directory, ~12K lines, dead package)
+    - [ ] Delete `frontend/app/aipanel/` (17 files, orphaned after builder deps removed)
+    - [ ] Delete `frontend/app/view/waveai/`, `frontend/app/view/aifilediff/`, `frontend/app/view/waveconfig/waveaivisual.tsx`
+    - [ ] Regenerate auto-generated TS types (`gotypes.d.ts`, `waveevent.d.ts`, `wshclientapi.ts`) to remove stale AI definitions
   - [x] Document Claude Code shell integration analysis for future pi agent reuse (`.pi/decisions.md`)
-- [ ] **ACTIVE:** SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]])
-  - [ ] Modify `pkg/wconfig/settingsconfig.go`
-  - [ ] Modify `pkg/remote/sshclient.go` (parse + return merged keywords)
-  - [ ] Modify `pkg/remote/conncontroller/conncontroller.go` (runtime forwarding)
-  - [ ] Update call sites for new `ConnectToClient` signature
-  - [ ] Add tests
-  - [ ] Update documentation (`docs/docs/connections.mdx`)
 - [ ] MOSH (Mobile Shell) support
   - [ ] Research mosh client/server architecture and integration points
   - [ ] Design ConnKeywords for MOSH connections (host, port, mosh-server path, etc.)
@@ -65,6 +64,13 @@
   - [ ] Handle coexistence with SSH port forwarding (MOSH doesn't support tunnels)
   - [ ] Add tests
   - [ ] Update documentation
+- [ ] SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]])
+  - [ ] Modify `pkg/wconfig/settingsconfig.go`
+  - [ ] Modify `pkg/remote/sshclient.go` (parse + return merged keywords)
+  - [ ] Modify `pkg/remote/conncontroller/conncontroller.go` (runtime forwarding)
+  - [ ] Update call sites for new `ConnectToClient` signature
+  - [ ] Add tests
+  - [ ] Update documentation (`docs/docs/connections.mdx`)
 - [ ] Paste screenshots into terminal
   - [ ] Drag and drop images → SCP to remote, type fully-qualified filename into terminal
   - [ ] Cmd+V paste clipboard image → upload as PNG, insert filename into terminal

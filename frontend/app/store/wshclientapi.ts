@@ -18,12 +18,6 @@ export class RpcApiType {
         this.mockClient = client;
     }
 
-    // command "aisendmessage" [call]
-    AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "aisendmessage", data, opts);
-        return client.wshRpcCall("aisendmessage", data, opts);
-    }
-
     // command "authenticate" [call]
     AuthenticateCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "authenticate", data, opts);
@@ -486,24 +480,6 @@ export class RpcApiType {
         return client.wshRpcCall("getvar", data, opts);
     }
 
-    // command "getwaveaichat" [call]
-    GetWaveAIChatCommand(client: WshClient, data: CommandGetWaveAIChatData, opts?: RpcOpts): Promise<UIChat> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getwaveaichat", data, opts);
-        return client.wshRpcCall("getwaveaichat", data, opts);
-    }
-
-    // command "getwaveaimodeconfig" [call]
-    GetWaveAIModeConfigCommand(client: WshClient, opts?: RpcOpts): Promise<AIModeConfigUpdate> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getwaveaimodeconfig", null, opts);
-        return client.wshRpcCall("getwaveaimodeconfig", null, opts);
-    }
-
-    // command "getwaveairatelimit" [call]
-    GetWaveAIRateLimitCommand(client: WshClient, opts?: RpcOpts): Promise<RateLimitInfo> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getwaveairatelimit", null, opts);
-        return client.wshRpcCall("getwaveairatelimit", null, opts);
-    }
-
     // command "jobcmdexited" [call]
     JobCmdExitedCommand(client: WshClient, data: CommandJobCmdExitedData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "jobcmdexited", data, opts);
@@ -964,24 +940,6 @@ export class RpcApiType {
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "waitforroute", data, opts);
         return client.wshRpcCall("waitforroute", data, opts);
-    }
-
-    // command "waveaiaddcontext" [call]
-    WaveAIAddContextCommand(client: WshClient, data: CommandWaveAIAddContextData, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "waveaiaddcontext", data, opts);
-        return client.wshRpcCall("waveaiaddcontext", data, opts);
-    }
-
-    // command "waveaigettooldiff" [call]
-    WaveAIGetToolDiffCommand(client: WshClient, data: CommandWaveAIGetToolDiffData, opts?: RpcOpts): Promise<CommandWaveAIGetToolDiffRtnData> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "waveaigettooldiff", data, opts);
-        return client.wshRpcCall("waveaigettooldiff", data, opts);
-    }
-
-    // command "waveaitoolapprove" [call]
-    WaveAIToolApproveCommand(client: WshClient, data: CommandWaveAIToolApproveData, opts?: RpcOpts): Promise<void> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "waveaitoolapprove", data, opts);
-        return client.wshRpcCall("waveaitoolapprove", data, opts);
     }
 
     // command "wavefilereadstream" [call]

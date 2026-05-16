@@ -10,7 +10,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/service"
@@ -52,8 +51,6 @@ var ExtraTypes = []any{
 	vdom.VDomBackendUpdate{},
 	waveobj.MetaTSType{},
 	waveobj.ObjRTInfo{},
-	uctypes.RateLimitInfo{},
-	wconfig.AIModeConfigUpdate{},
 	wshrpc.BlockJobStatusData{},
 }
 

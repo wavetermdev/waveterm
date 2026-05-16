@@ -31,7 +31,7 @@ type BlockDetails struct {
 	BlockId     string              `json:"blockid"`     // Unique identifier for the block
 	WorkspaceId string              `json:"workspaceid"` // ID of the workspace containing the block
 	TabId       string              `json:"tabid"`       // ID of the tab containing the block
-	View        string              `json:"view"`        // Canonical view type (term, web, preview, edit, sysinfo, waveai)
+	View        string              `json:"view"`        // Canonical view type (term, web, preview, edit, sysinfo)
 	Meta        waveobj.MetaMapType `json:"meta"`        // Block metadata including view type
 }
 
@@ -74,7 +74,7 @@ func init() {
 	blocksListCmd.Flags().StringVar(&blocksWindowId, "window", "", "restrict to window id")
 	blocksListCmd.Flags().StringVar(&blocksWorkspaceId, "workspace", "", "restrict to workspace id")
 	blocksListCmd.Flags().StringVar(&blocksTabId, "tab", "", "restrict to specific tab id")
-	blocksListCmd.Flags().StringVar(&blocksView, "view", "", "restrict to view type (term/terminal, web/browser, preview/edit, sysinfo, waveai)")
+	blocksListCmd.Flags().StringVar(&blocksView, "view", "", "restrict to view type (term/terminal, web/browser, preview/edit, sysinfo)")
 	blocksListCmd.Flags().BoolVar(&blocksJSON, "json", false, "output as JSON")
 	blocksListCmd.Flags().IntVar(&blocksTimeout, "timeout", 5000, "timeout in milliseconds for RPC calls (default: 5000)")
 
@@ -100,7 +100,7 @@ func init() {
 func blocksListRun(cmd *cobra.Command, args []string) error {
 	if v := strings.TrimSpace(blocksView); v != "" {
 		if !isKnownViewFilter(v) {
-			return fmt.Errorf("unknown --view %q; try one of: term, web, preview, edit, sysinfo, waveai", v)
+			return fmt.Errorf("unknown --view %q; try one of: term, web, preview, edit, sysinfo", v)
 		}
 	}
 
@@ -270,8 +270,6 @@ func matchesViewType(actual, filter string) bool {
 		return strings.EqualFold(actual, "term")
 	case "web", "browser", "url":
 		return strings.EqualFold(actual, "web")
-	case "ai", "waveai", "assistant":
-		return strings.EqualFold(actual, "waveai")
 	case "sys", "sysinfo", "system":
 		return strings.EqualFold(actual, "sysinfo")
 	}
@@ -285,8 +283,7 @@ func isKnownViewFilter(f string) bool {
 	case "term", "terminal", "shell", "console",
 		"web", "browser", "url",
 		"preview", "edit",
-		"sysinfo", "sys", "system",
-		"waveai", "ai", "assistant":
+		"sysinfo", "sys", "system":
 		return true
 	default:
 		return false

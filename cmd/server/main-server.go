@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -294,7 +293,6 @@ func main() {
 	sigutil.InstallSIGUSR1Handler()
 	wconfig.MigratePresetsBackgrounds()
 	startConfigWatcher()
-	aiusechat.InitAIModeConfigWatcher()
 	maybeStartPprofServer()
 	go stdinReadWatch()
 	go backupCleanupLoop()
