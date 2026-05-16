@@ -29,6 +29,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.39",
+        "@go-task/cli": "^3.50.0",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@tailwindcss/vite": "^4.2.1",
         "@types/css-tree": "^2",
@@ -56,6 +57,7 @@
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",
         "sass": "1.91.0",
+        "sharp": "^0.34.5",
         "tailwindcss": "^4.2.1",
         "ts-node": "^10.9.2",
         "tsx": "^4.21.0",
@@ -70,7 +72,6 @@
     "dependencies": {
         "@ai-sdk/react": "^2.0.104",
         "@floating-ui/react": "^0.27.16",
-        "@go-task/cli": "^3.50.0",
         "@observablehq/plot": "^0.6.17",
         "@react-hook/resize-observer": "^2.0.2",
         "@table-nav/core": "^0.0.7",

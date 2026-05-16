@@ -46,7 +46,7 @@
     - [x] Remove sparkle/Claude icon from terminal block header (`getShellIntegrationIconButton` → no-op stub)
     - [ ] Minor: update misleading AI text in `builder-previewtab.tsx` EmptyStateView ("AI chat interface" → general message) — still has AI references
   - [x] Phase B: Remove backend wiring (Go) — 2026-05-15
-  - [ ] Phase C: Clean up docs & schemas
+  - [x] Phase C: Clean up docs & schemas — 2026-05-16
   - [ ] Phase D: Delete unused code (optional, later)
   - [x] Document Claude Code shell integration analysis for future pi agent reuse (`.pi/decisions.md`)
 - [ ] **ACTIVE:** SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]])
