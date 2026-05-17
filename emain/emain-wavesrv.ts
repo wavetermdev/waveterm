@@ -10,6 +10,7 @@ import { setForceQuit, setUserConfirmedQuit } from "./emain-activity";
 import {
     getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,
+    getRemoteState,
     getWaveConfigDir,
     getWaveDataDir,
     getWaveSrvCwd,
@@ -53,6 +54,14 @@ export function getIsWaveSrvDead(): boolean {
 }
 
 export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promise<boolean> {
+    const remote = getRemoteState();
+    if (remote.isRemote && remote.target != null) {
+        const endpoint = `${remote.target.host}:${remote.target.port}`;
+        process.env[WSServerEndpointVarName] = endpoint;
+        process.env[WebServerEndpointVarName] = endpoint;
+        waveSrvReadyResolve(true);
+        return Promise.resolve(true);
+    }
     let pResolve: (value: boolean) => void;
     let pReject: (reason?: any) => void;
     const rtnPromise = new Promise<boolean>((argResolve, argReject) => {

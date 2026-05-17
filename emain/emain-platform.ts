@@ -1,8 +1,9 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { fireAndForget } from "@/util/util";
 import { app, dialog, ipcMain, shell } from "electron";
+import { RemoteModeState, resolveRemoteMode } from "./remotemode";
 import envPaths from "env-paths";
 import { existsSync, mkdirSync } from "fs";
 import os from "os";
@@ -29,6 +30,39 @@ if (isDevVite) {
 const waveDirNamePrefix = "waveterm";
 const waveDirNameSuffix = isDev ? "dev" : "";
 const waveDirName = `${waveDirNamePrefix}${waveDirNameSuffix ? `-${waveDirNameSuffix}` : ""}`;
+
+function computeLocalConfigDir(): string {
+    const xdgConfigHome = process.env.XDG_CONFIG_HOME;
+    if (xdgConfigHome) return path.join(xdgConfigHome, waveDirName);
+    return path.join(app.getPath("home"), ".config", waveDirName);
+}
+
+let remoteState: RemoteModeState;
+try {
+    remoteState = resolveRemoteMode(process.argv, computeLocalConfigDir());
+} catch (e) {
+    console.error("[remote-mode] failed to parse --remote-host:", (e as Error).message);
+    process.exit(1);
+    remoteState = { isRemote: false, target: null, password: null, safeSuffix: null };
+}
+
+if (remoteState.isRemote) {
+    if (!remoteState.password) {
+        console.error("[remote-mode] remote:password missing from local settings.json");
+        process.exit(1);
+    }
+    const baseUserData = app.getPath("userData");
+    const remoteUserData = path.join(
+        path.dirname(baseUserData),
+        `waveterm-remote-${remoteState.safeSuffix}`,
+    );
+    app.setPath("userData", remoteUserData);
+    app.setPath("sessionData", path.join(remoteUserData, "Session"));
+}
+
+export function getRemoteState(): RemoteModeState {
+    return remoteState;
+}
 
 const paths = envPaths("waveterm", { suffix: waveDirNameSuffix });
 
@@ -272,6 +306,7 @@ export {
     getElectronAppBasePath,
     getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,
+    getRemoteState,
     getWaveConfigDir,
     getWaveDataDir,
     getWaveSrvCwd,
