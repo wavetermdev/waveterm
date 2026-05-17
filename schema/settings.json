@@ -53,54 +53,6 @@
         "feature:waveappbuilder": {
           "type": "boolean"
         },
-        "ai:*": {
-          "type": "boolean"
-        },
-        "ai:preset": {
-          "type": "string"
-        },
-        "ai:apitype": {
-          "type": "string"
-        },
-        "ai:baseurl": {
-          "type": "string"
-        },
-        "ai:apitoken": {
-          "type": "string"
-        },
-        "ai:name": {
-          "type": "string"
-        },
-        "ai:model": {
-          "type": "string"
-        },
-        "ai:orgid": {
-          "type": "string"
-        },
-        "ai:apiversion": {
-          "type": "string"
-        },
-        "ai:maxtokens": {
-          "type": "number"
-        },
-        "ai:timeoutms": {
-          "type": "number"
-        },
-        "ai:proxyurl": {
-          "type": "string"
-        },
-        "ai:fontsize": {
-          "type": "number"
-        },
-        "ai:fixedfontsize": {
-          "type": "number"
-        },
-        "waveai:showcloudmodes": {
-          "type": "boolean"
-        },
-        "waveai:defaultmode": {
-          "type": "string"
-        },
         "term:*": {
           "type": "boolean"
         },

@@ -63,22 +63,6 @@ type MetaTSType struct {
 	CmdInitScriptPwsh string            `json:"cmd:initscript.pwsh,omitempty"`
 	CmdInitScriptFish string            `json:"cmd:initscript.fish,omitempty"`
 
-	// AI options match settings
-	AiClear      bool    `json:"ai:*,omitempty"`
-	AiPresetKey  string  `json:"ai:preset,omitempty"`
-	AiApiType    string  `json:"ai:apitype,omitempty"`
-	AiBaseURL    string  `json:"ai:baseurl,omitempty"`
-	AiApiToken   string  `json:"ai:apitoken,omitempty"`
-	AiName       string  `json:"ai:name,omitempty"`
-	AiModel      string  `json:"ai:model,omitempty"`
-	AiOrgID      string  `json:"ai:orgid,omitempty"`
-	AIApiVersion string  `json:"ai:apiversion,omitempty"`
-	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
-	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
-
-	AiFileDiffChatId     string `json:"aifilediff:chatid,omitempty"`
-	AiFileDiffToolCallId string `json:"aifilediff:toolcallid,omitempty"`
-
 	EditorClear               bool    `json:"editor:*,omitempty"`
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
@@ -104,13 +88,6 @@ type MetaTSType struct {
 	// for workspace
 	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
 	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
-
-	// for tabs+waveai
-	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`
-	WaveAiPanelWidth    int    `json:"waveai:panelwidth,omitempty"`
-	WaveAiModel         string `json:"waveai:model,omitempty"`
-	WaveAiChatId        string `json:"waveai:chatid,omitempty"`
-	WaveAiWidgetContext *bool  `json:"waveai:widgetcontext,omitempty"` // default is true
 
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            int      `json:"term:fontsize,omitempty"`

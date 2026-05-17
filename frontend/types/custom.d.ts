@@ -123,7 +123,6 @@ declare global {
         captureScreenshot(rect: Electron.Rectangle): Promise<string>; // capture-screenshot
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
-        setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
         closeBuilderWindow: () => void; // close-builder-window
         nativePaste: () => void; // native-paste
         openBuilder: (appId?: string) => void; // open-builder
@@ -481,7 +480,6 @@ declare global {
               previewurl?: string;
           };
 
-    type AIModeConfigWithMode = { mode: string } & AIModeConfigType;
 }
 
 export {};

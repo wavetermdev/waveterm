@@ -21,24 +21,6 @@ const (
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
-	ConfigKey_AiClear                        = "ai:*"
-	ConfigKey_AiPreset                       = "ai:preset"
-	ConfigKey_AiApiType                      = "ai:apitype"
-	ConfigKey_AiBaseURL                      = "ai:baseurl"
-	ConfigKey_AiApiToken                     = "ai:apitoken"
-	ConfigKey_AiName                         = "ai:name"
-	ConfigKey_AiModel                        = "ai:model"
-	ConfigKey_AiOrgID                        = "ai:orgid"
-	ConfigKey_AIApiVersion                   = "ai:apiversion"
-	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
-	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
-	ConfigKey_AiProxyUrl                     = "ai:proxyurl"
-	ConfigKey_AiFontSize                     = "ai:fontsize"
-	ConfigKey_AiFixedFontSize                = "ai:fixedfontsize"
-
-	ConfigKey_WaveAiShowCloudModes           = "waveai:showcloudmodes"
-	ConfigKey_WaveAiDefaultMode              = "waveai:defaultmode"
-
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
 	ConfigKey_TermFontFamily                 = "term:fontfamily"

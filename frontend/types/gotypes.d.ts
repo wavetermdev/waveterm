@@ -5,30 +5,6 @@
 
 declare global {
 
-    // wconfig.AIModeConfigType
-    type AIModeConfigType = {
-        "display:name": string;
-        "display:order"?: number;
-        "display:icon"?: string;
-        "display:description"?: string;
-        "ai:provider"?: string;
-        "ai:apitype"?: string;
-        "ai:model"?: string;
-        "ai:thinkinglevel"?: string;
-        "ai:verbosity"?: string;
-        "ai:endpoint"?: string;
-        "ai:proxyurl"?: string;
-        "ai:azureapiversion"?: string;
-        "ai:apitoken"?: string;
-        "ai:apitokensecretname"?: string;
-        "ai:azureresourcename"?: string;
-        "ai:azuredeployment"?: string;
-        "ai:capabilities"?: string[];
-        "ai:switchcompat"?: string[];
-        "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
-    };
-
     // wshrpc.AppInfo
     type AppInfo = {
         appid: string;
@@ -931,7 +907,6 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
-        waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
@@ -1045,19 +1020,6 @@ declare global {
         "cmd:initscript.zsh"?: string;
         "cmd:initscript.pwsh"?: string;
         "cmd:initscript.fish"?: string;
-        "ai:*"?: boolean;
-        "ai:preset"?: string;
-        "ai:apitype"?: string;
-        "ai:baseurl"?: string;
-        "ai:apitoken"?: string;
-        "ai:name"?: string;
-        "ai:model"?: string;
-        "ai:orgid"?: string;
-        "ai:apiversion"?: string;
-        "ai:maxtokens"?: number;
-        "ai:timeoutms"?: number;
-        "aifilediff:chatid"?: string;
-        "aifilediff:toolcallid"?: string;
         "editor:*"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
@@ -1077,11 +1039,6 @@ declare global {
         "bg:activebordercolor"?: string;
         "layout:vtabbarwidth"?: number;
         "layout:widgetsvisible"?: boolean;
-        "waveai:panelopen"?: boolean;
-        "waveai:panelwidth"?: number;
-        "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:widgetcontext"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1159,9 +1116,6 @@ declare global {
         "builder:layout"?: {[key: string]: number};
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
-        "waveai:chatid"?: string;
-        "waveai:mode"?: string;
-        "waveai:maxoutputtokens"?: number;
     };
 
     // wshrpc.PathCommandData
@@ -1291,22 +1245,6 @@ declare global {
         "app:focusfollowscursor"?: string;
         "app:tabbar"?: string;
         "feature:waveappbuilder"?: boolean;
-        "ai:*"?: boolean;
-        "ai:preset"?: string;
-        "ai:apitype"?: string;
-        "ai:baseurl"?: string;
-        "ai:apitoken"?: string;
-        "ai:name"?: string;
-        "ai:model"?: string;
-        "ai:orgid"?: string;
-        "ai:apiversion"?: string;
-        "ai:maxtokens"?: number;
-        "ai:timeoutms"?: number;
-        "ai:proxyurl"?: string;
-        "ai:fontsize"?: number;
-        "ai:fixedfontsize"?: number;
-        "waveai:showcloudmodes"?: boolean;
-        "waveai:defaultmode"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
