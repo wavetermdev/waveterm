@@ -6,6 +6,7 @@ import debug from "debug";
 import { sprintf } from "sprintf-js";
 
 const AuthKeyHeader = "X-AuthKey";
+const RemotePasswordHeader = "X-Remote-Password";
 
 const dlog = debug("wave:ws");
 
@@ -28,7 +29,8 @@ function removeWSReconnectHandler(handler: () => void) {
 type WSEventCallback = (arg0: WSEventType) => void;
 
 type ElectronOverrideOpts = {
-    authKey: string;
+    authKey?: string;
+    remotePassword?: string;
 };
 
 class WSControl {
@@ -74,13 +76,15 @@ class WSControl {
         this.lastReconnectTime = Date.now();
         dlog("try reconnect:", desc);
         this.opening = true;
+        let headers: { [k: string]: string } | null = null;
+        if (this.eoOpts) {
+            headers = {};
+            if (this.eoOpts.authKey) headers[AuthKeyHeader] = this.eoOpts.authKey;
+            if (this.eoOpts.remotePassword) headers[RemotePasswordHeader] = this.eoOpts.remotePassword;
+        }
         this.wsConn = newWebSocket(
             this.baseHostPort + "/ws?stableid=" + encodeURIComponent(this.stableId),
-            this.eoOpts
-                ? {
-                      [AuthKeyHeader]: this.eoOpts.authKey,
-                  }
-                : null
+            headers,
         );
         this.wsConn.onopen = (e: Event) => {
             this.onopen(e);
