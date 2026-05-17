@@ -4,8 +4,9 @@
 package web
 
 import (
+	"bufio"
 	"crypto/subtle"
-	"log"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -76,8 +77,64 @@ func isWebSocketUpgrade(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
 }
 
-// proxyWebSocket is implemented in Task 5.
 func (e *RemoteEntry) proxyWebSocket(w http.ResponseWriter, r *http.Request) {
-	log.Printf("remote-entry: websocket support not yet implemented")
-	http.Error(w, "ws not implemented", http.StatusNotImplemented)
+	backend, err := net.Dial("tcp", e.wsAddr)
+	if err != nil {
+		http.Error(w, "backend dial failed", http.StatusBadGateway)
+		return
+	}
+
+	upstreamReq := r.Clone(r.Context())
+	upstreamReq.Header.Del(RemotePasswordHeader)
+	upstreamReq.Header.Set(AuthKeyHeader, e.authKey)
+	upstreamReq.URL.Scheme = "http"
+	upstreamReq.URL.Host = e.wsAddr
+	upstreamReq.RequestURI = ""
+
+	if err := upstreamReq.Write(backend); err != nil {
+		backend.Close()
+		http.Error(w, "handshake write failed", http.StatusBadGateway)
+		return
+	}
+
+	br := bufio.NewReader(backend)
+	resp, err := http.ReadResponse(br, upstreamReq)
+	if err != nil {
+		backend.Close()
+		http.Error(w, "handshake read failed", http.StatusBadGateway)
+		return
+	}
+
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		backend.Close()
+		http.Error(w, "hijack unsupported", http.StatusInternalServerError)
+		return
+	}
+	client, clientBuf, err := hj.Hijack()
+	if err != nil {
+		backend.Close()
+		http.Error(w, "hijack failed", http.StatusInternalServerError)
+		return
+	}
+	defer client.Close()
+	defer backend.Close()
+
+	if err := resp.Write(client); err != nil {
+		return
+	}
+
+	clientToBackend := io.MultiReader(clientBuf, client)
+	backendToClient := io.MultiReader(br, backend)
+
+	errc := make(chan error, 2)
+	go func() {
+		_, err := io.Copy(backend, clientToBackend)
+		errc <- err
+	}()
+	go func() {
+		_, err := io.Copy(client, backendToClient)
+		errc <- err
+	}()
+	<-errc
 }
