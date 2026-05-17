@@ -10,6 +10,7 @@ import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil-base";
 import { fireAndForget, sleep } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
+import { configureRemotePasswordInjection, setRemotePassword } from "./remoteauth";
 import {
     getActivityState,
     getAndClearTermCommandsDurable,
@@ -33,6 +34,7 @@ import {
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
+    getRemoteState,
     getWaveConfigDir,
     getWaveDataDir,
     isDev,
@@ -398,13 +400,20 @@ async function appMain() {
     const ready = await getWaveSrvReady();
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
-    configureAuthKeyRequestInjection(electron.session.defaultSession);
+    const remote = getRemoteState();
+    if (remote.isRemote) {
+        setRemotePassword(remote.password!);
+        configureRemotePasswordInjection(electron.session.defaultSession);
+    } else {
+        configureAuthKeyRequestInjection(electron.session.defaultSession);
+    }
     initIpcHandlers();
 
     await sleep(10); // wait a bit for wavesrv to be ready
     try {
         initElectronWshClient();
-        initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
+        const wshOpts = remote.isRemote ? { remotePassword: remote.password! } : { authKey: AuthKey };
+        initElectronWshrpc(ElectronWshClient, wshOpts);
         initMenuEventSubscriptions();
     } catch (e) {
         console.log("error initializing wshrpc", e);
@@ -420,8 +429,10 @@ async function appMain() {
     setTimeout(sendDisplaysTDataEvent, 5000);
 
     makeAndSetAppMenu();
-    makeDockTaskbar();
-    await configureAutoUpdater();
+    if (!remote.isRemote) {
+        makeDockTaskbar();
+        await configureAutoUpdater();
+    }
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
@@ -453,11 +464,13 @@ async function appMain() {
             }
         });
     });
-    const rawGlobalHotKey = launchSettings?.["app:globalhotkey"];
-    if (rawGlobalHotKey) {
-        registerGlobalHotkey(rawGlobalHotKey);
+    if (!remote.isRemote) {
+        const rawGlobalHotKey = launchSettings?.["app:globalhotkey"];
+        if (rawGlobalHotKey) {
+            registerGlobalHotkey(rawGlobalHotKey);
+        }
+        initGlobalHotkeyEventSubscription();
     }
-    initGlobalHotkeyEventSubscription();
 }
 
 appMain().catch((e) => {

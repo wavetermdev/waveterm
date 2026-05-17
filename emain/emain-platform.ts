@@ -231,10 +231,10 @@ ipcMain.on("get-webview-preload", (event) => {
     event.returnValue = path.join(getElectronAppBasePath(), "preload", "preload-webview.cjs");
 });
 ipcMain.on("get-data-dir", (event) => {
-    event.returnValue = getWaveDataDir();
+    event.returnValue = remoteState.isRemote ? null : getWaveDataDir();
 });
 ipcMain.on("get-config-dir", (event) => {
-    event.returnValue = getWaveConfigDir();
+    event.returnValue = remoteState.isRemote ? null : getWaveConfigDir();
 });
 ipcMain.on("get-home-dir", (event) => {
     event.returnValue = app.getPath("home");

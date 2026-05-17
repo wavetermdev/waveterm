@@ -9,7 +9,8 @@ import { createNewWaveWindow, getWaveWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
-import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
+import { getElectronAppBasePath, getRemoteState, isDevVite, unamePlatform } from "./emain-platform";
+import { configureRemotePasswordInjection } from "./remoteauth";
 import {
     decreaseZoomLevel,
     handleCtrlShiftFocus,
@@ -353,7 +354,12 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     tabView.webContents.on("blur", () => {
         handleCtrlShiftFocus(tabView.webContents, false);
     });
-    configureAuthKeyRequestInjection(tabView.webContents.session);
+    const remote = getRemoteState();
+    if (remote.isRemote) {
+        configureRemotePasswordInjection(tabView.webContents.session);
+    } else {
+        configureAuthKeyRequestInjection(tabView.webContents.session);
+    }
     return [tabView, false];
 }
 
