@@ -306,7 +306,6 @@ export {
     getElectronAppBasePath,
     getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,
-    getRemoteState,
     getWaveConfigDir,
     getWaveDataDir,
     getWaveSrvCwd,
