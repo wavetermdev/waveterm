@@ -33,7 +33,6 @@ type VTabBarPreviewInnerProps = {
 function VTabBarPreviewInner({ platform, setPlatform }: VTabBarPreviewInnerProps) {
     const env = useWaveEnv<VTabBarEnv>();
     const loadBadgesEnv = useWaveEnv<LoadBadgesEnv>();
-    const [hideAiButton, setHideAiButton] = useState(false);
     const [isFullScreen, setIsFullScreen] = useAtom(env.atoms.isFullScreen);
     const [fullConfig, setFullConfig] = useAtom(env.atoms.fullConfigAtom);
     const [updaterStatus, setUpdaterStatus] = useAtom(env.atoms.updaterStatusAtom);
@@ -49,10 +48,9 @@ function VTabBarPreviewInner({ platform, setPlatform }: VTabBarPreviewInnerProps
             ...(prev ?? ({} as FullConfigType)),
             settings: {
                 ...(prev?.settings ?? {}),
-                "app:hideaibutton": hideAiButton,
             },
         }));
-    }, [hideAiButton, setFullConfig]);
+    }, [setFullConfig]);
 
     return (
         <div className="flex w-full flex-col gap-6">
@@ -93,15 +91,6 @@ function VTabBarPreviewInner({ platform, setPlatform }: VTabBarPreviewInnerProps
                         onChange={(event) => setWidth(Math.max(100, Math.min(400, Number(event.target.value))))}
                         className="cursor-pointer"
                     />
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted">
-                    <input
-                        type="checkbox"
-                        checked={hideAiButton}
-                        onChange={(event) => setHideAiButton(event.target.checked)}
-                        className="cursor-pointer"
-                    />
-                    Hide Wave AI button
                 </label>
                 <label className="flex items-center gap-2 text-xs text-muted">
                     <input

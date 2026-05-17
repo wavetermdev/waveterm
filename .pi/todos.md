@@ -47,13 +47,16 @@
     - [x] Minor: update misleading AI text in `builder-previewtab.tsx` EmptyStateView — fixed 2026-05-16
   - [x] Phase B: Remove backend wiring (Go) — 2026-05-15
   - [x] Phase C: Clean up docs & schemas — 2026-05-16
-  - [ ] **ACTIVE:** Phase D: Delete unused code
-    - [ ] Remove builder AI dependencies (A.15: `AIPanel`, `WaveAIModel`, `formatFileSize`, `builder-focusmanager.ts`)
-    - [ ] Move `formatFileSize` to shared utility (currently trapped in `aipanel/ai-utils`)
-    - [ ] Delete `pkg/aiusechat/` (entire directory, ~12K lines, dead package)
-    - [ ] Delete `frontend/app/aipanel/` (17 files, orphaned after builder deps removed)
-    - [ ] Delete `frontend/app/view/waveai/`, `frontend/app/view/aifilediff/`, `frontend/app/view/waveconfig/waveaivisual.tsx`
-    - [ ] Regenerate auto-generated TS types (`gotypes.d.ts`, `waveevent.d.ts`, `wshclientapi.ts`) to remove stale AI definitions
+  - [x] Phase D: Delete unused code — completed 2026-05-16
+    - [x] Remove builder AI dependencies (A.15: `AIPanel`, `WaveAIModel`, `formatFileSize`, `builder-focusmanager.ts`)
+    - [x] Move `formatFileSize` to shared utility (`@/util/util`) — completed in commit bd355fad
+    - [x] Delete `pkg/aiusechat/` (entire directory, ~12K lines, dead package)
+    - [x] Delete `frontend/app/aipanel/` (17 files, orphaned after builder deps removed)
+    - [x] Delete `frontend/app/view/waveai/`, `frontend/app/view/aifilediff/`, `frontend/app/view/waveconfig/waveaivisual.tsx`
+    - [x] Delete `frontend/app/onboarding/fakechat.tsx`, preview files
+    - [x] Clean Go structs: `SettingsType`, `MetaTSType`, `ObjRTInfo`, `FullConfigType`, `AIModeConfigType`, etc.
+    - [x] Delete default configs: `waveai.json`, `presets/ai.json`, clean `settings.json`
+    - [x] Regenerate auto-generated TS types (`gotypes.d.ts`, `waveevent.d.ts`, `wshclientapi.ts`) and Go metaconsts
   - [x] Document Claude Code shell integration analysis for future pi agent reuse (`.pi/decisions.md`)
 - [ ] MOSH (Mobile Shell) support
   - [ ] Research mosh client/server architecture and integration points

@@ -92,7 +92,6 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const rightContainerRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
-    const waveAIButtonRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
@@ -102,7 +101,6 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     const zoomFactor = useAtomValue(env.atoms.zoomFactorAtom);
     const showMenuBar = useAtomValue(env.getSettingsKeyAtom("window:showmenubar"));
     const confirmClose = useAtomValue(env.getSettingsKeyAtom("tab:confirmclose")) ?? false;
-    const hideAiButton = useAtomValue(env.getSettingsKeyAtom("app:hideaibutton"));
     const appUpdateStatus = useAtomValue(env.atoms.updaterStatusAtom);
 
     let prevDelta: number;
@@ -159,16 +157,12 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         const addBtnWidth = getOuterWidth(addBtnRef.current);
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
-        const waveAIButtonWidth =
-            !hideAiButton && waveAIButtonRef.current != null ? getOuterWidth(waveAIButtonRef.current) : 0;
-
         const nonTabElementsWidth =
             windowDragLeftWidth +
             rightContainerWidth +
             addBtnWidth +
             appMenuButtonWidth +
-            workspaceSwitcherWidth +
-            waveAIButtonWidth;
+            workspaceSwitcherWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -242,7 +236,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         };
     }, [handleResizeTabs]);
 
-    // update layout on changed tabIds, tabsLoaded, newTabId, hideAiButton, appUpdateStatus, or zoomFactor
+    // update layout on changed tabIds, tabsLoaded, newTabId, appUpdateStatus, or zoomFactor
     useEffect(() => {
         // Check if all tabs are loaded
         const allLoaded = tabIds.length > 0 && tabIds.every((id) => tabsLoaded[id]);
@@ -258,7 +252,6 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         tabsLoaded,
         newTabId,
         saveTabsPosition,
-        hideAiButton,
         appUpdateStatus,
         zoomFactor,
         showMenuBar,
