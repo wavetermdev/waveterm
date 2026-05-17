@@ -131,5 +131,9 @@ const (
 	ConfigKey_TsunamiSdkReplacePath          = "tsunami:sdkreplacepath"
 	ConfigKey_TsunamiSdkVersion              = "tsunami:sdkversion"
 	ConfigKey_TsunamiGoPath                  = "tsunami:gopath"
+
+	ConfigKey_RemotePassword                 = "remote:password"
+	ConfigKey_RemoteListenPort               = "remote:listenport"
+	ConfigKey_RemoteBindAddr                 = "remote:bindaddr"
 )
 

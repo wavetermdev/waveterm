@@ -116,7 +116,7 @@ function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideO
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    initGlobalWS(getWSServerEndpoint(), "electron", handleFn, eoOpts);
+    initGlobalWS(getWSServerEndpoint(), electronClient.routeId, handleFn, eoOpts);
     globalWS.connectNow("connectWshrpc");
     setWpsRpcClient(electronClient);
     DefaultRouter.registerRoute(electronClient.routeId, electronClient);

@@ -10,9 +10,15 @@ import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
 
+// unique per-process route so multiple Electron clients (native + remote)
+// can coexist on the same wavesrv without clobbering each other in the
+// wshrouter's routeMap. wavesrv aliases the legacy "electron" route to the
+// most recently registered one.
+export const ElectronRouteId = "electron:" + crypto.randomUUID();
+
 export class ElectronWshClientType extends WshClient {
     constructor() {
-        super("electron");
+        super(ElectronRouteId);
     }
 
     async handle_webselector(rh: RpcResponseHelper, data: CommandWebSelectorData): Promise<string[]> {

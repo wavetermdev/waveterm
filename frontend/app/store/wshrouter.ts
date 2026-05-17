@@ -16,12 +16,19 @@ type RouteInfo = {
     destRouteId: string;
 };
 
+// Unique per-renderer suffix. Two Electron processes (e.g. local + remote)
+// can simultaneously open the same tab; without a unique suffix they would
+// fight over the same `tab:<tabId>` / `feblock:<blockId>` route in the
+// backend wshrouter, and one client's RPC stream silently hangs because
+// the wavesrv RouteToConnMap displaces the earlier websocket connection.
+const RendererRouteSuffix: string = crypto.randomUUID();
+
 function makeFeBlockRouteId(feBlockId: string): string {
-    return `feblock:${feBlockId}`;
+    return `feblock:${feBlockId}:${RendererRouteSuffix}`;
 }
 
 function makeTabRouteId(tabId: string): string {
-    return `tab:${tabId}`;
+    return `tab:${tabId}:${RendererRouteSuffix}`;
 }
 
 function makeBuilderRouteId(builderId: string): string {

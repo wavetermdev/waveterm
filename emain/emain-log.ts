@@ -5,9 +5,19 @@ import fs from "fs";
 import path from "path";
 import { format } from "util";
 import winston from "winston";
-import { getWaveDataDir, isDev } from "./emain-platform";
+import { getRemoteState, getWaveDataDir, isDev } from "./emain-platform";
 
 const oldConsoleLog = console.log;
+
+function getLogBaseName(): string {
+    const remote = getRemoteState();
+    if (remote.isRemote && remote.safeSuffix) {
+        return `waveapp-remote-${remote.safeSuffix}`;
+    }
+    return "waveapp";
+}
+
+const LogBaseName = getLogBaseName();
 
 function findHighestLogNumber(logsDir: string): number {
     if (!fs.existsSync(logsDir)) {
@@ -15,8 +25,9 @@ function findHighestLogNumber(logsDir: string): number {
     }
     const files = fs.readdirSync(logsDir);
     let maxNum = 0;
+    const pattern = new RegExp(`^${LogBaseName}\\.(\\d+)\\.log$`);
     for (const file of files) {
-        const match = file.match(/^waveapp\.(\d+)\.log$/);
+        const match = file.match(pattern);
         if (match) {
             const num = parseInt(match[1], 10);
             if (num > maxNum) {
@@ -67,7 +78,7 @@ function pruneOldLogs(logsDir: string): { pruned: string[]; error: any } {
 
 function rotateLogIfNeeded(): string | null {
     const waveDataDir = getWaveDataDir();
-    const logFile = path.join(waveDataDir, "waveapp.log");
+    const logFile = path.join(waveDataDir, `${LogBaseName}.log`);
     const logsDir = path.join(waveDataDir, "logs");
 
     if (!fs.existsSync(logsDir)) {
@@ -81,7 +92,7 @@ function rotateLogIfNeeded(): string | null {
     const stats = fs.statSync(logFile);
     if (stats.size > 10 * 1024 * 1024) {
         const nextNum = findHighestLogNumber(logsDir) + 1;
-        const rotatedPath = path.join(logsDir, `waveapp.${nextNum}.log`);
+        const rotatedPath = path.join(logsDir, `${LogBaseName}.${nextNum}.log`);
         fs.renameSync(logFile, rotatedPath);
         return rotatedPath;
     }
@@ -103,7 +114,7 @@ try {
 }
 
 const loggerTransports: winston.transport[] = [
-    new winston.transports.File({ filename: path.join(getWaveDataDir(), "waveapp.log"), level: "info" }),
+    new winston.transports.File({ filename: path.join(getWaveDataDir(), `${LogBaseName}.log`), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());

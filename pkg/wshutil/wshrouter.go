@@ -38,6 +38,7 @@ const (
 	RoutePrefix_Link       = "link:"
 	RoutePrefix_Job        = "job:"
 	RoutePrefix_Bare       = "bare:"
+	RoutePrefix_Electron   = "electron:"
 )
 
 const RouterInputChQueueSize = 100
@@ -105,6 +106,10 @@ type WshRouter struct {
 	linkMsgBacklog       map[baseds.LinkId][]backlogMessageWrap
 	backlogHighWaterMark map[baseds.LinkId]int
 
+	// most recently bound electron:<uuid> route — used as the alias target
+	// when callers address the legacy "electron" route. updated on bind/unbind.
+	primaryElectronRoute string
+
 	controlRpc *WshRpc
 }
 
@@ -142,6 +147,26 @@ func MakeJobRouteId(jobId string) string {
 
 func MakeLinkRouteId(linkId baseds.LinkId) string {
 	return fmt.Sprintf("%s%d", RoutePrefix_Link, linkId)
+}
+
+func MakeElectronRouteId(electronId string) string {
+	return RoutePrefix_Electron + electronId
+}
+
+func isElectronRouteId(routeId string) bool {
+	return strings.HasPrefix(routeId, RoutePrefix_Electron)
+}
+
+// must hold router.lock — picks any currently-bound electron:* route as the new
+// primary, or "" if none remain.
+func (router *WshRouter) recomputePrimaryElectron_nolock() {
+	for routeId := range router.routeMap {
+		if isElectronRouteId(routeId) {
+			router.primaryElectronRoute = routeId
+			return
+		}
+	}
+	router.primaryElectronRoute = ""
 }
 
 var DefaultRouter *WshRouter
@@ -612,9 +637,28 @@ func (router *WshRouter) getLinkForRoute(routeId string) *linkMeta {
 	}
 	router.lock.Lock()
 	defer router.lock.Unlock()
+	if routeId == ElectronRoute && router.primaryElectronRoute != "" {
+		routeId = router.primaryElectronRoute
+	}
 	linkId := router.routeMap[routeId]
 	if linkId == baseds.NoLinkId {
-		return nil
+		// Multi-client fallback: renderers append a per-process uuid to
+		// tab:<tabId> / feblock:<blockId> routes so two Electron clients
+		// viewing the same tab don't collide. Legacy callers that still
+		// address the bare tab:<tabId> / feblock:<blockId> route find any
+		// matching unique route here.
+		if strings.HasPrefix(routeId, RoutePrefix_Tab) || strings.HasPrefix(routeId, RoutePrefix_FeBlock) {
+			prefix := routeId + ":"
+			for boundRoute, boundLinkId := range router.routeMap {
+				if strings.HasPrefix(boundRoute, prefix) {
+					linkId = boundLinkId
+					break
+				}
+			}
+		}
+		if linkId == baseds.NoLinkId {
+			return nil
+		}
 	}
 	lm := router.linkMap[linkId]
 	if lm == nil {
@@ -744,6 +788,9 @@ func (router *WshRouter) unbindRouteLocally(linkId baseds.LinkId, routeId string
 	defer router.lock.Unlock()
 	if router.routeMap[routeId] == linkId {
 		delete(router.routeMap, routeId)
+		if router.primaryElectronRoute == routeId {
+			router.recomputePrimaryElectron_nolock()
+		}
 	}
 	return nil
 }
@@ -794,6 +841,9 @@ func (router *WshRouter) bindRouteLocally(linkId baseds.LinkId, routeId string, 
 		}
 	}
 	router.routeMap[routeId] = linkId
+	if isElectronRouteId(routeId) {
+		router.primaryElectronRoute = routeId
+	}
 	return nil
 }
 

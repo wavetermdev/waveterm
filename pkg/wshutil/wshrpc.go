@@ -429,6 +429,13 @@ outer:
 				w.handleStreamAck(&msg)
 				continue
 			}
+			// EventRecv is handled synchronously to preserve arrival order. Goroutine
+			// dispatch causes non-deterministic ordering when back-to-back events race
+			// to acquire the handler mutex, corrupting ordered byte streams (e.g. PTY output).
+			if msg.Command == wshrpc.Command_EventRecv {
+				w.handleEventRecv(&msg)
+				continue
+			}
 
 			ingressLinkId := inputVal.IngressLinkId
 			go func() {

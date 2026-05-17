@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -160,9 +161,14 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 	}
 	log.Printf("updated client\n")
 	if !fromElectron {
-		eventbus.SendEventToElectron(eventbus.WSEventType{
+		evt := eventbus.WSEventType{
 			EventType: eventbus.WSEvent_ElectronCloseWindow,
 			Data:      windowId,
+		}
+		eventbus.SendEventToElectron(evt)
+		wps.Broker.Publish(wps.WaveEvent{
+			Event: wps.Event_ElectronControl,
+			Data:  evt,
 		})
 	}
 	return nil

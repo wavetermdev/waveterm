@@ -224,7 +224,6 @@ func (b *BrokerType) persistEvent(event WaveEvent) {
 }
 
 func (b *BrokerType) Publish(event WaveEvent) {
-	// log.Printf("BrokerType.Publish: %v\n", event)
 	if event.Persist > 0 {
 		b.persistEvent(event)
 	}
