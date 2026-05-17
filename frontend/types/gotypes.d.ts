@@ -1484,6 +1484,9 @@ declare global {
         "tsunami:sdkreplacepath"?: string;
         "tsunami:sdkversion"?: string;
         "tsunami:gopath"?: string;
+        "remote:password"?: string;
+        "remote:listenport"?: number;
+        "remote:bindaddr"?: string;
     };
 
     // waveobj.StickerClickOptsType
@@ -1589,6 +1592,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

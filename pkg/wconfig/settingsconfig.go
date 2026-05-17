@@ -182,6 +182,10 @@ type SettingsType struct {
 	TsunamiSdkReplacePath string `json:"tsunami:sdkreplacepath,omitempty"`
 	TsunamiSdkVersion     string `json:"tsunami:sdkversion,omitempty"`
 	TsunamiGoPath         string `json:"tsunami:gopath,omitempty"`
+
+	RemotePassword   string `json:"remote:password,omitempty"`
+	RemoteListenPort int    `json:"remote:listenport,omitempty"`
+	RemoteBindAddr   string `json:"remote:bindaddr,omitempty"`
 }
 
 func (s *SettingsType) GetAiSettings() *AiSettingsType {
