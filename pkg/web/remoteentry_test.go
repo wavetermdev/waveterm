@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -118,5 +120,80 @@ func TestRemoteEntryHTTP_ConstantTimeCompareDifferentLengths(t *testing.T) {
 	}
 }
 
-// time.Now / time.Second imports used by later WS tests
-var _ = time.Now
+// startWSBackend starts a gorilla/websocket echo backend. Returns host:port.
+func startWSBackend(t *testing.T) string {
+	t.Helper()
+	up := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Authkey") != testAuthKey {
+			http.Error(w, "missing authkey", http.StatusBadRequest)
+			return
+		}
+		if r.Header.Get(RemotePasswordHeader) != "" {
+			http.Error(w, "remote password leaked", http.StatusBadRequest)
+			return
+		}
+		c, err := up.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		for {
+			mt, msg, err := c.ReadMessage()
+			if err != nil {
+				return
+			}
+			if err := c.WriteMessage(mt, msg); err != nil {
+				return
+			}
+		}
+	})}
+	go srv.Serve(ln)
+	t.Cleanup(func() { srv.Close() })
+	return ln.Addr().String()
+}
+
+func TestRemoteEntryWS_Echo(t *testing.T) {
+	wsBackend := startWSBackend(t)
+	entryAddr := startEntry(t, "127.0.0.1:0", wsBackend)
+
+	hdr := http.Header{}
+	hdr.Set(RemotePasswordHeader, testPassword)
+	c, _, err := websocket.DefaultDialer.Dial("ws://"+entryAddr+"/ws", hdr)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer c.Close()
+
+	want := []byte("hello-remote")
+	if err := c.WriteMessage(websocket.BinaryMessage, want); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	c.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, got, err := c.ReadMessage()
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("echo mismatch: got %q want %q", got, want)
+	}
+}
+
+func TestRemoteEntryWS_AuthRequired(t *testing.T) {
+	wsBackend := startWSBackend(t)
+	entryAddr := startEntry(t, "127.0.0.1:0", wsBackend)
+
+	_, resp, err := websocket.DefaultDialer.Dial("ws://"+entryAddr+"/ws", nil)
+	if err == nil {
+		t.Fatalf("expected error without password")
+	}
+	if resp == nil || resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %+v", resp)
+	}
+}
