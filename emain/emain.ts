@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import * as electron from "electron";
 import { focusedBuilderWindow, getAllBuilderWindows } from "emain/emain-builder";
 import { globalEvents } from "emain/emain-events";
@@ -121,6 +122,55 @@ function handleWSEvent(evtMsg: WSEventType) {
             console.log("unhandled electron ws eventtype", evtMsg.eventtype);
         }
     });
+}
+
+// Subscribe to electron:control wps events so that remote-mode Electron clients
+// (which do not own the wavesrv child process and therefore cannot read its
+// stderr WAVESRV-EVENT lines) still receive tab-switch and close-window control
+// signals. Local Electron also gets the wps copy in addition to the stderr
+// copy; handleWSEvent is idempotent for these events.
+//
+// Returns a promise that resolves once wavesrv has acknowledged the
+// subscription, so callers can ensure events fired afterward are delivered.
+async function initElectronControlEventSubscription(): Promise<void> {
+    waveEventSubscribeSingle({
+        eventType: "electron:control",
+        handler: (event) => {
+            const evtMsg = event?.data as WSEventType;
+            if (evtMsg == null) return;
+            handleWSEvent(evtMsg);
+        },
+    });
+    // waveEventSubscribeSingle uses noresponse:true; re-send the same
+    // subscription synchronously so we know wavesrv has registered our route
+    // before we move on. Without this, events published during startup can be
+    // lost between the original sub call and its acknowledgement.
+    try {
+        await RpcApi.EventSubCommand(ElectronWshClient, {
+            event: "electron:control",
+            scopes: [],
+            allscopes: true,
+        });
+    } catch (e) {
+        console.log("error acknowledging electron:control subscription", e);
+    }
+}
+
+// Re-fetch each open window's workspace.activetabid from the backend and align
+// the local UI. This self-heals any electron:control events that were
+// published before our wps subscription was acknowledged (a race that happens
+// at startup, when the peer client may switch tabs before we register).
+async function alignAllWindowsActiveTab() {
+    for (const ww of getAllWaveWindows()) {
+        try {
+            const workspace = await services.WorkspaceService.GetWorkspace(ww.workspaceId);
+            if (workspace?.activetabid == null) continue;
+            if (ww.activeTabView?.waveTabId == workspace.activetabid) continue;
+            await ww.setActiveTab(workspace.activetabid, false);
+        } catch (e) {
+            console.log("error aligning window", ww.waveWindowId, e);
+        }
+    }
 }
 
 // we try to set the primary display as index [0]
@@ -415,6 +465,7 @@ async function appMain() {
         const wshOpts = remote.isRemote ? { remotePassword: remote.password! } : { authKey: AuthKey };
         initElectronWshrpc(ElectronWshClient, wshOpts);
         initMenuEventSubscriptions();
+        await initElectronControlEventSubscription();
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }
@@ -425,6 +476,7 @@ async function appMain() {
     }
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
+    await alignAllWindowsActiveTab();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     setTimeout(sendDisplaysTDataEvent, 5000);
 

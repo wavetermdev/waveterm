@@ -351,6 +351,15 @@
         },
         "tsunami:gopath": {
           "type": "string"
+        },
+        "remote:password": {
+          "type": "string"
+        },
+        "remote:listenport": {
+          "type": "integer"
+        },
+        "remote:bindaddr": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

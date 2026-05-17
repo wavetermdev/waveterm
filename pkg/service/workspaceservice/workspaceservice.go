@@ -195,6 +195,7 @@ func (svc *WorkspaceService) SetActiveTab(workspaceId string, tabId string) (wav
 		}()
 		wps.Broker.SendUpdateEvents(updates)
 	}()
+	wcore.SendActiveTabUpdate(ctx, workspaceId, tabId)
 	var extraUpdates waveobj.UpdatesRtnType
 	extraUpdates = append(extraUpdates, updates...)
 	extraUpdates = append(extraUpdates, waveobj.MakeUpdate(tab))

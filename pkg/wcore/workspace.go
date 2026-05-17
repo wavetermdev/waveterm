@@ -367,9 +367,14 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 }
 
 func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId string) {
-	eventbus.SendEventToElectron(eventbus.WSEventType{
+	evt := eventbus.WSEventType{
 		EventType: eventbus.WSEvent_ElectronUpdateActiveTab,
 		Data:      &waveobj.ActiveTabUpdate{WorkspaceId: workspaceId, NewActiveTabId: newActiveTabId},
+	}
+	eventbus.SendEventToElectron(evt)
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_ElectronControl,
+		Data:  evt,
 	})
 }
 

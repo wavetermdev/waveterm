@@ -26,6 +26,7 @@ declare global {
         | "waveai:modeconfig"
         | "block:jobstatus"
         | "badge"
+        | "electron:control"
     ;
 
     type WaveEvent = {
@@ -53,7 +54,8 @@ declare global {
         { event: "tsunami:updatemeta"; data?: AppMeta; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
-        { event: "badge"; data?: BadgeEvent; }
+        { event: "badge"; data?: BadgeEvent; } | 
+        { event: "electron:control"; data?: WSEventType; }
     );
 
 }
