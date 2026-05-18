@@ -506,6 +506,14 @@ function sortByDisplayOrder<T extends { "display:order"?: number; "display:name"
     return (a["display:name"] || "").localeCompare(b["display:name"] || "");
 }
 
+function formatFileSize(bytes: number): string {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
 export {
     arrayToBase64,
     atomWithDebounce,
@@ -519,6 +527,7 @@ export {
     deepCompareReturnPrev,
     escapeBytes,
     fireAndForget,
+    formatFileSize,
     formatRelativeTime,
     getPrefixedSettings,
     getPromiseState,

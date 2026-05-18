@@ -32,7 +32,6 @@ export type WidgetsEnv = WaveEnvSubset<{
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
         hasConfigErrors: WaveEnv["atoms"]["hasConfigErrors"];
         workspaceId: WaveEnv["atoms"]["workspaceId"];
-        hasCustomAIPresetsAtom: WaveEnv["atoms"]["hasCustomAIPresetsAtom"];
     };
     createBlock: WaveEnv["createBlock"];
     showContextMenu: WaveEnv["showContextMenu"];

@@ -1,12 +1,7 @@
 {
-    "ai:preset": "ai@global",
-    "ai:model": "gpt-5-mini",
-    "ai:maxtokens": 4000,
-    "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
     "app:tabbar": "top",
     "app:confirmquit": true,
-    "app:hideaibutton": false,
     "term:showsplitbuttons": false,
     "app:disablectrlshiftarrows": false,
     "app:disablectrlshiftdisplay": false,
@@ -38,7 +33,5 @@
     "term:copyonselect": true,
     "term:trimtrailingwhitespace": true,
     "term:durable": false,
-    "waveai:showcloudmodes": true,
-    "waveai:defaultmode": "waveai@balanced",
     "preview:defaultsort": "name"
 }

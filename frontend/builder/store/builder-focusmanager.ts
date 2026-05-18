@@ -4,7 +4,7 @@
 import { globalStore } from "@/app/store/jotaiStore";
 import { atom, type PrimitiveAtom } from "jotai";
 
-export type BuilderFocusType = "waveai" | "app";
+export type BuilderFocusType = "app";
 
 export class BuilderFocusManager {
     private static instance: BuilderFocusManager | null = null;
@@ -18,10 +18,6 @@ export class BuilderFocusManager {
             BuilderFocusManager.instance = new BuilderFocusManager();
         }
         return BuilderFocusManager.instance;
-    }
-
-    setWaveAIFocused() {
-        globalStore.set(this.focusType, "waveai");
     }
 
     setAppFocused() {

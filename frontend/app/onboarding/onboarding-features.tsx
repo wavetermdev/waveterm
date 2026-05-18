@@ -10,94 +10,13 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isMacOS } from "@/util/platformutil";
 import { useEffect, useState } from "react";
-import { FakeChat } from "./fakechat";
 import { EditBashrcCommand, ViewLogoCommand, ViewShortcutsCommand } from "./onboarding-command";
 import { CurrentOnboardingVersion } from "./onboarding-common";
 import { DurableSessionPage } from "./onboarding-durable";
 import { OnboardingFooter } from "./onboarding-features-footer";
 import { FakeLayout } from "./onboarding-layout";
 
-type FeaturePageName = "waveai" | "durable" | "magnify" | "files";
-
-export const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
-    const isMac = isMacOS();
-    const shortcutKey = isMac ? "⌘-Shift-A" : "Alt-Shift-A";
-    const [fireClicked, setFireClicked] = useState(false);
-
-    const handleFireClick = () => {
-        setFireClicked(!fireClicked);
-        if (!fireClicked) {
-        }
-    };
-
-    return (
-        <div className="flex flex-col h-full">
-            <header className="flex items-center gap-4 mb-6 w-full unselectable flex-shrink-0">
-                <div>
-                    <Logo />
-                </div>
-                <div className="text-[25px] font-normal text-foreground">Wave AI</div>
-            </header>
-            <div className="flex-1 flex flex-row gap-0 min-h-0">
-                <div className="flex-1 flex flex-col items-center justify-center gap-8 pr-6 unselectable">
-                    <div className="flex flex-col items-start gap-6 max-w-md">
-                        <div className="flex h-[52px] px-3 items-center rounded-lg bg-hover text-accent text-[24px]">
-                            <i className="fa fa-sparkles" />
-                            <span className="font-bold ml-2 font-mono">AI</span>
-                        </div>
-
-                        <div className="flex flex-col items-start gap-4 text-secondary">
-                            <p>
-                                Wave AI is your terminal assistant with context. I can read your terminal output,
-                                analyze widgets, read/write files, and help you solve problems faster.
-                            </p>
-
-                            <div className="flex items-start gap-3 w-full">
-                                <i className="fa fa-sparkles text-accent text-lg mt-1 flex-shrink-0" />
-                                <p>
-                                    Toggle the Wave AI panel with the{" "}
-                                    <span className="inline-flex h-[26px] px-1.5 items-center rounded-md box-border bg-hover text-accent text-[12px] align-middle">
-                                        <i className="fa fa-sparkles" />
-                                        <span className="font-bold ml-1 font-mono">AI</span>
-                                    </span>{" "}
-                                    button in the header (top left)
-                                </p>
-                            </div>
-
-                            <div className="flex items-start gap-3 w-full">
-                                <i className="fa fa-keyboard text-accent text-lg mt-1 flex-shrink-0" />
-                                <p>
-                                    Or use the keyboard shortcut{" "}
-                                    <span className="font-mono font-semibold text-foreground whitespace-nowrap">
-                                        {shortcutKey}
-                                    </span>{" "}
-                                    to quickly toggle
-                                </p>
-                            </div>
-
-                            <div className="flex items-start gap-3 w-full">
-                                <i className="fa fa-key text-accent text-lg mt-1 flex-shrink-0" />
-                                <p>
-                                    Bring your own API keys or run local models with Ollama, LM Studio, and other
-                                    OpenAI-compatible providers
-                                </p>
-                            </div>
-
-                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
-                        </div>
-                    </div>
-                </div>
-                <div className="w-[2px] bg-border flex-shrink-0"></div>
-                <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    <div className="w-full h-[400px] bg-background rounded border border-border/50 overflow-hidden">
-                        <FakeChat />
-                    </div>
-                </div>
-            </div>
-            <OnboardingFooter currentStep={1} totalSteps={4} onNext={onNext} onSkip={onSkip} />
-        </div>
-    );
-};
+type FeaturePageName = "durable" | "magnify" | "files";
 
 export const MagnifyBlocksPage = ({
     onNext,
@@ -153,7 +72,7 @@ export const MagnifyBlocksPage = ({
                     <FakeLayout />
                 </div>
             </div>
-            <OnboardingFooter currentStep={3} totalSteps={4} onNext={onNext} onPrev={onPrev} onSkip={onSkip} />
+            <OnboardingFooter currentStep={2} totalSteps={3} onNext={onNext} onPrev={onPrev} onSkip={onSkip} />
         </div>
     );
 };
@@ -238,13 +157,13 @@ export const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?:
                     {commands[commandIndex](handleCommandComplete)}
                 </div>
             </div>
-            <OnboardingFooter currentStep={4} totalSteps={4} onNext={onFinish} onPrev={onPrev} />
+            <OnboardingFooter currentStep={3} totalSteps={3} onNext={onFinish} onPrev={onPrev} />
         </div>
     );
 };
 
 export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) => {
-    const [currentPage, setCurrentPage] = useState<FeaturePageName>("waveai");
+    const [currentPage, setCurrentPage] = useState<FeaturePageName>("durable");
 
     useEffect(() => {
         const clientId = ClientModel.getInstance().clientId;
@@ -255,9 +174,7 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     }, []);
 
     const handleNext = () => {
-        if (currentPage === "waveai") {
-            setCurrentPage("durable");
-        } else if (currentPage === "durable") {
+        if (currentPage === "durable") {
             setCurrentPage("magnify");
         } else if (currentPage === "magnify") {
             setCurrentPage("files");
@@ -265,9 +182,7 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     };
 
     const handlePrev = () => {
-        if (currentPage === "durable") {
-            setCurrentPage("waveai");
-        } else if (currentPage === "magnify") {
+        if (currentPage === "magnify") {
             setCurrentPage("durable");
         } else if (currentPage === "files") {
             setCurrentPage("magnify");
@@ -284,9 +199,6 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
 
     let pageComp: React.JSX.Element = null;
     switch (currentPage) {
-        case "waveai":
-            pageComp = <WaveAIPage onNext={handleNext} onSkip={handleSkip} />;
-            break;
         case "durable":
             pageComp = <DurableSessionPage onNext={handleNext} onSkip={handleSkip} onPrev={handlePrev} />;
             break;

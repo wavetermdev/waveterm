@@ -62,21 +62,6 @@ const (
 	MetaKey_CmdInitScriptPwsh                = "cmd:initscript.pwsh"
 	MetaKey_CmdInitScriptFish                = "cmd:initscript.fish"
 
-	MetaKey_AiClear                          = "ai:*"
-	MetaKey_AiPresetKey                      = "ai:preset"
-	MetaKey_AiApiType                        = "ai:apitype"
-	MetaKey_AiBaseURL                        = "ai:baseurl"
-	MetaKey_AiApiToken                       = "ai:apitoken"
-	MetaKey_AiName                           = "ai:name"
-	MetaKey_AiModel                          = "ai:model"
-	MetaKey_AiOrgID                          = "ai:orgid"
-	MetaKey_AIApiVersion                     = "ai:apiversion"
-	MetaKey_AiMaxTokens                      = "ai:maxtokens"
-	MetaKey_AiTimeoutMs                      = "ai:timeoutms"
-
-	MetaKey_AiFileDiffChatId                 = "aifilediff:chatid"
-	MetaKey_AiFileDiffToolCallId             = "aifilediff:toolcallid"
-
 	MetaKey_EditorClear                      = "editor:*"
 	MetaKey_EditorMinimapEnabled             = "editor:minimapenabled"
 	MetaKey_EditorStickyScrollEnabled        = "editor:stickyscrollenabled"
@@ -101,12 +86,6 @@ const (
 
 	MetaKey_LayoutVTabBarWidth               = "layout:vtabbarwidth"
 	MetaKey_LayoutWidgetsVisible             = "layout:widgetsvisible"
-
-	MetaKey_WaveAiPanelOpen                  = "waveai:panelopen"
-	MetaKey_WaveAiPanelWidth                 = "waveai:panelwidth"
-	MetaKey_WaveAiModel                      = "waveai:model"
-	MetaKey_WaveAiChatId                     = "waveai:chatid"
-	MetaKey_WaveAiWidgetContext              = "waveai:widgetcontext"
 
 	MetaKey_TermClear                        = "term:*"
 	MetaKey_TermFontSize                     = "term:fontsize"

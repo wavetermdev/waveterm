@@ -40,22 +40,10 @@ wsh editconfig
 | app:showoverlayblocknums             | bool     | Set to false to disable the Ctrl+Shift block number overlay that appears when holding Ctrl+Shift (defaults to true)                                                                                                                                           |
 | app:ctrlvpaste                       | bool     | On Windows/Linux, when null (default) uses Control+V on Windows only. Set to true to force Control+V on all non-macOS platforms, false to disable the accelerator. macOS always uses Command+V regardless of this setting                                     |
 | app:confirmquit <VersionBadge version="v0.14" />                     | bool     | Set to false to disable the quit confirmation dialog when closing Wave Terminal (defaults to true, requires app restart)                                                                                                                                      |
-| app:hideaibutton <VersionBadge version="v0.14" />                    | bool     | Set to true to hide the AI button in the tab bar (defaults to false)                                                                                                                                                                                          |
 | app:disablectrlshiftarrows <VersionBadge version="v0.14" />          | bool     | Set to true to disable Ctrl+Shift block-navigation keybindings (`Arrow` and `h/j/k/l`) (defaults to false)                                                                                                                                                    |
 | app:disablectrlshiftdisplay <VersionBadge version="v0.14" />         | bool     | Set to true to disable the Ctrl+Shift visual indicator display (defaults to false)                                                                                                                                                                            |
 | app:focusfollowscursor <VersionBadge version="v0.14" />              | string   | Controls whether block focus follows cursor movement: `"off"` (default), `"on"` (all blocks), or `"term"` (terminal blocks only)                                                                                                                             |
 | app:tabbar <VersionBadge version="v0.14.4" />                        | string   | Controls the position of the tab bar: `"top"` (default) for a horizontal tab bar at the top of the window, or `"left"` for a vertical tab bar on the left side of the window                                                                                |
-| ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
-| ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
-| ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
-| ai:apitype                           | string   | defaults to "open_ai", but can also set to "azure" (forspecial Azure AI handling), "anthropic", or "perplexity"                                                                                                                                               |
-| ai:name                              | string   | string to display in the Wave AI block header                                                                                                                                                                                                                 |
-| ai:model                             | string   | model name to pass to API                                                                                                                                                                                                                                     |
-| ai:apiversion                        | string   | for Azure AI only (when apitype is "azure", this will default to "2023-05-15")                                                                                                                                                                                |
-| ai:orgid                             | string   |                                                                                                                                                                                                                                                               |
-| ai:maxtokens                         | int      | max tokens to pass to API                                                                                                                                                     |
-| ai:timeoutms                         | int      | timeout (in milliseconds) for AI calls                                                                                                                                        |
-| ai:proxyurl                          | string   | HTTP proxy URL for AI API requests (does not apply to Wave Cloud AI)                                                                                                          |
 | conn:askbeforewshinstall             | bool     | set to false to disable popup asking if you want to install wsh extensions on new machines                                                                                                                                                                    |
 | conn:localhostdisplayname <VersionBadge version="v0.14" />           | string   | override the display name for localhost in the UI (e.g., set to "My Laptop" or "Local", or set to empty string to hide the name)                                                                                                                                                                       |
 | term:fontsize                        | float    | the fontsize for the terminal block                                                                                                                                                                                                                           |
@@ -120,13 +108,8 @@ For reference, this is the current default configuration (v0.14.0):
 
 ```json
 {
-    "ai:preset": "ai@global",
-    "ai:model": "gpt-5-mini",
-    "ai:maxtokens": 4000,
-    "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
     "app:confirmquit": true,
-    "app:hideaibutton": false,
     "app:disablectrlshiftarrows": false,
     "app:disablectrlshiftdisplay": false,
     "app:focusfollowscursor": "off",
@@ -154,8 +137,6 @@ For reference, this is the current default configuration (v0.14.0):
     "term:cursorblink": false,
     "term:copyonselect": true,
     "term:durable": false,
-    "waveai:showcloudmodes": true,
-    "waveai:defaultmode": "waveai@balanced",
     "preview:defaultsort": "name"
 }
 ```
@@ -170,12 +151,12 @@ files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
 
 ## Environment Variable Resolution
 
-To avoid putting secrets directly in config files, Wave supports environment variable resolution using `$ENV:VARIABLE_NAME` or `$ENV:VARIABLE_NAME:fallback` syntax.  This works for any string value in any config file (settings.json, presets.json, ai.json, etc.).
+To avoid putting secrets directly in config files, Wave supports environment variable resolution using `$ENV:VARIABLE_NAME` or `$ENV:VARIABLE_NAME:fallback` syntax.  This works for any string value in any config file (settings.json, presets.json, etc.).
 
 ```json
 {
-  "ai:apitoken": "$ENV:OPENAI_APIKEY",
-  "ai:baseurl": "$ENV:AI_BASEURL:https://api.openai.com/v1"
+  "conn:sshpassword": "$ENV:SSH_PASSWORD",
+  "web:defaulturl": "$ENV:HOME_PAGE:https://example.com"
 }
 ```
 

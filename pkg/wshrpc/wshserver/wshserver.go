@@ -20,9 +20,6 @@ import (
 	"time"
 
 	"github.com/skratchdot/open-golang/open"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -558,12 +555,6 @@ func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrp
 func (ws *WshServer) GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error) {
 	watcher := wconfig.GetWatcher()
 	return watcher.GetFullConfig(), nil
-}
-
-func (ws *WshServer) GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error) {
-	fullConfig := wconfig.GetWatcher().GetFullConfig()
-	resolvedConfigs := aiusechat.ComputeResolvedAIModeConfigs(fullConfig)
-	return wconfig.AIModeConfigUpdate{Configs: resolvedConfigs}, nil
 }
 
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
@@ -1234,38 +1225,6 @@ func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.
 	}
 	return &wshrpc.CommandMakeDraftFromLocalRtnData{
 		DraftAppId: draftAppId,
-	}, nil
-}
-
-func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
-	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
-	if aiChat == nil {
-		return nil, nil
-	}
-	uiChat, err := aiusechat.ConvertAIChatToUIChat(aiChat)
-	if err != nil {
-		return nil, fmt.Errorf("error converting AI chat to UI chat: %w", err)
-	}
-	return uiChat, nil
-}
-
-func (ws *WshServer) GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error) {
-	return aiusechat.GetGlobalRateLimit(), nil
-}
-
-func (ws *WshServer) WaveAIToolApproveCommand(ctx context.Context, data wshrpc.CommandWaveAIToolApproveData) error {
-	return aiusechat.UpdateToolApproval(data.ToolCallId, data.Approval)
-}
-
-func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.CommandWaveAIGetToolDiffData) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
-	originalContent, modifiedContent, err := aiusechat.CreateWriteTextFileDiff(ctx, data.ChatId, data.ToolCallId)
-	if err != nil {
-		return nil, err
-	}
-
-	return &wshrpc.CommandWaveAIGetToolDiffRtnData{
-		OriginalContents64: base64.StdEncoding.EncodeToString(originalContent),
-		ModifiedContents64: base64.StdEncoding.EncodeToString(modifiedContent),
 	}, nil
 }
 

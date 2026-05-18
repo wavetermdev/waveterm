@@ -3,7 +3,6 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
-import { AiFileDiffViewModel } from "@/app/view/aifilediff/aifilediff";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { ProcessViewerViewModel } from "@/app/view/processviewer/processviewer";
@@ -17,14 +16,12 @@ import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 import { HelpViewModel } from "@/view/helpview/helpview";
 import { TermViewModel } from "@/view/term/term-model";
-import { WaveAiModel } from "@/view/waveai/waveai";
 import { WebViewModel } from "@/view/webview/webview";
 
 const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
 BlockRegistry.set("preview", PreviewModel);
 BlockRegistry.set("web", WebViewModel);
-BlockRegistry.set("waveai", WaveAiModel);
 BlockRegistry.set("cpuplot", SysinfoViewModel);
 BlockRegistry.set("sysinfo", SysinfoViewModel);
 BlockRegistry.set("vdom", VDomModel);
@@ -32,7 +29,6 @@ BlockRegistry.set("tips", QuickTipsViewModel);
 BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
-BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 BlockRegistry.set("processviewer", ProcessViewerViewModel);
 

@@ -118,7 +118,6 @@ export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabVie
 export class WaveTabView extends WebContentsView {
     waveWindowId: string; // this will be set for any tabviews that are initialized. (unset for the hot spare)
     isActiveTab: boolean;
-    isWaveAIOpen: boolean;
     private _waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
     createdTs: number; // ts milliseconds
@@ -142,7 +141,6 @@ export class WaveTabView extends WebContentsView {
             },
         });
         this.createdTs = Date.now();
-        this.isWaveAIOpen = false;
         this.savedInitOpts = null;
         this.initPromise = new Promise((resolve, _) => {
             this.initResolve = resolve;

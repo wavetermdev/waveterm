@@ -68,12 +68,6 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         },
     });
     waveEventSubscribeSingle({
-        eventType: "waveai:modeconfig",
-        handler: (event) => {
-            globalStore.set(atoms.waveaiModeConfigAtom, event.data.configs);
-        },
-    });
-    waveEventSubscribeSingle({
         eventType: "userinput",
         handler: (event) => {
             // console.log("userinput event handler", event);
@@ -89,12 +83,6 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             if (fileSubject != null) {
                 fileSubject.next(event.data);
             }
-        },
-    });
-    waveEventSubscribeSingle({
-        eventType: "waveai:ratelimit",
-        handler: (event) => {
-            globalStore.set(atoms.waveAIRateLimitInfoAtom, event.data);
         },
     });
     setupBadgesSubscription();

@@ -55,22 +55,9 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return WOS.getObjectValue(WOS.makeORef("workspace", workspaceId), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
-    const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
-    const hasCustomAIPresetsAtom = atom((get) => {
-        const fullConfig = get(fullConfigAtom);
-        if (!fullConfig?.presets) {
-            return false;
-        }
-        for (const presetId in fullConfig.presets) {
-            if (presetId.startsWith("ai@") && presetId !== "ai@global" && presetId !== "ai@wave") {
-                return true;
-            }
-        }
-        return false;
-    }) as Atom<boolean>;
     const hasConfigErrors = atom((get) => {
         const fullConfig = get(fullConfigAtom);
         return fullConfig?.configerrors != null && fullConfig.configerrors.length > 0;
@@ -125,7 +112,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return connStatuses;
     });
     const reinitVersion = atom(0);
-    const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         builderId: builderIdAtom,
@@ -134,9 +120,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         workspaceId: workspaceIdAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
-        waveaiModeConfigAtom,
         settingsAtom,
-        hasCustomAIPresetsAtom,
         hasConfigErrors,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
@@ -148,7 +132,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         modalOpen,
         allConnStatus: allConnStatusAtom,
         reinitVersion,
-        waveAIRateLimitInfoAtom: rateLimitInfoAtom,
     } as GlobalAtomsType;
 }
 

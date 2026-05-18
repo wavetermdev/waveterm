@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -76,7 +75,6 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
-	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	DebugTermCommand(ctx context.Context, data CommandDebugTermData) (*CommandDebugTermRtnData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
@@ -146,15 +144,6 @@ type WshRpcInterface interface {
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
 	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
-
-	// ai
-	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
-
-	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
-	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
-	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
-	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
-	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -488,43 +477,6 @@ type BlocksListEntry struct {
 	TabId       string              `json:"tabid"`
 	BlockId     string              `json:"blockid"`
 	Meta        waveobj.MetaMapType `json:"meta"`
-}
-
-type AiMessageData struct {
-	Message string `json:"message,omitempty"`
-}
-
-type CommandGetWaveAIChatData struct {
-	ChatId string `json:"chatid"`
-}
-
-type CommandWaveAIToolApproveData struct {
-	ToolCallId string `json:"toolcallid"`
-	Approval   string `json:"approval,omitempty"`
-}
-
-type AIAttachedFile struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Size   int    `json:"size"`
-	Data64 string `json:"data64"`
-}
-
-type CommandWaveAIAddContextData struct {
-	Files   []AIAttachedFile `json:"files,omitempty"`
-	Text    string           `json:"text,omitempty"`
-	Submit  bool             `json:"submit,omitempty"`
-	NewChat bool             `json:"newchat,omitempty"`
-}
-
-type CommandWaveAIGetToolDiffData struct {
-	ChatId     string `json:"chatid"`
-	ToolCallId string `json:"toolcallid"`
-}
-
-type CommandWaveAIGetToolDiffRtnData struct {
-	OriginalContents64 string `json:"originalcontents64"`
-	ModifiedContents64 string `json:"modifiedcontents64"`
 }
 
 type CommandCaptureBlockScreenshotData struct {

@@ -5,48 +5,6 @@
 
 declare global {
 
-    // wshrpc.AIAttachedFile
-    type AIAttachedFile = {
-        name: string;
-        type: string;
-        size: number;
-        data64: string;
-    };
-
-    // wconfig.AIModeConfigType
-    type AIModeConfigType = {
-        "display:name": string;
-        "display:order"?: number;
-        "display:icon"?: string;
-        "display:description"?: string;
-        "ai:provider"?: string;
-        "ai:apitype"?: string;
-        "ai:model"?: string;
-        "ai:thinkinglevel"?: string;
-        "ai:verbosity"?: string;
-        "ai:endpoint"?: string;
-        "ai:proxyurl"?: string;
-        "ai:azureapiversion"?: string;
-        "ai:apitoken"?: string;
-        "ai:apitokensecretname"?: string;
-        "ai:azureresourcename"?: string;
-        "ai:azuredeployment"?: string;
-        "ai:capabilities"?: string[];
-        "ai:switchcompat"?: string[];
-        "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
-    };
-
-    // wconfig.AIModeConfigUpdate
-    type AIModeConfigUpdate = {
-        configs: {[key: string]: AIModeConfigType};
-    };
-
-    // wshrpc.AiMessageData
-    type AiMessageData = {
-        message?: string;
-    };
-
     // wshrpc.AppInfo
     type AppInfo = {
         appid: string;
@@ -375,11 +333,6 @@ declare global {
         filename?: string;
     };
 
-    // wshrpc.CommandGetWaveAIChatData
-    type CommandGetWaveAIChatData = {
-        chatid: string;
-    };
-
     // wshrpc.CommandJobCmdExitedData
     type CommandJobCmdExitedData = {
         jobid: string;
@@ -689,32 +642,6 @@ declare global {
         waitms: number;
     };
 
-    // wshrpc.CommandWaveAIAddContextData
-    type CommandWaveAIAddContextData = {
-        files?: AIAttachedFile[];
-        text?: string;
-        submit?: boolean;
-        newchat?: boolean;
-    };
-
-    // wshrpc.CommandWaveAIGetToolDiffData
-    type CommandWaveAIGetToolDiffData = {
-        chatid: string;
-        toolcallid: string;
-    };
-
-    // wshrpc.CommandWaveAIGetToolDiffRtnData
-    type CommandWaveAIGetToolDiffRtnData = {
-        originalcontents64: string;
-        modifiedcontents64: string;
-    };
-
-    // wshrpc.CommandWaveAIToolApproveData
-    type CommandWaveAIToolApproveData = {
-        toolcallid: string;
-        approval?: string;
-    };
-
     // wshrpc.CommandWaveFileReadStreamData
     type CommandWaveFileReadStreamData = {
         zoneid: string;
@@ -980,7 +907,6 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
-        waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
@@ -1094,19 +1020,6 @@ declare global {
         "cmd:initscript.zsh"?: string;
         "cmd:initscript.pwsh"?: string;
         "cmd:initscript.fish"?: string;
-        "ai:*"?: boolean;
-        "ai:preset"?: string;
-        "ai:apitype"?: string;
-        "ai:baseurl"?: string;
-        "ai:apitoken"?: string;
-        "ai:name"?: string;
-        "ai:model"?: string;
-        "ai:orgid"?: string;
-        "ai:apiversion"?: string;
-        "ai:maxtokens"?: number;
-        "ai:timeoutms"?: number;
-        "aifilediff:chatid"?: string;
-        "aifilediff:toolcallid"?: string;
         "editor:*"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
@@ -1126,11 +1039,6 @@ declare global {
         "bg:activebordercolor"?: string;
         "layout:vtabbarwidth"?: number;
         "layout:widgetsvisible"?: boolean;
-        "waveai:panelopen"?: boolean;
-        "waveai:panelwidth"?: number;
-        "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:widgetcontext"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1208,9 +1116,6 @@ declare global {
         "builder:layout"?: {[key: string]: number};
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
-        "waveai:chatid"?: string;
-        "waveai:mode"?: string;
-        "waveai:maxoutputtokens"?: number;
     };
 
     // wshrpc.PathCommandData
@@ -1263,16 +1168,6 @@ declare global {
         memfree?: number;
         numcpu?: number;
         cpusum?: number;
-    };
-
-    // uctypes.RateLimitInfo
-    type RateLimitInfo = {
-        req: number;
-        reqlimit: number;
-        preq: number;
-        preqlimit: number;
-        resetepoch: number;
-        unknown?: boolean;
     };
 
     // wshrpc.RemoteInfo
@@ -1344,28 +1239,11 @@ declare global {
         "app:showoverlayblocknums"?: boolean;
         "app:ctrlvpaste"?: boolean;
         "app:confirmquit"?: boolean;
-        "app:hideaibutton"?: boolean;
         "app:disablectrlshiftarrows"?: boolean;
         "app:disablectrlshiftdisplay"?: boolean;
         "app:focusfollowscursor"?: string;
         "app:tabbar"?: string;
         "feature:waveappbuilder"?: boolean;
-        "ai:*"?: boolean;
-        "ai:preset"?: string;
-        "ai:apitype"?: string;
-        "ai:baseurl"?: string;
-        "ai:apitoken"?: string;
-        "ai:name"?: string;
-        "ai:model"?: string;
-        "ai:orgid"?: string;
-        "ai:apiversion"?: string;
-        "ai:maxtokens"?: number;
-        "ai:timeoutms"?: number;
-        "ai:proxyurl"?: string;
-        "ai:fontsize"?: number;
-        "ai:fixedfontsize"?: number;
-        "waveai:showcloudmodes"?: boolean;
-        "waveai:defaultmode"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1547,47 +1425,10 @@ declare global {
         values: {[key: string]: number};
     };
 
-    // uctypes.UIChat
-    type UIChat = {
-        chatid: string;
-        apitype: string;
-        model: string;
-        apiversion: string;
-        messages: UIMessage[];
-    };
-
     // waveobj.UIContext
     type UIContext = {
         windowid: string;
         activetabid: string;
-    };
-
-    // uctypes.UIMessage
-    type UIMessage = {
-        id: string;
-        role: string;
-        metadata?: any;
-        parts?: UIMessagePart[];
-    };
-
-    // uctypes.UIMessagePart
-    type UIMessagePart = {
-        type: string;
-        text?: string;
-        state?: string;
-        toolCallId?: string;
-        input?: any;
-        output?: any;
-        errorText?: string;
-        providerExecuted?: boolean;
-        sourceId?: string;
-        url?: string;
-        title?: string;
-        filename?: string;
-        mediaType?: string;
-        id?: string;
-        data?: any;
-        providerMetadata?: {[key: string]: any};
     };
 
     // userinput.UserInputRequest
