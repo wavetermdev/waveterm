@@ -25,6 +25,11 @@
 
 ### High Priority — Bugfix
 
+- [ ] **Tmux mouse integration lost on durable session reconnect** — NEW 2026-05-19
+  - Bug: tmux mouse mode (click to switch windows, wheel scrollback, click-drag select) works in new sessions but NOT in reconnected durable sessions after full WaveTerm restart
+  - Repro: close WaveTerm completely → restart → durable sessions reconnect → tmux mouse integration disabled
+  - Expected: durable sessions should re-enable tmux mouse integration on reconnect, same as new sessions
+  - Likely cause: shell integration / terminal feature negotiation not replayed on durable reconnect
 - [x] **Crash on tab close after SSH session exit** — Fixed 2026-05-14
   - Root cause found: double `DestroyBlockController` race in `CloseTab` (explicit goroutine + `DeleteTab` → `BlockCloseEvent` handler)
   - Fix: removed redundant goroutine in `CloseTab`; added `sync.Once` to `ShellProc.Close()` as defense-in-depth
@@ -58,6 +63,13 @@
     - [x] Delete default configs: `waveai.json`, `presets/ai.json`, clean `settings.json`
     - [x] Regenerate auto-generated TS types (`gotypes.d.ts`, `waveevent.d.ts`, `wshclientapi.ts`) and Go metaconsts
   - [x] Document Claude Code shell integration analysis for future pi agent reuse (`.pi/decisions.md`)
+- [ ] **ACTIVE:** SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]])
+  - [ ] Modify `pkg/wconfig/settingsconfig.go`
+  - [ ] Modify `pkg/remote/sshclient.go` (parse + return merged keywords)
+  - [ ] Modify `pkg/remote/conncontroller/conncontroller.go` (runtime forwarding)
+  - [ ] Update call sites for new `ConnectToClient` signature
+  - [ ] Add tests
+  - [ ] Update documentation (`docs/docs/connections.mdx`)
 - [ ] MOSH (Mobile Shell) support
   - [ ] Research mosh client/server architecture and integration points
   - [ ] Design ConnKeywords for MOSH connections (host, port, mosh-server path, etc.)
@@ -67,13 +79,7 @@
   - [ ] Handle coexistence with SSH port forwarding (MOSH doesn't support tunnels)
   - [ ] Add tests
   - [ ] Update documentation
-- [ ] SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]])
-  - [ ] Modify `pkg/wconfig/settingsconfig.go`
-  - [ ] Modify `pkg/remote/sshclient.go` (parse + return merged keywords)
-  - [ ] Modify `pkg/remote/conncontroller/conncontroller.go` (runtime forwarding)
-  - [ ] Update call sites for new `ConnectToClient` signature
-  - [ ] Add tests
-  - [ ] Update documentation (`docs/docs/connections.mdx`)
+
 - [ ] Paste screenshots into terminal
   - [ ] Drag and drop images → SCP to remote, type fully-qualified filename into terminal
   - [ ] Cmd+V paste clipboard image → upload as PNG, insert filename into terminal

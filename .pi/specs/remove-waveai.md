@@ -448,7 +448,6 @@ All Phase B items implemented and verified. `task build:backend` completes witho
 | `docs/docs/secrets.mdx` | None (already clean) | No change needed |
 | `docs/docs/telemetry.mdx` | File doesn't exist (removed in telemetry phase) | N/A |
 | `docs/docs/connections.mdx` | None | No change needed |
-
 ## Risk Assessment
 
 | Risk | Mitigation |
