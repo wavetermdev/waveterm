@@ -74,26 +74,25 @@
   - [ ] Update call sites for new `ConnectToClient` signature
   - [ ] Add tests
   - [ ] Update documentation (`docs/docs/connections.mdx`)
-- [ ] MOSH (Mobile Shell) support
-  - [ ] Research mosh client/server architecture and integration points
-  - [ ] Design ConnKeywords for MOSH connections (host, port, mosh-server path, etc.)
-  - [ ] Implement MOSH protocol handler (UDP session, mosh-client process management)
-  - [ ] Integrate with connection controller lifecycle
-  - [ ] Add UI support for MOSH connection type
-  - [ ] Handle coexistence with SSH port forwarding (MOSH doesn't support tunnels)
-  - [ ] Add tests
-  - [ ] Update documentation
+- [ ] **Remote file paste** — image paste + drag-drop for remote sessions
+  - Primary use case: pasting screenshots and dragging files when using pi or Claude Code's TUI over SSH
+  - Currently pastes local file paths that don't exist on the remote server
+  - Need: upload file to remote (SSH exec with stdin, SFTP, or SCP), then paste remote path
+  - Sub-tasks:
+    - [ ] Detect when terminal block is on a remote SSH connection
+    - [ ] Add RPC command to upload file bytes to remote server via existing SSH connection
+    - [ ] Wire up image paste (`termwrap.ts` `pasteHandler`) to use remote upload for SSH sessions
+    - [ ] Wire up drag-drop (`termwrap.ts` `dropHandler`) to use remote upload for SSH sessions
+    - [ ] Add tests
 
-- [ ] Paste screenshots into terminal
-  - [ ] Drag and drop images → SCP to remote, type fully-qualified filename into terminal
-  - [ ] Cmd+V paste clipboard image → upload as PNG, insert filename into terminal
+- [ ] Paste screenshots into terminal (local sessions — polish)
   - [ ] Consider implementing paste-as-image in Pi directly for tighter integration (avoid SCP+filename pattern, inject binary data or use OSC52/terminal-native paste)
 
 ## Backlog / Ideas
 
 ### Features to Add (discuss, spec, scope later)
 
-- **MOSH support** — Mobile shell for robust mobile/wifi connections. Note: MOSH doesn't support port forwarding, so SSH tunnels must coexist cleverly
+- **MOSH support** — Research done 2026-05-20. MOSH's main benefits: seamless reconnection (roaming, sleep/wake) and client-side local echo. Not a priority because: (1) no port forwarding (open issue since 2014), (2) no OSC52 clipboard, (3) no scrollback, (4) C++ only, slow development. tsshd (trzsz-ssh) is the more relevant reference — Go-based, full SSH features + UDP roaming, but significant architectural change. Local echo is technically possible with wsh but non-trivial and low-value for typical latency.
 - **Vertical tabs** — Tab layout optimized for remote host switching
 
 
@@ -111,7 +110,6 @@
 
 ### File Transfer
 
-- **Paste screenshots into terminal** — Uploads the image to the remote server and pastes the filename/path into the terminal window
 - **Drag and drop file transfer** — Drag files into the file browser to upload; drag from file browser to download
 
 ### General

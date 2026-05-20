@@ -120,3 +120,25 @@
 **Key insight:** The protocol is generic AI-agent-agnostic infrastructure. The Claude-specific parts are just a regex (`/^claude\b/`) and an SVG icon. Replacing them with pi equivalents would be trivial if we want this later.
 
 **Decision:** Keep the underlying OSC 16162 shell integration infrastructure intact for now. Only the visual indicator (sparkle/Claude icon) and Wave-AI-specific tooltips were removed. If we want pi agent integration later, we can add `piActiveAtom` and a pi icon with minimal changes.
+
+## 2026-05-20: MOSH Research — Not a Priority
+
+**Finding:** MOSH (Mobile Shell) provides seamless reconnection (roaming, sleep/wake) and client-side local echo via UDP-based State Synchronization Protocol. However, it's not a priority for this fork.
+
+**Why not:**
+- **No port forwarding** — open issue since 2014, no movement. Port forwarding is a core requirement.
+- **No OSC52 clipboard** — remote programs can't put text in local clipboard.
+- **No scrollback** — only syncs visible terminal state.
+- **No file transfer** (scp/sftp).
+- **C++ only** — no Go or JS library implementations of the core protocol.
+- **Slow development** — last release 1.4.0 (October 2022).
+
+**Alternative: tsshd (trzsz-ssh)** — Go-based, supports full SSH features (port forwarding, agent forwarding, X11, scrollback, OSC52) + UDP roaming via QUIC/KCP. More architecturally relevant but would require significant integration effort.
+
+**Local echo with wsh** — Technically possible (Wave Terminal already knows screen state and intercepts keystrokes), but non-trivial (must detect line-editing vs application mode, validate predictions against round-trip timing). Low value for typical homelab latency (<50ms).
+
+**Priority order:**
+1. Fix auto-reconnect bugs in durable sessions (#4)
+2. SSH port forwarding (spec ready)
+3. Remote file paste (image paste + drag-drop for SSH sessions) — primary use case: pi / Claude Code TUI
+4. MOSH/tsshd support (backlog, if roaming becomes a real pain point)
