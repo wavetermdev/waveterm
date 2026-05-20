@@ -31,7 +31,7 @@ export class BlockServiceType {
     }
 
     // save the terminal state to a blockfile
-    SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
+    SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize, decModes: string): Promise<void> {
         return callBackendService(this?.waveEnv, "block", "SaveTerminalState", Array.from(arguments))
     }
 }

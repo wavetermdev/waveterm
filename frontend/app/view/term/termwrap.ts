@@ -74,6 +74,12 @@ type TermWrapOptions = {
     nodeModel?: BlockNodeModel;
 };
 
+// DEC private modes that are safe to replay on durable reconnect.
+// Mouse tracking (1000-1006) and bracketed paste (2004) are included.
+// Alternate screen (47/1049), cursor visibility (25), and synchronized
+// output (2026) are excluded to avoid unintended display side effects.
+const SafeReplayDecModes = new Set([1000, 1002, 1003, 1005, 1006, 2004]);
+
 export class TermWrap {
     tabId: string;
     blockId: string;
@@ -121,6 +127,9 @@ export class TermWrap {
     lastMode2026ResetTs: number = 0;
     inSyncTransaction: boolean = false;
     inRepaintTransaction: boolean = false;
+
+    // Track active DEC private modes for durable reconnect state restoration
+    activeDecModes: Set<number> = new Set();
 
     constructor(
         tabId: string,
@@ -225,9 +234,13 @@ export class TermWrap {
                 if (params == null || params.length < 1) {
                     return false;
                 }
-                if (params[0] === 2026) {
-                    this.lastMode2026SetTs = Date.now();
-                    this.inSyncTransaction = true;
+                for (const mode of params) {
+                    const m = mode as number;
+                    this.activeDecModes.add(m);
+                    if (m === 2026) {
+                        this.lastMode2026SetTs = Date.now();
+                        this.inSyncTransaction = true;
+                    }
                 }
                 return false;
             })
@@ -235,18 +248,36 @@ export class TermWrap {
         this.toDispose.push(
             this.terminal.parser.registerCsiHandler({ prefix: "?", final: "l" }, (params) => {
                 if (params == null || params.length < 1) {
+                    // No parameters: clear all DEC modes
+                    this.activeDecModes.clear();
+                    if (this.inSyncTransaction) {
+                        this.lastMode2026ResetTs = Date.now();
+                        this.inSyncTransaction = false;
+                        const wasRepaint = this.inRepaintTransaction;
+                        this.inRepaintTransaction = false;
+                        if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
+                            setTimeout(() => {
+                                console.log("[termwrap] repaint transaction complete, scrolling to bottom");
+                                this.terminal.scrollToBottom();
+                            }, 20);
+                        }
+                    }
                     return false;
                 }
-                if (params[0] === 2026) {
-                    this.lastMode2026ResetTs = Date.now();
-                    this.inSyncTransaction = false;
-                    const wasRepaint = this.inRepaintTransaction;
-                    this.inRepaintTransaction = false;
-                    if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
-                        setTimeout(() => {
-                            console.log("[termwrap] repaint transaction complete, scrolling to bottom");
-                            this.terminal.scrollToBottom();
-                        }, 20);
+                for (const mode of params) {
+                    const m = mode as number;
+                    this.activeDecModes.delete(m);
+                    if (m === 2026) {
+                        this.lastMode2026ResetTs = Date.now();
+                        this.inSyncTransaction = false;
+                        const wasRepaint = this.inRepaintTransaction;
+                        this.inRepaintTransaction = false;
+                        if (wasRepaint && Date.now() - this.lastClearScrollbackTs <= MaxRepaintTransactionMs) {
+                            setTimeout(() => {
+                                console.log("[termwrap] repaint transaction complete, scrolling to bottom");
+                                this.terminal.scrollToBottom();
+                            }, 20);
+                        }
                     }
                 }
                 return false;
@@ -542,6 +573,11 @@ export class TermWrap {
                     this.terminal.resize(curTermSize.cols, curTermSize.rows);
                 }
             }
+            // Restore DEC private mode state so xterm.js matches the remote application
+            const decModes = cacheFile.meta["decmodes"] as string;
+            if (decModes) {
+                this.replayDecModes(decModes);
+            }
         }
         const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(zoneId, TermFileName, ptyOffset);
         console.log(
@@ -587,15 +623,44 @@ export class TermWrap {
         }
     }
 
+    serializeDecModes(): string {
+        if (this.activeDecModes.size === 0) {
+            return "";
+        }
+        const modes: number[] = [];
+        for (const mode of this.activeDecModes) {
+            modes.push(mode);
+        }
+        modes.sort((a, b) => a - b);
+        return modes.join(",");
+    }
+
+    replayDecModes(decModesStr: string): void {
+        if (!decModesStr) {
+            return;
+        }
+        const modes = decModesStr.split(",").map((s) => parseInt(s, 10)).filter((n) => !isNaN(n) && SafeReplayDecModes.has(n));
+        if (modes.length === 0) {
+            return;
+        }
+        let seq = "";
+        for (const mode of modes) {
+            seq += `\x1b[?${mode}h`;
+        }
+        console.log("[termwrap] replaying DEC private modes", modes);
+        this.terminal.write(seq);
+    }
+
     processAndCacheData() {
         if (this.dataBytesProcessed < MinDataProcessedForCache) {
             return;
         }
         const serializedOutput = this.serializeAddon.serialize();
         const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-        console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize);
+        const decModes = this.serializeDecModes();
+        console.log("idle timeout term", this.dataBytesProcessed, serializedOutput.length, termSize, "decmodes:", decModes);
         fireAndForget(() =>
-            services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize)
+            services.BlockService.SaveTerminalState(this.blockId, serializedOutput, "full", this.ptyOffset, termSize, decModes)
         );
         this.dataBytesProcessed = 0;
     }
