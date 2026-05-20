@@ -25,11 +25,15 @@
 
 ### High Priority — Bugfix
 
-- [ ] **Tmux mouse integration lost on durable session reconnect** — NEW 2026-05-19
+- [x] **Tmux mouse integration lost on durable session reconnect** — FIXED 2026-05-19
   - Bug: tmux mouse mode (click to switch windows, wheel scrollback, click-drag select) works in new sessions but NOT in reconnected durable sessions after full WaveTerm restart
   - Repro: close WaveTerm completely → restart → durable sessions reconnect → tmux mouse integration disabled
   - Expected: durable sessions should re-enable tmux mouse integration on reconnect, same as new sessions
-  - Likely cause: shell integration / terminal feature negotiation not replayed on durable reconnect
+  - Root cause: xterm.js internal DEC private mode state lost on reconnect; only cached terminal data was replayed, not mode negotiation sequences
+  - Fix commits: `af669bcb` (original DEC mode restore), `01f5073d` (multi-param CSI tracking, clear-all reset, stale cache purge, replay whitelist)
+  - Tests: `f839f8ab` (14 Vitest unit tests with mocked xterm.js)
+  - GitHub comment posted to issue #2 with full analysis
+  - README fork notes updated with bug fix reference
 - [x] **Crash on tab close after SSH session exit** — Fixed 2026-05-14
   - Root cause found: double `DestroyBlockController` race in `CloseTab` (explicit goroutine + `DeleteTab` → `BlockCloseEvent` handler)
   - Fix: removed redundant goroutine in `CloseTab`; added `sync.Once` to `ShellProc.Close()` as defense-in-depth
