@@ -31,7 +31,7 @@ This fork is optimized for remote development workflows with a focus on macOS.
 - **Local toolchain** — Go and Task are installed locally (not global), no system dependencies required
 - **macOS builds** — CI builds macOS `.dmg` via GitHub Actions (manual trigger)
 - **Bug fixes** — Fixed tmux mouse integration lost on durable SSH session reconnect (commit `01f5073d`, issue #2); fixed crash on tab close after SSH session exit (commit `0cd6489b`)
-- **Planned changes** — SSH port forwarding, remove unnecessary AI features, MOSH support, vertical tabs, SSH config as source of truth for connections
+- **Planned changes** — SSH port forwarding, remote file paste (image/drag-drop for SSH sessions), vertical tabs, SSH config as source of truth for connections
 
 ![WaveTerm Screenshot](./assets/wave-screenshot.webp)
 

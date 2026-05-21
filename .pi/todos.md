@@ -25,6 +25,16 @@
 
 ### High Priority — Bugfix
 
+- [ ] **Durable session auto-reconnect unreliable** (draft: [[.pi/draft-issue-autoconnect-bugs.md]])
+  - Bug #1 (P0): Route-level cooldown consumed before connection check — cooldown wasted when SSH is down
+  - Bug #2 (P0): connStates reconciliation race — buffered channel drops signals during rapid state flaps
+  - Bug #3 (P0): singleflight caches transient reconnect failures in tight timing windows
+  - Missing #1 (P1): `NotifySystemResumeCommand` is a no-op — system wake doesn't trigger reconnect
+  - Missing #2 (P1): No network-online detection — relies on slow TCP failure detection
+  - Missing #3 (P1): No SSH/TCP keepalive configuration — zombie connections persist
+  - Edge cases (P2): job manager death detection, respect manual disconnect, reconnect UI indicator
+  - GitHub issue: https://github.com/whoisjeremylam/waveterm-remote/issues/4
+
 - [x] **Tmux mouse integration lost on durable session reconnect** — FIXED 2026-05-19
   - Bug: tmux mouse mode (click to switch windows, wheel scrollback, click-drag select) works in new sessions but NOT in reconnected durable sessions after full WaveTerm restart
   - Repro: close WaveTerm completely → restart → durable sessions reconnect → tmux mouse integration disabled
@@ -84,6 +94,15 @@
     - [ ] Wire up image paste (`termwrap.ts` `pasteHandler`) to use remote upload for SSH sessions
     - [ ] Wire up drag-drop (`termwrap.ts` `dropHandler`) to use remote upload for SSH sessions
     - [ ] Add tests
+
+- [ ] **System widgets follow terminal focus** (spec: [[.pi/specs/widget-follow-focus.md]])
+  - When opening Process Viewer, File Browser, etc., inherit connection from focused terminal
+  - [ ] Add `getFocusedTerminalConnection()` helper in `global.ts`
+  - [ ] Add `createWidgetBlock()` wrapper that injects connection meta
+  - [ ] Update widgets bar (`widgets.tsx`) to use `createWidgetBlock`
+  - [ ] Add `inheritconnection` field to widget config schema
+  - [ ] Verify non-terminal widgets (Settings, Help) are unaffected
+  - [ ] Add tests
 
 - [ ] Paste screenshots into terminal (local sessions — polish)
   - [ ] Consider implementing paste-as-image in Pi directly for tighter integration (avoid SCP+filename pattern, inject binary data or use OSC52/terminal-native paste)

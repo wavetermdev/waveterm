@@ -68,6 +68,67 @@ This only affects very tight timing windows (< 10s context timeout), but is wort
 | `pkg/jobcontroller/jobcontroller.go` | `handleRouteEvent`, `shouldAttemptAutoReconnect`, `attemptAutoReconnect`, `reconcileAllConns`, `reconcileConn`, `onConnectionUp`, `ReconnectJob` |
 | `pkg/remote/conncontroller/conncontroller.go` | `waitForDisconnect`, `Connect`, `FireConnChangeEvent` |
 
+## Missing Detection Mechanisms
+
+Beyond the bugs above, several reconnection triggers are missing entirely:
+
+### Missing #1: System sleep/wake does nothing
+
+`emain/emain.ts` listens for `powerMonitor.on("resume")` and calls `NotifySystemResumeCommand`, which is a **stub that just logs and returns nil**. No reconnect is attempted.
+
+**Fix**: Have `NotifySystemResumeCommand` trigger reconnect for all disconnected durable jobs.
+
+### Missing #2: No network-online detection
+
+There is no monitoring of network connectivity state. The system relies entirely on TCP-level failure detection (SSH connection drops), which can be slow:
+- TCP keepalive may not be enabled or may have very long timeouts
+- Silent packet loss (asymmetric routing, firewall drop) may not trigger TCP timeout for minutes
+- Network interface comes back up but no event triggers reconnect attempt
+
+**Fix**: Add periodic network-online check (e.g., every 30s) when durable jobs are in disconnected state. When network comes back up, trigger reconnect attempt.
+
+### Missing #3: No SSH/TCP keepalive configuration
+
+SSH connections may not have aggressive keepalive settings, meaning a "zombie" connection (network dropped but TCP hasn't detected it) can persist for a long time. The connection appears "up" in `connStates` but is actually dead.
+
+**Fix**: Configure `ClientAliveInterval` and `ClientAliveCountMax` on SSH connections to detect dead connections faster.
+
+## Edge Cases
+
+| Case | Scenario | Current behavior | Desired behavior |
+|------|----------|------------------|------------------|
+| **Job manager died** | `wsh jobmanager` process crashed on remote | Reconnect attempts fail repeatedly | Detect this case, mark job as "dead" instead of retrying |
+| **User manually disconnects** | Click "Disconnect" in UI | May trigger auto-reconnect | Respect explicit disconnect vs network failure |
+| **Multiple jobs, one connection** | SSH drops, 5 durable jobs on that host | Connection-level reconnect handles, but timing matters | Reconnect jobs in parallel after SSH is back, per-job backoff |
+| **Reconnect during active typing** | User typing when network drops, comes back | Keystrokes lost, terminal may be inconsistent | Buffer keystrokes or show clear "reconnecting" state |
+| **Connection flapping** | Network rapidly up/down | Each flap triggers reconnect, may hit cooldown | Exponential backoff with jitter |
+
+## Priority
+
+**P0 — Fix existing bugs:**
+- Bug #1: Cooldown consumed before connection check (High impact)
+- Bug #2: Channel buffer drops rapid state changes (Medium impact)
+- Bug #3: singleflight caches transient failures (Low impact, timing-dependent)
+
+**P1 — Add missing detection:**
+- Wire up `NotifySystemResumeCommand` to trigger reconnect on system wake
+- Add network-online polling when jobs are disconnected
+- Enable SSH keepalive on connections for faster dead-connection detection
+
+**P2 — Edge cases:**
+- Detect job manager death vs route drop
+- Respect manual disconnect (don't auto-reconnect)
+- Reconnect state indicator in UI
+
+## Files involved
+
+| File | Relevant functions |
+|------|--------------------|
+| `pkg/jobcontroller/jobcontroller.go` | `handleRouteEvent`, `shouldAttemptAutoReconnect`, `attemptAutoReconnect`, `reconcileAllConns`, `reconcileConn`, `onConnectionUp`, `ReconnectJob` |
+| `pkg/remote/conncontroller/conncontroller.go` | `waitForDisconnect`, `Connect`, `FireConnChangeEvent` |
+| `emain/emain.ts` | `powerMonitor.on("resume")` — currently calls stub |
+| `pkg/wshrpc/wshserver/wshserver.go` | `NotifySystemResumeCommand` — currently no-op |
+
 ## Notes
 
 - These bugs affect **durable sessions only** — standard SSH sessions have no auto-reconnect machinery
