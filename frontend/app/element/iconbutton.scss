@@ -9,6 +9,10 @@
     font: inherit;
     outline: inherit;
 
+    & > * {
+        pointer-events: none;
+    }
+
     &.bulb {
         color: var(--bulb-color);
         opacity: 1;
