@@ -29,6 +29,10 @@ import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
 const dlog = debug("wave:term");
+const DefaultTermFontFamily =
+    "Hack, 'Noto Sans Mono CJK KR', 'Noto Sans Mono CJK JP', 'Noto Sans Mono CJK SC', 'Noto Sans Mono CJK TC', " +
+    "'Noto Sans CJK KR', 'Noto Sans CJK JP', 'Noto Sans CJK SC', 'Noto Sans CJK TC', " +
+    "'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'PingFang TC', 'Microsoft YaHei', 'Malgun Gothic', monospace";
 
 interface TerminalViewProps {
     blockId: string;
@@ -300,7 +304,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             {
                 theme: termTheme,
                 fontSize: termFontSize,
-                fontFamily: termSettings?.["term:fontfamily"] ?? connFontFamily ?? "Hack",
+                fontFamily: termSettings?.["term:fontfamily"] ?? connFontFamily ?? DefaultTermFontFamily,
                 drawBoldTextInBrightColors: false,
                 fontWeight: "normal",
                 fontWeightBold: "bold",

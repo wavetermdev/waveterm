@@ -32,6 +32,7 @@
     "telemetry:enabled": true,
     "term:bellsound": false,
     "term:bellindicator": true,
+    "term:fontfamily": "Hack, 'Noto Sans Mono CJK KR', 'Noto Sans Mono CJK JP', 'Noto Sans Mono CJK SC', 'Noto Sans Mono CJK TC', 'Noto Sans CJK KR', 'Noto Sans CJK JP', 'Noto Sans CJK SC', 'Noto Sans CJK TC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'PingFang TC', 'Microsoft YaHei', 'Malgun Gothic', monospace",
     "term:osc52": "always",
     "term:cursor": "block",
     "term:cursorblink": false,

@@ -272,6 +272,9 @@ export class TermWrap {
             })
         );
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+            if (e.isComposing || e.keyCode == 229) {
+                return true;
+            }
             if (!waveOptions.keydownHandler) {
                 return true;
             }
