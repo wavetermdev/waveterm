@@ -114,7 +114,7 @@ export class TermWrap {
     // IME composition ordering
     compositionActive: boolean = false;
     compositionRecentlyEndedUntil: number = 0;
-    pendingCompositionSpace: { timeout: ReturnType<typeof setTimeout> } | null = null;
+    pendingCompositionSuffix: { data: string; timeout: ReturnType<typeof setTimeout> } | null = null;
     disposed: boolean = false;
 
     // dev only (for debugging)
@@ -464,7 +464,7 @@ export class TermWrap {
             }
         });
         this.promptMarkers = [];
-        this.cancelPendingCompositionSpace();
+        this.cancelPendingCompositionSuffix();
         this.webglContextLossDisposable?.dispose();
         this.webglContextLossDisposable = null;
         this.terminal.dispose();
@@ -486,7 +486,7 @@ export class TermWrap {
         const compositionStartHandler = () => {
             this.compositionActive = true;
             this.compositionRecentlyEndedUntil = 0;
-            this.flushPendingCompositionSpace();
+            this.flushPendingCompositionSuffix();
         };
         const compositionEndHandler = () => {
             this.compositionActive = false;
@@ -498,7 +498,7 @@ export class TermWrap {
             dispose: () => {
                 textarea.removeEventListener("compositionstart", compositionStartHandler);
                 textarea.removeEventListener("compositionend", compositionEndHandler);
-                this.cancelPendingCompositionSpace();
+                this.cancelPendingCompositionSuffix();
             },
         });
     }
@@ -510,7 +510,7 @@ export class TermWrap {
         if (Date.now() > this.compositionRecentlyEndedUntil) {
             return false;
         }
-        return event.key === " ";
+        return !event.ctrlKey && !event.metaKey && !event.altKey && this.isCompositionSuffixData(event.key);
     }
 
     sendTermData(data: string) {
@@ -518,24 +518,25 @@ export class TermWrap {
         this.multiInputCallback?.(data);
     }
 
-    flushPendingCompositionSpace() {
-        if (this.pendingCompositionSpace == null) {
+    flushPendingCompositionSuffix() {
+        if (this.pendingCompositionSuffix == null) {
             return;
         }
-        clearTimeout(this.pendingCompositionSpace.timeout);
-        this.pendingCompositionSpace = null;
+        const pendingData = this.pendingCompositionSuffix.data;
+        clearTimeout(this.pendingCompositionSuffix.timeout);
+        this.pendingCompositionSuffix = null;
         if (!this.loaded || this.disposed) {
             return;
         }
-        this.sendTermData(" ");
+        this.sendTermData(pendingData);
     }
 
-    cancelPendingCompositionSpace() {
-        if (this.pendingCompositionSpace == null) {
+    cancelPendingCompositionSuffix() {
+        if (this.pendingCompositionSuffix == null) {
             return;
         }
-        clearTimeout(this.pendingCompositionSpace.timeout);
-        this.pendingCompositionSpace = null;
+        clearTimeout(this.pendingCompositionSuffix.timeout);
+        this.pendingCompositionSuffix = null;
     }
 
     isLikelyCompositionText(data: string): boolean {
@@ -548,26 +549,50 @@ export class TermWrap {
         return /[^\x00-\x7F]/.test(data);
     }
 
+    isCompositionSuffixData(data: string): boolean {
+        if (data.length === 0) {
+            return false;
+        }
+        if (/[\x00-\x1F\x7F]/.test(data)) {
+            return false;
+        }
+        return /^[\x20-\x7E]+$/.test(data);
+    }
+
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
         }
 
-        if (this.pendingCompositionSpace != null) {
+        if (this.pendingCompositionSuffix != null) {
             if (this.isLikelyCompositionText(data)) {
-                clearTimeout(this.pendingCompositionSpace.timeout);
-                this.pendingCompositionSpace = null;
+                const pendingData = this.pendingCompositionSuffix.data;
+                clearTimeout(this.pendingCompositionSuffix.timeout);
+                this.pendingCompositionSuffix = null;
                 this.sendTermData(data);
-                this.sendTermData(" ");
+                this.sendTermData(pendingData);
                 return;
             }
-            this.flushPendingCompositionSpace();
+            if (this.isCompositionSuffixData(data) && Date.now() <= this.compositionRecentlyEndedUntil) {
+                clearTimeout(this.pendingCompositionSuffix.timeout);
+                this.pendingCompositionSuffix.data += data;
+                this.pendingCompositionSuffix.timeout = setTimeout(() => {
+                    this.flushPendingCompositionSuffix();
+                }, 30);
+                return;
+            }
+            this.flushPendingCompositionSuffix();
         }
 
-        if (data === " " && !this.compositionActive && Date.now() <= this.compositionRecentlyEndedUntil) {
-            this.pendingCompositionSpace = {
+        if (
+            this.isCompositionSuffixData(data) &&
+            !this.compositionActive &&
+            Date.now() <= this.compositionRecentlyEndedUntil
+        ) {
+            this.pendingCompositionSuffix = {
+                data,
                 timeout: setTimeout(() => {
-                    this.flushPendingCompositionSpace();
+                    this.flushPendingCompositionSuffix();
                 }, 30),
             };
             return;
