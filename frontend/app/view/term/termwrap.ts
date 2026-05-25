@@ -111,6 +111,12 @@ export class TermWrap {
     lastPasteData: string = "";
     lastPasteTime: number = 0;
 
+    // IME composition ordering
+    compositionActive: boolean = false;
+    compositionRecentlyEndedUntil: number = 0;
+    pendingCompositionSpace: { timeout: ReturnType<typeof setTimeout> } | null = null;
+    disposed: boolean = false;
+
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
@@ -275,6 +281,9 @@ export class TermWrap {
             if (e.isComposing || e.keyCode == 229) {
                 return true;
             }
+            if (this.shouldBypassWaveKeydownForComposition(e)) {
+                return true;
+            }
             if (!waveOptions.keydownHandler) {
                 return true;
             }
@@ -285,6 +294,7 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+        this.registerCompositionEventHandlers();
 
         const dragoverHandler = (e: DragEvent) => {
             e.preventDefault();
@@ -445,6 +455,7 @@ export class TermWrap {
     }
 
     dispose() {
+        this.disposed = true;
         this.promptMarkers.forEach((marker) => {
             try {
                 marker.dispose();
@@ -453,6 +464,7 @@ export class TermWrap {
             }
         });
         this.promptMarkers = [];
+        this.cancelPendingCompositionSpace();
         this.webglContextLossDisposable?.dispose();
         this.webglContextLossDisposable = null;
         this.terminal.dispose();
@@ -466,13 +478,102 @@ export class TermWrap {
         this.mainFileSubject.release();
     }
 
+    registerCompositionEventHandlers() {
+        const textarea = this.terminal.textarea;
+        if (textarea == null) {
+            return;
+        }
+        const compositionStartHandler = () => {
+            this.compositionActive = true;
+            this.compositionRecentlyEndedUntil = 0;
+            this.flushPendingCompositionSpace();
+        };
+        const compositionEndHandler = () => {
+            this.compositionActive = false;
+            this.compositionRecentlyEndedUntil = Date.now() + 75;
+        };
+        textarea.addEventListener("compositionstart", compositionStartHandler);
+        textarea.addEventListener("compositionend", compositionEndHandler);
+        this.toDispose.push({
+            dispose: () => {
+                textarea.removeEventListener("compositionstart", compositionStartHandler);
+                textarea.removeEventListener("compositionend", compositionEndHandler);
+                this.cancelPendingCompositionSpace();
+            },
+        });
+    }
+
+    shouldBypassWaveKeydownForComposition(event: KeyboardEvent): boolean {
+        if (this.compositionActive) {
+            return true;
+        }
+        if (Date.now() > this.compositionRecentlyEndedUntil) {
+            return false;
+        }
+        return event.key === " ";
+    }
+
+    sendTermData(data: string) {
+        this.sendDataHandler?.(data);
+        this.multiInputCallback?.(data);
+    }
+
+    flushPendingCompositionSpace() {
+        if (this.pendingCompositionSpace == null) {
+            return;
+        }
+        clearTimeout(this.pendingCompositionSpace.timeout);
+        this.pendingCompositionSpace = null;
+        if (!this.loaded || this.disposed) {
+            return;
+        }
+        this.sendTermData(" ");
+    }
+
+    cancelPendingCompositionSpace() {
+        if (this.pendingCompositionSpace == null) {
+            return;
+        }
+        clearTimeout(this.pendingCompositionSpace.timeout);
+        this.pendingCompositionSpace = null;
+    }
+
+    isLikelyCompositionText(data: string): boolean {
+        if (data.length === 0) {
+            return false;
+        }
+        if (/[\x00-\x1F\x7F]/.test(data)) {
+            return false;
+        }
+        return /[^\x00-\x7F]/.test(data);
+    }
+
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
         }
 
-        this.sendDataHandler?.(data);
-        this.multiInputCallback?.(data);
+        if (this.pendingCompositionSpace != null) {
+            if (this.isLikelyCompositionText(data)) {
+                clearTimeout(this.pendingCompositionSpace.timeout);
+                this.pendingCompositionSpace = null;
+                this.sendTermData(data);
+                this.sendTermData(" ");
+                return;
+            }
+            this.flushPendingCompositionSpace();
+        }
+
+        if (data === " " && !this.compositionActive && Date.now() <= this.compositionRecentlyEndedUntil) {
+            this.pendingCompositionSpace = {
+                timeout: setTimeout(() => {
+                    this.flushPendingCompositionSpace();
+                }, 30),
+            };
+            return;
+        }
+
+        this.sendTermData(data);
     }
 
     addFocusListener(focusFn: () => void) {
