@@ -543,20 +543,30 @@ export class TermWrap {
         if (data.length === 0) {
             return false;
         }
-        if (/[\x00-\x1F\x7F]/.test(data)) {
-            return false;
+        let hasNonAscii = false;
+        for (const ch of data) {
+            const codePoint = ch.codePointAt(0);
+            if (codePoint == null || codePoint <= 0x1f || codePoint === 0x7f) {
+                return false;
+            }
+            if (codePoint > 0x7f) {
+                hasNonAscii = true;
+            }
         }
-        return /[^\x00-\x7F]/.test(data);
+        return hasNonAscii;
     }
 
     isCompositionSuffixData(data: string): boolean {
         if (data.length === 0) {
             return false;
         }
-        if (/[\x00-\x1F\x7F]/.test(data)) {
-            return false;
+        for (const ch of data) {
+            const codePoint = ch.codePointAt(0);
+            if (codePoint == null || codePoint < 0x20 || codePoint > 0x7e) {
+                return false;
+            }
         }
-        return /^[\x20-\x7E]+$/.test(data);
+        return true;
     }
 
     handleTermData(data: string) {
