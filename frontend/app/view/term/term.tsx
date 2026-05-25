@@ -296,6 +296,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         const termMacOptionIsMeta = globalStore.get(termMacOptionIsMetaAtom) ?? false;
         const termCursorStyle = normalizeCursorStyle(globalStore.get(getOverrideConfigAtom(blockId, "term:cursor")));
         const termCursorBlink = globalStore.get(getOverrideConfigAtom(blockId, "term:cursorblink")) ?? false;
+        const termDisableWebGl = termSettings?.["term:disablewebgl"] ?? true;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             tabModel.tabId,
@@ -319,7 +320,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
-                useWebGl: !termSettings?.["term:disablewebgl"],
+                useWebGl: !termDisableWebGl,
                 sendDataHandler: model.sendDataToController.bind(model),
                 nodeModel: model.nodeModel,
             }
