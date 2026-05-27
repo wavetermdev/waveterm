@@ -132,7 +132,7 @@
         "use-device-pixel-ratio": "^1.1.2",
         "uuid": "^14.0.0",
         "winston": "^3.19.0",
-        "ws": "^8.19.0",
+        "ws": "^8.21.0",
         "yaml": "^2.8.3"
     },
     "packageManager": "npm@10.9.2",
