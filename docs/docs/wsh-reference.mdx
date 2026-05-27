@@ -1120,4 +1120,85 @@ The secrets UI provides a convenient visual way to browse, add, edit, and delete
 :::tip
 Use secrets in your scripts to avoid hardcoding sensitive values. Secrets work across remote machines - store an API key locally with `wsh secret set`, then access it from any SSH or WSL connection with `wsh secret get`. The secret is securely retrieved from your local machine without needing to duplicate it on remote systems.
 :::
+
+---
+
+## tab
+
+Manage tabs from the command line. Provides `create`, `rename`, and `focus` subcommands for programmatic tab orchestration.
+
+### tab create
+
+Create a new tab in a workspace.
+
+```sh
+wsh tab create [-w <workspaceid>] [-n <name>] [--no-activate]
+```
+
+When `--workspace` is omitted, the tab is created in the workspace of the calling block. The new tab id is printed to stdout, making it easy to capture from scripts.
+
+Flags:
+
+- `-w, --workspace <id>` - target workspace id (defaults to the caller's workspace)
+- `-n, --name <name>` - tab name (defaults to the next auto-generated name, e.g. `T3`)
+- `--no-activate` - create the tab without switching focus to it
+
+Examples:
+
+```sh
+# Create a tab in the current workspace and switch to it
+wsh tab create
+
+# Create a named tab and capture its id
+tabid=$(wsh tab create --name "build-output")
+
+# Create a background tab in a specific workspace
+wsh tab create -w 9b1d... -n "logs" --no-activate
+```
+
+---
+
+### tab rename
+
+Rename an existing tab.
+
+```sh
+wsh tab rename [-t <tabid>] <name>
+```
+
+If `--tab` is not provided, the current tab id (`WAVETERM_TABID`) is used.
+
+Flags:
+
+- `-t, --tab <tabid>` - tab id to rename (defaults to the current tab)
+
+Examples:
+
+```sh
+# Rename the current tab
+wsh tab rename "agent-1"
+
+# Rename a specific tab
+wsh tab rename --tab 8f4a... "build-output"
+```
+
+---
+
+### tab focus
+
+Switch focus to the specified tab. Unlike `wsh focusblock`, which only operates within the current tab, `wsh tab focus` can switch the active tab from any block, including blocks in other tabs.
+
+```sh
+wsh tab focus <tabid>
+```
+
+Examples:
+
+```sh
+# Activate a tab by id
+wsh tab focus 8f4a3c2d-...
+```
+
+---
+
 </PlatformProvider>

@@ -175,6 +175,86 @@ func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspace
 	return nil
 }
 
+// resolveWorkspaceIdFromRpcCtx looks up the workspace id implied by the calling
+// rpc context (via its BlockId). Returns "" if no implicit workspace can be
+// determined (e.g. caller is not associated with a block).
+func resolveWorkspaceIdFromRpcCtx(ctx context.Context) (string, error) {
+	handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return "", nil
+	}
+	rpcCtx := handler.GetRpcContext()
+	if rpcCtx.BlockId == "" {
+		return "", nil
+	}
+	tabId, err := wstore.DBFindTabForBlockId(ctx, rpcCtx.BlockId)
+	if err != nil {
+		return "", fmt.Errorf("error finding tab for caller block: %w", err)
+	}
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil {
+		return "", fmt.Errorf("error finding workspace for caller tab: %w", err)
+	}
+	return workspaceId, nil
+}
+
+func (ws *WshServer) CreateTabCommand(ctx context.Context, data wshrpc.CommandCreateTabData) (string, error) {
+	ctx = waveobj.ContextWithUpdates(ctx)
+	workspaceId := data.WorkspaceId
+	if workspaceId == "" {
+		resolved, err := resolveWorkspaceIdFromRpcCtx(ctx)
+		if err != nil {
+			return "", err
+		}
+		if resolved == "" {
+			return "", fmt.Errorf("workspaceid is required (caller has no implicit workspace)")
+		}
+		workspaceId = resolved
+	}
+	tabId, err := wcore.CreateTab(ctx, workspaceId, data.TabName, data.ActivateTab, false)
+	if err != nil {
+		return "", fmt.Errorf("error creating tab: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("WshServer:CreateTabCommand:SendUpdateEvents", recover())
+		}()
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	if data.ActivateTab {
+		wcore.SendActiveTabUpdate(ctx, workspaceId, tabId)
+	}
+	return tabId, nil
+}
+
+func (ws *WshServer) FocusTabCommand(ctx context.Context, tabId string) error {
+	if tabId == "" {
+		return fmt.Errorf("tabid is required")
+	}
+	ctx = waveobj.ContextWithUpdates(ctx)
+	workspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil {
+		return fmt.Errorf("error finding workspace for tab %s: %w", tabId, err)
+	}
+	if workspaceId == "" {
+		return fmt.Errorf("tab %s not found in any workspace", tabId)
+	}
+	err = wcore.SetActiveTab(ctx, workspaceId, tabId)
+	if err != nil {
+		return fmt.Errorf("error setting active tab: %w", err)
+	}
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("WshServer:FocusTabCommand:SendUpdateEvents", recover())
+		}()
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+	wcore.SendActiveTabUpdate(ctx, workspaceId, tabId)
+	return nil
+}
+
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
 	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
