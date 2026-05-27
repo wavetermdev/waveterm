@@ -96,7 +96,7 @@
         "html-to-image": "^1.11.13",
         "immer": "^10.1.1",
         "jotai": "2.9.3",
-        "mermaid": "^11.12.3",
+        "mermaid": "^11.15.0",
         "monaco-editor": "^0.55.1",
         "monaco-yaml": "^5.4.0",
         "overlayscrollbars": "^2.14.0",
