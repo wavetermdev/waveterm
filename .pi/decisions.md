@@ -137,8 +137,26 @@
 
 **Local echo with wsh** — Technically possible (Wave Terminal already knows screen state and intercepts keystrokes), but non-trivial (must detect line-editing vs application mode, validate predictions against round-trip timing). Low value for typical homelab latency (<50ms).
 
+## 2026-05-23: Auto-Reconnect P0 Fixed; Server Reboot → Manual Reconnect
+
+**Decision:** After fixing the three P0 auto-reconnect bugs (cooldown race, reconcile race, singleflight deduplication), we explicitly chose **NOT** to implement auto-restart of fresh shells on server reboot or `wsh` death.
+
+**Why manual reconnect:**
+- Auto-restart would change durable-session semantics from *"resume my existing remote shell"* to *"keep a shell open at all costs."*
+- Context loss (cwd, env, running processes) is confusing for users who think their old session survived.
+- Risk of `wsh` re-install loops after server reboot.
+- Cleaner to let the user explicitly click Connect and know it's a fresh session.
+
+**What we did:**
+- `ReconnectJob` now correctly detects `JobManagerGone` and marks the job done.
+- User sees `[session gone]` in the terminal and clicks Connect to start fresh.
+
+**Future direction (Jeremy's idea):** Tmux auto-restore on reconnect — instead of restarting raw shells, recreate tmux sessions/layouts after server reboot. This preserves tmux's own session persistence while giving WaveTerm visibility into the sessions.
+
+---
+
 **Priority order:**
-1. Fix auto-reconnect bugs in durable sessions (#4)
+1. Fix auto-reconnect bugs in durable sessions (#4) — DONE 2026-05-23
 2. SSH port forwarding (spec ready)
 3. Remote file paste (image paste + drag-drop for SSH sessions) — primary use case: pi / Claude Code TUI
 4. MOSH/tsshd support (backlog, if roaming becomes a real pain point)

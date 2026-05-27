@@ -242,6 +242,12 @@ func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta wa
 	if conn == nil {
 		return "", fmt.Errorf("connection %q not found", connName)
 	}
+	// Ensure the connection is alive before trying to use it.
+	// This handles the case where the SSH connection dropped (e.g. remote host went down)
+	// and a new block tries to start a durable shell on the stale connection.
+	if err := conncontroller.EnsureConnection(ctx, connName); err != nil {
+		return "", fmt.Errorf("failed to ensure connection %q: %w", connName, err)
+	}
 	connRoute := wshutil.MakeConnectionRouteId(connName)
 	remoteInfo, err := wshclient.RemoteGetInfoCommand(wshclient.GetBareRpcClient(), &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
 	if err != nil {

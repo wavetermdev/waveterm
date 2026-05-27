@@ -71,7 +71,8 @@ const AutoReconnectCooldown = 30 * time.Second
 
 type connState struct {
 	actual      bool
-	processed   bool
+	procGen     int
+	actualGen   int
 	reconciling bool
 }
 
@@ -103,8 +104,14 @@ var (
 
 	lastAutoReconnectAttempt = ds.MakeSyncMap[int64]()
 
-	reconnectGroup           singleflight.Group
+	reconnectConnGroup       singleflight.Group
+	reconnectRouteGroup      singleflight.Group
 	terminateJobManagerGroup singleflight.Group
+
+	// test hooks for unit testing auto-reconnect behavior
+	isConnectedTestHook    func(connName string) (bool, error)
+	reconcileOnUpTestHook  func(connName string)
+	reconcileOnDownTestHook func(connName string)
 )
 
 func InitJobController() {
@@ -250,37 +257,50 @@ func reconcileAllConns() {
 	defer connStates.Unlock()
 
 	for connName, cs := range connStates.m {
-		if cs.reconciling || cs.actual == cs.processed {
+		if cs.reconciling || cs.actualGen == cs.procGen {
 			continue
 		}
 
 		cs.reconciling = true
 		actual := cs.actual
-		go reconcileConn(connName, actual)
+		actualGen := cs.actualGen
+		go reconcileConn(connName, actual, actualGen)
 	}
 }
 
-func reconcileConn(connName string, targetState bool) {
+func reconcileConn(connName string, targetState bool, targetGen int) {
 	defer func() {
 		panichandler.PanicHandler("jobcontroller:reconcileConn", recover())
 	}()
 
 	if targetState {
-		onConnectionUp(connName)
+		if reconcileOnUpTestHook != nil {
+			reconcileOnUpTestHook(connName)
+		} else {
+			onConnectionUp(connName)
+		}
 	} else {
-		onConnectionDown(connName)
+		if reconcileOnDownTestHook != nil {
+			reconcileOnDownTestHook(connName)
+		} else {
+			onConnectionDown(connName)
+		}
 	}
 
 	connStates.Lock()
-	defer connStates.Unlock()
 	if cs, exists := connStates.m[connName]; exists {
-		cs.processed = targetState
+		cs.procGen = targetGen
 		cs.reconciling = false
-	}
-
-	select {
-	case connStates.reconcileCh <- struct{}{}:
-	default:
+		needsSignal := cs.actualGen != cs.procGen
+		connStates.Unlock()
+		if needsSignal {
+			select {
+			case connStates.reconcileCh <- struct{}{}:
+			default:
+			}
+		}
+	} else {
+		connStates.Unlock()
 	}
 }
 
@@ -381,13 +401,11 @@ func shouldAttemptAutoReconnect(jobId string) bool {
 	lastAttempt, exists := lastAutoReconnectAttempt.GetEx(jobId)
 
 	if !exists {
-		lastAutoReconnectAttempt.Set(jobId, now)
 		return true
 	}
 
 	timeSinceLastAttempt := time.Duration(now-lastAttempt) * time.Second
 	if timeSinceLastAttempt >= AutoReconnectCooldown {
-		lastAutoReconnectAttempt.Set(jobId, now)
 		return true
 	}
 
@@ -401,16 +419,24 @@ func attemptAutoReconnect(jobId string, connName string) {
 
 	time.Sleep(AutoReconnectDelay)
 
-	isConnected, err := conncontroller.IsConnected(connName)
+	var isConnected bool
+	var err error
+	if isConnectedTestHook != nil {
+		isConnected, err = isConnectedTestHook(connName)
+	} else {
+		isConnected, err = conncontroller.IsConnected(connName)
+	}
 	if err != nil || !isConnected {
 		log.Printf("[job:%s] connection %s is down, skipping auto-reconnect", jobId, connName)
 		return
 	}
 
+	lastAutoReconnectAttempt.Set(jobId, time.Now().Unix())
+
 	log.Printf("[job:%s] connection %s still up after route down, attempting auto-reconnect to determine job manager status", jobId, connName)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
-	err = ReconnectJob(ctx, jobId, nil)
+	err = ReconnectJobRoute(ctx, jobId, nil)
 	if err != nil {
 		log.Printf("[job:%s] auto-reconnect failed: %v", jobId, err)
 	} else {
@@ -440,10 +466,13 @@ func handleConnChangeEvent(event *wps.WaveEvent) {
 	connStates.Lock()
 	cs, exists := connStates.m[connName]
 	if !exists {
-		cs = &connState{actual: false, processed: false, reconciling: false}
+		cs = &connState{actual: false, procGen: 0, actualGen: 0, reconciling: false}
 		connStates.m[connName] = cs
 	}
-	cs.actual = connStatus.Connected
+	if cs.actual != connStatus.Connected {
+		cs.actual = connStatus.Connected
+		cs.actualGen++
+	}
 	connStates.Unlock()
 
 	select {
@@ -1028,7 +1057,14 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 }
 
 func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
-	_, err, _ := reconnectGroup.Do(jobId, func() (any, error) {
+	_, err, _ := reconnectConnGroup.Do(jobId, func() (any, error) {
+		return nil, doReconnectJob(ctx, jobId, rtOpts)
+	})
+	return err
+}
+
+func ReconnectJobRoute(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
+	_, err, _ := reconnectRouteGroup.Do(jobId, func() (any, error) {
 		return nil, doReconnectJob(ctx, jobId, rtOpts)
 	})
 	return err
