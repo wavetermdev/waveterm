@@ -660,6 +660,12 @@ export class RpcApiType {
         return client.wshRpcCall("path", data, opts);
     }
 
+    // command "pintab" [call]
+    PinTabCommand(client: WshClient, arg1: string, arg2: string, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "pintab", { args: [arg1, arg2] }, opts);
+        return client.wshRpcCall("pintab", { args: [arg1, arg2] }, opts);
+    }
+
     // command "publishapp" [call]
     PublishAppCommand(client: WshClient, data: CommandPublishAppData, opts?: RpcOpts): Promise<CommandPublishAppRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "publishapp", data, opts);
@@ -736,6 +742,18 @@ export class RpcApiType {
     RemoteGetInfoCommand(client: WshClient, opts?: RpcOpts): Promise<RemoteInfo> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotegetinfo", null, opts);
         return client.wshRpcCall("remotegetinfo", null, opts);
+    }
+
+    // command "remotegitlinediff" [call]
+    RemoteGitLineDiffCommand(client: WshClient, data: CommandRemoteGitLineDiffData, opts?: RpcOpts): Promise<GitLineDiffResponse> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotegitlinediff", data, opts);
+        return client.wshRpcCall("remotegitlinediff", data, opts);
+    }
+
+    // command "remotegitstatus" [call]
+    RemoteGitStatusCommand(client: WshClient, data: CommandRemoteGitStatusData, opts?: RpcOpts): Promise<GitStatusResponse> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotegitstatus", data, opts);
+        return client.wshRpcCall("remotegitstatus", data, opts);
     }
 
     // command "remoteinstallrcfiles" [call]
@@ -942,10 +960,22 @@ export class RpcApiType {
         return client.wshRpcCall("testmultiarg", { args: [arg1, arg2, arg3] }, opts);
     }
 
+    // command "unpintab" [call]
+    UnpinTabCommand(client: WshClient, arg1: string, arg2: string, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "unpintab", { args: [arg1, arg2] }, opts);
+        return client.wshRpcCall("unpintab", { args: [arg1, arg2] }, opts);
+    }
+
     // command "updatetabname" [call]
     UpdateTabNameCommand(client: WshClient, arg1: string, arg2: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "updatetabname", { args: [arg1, arg2] }, opts);
         return client.wshRpcCall("updatetabname", { args: [arg1, arg2] }, opts);
+    }
+
+    // command "updateworkspacepinnedtabids" [call]
+    UpdateWorkspacePinnedTabIdsCommand(client: WshClient, arg1: string, arg2: string[], opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "updateworkspacepinnedtabids", { args: [arg1, arg2] }, opts);
+        return client.wshRpcCall("updateworkspacepinnedtabids", { args: [arg1, arg2] }, opts);
     }
 
     // command "updateworkspacetabids" [call]

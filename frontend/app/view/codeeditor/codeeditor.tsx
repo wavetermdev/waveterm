@@ -14,6 +14,7 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
         fontSize: 12,
         fontFamily: "Hack",
         smoothScrolling: true,
+        glyphMargin: true,
         scrollbar: {
             useShadows: false,
             verticalScrollbarSize: 5,

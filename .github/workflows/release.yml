@@ -1,0 +1,181 @@
+name: Release
+run-name: Release ${{ github.ref_name }}
+on:
+    push:
+        tags:
+            - "v[0-9]+.[0-9]+.[0-9]+*"
+env:
+    GO_VERSION: "1.25.6"
+    NODE_VERSION: 22
+    NODE_OPTIONS: --max-old-space-size=4096
+jobs:
+    build-app:
+        strategy:
+            matrix:
+                include:
+                    - platform: "darwin"
+                      runner: "macos-latest"
+                      archs: "arm64,amd64"
+                    - platform: "linux"
+                      runner: "ubuntu-latest"
+                      archs: "amd64"
+                    - platform: "windows"
+                      runner: "windows-latest"
+                      archs: "amd64"
+        runs-on: ${{ matrix.runner }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install Linux Build Dependencies
+              if: matrix.platform == 'linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
+
+            - name: Install Zig (not Mac)
+              if: matrix.platform != 'darwin'
+              uses: mlugg/setup-zig@v2
+
+            - name: Install FPM (not Windows)
+              if: matrix.platform != 'windows'
+              run: sudo gem install fpm
+
+            - name: Install FPM (Windows only)
+              if: matrix.platform == 'windows'
+              run: gem install fpm
+
+            - uses: actions/setup-go@v5
+              with:
+                  go-version: ${{env.GO_VERSION}}
+                  cache-dependency-path: go.sum
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{env.NODE_VERSION}}
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+
+            - name: Force git deps to HTTPS
+              run: |
+                  git config --global url.https://github.com/.insteadof ssh://git@github.com/
+                  git config --global url.https://github.com/.insteadof git@github.com:
+
+            - name: Remove docs workspace before install
+              run: |
+                  node -e "const p=require('./package.json'); p.workspaces=p.workspaces.filter(w=>w!=='docs'); require('fs').writeFileSync('package.json',JSON.stringify(p,null,4))"
+              shell: bash
+
+            - name: npm ci
+              run: npm ci --no-audit --no-fund
+              env:
+                  GIT_ASKPASS: "echo"
+                  GIT_TERMINAL_PROMPT: "0"
+
+            - name: Get version
+              id: version
+              run: echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+              shell: bash
+
+            - name: Generate code
+              run: |
+                  go run cmd/generatets/main-generatets.go
+                  go run cmd/generatego/main-generatego.go
+                  go run cmd/generateschema/main-generateschema.go
+                  rm -rf dist/schema
+                  mkdir -p dist/schema
+                  cp schema/*.json dist/schema/ 2>/dev/null || true
+              shell: bash
+
+            - name: Build wavesrv
+              run: |
+                  VERSION="${{ steps.version.outputs.VERSION }}"
+                  BUILD_TIME=$(date +'%Y%m%d%H%M')
+                  IFS=',' read -ra ARCH_LIST <<< "${{ matrix.archs }}"
+                  for GOARCH in "${ARCH_LIST[@]}"; do
+                    NORMALIZED_ARCH=$GOARCH
+                    if [ "$GOARCH" = "amd64" ]; then NORMALIZED_ARCH="x64"; fi
+                    EXT=""
+                    GO_ENV=""
+                    if [ "${{ matrix.platform }}" = "windows" ]; then
+                      EXT=".exe"
+                      GO_ENV="CC=\"zig cc -target x86_64-windows-gnu\""
+                    elif [ "${{ matrix.platform }}" = "linux" ]; then
+                      if [ "$GOARCH" = "amd64" ]; then
+                        GO_ENV="CC=\"zig cc -target x86_64-linux-gnu.2.28\""
+                      else
+                        GO_ENV="CC=\"zig cc -target aarch64-linux-gnu.2.28\""
+                      fi
+                    fi
+                    eval "CGO_ENABLED=1 GOARCH=$GOARCH $GO_ENV go build -tags 'osusergo,sqlite_omit_load_extension' -ldflags '-X main.BuildTime=$BUILD_TIME -X main.WaveVersion=$VERSION' -o dist/bin/wavesrv.${NORMALIZED_ARCH}${EXT} cmd/server/main-server.go"
+                  done
+              shell: bash
+
+            - name: Build wsh
+              run: |
+                  VERSION="${{ steps.version.outputs.VERSION }}"
+                  BUILD_TIME=$(date +'%Y%m%d%H%M')
+                  declare -a TARGETS=(
+                    "darwin:arm64"
+                    "darwin:amd64"
+                    "linux:arm64"
+                    "linux:amd64"
+                    "windows:amd64"
+                    "windows:arm64"
+                  )
+                  for TARGET in "${TARGETS[@]}"; do
+                    GOOS="${TARGET%%:*}"
+                    GOARCH="${TARGET##*:}"
+                    NORMALIZED_ARCH=$GOARCH
+                    if [ "$GOARCH" = "amd64" ]; then NORMALIZED_ARCH="x64"; fi
+                    EXT=""
+                    if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+                    CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-s -w -X main.BuildTime=$BUILD_TIME -X main.WaveVersion=$VERSION" -o "dist/bin/wsh-${VERSION}-${GOOS}.${NORMALIZED_ARCH}${EXT}" cmd/wsh/main-wsh.go
+                  done
+              shell: bash
+
+            - name: Build tsunami scaffold
+              run: |
+                  cd tsunami/frontend && npm run build && cd ../..
+                  rm -rf dist/tsunamiscaffold
+                  mkdir -p dist/tsunamiscaffold
+                  cp -r tsunami/frontend/scaffold/* dist/tsunamiscaffold/ 2>/dev/null || cp -r tsunami/frontend/dist/* dist/tsunamiscaffold/ 2>/dev/null || true
+                  cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod 2>/dev/null || true
+              shell: bash
+
+            - name: Build frontend and package
+              run: npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never
+              env:
+                  USE_SYSTEM_FPM: true
+              shell: bash
+
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ matrix.platform }}-artifacts
+                  path: make/
+
+    create-release:
+        runs-on: ubuntu-latest
+        needs: build-app
+        permissions:
+            contents: write
+        steps:
+            - name: Download artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: artifacts
+                  merge-multiple: true
+            - name: Create Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  name: Wave Terminal ${{ github.ref_name }}
+                  generate_release_notes: true
+                  draft: false
+                  files: |
+                      artifacts/*.zip
+                      artifacts/*.dmg
+                      artifacts/*.exe
+                      artifacts/*.msi
+                      artifacts/*.rpm
+                      artifacts/*.deb
+                      artifacts/*.AppImage

@@ -23,9 +23,12 @@ export type TabEnv = WaveEnvSubset<{
         SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
         UpdateTabNameCommand: WaveEnv["rpc"]["UpdateTabNameCommand"];
+        PinTabCommand: WaveEnv["rpc"]["PinTabCommand"];
+        UnpinTabCommand: WaveEnv["rpc"]["UnpinTabCommand"];
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
+        workspace: WaveEnv["atoms"]["workspace"];
     };
     wos: WaveEnv["wos"];
     getSettingsKeyAtom: WaveEnv["getSettingsKeyAtom"];

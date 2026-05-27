@@ -125,3 +125,27 @@ svg [aria-label="tip"] g path {
         opacity: 0;
     }
 }
+
+/* Git gutter indicators for Monaco editor */
+.git-gutter-added {
+    background: #2ea043;
+    width: 3px !important;
+    margin-left: 5px;
+    border-radius: 1px;
+}
+
+.git-gutter-modified {
+    background: #0078d4;
+    width: 3px !important;
+    margin-left: 5px;
+    border-radius: 1px;
+}
+
+.git-gutter-deleted {
+    background: #f85149;
+    width: 0 !important;
+    margin-left: 3px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid #f85149;
+}

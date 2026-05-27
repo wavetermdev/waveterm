@@ -546,6 +546,17 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandRemoteGitLineDiffData
+    type CommandRemoteGitLineDiffData = {
+        cwd: string;
+        file: string;
+    };
+
+    // wshrpc.CommandRemoteGitStatusData
+    type CommandRemoteGitStatusData = {
+        cwd: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -1022,6 +1033,32 @@ declare global {
         configerrors: ConfigError[];
         version: string;
         buildtime: string;
+    };
+
+    // wshrpc.GitLineDiffHunk
+    type GitLineDiffHunk = {
+        type: string;
+        startline: number;
+        endline: number;
+    };
+
+    // wshrpc.GitLineDiffResponse
+    type GitLineDiffResponse = {
+        hunks: GitLineDiffHunk[];
+        error?: string;
+    };
+
+    // wshrpc.GitStatusFile
+    type GitStatusFile = {
+        status: string;
+        file: string;
+    };
+
+    // wshrpc.GitStatusResponse
+    type GitStatusResponse = {
+        branch: string;
+        files: GitStatusFile[];
+        error?: string;
     };
 
     // waveobj.Job
@@ -1589,6 +1626,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
@@ -2169,6 +2207,7 @@ declare global {
         icon?: string;
         color?: string;
         tabids: string[];
+        pinnedtabids: string[];
         activetabid: string;
     };
 

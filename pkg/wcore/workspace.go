@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wcore
@@ -52,11 +52,12 @@ var WorkspaceIcons = [...]string{
 
 func CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool, isInitialLaunch bool) (*waveobj.Workspace, error) {
 	ws := &waveobj.Workspace{
-		OID:    uuid.NewString(),
-		TabIds: []string{},
-		Name:   "",
-		Icon:   "",
-		Color:  "",
+		OID:          uuid.NewString(),
+		TabIds:       []string{},
+		PinnedTabIds: []string{},
+		Name:         "",
+		Icon:         "",
+		Color:        "",
 	}
 	err := wstore.DBInsert(ctx, ws)
 	if err != nil {
@@ -284,6 +285,7 @@ func createTabObj(ctx context.Context, workspaceId string, name string, meta wav
 		OID: layoutStateId,
 	}
 	ws.TabIds = append(ws.TabIds, tab.OID)
+	ws.PinnedTabIds = append(ws.PinnedTabIds, tab.OID)
 	wstore.DBInsert(ctx, tab)
 	wstore.DBInsert(ctx, layoutState)
 	wstore.DBUpdate(ctx, ws)
@@ -306,6 +308,12 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 		return "", fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
 	}
 	ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
+
+	// remove from pinned list if present
+	pinnedIdx := utilfn.FindStringInSlice(ws.PinnedTabIds, tabId)
+	if pinnedIdx != -1 {
+		ws.PinnedTabIds = append(ws.PinnedTabIds[:pinnedIdx], ws.PinnedTabIds[pinnedIdx+1:]...)
+	}
 
 	// close blocks (sends events + stops block controllers)
 	tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
@@ -361,6 +369,9 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
 		workspace.ActiveTabId = tabId
+		if utilfn.FindStringInSlice(workspace.TabIds, tabId) != -1 && utilfn.FindStringInSlice(workspace.PinnedTabIds, tabId) == -1 {
+			workspace.PinnedTabIds = append(workspace.PinnedTabIds, tabId)
+		}
 		wstore.DBUpdate(ctx, workspace)
 	}
 	return nil
@@ -379,6 +390,62 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 		return fmt.Errorf("workspace not found: %q", workspaceId)
 	}
 	ws.TabIds = tabIds
+	wstore.DBUpdate(ctx, ws)
+	return nil
+}
+
+func PinTab(ctx context.Context, workspaceId string, tabId string) error {
+	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	if utilfn.FindStringInSlice(ws.TabIds, tabId) == -1 {
+		return fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
+	}
+	if utilfn.FindStringInSlice(ws.PinnedTabIds, tabId) != -1 {
+		return nil
+	}
+	ws.PinnedTabIds = append(ws.PinnedTabIds, tabId)
+	wstore.DBUpdate(ctx, ws)
+	return nil
+}
+
+func UnpinTab(ctx context.Context, workspaceId string, tabId string) error {
+	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	pinnedIdx := utilfn.FindStringInSlice(ws.PinnedTabIds, tabId)
+	if pinnedIdx == -1 {
+		return nil
+	}
+	ws.PinnedTabIds = append(ws.PinnedTabIds[:pinnedIdx], ws.PinnedTabIds[pinnedIdx+1:]...)
+	if ws.ActiveTabId == tabId && len(ws.PinnedTabIds) > 0 {
+		ws.ActiveTabId = ws.PinnedTabIds[max(0, min(pinnedIdx-1, len(ws.PinnedTabIds)-1))]
+		SendActiveTabUpdate(ctx, workspaceId, ws.ActiveTabId)
+	}
+	wstore.DBUpdate(ctx, ws)
+	return nil
+}
+
+func UpdateWorkspacePinnedTabIds(ctx context.Context, workspaceId string, pinnedTabIds []string) error {
+	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	if ws == nil {
+		return fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	tabSet := make(map[string]bool, len(ws.TabIds))
+	for _, id := range ws.TabIds {
+		tabSet[id] = true
+	}
+	seen := make(map[string]bool, len(pinnedTabIds))
+	var filtered []string
+	for _, id := range pinnedTabIds {
+		if tabSet[id] && !seen[id] {
+			seen[id] = true
+			filtered = append(filtered, id)
+		}
+	}
+	ws.PinnedTabIds = filtered
 	wstore.DBUpdate(ctx, ws)
 	return nil
 }

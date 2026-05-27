@@ -175,6 +175,36 @@ func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspace
 	return nil
 }
 
+func (ws *WshServer) PinTabCommand(ctx context.Context, workspaceId string, tabId string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Workspace, OID: workspaceId}
+	err := wcore.PinTab(ctx, workspaceId, tabId)
+	if err != nil {
+		return fmt.Errorf("error pinning tab: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
+func (ws *WshServer) UnpinTabCommand(ctx context.Context, workspaceId string, tabId string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Workspace, OID: workspaceId}
+	err := wcore.UnpinTab(ctx, workspaceId, tabId)
+	if err != nil {
+		return fmt.Errorf("error unpinning tab: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
+func (ws *WshServer) UpdateWorkspacePinnedTabIdsCommand(ctx context.Context, workspaceId string, pinnedTabIds []string) error {
+	oref := waveobj.ORef{OType: waveobj.OType_Workspace, OID: workspaceId}
+	err := wcore.UpdateWorkspacePinnedTabIds(ctx, workspaceId, pinnedTabIds)
+	if err != nil {
+		return fmt.Errorf("error updating workspace pinned tab ids: %w", err)
+	}
+	wcore.SendWaveObjUpdate(oref)
+	return nil
+}
+
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
 	log.Printf("SetMetaCommand: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef

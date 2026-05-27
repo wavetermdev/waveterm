@@ -96,6 +96,9 @@ type WshRpcInterface interface {
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
 	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
+	PinTabCommand(ctx context.Context, workspaceId string, tabId string) error
+	UnpinTabCommand(ctx context.Context, workspaceId string, tabId string) error
+	UpdateWorkspacePinnedTabIdsCommand(ctx context.Context, workspaceId string, pinnedTabIds []string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions
@@ -129,6 +132,8 @@ type WshRpcInterface interface {
 	BadgeWatchPidCommand(ctx context.Context, data CommandBadgeWatchPidData) error
 	RemoteProcessListCommand(ctx context.Context, data CommandRemoteProcessListData) (*ProcessListResponse, error)
 	RemoteProcessSignalCommand(ctx context.Context, data CommandRemoteProcessSignalData) error
+	RemoteGitStatusCommand(ctx context.Context, data CommandRemoteGitStatusData) (*GitStatusResponse, error)
+	RemoteGitLineDiffCommand(ctx context.Context, data CommandRemoteGitLineDiffData) (*GitLineDiffResponse, error)
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -924,4 +929,35 @@ type CommandRemoteProcessListData struct {
 type CommandRemoteProcessSignalData struct {
 	Pid    int32  `json:"pid"`
 	Signal string `json:"signal"`
+}
+
+type CommandRemoteGitStatusData struct {
+	Cwd string `json:"cwd"`
+}
+
+type GitStatusFile struct {
+	Status string `json:"status"`
+	File   string `json:"file"`
+}
+
+type GitStatusResponse struct {
+	Branch string          `json:"branch"`
+	Files  []GitStatusFile `json:"files"`
+	Error  string          `json:"error,omitempty"`
+}
+
+type CommandRemoteGitLineDiffData struct {
+	Cwd  string `json:"cwd"`
+	File string `json:"file"`
+}
+
+type GitLineDiffHunk struct {
+	Type      string `json:"type"`
+	StartLine int    `json:"startline"`
+	EndLine   int    `json:"endline"`
+}
+
+type GitLineDiffResponse struct {
+	Hunks []GitLineDiffHunk `json:"hunks"`
+	Error string            `json:"error,omitempty"`
 }
