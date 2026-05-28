@@ -1196,6 +1196,8 @@ declare global {
         "web:useragenttype"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
+        "preview:followtermid"?: string;
+        "preview:followterm:bidir"?: boolean;
         "tsunami:*"?: boolean;
         "tsunami:sdkreplacepath"?: string;
         "tsunami:apppath"?: string;

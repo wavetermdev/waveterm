@@ -21,6 +21,7 @@ import {
 import { globalStore } from "@/app/store/jotaiStore";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { renamingBlockIdAtom, startBlockRename, stopBlockRename } from "@/app/block/blockrenamestate";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { IconButton } from "@/element/iconbutton";
 import { NodeModel } from "@/layout/index";
@@ -36,12 +37,24 @@ function handleHeaderContextMenu(
     blockId: string,
     viewModel: ViewModel,
     nodeModel: NodeModel,
-    blockEnv: BlockEnv
+    blockEnv: BlockEnv,
+    preview: boolean
 ) {
     e.preventDefault();
     e.stopPropagation();
     const magnified = globalStore.get(nodeModel.isMagnified);
-    const menu: ContextMenuItem[] = [
+    const ephemeral = globalStore.get(nodeModel.isEphemeral);
+    const useTermHeader = viewModel?.useTermHeader ? globalStore.get(viewModel.useTermHeader) : false;
+    const menu: ContextMenuItem[] = [];
+
+    if (!ephemeral && !preview && useTermHeader) {
+        menu.push({
+            label: "Rename Block",
+            click: () => startBlockRename(blockId),
+        });
+    }
+
+    menu.push(
         {
             label: magnified ? "Un-Magnify Block" : "Magnify Block",
             click: () => {
@@ -54,8 +67,8 @@ function handleHeaderContextMenu(
             click: () => {
                 navigator.clipboard.writeText(blockId);
             },
-        },
-    ];
+        }
+    );
     const extraItems = viewModel?.getSettingsMenuItems?.();
     if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
     menu.push(
@@ -78,11 +91,89 @@ type HeaderTextElemsProps = {
 const HeaderTextElems = React.memo(({ viewModel, blockId, preview, error }: HeaderTextElemsProps) => {
     const waveEnv = useWaveEnv<BlockEnv>();
     const frameTextAtom = waveEnv.getBlockMetaKeyAtom(blockId, "frame:text");
+    const frameTitleAtom = waveEnv.getBlockMetaKeyAtom(blockId, "frame:title");
     const frameText = jotai.useAtomValue(frameTextAtom);
+    const frameTitle = jotai.useAtomValue(frameTitleAtom);
+    const renamingBlockId = jotai.useAtomValue(renamingBlockIdAtom);
+    const isRenaming = renamingBlockId === blockId;
+    const useTermHeader = util.useAtomValueSafe(viewModel?.useTermHeader);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     headerTextUnion = frameText ?? headerTextUnion;
+    const cancelRef = React.useRef(false);
+    const sessionIdRef = React.useRef(0);
+
+    const saveRename = React.useCallback(
+        async (newTitle: string, sessionId: number) => {
+            const val = newTitle.trim() || null;
+            try {
+                await waveEnv.rpc.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", blockId),
+                    meta: { "frame:title": val },
+                });
+                if (sessionIdRef.current === sessionId) {
+                    stopBlockRename();
+                }
+            } catch (error) {
+                console.error("Failed to save block rename:", error);
+            }
+        },
+        [blockId, waveEnv]
+    );
+
+    React.useEffect(() => {
+        if (isRenaming) {
+            sessionIdRef.current++;
+            cancelRef.current = false;
+        }
+    }, [isRenaming]);
+
+    if (isRenaming) {
+        return (
+            <div className="block-frame-textelems-wrapper">
+                <input
+                    autoFocus
+                    defaultValue={frameTitle ?? ""}
+                    placeholder="Block name..."
+                    className="block-frame-rename-input bg-transparent border border-white/20 rounded px-2 py-0.5 text-sm outline-none focus:border-white/40 min-w-0 w-full max-w-[200px]"
+                    onFocus={(e) => e.currentTarget.select()}
+                    onBlur={(e) => {
+                        if (cancelRef.current) {
+                            cancelRef.current = false;
+                            stopBlockRename();
+                            return;
+                        }
+                        saveRename(e.currentTarget.value, sessionIdRef.current);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            cancelRef.current = true;
+                            saveRename(e.currentTarget.value, sessionIdRef.current);
+                        } else if (e.key === "Escape") {
+                            cancelRef.current = true;
+                            stopBlockRename();
+                        }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                />
+            </div>
+        );
+    }
 
     const headerTextElems: React.ReactElement[] = [];
+
+    // For terminal blocks, show frame:title as a name badge in the text area
+    if (useTermHeader && frameTitle) {
+        headerTextElems.push(
+            <div
+                key="frame-title"
+                className="block-frame-text shrink-0 opacity-70 cursor-pointer"
+                title="Right-click header to rename"
+            >
+                {frameTitle}
+            </div>
+        );
+    }
+
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
@@ -116,9 +207,10 @@ type HeaderEndIconsProps = {
     viewModel: ViewModel;
     nodeModel: NodeModel;
     blockId: string;
+    preview: boolean;
 };
 
-const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndIconsProps) => {
+const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId, preview }: HeaderEndIconsProps) => {
     const blockEnv = useWaveEnv<BlockEnv>();
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
@@ -168,7 +260,7 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
         elemtype: "iconbutton",
         icon: "cog",
         title: "Settings",
-        click: (e) => handleHeaderContextMenu(e, blockId, viewModel, nodeModel, blockEnv),
+        click: (e) => handleHeaderContextMenu(e, blockId, viewModel, nodeModel, blockEnv, preview),
     };
     endIconsElem.push(<IconButton key="settings" decl={settingsDecl} className="block-frame-settings" />);
     if (ephemeral) {
@@ -251,7 +343,7 @@ const BlockFrame_Header = ({
             className={cn("block-frame-default-header", useTermHeader && "!pl-[2px]")}
             data-role="block-header"
             ref={dragHandleRef}
-            onContextMenu={(e) => handleHeaderContextMenu(e, nodeModel.blockId, viewModel, nodeModel, waveEnv)}
+            onContextMenu={(e) => handleHeaderContextMenu(e, nodeModel.blockId, viewModel, nodeModel, waveEnv, preview)}
         >
             {!useTermHeader && (
                 <>
@@ -286,7 +378,7 @@ const BlockFrame_Header = ({
                 </div>
             )}
             <HeaderTextElems viewModel={viewModel} blockId={nodeModel.blockId} preview={preview} error={error} />
-            <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} />
+            <HeaderEndIcons viewModel={viewModel} nodeModel={nodeModel} blockId={nodeModel.blockId} preview={preview} />
         </div>
     );
 };
