@@ -230,7 +230,9 @@ type ConnKeywords struct {
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 	ConnShellPath           string `json:"conn:shellpath,omitempty"`
-	ConnIgnoreSshConfig     *bool  `json:"conn:ignoresshconfig,omitempty"`
+	ConnIgnoreSshConfig          *bool `json:"conn:ignoresshconfig,omitempty"`
+	ConnStallAutoDisconnect      *bool `json:"conn:stallautodisconnect,omitempty"`
+	ConnStallDisconnectThreshold *int  `json:"conn:stalldisconnectthreshold,omitempty"`
 
 	DisplayHidden *bool   `json:"display:hidden,omitempty"`
 	DisplayOrder  float32 `json:"display:order,omitempty"`

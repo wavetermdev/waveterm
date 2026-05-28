@@ -30,11 +30,27 @@
   - [x] Bug #2 (P0): connStates reconciliation race — replaced `processed bool` with generation counters (`actualGen` / `procGen`); `reconcileConn` now sends follow-up signal if `actualGen != procGen` at finish
   - [x] Bug #3 (P0): singleflight caches transient reconnect failures — split `reconnectGroup` into `reconnectConnGroup` and `reconnectRouteGroup`; route-level `attemptAutoReconnect` now calls `ReconnectJobRoute` instead of sharing the connection-level cache
   - [x] Decision 2026-05-23: Server reboot / `wsh` death → manual reconnect (do NOT auto-restart fresh shell). Auto-restart would change durable-session semantics from "resume existing shell" to "keep shell open at all costs," creating context-loss confusion and `wsh` re-install loops.
-  - Missing #1 (P1): `NotifySystemResumeCommand` is a no-op — system wake doesn't trigger reconnect
-  - Missing #2 (P1): No network-online detection — relies on slow TCP failure detection
-  - Missing #3 (P1): No SSH/TCP keepalive configuration — zombie connections persist
+  - GitHub issue (problem): https://github.com/whoisjeremylam/waveterm-remote/issues/7
+  - GitHub issue (implementation): https://github.com/whoisjeremylam/waveterm-remote/issues/8
+  - Branch: `fix/auto-reconnect-detection-gaps`
+  - [x] Phase 1 (Gap C): Auto-disconnect on stall — `ConnMonitor` detects stall but doesn't set `Status=Disconnected`
+    - Commit `b4c4dbea`: Add configurable `ConnStallDisconnectThreshold` to `ConnKeywords`
+    - Trigger `conn.Close()` when stall exceeds threshold (removed `!isUrgent()` guard per spec review)
+    - Commit `a157b234`: Add `AttemptReconnect` helper + reconnect scheduler in `onConnectionDown` (fixes GAP-1)
+    - This makes sleep/Wi-Fi/VPN interruptions self-healing via existing `onConnectionUp`
+  - [x] Phase 2 (Gap A): Implement `NotifySystemResumeCommand` — commit `a157b234` + Phase 2 additions
+    - `emain.ts` already hooks `powerMonitor.on('resume')` → calls `NotifySystemResumeCommand`
+    - `wshserver.go`: `NotifySystemResumeCommand` now calls `jobcontroller.HandleSystemResume(ctx)` instead of no-op
+    - `jobcontroller.go`: `HandleSystemResume` iterates all connections, finds those with durable jobs, forces disconnect on stalled zombies, spawns `AttemptReconnect()` goroutines for immediate reconnect
+    - Fast-path: bypasses 30s scheduler tick, attempts reconnect within ~1-2s of system wake
+  - [x] Phase 3 (Gap B): Aggressive scheduler enhancement — implemented as Option B
+    - `isNetworkUnreachableError()` detects dial tcp i/o timeout, no route, DNS failure
+    - On network-unreachable error: switch to 5s interval for 2 minutes
+    - When user switches back to good Wi-Fi, next 5s tick reconnects automatically
+    - After 2 minutes aggressive: returns to 30s interval for remaining scheduler window
+    - If still no network after total 5 min: scheduler gives up (manual reconnect required)
+    - No native modules, zero build risk, cross-platform automatically
   - Edge cases (P2): respect manual disconnect, reconnect UI indicator
-  - GitHub issue: https://github.com/whoisjeremylam/waveterm-remote/issues/4
 
 - [x] **Tmux mouse integration lost on durable session reconnect** — FIXED 2026-05-19
   - Bug: tmux mouse mode (click to switch windows, wheel scrollback, click-drag select) works in new sessions but NOT in reconnected durable sessions after full WaveTerm restart

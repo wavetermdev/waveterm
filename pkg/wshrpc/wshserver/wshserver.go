@@ -769,7 +769,8 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) NotifySystemResumeCommand(ctx context.Context) error {
-	log.Printf("NotifySystemResumeCommand called\n")
+	log.Printf("[system] resume event received from powerMonitor\n")
+	jobcontroller.HandleSystemResume(ctx)
 	return nil
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/streamclient"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
@@ -109,10 +110,19 @@ var (
 	terminateJobManagerGroup singleflight.Group
 
 	// test hooks for unit testing auto-reconnect behavior
-	isConnectedTestHook    func(connName string) (bool, error)
-	reconcileOnUpTestHook  func(connName string)
-	reconcileOnDownTestHook func(connName string)
+	isConnectedTestHook              func(connName string) (bool, error)
+	reconcileOnUpTestHook            func(connName string)
+	reconcileOnDownTestHook          func(connName string)
+	hasRunningDurableJobsTestHook    func(ctx context.Context, connName string) bool
+
+	// active connection-reconnect schedulers (deduplication for onConnectionDown)
+	connectionReconnectSchedulers = ds.MakeSyncMap[bool]()
 )
+
+const ConnReconnectInterval              = 30 * time.Second
+const ConnReconnectMaxDuration           = 5 * time.Minute
+const ConnReconnectAggressiveInterval    = 5 * time.Second
+const ConnReconnectAggressiveDuration    = 2 * time.Minute
 
 func InitJobController() {
 	go connReconcileWorker()
@@ -541,8 +551,203 @@ func onConnectionUp(connName string) {
 	log.Printf("[conn:%s] finished reconnecting jobs: %d/%d successful", connName, successCount, len(jobsToReconnect))
 }
 
+// HandleSystemResume is called on macOS system wake (via NotifySystemResumeCommand).
+// It forces a disconnect/reconnect cycle for all connections with running durable jobs
+// that are either stalled or disconnected, bypassing the normal monitor tick timing.
+func HandleSystemResume(ctx context.Context) {
+	log.Printf("[system] handling system resume, checking connections for fast-path reconnect")
+
+	allStatuses := conncontroller.GetAllConnStatus()
+	for _, status := range allStatuses {
+		connName := status.Connection
+		if conncontroller.IsLocalConnName(connName) {
+			continue
+		}
+		if !hasRunningDurableJobsForConn(ctx, connName) {
+			continue
+		}
+
+		// Already connected and healthy — nothing to do
+		if status.Status == conncontroller.Status_Connected && status.ConnHealthStatus == conncontroller.ConnHealthStatus_Good {
+			continue
+		}
+
+		// Clean up any stale scheduler entry so we don't race with it
+		connectionReconnectSchedulers.Delete(connName)
+
+		// Stalled (zombie after sleep) — force disconnect first so reconnect starts fresh
+		if status.Status == conncontroller.Status_Connected && status.ConnHealthStatus == conncontroller.ConnHealthStatus_Stalled {
+			log.Printf("[system] connection %s stalled after resume, forcing disconnect", connName)
+			connOpts, err := remote.ParseOpts(connName)
+			if err == nil {
+				conn := conncontroller.MaybeGetConn(connOpts)
+				if conn != nil {
+					// Close synchronously — ensures status is Disconnected before we attempt reconnect
+					conn.Close()
+				}
+			}
+		}
+
+		// Attempt immediate reconnect (bypasses 30s scheduler tick)
+		log.Printf("[system] fast-path reconnect for %s", connName)
+		go func(cn string) {
+			defer func() {
+				panichandler.PanicHandler("jobcontroller:HandleSystemResume-reconnect", recover())
+			}()
+			reconnectCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancelFn()
+			err := conncontroller.AttemptReconnect(reconnectCtx, cn)
+			if err != nil {
+				log.Printf("[system] fast-path reconnect for %s failed: %v", cn, err)
+			} else {
+				log.Printf("[system] fast-path reconnect for %s succeeded", cn)
+			}
+		}(connName)
+	}
+}
+
 func onConnectionDown(connName string) {
 	log.Printf("[conn:%s] connection became disconnected", connName)
+
+	// Skip local connections — they don't need SSH reconnect
+	if conncontroller.IsLocalConnName(connName) {
+		return
+	}
+
+	// Deduplicate: only one scheduler per connection at a time
+	if _, exists := connectionReconnectSchedulers.GetEx(connName); exists {
+		return
+	}
+	connectionReconnectSchedulers.Set(connName, true)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("jobcontroller:scheduleConnectionReconnect", recover())
+		}()
+		defer connectionReconnectSchedulers.Delete(connName)
+		scheduleConnectionReconnect(connName)
+	}()
+}
+
+// isNetworkUnreachableError returns true when an error indicates the local
+// network is down or unreachable (e.g., Wi-Fi changed, no route, interface down).
+// It filters out server-side errors like connection refused or auth failures.
+func isNetworkUnreachableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	networkPatterns := []string{
+		"no route to host",
+		"network is unreachable",
+		"no such host",
+		"temporary failure in name resolution",
+		"connection timed out",
+	}
+	for _, p := range networkPatterns {
+		if strings.Contains(s, p) {
+			return true
+		}
+	}
+	// Dial timeout specifically (not general I/O timeout after connect)
+	if strings.Contains(s, "dial tcp") && strings.Contains(s, "i/o timeout") {
+		return true
+	}
+	return false
+}
+
+// scheduleConnectionReconnect periodically attempts to reconnect a connection
+// that has running durable jobs. It stops when the connection comes back up
+// or when no running durable jobs remain.
+// When the network appears unreachable (e.g., after Wi-Fi change), it switches
+// to aggressive mode: 5s interval for up to 2 minutes to catch the network
+// return faster.
+func scheduleConnectionReconnect(connName string) {
+	startTime := time.Now()
+	aggressiveMode := false
+	var aggressiveUntil time.Time
+
+	ticker := time.NewTicker(ConnReconnectInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		if time.Since(startTime) > ConnReconnectMaxDuration {
+			log.Printf("[conn:%s] reconnect scheduler reached max duration, stopping", connName)
+			return
+		}
+
+		isConnected, err := conncontroller.IsConnected(connName)
+		if err != nil {
+			log.Printf("[conn:%s] error checking connection status: %v", connName, err)
+			continue
+		}
+		if isConnected {
+			log.Printf("[conn:%s] connection is back up, stopping reconnect scheduler", connName)
+			return
+		}
+
+		// Use a generous timeout for job lookup — slow DB should not kill the scheduler
+		ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+		hasJobs := hasRunningDurableJobsForConn(ctx, connName)
+		cancelFn()
+		if !hasJobs {
+			log.Printf("[conn:%s] no running durable jobs, stopping reconnect scheduler", connName)
+			return
+		}
+
+		log.Printf("[conn:%s] attempting scheduled reconnect...", connName)
+		// In aggressive mode, use a shorter timeout so ticks don't pile up
+		connectTimeout := 30 * time.Second
+		if aggressiveMode {
+			connectTimeout = 8 * time.Second
+		}
+		ctx, cancelFn = context.WithTimeout(context.Background(), connectTimeout)
+		err = conncontroller.AttemptReconnect(ctx, connName)
+		cancelFn()
+		if err != nil {
+			log.Printf("[conn:%s] scheduled reconnect failed: %v", connName, err)
+
+			// Switch to aggressive mode when network is unreachable
+			if isNetworkUnreachableError(err) {
+				if !aggressiveMode {
+					log.Printf("[conn:%s] network unreachable, switching to aggressive mode (5s interval)", connName)
+					aggressiveMode = true
+				}
+				// Extend aggressive window each time we see a network error
+				aggressiveUntil = time.Now().Add(ConnReconnectAggressiveDuration)
+				ticker.Stop()
+				ticker = time.NewTicker(ConnReconnectAggressiveInterval)
+			}
+		} else {
+			log.Printf("[conn:%s] scheduled reconnect succeeded", connName)
+			return
+		}
+
+		// Return to normal interval when aggressive window expires
+		if aggressiveMode && time.Now().After(aggressiveUntil) {
+			log.Printf("[conn:%s] aggressive mode expired, returning to normal interval", connName)
+			aggressiveMode = false
+			ticker.Stop()
+			ticker = time.NewTicker(ConnReconnectInterval)
+		}
+	}
+}
+
+// hasRunningDurableJobsForConn checks if a connection has any running durable jobs.
+func hasRunningDurableJobsForConn(ctx context.Context, connName string) bool {
+	if hasRunningDurableJobsTestHook != nil {
+		return hasRunningDurableJobsTestHook(ctx, connName)
+	}
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		log.Printf("[conn:%s] error getting jobs for reconnect check: %v", connName, err)
+		return false
+	}
+	for _, job := range allJobs {
+		if job.Connection == connName && isJobManagerRunning(job) {
+			return true
+		}
+	}
+	return false
 }
 
 func GetJobConnStatus(jobId string) string {

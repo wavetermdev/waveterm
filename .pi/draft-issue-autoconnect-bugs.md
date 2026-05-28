@@ -120,6 +120,22 @@ SSH connections may not have aggressive keepalive settings, meaning a "zombie" c
 - Respect manual disconnect (don't auto-reconnect)
 - Reconnect state indicator in UI
 
+### UX Enhancement: Tab-focus triggers reconnect
+
+**Problem:** When a durable session is disconnected, the user sees a disconnected block with a connect button. But if they switch to another tab and back, they expect the session to be ready — instead they have to manually click connect.
+
+**Proposal:** When a tab gains focus, scan all blocks in that tab. For any terminal block with a disconnected durable session, automatically trigger a reconnect attempt for that connection.
+
+**Why tab, not block:** Blocks already have a connect button. Tab focus is the "I want to work in this context" gesture and may cover multiple blocks/connections at once.
+
+**Implementation:**
+- Frontend: in tab focus handler, scan tab's blocks → find disconnected durable terminals → call `ReconnectConnection` RPC for each unique connection
+- Backend: new `ReconnectConnectionCommand` that triggers existing connection-level reconnect logic
+- Guardrails: respect cooldown, durable sessions only, respect manual disconnect
+- UI: show "Reconnecting..." in block headers during attempt
+
+**Effort:** ~150 lines (frontend focus handler + RPC call + UI indicator, backend RPC wrapper). Does not fix underlying bugs but improves UX significantly.
+
 ## Files involved
 
 | File | Relevant functions |

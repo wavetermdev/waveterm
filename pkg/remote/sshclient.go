@@ -1206,6 +1206,12 @@ func mergeKeywords(oldKeywords *wconfig.ConnKeywords, newKeywords *wconfig.ConnK
 	if newKeywords.SshPasswordSecretName != nil {
 		outKeywords.SshPasswordSecretName = newKeywords.SshPasswordSecretName
 	}
+	if newKeywords.ConnStallAutoDisconnect != nil {
+		outKeywords.ConnStallAutoDisconnect = newKeywords.ConnStallAutoDisconnect
+	}
+	if newKeywords.ConnStallDisconnectThreshold != nil {
+		outKeywords.ConnStallDisconnectThreshold = newKeywords.ConnStallDisconnectThreshold
+	}
 
 	return &outKeywords
 }

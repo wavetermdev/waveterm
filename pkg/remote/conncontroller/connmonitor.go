@@ -25,6 +25,7 @@ type ConnMonitor struct {
 	LastInputTime     atomic.Int64
 	KeepAliveSentTime atomic.Int64
 	KeepAliveInFlight bool
+	StallStartTime    atomic.Int64 // when stall was first detected (UnixMilli)
 	ctx               context.Context
 	cancelFunc        context.CancelFunc
 	inputNotifyCh     chan int64
@@ -153,6 +154,23 @@ func (cm *ConnMonitor) checkConnection() {
 	timeSinceKeepAlive := cm.getTimeSinceKeepAlive()
 	if timeSinceKeepAlive > stalledThreshold {
 		cm.setConnHealthStatus(ConnHealthStatus_Stalled)
+
+		// Auto-disconnect on persistent stall (Phase 1: Gap C)
+		// Note: disconnect regardless of 'urgent' — stalled means keystrokes aren't reaching remote anyway
+		stallStart := cm.StallStartTime.Load()
+		now := time.Now().UnixMilli()
+		if stallStart == 0 {
+			cm.StallStartTime.Store(now)
+		} else {
+			thresholdMs := cm.getStallDisconnectThresholdMs()
+			if now-stallStart > thresholdMs {
+				log.Printf("[conncontroller] conn:%s stall auto-disconnect after %dms, disconnecting", cm.Conn.GetName(), now-stallStart)
+				cm.disconnectOnStall()
+			}
+		}
+	} else {
+		// Not stalled — reset stall tracking
+		cm.StallStartTime.Store(0)
 	}
 }
 
@@ -189,6 +207,45 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 			return
 		}
 	}
+}
+
+// getStallDisconnectThresholdMs returns the configured auto-disconnect threshold in milliseconds.
+// Default is 30 seconds (30000ms). Reads from connection-specific config.
+func (cm *ConnMonitor) getStallDisconnectThresholdMs() int64 {
+	connConfig, ok := cm.Conn.getConnectionConfig()
+	if ok && connConfig.ConnStallDisconnectThreshold != nil && *connConfig.ConnStallDisconnectThreshold > 0 {
+		return int64(*connConfig.ConnStallDisconnectThreshold) * 1000
+	}
+	return 30000 // 30s default
+}
+
+// shouldAutoDisconnectOnStall checks if auto-disconnect on stall is enabled.
+// Default is true. Reads from connection-specific config.
+func (cm *ConnMonitor) shouldAutoDisconnectOnStall() bool {
+	connConfig, ok := cm.Conn.getConnectionConfig()
+	if ok && connConfig.ConnStallAutoDisconnect != nil {
+		return *connConfig.ConnStallAutoDisconnect
+	}
+	return true
+}
+
+// disconnectOnStall triggers connection disconnect due to persistent stall.
+// CRITICAL: must NOT hold cm.lock when calling into SSHConn (deadlock — lock ordering violation).
+func (cm *ConnMonitor) disconnectOnStall() {
+	if !cm.shouldAutoDisconnectOnStall() {
+		return
+	}
+	status := cm.Conn.GetStatus()
+	if status != Status_Connected && status != Status_Connecting {
+		return
+	}
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("conncontroller:disconnectOnStall", recover())
+		}()
+		log.Printf("[conncontroller] conn:%s disconnecting due to persistent stall", cm.Conn.GetName())
+		cm.Conn.Close()
+	}()
 }
 
 func (cm *ConnMonitor) Close() {

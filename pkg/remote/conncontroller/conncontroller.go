@@ -71,6 +71,12 @@ var globalLock = &sync.Mutex{}
 var clientControllerMap = make(map[remote.SSHOpts]*SSHConn)
 var activeConnCounter = &atomic.Int32{}
 
+// test hook for connectInternal — allows mocking SSH connection in tests
+var connectInternalTestHook func(conn *SSHConn, ctx context.Context, connFlags *wconfig.ConnKeywords) error
+
+// test hook for getConnectionConfig — allows mocking per-connection settings in tests
+var getConnectionConfigTestHook func(conn *SSHConn) (wconfig.ConnKeywords, bool)
+
 type SSHConn struct {
 	lock          *sync.Mutex // this lock protects the fields in the struct from concurrent access
 	lifecycleLock *sync.Mutex // this protects the lifecycle from concurrent calls
@@ -896,6 +902,9 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 }
 
 func (conn *SSHConn) getConnectionConfig() (wconfig.ConnKeywords, bool) {
+	if getConnectionConfigTestHook != nil {
+		return getConnectionConfigTestHook(conn)
+	}
 	config := wconfig.GetWatcher().GetFullConfig()
 	connSettings, ok := config.Connections[conn.GetName()]
 	if !ok {
@@ -927,6 +936,9 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 
 // returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
+	if connectInternalTestHook != nil {
+		return connectInternalTestHook(conn, ctx, connFlags)
+	}
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
@@ -1104,6 +1116,27 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	default:
 		return fmt.Errorf("unknown connection status %q", connStatus.Status)
 	}
+}
+
+// AttemptReconnect tries to reconnect a disconnected or errored connection by name.
+// Returns nil if already connected or local. Returns error if connection does not exist or connect fails.
+func AttemptReconnect(ctx context.Context, connName string) error {
+	if IsLocalConnName(connName) {
+		return nil
+	}
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := MaybeGetConn(connOpts)
+	if conn == nil {
+		return fmt.Errorf("connection %q does not exist", connName)
+	}
+	status := conn.GetStatus()
+	if status == Status_Connected {
+		return nil
+	}
+	return conn.Connect(ctx, &wconfig.ConnKeywords{})
 }
 
 func DisconnectClient(opts *remote.SSHOpts) error {

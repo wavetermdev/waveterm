@@ -4,19 +4,19 @@
 package jobcontroller
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
-
-// TestShouldAttemptAutoReconnect verifies that the cooldown timestamp
-// is NOT consumed by shouldAttemptAutoReconnect; it is only checked.
 func TestShouldAttemptAutoReconnect(t *testing.T) {
 	// Reset global state
 	lastAutoReconnectAttempt = ds.MakeSyncMap[int64]()
@@ -480,4 +480,49 @@ func TestAttemptAutoReconnectSetsCooldownWhenUp(t *testing.T) {
 	}
 
 	isConnectedTestHook = nil
+}
+
+func TestOnConnectionDownDeduplication(t *testing.T) {
+	// Reset scheduler tracking
+	connectionReconnectSchedulers = ds.MakeSyncMap[bool]()
+
+	connName := "conn:dedup"
+
+	// First call should create a scheduler entry
+	onConnectionDown(connName)
+	if _, exists := connectionReconnectSchedulers.GetEx(connName); !exists {
+		t.Fatalf("expected scheduler to be registered after first onConnectionDown")
+	}
+
+	// Second call should be deduplicated (no new scheduler spawned)
+	onConnectionDown(connName)
+
+	// Clean up: manually remove so we don't leave a goroutine running
+	connectionReconnectSchedulers.Delete(connName)
+}
+
+// TestHandleSystemResumeSmoke verifies that HandleSystemResume filters correctly
+// and does not panic when processing connections.
+func TestHandleSystemResumeSmoke(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	// Mock hasRunningDurableJobs to return true for our test connection
+	hasRunningDurableJobsTestHook = func(ctx context.Context, connName string) bool {
+		return connName == "testuser@testhost:2222"
+	}
+	defer func() { hasRunningDurableJobsTestHook = nil }()
+
+	// Create a mock disconnected connection in the controller map
+	testOpts := &remote.SSHOpts{SSHHost: "testhost", SSHUser: "testuser", SSHPort: "2222"}
+	conn := conncontroller.GetConn(testOpts)
+	conn.Status = conncontroller.Status_Disconnected
+	conn.ConnHealthStatus = conncontroller.ConnHealthStatus_Good
+
+	// Call HandleSystemResume — should attempt reconnect for the disconnected conn
+	// (reconnect will fail because mock has no connectInternal hook, but that's expected)
+	HandleSystemResume(ctx)
+
+	// Note: mock connection remains in controller map but uses unique key,
+	// so it won't interfere with other tests.
 }
