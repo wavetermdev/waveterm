@@ -162,6 +162,14 @@ declare global {
         meta?: MetaType;
     };
 
+    // wshrpc.BlockDoneEventData
+    type BlockDoneEventData = {
+        blockid: string;
+        exitcode: number;
+        title?: string;
+        message?: string;
+    };
+
     // wshrpc.BlockInfoData
     type BlockInfoData = {
         blockid: string;
@@ -1188,6 +1196,9 @@ declare global {
         "term:conndebug"?: string;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:donenotify"?: boolean;
+        "term:donesound"?: boolean;
+        "term:doneautofocus"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
         "web:zoom"?: number;
@@ -1422,6 +1433,9 @@ declare global {
         "term:cursorblink"?: boolean;
         "term:bellsound"?: boolean;
         "term:bellindicator"?: boolean;
+        "term:donenotify"?: boolean;
+        "term:donesound"?: boolean;
+        "term:doneautofocus"?: boolean;
         "term:osc52"?: string;
         "term:durable"?: boolean;
         "term:showsplitbuttons"?: boolean;
@@ -1589,6 +1603,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

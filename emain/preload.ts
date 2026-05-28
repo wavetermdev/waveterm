@@ -73,6 +73,10 @@ contextBridge.exposeInMainWorld("api", {
     getPathForFile: (file: File): string => webUtils.getPathForFile(file),
     saveTextFile: (fileName: string, content: string) => ipcRenderer.invoke("save-text-file", fileName, content),
     setIsActive: () => ipcRenderer.invoke("set-is-active"),
+    showCompletionNotification: (tabId, blockId, title, body) =>
+        ipcRenderer.send("show-completion-notification", tabId, blockId, title, body),
+    onFocusBlock: (callback) =>
+        ipcRenderer.on("focus-block", (_event, blockId) => callback(blockId)),
 });
 
 // Custom event for "new-window"

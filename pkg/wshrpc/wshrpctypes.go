@@ -845,6 +845,13 @@ type CommandBadgeWatchPidData struct {
 	BadgeId string       `json:"badgeid"`
 }
 
+type BlockDoneEventData struct {
+	BlockId  string `json:"blockid"`
+	ExitCode int    `json:"exitcode"`
+	Title    string `json:"title,omitempty"`
+	Message  string `json:"message,omitempty"`
+}
+
 type BlockJobStatusData struct {
 	BlockId       string `json:"blockid"`
 	JobId         string `json:"jobid"`

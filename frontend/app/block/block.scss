@@ -444,5 +444,9 @@
                 }
             }
         }
+
+        .block-mask.completion-highlight {
+            transition: border-color 0.3s ease-out, box-shadow 0.3s ease-out;
+        }
     }
 }

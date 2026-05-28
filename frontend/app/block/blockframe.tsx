@@ -6,6 +6,7 @@ import { BlockFrame_Header } from "@/app/block/blockframe-header";
 import { blockViewToIcon, getViewIconElem, useTabBackground } from "@/app/block/blockutil";
 import { ConnStatusOverlay } from "@/app/block/connstatusoverlay";
 import { ChangeConnectionBlockModal } from "@/app/modals/conntypeahead";
+import { clearBadgesForBlockOnFocus } from "@/app/store/badge";
 import { getBlockComponentModel, globalStore, useBlockAtom } from "@/app/store/global";
 import { useTabModel } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -32,6 +33,9 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isLayoutMode = jotai.useAtomValue(waveEnv.atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(waveEnv.getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
+    const completionHighlight = jotai.useAtomValue(
+        BlockModel.getInstance().getCompletionHighlightAtom(nodeModel.blockId)
+    );
     const frameActiveBorderColor = jotai.useAtomValue(
         waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "frame:activebordercolor")
     );
@@ -63,6 +67,19 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         style.borderColor = "rgb(59, 130, 246)";
     }
 
+    if (completionHighlight != null && !isFocused) {
+        const highlightColor = completionHighlight === 0 ? "rgb(59, 130, 246)" : "rgb(239, 68, 68)";
+        style.borderColor = highlightColor;
+        style.boxShadow = `0 0 8px 2px ${highlightColor}`;
+    }
+
+    React.useEffect(() => {
+        if (isFocused && completionHighlight != null) {
+            BlockModel.getInstance().clearCompletionHighlight(nodeModel.blockId);
+            clearBadgesForBlockOnFocus(nodeModel.blockId);
+        }
+    }, [isFocused, completionHighlight]);
+
     let innerElem = null;
     if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
@@ -83,7 +100,11 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
 
     return (
         <div
-            className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })}
+            className={clsx("block-mask", {
+                "show-block-mask": showBlockMask,
+                "bg-blue-500/10": blockHighlight,
+                "completion-highlight": completionHighlight != null && !isFocused,
+            })}
             style={style}
         >
             {innerElem}
