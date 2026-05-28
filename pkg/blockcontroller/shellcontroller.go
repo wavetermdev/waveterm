@@ -884,7 +884,7 @@ func updateTermSize(shellProc *shellexec.ShellProc, blockId string, termSize wav
 	if err != nil {
 		log.Printf("error setting pty size: %v\n", err)
 	}
-	err = shellProc.Cmd.SetSize(termSize.Rows, termSize.Cols)
+	err = shellProc.Cmd.SetSize(termSize)
 	if err != nil {
 		log.Printf("error setting pty size: %v\n", err)
 	}
