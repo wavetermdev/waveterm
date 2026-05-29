@@ -215,6 +215,16 @@ func (ws *WshServer) CreateTabCommand(ctx context.Context, data wshrpc.CommandCr
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
+	if len(data.Meta) > 0 {
+		tabORef := waveobj.ORef{OType: waveobj.OType_Tab, OID: tabId}
+		metaAny := make(waveobj.MetaMapType, len(data.Meta))
+		for k, v := range data.Meta {
+			metaAny[k] = v
+		}
+		if metaErr := wstore.UpdateObjectMeta(ctx, tabORef, metaAny, false); metaErr != nil {
+			return "", fmt.Errorf("error setting tab meta: %w", metaErr)
+		}
+	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
 	go func() {
 		defer func() {

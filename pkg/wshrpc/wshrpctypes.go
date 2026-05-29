@@ -301,9 +301,10 @@ type CommandCreateSubBlockData struct {
 }
 
 type CommandCreateTabData struct {
-	WorkspaceId string `json:"workspaceid,omitempty"`
-	TabName     string `json:"tabname,omitempty"`
-	ActivateTab bool   `json:"activatetab,omitempty"`
+	WorkspaceId string            `json:"workspaceid,omitempty"`
+	TabName     string            `json:"tabname,omitempty"`
+	ActivateTab bool              `json:"activatetab,omitempty"`
+	Meta        map[string]string `json:"meta,omitempty"`
 }
 
 type CommandControllerResyncData struct {

@@ -67,6 +67,7 @@ func TestCommandCreateTabDataJSONTags(t *testing.T) {
 		"WorkspaceId": "workspaceid,omitempty",
 		"TabName":     "tabname,omitempty",
 		"ActivateTab": "activatetab,omitempty",
+		"Meta":        "meta,omitempty",
 	}
 	for fieldName, want := range expected {
 		field, ok := rtype.FieldByName(fieldName)
@@ -77,5 +78,21 @@ func TestCommandCreateTabDataJSONTags(t *testing.T) {
 		if got != want {
 			t.Fatalf("field %s json tag = %q, want %q", fieldName, got, want)
 		}
+	}
+}
+
+func TestCommandCreateTabDataMetaField(t *testing.T) {
+	rtype := reflect.TypeOf(CommandCreateTabData{})
+	field, ok := rtype.FieldByName("Meta")
+	if !ok {
+		t.Fatalf("Meta field not found on CommandCreateTabData")
+	}
+	expected := reflect.TypeOf(map[string]string{})
+	if field.Type != expected {
+		t.Fatalf("Meta field type = %v, want %v", field.Type, expected)
+	}
+	got := field.Tag.Get("json")
+	if got != "meta,omitempty" {
+		t.Fatalf("Meta json tag = %q, want %q", got, "meta,omitempty")
 	}
 }

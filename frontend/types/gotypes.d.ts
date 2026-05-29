@@ -320,6 +320,7 @@ declare global {
         workspaceid?: string;
         tabname?: string;
         activatetab?: boolean;
+        meta?: {[key: string]: string};
     };
 
     // wshrpc.CommandDebugTermData

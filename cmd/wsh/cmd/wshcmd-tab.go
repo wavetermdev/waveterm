@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -48,6 +49,7 @@ var (
 	tabCreateFlagWorkspaceId string
 	tabCreateFlagName        string
 	tabCreateFlagNoActivate  bool
+	tabCreateFlagMeta        []string
 	tabRenameFlagTabId       string
 )
 
@@ -60,6 +62,7 @@ func init() {
 	tabCreateCmd.Flags().StringVarP(&tabCreateFlagWorkspaceId, "workspace", "w", "", "workspace id (defaults to the caller's workspace)")
 	tabCreateCmd.Flags().StringVarP(&tabCreateFlagName, "name", "n", "", "tab name (defaults to next auto-generated name)")
 	tabCreateCmd.Flags().BoolVar(&tabCreateFlagNoActivate, "no-activate", false, "do not switch focus to the newly created tab")
+	tabCreateCmd.Flags().StringArrayVar(&tabCreateFlagMeta, "meta", nil, "metadata key=value pairs (repeatable)")
 
 	tabRenameCmd.Flags().StringVarP(&tabRenameFlagTabId, "tab", "t", "", "tab id to rename (defaults to WAVETERM_TABID)")
 }
@@ -69,10 +72,22 @@ func tabCreateRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("tab:create", rtnErr == nil)
 	}()
 
+	var metaMap map[string]string
+	if len(tabCreateFlagMeta) > 0 {
+		metaMap = make(map[string]string, len(tabCreateFlagMeta))
+		for _, kv := range tabCreateFlagMeta {
+			idx := strings.IndexByte(kv, '=')
+			if idx <= 0 {
+				return fmt.Errorf("--meta value %q must be in key=value format with a non-empty key", kv)
+			}
+			metaMap[kv[:idx]] = kv[idx+1:]
+		}
+	}
 	data := wshrpc.CommandCreateTabData{
 		WorkspaceId: tabCreateFlagWorkspaceId,
 		TabName:     tabCreateFlagName,
 		ActivateTab: !tabCreateFlagNoActivate,
+		Meta:        metaMap,
 	}
 	tabId, err := wshclient.CreateTabCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {

@@ -1132,7 +1132,7 @@ Manage tabs from the command line. Provides `create`, `rename`, and `focus` subc
 Create a new tab in a workspace.
 
 ```sh
-wsh tab create [-w <workspaceid>] [-n <name>] [--no-activate]
+wsh tab create [-w <workspaceid>] [-n <name>] [--no-activate] [--meta key=value ...]
 ```
 
 When `--workspace` is omitted, the tab is created in the workspace of the calling block. The new tab id is printed to stdout, making it easy to capture from scripts.
@@ -1142,6 +1142,7 @@ Flags:
 - `-w, --workspace <id>` - target workspace id (defaults to the caller's workspace)
 - `-n, --name <name>` - tab name (defaults to the next auto-generated name, e.g. `T3`)
 - `--no-activate` - create the tab without switching focus to it
+- `--meta key=value` - set a metadata key on the new tab; may be repeated for multiple keys
 
 Examples:
 
@@ -1154,6 +1155,9 @@ tabid=$(wsh tab create --name "build-output")
 
 # Create a background tab in a specific workspace
 wsh tab create -w 9b1d... -n "logs" --no-activate
+
+# Create a tab with custom metadata
+wsh tab create --name "agent" --meta env=prod --meta owner=ci
 ```
 
 ---
