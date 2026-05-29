@@ -222,7 +222,8 @@ func (ws *WshServer) CreateTabCommand(ctx context.Context, data wshrpc.CommandCr
 			metaAny[k] = v
 		}
 		if metaErr := wstore.UpdateObjectMeta(ctx, tabORef, metaAny, false); metaErr != nil {
-			return "", fmt.Errorf("error setting tab meta: %w", metaErr)
+			log.Printf("CreateTabCommand: tab %s created but meta update failed: %v", tabId, metaErr)
+			// Tab creation succeeded; meta is auxiliary and can be re-applied via wsh setmeta.
 		}
 	}
 	updates := waveobj.ContextGetUpdatesRtn(ctx)
