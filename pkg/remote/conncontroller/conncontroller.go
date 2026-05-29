@@ -187,13 +187,16 @@ func (conn *SSHConn) Close() error {
 	conn.lifecycleLock.Lock()
 	defer conn.lifecycleLock.Unlock()
 
-	defer conn.FireConnChangeEvent()
 	conn.WithLock(func() {
 		if conn.Status == Status_Connected || conn.Status == Status_Connecting {
 			// if status is init, disconnected, or error don't change it
 			conn.Status = Status_Disconnected
 		}
+		conn.ConnHealthStatus = ConnHealthStatus_Good
 	})
+	// Fire event BEFORE closeInternal_withlifecyclelock so the UI updates
+	// even if client.Close() blocks on a dead network connection.
+	conn.FireConnChangeEvent()
 	conn.closeInternal_withlifecyclelock()
 	return nil
 }
@@ -980,9 +983,9 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 }
 
 func (conn *SSHConn) waitForDisconnect() {
-	defer conn.FireConnChangeEvent()
 	client := conn.GetClient()
 	if client == nil {
+		conn.FireConnChangeEvent()
 		return
 	}
 	err := client.Wait()
@@ -1003,7 +1006,10 @@ func (conn *SSHConn) waitForDisconnect() {
 		if conn.Status != Status_Error {
 			conn.Status = Status_Disconnected
 		}
+		conn.ConnHealthStatus = ConnHealthStatus_Good
 	})
+	// Fire event BEFORE closeInternal so UI updates even if cleanup blocks.
+	conn.FireConnChangeEvent()
 	conn.closeInternal_withlifecyclelock()
 }
 

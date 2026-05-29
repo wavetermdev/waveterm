@@ -21,6 +21,17 @@
 
 - **All Wave AI features** — AI widgets, AI chat, AI presets, context-aware assistant, AI-related UI elements and settings
 
+## Dependency Maintenance
+
+- [x] **Upstream dependency bumps** (issue #12) — completed 2026-05-29
+  - [x] Merge 3 upstream commits (`a5ac0962`, `81f7b1a5`, `c0687de2`)
+    - `google.golang.org/api` 0.275.0 → 0.277.0
+    - `qs` 6.14.2 → 6.15.2, `express` 4.22.1 → 4.22.2
+    - Resolved merge conflict: `docs/docs/waveai-modes.mdx` (keep deletion)
+  - [x] Bump `golang.org/x/crypto` 0.50.0 → 0.52.0 (CVE-2026-39827 SSH memory leak, CVE-2026-46598 ed25519 panic)
+  - [x] `go mod tidy` cleaned up transitive deps (`x/net`, `x/sys`, `x/term`, `x/text`)
+  - [x] `task build:server` passes
+
 ## Phase 3: Implementation
 
 ### High Priority — Bugfix

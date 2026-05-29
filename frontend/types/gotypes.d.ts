@@ -713,6 +713,8 @@ declare global {
         "conn:wshpath"?: string;
         "conn:shellpath"?: string;
         "conn:ignoresshconfig"?: boolean;
+        "conn:stallautodisconnect"?: boolean;
+        "conn:stalldisconnectthreshold"?: number;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;

@@ -18,6 +18,12 @@
         "conn:ignoresshconfig": {
           "type": "boolean"
         },
+        "conn:stallautodisconnect": {
+          "type": "boolean"
+        },
+        "conn:stalldisconnectthreshold": {
+          "type": "integer"
+        },
         "display:hidden": {
           "type": "boolean"
         },
