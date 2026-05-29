@@ -60,6 +60,8 @@ const (
 	ConnErrCode_UserTimeout    = "user-timeout"
 	ConnErrCode_AuthFailed     = "auth-failed"
 	ConnErrCode_Unknown        = "unknown"
+
+	DefaultConnectionTimeout = 60 * time.Second
 )
 
 // Dial error subcodes for more granular classification
@@ -835,6 +837,7 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		Auth:              authMethods,
 		HostKeyCallback:   hostKeyCallback,
 		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
+		Timeout:           DefaultConnectionTimeout,
 	}, nil
 }
 
@@ -859,9 +862,25 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 			return nil, utilds.MakeSubCodedError(ConnErrCode_ProxyJumpDial, subCode, err)
 		}
 	}
+
+	// Enforce context deadline during SSH handshake since ssh.NewClientConn
+	// does not accept a context and can stall indefinitely on an unresponsive server.
+	// Cap at 5s so a stalled handshake does not block the lifecycleLock and
+	// prevent other connections from proceeding.
+	if deadline, ok := ctx.Deadline(); ok && deadline.Before(time.Now().Add(5*time.Second)) {
+		clientConn.SetDeadline(deadline)
+	} else {
+		clientConn.SetDeadline(time.Now().Add(5 * time.Second))
+	}
+
 	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
+
+	// Clear deadline after handshake so the connection operates normally.
+	clientConn.SetDeadline(time.Time{})
+
 	if err != nil {
 		blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
+		clientConn.Close()
 		return nil, err
 	}
 	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)

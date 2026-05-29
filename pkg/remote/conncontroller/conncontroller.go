@@ -491,6 +491,10 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		return false, "", "", fmt.Errorf("unable to start conn controller command: %w", err)
 	}
 	linesChan := utilfn.StreamToLinesChan(pipeRead)
+	if ctx.Err() != nil {
+		sshSession.Close()
+		return false, "", "", fmt.Errorf("error reading wsh version: %w", ctx.Err())
+	}
 	versionLine, err := utilfn.ReadLineWithTimeout(linesChan, utilfn.TimeoutFromContext(ctx, 30*time.Second))
 	if err != nil {
 		sshSession.Close()

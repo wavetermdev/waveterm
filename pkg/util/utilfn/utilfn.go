@@ -1014,11 +1014,18 @@ func ConvertUUIDv4Tov7(uuidv4 string) (string, error) {
 }
 
 func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
+	if ctx.Err() != nil {
+		return 0
+	}
 	deadline, ok := ctx.Deadline()
 	if !ok {
 		return defaultTimeout
 	}
-	return time.Until(deadline)
+	timeout := time.Until(deadline)
+	if timeout <= 0 {
+		return 0
+	}
+	return timeout
 }
 
 func HasBinaryData(data []byte) bool {
