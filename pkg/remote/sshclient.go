@@ -865,26 +865,92 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 
 	// Enforce context deadline during SSH handshake since ssh.NewClientConn
 	// does not accept a context and can stall indefinitely on an unresponsive server.
-	// Cap at 5s so a stalled handshake does not block the lifecycleLock and
-	// prevent other connections from proceeding.
-	if deadline, ok := ctx.Deadline(); ok && deadline.Before(time.Now().Add(5*time.Second)) {
-		clientConn.SetDeadline(deadline)
+	// For direct TCP connections, we use SetDeadline on the net.Conn.
+	// For proxy jumps, chanConn doesn't support SetDeadline, so we use a
+	// goroutine-with-timeout pattern.
+	var sshClient *ssh.Client
+
+	if currentClient == nil {
+		// Direct connection: SetDeadline works on TCP connections.
+		// Use the context deadline if present (allows interactive auth to complete),
+		// but enforce a minimum of 5s from now to prevent indefinite stalls.
+		if deadline, ok := ctx.Deadline(); ok {
+			minDeadline := time.Now().Add(5 * time.Second)
+			if deadline.Before(minDeadline) {
+				clientConn.SetDeadline(minDeadline)
+			} else {
+				clientConn.SetDeadline(deadline)
+			}
+		} else {
+			// No context deadline — apply generous fallback
+			clientConn.SetDeadline(time.Now().Add(DefaultConnectionTimeout))
+		}
+
+		c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
+		clientConn.SetDeadline(time.Time{}) // clear deadline after handshake
+		if err != nil {
+			blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
+			clientConn.Close()
+			return nil, err
+		}
+		sshClient = ssh.NewClient(c, chans, reqs)
 	} else {
-		clientConn.SetDeadline(time.Now().Add(5 * time.Second))
+		// Proxy jump: chanConn doesn't support SetDeadline.
+		// Use a goroutine-with-timeout pattern.
+		type connResult struct {
+			client *ssh.Client
+			err    error
+		}
+		resultCh := make(chan connResult, 1)
+		go func() {
+			defer func() {
+				panichandler.PanicHandler("sshclient:proxyjump-handshake", recover())
+			}()
+			c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
+			if err != nil {
+				clientConn.Close()
+				resultCh <- connResult{nil, err}
+				return
+			}
+			resultCh <- connResult{ssh.NewClient(c, chans, reqs), nil}
+		}()
+
+		var timeout time.Duration
+		if deadline, ok := ctx.Deadline(); ok {
+			minDeadline := time.Now().Add(5 * time.Second)
+			if deadline.Before(minDeadline) {
+				timeout = 5 * time.Second
+			} else {
+				timeout = time.Until(deadline)
+			}
+		} else {
+			timeout = DefaultConnectionTimeout
+		}
+
+		select {
+		case result := <-resultCh:
+			sshClient = result.client
+			err = result.err
+		case <-time.After(timeout):
+			clientConn.Close()
+			// Drain any late result to avoid leaking a completed client.
+			select {
+			case result := <-resultCh:
+				if result.client != nil {
+					result.client.Close()
+				}
+			default:
+			}
+			err = fmt.Errorf("ssh handshake timed out (proxy jump)")
+		}
 	}
-
-	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
-
-	// Clear deadline after handshake so the connection operates normally.
-	clientConn.SetDeadline(time.Time{})
 
 	if err != nil {
 		blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
-		clientConn.Close()
 		return nil, err
 	}
 	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)
-	return ssh.NewClient(c, chans, reqs), nil
+	return sshClient, nil
 }
 
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {

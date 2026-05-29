@@ -39,8 +39,6 @@ const (
 	Status_Error        = "error"
 )
 
-const DefaultConnectionTimeout = 60 * time.Second
-
 var globalLock = &sync.Mutex{}
 var clientControllerMap = make(map[string]*WslConn)
 var activeConnCounter = &atomic.Int32{}

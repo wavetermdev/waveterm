@@ -642,6 +642,8 @@ func isNetworkUnreachableError(err error) bool {
 		"no such host",
 		"temporary failure in name resolution",
 		"connection timed out",
+		"can't assign requested address",
+		"address not available",
 	}
 	for _, p := range networkPatterns {
 		if strings.Contains(s, p) {
@@ -661,26 +663,24 @@ func isNetworkUnreachableError(err error) bool {
 // When the network appears unreachable (e.g., after Wi-Fi change), it switches
 // to aggressive mode: 5s interval for up to 2 minutes to catch the network
 // return faster.
+// The first reconnect attempt fires immediately; subsequent attempts follow
+// the scheduler interval. This avoids the 30s fixed delay from ticker-based
+// loops when the network returns quickly.
 func scheduleConnectionReconnect(connName string) {
 	startTime := time.Now()
 	aggressiveMode := false
 	var aggressiveUntil time.Time
 
-	ticker := time.NewTicker(ConnReconnectInterval)
-	defer ticker.Stop()
-
-	for range ticker.C {
+	for {
 		if time.Since(startTime) > ConnReconnectMaxDuration {
 			log.Printf("[conn:%s] reconnect scheduler reached max duration, stopping", connName)
 			return
 		}
 
-		isConnected, err := conncontroller.IsConnected(connName)
-		if err != nil {
-			log.Printf("[conn:%s] error checking connection status: %v", connName, err)
-			continue
-		}
-		if isConnected {
+		isConnected, checkErr := conncontroller.IsConnected(connName)
+		if checkErr != nil {
+			log.Printf("[conn:%s] error checking connection status: %v", connName, checkErr)
+		} else if isConnected {
 			log.Printf("[conn:%s] connection is back up, stopping reconnect scheduler", connName)
 			return
 		}
@@ -694,41 +694,50 @@ func scheduleConnectionReconnect(connName string) {
 			return
 		}
 
-		log.Printf("[conn:%s] attempting scheduled reconnect...", connName)
-		// In aggressive mode, use a shorter timeout so ticks don't pile up
-		connectTimeout := 30 * time.Second
-		if aggressiveMode {
-			connectTimeout = 8 * time.Second
-		}
-		ctx, cancelFn = context.WithTimeout(context.Background(), connectTimeout)
-		err = conncontroller.AttemptReconnect(ctx, connName)
-		cancelFn()
-		if err != nil {
-			log.Printf("[conn:%s] scheduled reconnect failed: %v", connName, err)
-
-			// Switch to aggressive mode when network is unreachable
-			if isNetworkUnreachableError(err) {
-				if !aggressiveMode {
-					log.Printf("[conn:%s] network unreachable, switching to aggressive mode (5s interval)", connName)
-					aggressiveMode = true
-				}
-				// Extend aggressive window each time we see a network error
-				aggressiveUntil = time.Now().Add(ConnReconnectAggressiveDuration)
-				ticker.Stop()
-				ticker = time.NewTicker(ConnReconnectAggressiveInterval)
+		// Only attempt reconnect if we successfully checked connection status.
+		// If status check failed, skip and wait for the next interval.
+		if checkErr == nil {
+			log.Printf("[conn:%s] attempting scheduled reconnect...", connName)
+			// In aggressive mode, use a shorter timeout so attempts don't pile up
+			connectTimeout := 30 * time.Second
+			if aggressiveMode {
+				connectTimeout = 8 * time.Second
 			}
-		} else {
-			log.Printf("[conn:%s] scheduled reconnect succeeded", connName)
-			return
+			ctx, cancelFn = context.WithTimeout(context.Background(), connectTimeout)
+			err := conncontroller.AttemptReconnect(ctx, connName)
+			cancelFn()
+			if err != nil {
+				log.Printf("[conn:%s] scheduled reconnect failed: %v", connName, err)
+
+				// Switch to aggressive mode when network is unreachable
+				if isNetworkUnreachableError(err) {
+					if !aggressiveMode {
+						log.Printf("[conn:%s] network unreachable, switching to aggressive mode (5s interval)", connName)
+						aggressiveMode = true
+					}
+					// Extend aggressive window each time we see a network error
+					aggressiveUntil = time.Now().Add(ConnReconnectAggressiveDuration)
+				}
+			} else {
+				log.Printf("[conn:%s] scheduled reconnect succeeded", connName)
+				return
+			}
 		}
 
 		// Return to normal interval when aggressive window expires
 		if aggressiveMode && time.Now().After(aggressiveUntil) {
 			log.Printf("[conn:%s] aggressive mode expired, returning to normal interval", connName)
 			aggressiveMode = false
-			ticker.Stop()
-			ticker = time.NewTicker(ConnReconnectInterval)
 		}
+
+		// Wait for next interval before retrying
+		interval := ConnReconnectInterval
+		if aggressiveMode {
+			interval = ConnReconnectAggressiveInterval
+		}
+		timer := time.NewTimer(interval)
+		<-timer.C
+		timer.Stop()
 	}
 }
 

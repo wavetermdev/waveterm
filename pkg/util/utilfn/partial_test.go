@@ -4,9 +4,59 @@
 package utilfn
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
+	"time"
 )
+
+func TestTimeoutFromContext_ExpiredDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	defer cancel()
+	time.Sleep(2 * time.Millisecond)
+	timeout := TimeoutFromContext(ctx, 30*time.Second)
+	if timeout != 0 {
+		t.Fatalf("expected 0 for expired deadline, got %v", timeout)
+	}
+}
+
+func TestTimeoutFromContext_CancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	timeout := TimeoutFromContext(ctx, 30*time.Second)
+	if timeout != 0 {
+		t.Fatalf("expected 0 for cancelled context, got %v", timeout)
+	}
+}
+
+func TestTimeoutFromContext_NegativeDeadline(t *testing.T) {
+	// Create a context with a deadline that's already passed
+	past := time.Now().Add(-1 * time.Second)
+	ctx, cancel := context.WithDeadline(context.Background(), past)
+	defer cancel()
+	timeout := TimeoutFromContext(ctx, 30*time.Second)
+	if timeout != 0 {
+		t.Fatalf("expected 0 for past deadline, got %v", timeout)
+	}
+}
+
+func TestTimeoutFromContext_FutureDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	timeout := TimeoutFromContext(ctx, 30*time.Second)
+	// Should be approximately 10s (with small tolerance for execution time)
+	if timeout <= 0 || timeout > 10*time.Second {
+		t.Fatalf("expected positive timeout <= 10s, got %v", timeout)
+	}
+}
+
+func TestTimeoutFromContext_NoDeadline(t *testing.T) {
+	ctx := context.Background()
+	timeout := TimeoutFromContext(ctx, 30*time.Second)
+	if timeout != 30*time.Second {
+		t.Fatalf("expected default timeout 30s, got %v", timeout)
+	}
+}
 
 func TestRepairJson(t *testing.T) {
 	tests := []struct {
