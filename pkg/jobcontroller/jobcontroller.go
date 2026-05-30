@@ -667,6 +667,7 @@ func isNetworkUnreachableError(err error) bool {
 // the scheduler interval. This avoids the 30s fixed delay from ticker-based
 // loops when the network returns quickly.
 func scheduleConnectionReconnect(connName string) {
+	log.Printf("[conn:%s] reconnect scheduler started", connName)
 	startTime := time.Now()
 	aggressiveMode := false
 	var aggressiveUntil time.Time
@@ -697,20 +698,22 @@ func scheduleConnectionReconnect(connName string) {
 		// Only attempt reconnect if we successfully checked connection status.
 		// If status check failed, skip and wait for the next interval.
 		if checkErr == nil {
-			log.Printf("[conn:%s] attempting scheduled reconnect...", connName)
-			// In aggressive mode, use a shorter timeout so attempts don't pile up
 			connectTimeout := 30 * time.Second
 			if aggressiveMode {
 				connectTimeout = 8 * time.Second
 			}
-			ctx, cancelFn = context.WithTimeout(context.Background(), connectTimeout)
+			log.Printf("[conn:%s] scheduler attempt start (timeout=%s, aggressive=%v)", connName, connectTimeout, aggressiveMode)
+			attemptStart := time.Now()
+			ctx, cancelFn := context.WithTimeout(context.Background(), connectTimeout)
 			err := conncontroller.AttemptReconnect(ctx, connName)
 			cancelFn()
+			attemptDuration := time.Since(attemptStart)
 			if err != nil {
-				log.Printf("[conn:%s] scheduled reconnect failed: %v", connName, err)
+				isNetErr := isNetworkUnreachableError(err)
+				log.Printf("[conn:%s] scheduler attempt failed in %v (net-unreachable=%v): %v", connName, attemptDuration, isNetErr, err)
 
 				// Switch to aggressive mode when network is unreachable
-				if isNetworkUnreachableError(err) {
+				if isNetErr {
 					if !aggressiveMode {
 						log.Printf("[conn:%s] network unreachable, switching to aggressive mode (5s interval)", connName)
 						aggressiveMode = true
@@ -719,7 +722,7 @@ func scheduleConnectionReconnect(connName string) {
 					aggressiveUntil = time.Now().Add(ConnReconnectAggressiveDuration)
 				}
 			} else {
-				log.Printf("[conn:%s] scheduled reconnect succeeded", connName)
+				log.Printf("[conn:%s] scheduler attempt succeeded in %v", connName, attemptDuration)
 				return
 			}
 		}

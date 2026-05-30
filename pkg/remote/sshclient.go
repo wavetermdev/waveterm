@@ -846,21 +846,38 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	var err error
 	if currentClient == nil {
 		d := net.Dialer{Timeout: clientConfig.Timeout}
+		dialStart := time.Now()
 		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
+		dialDur := time.Since(dialStart)
 		if err != nil {
 			subCode := ClassifyDialErrorSubCode(err)
-			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s] after %v: %v\n", subCode, dialDur, err)
+			// Log explicit classification for scheduler diagnostics
+			if ctx.Err() != nil {
+				log.Printf("[conndebug] dial %s: context canceled/deadline after %v (ctx-err=%v, dial-err=%v)", networkAddr, dialDur, ctx.Err(), err)
+			} else {
+				log.Printf("[conndebug] dial %s: network error after %v (subcode=%s, err=%v)", networkAddr, dialDur, subCode, err)
+			}
 			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, subCode, err)
 		}
+		log.Printf("[conndebug] dial %s: succeeded in %v", networkAddr, dialDur)
 	} else {
+		dialStart := time.Now()
 		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
+		dialDur := time.Since(dialStart)
 		if err != nil {
 			subCode := ClassifyDialErrorSubCode(err)
-			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s]: %v\n", subCode, err)
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error [%s] after %v: %v\n", subCode, dialDur, err)
+			if ctx.Err() != nil {
+				log.Printf("[conndebug] proxy dial %s: context canceled/deadline after %v (ctx-err=%v, dial-err=%v)", networkAddr, dialDur, ctx.Err(), err)
+			} else {
+				log.Printf("[conndebug] proxy dial %s: network error after %v (subcode=%s, err=%v)", networkAddr, dialDur, subCode, err)
+			}
 			return nil, utilds.MakeSubCodedError(ConnErrCode_ProxyJumpDial, subCode, err)
 		}
+		log.Printf("[conndebug] proxy dial %s: succeeded in %v", networkAddr, dialDur)
 	}
 
 	// Enforce context deadline during SSH handshake since ssh.NewClientConn
@@ -886,13 +903,17 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 			clientConn.SetDeadline(time.Now().Add(DefaultConnectionTimeout))
 		}
 
+		handshakeStart := time.Now()
 		c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
 		clientConn.SetDeadline(time.Time{}) // clear deadline after handshake
+		handshakeDur := time.Since(handshakeStart)
 		if err != nil {
 			blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
+			log.Printf("[conndebug] ssh handshake %s: failed in %v (err=%v)", networkAddr, handshakeDur, err)
 			clientConn.Close()
 			return nil, err
 		}
+		log.Printf("[conndebug] ssh handshake %s: succeeded in %v", networkAddr, handshakeDur)
 		sshClient = ssh.NewClient(c, chans, reqs)
 	} else {
 		// Proxy jump: chanConn doesn't support SetDeadline.
@@ -902,6 +923,7 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 			err    error
 		}
 		resultCh := make(chan connResult, 1)
+		handshakeStart := time.Now()
 		go func() {
 			defer func() {
 				panichandler.PanicHandler("sshclient:proxyjump-handshake", recover())
@@ -929,9 +951,17 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 
 		select {
 		case result := <-resultCh:
+			handshakeDur := time.Since(handshakeStart)
 			sshClient = result.client
 			err = result.err
+			if err != nil {
+				log.Printf("[conndebug] ssh handshake (proxy) %s: failed in %v (err=%v)", networkAddr, handshakeDur, err)
+			} else {
+				log.Printf("[conndebug] ssh handshake (proxy) %s: succeeded in %v", networkAddr, handshakeDur)
+			}
 		case <-time.After(timeout):
+			handshakeDur := time.Since(handshakeStart)
+			log.Printf("[conndebug] ssh handshake (proxy) %s: timed out after %v (timeout=%v)", networkAddr, handshakeDur, timeout)
 			clientConn.Close()
 			// Drain any late result to avoid leaking a completed client.
 			select {
