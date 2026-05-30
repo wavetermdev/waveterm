@@ -389,10 +389,9 @@ export class TermWrap {
                     if (!globalStore.get(copyOnSelectAtom)) {
                         return;
                     }
-                    // Don't copy-on-select when the search bar has focus — navigating
+                    // Don't copy-on-select when the search bar is open — navigating
                     // search results changes the terminal selection programmatically.
-                    const active = document.activeElement;
-                    if (active != null && active.closest(".search-container") != null) {
+                    if (document.querySelector(".search-container") != null) {
                         return;
                     }
                     let selectedText = this.terminal.getSelection();

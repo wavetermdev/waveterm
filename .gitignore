@@ -44,3 +44,5 @@ docsite/
 .superpowers
 docs/superpowers
 .claude
+.opencode
+.npmrc
