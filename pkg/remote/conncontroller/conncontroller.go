@@ -210,49 +210,54 @@ func (conn *SSHConn) closeInternal_withlifecyclelock() {
 		}
 		conn.Monitor = nil
 	})
-	client := conn.GetClient()
-	if client != nil {
-		// this MUST go first to force close the connection.
-		// the DomainSockListener.Close() sends SSH protocol packets which can block on a dead network conn
-		startTime := time.Now()
-		client.Close()
-		duration := time.Since(startTime).Milliseconds()
-		if duration > 100 {
-			log.Printf("[conncontroller] conn:%s Client.Close() took %d ms", conn.GetName(), duration)
-		}
-		conn.WithLock(func() {
-			conn.Client = nil
-		})
-	}
-	listener := WithLockRtn(conn, func() net.Listener {
-		return conn.DomainSockListener
+
+	// Capture old references and nil them out immediately under the lock
+	// so that Connect() sees a clean state and can proceed without waiting
+	// for the potentially-blocking Close() calls below.
+	var oldClient *ssh.Client
+	var oldListener net.Listener
+	var oldController *ssh.Session
+	conn.WithLock(func() {
+		oldClient = conn.Client
+		conn.Client = nil
+		oldListener = conn.DomainSockListener
+		conn.DomainSockListener = nil
+		conn.DomainSockName = ""
+		oldController = conn.ConnController
+		conn.ConnController = nil
 	})
-	if listener != nil {
-		startTime := time.Now()
-		listener.Close()
-		duration := time.Since(startTime).Milliseconds()
-		if duration > 100 {
-			log.Printf("[conncontroller] conn:%s DomainSockListener.Close() took %d ms", conn.GetName(), duration)
+
+	// Run potentially-blocking cleanup in a goroutine so lifecycleLock
+	// is freed immediately. This prevents HandleSystemResume/AttemptReconnect
+	// from deadlocking when the network is down and client.Close() blocks.
+	go func() {
+		if oldClient != nil {
+			// this MUST go first to force close the connection.
+			// the DomainSockListener.Close() sends SSH protocol packets which can block on a dead network conn
+			startTime := time.Now()
+			oldClient.Close()
+			duration := time.Since(startTime).Milliseconds()
+			if duration > 100 {
+				log.Printf("[conncontroller] conn:%s Client.Close() took %d ms", conn.GetName(), duration)
+			}
 		}
-		conn.WithLock(func() {
-			conn.DomainSockListener = nil
-			conn.DomainSockName = ""
-		})
-	}
-	controller := WithLockRtn(conn, func() *ssh.Session {
-		return conn.ConnController
-	})
-	if controller != nil {
-		startTime := time.Now()
-		controller.Close()
-		duration := time.Since(startTime).Milliseconds()
-		if duration > 100 {
-			log.Printf("[conncontroller] conn:%s ConnController.Close() took %d ms", conn.GetName(), duration)
+		if oldListener != nil {
+			startTime := time.Now()
+			oldListener.Close()
+			duration := time.Since(startTime).Milliseconds()
+			if duration > 100 {
+				log.Printf("[conncontroller] conn:%s DomainSockListener.Close() took %d ms", conn.GetName(), duration)
+			}
 		}
-		conn.WithLock(func() {
-			conn.ConnController = nil
-		})
-	}
+		if oldController != nil {
+			startTime := time.Now()
+			oldController.Close()
+			duration := time.Since(startTime).Milliseconds()
+			if duration > 100 {
+				log.Printf("[conncontroller] conn:%s ConnController.Close() took %d ms", conn.GetName(), duration)
+			}
+		}
+	}()
 }
 
 func (conn *SSHConn) GetDomainSocketName() string {
