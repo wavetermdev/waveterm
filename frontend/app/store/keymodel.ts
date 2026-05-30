@@ -28,6 +28,7 @@ import { isWindows } from "@/util/platformutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
+import { TermViewModel } from "../view/term/term-model";
 import { modalsModel } from "./modalmodel";
 import { isBuilderWindow, isTabWindow } from "./windowtype";
 
@@ -701,6 +702,30 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    function getSelectedText(): string {
+        // Check for terminal selection first
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm?.viewModel?.viewType === "term") {
+            const termViewModel = bcm.viewModel as TermViewModel;
+            if (termViewModel.termRef?.current?.terminal) {
+                const terminalSelection = termViewModel.termRef.current.terminal.getSelection();
+                if (terminalSelection && terminalSelection.length > 0) {
+                    return terminalSelection.trim();
+                }
+            }
+        }
+
+        // Check for regular text selection
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            const selectedText = selection.toString().trim();
+            if (selectedText.length > 0) {
+                return selectedText;
+            }
+        }
+        return "";
+    }
+
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         // Ctrl+f is reserved in most shells

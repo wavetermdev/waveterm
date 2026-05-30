@@ -25,10 +25,13 @@
         "build:prod": "electron-vite build --mode production",
         "coverage": "vitest run --coverage",
         "test": "vitest",
-        "postinstall": "node ./postinstall.cjs"
+        "postinstall": "node ./postinstall.cjs",
+        "test:e2e": "playwright test",
+        "test:e2e:build": "task package -- --win --x64 --config.win.target=zip && playwright test"
     },
     "devDependencies": {
         "@eslint/js": "^9.39",
+        "@playwright/test": "1.60.0",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@tailwindcss/vite": "^4.2.1",
         "@types/css-tree": "^2",

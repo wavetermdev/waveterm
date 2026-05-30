@@ -200,8 +200,10 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     const isBasicTerm = termMode != "vdom" && blockData?.meta?.controller != "cmd"; // needs to match isBasicTerm
 
     // search
+    const searchInputRef = React.useRef<HTMLInputElement>(null);
     const searchProps = useSearch({
         anchorRef: viewRef,
+        searchInputRef: searchInputRef,
         viewModel: model,
         caseSensitive: false,
         wholeWord: false,
