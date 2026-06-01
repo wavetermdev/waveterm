@@ -124,12 +124,12 @@ tasks:
     package:
         desc: Package the application for the current platform.
         cmds:
+            - task: clean
+            - task: build:backend
+            - task: build:tsunamiscaffold
             - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
-            - clean
             - npm:install
-            - build:backend
-            - build:tsunamiscaffold
 
     build:frontend:dev:
         desc: Build the frontend in development mode.

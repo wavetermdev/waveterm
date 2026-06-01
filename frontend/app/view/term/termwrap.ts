@@ -52,6 +52,7 @@ const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
 const MaxRepaintTransactionMs = 2000;
+const MaxCompositionSuffixLength = 4;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -114,7 +115,7 @@ export class TermWrap {
     // IME composition ordering
     compositionActive: boolean = false;
     compositionRecentlyEndedUntil: number = 0;
-    pendingCompositionSuffix: { data: string; timeout: ReturnType<typeof setTimeout> } | null = null;
+    pendingCompositionSuffix: { data: string; timeout: ReturnType<typeof setTimeout> | null } | null = null;
     disposed: boolean = false;
 
     // dev only (for debugging)
@@ -491,6 +492,7 @@ export class TermWrap {
         const compositionEndHandler = () => {
             this.compositionActive = false;
             this.compositionRecentlyEndedUntil = Date.now() + 75;
+            this.schedulePendingCompositionSuffixFlush();
         };
         textarea.addEventListener("compositionstart", compositionStartHandler);
         textarea.addEventListener("compositionend", compositionEndHandler);
@@ -523,7 +525,9 @@ export class TermWrap {
             return;
         }
         const pendingData = this.pendingCompositionSuffix.data;
-        clearTimeout(this.pendingCompositionSuffix.timeout);
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+        }
         this.pendingCompositionSuffix = null;
         if (!this.loaded || this.disposed) {
             return;
@@ -535,8 +539,26 @@ export class TermWrap {
         if (this.pendingCompositionSuffix == null) {
             return;
         }
-        clearTimeout(this.pendingCompositionSuffix.timeout);
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+        }
         this.pendingCompositionSuffix = null;
+    }
+
+    schedulePendingCompositionSuffixFlush() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+            this.pendingCompositionSuffix.timeout = null;
+        }
+        if (this.compositionActive) {
+            return;
+        }
+        this.pendingCompositionSuffix.timeout = setTimeout(() => {
+            this.flushPendingCompositionSuffix();
+        }, 30);
     }
 
     isLikelyCompositionText(data: string): boolean {
@@ -557,7 +579,7 @@ export class TermWrap {
     }
 
     isCompositionSuffixData(data: string): boolean {
-        if (data.length === 0) {
+        if (data.length === 0 || data.length > MaxCompositionSuffixLength) {
             return false;
         }
         for (const ch of data) {
@@ -569,6 +591,16 @@ export class TermWrap {
         return true;
     }
 
+    shouldDeferCompositionData(data: string): boolean {
+        if (this.compositionActive) {
+            return data === "\r";
+        }
+        if (Date.now() > this.compositionRecentlyEndedUntil) {
+            return false;
+        }
+        return data === "\r" || this.isCompositionSuffixData(data);
+    }
+
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
@@ -577,34 +609,32 @@ export class TermWrap {
         if (this.pendingCompositionSuffix != null) {
             if (this.isLikelyCompositionText(data)) {
                 const pendingData = this.pendingCompositionSuffix.data;
-                clearTimeout(this.pendingCompositionSuffix.timeout);
+                if (this.pendingCompositionSuffix.timeout != null) {
+                    clearTimeout(this.pendingCompositionSuffix.timeout);
+                }
                 this.pendingCompositionSuffix = null;
                 this.sendTermData(data);
                 this.sendTermData(pendingData);
                 return;
             }
-            if (this.isCompositionSuffixData(data) && Date.now() <= this.compositionRecentlyEndedUntil) {
-                clearTimeout(this.pendingCompositionSuffix.timeout);
+            if (this.shouldDeferCompositionData(data)) {
+                if (this.pendingCompositionSuffix.timeout != null) {
+                    clearTimeout(this.pendingCompositionSuffix.timeout);
+                    this.pendingCompositionSuffix.timeout = null;
+                }
                 this.pendingCompositionSuffix.data += data;
-                this.pendingCompositionSuffix.timeout = setTimeout(() => {
-                    this.flushPendingCompositionSuffix();
-                }, 30);
+                this.schedulePendingCompositionSuffixFlush();
                 return;
             }
             this.flushPendingCompositionSuffix();
         }
 
-        if (
-            this.isCompositionSuffixData(data) &&
-            !this.compositionActive &&
-            Date.now() <= this.compositionRecentlyEndedUntil
-        ) {
+        if (this.shouldDeferCompositionData(data)) {
             this.pendingCompositionSuffix = {
                 data,
-                timeout: setTimeout(() => {
-                    this.flushPendingCompositionSuffix();
-                }, 30),
+                timeout: null,
             };
+            this.schedulePendingCompositionSuffixFlush();
             return;
         }
 
