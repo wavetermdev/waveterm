@@ -199,6 +199,7 @@ tasks:
             - task: build:server:internal
               vars:
                   ARCHS: arm64,amd64
+                  GO_ENV_VARS: MACOSX_DEPLOYMENT_TARGET=12.0
 
     build:server:quickdev:
         desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
@@ -207,6 +208,7 @@ tasks:
             - task: build:server:internal
               vars:
                   ARCHS: arm64
+                  GO_ENV_VARS: MACOSX_DEPLOYMENT_TARGET=12.0
         deps:
             - go:mod:tidy
         sources:
