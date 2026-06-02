@@ -1,0 +1,225 @@
+---
+sidebar_position: 3.2
+id: "reconnect"
+title: "Connection Resilience"
+---
+
+# Connection Resilience
+
+Wave monitors every remote SSH connection and automatically detects disconnections, stalls, and network changes. When a connection drops, Wave attempts to reconnect so your durable sessions survive network interruptions, Wi-Fi switches, and computer sleep.
+
+## Overview
+
+The reconnect system has three layers:
+
+1. **Monitor** — detects connection problems by sending periodic keepalive probes
+2. **Scheduler** — attempts reconnection with configurable timing
+3. **Events** — triggers that start, stop, or restart the reconnect process
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Monitor                              │
+│  (keepalive probes, stall detection, auto-disconnect)       │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ disconnect detected
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Scheduler                             │
+│  (retry attempts, aggressive mode, max duration)            │
+└─────────────────────────────────────────────────────────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           ▼               ▼               ▼
+      Wi-Fi switch    System resume    Manual reconnect
+      (automatic)     (automatic)      (user-initiated)
+```
+
+## Connection Monitor
+
+The monitor runs as a background goroutine for each active SSH connection. It periodically checks whether the connection is alive by sending SSH keepalive probes.
+
+### How Detection Works
+
+Every **3 seconds**, the monitor checks when the last SSH activity occurred. If more than **3 seconds** have passed with no activity, it sends a keepalive probe (`keepalive@openssh.com`).
+
+If the keepalive probe receives a response, the connection is confirmed alive. If no response arrives within **3 seconds**, the connection is declared **stalled**.
+
+If the stall persists for **5 seconds** (default), the monitor forces a disconnect and triggers the reconnect scheduler.
+
+### Timing Summary
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Ticker interval | 3s | How often the monitor checks |
+| Keepalive threshold | 3s | Inactivity before sending a keepalive probe |
+| Keepalive threshold (urgent) | 1s | Inactivity before keepalive when user is actively typing |
+| Stall threshold | 3s | Time after keepalive with no response before declaring stalled |
+| Stall threshold (urgent) | 2s | Stall threshold when user is actively typing |
+| Auto-disconnect threshold | 5s | How long a stall persists before forced disconnect |
+
+### Urgent Mode
+
+When the user types in a terminal, the monitor switches to **urgent mode** for 10 seconds. In urgent mode, keepalive probes and stall detection use shorter thresholds (1s and 2s respectively) to detect problems faster. This ensures that if a connection drops while the user is actively typing, the problem is detected within seconds rather than waiting for the normal 3s thresholds.
+
+### Auto-Disconnect
+
+When a stall persists beyond the auto-disconnect threshold (default 5s), the monitor forces the connection to disconnect. This triggers the reconnect scheduler. Without auto-disconnect, a zombie connection (TCP link is dead but the OS hasn't timed out) could block reconnection for 30+ seconds waiting for the OS-level TCP timeout.
+
+Auto-disconnect can be disabled per connection by setting `conn:stallautodisconnect` to `false` in `connections.json`.
+
+## Reconnect Scheduler
+
+When a connection drops, the reconnect scheduler periodically attempts to re-establish it. The scheduler only runs for connections that have **running durable jobs** — if there are no active terminal sessions, there's nothing to reconnect.
+
+### Timing
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| First attempt | Immediate | No delay before the first reconnect attempt |
+| Connect timeout | 5s | How long each attempt waits for the SSH handshake |
+| Normal interval | 5s | Time between attempts in normal mode |
+| Aggressive interval | 3s | Time between attempts in aggressive mode |
+| Aggressive duration | 2min | How long aggressive mode lasts before reverting to normal |
+| Max duration | 5min | Total scheduler lifetime before giving up |
+
+### Aggressive Mode
+
+When a reconnect attempt fails with a network-unreachable error (e.g., "no route to host", "network is unreachable", "context deadline exceeded"), the scheduler switches to **aggressive mode**. In aggressive mode, attempts happen every 3 seconds instead of every 5 seconds, catching the moment the network returns more quickly.
+
+Aggressive mode lasts for 2 minutes. Each time a network-unreachable error occurs, the 2-minute window resets. After 2 minutes of no network errors, the scheduler returns to normal mode.
+
+### Scheduler Lifecycle
+
+The scheduler runs for a maximum of **5 minutes**. After 5 minutes, it stops entirely. The connection remains disconnected until a new event triggers reconnection (e.g., system resume, manual reconnect).
+
+```
+0s      ── scheduler starts, attempt 1 (immediate) → fails
+0s      ── aggressive mode ON (3s interval)
+3s      ── attempt 2 → fails
+6s      ── attempt 3 → fails
+...
+120s    ── aggressive window expires → normal mode (5s interval)
+125s    ── attempt → fails
+130s    ── attempt → fails
+...
+300s    ── 5 minute max → scheduler stops
+```
+
+### Known Limitation: Scheduler Does Not Restart
+
+After the scheduler stops (5 minutes), the connection stays disconnected indefinitely until a new event triggers reconnection. If the network is down for longer than 5 minutes (e.g., server maintenance, extended outage), the user must manually reconnect or wait for a system resume event.
+
+## Events That Trigger Reconnection
+
+### Automatic Events
+
+| Event | Source | What Happens |
+|-------|--------|-------------|
+| Connection drops | Monitor detects stall | Scheduler starts for connections with durable jobs |
+| System resume | macOS sleep/wake | Forces disconnect + immediate reconnect attempt |
+| Route down | Network route lost | Job-level auto-reconnect (1s delay, 30s cooldown) |
+
+### User-Initiated Events
+
+| Event | Source | What Happens |
+|-------|--------|-------------|
+| Click Reconnect button | UI overlay | Immediate `AttemptReconnect` call |
+| Focus terminal tab | UI interaction | Connection status checked, reconnect if needed |
+| `wsh ssh` command | CLI | Establishes or reconnects the connection |
+
+### Event Flow
+
+```
+Connection drops
+    │
+    ▼
+handleConnChangeEvent (wps.Event_ConnChange)
+    │
+    ├── Connected=false → onConnectionDown
+    │       │
+    │       ├── needsInteractiveAuth? → skip (user must reconnect manually)
+    │       │
+    │       └── start scheduleConnectionReconnect
+    │               │
+    │               ├── attempt reconnect (5s timeout)
+    │               │       │
+    │               │       ├── success → stop
+    │               │       └── failure → retry after interval
+    │               │
+    │               └── max duration (5min) → stop
+    │
+    └── Connected=true → onConnectionUp
+            │
+            └── reconnect all running durable jobs for this connection
+```
+
+## Interactive Authentication Handling
+
+Some SSH connections require password or keyboard-interactive authentication. The reconnect scheduler **cannot** handle these automatically because it cannot type a password for the user.
+
+### Detection
+
+Before starting the scheduler, Wave checks if the connection might need interactive authentication by examining the SSH config:
+
+- `ssh:passwordauthentication` — enables password auth (default: true)
+- `ssh:kbdinteractiveauthentication` — enables keyboard-interactive auth (default: true)
+- `ssh:batchmode` — disables all interactive prompts (default: false)
+- `ssh:passwordsecretname` — stored password in secret store (no prompt needed)
+- `ssh:preferredauthentications` — ordered list of auth methods to try
+
+If interactive auth is possible and no stored password exists, the scheduler is **skipped entirely**. The user must reconnect manually (which will prompt for the password).
+
+### Stored Passwords
+
+If `ssh:passwordsecretname` is set, the password is retrieved from the secret store automatically. No user prompt is needed, and the scheduler runs normally.
+
+## Configuration
+
+### Existing Config Fields
+
+These fields can be set per connection in `connections.json`:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `conn:stallautodisconnect` | `true` | Enable auto-disconnect on stall |
+| `conn:stalldisconnectthreshold` | `5` | Seconds of stall before forced disconnect |
+
+### Example
+
+```json
+{
+  "connections": {
+    "user@high-latency-server": {
+      "conn:stallautodisconnect": true,
+      "conn:stalldisconnectthreshold": 30
+    }
+  }
+}
+```
+
+:::note
+All other reconnect thresholds (keepalive interval, stall threshold, reconnect interval, etc.) are currently hardcoded. Issue [#19](https://github.com/whoisjeremylam/waveterm-remote/issues/19) will make them configurable per connection.
+:::
+
+## Connection Health States
+
+| State | Description |
+|-------|-------------|
+| `good` | Connection is healthy, keepalive responses received |
+| `stalled` | Keepalive sent, no response received within threshold |
+
+The `stalled` state indicates the connection may be dead. If stall persists beyond the auto-disconnect threshold, the connection is forced to disconnect.
+
+## Troubleshooting
+
+### Connection takes 30+ seconds to reconnect
+
+Check if the connection uses password authentication without a stored secret. If `ssh:passwordauthentication` is true and `ssh:passwordsecretname` is not set, the scheduler is skipped. Store the password in the secret store or set `ssh:batchmode` to true.
+
+### Connection disconnects too aggressively
+
+If the remote server has high latency (satellite, international), the 5-second auto-disconnect threshold may be too short. Increase `conn:stalldisconnectthreshold` in `connections.json`.
+
+### Scheduler stops after 5 minutes
+
+This is the current max duration. After 5 minutes, the scheduler stops and the connection stays disconnected until manually reconnected or until a system resume event occurs. This limitation will be addressed in a future update.

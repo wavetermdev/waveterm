@@ -130,8 +130,8 @@ In addition to the regular ssh config file, wave also has its own config file to
 | conn:wshpath | A string indicating the path to the `wsh` executable on the connection. It defaults to `"~/.waveterm/bin/wsh"`.|
 | conn:shellpath | A string indicating the path to the shell executable on the connection. If not set, the output of `$SHELL` on the connection will be used.|
 | conn:ignoresshconfig | This boolean allows wave to ignore the `~/.ssh/config` file for resolving keywords for this connection. The regular defaults will be used, but all changes to those must be specified in the `connections.json` file instead. This defaults to false.|
-| conn:stallautodisconnect | This boolean automatically disconnects SSH connections when they stall (keepalive timeout) for longer than the threshold. Once disconnected, the existing auto-reconnect machinery will attempt to restore the connection and any durable sessions. It defaults to `true`.|
-| conn:stalldisconnectthreshold | This int (seconds) controls how long a connection must be stalled before auto-disconnect triggers. It defaults to `30`.|
+| conn:stallautodisconnect | This boolean automatically disconnects SSH connections when they stall (keepalive timeout) for longer than the threshold. Once disconnected, the existing auto-reconnect machinery will attempt to restore the connection and any durable sessions. It defaults to `true`. See [Connection Resilience](/reconnect) for details on how detection and reconnection work.|
+| conn:stalldisconnectthreshold | This int (seconds) controls how long a connection must be stalled before auto-disconnect triggers. It defaults to `30`. See [Connection Resilience](/reconnect) for details. |
 | display:hidden | This boolean hides the connection from the dropdown list. It defaults to `false` |
 | display:order | This float determines the order of connections in the connection dropdown. It defaults to `0`.|
 | term:fontsize | This int can be used to override the terminal font size for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |

@@ -59,7 +59,12 @@ export const ConnectionButton = React.memo(
                 titleText = "Connected to " + connection;
                 let iconName = "arrow-right-arrow-left";
                 let iconSvg = null;
-                if (connStatus?.status == "connecting") {
+                if (connStatus?.status == "connecting" && (connStatus?.reconnectattempt ?? 0) > 0) {
+                    color = "var(--warning-color)";
+                    titleText = `Reconnecting to ${connection} (attempt ${connStatus.reconnectattempt})`;
+                    shouldSpin = true;
+                    iconName = "rotate";
+                } else if (connStatus?.status == "connecting") {
                     color = "var(--warning-color)";
                     titleText = "Connecting to " + connection;
                     shouldSpin = false;
@@ -68,6 +73,10 @@ export const ConnectionButton = React.memo(
                             <DotsSvg />
                         </div>
                     );
+                } else if (connStatus?.status == "disconnected" && (connStatus?.reconnectnextattempt ?? 0) > 0) {
+                    color = "var(--grey-text-color)";
+                    titleText = `Disconnected from ${connection} — retrying soon`;
+                    iconName = "clock";
                 } else if (connStatus?.status == "error") {
                     color = "var(--error-color)";
                     titleText = "Error connecting to " + connection;

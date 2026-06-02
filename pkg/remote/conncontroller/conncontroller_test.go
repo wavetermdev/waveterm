@@ -134,7 +134,7 @@ func TestAttemptReconnectConnectFailure(t *testing.T) {
 	}
 }
 
-// TestGetStallDisconnectThresholdMsDefault verifies the 30s default.
+// TestGetStallDisconnectThresholdMsDefault verifies the 5s default.
 func TestGetStallDisconnectThresholdMsDefault(t *testing.T) {
 	t.Parallel()
 	conn := makeTestConn(Status_Connected)
@@ -142,8 +142,8 @@ func TestGetStallDisconnectThresholdMsDefault(t *testing.T) {
 	cm := makeTestMonitor(conn)
 
 	ms := cm.getStallDisconnectThresholdMs()
-	if ms != 30000 {
-		t.Fatalf("expected default 30000ms, got %d", ms)
+	if ms != 5000 {
+		t.Fatalf("expected default 5000ms, got %d", ms)
 	}
 }
 

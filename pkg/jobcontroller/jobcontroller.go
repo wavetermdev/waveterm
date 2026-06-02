@@ -119,9 +119,9 @@ var (
 	connectionReconnectSchedulers = ds.MakeSyncMap[bool]()
 )
 
-const ConnReconnectInterval              = 30 * time.Second
+const ConnReconnectInterval              = 5 * time.Second
 const ConnReconnectMaxDuration           = 5 * time.Minute
-const ConnReconnectAggressiveInterval    = 5 * time.Second
+const ConnReconnectAggressiveInterval    = 3 * time.Second
 const ConnReconnectAggressiveDuration    = 2 * time.Minute
 
 func InitJobController() {
@@ -566,6 +566,10 @@ func HandleSystemResume(ctx context.Context) {
 		if !hasRunningDurableJobsForConn(ctx, connName) {
 			continue
 		}
+		if needsInteractiveAuth(connName) {
+			log.Printf("[system] connection %s may require interactive auth, skipping fast-path reconnect", connName)
+			continue
+		}
 
 		// Already connected and healthy — nothing to do
 		if status.Status == conncontroller.Status_Connected && status.ConnHealthStatus == conncontroller.ConnHealthStatus_Good {
@@ -594,7 +598,7 @@ func HandleSystemResume(ctx context.Context) {
 			defer func() {
 				panichandler.PanicHandler("jobcontroller:HandleSystemResume-reconnect", recover())
 			}()
-			reconnectCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+			reconnectCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancelFn()
 			err := conncontroller.AttemptReconnect(reconnectCtx, cn)
 			if err != nil {
@@ -606,11 +610,60 @@ func HandleSystemResume(ctx context.Context) {
 	}
 }
 
+// needsInteractiveAuth checks if a connection might require password or
+// keyboard-interactive authentication. When true, automatic reconnect
+// cannot succeed without user involvement, so the scheduler should skip it.
+func needsInteractiveAuth(connName string) bool {
+	config := wconfig.GetWatcher().GetFullConfig()
+	connConfig, ok := config.Connections[connName]
+	if !ok {
+		return true // safe default: assume interactive auth needed
+	}
+
+	// If batch mode is on, interactive prompts are suppressed —
+	// the attempt will just fail, so the scheduler can run (it won't block on user input)
+	if utilfn.SafeDeref(connConfig.SshBatchMode) {
+		return false
+	}
+
+	// If a password is stored in the secret store, no user prompt is needed
+	if connConfig.SshPasswordSecretName != nil && *connConfig.SshPasswordSecretName != "" {
+		return false
+	}
+
+	// Check if either interactive method is in the preferred auth order.
+	// If PreferredAuthentications is set, only those methods will be tried.
+	if connConfig.SshPreferredAuthentications != nil {
+		hasInteractive := false
+		for _, method := range connConfig.SshPreferredAuthentications {
+			if method == "password" || method == "keyboard-interactive" {
+				hasInteractive = true
+				break
+			}
+		}
+		if !hasInteractive {
+			return false // only key-based auth configured
+		}
+	}
+
+	// Check if password or keyboard-interactive auth is enabled (both default true)
+	passwordAuth := utilfn.SafeDeref(connConfig.SshPasswordAuthentication)
+	kbdAuth := utilfn.SafeDeref(connConfig.SshKbdInteractiveAuthentication)
+	return passwordAuth || kbdAuth
+}
+
 func onConnectionDown(connName string) {
 	log.Printf("[conn:%s] connection became disconnected", connName)
 
 	// Skip local connections — they don't need SSH reconnect
 	if conncontroller.IsLocalConnName(connName) {
+		return
+	}
+
+	// Skip auto-reconnect for connections that might need password input.
+	// The scheduler can't type a password — the user must reconnect manually.
+	if needsInteractiveAuth(connName) {
+		log.Printf("[conn:%s] connection may require interactive auth (password/keyboard-interactive), skipping auto-reconnect scheduler", connName)
 		return
 	}
 
@@ -654,6 +707,9 @@ func isNetworkUnreachableError(err error) bool {
 	if strings.Contains(s, "dial tcp") && strings.Contains(s, "i/o timeout") {
 		return true
 	}
+	if strings.Contains(s, "context deadline exceeded") {
+		return true
+	}
 	return false
 }
 
@@ -666,15 +722,41 @@ func isNetworkUnreachableError(err error) bool {
 // The first reconnect attempt fires immediately; subsequent attempts follow
 // the scheduler interval. This avoids the 30s fixed delay from ticker-based
 // loops when the network returns quickly.
+func updateRetryState(connName string, attempt int, nextAttempt int64, errMsg string) {
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return
+	}
+	conn := conncontroller.MaybeGetConn(connOpts)
+	if conn != nil {
+		conn.SetReconnectState(attempt, nextAttempt, errMsg)
+		conn.FireConnChangeEvent()
+	}
+}
+
+func clearRetryState(connName string) {
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return
+	}
+	conn := conncontroller.MaybeGetConn(connOpts)
+	if conn != nil {
+		conn.ClearReconnectState()
+		conn.FireConnChangeEvent()
+	}
+}
+
 func scheduleConnectionReconnect(connName string) {
 	log.Printf("[conn:%s] reconnect scheduler started", connName)
 	startTime := time.Now()
 	aggressiveMode := false
 	var aggressiveUntil time.Time
+	attempt := 0
 
 	for {
 		if time.Since(startTime) > ConnReconnectMaxDuration {
 			log.Printf("[conn:%s] reconnect scheduler reached max duration, stopping", connName)
+			clearRetryState(connName)
 			return
 		}
 
@@ -683,6 +765,7 @@ func scheduleConnectionReconnect(connName string) {
 			log.Printf("[conn:%s] error checking connection status: %v", connName, checkErr)
 		} else if isConnected {
 			log.Printf("[conn:%s] connection is back up, stopping reconnect scheduler", connName)
+			clearRetryState(connName)
 			return
 		}
 
@@ -692,16 +775,18 @@ func scheduleConnectionReconnect(connName string) {
 		cancelFn()
 		if !hasJobs {
 			log.Printf("[conn:%s] no running durable jobs, stopping reconnect scheduler", connName)
+			clearRetryState(connName)
 			return
 		}
 
 		// Only attempt reconnect if we successfully checked connection status.
 		// If status check failed, skip and wait for the next interval.
-		if checkErr == nil {
-			connectTimeout := 30 * time.Second
-			if aggressiveMode {
-				connectTimeout = 8 * time.Second
-			}
+		if checkErr != nil {
+			log.Printf("[conn:%s] skipping reconnect attempt (status check failed), will retry next interval", connName)
+		} else {
+			attempt++
+			updateRetryState(connName, attempt, 0, "") // active attempt
+			connectTimeout := 5 * time.Second
 			log.Printf("[conn:%s] scheduler attempt start (timeout=%s, aggressive=%v)", connName, connectTimeout, aggressiveMode)
 			attemptStart := time.Now()
 			ctx, cancelFn := context.WithTimeout(context.Background(), connectTimeout)
@@ -711,6 +796,14 @@ func scheduleConnectionReconnect(connName string) {
 			if err != nil {
 				isNetErr := isNetworkUnreachableError(err)
 				log.Printf("[conn:%s] scheduler attempt failed in %v (net-unreachable=%v): %v", connName, attemptDuration, isNetErr, err)
+
+				// Update retry state with failure info and next attempt time
+				interval := ConnReconnectInterval
+				if aggressiveMode {
+					interval = ConnReconnectAggressiveInterval
+				}
+				nextAttempt := time.Now().Add(interval).UnixMilli()
+				updateRetryState(connName, attempt, nextAttempt, err.Error())
 
 				// Switch to aggressive mode when network is unreachable
 				if isNetErr {
@@ -723,6 +816,7 @@ func scheduleConnectionReconnect(connName string) {
 				}
 			} else {
 				log.Printf("[conn:%s] scheduler attempt succeeded in %v", connName, attemptDuration)
+				clearRetryState(connName)
 				return
 			}
 		}

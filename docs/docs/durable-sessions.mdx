@@ -122,7 +122,7 @@ Converting between standard and durable modes requires restarting the shell. Any
 Your terminal is connected to the remote session. You can interact with the shell and see real-time output.
 
 ### Detached
-Connection lost, but the session continues running on the remote server. Wave will automatically reconnect when possible. Any commands you ran continue executing.
+Connection lost, but the session continues running on the remote server. Wave will automatically reconnect when possible (see [Connection Resilience](/reconnect) for details on detection and retry timing). Any commands you ran continue executing.
 
 ### Awaiting Start
 Session configured for durability but not yet started. Click "Start Session" or run a command to begin.
@@ -152,7 +152,7 @@ Start a build, deployment, or data processing job and close your laptop. The com
 ```
 
 ### Unstable Networks
-Work from a café, train, or cellular connection. Brief disconnections won't terminate your session or lose your work.
+Work from a café, train, or cellular connection. Brief disconnections won't terminate your session or lose your work. Wave monitors connections with keepalive probes every 3 seconds and automatically attempts reconnection — see [Connection Resilience](/reconnect) for the full detection and retry strategy.
 
 ### Multiple Locations
 Start work on your desktop, continue on your laptop. Your session and its state are preserved on the remote server.

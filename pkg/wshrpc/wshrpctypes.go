@@ -411,6 +411,9 @@ type ConnStatus struct {
 	WshVersion                    string `json:"wshversion,omitempty"`
 	LastActivityBeforeStalledTime int64  `json:"lastactivitybeforestalledtime,omitempty"`
 	KeepAliveSentTime             int64  `json:"keepalivesenttime,omitempty"`
+	ReconnectAttempt              int    `json:"reconnectattempt,omitempty"`
+	ReconnectNextAttempt          int64  `json:"reconnectnextattempt,omitempty"`
+	ReconnectError                string `json:"reconnecterror,omitempty"`
 }
 
 type WebSelectorOpts struct {

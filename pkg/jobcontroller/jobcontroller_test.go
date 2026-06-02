@@ -488,17 +488,12 @@ func TestOnConnectionDownDeduplication(t *testing.T) {
 
 	connName := "conn:dedup"
 
-	// First call should create a scheduler entry
+	// With no connection config, needsInteractiveAuth returns true (safe default),
+	// so onConnectionDown should skip the scheduler entirely.
 	onConnectionDown(connName)
-	if _, exists := connectionReconnectSchedulers.GetEx(connName); !exists {
-		t.Fatalf("expected scheduler to be registered after first onConnectionDown")
+	if _, exists := connectionReconnectSchedulers.GetEx(connName); exists {
+		t.Fatalf("expected no scheduler entry when interactive auth is possible")
 	}
-
-	// Second call should be deduplicated (no new scheduler spawned)
-	onConnectionDown(connName)
-
-	// Clean up: manually remove so we don't leave a goroutine running
-	connectionReconnectSchedulers.Delete(connName)
 }
 
 // TestHandleSystemResumeSmoke verifies that HandleSystemResume filters correctly
@@ -525,4 +520,53 @@ func TestHandleSystemResumeSmoke(t *testing.T) {
 
 	// Note: mock connection remains in controller map but uses unique key,
 	// so it won't interfere with other tests.
+}
+
+// TestIsNetworkUnreachable_ContextDeadline verifies that "context deadline exceeded"
+// is recognized as a network-unreachable error for aggressive mode.
+func TestIsNetworkUnreachable_ContextDeadline(t *testing.T) {
+	t.Parallel()
+	err := fmt.Errorf("context deadline exceeded")
+	if !isNetworkUnreachableError(err) {
+		t.Fatalf("expected 'context deadline exceeded' to be network-unreachable")
+	}
+}
+
+// TestIsNetworkUnreachable_ContextDeadlineWrapped verifies the pattern
+// when wrapped in other error text.
+func TestIsNetworkUnreachable_ContextDeadlineWrapped(t *testing.T) {
+	t.Parallel()
+	err := fmt.Errorf("dial tcp 10.0.0.1:22: connect: context deadline exceeded")
+	if !isNetworkUnreachableError(err) {
+		t.Fatalf("expected wrapped 'context deadline exceeded' to be network-unreachable")
+	}
+}
+
+// TestIsNetworkUnreachable_NilError verifies nil handling.
+func TestIsNetworkUnreachable_NilError(t *testing.T) {
+	t.Parallel()
+	if isNetworkUnreachableError(nil) {
+		t.Fatalf("expected nil to not be network-unreachable")
+	}
+}
+
+// TestNeedsInteractiveAuth_NoConfig verifies that a connection with no config
+// returns true (safe default: assume interactive auth may be needed).
+func TestNeedsInteractiveAuth_NoConfig(t *testing.T) {
+	t.Parallel()
+	result := needsInteractiveAuth("user@nonexistent-host:22")
+	if !result {
+		t.Fatalf("expected true when connection config not found")
+	}
+}
+
+// TestNeedsInteractiveAuth_Defaults verifies that with default SSH config
+// (password and kbd-interactive enabled, no stored secret), returns true.
+func TestNeedsInteractiveAuth_Defaults(t *testing.T) {
+	t.Parallel()
+	// Use the full config watcher which has defaults
+	result := needsInteractiveAuth("user@default-host:22")
+	if !result {
+		t.Fatalf("expected true with default auth settings")
+	}
 }

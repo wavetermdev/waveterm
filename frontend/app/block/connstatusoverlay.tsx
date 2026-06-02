@@ -43,6 +43,14 @@ function formatElapsedTime(elapsedMs: number): string {
     return "more than a day";
 }
 
+function formatCountdown(nextAttemptMs: number): string {
+    const remaining = Math.max(0, Math.ceil((nextAttemptMs - Date.now()) / 1000));
+    if (remaining <= 0) {
+        return "now";
+    }
+    return `${remaining}s`;
+}
+
 const StalledOverlay = React.memo(
     ({
         connName,
@@ -108,6 +116,154 @@ const StalledOverlay = React.memo(
     }
 );
 StalledOverlay.displayName = "StalledOverlay";
+
+const DisconnectedOverlay = React.memo(
+    ({
+        connName,
+        connStatus,
+        overlayRefCallback,
+        onReconnect,
+    }: {
+        connName: string;
+        connStatus: ConnStatus;
+        overlayRefCallback: (el: HTMLDivElement | null) => void;
+        onReconnect: () => void;
+    }) => {
+        const [countdown, setCountdown] = React.useState<string>("");
+        const hasCountdown = connStatus.reconnectnextattempt && connStatus.reconnectnextattempt > 0;
+
+        React.useEffect(() => {
+            if (!hasCountdown) {
+                return;
+            }
+            const update = () => {
+                setCountdown(formatCountdown(connStatus.reconnectnextattempt!));
+            };
+            update();
+            const interval = setInterval(update, 1000);
+            return () => clearInterval(interval);
+        }, [connStatus.reconnectnextattempt, hasCountdown]);
+
+        return (
+            <div
+                className="@container absolute top-[calc(var(--header-height)+6px)] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden rounded-md bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] shadow-lg opacity-90"
+                ref={overlayRefCallback}
+            >
+                <div className="flex items-center gap-3 w-full pt-2.5 pb-2.5 pr-2 pl-3">
+                    <i className="fa-solid fa-link-slash text-error text-base shrink-0" title="Disconnected"></i>
+                    <div className="text-[11px] font-semibold leading-4 tracking-[0.11px] text-white min-w-0 flex-1 break-words @max-xxs:hidden">
+                        <div>Disconnected from "{connName}"</div>
+                        {connStatus.error && (
+                            <div className="text-[10px] text-white/70 mt-0.5 truncate">{connStatus.error}</div>
+                        )}
+                        {hasCountdown && countdown !== "now" && (
+                            <div className="text-[10px] text-white/70 mt-0.5">
+                                Auto-retrying in {countdown}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex-1 hidden @max-xxs:block"></div>
+                    <Button
+                        className="outlined grey text-[11px] py-[3px] px-[7px] @max-w350:text-[12px] @max-w350:py-[5px] @max-w350:px-[6px]"
+                        onClick={onReconnect}
+                        title="Reconnect now"
+                    >
+                        <span className="@max-w350:hidden!">Reconnect</span>
+                        <i className="fa-solid fa-rotate-right hidden! @max-w350:inline!"></i>
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+);
+DisconnectedOverlay.displayName = "DisconnectedOverlay";
+
+const RetryingOverlay = React.memo(
+    ({
+        connName,
+        attempt,
+        overlayRefCallback,
+    }: {
+        connName: string;
+        attempt: number;
+        overlayRefCallback: (el: HTMLDivElement | null) => void;
+    }) => {
+        return (
+            <div
+                className="@container absolute top-[calc(var(--header-height)+6px)] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden rounded-md bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] shadow-lg opacity-90"
+                ref={overlayRefCallback}
+            >
+                <div className="flex items-center gap-3 w-full pt-2.5 pb-2.5 pr-2 pl-3">
+                    <i className="fa-solid fa-spinner fa-spin text-warning text-base shrink-0" title="Connecting"></i>
+                    <div className="text-[11px] font-semibold leading-4 tracking-[0.11px] text-white min-w-0 flex-1 break-words @max-xxs:hidden">
+                        Attempt {attempt} — connecting to "{connName}"…
+                    </div>
+                    <div className="flex-1 hidden @max-xxs:block"></div>
+                </div>
+            </div>
+        );
+    }
+);
+RetryingOverlay.displayName = "RetryingOverlay";
+
+const CountdownOverlay = React.memo(
+    ({
+        connName,
+        connStatus,
+        overlayRefCallback,
+        onReconnectNow,
+    }: {
+        connName: string;
+        connStatus: ConnStatus;
+        overlayRefCallback: (el: HTMLDivElement | null) => void;
+        onReconnectNow: () => void;
+    }) => {
+        const [countdown, setCountdown] = React.useState<string>("");
+
+        React.useEffect(() => {
+            if (!connStatus.reconnectnextattempt) {
+                return;
+            }
+            const update = () => {
+                setCountdown(formatCountdown(connStatus.reconnectnextattempt!));
+            };
+            update();
+            const interval = setInterval(update, 1000);
+            return () => clearInterval(interval);
+        }, [connStatus.reconnectnextattempt]);
+
+        return (
+            <div
+                className="@container absolute top-[calc(var(--header-height)+6px)] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden rounded-md bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] shadow-lg opacity-90"
+                ref={overlayRefCallback}
+            >
+                <div className="flex items-center gap-3 w-full pt-2.5 pb-2.5 pr-2 pl-3">
+                    <i className="fa-solid fa-clock text-grey-text text-base shrink-0" title="Waiting to retry"></i>
+                    <div className="text-[11px] font-semibold leading-4 tracking-[0.11px] text-white min-w-0 flex-1 break-words @max-xxs:hidden">
+                        {connStatus.reconnecterror && (
+                            <div className="text-[10px] text-white/70 mb-0.5 truncate">
+                                Last attempt failed: {connStatus.reconnecterror}
+                            </div>
+                        )}
+                        <div>
+                            {countdown === "now" ? "Retrying now…" : `Retrying in ${countdown}`}
+                        </div>
+                    </div>
+                    <div className="flex-1 hidden @max-xxs:block"></div>
+                    <Button
+                        className="outlined grey text-[11px] py-[3px] px-[7px] @max-w350:text-[12px] @max-w350:py-[5px] @max-w350:px-[6px]"
+                        onClick={onReconnectNow}
+                        title="Reconnect now"
+                    >
+                        <span className="@max-w350:hidden!">Reconnect now</span>
+                        <i className="fa-solid fa-rotate-right hidden! @max-w350:inline!"></i>
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+);
+CountdownOverlay.displayName = "CountdownOverlay";
 
 export const ConnStatusOverlay = React.memo(
     ({
@@ -217,13 +373,49 @@ export const ConnStatusOverlay = React.memo(
         );
 
         const showStalled = connStatus.status == "connected" && connStatus.connhealthstatus == "stalled";
-        if (!showWshError && !showStalled && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
+        const showRetrying = connStatus.status == "connecting" && (connStatus.reconnectattempt ?? 0) > 0;
+        const showCountdown = connStatus.status == "disconnected" && (connStatus.reconnectnextattempt ?? 0) > 0;
+        const showDisconnected = connStatus.status == "disconnected" && !connStatus.connected;
+
+        if (!showWshError && !showStalled && !showRetrying && !showCountdown && (isLayoutMode || connStatus.status == "connected" || connModalOpen)) {
             return null;
         }
 
         if (showStalled && !showWshError) {
             return (
                 <StalledOverlay connName={connName} connStatus={connStatus} overlayRefCallback={overlayRefCallback} />
+            );
+        }
+
+        if (showRetrying) {
+            return (
+                <RetryingOverlay
+                    connName={connName}
+                    attempt={connStatus.reconnectattempt!}
+                    overlayRefCallback={overlayRefCallback}
+                />
+            );
+        }
+
+        if (showCountdown) {
+            return (
+                <CountdownOverlay
+                    connName={connName}
+                    connStatus={connStatus}
+                    overlayRefCallback={overlayRefCallback}
+                    onReconnectNow={handleTryReconnect}
+                />
+            );
+        }
+
+        if (showDisconnected) {
+            return (
+                <DisconnectedOverlay
+                    connName={connName}
+                    connStatus={connStatus}
+                    overlayRefCallback={overlayRefCallback}
+                    onReconnect={handleTryReconnect}
+                />
             );
         }
 

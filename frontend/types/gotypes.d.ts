@@ -769,6 +769,9 @@ declare global {
         wshversion?: string;
         lastactivitybeforestalledtime?: number;
         keepalivesenttime?: number;
+        reconnectattempt?: number;
+        reconnectnextattempt?: number;
+        reconnecterror?: string;
     };
 
     // wshrpc.CpuDataRequest

@@ -94,6 +94,9 @@ type SSHConn struct {
 	LastConnectTime    int64
 	ActiveConnNum      int
 	Monitor            *ConnMonitor // will not be nil
+	ReconnectAttempt     int
+	ReconnectNextAttempt int64
+	ReconnectError       string
 }
 
 var ConnServerCmdTemplate = strings.TrimSpace(
@@ -134,6 +137,22 @@ func GetNumSSHHasConnected() int {
 	return numConnected
 }
 
+func (conn *SSHConn) SetReconnectState(attempt int, nextAttempt int64, err string) {
+	conn.WithLock(func() {
+		conn.ReconnectAttempt = attempt
+		conn.ReconnectNextAttempt = nextAttempt
+		conn.ReconnectError = err
+	})
+}
+
+func (conn *SSHConn) ClearReconnectState() {
+	conn.WithLock(func() {
+		conn.ReconnectAttempt = 0
+		conn.ReconnectNextAttempt = 0
+		conn.ReconnectError = ""
+	})
+}
+
 func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 	conn.lock.Lock()
 	defer conn.lock.Unlock()
@@ -158,6 +177,9 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 		ConnHealthStatus:              conn.ConnHealthStatus,
 		LastActivityBeforeStalledTime: lastActivityBeforeStalledTime,
 		KeepAliveSentTime:             keepAliveSentTime,
+		ReconnectAttempt:              conn.ReconnectAttempt,
+		ReconnectNextAttempt:          conn.ReconnectNextAttempt,
+		ReconnectError:                conn.ReconnectError,
 	}
 }
 
@@ -1026,6 +1048,7 @@ func (conn *SSHConn) waitForDisconnect() {
 		return
 	}
 
+	statusChanged := false
 	conn.WithLock(func() {
 		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
 		// so we just set the status to "disconnected" here (not error)
@@ -1034,12 +1057,17 @@ func (conn *SSHConn) waitForDisconnect() {
 			conn.Error = err.Error()
 		}
 		if conn.Status != Status_Error {
+			if conn.Status != Status_Disconnected {
+				statusChanged = true
+			}
 			conn.Status = Status_Disconnected
 		}
 		conn.ConnHealthStatus = ConnHealthStatus_Good
 	})
-	// Fire event BEFORE closeInternal so UI updates even if cleanup blocks.
-	conn.FireConnChangeEvent()
+	// Only fire event if we actually changed status (avoid duplicate after explicit Close())
+	if statusChanged {
+		conn.FireConnChangeEvent()
+	}
 	conn.closeInternal_withlifecyclelock(client)
 }
 

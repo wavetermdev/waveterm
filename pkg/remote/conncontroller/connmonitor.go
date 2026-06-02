@@ -139,7 +139,7 @@ func (cm *ConnMonitor) checkConnection() {
 	urgent := cm.isUrgent()
 	timeSinceActivity := time.Now().UnixMilli() - lastActivity
 
-	keepAliveThreshold := int64(10000)
+	keepAliveThreshold := int64(3000)
 	if urgent {
 		keepAliveThreshold = 1000
 	}
@@ -147,9 +147,9 @@ func (cm *ConnMonitor) checkConnection() {
 		cm.SendKeepAlive()
 	}
 
-	stalledThreshold := int64(10000)
+	stalledThreshold := int64(3000)
 	if urgent {
-		stalledThreshold = 5000
+		stalledThreshold = 2000
 	}
 	timeSinceKeepAlive := cm.getTimeSinceKeepAlive()
 	if timeSinceKeepAlive > stalledThreshold {
@@ -178,7 +178,7 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 	defer func() {
 		panichandler.PanicHandler("conncontroller:keepAliveMonitor", recover())
 	}()
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -210,13 +210,13 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 }
 
 // getStallDisconnectThresholdMs returns the configured auto-disconnect threshold in milliseconds.
-// Default is 30 seconds (30000ms). Reads from connection-specific config.
+// Default is 5 seconds (5000ms). Reads from connection-specific config.
 func (cm *ConnMonitor) getStallDisconnectThresholdMs() int64 {
 	connConfig, ok := cm.Conn.getConnectionConfig()
 	if ok && connConfig.ConnStallDisconnectThreshold != nil && *connConfig.ConnStallDisconnectThreshold > 0 {
 		return int64(*connConfig.ConnStallDisconnectThreshold) * 1000
 	}
-	return 30000 // 30s default
+	return 5000 // 5s default
 }
 
 // shouldAutoDisconnectOnStall checks if auto-disconnect on stall is enabled.
