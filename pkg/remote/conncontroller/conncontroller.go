@@ -231,37 +231,22 @@ func (conn *SSHConn) closeInternal_withlifecyclelock() {
 	// is freed immediately. This prevents HandleSystemResume/AttemptReconnect
 	// from deadlocking when the network is down and client.Close() blocks.
 	go func() {
-		// Close listener FIRST while the SSH mux is still alive.
-		// unixListener.Close() sends a cancel-streamlocal-forward request via
-		// mux.SendRequest(). If the mux is already closed (because Client.Close()
-		// was called first), the drain loop in SendRequest spins forever on the
-		// closed globalResponses channel, burning 100% CPU.
-		//
-		// For dead-network cases where writePacket could block, we use a timeout
-		// so the goroutine does not hang indefinitely.
-		if oldListener != nil {
-			done := make(chan struct{})
-			go func() {
-				startTime := time.Now()
-				oldListener.Close()
-				duration := time.Since(startTime).Milliseconds()
-				if duration > 100 {
-					log.Printf("[conncontroller] conn:%s DomainSockListener.Close() took %d ms", conn.GetName(), duration)
-				}
-				close(done)
-			}()
-			select {
-			case <-done:
-			case <-time.After(5 * time.Second):
-				log.Printf("[conncontroller] conn:%s DomainSockListener.Close() timed out after 5s (dead network?)", conn.GetName())
-			}
-		}
 		if oldClient != nil {
+			// this MUST go first to force close the connection.
+			// the DomainSockListener.Close() sends SSH protocol packets which can block on a dead network conn
 			startTime := time.Now()
 			oldClient.Close()
 			duration := time.Since(startTime).Milliseconds()
 			if duration > 100 {
 				log.Printf("[conncontroller] conn:%s Client.Close() took %d ms", conn.GetName(), duration)
+			}
+		}
+		if oldListener != nil {
+			startTime := time.Now()
+			oldListener.Close()
+			duration := time.Since(startTime).Milliseconds()
+			if duration > 100 {
+				log.Printf("[conncontroller] conn:%s DomainSockListener.Close() took %d ms", conn.GetName(), duration)
 			}
 		}
 		if oldController != nil {

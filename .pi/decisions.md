@@ -155,6 +155,32 @@
 
 ---
 
+## 2026-06-01: CPU Spin Bug — Root Cause & Fix Strategy
+
+**Decision:** Fix the `x/crypto/ssh` drain loop bug locally via `go.mod` replace directive, not by reordering cleanup in waveterm.
+
+**Root cause:** `golang.org/x/crypto@v0.52.0` `ssh/mux.go` and `ssh/channel.go` have drain loops that spin forever when `globalResponses`/`ch.msg` channels are closed. Receiving from a closed channel always succeeds immediately (returns zero value), so `default` case is never reached. Tracked as [golang/go#79658](https://github.com/golang/go/issues/79658).
+
+**Upstream fixes:** Commits 4c4d20b (mux.go) and e3e62d9 (channel.go) on May 27, 2026. Not yet in a tagged release (awaiting v0.53.0).
+
+**Why the reorder workaround (issue #22 commit eb2c659a) was rolled back:**
+- Only addressed the cleanup goroutine path, not keepalive monitors or `mux.loop()` exiting independently
+- Wake-from-sleep pprof showed 37 spinning goroutines + 37 blocked on Mutex.Lock — reorder can't prevent all
+- Original close order (client first) is correct: force-closes transport, unblocking pending `writePacket` calls
+- With the mux patch, drain loops exit immediately on closed channels regardless of call order
+
+**Implementation:**
+- `local_crypto_patch/contents/` — local copy of `x/crypto v0.52.0` with the 2-line drain loop fix applied
+- `go.mod` replace directive: `replace golang.org/x/crypto v0.52.0 => ./local_crypto_patch/contents`
+- Rollback plan: when `x/crypto >= v0.53.0` released, remove replace, delete `local_crypto_patch/`, `go mod tidy`
+
+**Consequences:**
+- 100% CPU (wifi switch) and 900% CPU (wake from sleep) bugs both resolved
+- No additional goroutines or timeouts needed in cleanup path
+- Original close order restored (client first, then listener)
+
+---
+
 **Priority order:**
 1. Fix auto-reconnect bugs in durable sessions (#4) — DONE 2026-05-23
 2. SSH port forwarding (spec ready)
