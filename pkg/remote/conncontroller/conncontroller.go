@@ -197,27 +197,30 @@ func (conn *SSHConn) Close() error {
 	// Fire event BEFORE closeInternal_withlifecyclelock so the UI updates
 	// even if client.Close() blocks on a dead network connection.
 	conn.FireConnChangeEvent()
-	conn.closeInternal_withlifecyclelock()
+	conn.closeInternal_withlifecyclelock(nil)
 	return nil
 }
 
-func (conn *SSHConn) closeInternal_withlifecyclelock() {
+func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client) {
 	// does not set status (that should happen at another level)
-	conn.WithLock(func() {
-		if conn.Monitor != nil {
-			conn.Monitor.Close()
-			conn.Monitor = nil
-		}
-		conn.Monitor = nil
-	})
 
 	// Capture old references and nil them out immediately under the lock
 	// so that Connect() sees a clean state and can proceed without waiting
 	// for the potentially-blocking Close() calls below.
+	//
+	// The expectedClient guard protects all resources (Monitor, Client,
+	// DomainSockListener, ConnController) from being stolen by a stale
+	// waitForDisconnect goroutine that raced against a new Connect().
 	var oldClient *ssh.Client
 	var oldListener net.Listener
 	var oldController *ssh.Session
+	var oldMonitor *ConnMonitor
 	conn.WithLock(func() {
+		// If expectedClient is provided and does not match the current Client,
+		// a new connection has been established — do not steal its resources.
+		if expectedClient != nil && conn.Client != expectedClient {
+			return
+		}
 		oldClient = conn.Client
 		conn.Client = nil
 		oldListener = conn.DomainSockListener
@@ -225,6 +228,8 @@ func (conn *SSHConn) closeInternal_withlifecyclelock() {
 		conn.DomainSockName = ""
 		oldController = conn.ConnController
 		conn.ConnController = nil
+		oldMonitor = conn.Monitor
+		conn.Monitor = nil
 	})
 
 	// Run potentially-blocking cleanup in a goroutine so lifecycleLock
@@ -256,6 +261,9 @@ func (conn *SSHConn) closeInternal_withlifecyclelock() {
 			if duration > 100 {
 				log.Printf("[conncontroller] conn:%s ConnController.Close() took %d ms", conn.GetName(), duration)
 			}
+		}
+		if oldMonitor != nil {
+			oldMonitor.Close()
 		}
 	}()
 }
@@ -769,7 +777,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 			conn.Status = Status_Error
 			conn.Error = err.Error()
 		})
-		conn.closeInternal_withlifecyclelock()
+		conn.closeInternal_withlifecyclelock(nil)
 	} else {
 		conn.Infof(ctx, "successfully connected (wsh:%v)\n\n", conn.WshEnabled.Load())
 		conn.WithLock(func() {
@@ -1001,6 +1009,23 @@ func (conn *SSHConn) waitForDisconnect() {
 	}
 	conn.lifecycleLock.Lock()
 	defer conn.lifecycleLock.Unlock()
+
+	// Guard: if a new SSH client has been established since we started waiting
+	// on this old client, do not disrupt the new connection. This happens when
+	// Close() triggers a reconnect that completes before this stale waitForDisconnect
+	// goroutine acquires lifecycleLock. Without this guard, we would overwrite
+	// Status=Connected with Status=Disconnected and close the new connection's
+	// resources (Client, DomainSockListener, ConnController), causing a
+	// connection flap and cascading reconnect failures.
+	currentClient := conn.GetClient()
+	if currentClient != nil && currentClient != client {
+		// A new SSH connection is active; this is a stale Wait() on an old
+		// client. The new connection's own waitForDisconnect goroutine will
+		// handle the new client when it eventually disconnects.
+		log.Printf("[conn:%s] stale waitForDisconnect detected, new connection is active; skipping disconnect", conn.GetName())
+		return
+	}
+
 	conn.WithLock(func() {
 		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
 		// so we just set the status to "disconnected" here (not error)
@@ -1015,7 +1040,7 @@ func (conn *SSHConn) waitForDisconnect() {
 	})
 	// Fire event BEFORE closeInternal so UI updates even if cleanup blocks.
 	conn.FireConnChangeEvent()
-	conn.closeInternal_withlifecyclelock()
+	conn.closeInternal_withlifecyclelock(client)
 }
 
 func (conn *SSHConn) SetWshError(err error) {

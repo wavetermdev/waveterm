@@ -6,6 +6,8 @@ package conncontroller
 import (
 	"context"
 	"fmt"
+	"net"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -251,5 +253,277 @@ func TestStallStartTimeTracking(t *testing.T) {
 	cm.checkConnection()
 	if cm.StallStartTime.Load() != 0 {
 		t.Fatalf("expected StallStartTime to be reset after stall clears")
+	}
+}
+
+// mockConn implements ssh.Conn for testing waitForDisconnect.
+// Its Wait() method blocks until closeCh is closed, then returns waitErr.
+type mockConn struct {
+	closeCh  chan struct{}
+	waitErr  error
+	mu       sync.Mutex
+	closed   bool
+}
+
+func newMockConn() *mockConn {
+	return &mockConn{closeCh: make(chan struct{})}
+}
+
+func (m *mockConn) Wait() error {
+	<-m.closeCh
+	return m.waitErr
+}
+
+func (m *mockConn) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.closed {
+		close(m.closeCh)
+		m.closed = true
+	}
+	return nil
+}
+
+func (m *mockConn) User() string                                             { return "testuser" }
+func (m *mockConn) SessionID() []byte                                        { return []byte("testsession") }
+func (m *mockConn) ClientVersion() []byte                                    { return []byte("testclient") }
+func (m *mockConn) ServerVersion() []byte                                    { return []byte("testserver") }
+func (m *mockConn) RemoteAddr() net.Addr                                     { return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 22} }
+func (m *mockConn) LocalAddr() net.Addr                                      { return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 12345} }
+func (m *mockConn) SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error) {
+	return false, nil, fmt.Errorf("not implemented")
+}
+func (m *mockConn) OpenChannel(name string, data []byte) (ssh.Channel, <-chan *ssh.Request, error) {
+	return nil, nil, fmt.Errorf("not implemented")
+}
+func (m *mockConn) OpenChannelWithTimeout(name string, data []byte, timeout time.Duration) (ssh.Channel, <-chan *ssh.Request, error) {
+	return nil, nil, fmt.Errorf("not implemented")
+}
+
+// newMockSSHClient creates a *ssh.Client backed by a mockConn.
+// The client's Wait() will block until mockConn.Close() is called.
+func newMockSSHClient() (*ssh.Client, *mockConn) {
+	mc := newMockConn()
+	chans := make(chan ssh.NewChannel)
+	reqs := make(chan *ssh.Request)
+	client := ssh.NewClient(mc, chans, reqs)
+	return client, mc
+}
+
+// TestWaitForDisconnect_StaleGuard_PreventsConnectionFlap verifies that a stale
+// waitForDisconnect goroutine (waiting on an old client_A) does not overwrite
+// Status=Connected or close resources belonging to a new client_B that was
+// established via Connect() before the stale goroutine acquired lifecycleLock.
+//
+// This is the core race condition from issue #16:
+// 1. Close() kills client_A, triggering waitForDisconnect on client_A
+// 2. Connect() establishes client_B and sets Status=Connected
+// 3. Stale waitForDisconnect acquires lifecycleLock after Connect() releases it
+// 4. Without the guard, it would overwrite Status=Disconnected and close client_B
+// 5. With the guard, it detects currentClient != old client and returns early
+func TestWaitForDisconnect_StaleGuard_PreventsConnectionFlap(t *testing.T) {
+	t.Parallel()
+
+	// Create a test connection in Connected state with a mock client_A
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	clientA, mockConnA := newMockSSHClient()
+	conn.WithLock(func() {
+		conn.Client = clientA
+	})
+
+	// Start waitForDisconnect on client_A. It will block on mockConnA.Wait().
+	staleDone := make(chan struct{})
+	go func() {
+		defer close(staleDone)
+		conn.waitForDisconnect()
+	}()
+
+	// Simulate the race: while waitForDisconnect is blocked on client_A.Wait(),
+	// Close() runs and then Connect() establishes a new client_B.
+	//
+	// We simulate this by:
+	// 1. Holding lifecycleLock to prevent waitForDisconnect from proceeding
+	// 2. Closing client_A (so Wait() will return)
+	// 3. Replacing conn.Client with client_B and setting Status=Connected
+	// 4. Releasing lifecycleLock so waitForDisconnect can proceed
+
+	// Step 1: Acquire lifecycleLock to block waitForDisconnect after Wait() returns
+	// (We need a brief pause to ensure waitForDisconnect has started and is
+	//  blocked on Wait(). Since Wait() blocks on a channel, it's safe after
+	//  a short yield.)
+	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
+
+	conn.lifecycleLock.Lock()
+
+	// Step 2: Close the old mock connection so client_A.Wait() will return.
+	mockConnA.Close()
+
+	// Step 3: Simulate Connect() replacing the client with a new one.
+	clientB, _ := newMockSSHClient()
+	conn.WithLock(func() {
+		conn.Client = clientB
+		conn.Status = Status_Connected
+	})
+
+	// Step 4: Release lifecycleLock, allowing the stale waitForDisconnect to proceed.
+	conn.lifecycleLock.Unlock()
+
+	// Wait for the stale waitForDisconnect to finish.
+	select {
+	case <-staleDone:
+		// Good, stale waitForDisconnect completed
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for stale waitForDisconnect to complete")
+	}
+
+	// Verify: the new client_B was NOT disrupted by the stale goroutine.
+	currentClient := conn.GetClient()
+	if currentClient != clientB {
+		t.Fatal("stale waitForDisconnect closed the new client_B — guard failed")
+	}
+
+	if conn.GetStatus() != Status_Connected {
+		t.Fatalf("expected Status=Connected, got %s — stale waitForDisconnect overwrote status", conn.GetStatus())
+	}
+
+	// Verify: client_B is still usable (not closed). We can't directly check
+	// if ssh.Client is closed, but we can verify the DomainSockListener and
+	// ConnController were not nil'd out (they should still be nil since we
+	// never set them, but the important thing is the guard prevented the
+	// stale closeInternal_withlifecyclelock from running).
+}
+
+// TestWaitForDisconnect_NormalDisconnect_NoGuard verifies that when no new
+// connection supersedes the old one, waitForDisconnect proceeds normally and
+// sets Status=Disconnected and cleans up resources.
+func TestWaitForDisconnect_NormalDisconnect_NoGuard(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	clientA, mockConnA := newMockSSHClient()
+	conn.WithLock(func() {
+		conn.Client = clientA
+	})
+
+	// Start waitForDisconnect on client_A.
+	disconnectDone := make(chan struct{})
+	go func() {
+		defer close(disconnectDone)
+		conn.waitForDisconnect()
+	}()
+
+	// Give waitForDisconnect time to start and block on Wait().
+	runtime.Gosched()
+	time.Sleep(10 * time.Millisecond)
+
+	// Close client_A so Wait() returns. No new connection is established.
+	mockConnA.Close()
+
+	// Wait for waitForDisconnect to complete.
+	select {
+	case <-disconnectDone:
+		// Good
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for waitForDisconnect to complete")
+	}
+
+	// Verify: status was set to Disconnected.
+	if conn.GetStatus() != Status_Disconnected {
+		t.Fatalf("expected Status=Disconnected, got %s", conn.GetStatus())
+	}
+
+	// Verify: Client was cleaned up (set to nil).
+	if conn.GetClient() != nil {
+		t.Fatal("expected Client to be nil after normal disconnect")
+	}
+}
+
+// TestCloseInternal_ExpectedClientGuard_PreventsResourceTheft verifies the
+// defense-in-depth guard in closeInternal_withlifecyclelock: when expectedClient
+// is provided and does not match conn.Client, resources should NOT be captured
+// or closed.
+func TestCloseInternal_ExpectedClientGuard_PreventsResourceTheft(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Disconnected)
+	defer cleanupTestConn(conn)
+
+	clientA, _ := newMockSSHClient()
+	clientB, _ := newMockSSHClient()
+
+	// Set up conn with client_B (simulating a new connection)
+	monitor := makeTestMonitor(conn)
+	conn.WithLock(func() {
+		conn.Client = clientB
+		conn.Monitor = monitor
+		conn.Status = Status_Connected
+	})
+
+	// Call closeInternal_withlifecyclelock with expectedClient=clientA,
+	// which does NOT match the current client_B.
+	// This should NOT capture or close client_B or the monitor.
+	conn.lifecycleLock.Lock()
+	conn.closeInternal_withlifecyclelock(clientA)
+	conn.lifecycleLock.Unlock()
+
+	// Allow the goroutine-based cleanup to run.
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify: client_B was NOT stolen (still the active client).
+	currentClient := conn.GetClient()
+	if currentClient != clientB {
+		t.Fatal("closeInternal_withlifecyclelock stole client_B despite expectedClient guard")
+	}
+
+	// Verify: monitor was NOT closed (still set).
+	conn.lock.Lock()
+	mon := conn.Monitor
+	conn.lock.Unlock()
+	if mon != monitor {
+		t.Fatal("closeInternal_withlifecyclelock closed Monitor despite expectedClient guard")
+	}
+}
+
+// TestCloseInternal_NilExpectedClient_AlwaysCleansUp verifies that when
+// expectedClient is nil (called from Close() or Connect() error path),
+// closeInternal_withlifecyclelock always cleans up regardless of the current client.
+func TestCloseInternal_NilExpectedClient_AlwaysCleansUp(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	clientA, _ := newMockSSHClient()
+	monitor := makeTestMonitor(conn)
+	conn.WithLock(func() {
+		conn.Client = clientA
+		conn.Monitor = monitor
+	})
+
+	// Call closeInternal_withlifecyclelock with nil expectedClient.
+	// This should always clean up.
+	conn.lifecycleLock.Lock()
+	conn.closeInternal_withlifecyclelock(nil)
+	conn.lifecycleLock.Unlock()
+
+	// Allow the goroutine-based cleanup to run.
+	time.Sleep(50 * time.Millisecond)
+
+	// Verify: Client was captured and nil'd.
+	if conn.GetClient() != nil {
+		t.Fatal("expected Client to be nil after closeInternal_withlifecyclelock(nil)")
+	}
+
+	// Verify: Monitor was closed and nil'd.
+	conn.lock.Lock()
+	mon := conn.Monitor
+	conn.lock.Unlock()
+	if mon != nil {
+		t.Fatal("expected Monitor to be nil after closeInternal_withlifecyclelock(nil)")
 	}
 }
