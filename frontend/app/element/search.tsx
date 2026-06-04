@@ -29,6 +29,7 @@ const SearchComponent = ({
     isOpen: isOpenAtom,
     focusInput: focusInputAtom,
     anchorRef,
+    searchInputRef,
     offsetX = 10,
     offsetY = 10,
     onSearch,
