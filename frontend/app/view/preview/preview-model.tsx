@@ -31,6 +31,10 @@ const BOOKMARKS: { label: string; path: string }[] = [
     { label: "Root", path: "/" },
 ];
 
+if (window.navigator?.platform?.startsWith("Win")) {
+    BOOKMARKS.push({ label: "Drives", path: "" });
+}
+
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
 
@@ -207,7 +211,7 @@ export class PreviewModel implements ViewModel {
                 return {
                     elemtype: "iconbutton",
                     icon: "folder-open",
-                    longClick: (e: React.MouseEvent<any>) => {
+                    click: (e: React.MouseEvent<any>) => {
                         const menuItems: ContextMenuItem[] = BOOKMARKS.map((bookmark) => ({
                             label: `Go to ${bookmark.label} (${bookmark.path})`,
                             click: () => this.goHistory(bookmark.path),
@@ -315,7 +319,7 @@ export class PreviewModel implements ViewModel {
             }
             const mimeType = jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             const metaPath = get(this.metaFilePath);
-            if (mimeType == "directory" && metaPath == "/") {
+            if (mimeType == "directory" && (metaPath == "/" || metaPath == "")) {
                 return null;
             }
             return {
@@ -379,7 +383,7 @@ export class PreviewModel implements ViewModel {
         });
         this.metaFilePath = atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
-            if (isBlank(file)) {
+            if (file == null) {
                 return "~";
             }
             return file;

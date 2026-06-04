@@ -5,22 +5,24 @@ import * as util from "@/util/util";
 
 const MaxHistory = 20;
 
-// this needs to be fixed for windows
 function getParentDirectory(path: string): string {
     if (util.isBlank(path) == null) {
-        // this not great, ideally we'd never be passed a null path
         return "/";
     }
-    if (path == "/") {
-        return "/";
+    if (path == "/" || path == "") {
+        return path;
     }
-    const splitPath = path.split("/");
+    const separator = path.includes("\\") ? "\\" : "/";
+    const splitPath = path.split(separator);
     splitPath.pop();
-    if (splitPath.length == 1 && splitPath[0] == "") {
-        return "/";
+    if (splitPath.length == 0 || (splitPath.length == 1 && splitPath[0] == "")) {
+        return separator == "\\" ? path.substring(0, 3) : "/";
     }
-    const newPath = splitPath.join("/");
-    return newPath;
+    const joined = splitPath.join(separator);
+    if (separator == "\\" && joined.length == 2 && joined[1] == ":") {
+        return joined + "\\";
+    }
+    return joined;
 }
 
 function goHistoryBack(curValKey: "url" | "file", curVal: string, meta: MetaType, backToParent: boolean): MetaType {

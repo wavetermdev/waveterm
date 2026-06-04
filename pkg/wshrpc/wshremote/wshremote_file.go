@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -207,6 +208,18 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 			panichandler.PanicHandler("RemoteListEntriesCommand", recover())
 		}()
 		defer close(ch)
+
+		if runtime.GOOS == "windows" && data.Path == "" {
+			drives, err := listDrives()
+			if err != nil {
+				ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
+				return
+			}
+			resp := wshrpc.CommandRemoteListEntriesRtnData{FileInfo: drives}
+			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: resp}
+			return
+		}
+
 		path, err := wavebase.ExpandHomeDir(data.Path)
 		if err != nil {
 			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
@@ -327,6 +340,12 @@ func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
 
 func computeDirPart(path string) string {
 	path = filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	if runtime.GOOS == "windows" {
+		vol := filepath.VolumeName(path)
+		if vol != "" && path == vol+"\\" {
+			return ""
+		}
+	}
 	path = filepath.ToSlash(path)
 	if path == "/" {
 		return "/"
@@ -334,7 +353,35 @@ func computeDirPart(path string) string {
 	return filepath.Dir(path)
 }
 
+func listDrives() ([]*wshrpc.FileInfo, error) {
+	var drives []*wshrpc.FileInfo
+	for _, letter := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+		drivePath := string(letter) + ":\\"
+		finfo, err := os.Stat(drivePath)
+		if err != nil {
+			continue
+		}
+		driveInfo := statToFileInfo(drivePath, finfo, false)
+		driveInfo.Name = string(letter) + ":"
+		drives = append(drives, driveInfo)
+	}
+	if len(drives) == 0 {
+		return nil, fmt.Errorf("no drives found")
+	}
+	return drives, nil
+}
+
 func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInfo, error) {
+	if runtime.GOOS == "windows" && path == "" {
+		return &wshrpc.FileInfo{
+			Path:          "",
+			Dir:           "",
+			Name:          "Drives",
+			IsDir:         true,
+			MimeType:      "directory",
+			SupportsMkdir: false,
+		}, nil
+	}
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
