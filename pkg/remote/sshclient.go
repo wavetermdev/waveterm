@@ -848,6 +848,65 @@ func expandProxyCommand(tmpl string, host string, port string, user string) stri
 	return r.Replace(tmpl)
 }
 
+// parseProxyCommandAsJump attempts to convert a common ProxyCommand pattern
+// (ssh -W %h:%p <jump-host>) into a ProxyJump host string.
+// It returns the jump host and true on success.
+// Pattern: ssh [options] -W %h:%p [user@]<jump-host>[:port]
+func parseProxyCommandAsJump(proxyCmd string) (string, bool) {
+	args := strings.Fields(proxyCmd)
+	if len(args) < 3 {
+		return "", false
+	}
+
+	sshBin := args[0]
+	baseName := filepath.Base(sshBin)
+	if baseName != "ssh" {
+		return "", false
+	}
+
+	var jumpHost, jumpUser, jumpPort string
+	foundW := false
+
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "-W" && i+1 < len(args):
+			nextArg := args[i+1]
+			if !strings.Contains(nextArg, "%h") {
+				return "", false
+			}
+			foundW = true
+			i++
+		case arg == "-p" && i+1 < len(args):
+			jumpPort = args[i+1]
+			i++
+		case arg == "-l" && i+1 < len(args):
+			jumpUser = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "-"):
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i++
+			}
+		default:
+			if jumpHost == "" {
+				jumpHost = arg
+			}
+		}
+	}
+
+	if jumpHost == "" || !foundW {
+		return "", false
+	}
+
+	if jumpUser != "" && !strings.Contains(jumpHost, "@") {
+		jumpHost = jumpUser + "@" + jumpHost
+	}
+	if jumpPort != "" && !strings.Contains(jumpHost, ":") {
+		jumpHost = jumpHost + ":" + jumpPort
+	}
+	return jumpHost, true
+}
+
 func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.ClientConfig, currentClient *ssh.Client, proxyCmd string) (*ssh.Client, error) {
 	var clientConn net.Conn
 	var err error
@@ -982,6 +1041,18 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, internalSshConfigKeywords.SshIdentityFile...)
 	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, sshConfigKeywords.SshIdentityFile...)
 
+	proxyCmd := utilfn.SafeDeref(sshKeywords.SshProxyCommand)
+	if proxyCmd != "" && len(sshKeywords.SshProxyJump) == 0 {
+		if jumpHost, ok := parseProxyCommandAsJump(proxyCmd); ok {
+			blocklogger.Infof(connCtx, "[conndebug] converted proxycommand to proxyjump: %s\n", jumpHost)
+			sshKeywords.SshProxyJump = []string{jumpHost}
+			sshKeywords.SshProxyCommand = nil
+			proxyCmd = ""
+		} else {
+			blocklogger.Infof(connCtx, "[conndebug] proxycommand not convertible to proxyjump, using subprocess: %s\n", proxyCmd)
+		}
+	}
+
 	for _, proxyName := range sshKeywords.SshProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
@@ -1005,7 +1076,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	proxyCmd := utilfn.SafeDeref(sshKeywords.SshProxyCommand)
+	proxyCmd = utilfn.SafeDeref(sshKeywords.SshProxyCommand)
 	networkAddr := utilfn.SafeDeref(sshKeywords.SshHostName) + ":" + utilfn.SafeDeref(sshKeywords.SshPort)
 	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient, proxyCmd)
 	if err != nil {
