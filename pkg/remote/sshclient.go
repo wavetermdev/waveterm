@@ -983,7 +983,7 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	return sshClient, nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, *wconfig.ConnKeywords, error) {
 	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
@@ -991,7 +991,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		JumpNum:       jumpNum,
 	}
 	if jumpNum > SshProxyJumpMaxDepth {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
+		return nil, jumpNum, nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
 
 	rawName := opts.String()
@@ -1007,14 +1007,14 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
 			err = utilds.MakeCodedError(ConnErrCode_ConfigDefault, fmt.Errorf("cannot determine default config keywords: %w", err))
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, debugInfo.JumpNum, nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	} else {
 		var err error
 		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
 		if err != nil {
 			err = utilds.MakeCodedError(ConnErrCode_ConfigParse, fmt.Errorf("cannot determine config keywords: %w", err))
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, debugInfo.JumpNum, nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	}
 
@@ -1045,7 +1045,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	for _, proxyName := range sshKeywords.SshProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
+			return nil, debugInfo.JumpNum, nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
 		}
 
 		// ensure no overflow (this will likely never happen)
@@ -1054,23 +1054,23 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		}
 
 		// do not apply supplied keywords to proxies - ssh config must be used for that
-		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{})
+		debugInfo.CurrentClient, jumpNum, _, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{})
 		if err != nil {
 			// do not add a context on a recursive call
 			// (this can cause a recursive nested context that's arbitrarily deep)
-			return nil, jumpNum, err
+			return nil, jumpNum, nil, err
 		}
 	}
 	clientConfig, err := createClientConfig(connCtx, sshKeywords, debugInfo)
 	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, debugInfo.JumpNum, nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	networkAddr := utilfn.SafeDeref(sshKeywords.SshHostName) + ":" + utilfn.SafeDeref(sshKeywords.SshPort)
 	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
 	if err != nil {
-		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return client, debugInfo.JumpNum, nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	return client, debugInfo.JumpNum, nil
+	return client, debugInfo.JumpNum, sshKeywords, nil
 }
 
 // note that a `var == "yes"` will default to false
@@ -1220,6 +1220,18 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 	rawGlobalKnownHostsFile, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "GlobalKnownHostsFile")
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(rawGlobalKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
 
+	localForwardRaw := WaveSshConfigUserSettings().GetAll(hostPattern, "LocalForward")
+	for i := 0; i < len(localForwardRaw); i++ {
+		localForwardRaw[i] = trimquotes.TryTrimQuotes(localForwardRaw[i])
+	}
+	sshKeywords.SshLocalForward = localForwardRaw
+
+	remoteForwardRaw := WaveSshConfigUserSettings().GetAll(hostPattern, "RemoteForward")
+	for i := 0; i < len(remoteForwardRaw); i++ {
+		remoteForwardRaw[i] = trimquotes.TryTrimQuotes(remoteForwardRaw[i])
+	}
+	sshKeywords.SshRemoteForward = remoteForwardRaw
+
 	return sshKeywords, nil
 }
 
@@ -1245,6 +1257,8 @@ func findSshDefaults(hostPattern string) (connKeywords *wconfig.ConnKeywords, ou
 	sshKeywords.SshProxyJump = []string{}
 	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
+	sshKeywords.SshLocalForward = []string{}
+	sshKeywords.SshRemoteForward = []string{}
 	return sshKeywords, nil
 }
 
@@ -1317,6 +1331,12 @@ func mergeKeywords(oldKeywords *wconfig.ConnKeywords, newKeywords *wconfig.ConnK
 	}
 	if newKeywords.SshGlobalKnownHostsFile != nil {
 		outKeywords.SshGlobalKnownHostsFile = newKeywords.SshGlobalKnownHostsFile
+	}
+	if newKeywords.SshLocalForward != nil {
+		outKeywords.SshLocalForward = newKeywords.SshLocalForward
+	}
+	if newKeywords.SshRemoteForward != nil {
+		outKeywords.SshRemoteForward = newKeywords.SshRemoteForward
 	}
 	if newKeywords.SshPasswordSecretName != nil {
 		outKeywords.SshPasswordSecretName = newKeywords.SshPasswordSecretName
