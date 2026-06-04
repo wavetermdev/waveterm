@@ -114,6 +114,9 @@
           },
           "type": "array"
         },
+        "ssh:proxycommand": {
+          "type": "string"
+        },
         "ssh:userknownhostsfile": {
           "items": {
             "type": "string"

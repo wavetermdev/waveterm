@@ -29,6 +29,7 @@ const SearchComponent = ({
     isOpen: isOpenAtom,
     focusInput: focusInputAtom,
     anchorRef,
+    searchInputRef,
     offsetX = 10,
     offsetY = 10,
     onSearch,
@@ -36,13 +37,12 @@ const SearchComponent = ({
     onPrev,
 }: SearchProps) => {
     const localInputRef = useRef<HTMLInputElement>(null);
-    const inputRef = providedInputRef || localInputRef;
+    const inputRef = searchInputRef || localInputRef;
     const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
     const [search, setSearch] = useAtom<string>(searchAtom);
     const [index, setIndex] = useAtom<number>(indexAtom);
     const [numResults, setNumResults] = useAtom<number>(numResultsAtom);
     const [focusInputCounter, setFocusInputCounter] = useAtom<number>(focusInputAtom);
-    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleOpenChange = useCallback((open: boolean) => {
         setIsOpen(open);

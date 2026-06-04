@@ -419,6 +419,7 @@ type ConnKeywords struct {
 	SshIdentityAgent                *string  `json:"ssh:identityagent,omitempty"`
 	SshIdentitiesOnly               *bool    `json:"ssh:identitiesonly,omitempty"`
 	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
+	SshProxyCommand                 *string  `json:"ssh:proxycommand,omitempty"`
 	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
 	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
 }

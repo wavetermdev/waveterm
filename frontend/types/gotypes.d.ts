@@ -852,6 +852,7 @@ declare global {
         "ssh:identityagent"?: string;
         "ssh:identitiesonly"?: boolean;
         "ssh:proxyjump"?: string[];
+        "ssh:proxycommand"?: string;
         "ssh:userknownhostsfile"?: string[];
         "ssh:globalknownhostsfile"?: string[];
     };
