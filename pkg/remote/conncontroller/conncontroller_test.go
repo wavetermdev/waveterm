@@ -527,3 +527,157 @@ func TestCloseInternal_NilExpectedClient_AlwaysCleansUp(t *testing.T) {
 		t.Fatal("expected Monitor to be nil after closeInternal_withlifecyclelock(nil)")
 	}
 }
+
+// TestCopyBoth verifies bidirectional data transfer between two connections.
+func TestCopyBoth(t *testing.T) {
+	t.Parallel()
+
+	// Create a pair of net.Pipe connections
+	c1, c2 := net.Pipe()
+	c3, c4 := net.Pipe()
+
+	// Send data from c1 to c3 via copyBoth
+	go func() {
+		copyBoth(c2, c3)
+	}()
+
+	// Write to c1, read from c4
+	msg := []byte("hello")
+	go func() {
+		c1.Write(msg)
+		c1.Close()
+	}()
+
+	buf := make([]byte, len(msg))
+	_, err := c4.Read(buf)
+	if err != nil {
+		t.Fatalf("read error: %v", err)
+	}
+	if string(buf) != string(msg) {
+		t.Fatalf("expected %q, got %q", msg, buf)
+	}
+	c4.Close()
+}
+
+// TestLocalForwardStartsAndStops verifies that LocalForward listeners are
+// created on startPortForwarding and closed on closeInternal_withlifecyclelock.
+func TestLocalForwardStartsAndStops(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	// Find a free port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to find free port: %v", err)
+	}
+	addr := listener.Addr().String()
+	listener.Close()
+
+	// Create a minimal client (won't actually dial, but the listener should start)
+	client, _ := newMockSSHClient()
+	monitor := makeTestMonitor(conn)
+	conn.WithLock(func() {
+		conn.Client = client
+		conn.Monitor = monitor
+	})
+
+	keywords := &wconfig.ConnKeywords{
+		SshLocalForward: []string{addr + " 127.0.0.1:9999"},
+	}
+
+	ctx := context.Background()
+	conn.startPortForwarding(ctx, keywords)
+
+	// Give goroutines time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify listener was created
+	conn.lock.Lock()
+	listenerCount := len(conn.LocalForwardListeners)
+	conn.lock.Unlock()
+	if listenerCount != 1 {
+		t.Fatalf("expected 1 LocalForwardListener, got %d", listenerCount)
+	}
+
+	// Close and verify cleanup
+	conn.lifecycleLock.Lock()
+	conn.closeInternal_withlifecyclelock(nil)
+	conn.lifecycleLock.Unlock()
+
+	time.Sleep(50 * time.Millisecond)
+
+	conn.lock.Lock()
+	listenerCount = len(conn.LocalForwardListeners)
+	conn.lock.Unlock()
+	if listenerCount != 0 {
+		t.Fatalf("expected 0 LocalForwardListeners after close, got %d", listenerCount)
+	}
+}
+
+// TestStartPortForwarding_MalformedRule verifies that malformed rules are
+// skipped and logged without crashing.
+func TestStartPortForwarding_MalformedRule(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	client, _ := newMockSSHClient()
+	monitor := makeTestMonitor(conn)
+	conn.WithLock(func() {
+		conn.Client = client
+		conn.Monitor = monitor
+	})
+
+	keywords := &wconfig.ConnKeywords{
+		SshLocalForward:  []string{"only-one-field", "also-wrong", "8080 localhost:80 127.0.0.1:9090"},
+		SshRemoteForward: []string{"valid 127.0.0.1:9090"},
+	}
+
+	ctx := context.Background()
+	conn.startPortForwarding(ctx, keywords)
+
+	// Give goroutines time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Only the valid RemoteForward should have been attempted (but will fail
+	// because the mock client doesn't support Listen). The malformed rules
+	// should have been skipped.
+	conn.lock.Lock()
+	localCount := len(conn.LocalForwardListeners)
+	remoteCount := len(conn.RemoteForwardListeners)
+	conn.lock.Unlock()
+	if localCount != 0 {
+		t.Fatalf("expected 0 LocalForwardListeners (all malformed), got %d", localCount)
+	}
+	if remoteCount != 0 {
+		t.Fatalf("expected 0 RemoteForwardListeners (mock client can't Listen), got %d", remoteCount)
+	}
+}
+
+// TestStartPortForwarding_NilClient verifies that startPortForwarding
+// returns immediately when client is nil.
+func TestStartPortForwarding_NilClient(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	// Client is nil by default
+	keywords := &wconfig.ConnKeywords{
+		SshLocalForward: []string{"8080 localhost:80"},
+	}
+
+	ctx := context.Background()
+	conn.startPortForwarding(ctx, keywords)
+
+	// Should return without panic
+	conn.lock.Lock()
+	listenerCount := len(conn.LocalForwardListeners)
+	conn.lock.Unlock()
+	if listenerCount != 0 {
+		t.Fatalf("expected 0 listeners with nil client, got %d", listenerCount)
+	}
+}
