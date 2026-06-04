@@ -838,16 +838,6 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 	}, nil
 }
 
-func expandProxyCommand(tmpl string, host string, port string, user string) string {
-	r := strings.NewReplacer(
-		"%h", host,
-		"%p", port,
-		"%r", user,
-		"%%", "%",
-	)
-	return r.Replace(tmpl)
-}
-
 // parseProxyCommandAsJump attempts to convert a common ProxyCommand pattern
 // (ssh -W %h:%p <jump-host>) into a ProxyJump host string.
 // It returns the jump host and true on success.
@@ -907,39 +897,11 @@ func parseProxyCommandAsJump(proxyCmd string) (string, bool) {
 	return jumpHost, true
 }
 
-func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.ClientConfig, currentClient *ssh.Client, proxyCmd string) (*ssh.Client, error) {
+func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.ClientConfig, currentClient *ssh.Client) (*ssh.Client, error) {
 	var clientConn net.Conn
 	var err error
 
-	if proxyCmd != "" {
-		host, port, _ := net.SplitHostPort(networkAddr)
-		user := clientConfig.User
-		expandedCmd := expandProxyCommand(proxyCmd, host, port, user)
-		blocklogger.Infof(ctx, "[conndebug] ssh proxycommand: %s\n", expandedCmd)
-
-		var cmd *exec.Cmd
-		if runtime.GOOS == "windows" {
-			cmd = exec.CommandContext(ctx, "cmd", "/c", expandedCmd)
-		} else {
-			cmd = exec.CommandContext(ctx, "sh", "-c", expandedCmd)
-		}
-		local, remote := net.Pipe()
-		cmd.Stdin = remote
-		cmd.Stdout = remote
-		cmd.Stderr = remote
-
-		err = cmd.Start()
-		if err != nil {
-			remote.Close()
-			local.Close()
-			return nil, utilds.MakeSubCodedError(ConnErrCode_Dial, "proxycmd-start", err)
-		}
-		clientConn = &proxyCommandConn{
-			Conn:   local,
-			cmd:    cmd,
-			remote: remote,
-		}
-	} else if currentClient == nil {
+	if currentClient == nil {
 		d := net.Dialer{Timeout: clientConfig.Timeout}
 		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
@@ -964,22 +926,6 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	}
 	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)
 	return ssh.NewClient(c, chans, reqs), nil
-}
-
-// proxyCommandConn wraps a net.Pipe connection with an os/exec Cmd.
-// When the connection is closed, the remote pipe end is closed and the
-// command process is waited on (reaped) in the background.
-type proxyCommandConn struct {
-	net.Conn
-	cmd    *exec.Cmd
-	remote net.Conn
-}
-
-func (pcc *proxyCommandConn) Close() error {
-	pcc.remote.Close()
-	err := pcc.Conn.Close()
-	go pcc.cmd.Wait()
-	return err
 }
 
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
@@ -1076,9 +1022,8 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	proxyCmd = utilfn.SafeDeref(sshKeywords.SshProxyCommand)
 	networkAddr := utilfn.SafeDeref(sshKeywords.SshHostName) + ":" + utilfn.SafeDeref(sshKeywords.SshPort)
-	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient, proxyCmd)
+	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
 	if err != nil {
 		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
