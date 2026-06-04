@@ -97,6 +97,9 @@ type SSHConn struct {
 	ReconnectAttempt     int
 	ReconnectNextAttempt int64
 	ReconnectError       string
+
+	LocalForwardListeners  []net.Listener // local listeners for LocalForward
+	RemoteForwardListeners []net.Listener // remote listeners (from client.Listen) for RemoteForward
 }
 
 var ConnServerCmdTemplate = strings.TrimSpace(
@@ -237,6 +240,8 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 	var oldListener net.Listener
 	var oldController *ssh.Session
 	var oldMonitor *ConnMonitor
+	var oldLocalForwardListeners []net.Listener
+	var oldRemoteForwardListeners []net.Listener
 	conn.WithLock(func() {
 		// If expectedClient is provided and does not match the current Client,
 		// a new connection has been established — do not steal its resources.
@@ -252,6 +257,10 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 		conn.ConnController = nil
 		oldMonitor = conn.Monitor
 		conn.Monitor = nil
+		oldLocalForwardListeners = conn.LocalForwardListeners
+		conn.LocalForwardListeners = nil
+		oldRemoteForwardListeners = conn.RemoteForwardListeners
+		conn.RemoteForwardListeners = nil
 	})
 
 	// Run potentially-blocking cleanup in a goroutine so lifecycleLock
@@ -286,6 +295,12 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 		}
 		if oldMonitor != nil {
 			oldMonitor.Close()
+		}
+		for _, l := range oldLocalForwardListeners {
+			l.Close()
+		}
+		for _, l := range oldRemoteForwardListeners {
+			l.Close()
 		}
 	}()
 }
@@ -974,13 +989,119 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 	// doesn't return an error since none of this is required for connection to work
 }
 
+// copyBoth performs bidirectional copying between two connections.
+// It spawns two goroutines (one per direction), waits for both to finish,
+// then closes both connections.
+func copyBoth(a net.Conn, b net.Conn) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		io.Copy(a, b)
+	}()
+	go func() {
+		defer wg.Done()
+		io.Copy(b, a)
+	}()
+	wg.Wait()
+	a.Close()
+	b.Close()
+}
+
+// startPortForwarding sets up local and remote port forwarding tunnels
+// based on the merged SSH config keywords.
+func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.ConnKeywords) {
+	client := conn.GetClient()
+	if client == nil {
+		return
+	}
+
+	// LocalForward: listen locally, dial through SSH to remote
+	for _, fwd := range keywords.SshLocalForward {
+		parts := strings.Fields(fwd)
+		if len(parts) != 2 {
+			conn.Infof(ctx, "LocalForward: skipping malformed rule: %q\n", fwd)
+			log.Printf("LocalForward: skipping malformed rule: %q\n", fwd)
+			continue
+		}
+		bindAddr, dest := parts[0], parts[1]
+		go func() {
+			defer panichandler.PanicHandler("conncontroller:localforward", recover())
+			listener, err := net.Listen("tcp", bindAddr)
+			if err != nil {
+				conn.Infof(ctx, "LocalForward %s: failed to listen: %v\n", fwd, err)
+				log.Printf("LocalForward %s: failed to listen: %v\n", fwd, err)
+				return
+			}
+			conn.WithLock(func() {
+				conn.LocalForwardListeners = append(conn.LocalForwardListeners, listener)
+			})
+			conn.Infof(ctx, "LocalForward started: %s -> %s\n", bindAddr, dest)
+			for {
+				localConn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				go func(dest string) {
+					defer panichandler.PanicHandler("conncontroller:localforward-tunnel", recover())
+					remoteConn, err := client.Dial("tcp", dest)
+					if err != nil {
+						localConn.Close()
+						return
+					}
+					copyBoth(localConn, remoteConn)
+				}(dest)
+			}
+		}()
+	}
+
+	// RemoteForward: listen on remote via SSH, dial locally
+	for _, fwd := range keywords.SshRemoteForward {
+		parts := strings.Fields(fwd)
+		if len(parts) != 2 {
+			conn.Infof(ctx, "RemoteForward: skipping malformed rule: %q\n", fwd)
+			log.Printf("RemoteForward: skipping malformed rule: %q\n", fwd)
+			continue
+		}
+		bindAddr, dest := parts[0], parts[1]
+		go func() {
+			defer panichandler.PanicHandler("conncontroller:remoteforward", recover())
+			listener, err := client.Listen("tcp", bindAddr)
+			if err != nil {
+				conn.Infof(ctx, "RemoteForward %s: failed to listen: %v\n", fwd, err)
+				log.Printf("RemoteForward %s: failed to listen: %v\n", fwd, err)
+				return
+			}
+			conn.WithLock(func() {
+				conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, listener)
+			})
+			conn.Infof(ctx, "RemoteForward started: %s -> %s\n", bindAddr, dest)
+			for {
+				remoteConn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				go func(dest string) {
+					defer panichandler.PanicHandler("conncontroller:remoteforward-tunnel", recover())
+					localConn, err := net.Dial("tcp", dest)
+					if err != nil {
+						remoteConn.Close()
+						return
+					}
+					copyBoth(localConn, remoteConn)
+				}(dest)
+			}
+		}()
+	}
+}
+
 // returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	if connectInternalTestHook != nil {
 		return connectInternalTestHook(conn, ctx, connFlags)
 	}
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
-	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
+	client, _, sshKeywords, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		conn.Infof(ctx, "ERROR ConnectToClient: %s\n", remote.SimpleMessageFromPossibleConnectionError(err))
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
@@ -1014,6 +1135,10 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		}
 	}
 	conn.persistWshInstalled(ctx, wshResult)
+	// Start port forwarding with merged SSH config keywords
+	if sshKeywords != nil {
+		conn.startPortForwarding(ctx, sshKeywords)
+	}
 	return nil
 }
 
