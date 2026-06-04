@@ -995,7 +995,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 			sshKeywords.SshProxyCommand = nil
 			proxyCmd = ""
 		} else {
-			blocklogger.Infof(connCtx, "[conndebug] proxycommand not convertible to proxyjump, using subprocess: %s\n", proxyCmd)
+			blocklogger.Infof(connCtx, "[conndebug] proxycommand not convertible to proxyjump, skipping: %s\n", proxyCmd)
 		}
 	}
 
@@ -1173,10 +1173,7 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		sshKeywords.SshProxyJump = append(sshKeywords.SshProxyJump, proxyJumpName)
 	}
 
-	proxyCommandRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "ProxyCommand")
-	if err != nil {
-		return nil, err
-	}
+	proxyCommandRaw, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "ProxyCommand")
 	proxyCommandClean := trimquotes.TryTrimQuotes(proxyCommandRaw)
 	if proxyCommandClean != "" {
 		sshKeywords.SshProxyCommand = &proxyCommandClean
