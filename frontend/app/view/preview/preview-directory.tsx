@@ -603,7 +603,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             modtime: new Date().getTime(),
                             mimetype: "directory",
                         });
-                    } else if (finfo?.dir === "" && finfo?.path) {
+                    } else if (!finfo?.dir && finfo?.path) {
                         entries.unshift({
                             name: "..",
                             path: "",

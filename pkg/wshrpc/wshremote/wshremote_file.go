@@ -361,7 +361,9 @@ func listDrives() ([]*wshrpc.FileInfo, error) {
 		if err != nil {
 			continue
 		}
-		drives = append(drives, statToFileInfo(drivePath, finfo, false))
+		driveInfo := statToFileInfo(drivePath, finfo, false)
+		driveInfo.Name = string(letter) + ":"
+		drives = append(drives, driveInfo)
 	}
 	if len(drives) == 0 {
 		return nil, fmt.Errorf("no drives found")

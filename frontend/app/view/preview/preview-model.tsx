@@ -211,7 +211,7 @@ export class PreviewModel implements ViewModel {
                 return {
                     elemtype: "iconbutton",
                     icon: "folder-open",
-                    longClick: (e: React.MouseEvent<any>) => {
+                    click: (e: React.MouseEvent<any>) => {
                         const menuItems: ContextMenuItem[] = BOOKMARKS.map((bookmark) => ({
                             label: `Go to ${bookmark.label} (${bookmark.path})`,
                             click: () => this.goHistory(bookmark.path),
@@ -383,7 +383,7 @@ export class PreviewModel implements ViewModel {
         });
         this.metaFilePath = atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
-            if (isBlank(file)) {
+            if (file == null) {
                 return "~";
             }
             return file;
