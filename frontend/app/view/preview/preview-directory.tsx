@@ -603,6 +603,14 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             modtime: new Date().getTime(),
                             mimetype: "directory",
                         });
+                    } else if (finfo?.dir === "" && finfo?.path) {
+                        entries.unshift({
+                            name: "..",
+                            path: "",
+                            isdir: true,
+                            modtime: new Date().getTime(),
+                            mimetype: "directory",
+                        });
                     }
                 } catch (e) {
                     console.error("Directory Read Error", e);
