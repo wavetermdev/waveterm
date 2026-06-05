@@ -1137,7 +1137,11 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 	conn.persistWshInstalled(ctx, wshResult)
 	// Start port forwarding with merged SSH config keywords
 	if sshKeywords != nil {
+		conn.Infof(ctx, "port forwarding keywords: LocalForward=%v RemoteForward=%v\n",
+			sshKeywords.SshLocalForward, sshKeywords.SshRemoteForward)
 		conn.startPortForwarding(ctx, sshKeywords)
+	} else {
+		conn.Infof(ctx, "skipping port forwarding: sshKeywords is nil\n")
 	}
 	return nil
 }

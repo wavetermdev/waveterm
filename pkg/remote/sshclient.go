@@ -1232,6 +1232,8 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 	}
 	sshKeywords.SshRemoteForward = remoteForwardRaw
 
+	log.Printf("[sshconfig] host=%q LocalForward=%v RemoteForward=%v", hostPattern, localForwardRaw, remoteForwardRaw)
+
 	return sshKeywords, nil
 }
 
