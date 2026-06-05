@@ -681,3 +681,132 @@ func TestStartPortForwarding_NilClient(t *testing.T) {
 		t.Fatalf("expected 0 listeners with nil client, got %d", listenerCount)
 	}
 }
+
+func TestParseForwardRule(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		input          string
+		direction      sshForwardDirection
+		wantListenType sshForwardType
+		wantListenAddr string
+		wantDialType   sshForwardType
+		wantDialAddr   string
+		wantErr        bool
+	}{
+		// LocalForward - TCP cases
+		{"local port-only bind", "8765 localhost:8765", forwardLocal,
+			forwardTCPListen, "127.0.0.1:8765", forwardTCPDial, "localhost:8765", false},
+		{"local explicit bind", "localhost:8765 remote:80", forwardLocal,
+			forwardTCPListen, "localhost:8765", forwardTCPDial, "remote:80", false},
+		{"local ip bind", "192.168.1.1:8765 remote:80", forwardLocal,
+			forwardTCPListen, "192.168.1.1:8765", forwardTCPDial, "remote:80", false},
+		{"local wildcard bind", "*:8765 remote:80", forwardLocal,
+			forwardTCPListen, "*:8765", forwardTCPDial, "remote:80", false},
+		{"local ipv6 bind", "[::1]:8765 remote:80", forwardLocal,
+			forwardTCPListen, "[::1]:8765", forwardTCPDial, "remote:80", false},
+		// LocalForward - Unix socket cases
+		{"local unix listen", "/tmp/a.sock remote:80", forwardLocal,
+			forwardUnix, "/tmp/a.sock", forwardTCPDial, "remote:80", false},
+		{"local unix dial", "8765 /var/run/app.sock", forwardLocal,
+			forwardTCPListen, "127.0.0.1:8765", forwardUnix, "/var/run/app.sock", false},
+		{"local unix both", "/tmp/a.sock /tmp/b.sock", forwardLocal,
+			forwardUnix, "/tmp/a.sock", forwardUnix, "/tmp/b.sock", false},
+		// RemoteForward - TCP cases
+		{"remote basic", "8765 localhost:8765", forwardRemote,
+			forwardTCPListen, "127.0.0.1:8765", forwardTCPDial, "localhost:8765", false},
+		{"remote explicit bind", "localhost:8765 remote:80", forwardRemote,
+			forwardTCPListen, "localhost:8765", forwardTCPDial, "remote:80", false},
+		// RemoteForward - SOCKS proxy mode
+		{"remote socks proxy", "8080", forwardRemote,
+			forwardTCPListen, "127.0.0.1:8080", forwardSOCKS, "", false},
+		{"remote socks proxy wildcard", "*:8080", forwardRemote,
+			forwardTCPListen, "*:8080", forwardSOCKS, "", false},
+		// RemoteForward - Unix socket cases
+		{"remote unix listen", "/tmp/remote.sock localhost:80", forwardRemote,
+			forwardUnix, "/tmp/remote.sock", forwardTCPDial, "localhost:80", false},
+		{"remote unix dial", "8765 /var/run/app.sock", forwardRemote,
+			forwardTCPListen, "127.0.0.1:8765", forwardUnix, "/var/run/app.sock", false},
+		// Error cases
+		{"local no destination", "8765", forwardLocal,
+			"", "", "", "", true},
+		{"empty input", "", forwardLocal,
+			"", "", "", "", true},
+		{"too many args", "8765 localhost:80 extra", forwardLocal,
+			"", "", "", "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseForwardRule(tc.input, tc.direction)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("parseForwardRule(%q, %v) expected error, got nil", tc.input, tc.direction)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseForwardRule(%q, %v) unexpected error: %v", tc.input, tc.direction, err)
+			}
+			if got.ListenType != tc.wantListenType {
+				t.Fatalf("listen type = %v, want %v", got.ListenType, tc.wantListenType)
+			}
+			if got.ListenAddr != tc.wantListenAddr {
+				t.Fatalf("listen addr = %q, want %q", got.ListenAddr, tc.wantListenAddr)
+			}
+			if got.DialType != tc.wantDialType {
+				t.Fatalf("dial type = %v, want %v", got.DialType, tc.wantDialType)
+			}
+			if got.DialAddr != tc.wantDialAddr {
+				t.Fatalf("dial addr = %q, want %q", got.DialAddr, tc.wantDialAddr)
+			}
+		})
+	}
+}
+
+func TestIsUnixSocket(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"/tmp/app.sock", true},
+		{"/var/run/service.sock", true},
+		{"8765", false},
+		{"localhost:8765", false},
+		{"*:8080", false},
+		{"[::1]:9090", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			got := isUnixSocket(tc.input)
+			if got != tc.want {
+				t.Fatalf("isUnixSocket(%q) = %v, want %v", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeTcpListenAddr(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"port only", "8765", "127.0.0.1:8765"},
+		{"host:port", "localhost:8765", "localhost:8765"},
+		{"ip:port", "192.168.1.1:5173", "192.168.1.1:5173"},
+		{"wildcard:port", "0.0.0.0:8080", "0.0.0.0:8080"},
+		{"empty string", "", "127.0.0.1:"},
+		{"single digit port", "8", "127.0.0.1:8"},
+		{"ipv6 bracket", "[::1]:9090", "[::1]:9090"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeTcpListenAddr(tc.input)
+			if got != tc.expected {
+				t.Fatalf("normalizeTcpListenAddr(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}

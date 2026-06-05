@@ -1008,6 +1008,117 @@ func copyBoth(a net.Conn, b net.Conn) {
 	b.Close()
 }
 
+// sshForwardType describes the kind of forwarding endpoint.
+type sshForwardType string
+
+const (
+	forwardTCPListen sshForwardType = "tcp-listen"
+	forwardTCPDial   sshForwardType = "tcp-dial"
+	forwardUnix      sshForwardType = "unix"
+	forwardSOCKS     sshForwardType = "socks"
+)
+
+// sshForwardDirection indicates whether the rule is LocalForward or RemoteForward.
+type sshForwardDirection int
+
+const (
+	forwardLocal sshForwardDirection = iota // LocalForward
+	forwardRemote                           // RemoteForward
+)
+
+// sshForwardParsed is the result of parsing a LocalForward/RemoteForward rule.
+type sshForwardParsed struct {
+	ListenType   sshForwardType
+	ListenAddr   string // "host:port" for tcp, path for unix
+	DialType     sshForwardType
+	DialAddr     string // "host:port" for tcp, path for unix, "" for socks
+}
+
+// parseForwardRule parses a LocalForward/RemoteForward ssh_config rule.
+// The rule is space-separated: <listen_spec> <dial_spec>
+// For RemoteForward, dial_spec is optional (SOCKS proxy mode).
+//
+// Each spec is either:
+//   - Unix socket path (contains '/')
+//   - TCP [bind_address:]port (listen side) or host:hostport (dial side)
+//   - Plain port number (listen side only, defaults to 127.0.0.1:port)
+func parseForwardRule(rule string, direction sshForwardDirection) (sshForwardParsed, error) {
+	parts := strings.Fields(rule)
+	switch len(parts) {
+	case 0:
+		return sshForwardParsed{}, fmt.Errorf("empty forwarding rule")
+	case 1:
+		if direction == forwardLocal {
+			return sshForwardParsed{}, fmt.Errorf("localforward requires <listen_spec> <dial_spec>, got only one argument")
+		}
+		// RemoteForward with one arg = SOCKS proxy mode
+		listenAddr := normalizeTcpListenAddr(parts[0])
+		return sshForwardParsed{
+			ListenType: forwardTCPListen,
+			ListenAddr: listenAddr,
+			DialType:   forwardSOCKS,
+		}, nil
+	case 2:
+		return parseTwoPartRule(parts[0], parts[1])
+	default:
+		return sshForwardParsed{}, fmt.Errorf("forwarding rule has %d arguments, expected 1 or 2", len(parts))
+	}
+}
+
+// parseTwoPartRule handles the common case of <listen_spec> <dial_spec>.
+func parseTwoPartRule(listenSpec, dialSpec string) (sshForwardParsed, error) {
+	var listenType sshForwardType
+	var listenAddr string
+
+	if isUnixSocket(listenSpec) {
+		listenType = forwardUnix
+		listenAddr = listenSpec
+	} else {
+		listenType = forwardTCPListen
+		listenAddr = normalizeTcpListenAddr(listenSpec)
+	}
+
+	var dialType sshForwardType
+	var dialAddr string
+
+	if isUnixSocket(dialSpec) {
+		dialType = forwardUnix
+		dialAddr = dialSpec
+	} else {
+		dialType = forwardTCPDial
+		dialAddr = dialSpec
+	}
+
+	return sshForwardParsed{
+		ListenType: listenType,
+		ListenAddr: listenAddr,
+		DialType:   dialType,
+		DialAddr:   dialAddr,
+	}, nil
+}
+
+// isUnixSocket returns true if the spec looks like a Unix domain socket path.
+// Per ssh_config(5): if the argument contains '/', it's a Unix socket.
+func isUnixSocket(spec string) bool {
+	return strings.Contains(spec, "/")
+}
+
+// normalizeTcpListenAddr handles the listen-side TCP address format.
+// SSH allows "[bind_address:]port" where bind_address is optional.
+// If only a port number is given (e.g. "8765"), we default to "127.0.0.1:8765".
+func normalizeTcpListenAddr(addr string) string {
+	if strings.Contains(addr, ":") {
+		return addr
+	}
+	// Check if it's a plain port number
+	for _, c := range addr {
+		if c < '0' || c > '9' {
+			return addr // contains non-digit, return as-is
+		}
+	}
+	return "127.0.0.1:" + addr
+}
+
 // startPortForwarding sets up local and remote port forwarding tunnels
 // based on the merged SSH config keywords.
 func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.ConnKeywords) {
@@ -1018,81 +1129,113 @@ func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.
 
 	// LocalForward: listen locally, dial through SSH to remote
 	for _, fwd := range keywords.SshLocalForward {
-		parts := strings.Fields(fwd)
-		if len(parts) != 2 {
-			conn.Infof(ctx, "LocalForward: skipping malformed rule: %q\n", fwd)
-			log.Printf("LocalForward: skipping malformed rule: %q\n", fwd)
+		parsed, err := parseForwardRule(fwd, forwardLocal)
+		if err != nil {
+			conn.Infof(ctx, "LocalForward: skipping malformed rule %q: %v\n", fwd, err)
+			log.Printf("LocalForward: skipping malformed rule %q: %v", fwd, err)
 			continue
 		}
-		bindAddr, dest := parts[0], parts[1]
-		go func() {
-			defer panichandler.PanicHandler("conncontroller:localforward", recover())
-			listener, err := net.Listen("tcp", bindAddr)
-			if err != nil {
-				conn.Infof(ctx, "LocalForward %s: failed to listen: %v\n", fwd, err)
-				log.Printf("LocalForward %s: failed to listen: %v\n", fwd, err)
-				return
-			}
-			conn.WithLock(func() {
-				conn.LocalForwardListeners = append(conn.LocalForwardListeners, listener)
-			})
-			conn.Infof(ctx, "LocalForward started: %s -> %s\n", bindAddr, dest)
-			for {
-				localConn, err := listener.Accept()
-				if err != nil {
-					return
-				}
-				go func(dest string) {
-					defer panichandler.PanicHandler("conncontroller:localforward-tunnel", recover())
-					remoteConn, err := client.Dial("tcp", dest)
-					if err != nil {
-						localConn.Close()
-						return
-					}
-					copyBoth(localConn, remoteConn)
-				}(dest)
-			}
-		}()
+		switch {
+		case parsed.ListenType == forwardUnix || parsed.DialType == forwardUnix:
+			conn.Infof(ctx, "LocalForward: skipping rule %q: Unix socket forwarding not supported\n", fwd)
+			log.Printf("LocalForward: skipping rule %q: Unix socket forwarding not supported", fwd)
+			continue
+		case parsed.DialType == forwardSOCKS:
+			// Shouldn't happen for LocalForward, but handle gracefully
+			conn.Infof(ctx, "LocalForward: skipping rule %q: SOCKS proxy mode not supported\n", fwd)
+			continue
+		case parsed.ListenType == forwardTCPListen && parsed.DialType == forwardTCPDial:
+			conn.startLocalForwardTCP(ctx, client, fwd, parsed.ListenAddr, parsed.DialAddr)
+		}
 	}
 
 	// RemoteForward: listen on remote via SSH, dial locally
 	for _, fwd := range keywords.SshRemoteForward {
-		parts := strings.Fields(fwd)
-		if len(parts) != 2 {
-			conn.Infof(ctx, "RemoteForward: skipping malformed rule: %q\n", fwd)
-			log.Printf("RemoteForward: skipping malformed rule: %q\n", fwd)
+		parsed, err := parseForwardRule(fwd, forwardRemote)
+		if err != nil {
+			conn.Infof(ctx, "RemoteForward: skipping malformed rule %q: %v\n", fwd, err)
+			log.Printf("RemoteForward: skipping malformed rule %q: %v", fwd, err)
 			continue
 		}
-		bindAddr, dest := parts[0], parts[1]
-		go func() {
-			defer panichandler.PanicHandler("conncontroller:remoteforward", recover())
-			listener, err := client.Listen("tcp", bindAddr)
+		switch {
+		case parsed.ListenType == forwardUnix || parsed.DialType == forwardUnix:
+			conn.Infof(ctx, "RemoteForward: skipping rule %q: Unix socket forwarding not supported\n", fwd)
+			log.Printf("RemoteForward: skipping rule %q: Unix socket forwarding not supported", fwd)
+			continue
+		case parsed.DialType == forwardSOCKS:
+			conn.Infof(ctx, "RemoteForward: skipping rule %q: SOCKS proxy mode not supported\n", fwd)
+			log.Printf("RemoteForward: skipping rule %q: SOCKS proxy mode not supported", fwd)
+			continue
+		case parsed.ListenType == forwardTCPListen && parsed.DialType == forwardTCPDial:
+			conn.startRemoteForwardTCP(ctx, client, fwd, parsed.ListenAddr, parsed.DialAddr)
+		}
+	}
+}
+
+// startLocalForwardTCP starts a TCP LocalForward tunnel.
+// Listens on localAddr, dials dialAddr through the SSH client.
+func (conn *SSHConn) startLocalForwardTCP(ctx context.Context, client *ssh.Client, rule, localAddr, dialAddr string) {
+	go func() {
+		defer panichandler.PanicHandler("conncontroller:localforward", recover())
+		listener, err := net.Listen("tcp", localAddr)
+		if err != nil {
+			conn.Infof(ctx, "LocalForward %s: failed to listen on %s: %v\n", rule, localAddr, err)
+			log.Printf("LocalForward %s: failed to listen on %s: %v", rule, localAddr, err)
+			return
+		}
+		conn.WithLock(func() {
+			conn.LocalForwardListeners = append(conn.LocalForwardListeners, listener)
+		})
+		conn.Infof(ctx, "LocalForward started: %s -> %s\n", localAddr, dialAddr)
+		for {
+			localConn, err := listener.Accept()
 			if err != nil {
-				conn.Infof(ctx, "RemoteForward %s: failed to listen: %v\n", fwd, err)
-				log.Printf("RemoteForward %s: failed to listen: %v\n", fwd, err)
 				return
 			}
-			conn.WithLock(func() {
-				conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, listener)
-			})
-			conn.Infof(ctx, "RemoteForward started: %s -> %s\n", bindAddr, dest)
-			for {
-				remoteConn, err := listener.Accept()
+			go func(dialAddr string) {
+				defer panichandler.PanicHandler("conncontroller:localforward-tunnel", recover())
+				remoteConn, err := client.Dial("tcp", dialAddr)
 				if err != nil {
+					localConn.Close()
 					return
 				}
-				go func(dest string) {
-					defer panichandler.PanicHandler("conncontroller:remoteforward-tunnel", recover())
-					localConn, err := net.Dial("tcp", dest)
-					if err != nil {
-						remoteConn.Close()
-						return
-					}
-					copyBoth(localConn, remoteConn)
-				}(dest)
+				copyBoth(localConn, remoteConn)
+			}(dialAddr)
+		}
+	}()
+}
+
+// startRemoteForwardTCP starts a TCP RemoteForward tunnel.
+// Listens on remoteAddr via SSH client, dials localAddr locally.
+func (conn *SSHConn) startRemoteForwardTCP(ctx context.Context, client *ssh.Client, rule, remoteAddr, localAddr string) {
+	go func() {
+		defer panichandler.PanicHandler("conncontroller:remoteforward", recover())
+		listener, err := client.Listen("tcp", remoteAddr)
+		if err != nil {
+			conn.Infof(ctx, "RemoteForward %s: failed to listen on %s: %v\n", rule, remoteAddr, err)
+			log.Printf("RemoteForward %s: failed to listen on %s: %v", rule, remoteAddr, err)
+			return
+		}
+		conn.WithLock(func() {
+			conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, listener)
+		})
+		conn.Infof(ctx, "RemoteForward started: %s -> %s\n", remoteAddr, localAddr)
+		for {
+			remoteConn, err := listener.Accept()
+			if err != nil {
+				return
 			}
-		}()
-	}
+			go func(localAddr string) {
+				defer panichandler.PanicHandler("conncontroller:remoteforward-tunnel", recover())
+				localConn, err := net.Dial("tcp", localAddr)
+				if err != nil {
+					remoteConn.Close()
+					return
+				}
+				copyBoth(localConn, remoteConn)
+			}(localAddr)
+		}
+	}()
 }
 
 // returns (connect-error)
