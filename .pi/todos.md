@@ -105,13 +105,13 @@
     - [x] Delete default configs: `waveai.json`, `presets/ai.json`, clean `settings.json`
     - [x] Regenerate auto-generated TS types (`gotypes.d.ts`, `waveevent.d.ts`, `wshclientapi.ts`) and Go metaconsts
   - [x] Document Claude Code shell integration analysis for future pi agent reuse (`.pi/decisions.md`)
-- [ ] **ACTIVE:** SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]])
-  - [ ] Modify `pkg/wconfig/settingsconfig.go`
-  - [ ] Modify `pkg/remote/sshclient.go` (parse + return merged keywords)
-  - [ ] Modify `pkg/remote/conncontroller/conncontroller.go` (runtime forwarding)
-  - [ ] Update call sites for new `ConnectToClient` signature
-  - [ ] Add tests
-  - [ ] Update documentation (`docs/docs/connections.mdx`)
+- [x] SSH port forwarding (`LocalForward` / `RemoteForward`) (spec: [[.pi/specs/portforwarding.md]]) — completed 2026-06-04
+  - [x] Modify `pkg/wconfig/settingsconfig.go`
+  - [x] Modify `pkg/remote/sshclient.go` (parse + return merged keywords)
+  - [x] Modify `pkg/remote/conncontroller/conncontroller.go` (runtime forwarding)
+  - [x] Update call sites for new `ConnectToClient` signature
+  - [x] Add tests
+  - [x] Update documentation (`docs/docs/connections.mdx`)
 - [ ] **Remote file paste** — image paste + drag-drop for remote sessions
   - Primary use case: pasting screenshots and dragging files when using pi or Claude Code's TUI over SSH
   - Currently pastes local file paths that don't exist on the remote server
