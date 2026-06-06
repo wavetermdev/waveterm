@@ -989,23 +989,68 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 	// doesn't return an error since none of this is required for connection to work
 }
 
+// halfCloser is the interface for connections that support half-close
+// (shutting down the write side while keeping the read side open).
+// This is implemented by *net.TCPConn (sends TCP FIN) and ssh.Channel
+// (sends SSH_MSG_CHANNEL_EOF via CloseWrite).
+type halfCloser interface {
+	CloseWrite() error
+}
+
 // copyBoth performs bidirectional copying between two connections.
-// It spawns two goroutines (one per direction), waits for both to finish,
-// then closes both connections.
+// It spawns two goroutines (one per direction). When one direction
+// reaches EOF, it does a half-close (CloseWrite) on the destination
+// so the peer knows no more data is coming. This is critical for
+// protocols like HTTP that reuse connections — without the half-close,
+// the browser would think the connection is still alive and try to
+// reuse a dead tunnel, causing subsequent requests to silently fail.
+//
+// Both sides support half-close:
+//   - *net.TCPConn (from listener.Accept / net.Dial) — sends TCP FIN
+//   - chanConn (from ssh.Client.Dial, embeds ssh.Channel) — sends SSH_MSG_CHANNEL_EOF
+//
+// After both directions complete, both connections are fully closed.
 func copyBoth(a net.Conn, b net.Conn) {
+	copyBothWithName(a, b, "", "")
+}
+
+// copyBothWithName is like copyBoth but includes tunnel names for logging.
+func copyBothWithName(a net.Conn, b net.Conn, nameA, nameB string) {
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go func() {
+
+	copyAndHalfClose := func(dst, src net.Conn, dstName, srcName string) {
 		defer wg.Done()
-		io.Copy(a, b)
-	}()
-	go func() {
-		defer wg.Done()
-		io.Copy(b, a)
-	}()
+		n, err := io.Copy(dst, src)
+		if nameA != "" && nameB != "" {
+			if err != nil {
+				log.Printf("[portforward] %s→%s: copy ended after %d bytes, error: %v", srcName, dstName, n, err)
+			} else {
+				log.Printf("[portforward] %s→%s: copy ended after %d bytes (EOF)", srcName, dstName, n)
+			}
+		}
+		// Half-close: signal to dst that no more data will be written.
+		// For TCP: sends FIN so the peer knows the write side is done.
+		// For SSH channels: sends SSH_MSG_CHANNEL_EOF.
+		// Without this, the peer does not know the stream ended and may
+		// attempt to reuse a dead channel for subsequent requests.
+		if hc, ok := dst.(halfCloser); ok {
+			hcerr := hc.CloseWrite()
+			if hcerr != nil && nameA != "" && nameB != "" {
+				log.Printf("[portforward] %s→%s: CloseWrite error: %v", srcName, dstName, hcerr)
+			}
+		}
+	}
+
+	go copyAndHalfClose(a, b, nameA, nameB) // b→a: half-close a when b sends EOF
+	go copyAndHalfClose(b, a, nameB, nameA) // a→b: half-close b when a sends EOF
+
 	wg.Wait()
 	a.Close()
 	b.Close()
+	if nameA != "" && nameB != "" {
+		log.Printf("[portforward] tunnel %s↔%s: both directions done, connections closed", nameA, nameB)
+	}
 }
 
 // sshForwardType describes the kind of forwarding endpoint.
@@ -1180,27 +1225,33 @@ func (conn *SSHConn) startLocalForwardTCP(ctx context.Context, client *ssh.Clien
 		listener, err := net.Listen("tcp", localAddr)
 		if err != nil {
 			conn.Infof(ctx, "LocalForward %s: failed to listen on %s: %v\n", rule, localAddr, err)
-			log.Printf("LocalForward %s: failed to listen on %s: %v", rule, localAddr, err)
+			log.Printf("[portforward] LocalForward %s: failed to listen on %s: %v", rule, localAddr, err)
 			return
 		}
 		conn.WithLock(func() {
 			conn.LocalForwardListeners = append(conn.LocalForwardListeners, listener)
 		})
 		conn.Infof(ctx, "LocalForward started: %s -> %s\n", localAddr, dialAddr)
+		log.Printf("[portforward] LocalForward listening: %s -> %s (conn:%s)", localAddr, dialAddr, conn.GetName())
 		for {
 			localConn, err := listener.Accept()
 			if err != nil {
+				log.Printf("[portforward] LocalForward %s: accept error: %v", localAddr, err)
 				return
 			}
-			go func(dialAddr string) {
+			log.Printf("[portforward] LocalForward %s: new connection from %s", localAddr, localConn.RemoteAddr())
+			go func(dialAddr string, localConn net.Conn) {
 				defer panichandler.PanicHandler("conncontroller:localforward-tunnel", recover())
+				defer localConn.Close()
 				remoteConn, err := client.Dial("tcp", dialAddr)
 				if err != nil {
-					localConn.Close()
+					log.Printf("[portforward] LocalForward %s: failed to dial remote %s: %v", localAddr, dialAddr, err)
 					return
 				}
-				copyBoth(localConn, remoteConn)
-			}(dialAddr)
+				defer remoteConn.Close()
+				log.Printf("[portforward] LocalForward %s: tunnel established %s <-> %s", localAddr, localConn.RemoteAddr(), dialAddr)
+				copyBothWithName(localConn, remoteConn, "local", "ssh")
+			}(dialAddr, localConn)
 		}
 	}()
 }
@@ -1213,27 +1264,33 @@ func (conn *SSHConn) startRemoteForwardTCP(ctx context.Context, client *ssh.Clie
 		listener, err := client.Listen("tcp", remoteAddr)
 		if err != nil {
 			conn.Infof(ctx, "RemoteForward %s: failed to listen on %s: %v\n", rule, remoteAddr, err)
-			log.Printf("RemoteForward %s: failed to listen on %s: %v", rule, remoteAddr, err)
+			log.Printf("[portforward] RemoteForward %s: failed to listen on %s: %v", rule, remoteAddr, err)
 			return
 		}
 		conn.WithLock(func() {
 			conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, listener)
 		})
 		conn.Infof(ctx, "RemoteForward started: %s -> %s\n", remoteAddr, localAddr)
+		log.Printf("[portforward] RemoteForward listening: %s -> %s (conn:%s)", remoteAddr, localAddr, conn.GetName())
 		for {
 			remoteConn, err := listener.Accept()
 			if err != nil {
+				log.Printf("[portforward] RemoteForward %s: accept error: %v", remoteAddr, err)
 				return
 			}
-			go func(localAddr string) {
+			log.Printf("[portforward] RemoteForward %s: new connection from %s", remoteAddr, remoteConn.RemoteAddr())
+			go func(localAddr string, remoteConn net.Conn) {
 				defer panichandler.PanicHandler("conncontroller:remoteforward-tunnel", recover())
+				defer remoteConn.Close()
 				localConn, err := net.Dial("tcp", localAddr)
 				if err != nil {
-					remoteConn.Close()
+					log.Printf("[portforward] RemoteForward %s: failed to dial local %s: %v", remoteAddr, localAddr, err)
 					return
 				}
-				copyBoth(localConn, remoteConn)
-			}(localAddr)
+				defer localConn.Close()
+				log.Printf("[portforward] RemoteForward %s: tunnel established %s <-> %s", remoteAddr, remoteConn.RemoteAddr(), localAddr)
+				copyBothWithName(localConn, remoteConn, "local", "ssh")
+			}(localAddr, remoteConn)
 		}
 	}()
 }

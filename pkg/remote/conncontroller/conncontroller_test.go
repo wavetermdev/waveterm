@@ -4,8 +4,10 @@
 package conncontroller
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"runtime"
 	"sync"
@@ -557,6 +559,134 @@ func TestCopyBoth(t *testing.T) {
 		t.Fatalf("expected %q, got %q", msg, buf)
 	}
 	c4.Close()
+}
+
+// halfCloseConn wraps a net.Conn to track CloseWrite calls while
+// delegating to the underlying connection so the actual FIN is sent.
+type halfCloseConn struct {
+	net.Conn
+	closeWriteCalled bool
+}
+
+func (h *halfCloseConn) CloseWrite() error {
+	h.closeWriteCalled = true
+	// Delegate to the underlying connection so the FIN/EOF is actually sent.
+	if hc, ok := h.Conn.(interface{ CloseWrite() error }); ok {
+		return hc.CloseWrite()
+	}
+	return nil
+}
+
+// TestCopyBothHalfClose verifies that copyBoth calls CloseWrite on each
+// connection when the opposite direction reaches EOF. This is the critical
+// fix for the port-forwarding bug where subsequent HTTP requests would fail
+// because the dead SSH channel's EOF was never propagated as a TCP FIN.
+//
+// Real scenario:
+//   browser ←TCP→ localConn ←copyBoth→ remoteConn ←SSH→ wrangler
+//
+// Test simulation:
+//   browserSide ←TCP→ tunnelLocal ←copyBoth→ tunnelRemote ←TCP→ serverSide
+//
+// When the server closes its TCP connection, copyBoth should propagate
+// that EOF to the browser by calling CloseWrite on the local tunnel endpoint.
+func TestCopyBothHalfClose(t *testing.T) {
+	t.Parallel()
+
+	// Create two TCP pairs:
+	//   pair1: tunnelLocal ↔ browserSide
+	//   pair2: tunnelRemote ↔ serverSide
+	ln1, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen1: %v", err)
+	}
+	defer ln1.Close()
+
+	ln2, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen2: %v", err)
+	}
+	defer ln2.Close()
+
+	// pair1
+	browserSide, err := net.Dial("tcp", ln1.Addr().String())
+	if err != nil {
+		t.Fatalf("dial1: %v", err)
+	}
+	defer browserSide.Close()
+	tunnelLocal, err := ln1.Accept()
+	if err != nil {
+		t.Fatalf("accept1: %v", err)
+	}
+
+	// pair2
+	tunnelRemote, err := net.Dial("tcp", ln2.Addr().String())
+	if err != nil {
+		t.Fatalf("dial2: %v", err)
+	}
+	serverSide, err := ln2.Accept()
+	if err != nil {
+		t.Fatalf("accept2: %v", err)
+	}
+
+	// Wrap tunnel-side connections to track CloseWrite calls
+	localW := &halfCloseConn{Conn: tunnelLocal}
+	remoteW := &halfCloseConn{Conn: tunnelRemote}
+
+	// Run copyBoth bridging the tunnel endpoints
+	copyDone := make(chan struct{})
+	go func() {
+		defer close(copyDone)
+		copyBoth(localW, remoteW)
+	}()
+
+	// --- Scenario: server sends response and closes connection ---
+	// This simulates wrangler serving a page then closing the TCP connection.
+	// The tunnel must propagate EOF to the browser side via CloseWrite.
+
+	// Server writes a response
+	response := []byte("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
+	if _, err := serverSide.Write(response); err != nil {
+		t.Fatalf("server write: %v", err)
+	}
+	// Server closes its write side (simulates wrangler closing TCP after response)
+	serverSide.(*net.TCPConn).CloseWrite()
+
+	// Browser reads the full response. Because the server closed, EOF should
+	// propagate through the tunnel: remoteW EOF → copyBoth → localW.CloseWrite()
+	// → browserSide gets FIN → io.ReadAll returns.
+	// Without the half-close fix, io.ReadAll would hang forever (no FIN sent).
+	browserSide.(*net.TCPConn).SetReadDeadline(time.Now().Add(3 * time.Second))
+	data, err := io.ReadAll(browserSide)
+	if err != nil {
+		t.Fatalf("browser read: %v", err)
+	}
+	if !bytes.Contains(data, []byte("200 OK")) {
+		t.Fatalf("expected response, got: %q", data)
+	}
+
+	// CRITICAL ASSERTION: localW.CloseWrite() must have been called.
+	// Without this, the browser never receives FIN and doesn't know the
+	// server closed — causing the keep-alive reuse bug.
+	if !localW.closeWriteCalled {
+		t.Fatal("CloseWrite NOT called on local tunnel endpoint when server closed — " +
+			"half-close not propagated, browser would hang")
+	}
+
+	// --- Cleanup: close browser side to let copyBoth finish ---
+	browserSide.Close()
+
+	select {
+	case <-copyDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("copyBoth did not complete")
+	}
+
+	// Verify the reverse direction: when browser closed, remoteW.CloseWrite()
+	// should have been called to send EOF to the server side.
+	if !remoteW.closeWriteCalled {
+		t.Fatal("CloseWrite NOT called on remote tunnel endpoint when browser closed")
+	}
 }
 
 // TestLocalForwardStartsAndStops verifies that LocalForward listeners are
