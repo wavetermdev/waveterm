@@ -103,6 +103,7 @@ interface VTabWrapperProps {
     onHoverChanged: (isHovered: boolean) => void;
 }
 
+/** Connects a left-bar tab to its wave object, deriving name, badges, flag color, and locked state from tab meta. */
 function VTabWrapper({
     tabId,
     active,
@@ -186,6 +187,7 @@ function VTabWrapper({
     );
 }
 
+/** The vertical (left) tab bar: renders the workspace's tabs as a reorderable list and routes close requests, honoring tab locks. */
 export function VTabBar({ workspace, className }: VTabBarProps) {
     const env = useWaveEnv<VTabBarEnv>();
     const activeTabId = useAtomValue(env.atoms.staticTabId);

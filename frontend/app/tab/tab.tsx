@@ -53,6 +53,7 @@ interface TabVProps {
     renameRef?: React.RefObject<(() => void) | null>;
 }
 
+/** Presentational top-bar tab: renders the name, badges, and either a close button or, when locked, a lock icon. */
 const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
     const {
         tabId,
@@ -245,6 +246,7 @@ interface TabProps {
     onLoaded: () => void;
 }
 
+/** Connects a top-bar tab to its wave object, deriving name, badges, flag color, and locked state from tab meta. */
 const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, showDivider, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const env = useWaveEnv<TabEnv>();

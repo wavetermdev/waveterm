@@ -37,6 +37,7 @@ interface VTabProps {
     renameRef?: React.RefObject<(() => void) | null>;
 }
 
+/** Presentational left-bar tab: renders the name and badges, and either a close button or, when locked, a lock icon. */
 export function VTab({
     tab,
     active,
