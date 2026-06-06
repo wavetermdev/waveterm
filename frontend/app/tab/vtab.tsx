@@ -6,6 +6,7 @@ import { validateCssColor } from "@/util/color-validator";
 import { cn } from "@/util/util";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TabBadges } from "./tabbadges";
+import { TabLockedColor } from "./tablock";
 
 const RenameFocusDelayMs = 50;
 
@@ -15,6 +16,7 @@ export interface VTabItem {
     badge?: Badge | null;
     badges?: Badge[] | null;
     flagColor?: string | null;
+    locked?: boolean;
 }
 
 interface VTabProps {
@@ -57,6 +59,7 @@ export function VTab({
     const editableRef = useRef<HTMLDivElement>(null);
     const editableTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const badges = tab.badges ?? (tab.badge ? [tab.badge] : null);
+    const locked = !!tab.locked;
 
     const rawFlagColor = tab.flagColor;
     let flagColor: string | null = null;
@@ -174,6 +177,9 @@ export function VTab({
             {!active && !isReordering && (
                 <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-transparent transition-colors group-hover:bg-foreground/10" />
             )}
+            {locked && (
+                <div className="pointer-events-none absolute inset-x-1 inset-y-[4px] rounded-sm bg-[#FFB400]/10 ring-1 ring-inset ring-[#FFB400]/40" />
+            )}
             <div
                 className={cn(
                     "pointer-events-none absolute bottom-0 left-[5%] right-[5%] h-px bg-border/70",
@@ -189,7 +195,8 @@ export function VTab({
                 ref={editableRef}
                 className={cn(
                     "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap transition-[padding-right] pr-3",
-                    onClose && !isReordering && "group-hover:pr-6",
+                    locked && "pr-6",
+                    !locked && onClose && !isReordering && "group-hover:pr-6",
                     isEditable && "rounded-[2px] bg-white/15 outline-none"
                 )}
                 contentEditable={isEditable}
@@ -202,7 +209,15 @@ export function VTab({
             >
                 {tab.name}
             </div>
-            {onClose && (
+            {locked && (
+                <i
+                    className="fa fa-solid fa-lock absolute top-1/2 right-0 shrink-0 -translate-y-1/2 py-1 pl-1 pr-3 text-[10px]"
+                    style={{ color: TabLockedColor }}
+                    title="Tab is locked"
+                    aria-label="Tab is locked"
+                />
+            )}
+            {!locked && onClose && (
                 <button
                     type="button"
                     className={cn(

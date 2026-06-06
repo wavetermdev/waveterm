@@ -13,6 +13,7 @@ import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { buildTabBarContextMenu, buildTabContextMenu } from "./tabcontextmenu";
+import { isTabLocked } from "./tablock";
 import { UpdateStatusBanner } from "./updatebanner";
 import { VTab, VTabItem } from "./vtab";
 import { VTabBarEnv } from "./vtabbarenv";
@@ -150,6 +151,7 @@ function VTabWrapper({
         name: tabData?.name ?? "",
         badges,
         flagColor,
+        locked: !!tabData?.meta?.["tab:locked"],
     };
 
     const handleContextMenu = useCallback(
@@ -374,7 +376,12 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                             hoverResetVersion={hoverResetVersion}
                             index={index}
                             onSelect={() => env.electron.setActiveTab(tabId)}
-                            onClose={() => fireAndForget(() => env.electron.closeTab(workspace.oid, tabId, false))}
+                            onClose={() => {
+                                if (isTabLocked(tabId)) {
+                                    return;
+                                }
+                                fireAndForget(() => env.electron.closeTab(workspace.oid, tabId, false));
+                            }}
                             onRename={(newName) =>
                                 fireAndForget(() => env.rpc.UpdateTabNameCommand(TabRpcClient, tabId, newName))
                             }

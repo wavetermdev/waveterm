@@ -218,6 +218,9 @@ func (svc *WorkspaceService) CloseTab_Meta() tsgenmeta.MethodMeta {
 func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, tabId string, fromElectron bool) (*CloseTabRtnType, waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+	if err == nil && tab != nil && tab.Meta.GetBool(waveobj.MetaKey_TabLocked, false) {
+		return nil, nil, fmt.Errorf("tab is locked")
+	}
 	if err == nil && tab != nil {
 		go func() {
 			for _, blockId := range tab.BlockIds {
