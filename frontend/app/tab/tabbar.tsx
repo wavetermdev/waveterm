@@ -540,6 +540,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         setNewTabIdDebounced(null);
     };
 
+    /** Closes a tab from the top tab bar, ignoring the request when the tab is locked. */
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         if (isTabLocked(tabId)) {

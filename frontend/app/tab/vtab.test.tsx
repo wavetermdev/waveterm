@@ -9,6 +9,7 @@ import { TabLockedColor } from "./tablock";
 const OriginalCss = globalThis.CSS;
 const HexColorRegex = /^#([\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i;
 
+/** Renders a VTab to static markup for assertions; pass withClose to supply an onClose handler. */
 function renderVTab(tab: VTabItem, withClose = false): string {
     return renderToStaticMarkup(
         <VTab

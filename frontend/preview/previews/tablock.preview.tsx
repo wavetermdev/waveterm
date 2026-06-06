@@ -27,8 +27,10 @@ const leftTabs: VTabItem[] = [
     { id: "lock-left-3", name: "Deploy Logs" },
 ];
 
+/** No-op handler used to satisfy the tab components' required event props in the preview. */
 function noop() {}
 
+/** Renders the horizontal (top) tab bar with one locked tab to preview the locked styling. */
 function TopBar() {
     const tabRefs = useRef<Record<string, HTMLDivElement | null>>({});
     useEffect(() => {
@@ -71,6 +73,7 @@ function TopBar() {
     );
 }
 
+/** Renders the vertical (left) tab bar with one locked tab to preview the locked styling. */
 function LeftBar() {
     return (
         <div
@@ -98,6 +101,7 @@ function LeftBar() {
     );
 }
 
+/** Preview entry that shows the locked-tab visuals in both the top and left tab bars. */
 export function TabLockPreview() {
     return (
         <div className="flex flex-col gap-8 p-10">

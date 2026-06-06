@@ -214,7 +214,9 @@ func (svc *WorkspaceService) CloseTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-// returns the new active tabid
+// CloseTab deletes the given tab and returns the new active tabid (empty when the
+// window should close). It refuses to close a tab whose "tab:locked" meta is set,
+// returning an error so the lock is enforced regardless of which client requested the close.
 func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, tabId string, fromElectron bool) (*CloseTabRtnType, waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
