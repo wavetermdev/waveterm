@@ -68,19 +68,23 @@ V2 在 V1 的基础上做了简化：**runOutputLoop 不动，留在 JobControll
 ```
 SessionDaemon {
     OID:          string         // "sd-abc"，内部标识
-    Name:         string         // "dev"，用户别名，可选
+    Name:         string         // "dev"，用户别名。空 = 匿名 daemon
     Connection:   string         // "ssh:user@host"
     JobId:        string         // "job-xyz"
+    IsAnonymous:  bool           // true = 自动创建，无 name
     Status:       string         // "init" | "running" | "disconnected" | "done"
     Cwd:          string         // 创建时的 CWD
     CreatedAt:    int64
-    IdleTimeout:  int64          // 超时回收（秒），默认 86400（24h）
+    IdleTimeout:  int64          // 超时回收（秒）
     Meta:         MetaMapType
 }
 ```
 
-- **Name 唯一性**：全局唯一。创建时若冲突，自动追加时间后缀（`dev` → `dev-150623`），并提示用户实际名称。
-- **空闲回收**：无 block attach 超过 `IdleTimeout`（默认 24h）后自动回收（`TerminateAndDetachJob` + status=done）。
+- **命名 daemon**：通过 `wsh session create --name dev` 创建，`Name` 全局唯一。冲突时自动追加时间后缀（`dev` → `dev-150623`）。
+- **匿名 daemon**：SSH block 启动时自动创建，`Name=""`，`IsAnonymous=true`。
+- **空闲回收**：无 block attach 超过 `IdleTimeout` 后自动回收。默认值按类型区分：
+  - 匿名 daemon：**1h**（`3600` 秒）
+  - 命名 daemon：**24h**（`86400` 秒）
 
 ### 3.2 Status 状态机
 
@@ -125,32 +129,35 @@ Block {
 
 现有结构完全保留。`Job.AttachedBlockId` 仍为单值，指向 daemon（不直接指向 block）。
 
-### 3.5 DurableShellController 移除
+### 3.5 DurableShellController 被 SessionDaemon 取代
 
-SessionDaemon 完全取代旧的 `DurableShellController`：
+SessionDaemon 覆盖了 DurableShellController 的全部职责，且支持多 block attach：
 
 - 移除 `pkg/blockcontroller/durableshellcontroller.go`
 - 移除 `ResyncController` 中的 `DurableShellController` 分支
 - `IsBlockIdTermDurable` 不再需要
+- SSH block 启动时自动创建匿名 daemon，行为与之前一致（持久化、自动重连），同时获得多 block 共享能力
 - `handleAppendJobFile` 不再同时写 `block:blockId/term`，只写 `job:jobId/term`
 
 ## 4. Backend Design
 
 ### 4.1 Controller 调度（ResyncController）
 
-dispatch 只取决于 block 是否 attach 到 daemon，与 connection 无关：
-
 ```
 if block.Meta["session:daemonid"] != "" {
-    → SessionDaemonController    // 桥接到 daemon，无进程
-} else if controllerName == "shell" || controllerName == "cmd" {
-    → ShellController            // 本地 shell
-} else if controllerName == "tsunami" {
-    → TsunamiController
+    → SessionDaemonController    // 桥接到 daemon
+} else if connType == SSH {
+    → 创建匿名 SessionDaemon
+      Block.Meta["session:daemonid"] = newDaemonId
+      ControllerResync（下一轮进入 SessionDaemonController）
+} else {
+    → ShellController            // 本地 / WSL
 }
 ```
 
-block 的 `connection` meta 在未 attach 时仅作为创建/attach daemon 时的提示信息，不影响 controller 类型。远端会话的概念完全由 SessionDaemon 承载。
+SSH block 启动时自动创建匿名 daemon（`IsAnonymous=true`，`IdleTimeout=1h`），后续交互全通过 `SessionDaemonController`。daemon 的创建对用户透明——用户打开 SSH block 的体验与之前一致。
+
+只有当用户主动 `wsh session create --name` 时，才会产生命名 daemon。命名 daemon 可被多个 block attach，空闲超时 24h。
 
 block 三态：
 
