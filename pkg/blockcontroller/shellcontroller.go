@@ -63,9 +63,8 @@ type ShellController struct {
 	VersionTs      utilds.VersionTs
 
 	// for shell/cmd
-	ShellProc       *shellexec.ShellProc
-	ShellInputCh    chan *BlockInputUnion
-	ShellType string
+	ShellProc    *shellexec.ShellProc
+	ShellInputCh chan *BlockInputUnion
 }
 
 // Constructor that returns the Controller interface
@@ -77,7 +76,7 @@ func MakeShellController(tabId string, blockId string, controllerType string, co
 		BlockId:        blockId,
 		ConnName:       connName,
 		ProcStatus:     Status_Init,
-		RunLock: &atomic.Bool{},
+		RunLock:        &atomic.Bool{},
 	}
 }
 
@@ -398,7 +397,6 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		return nil, err
 	}
 	blocklogger.Infof(logCtx, "[conndebug] remoteName: %q, connType: %s, wshEnabled: %v, shell: %q, shellType: %s\n", remoteName, connUnion.ConnType, connUnion.WshEnabled, connUnion.ShellPath, connUnion.ShellType)
-	bc.ShellType = connUnion.ShellType
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
 	if bc.ControllerType == BlockController_Shell {
@@ -527,32 +525,6 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellProc, rc *RunShellOpts, blockMeta waveobj.MetaMapType) error {
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
-
-	if bc.ControllerType == BlockController_Shell {
-		cmdStr := blockMeta.GetString(waveobj.MetaKey_Cmd, "")
-		if cmdStr != "" {
-			envMap := blockMeta.GetStringMap(waveobj.MetaKey_CmdEnv, true)
-			var prefix strings.Builder
-			for k, v := range envMap {
-				if v == waveobj.MetaMap_DeleteSentinel {
-					continue
-				}
-				switch bc.ShellType {
-				case shellutil.ShellType_pwsh:
-					escaped := strings.ReplaceAll(v, "'", "''")
-					prefix.WriteString(fmt.Sprintf("$env:%s='%s'\r", k, escaped))
-				case shellutil.ShellType_fish:
-					prefix.WriteString(fmt.Sprintf("set -gx %s %s\r", k, shellutil.HardQuoteFish(v)))
-				default:
-					prefix.WriteString(fmt.Sprintf("export %s=%s\r", k, shellutil.HardQuote(v)))
-				}
-			}
-			time.Sleep(1500 * time.Millisecond)
-			injectCmd := strings.ReplaceAll(cmdStr, "\n", "\r")
-			fullCmd := prefix.String() + injectCmd + "\r"
-			shellInputCh <- &BlockInputUnion{InputData: []byte(fullCmd)}
-		}
-	}
 
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
