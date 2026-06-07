@@ -646,6 +646,31 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 	return false, clientVersion, "", nil
 }
 
+const wshStartupMaxRetries = 3
+
+// startConnServerWithRetry wraps StartConnServer with retry logic to handle
+// transient failures (e.g., context deadline during sleep/wake cycles).
+// Retries up to wshStartupMaxRetries times with linear backoff.
+func (conn *SSHConn) startConnServerWithRetry(ctx context.Context, afterUpdate bool, useRouterMode bool) (bool, string, string, error) {
+	var lastErr error
+	for attempt := 0; attempt < wshStartupMaxRetries; attempt++ {
+		if attempt > 0 {
+			conn.Infof(ctx, "wsh startup retry %d/%d (previous error: %v)\n", attempt+1, wshStartupMaxRetries, lastErr)
+			select {
+			case <-ctx.Done():
+				return false, "", "", fmt.Errorf("context canceled during wsh retry backoff: %w", ctx.Err())
+			case <-time.After(time.Duration(attempt) * time.Second):
+			}
+		}
+		needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, afterUpdate, useRouterMode)
+		if err == nil {
+			return needsInstall, clientVersion, osArchStr, nil
+		}
+		lastErr = err
+	}
+	return false, "", "", fmt.Errorf("wsh startup failed after %d attempts: %w", wshStartupMaxRetries, lastErr)
+}
+
 type WshInstallOpts struct {
 	Force        bool
 	NoUserPrompt bool
@@ -925,25 +950,22 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 		err = fmt.Errorf("error opening domain socket listener: %w", err)
 		return WshCheckResult{NoWshReason: "error opening domain socket", NoWshCode: NoWshCode_DomainSocketError, WshError: err}
 	}
-	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, false, true)
+	needsInstall, clientVersion, osArchStr, err := conn.startConnServerWithRetry(ctx, false, true)
 	if err != nil {
 		conn.Infof(ctx, "ERROR starting conn server: %v\n", err)
-		err = fmt.Errorf("error starting conn server: %w", err)
-		return WshCheckResult{NoWshReason: "error starting connserver", NoWshCode: NoWshCode_ConnServerStartError, WshError: err}
+		return WshCheckResult{NoWshReason: "error starting connserver", NoWshCode: NoWshCode_ConnServerStartError, WshError: fmt.Errorf("error starting conn server: %w", err)}
 	}
 	if needsInstall {
 		conn.Infof(ctx, "connserver needs to be (re)installed\n")
 		err = conn.InstallWsh(ctx, osArchStr)
 		if err != nil {
 			conn.Infof(ctx, "ERROR installing wsh: %v\n", err)
-			err = fmt.Errorf("error installing wsh: %w", err)
-			return WshCheckResult{NoWshReason: "error installing wsh/connserver", NoWshCode: NoWshCode_InstallError, WshError: err}
+			return WshCheckResult{NoWshReason: "error installing wsh/connserver", NoWshCode: NoWshCode_InstallError, WshError: fmt.Errorf("error installing wsh: %w", err)}
 		}
-		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx, true, true)
+		needsInstall, clientVersion, _, err = conn.startConnServerWithRetry(ctx, true, true)
 		if err != nil {
 			conn.Infof(ctx, "ERROR starting conn server (after install): %v\n", err)
-			err = fmt.Errorf("error starting conn server (after install): %w", err)
-			return WshCheckResult{NoWshReason: "error starting connserver", NoWshCode: NoWshCode_PostInstallStartError, WshError: err}
+			return WshCheckResult{NoWshReason: "error starting connserver", NoWshCode: NoWshCode_PostInstallStartError, WshError: fmt.Errorf("error starting conn server (after install): %w", err)}
 		}
 		if needsInstall {
 			conn.Infof(ctx, "conn server not installed correctly (after install)\n")
@@ -975,6 +997,12 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 		conn.NoWshReason = result.NoWshReason
 		conn.WshVersion = result.ClientVersion
 	})
+	// Don't persist conn:wshenabled=false if wsh failed due to a technical error.
+	// This allows the next connection attempt to retry wsh startup instead of
+	// permanently recording a transient failure as a user decision.
+	if result.WshError != nil && !result.WshEnabled {
+		return
+	}
 	connConfig, ok := conn.getConnectionConfig()
 	if ok && connConfig.ConnWshEnabled != nil {
 		return
@@ -1325,15 +1353,19 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 	conn.Infof(ctx, "normalized knownhosts address: %s\n", fmtAddr)
 	clientDisplayName := fmt.Sprintf("%s (%s)", conn.GetName(), fmtAddr)
 	wshResult := conn.tryEnableWsh(ctx, clientDisplayName)
+	conn.persistWshInstalled(ctx, wshResult)
 	if !wshResult.WshEnabled {
-		if wshResult.WshError != nil {
-			conn.Infof(ctx, "ERROR enabling wsh: %v\n", wshResult.WshError)
-			conn.Infof(ctx, "will connect with wsh disabled\n")
+		if wshResult.NoWshCode == NoWshCode_Disabled || wshResult.NoWshCode == NoWshCode_UserDeclined {
+			// User explicitly opted out of wsh — OK to continue without it
+			conn.Infof(ctx, "wsh not enabled: %s\n", wshResult.NoWshReason)
+		} else if wshResult.WshError != nil {
+			// wsh startup failed after retries — fail the connection to avoid poisoned state
+			conn.Infof(ctx, "wsh startup failed, connection will be marked as error: %v\n", wshResult.WshError)
+			return fmt.Errorf("wsh startup failed: %w", wshResult.WshError)
 		} else {
 			conn.Infof(ctx, "wsh not enabled: %s\n", wshResult.NoWshReason)
 		}
 	}
-	conn.persistWshInstalled(ctx, wshResult)
 	// Start port forwarding with merged SSH config keywords
 	if sshKeywords != nil {
 		conn.Infof(ctx, "port forwarding keywords: LocalForward=%v RemoteForward=%v\n",

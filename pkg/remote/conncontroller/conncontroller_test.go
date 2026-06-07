@@ -565,11 +565,11 @@ func TestCopyBoth(t *testing.T) {
 // delegating to the underlying connection so the actual FIN is sent.
 type halfCloseConn struct {
 	net.Conn
-	closeWriteCalled bool
+	closeWriteCalled atomic.Bool
 }
 
 func (h *halfCloseConn) CloseWrite() error {
-	h.closeWriteCalled = true
+	h.closeWriteCalled.Store(true)
 	// Delegate to the underlying connection so the FIN/EOF is actually sent.
 	if hc, ok := h.Conn.(interface{ CloseWrite() error }); ok {
 		return hc.CloseWrite()
@@ -668,7 +668,7 @@ func TestCopyBothHalfClose(t *testing.T) {
 	// CRITICAL ASSERTION: localW.CloseWrite() must have been called.
 	// Without this, the browser never receives FIN and doesn't know the
 	// server closed — causing the keep-alive reuse bug.
-	if !localW.closeWriteCalled {
+	if !localW.closeWriteCalled.Load() {
 		t.Fatal("CloseWrite NOT called on local tunnel endpoint when server closed — " +
 			"half-close not propagated, browser would hang")
 	}
@@ -684,7 +684,7 @@ func TestCopyBothHalfClose(t *testing.T) {
 
 	// Verify the reverse direction: when browser closed, remoteW.CloseWrite()
 	// should have been called to send EOF to the server side.
-	if !remoteW.closeWriteCalled {
+	if !remoteW.closeWriteCalled.Load() {
 		t.Fatal("CloseWrite NOT called on remote tunnel endpoint when browser closed")
 	}
 }
