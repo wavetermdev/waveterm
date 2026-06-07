@@ -1262,33 +1262,11 @@ export class TermViewModel implements ViewModel {
                 },
             ],
         });
-        const runOnStart = blockData?.meta?.["cmd:runonstart"];
         advancedSubmenu.push({
-            label: "Run On Startup",
-            submenu: [
-                {
-                    label: "On",
-                    type: "checkbox",
-                    checked: runOnStart,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:runonstart": true },
-                        });
-                    },
-                },
-                {
-                    label: "Off",
-                    type: "checkbox",
-                    checked: !runOnStart,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:runonstart": false },
-                        });
-                    },
-                },
-            ],
+            label: "Startup Command...",
+            click: () => {
+                modalsModel.pushModal("CommandConfigModal", { blockId: this.blockId });
+            },
         });
         const debugConn = blockData?.meta?.["term:conndebug"];
         advancedSubmenu.push({
