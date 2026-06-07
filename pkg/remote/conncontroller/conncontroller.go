@@ -487,10 +487,23 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		return false, "", "", fmt.Errorf("unable to start conn controller command: %w", err)
 	}
 	linesChan := utilfn.StreamToLinesChan(pipeRead)
-	versionLine, err := utilfn.ReadLineWithTimeout(linesChan, utilfn.TimeoutFromContext(ctx, 30*time.Second))
-	if err != nil {
-		sshSession.Close()
-		return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
+	// In --dev mode connserver logs to stderr, which is merged into this same
+	// pipe. Those lines (prefixed "[PID:...]") can race ahead of the "wsh
+	// version" stdout line, so skip them until we reach the real version line.
+	var versionLine string
+	versionDeadline := time.Now().Add(utilfn.TimeoutFromContext(ctx, 30*time.Second))
+	for {
+		line, err := utilfn.ReadLineWithTimeout(linesChan, time.Until(versionDeadline))
+		if err != nil {
+			sshSession.Close()
+			return false, "", "", fmt.Errorf("error reading wsh version: %w", err)
+		}
+		if strings.HasPrefix(strings.TrimSpace(line), "[PID:") {
+			conn.Infof(ctx, "skipping connserver dev-log line before version: %s\n", strings.TrimSpace(line))
+			continue
+		}
+		versionLine = line
+		break
 	}
 	conn.Infof(ctx, "actual connnserverversion: %q\n", versionLine)
 	conn.Infof(ctx, "got connserver version: %s\n", strings.TrimSpace(versionLine))
