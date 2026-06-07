@@ -100,6 +100,32 @@ var ConnServerCmdTemplate = strings.TrimSpace(
 		"exec %s connserver --conn %s %s %s",
 	}, "\n"))
 
+// RouterTransportMode selects how connserver's upstream RPC link is carried.
+type RouterTransportMode string
+
+const (
+	// RouterTransportStdio carries the upstream RPC over the SSH session's
+	// stdin/stdout (the "--router" flag). No listening socket or port is
+	// opened on the remote for the upstream link, so the SSH channel itself
+	// is the authentication boundary. This matches the WSL implementation and
+	// avoids the sshd Unix-socket-forward permission bug entirely.
+	RouterTransportStdio RouterTransportMode = "stdio"
+	// RouterTransportTCP carries the upstream RPC over a reverse-forwarded
+	// loopback TCP port (the "--router-tcp" flag). Kept as a fallback.
+	RouterTransportTCP RouterTransportMode = "tcp"
+)
+
+// RouterTransport selects the upstream transport for SSH connserver router
+// mode. Defaults to stdio (most secure); set to RouterTransportTCP to fall
+// back to the reverse-forwarded loopback port. Override at runtime with
+// WAVETERM_ROUTER_TRANSPORT=tcp (or =stdio) for A/B comparison.
+var RouterTransport = func() RouterTransportMode {
+	if strings.ToLower(os.Getenv("WAVETERM_ROUTER_TRANSPORT")) == "tcp" {
+		return RouterTransportTCP
+	}
+	return RouterTransportStdio
+}()
+
 func IsLocalConnName(connName string) bool {
 	return strings.HasPrefix(connName, "local:") || connName == "local" || connName == ""
 }
@@ -437,6 +463,10 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 	if !allowed {
 		return false, "", "", fmt.Errorf("cannot start conn server for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
+	// stdio router mode carries the upstream RPC over the SSH session's
+	// stdin/stdout. The SSH channel is the auth boundary, so connserver does
+	// not ask for (and we do not send) a JWT in this mode.
+	isStdio := useRouterMode && RouterTransport == RouterTransportStdio
 	client := conn.GetClient()
 	wshPath := conn.getWshPath()
 	sockName := conn.GetDomainSocketName()
@@ -454,9 +484,13 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 			Conn:     conn.GetName(),
 		}
 	}
-	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx)
-	if err != nil {
-		return false, "", "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
+	var jwtToken string
+	if !isStdio {
+		var err error
+		jwtToken, err = wshutil.MakeClientJWTToken(rpcCtx)
+		if err != nil {
+			return false, "", "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
+		}
 	}
 	conn.Infof(ctx, "SSH-NEWSESSION (StartConnServer)\n")
 	sshSession, err := client.NewSession()
@@ -476,7 +510,11 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 	}
 	routerFlag := ""
 	if useRouterMode {
-		routerFlag = "--router-domainsocket"
+		if isStdio {
+			routerFlag = "--router"
+		} else {
+			routerFlag = "--router-tcp"
+		}
 	}
 	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()), devFlag, routerFlag)
 	log.Printf("starting conn controller: %q\n", cmdStr)
@@ -521,19 +559,24 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		sshSession.Close()
 		return true, clientVersion, osArchStr, nil
 	}
-	jwtLine, err := utilfn.ReadLineWithTimeout(linesChan, 3*time.Second)
-	if err != nil {
-		sshSession.Close()
-		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
-	}
-	conn.Infof(ctx, "got jwt status line: %s\n", jwtLine)
-	if strings.TrimSpace(jwtLine) == wavebase.NeedJwtConst {
-		// write the jwt
-		conn.Infof(ctx, "writing jwt token to connserver\n")
-		_, err = fmt.Fprintf(stdinPipe, "%s\n", jwtToken)
+	// stdio router mode does not use a JWT exchange: serverRunRouter() switches
+	// straight to the packet protocol on stdin/stdout after the version line.
+	// Sending a JWT line here would corrupt that stream, so skip it.
+	if !isStdio {
+		jwtLine, err := utilfn.ReadLineWithTimeout(linesChan, 3*time.Second)
 		if err != nil {
 			sshSession.Close()
-			return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
+			return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
+		}
+		conn.Infof(ctx, "got jwt status line: %s\n", jwtLine)
+		if strings.TrimSpace(jwtLine) == wavebase.NeedJwtConst {
+			// write the jwt
+			conn.Infof(ctx, "writing jwt token to connserver\n")
+			_, err = fmt.Fprintf(stdinPipe, "%s\n", jwtToken)
+			if err != nil {
+				sshSession.Close()
+				return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
+			}
 		}
 	}
 	conn.WithLock(func() {
@@ -563,6 +606,33 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		defer func() {
 			panichandler.PanicHandler("conncontroller:sshSession-output", recover())
 		}()
+		if isStdio {
+			// stdio router mode: the remaining stdout is the upstream RPC
+			// packet stream. Register it (and stdin) with the default router,
+			// exactly like the WSL connserver path.
+			logName := fmt.Sprintf("conncontroller:%s", conn.GetName())
+			// HandleStdIOClient has no readCallback hook, so relay the lines
+			// through a goroutine that feeds the health monitor on each one --
+			// mirroring RunWshRpcOverListener's callback in the socket path.
+			// Without this the monitor never arms and flips to "degraded".
+			stdioCh := linesChan
+			if monitor := conn.GetMonitor(); monitor != nil {
+				relayCh := make(chan utilfn.LineOutput, wshutil.DefaultInputChSize)
+				go func() {
+					defer func() {
+						panichandler.PanicHandler("conncontroller:stdioActivityRelay", recover())
+					}()
+					defer close(relayCh)
+					for lo := range linesChan {
+						monitor.UpdateLastActivityTime()
+						relayCh <- lo
+					}
+				}()
+				stdioCh = relayCh
+			}
+			wshutil.HandleStdIOClient(logName, stdioCh, stdinPipe)
+			return
+		}
 		for output := range linesChan {
 			if output.Error != nil {
 				log.Printf("[conncontroller:%s:output] error: %v\n", conn.GetName(), output.Error)
@@ -895,11 +965,16 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 			return WshCheckResult{NoWshReason: "user selected not to install wsh extensions", NoWshCode: NoWshCode_UserDeclined}
 		}
 	}
-	err := conn.OpenDomainSocketListener(ctx)
-	if err != nil {
-		conn.Infof(ctx, "ERROR opening domain socket listener: %v\n", err)
-		err = fmt.Errorf("error opening domain socket listener: %w", err)
-		return WshCheckResult{NoWshReason: "error opening domain socket", NoWshCode: NoWshCode_DomainSocketError, WshError: err}
+	// stdio router mode carries the upstream RPC over the SSH session's
+	// stdin/stdout, so no reverse-forwarded listener is needed. Only the TCP
+	// fallback requires the forwarded loopback port.
+	if RouterTransport == RouterTransportTCP {
+		err := conn.OpenDomainSocketListener(ctx)
+		if err != nil {
+			conn.Infof(ctx, "ERROR opening domain socket listener: %v\n", err)
+			err = fmt.Errorf("error opening domain socket listener: %w", err)
+			return WshCheckResult{NoWshReason: "error opening domain socket", NoWshCode: NoWshCode_DomainSocketError, WshError: err}
+		}
 	}
 	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, false, true)
 	if err != nil {
