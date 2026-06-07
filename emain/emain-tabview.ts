@@ -325,7 +325,9 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
             // Opener-Policy browsing context. Rerouting them into a new web block breaks both
             // (results in ERR_BLOCKED_BY_RESPONSE). Allow a genuine popup window for these; it
             // shares wc's session so any auth cookies/tokens remain visible to the webview.
-            if (details.disposition === "new-window") {
+            // Gate on a non-empty features string: a shift+click on a plain link also reports
+            // disposition "new-window" but carries no features, and must keep routing to a web block.
+            if (details.disposition === "new-window" && details.features !== "") {
                 return {
                     action: "allow",
                     overrideBrowserWindowOptions: { width: 600, height: 700, autoHideMenuBar: true },
