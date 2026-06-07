@@ -6,6 +6,15 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.14.5-fork &mdash; Jun 4, 2026
+
+**SSH Port Forwarding:**
+
+- **`LocalForward` and `RemoteForward` support** &mdash; Port forwarding rules from `~/.ssh/config` are now automatically applied when connecting through Wave. Rules can also be defined in `connections.json` via `ssh:localforward` and `ssh:remoteforward` keys.
+- `LocalForward` listens on the local machine and forwards connections through the SSH tunnel to the remote destination.
+- `RemoteForward` listens on the remote machine and forwards connections back to the local destination (requires `AllowTcpForwarding` on the remote sshd).
+- Malformed rules are logged and skipped without breaking the connection.
+
 ### v0.14.5 &mdash; Apr 16, 2026
 
 Wave v0.14.5 introduces a new Process Viewer widget, Quake Mode for global hotkey, and several quality-of-life improvements.

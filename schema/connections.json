@@ -131,6 +131,18 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "ssh:localforward": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ssh:remoteforward": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "additionalProperties": false,

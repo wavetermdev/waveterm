@@ -105,6 +105,8 @@ At the moment, we are capable of parsing any SSH config file that does not conta
 |ProxyJump| Specifies one or more jump proxies in a comma separated list. Each will be visited sequentially using TCP forwarding before connecting to the desired connection (also using TCP forwarding). It can be set to `none` to disable the feature.|
 |UserKnownHostsFile| Provides the location of one or more user host key database files for recording trusted remote connections. The filenames are entered in the same string and separated by whitespace. The default value is `"~/.ssh/known_hosts ~/.ssh/known_hosts2"`.|
 |GlobalKnownHostsFile| Provides the location of one or more global host key database files for recording trusted remote connections. The filenames are entered in the same string and separated by whitespace. The default value is `"/etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2"`.|
+|LocalForward| Can be specified multiple times. Format: `bind_address destination` (e.g., `8080 localhost:80` or `127.0.0.1:8080 localhost:80`). Listens on the local machine and forwards connections through the SSH tunnel to the remote destination.|
+|RemoteForward| Can be specified multiple times. Format: `bind_address destination` (e.g., `9090 localhost:3000`). Listens on the remote machine and forwards connections back to the local destination. Requires `AllowTcpForwarding` on the remote sshd.|
 
 ### Example SSH Config Host
 
@@ -160,6 +162,8 @@ In addition to the regular ssh config file, wave also has its own config file to
 | ssh:proxyjump | A list of strings specifying the names of hosts that must be successively visited with tcp forwarding to establish a connection. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:userknownhostsfile | A list containing the paths of any user host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:globalknownhostsfile | A list containing the paths of any global host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:localforward | A list of strings for local port forwarding rules. Format: `"8080 localhost:80"`. Can be used to override or supplement `~/.ssh/config` values.|
+| ssh:remoteforward | A list of strings for remote port forwarding rules. Format: `"9090 localhost:3000"`. Can be used to override or supplement `~/.ssh/config` values.|
 
 ### SSH Agent Detection
 
@@ -253,6 +257,31 @@ While Wave provides an option disable `wsh` when first connecting to a remote, t
 ```
 
 Note that this same line gets added to your `connections.json` file automatically when you choose to disable `wsh` in gui when initially connecting.
+
+### Port Forwarding
+
+Port forwarding rules from `~/.ssh/config` are automatically applied when you connect through Wave:
+
+```
+Host myserver
+   User username
+   HostName 203.0.113.254
+   LocalForward 8080 localhost:80
+   RemoteForward 9090 localhost:3000
+```
+
+Connecting to `myserver` will listen on local port 8080 (forwarded to the remote's localhost:80) and listen on the remote's port 9090 (forwarded to your local localhost:3000).
+
+Port forwarding can also be defined entirely in `connections.json`:
+
+```json
+{
+    "myusername@myserver" : {
+        "ssh:localforward": ["8080 localhost:80"],
+        "ssh:remoteforward": ["9090 localhost:3000"]
+    }
+}
+```
 
 ## Managing Connections with the CLI
 

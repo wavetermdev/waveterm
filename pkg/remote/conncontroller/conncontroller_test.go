@@ -4,8 +4,10 @@
 package conncontroller
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"runtime"
 	"sync"
@@ -525,5 +527,416 @@ func TestCloseInternal_NilExpectedClient_AlwaysCleansUp(t *testing.T) {
 	conn.lock.Unlock()
 	if mon != nil {
 		t.Fatal("expected Monitor to be nil after closeInternal_withlifecyclelock(nil)")
+	}
+}
+
+// TestCopyBoth verifies bidirectional data transfer between two connections.
+func TestCopyBoth(t *testing.T) {
+	t.Parallel()
+
+	// Create a pair of net.Pipe connections
+	c1, c2 := net.Pipe()
+	c3, c4 := net.Pipe()
+
+	// Send data from c1 to c3 via copyBoth
+	go func() {
+		copyBoth(c2, c3)
+	}()
+
+	// Write to c1, read from c4
+	msg := []byte("hello")
+	go func() {
+		c1.Write(msg)
+		c1.Close()
+	}()
+
+	buf := make([]byte, len(msg))
+	_, err := c4.Read(buf)
+	if err != nil {
+		t.Fatalf("read error: %v", err)
+	}
+	if string(buf) != string(msg) {
+		t.Fatalf("expected %q, got %q", msg, buf)
+	}
+	c4.Close()
+}
+
+// halfCloseConn wraps a net.Conn to track CloseWrite calls while
+// delegating to the underlying connection so the actual FIN is sent.
+type halfCloseConn struct {
+	net.Conn
+	closeWriteCalled bool
+}
+
+func (h *halfCloseConn) CloseWrite() error {
+	h.closeWriteCalled = true
+	// Delegate to the underlying connection so the FIN/EOF is actually sent.
+	if hc, ok := h.Conn.(interface{ CloseWrite() error }); ok {
+		return hc.CloseWrite()
+	}
+	return nil
+}
+
+// TestCopyBothHalfClose verifies that copyBoth calls CloseWrite on each
+// connection when the opposite direction reaches EOF. This is the critical
+// fix for the port-forwarding bug where subsequent HTTP requests would fail
+// because the dead SSH channel's EOF was never propagated as a TCP FIN.
+//
+// Real scenario:
+//   browser ←TCP→ localConn ←copyBoth→ remoteConn ←SSH→ wrangler
+//
+// Test simulation:
+//   browserSide ←TCP→ tunnelLocal ←copyBoth→ tunnelRemote ←TCP→ serverSide
+//
+// When the server closes its TCP connection, copyBoth should propagate
+// that EOF to the browser by calling CloseWrite on the local tunnel endpoint.
+func TestCopyBothHalfClose(t *testing.T) {
+	t.Parallel()
+
+	// Create two TCP pairs:
+	//   pair1: tunnelLocal ↔ browserSide
+	//   pair2: tunnelRemote ↔ serverSide
+	ln1, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen1: %v", err)
+	}
+	defer ln1.Close()
+
+	ln2, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen2: %v", err)
+	}
+	defer ln2.Close()
+
+	// pair1
+	browserSide, err := net.Dial("tcp", ln1.Addr().String())
+	if err != nil {
+		t.Fatalf("dial1: %v", err)
+	}
+	defer browserSide.Close()
+	tunnelLocal, err := ln1.Accept()
+	if err != nil {
+		t.Fatalf("accept1: %v", err)
+	}
+
+	// pair2
+	tunnelRemote, err := net.Dial("tcp", ln2.Addr().String())
+	if err != nil {
+		t.Fatalf("dial2: %v", err)
+	}
+	serverSide, err := ln2.Accept()
+	if err != nil {
+		t.Fatalf("accept2: %v", err)
+	}
+
+	// Wrap tunnel-side connections to track CloseWrite calls
+	localW := &halfCloseConn{Conn: tunnelLocal}
+	remoteW := &halfCloseConn{Conn: tunnelRemote}
+
+	// Run copyBoth bridging the tunnel endpoints
+	copyDone := make(chan struct{})
+	go func() {
+		defer close(copyDone)
+		copyBoth(localW, remoteW)
+	}()
+
+	// --- Scenario: server sends response and closes connection ---
+	// This simulates wrangler serving a page then closing the TCP connection.
+	// The tunnel must propagate EOF to the browser side via CloseWrite.
+
+	// Server writes a response
+	response := []byte("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
+	if _, err := serverSide.Write(response); err != nil {
+		t.Fatalf("server write: %v", err)
+	}
+	// Server closes its write side (simulates wrangler closing TCP after response)
+	serverSide.(*net.TCPConn).CloseWrite()
+
+	// Browser reads the full response. Because the server closed, EOF should
+	// propagate through the tunnel: remoteW EOF → copyBoth → localW.CloseWrite()
+	// → browserSide gets FIN → io.ReadAll returns.
+	// Without the half-close fix, io.ReadAll would hang forever (no FIN sent).
+	browserSide.(*net.TCPConn).SetReadDeadline(time.Now().Add(3 * time.Second))
+	data, err := io.ReadAll(browserSide)
+	if err != nil {
+		t.Fatalf("browser read: %v", err)
+	}
+	if !bytes.Contains(data, []byte("200 OK")) {
+		t.Fatalf("expected response, got: %q", data)
+	}
+
+	// CRITICAL ASSERTION: localW.CloseWrite() must have been called.
+	// Without this, the browser never receives FIN and doesn't know the
+	// server closed — causing the keep-alive reuse bug.
+	if !localW.closeWriteCalled {
+		t.Fatal("CloseWrite NOT called on local tunnel endpoint when server closed — " +
+			"half-close not propagated, browser would hang")
+	}
+
+	// --- Cleanup: close browser side to let copyBoth finish ---
+	browserSide.Close()
+
+	select {
+	case <-copyDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("copyBoth did not complete")
+	}
+
+	// Verify the reverse direction: when browser closed, remoteW.CloseWrite()
+	// should have been called to send EOF to the server side.
+	if !remoteW.closeWriteCalled {
+		t.Fatal("CloseWrite NOT called on remote tunnel endpoint when browser closed")
+	}
+}
+
+// TestLocalForwardStartsAndStops verifies that LocalForward listeners are
+// created on startPortForwarding and closed on closeInternal_withlifecyclelock.
+func TestLocalForwardStartsAndStops(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	// Find a free port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to find free port: %v", err)
+	}
+	addr := listener.Addr().String()
+	listener.Close()
+
+	// Create a minimal client (won't actually dial, but the listener should start)
+	client, _ := newMockSSHClient()
+	monitor := makeTestMonitor(conn)
+	conn.WithLock(func() {
+		conn.Client = client
+		conn.Monitor = monitor
+	})
+
+	keywords := &wconfig.ConnKeywords{
+		SshLocalForward: []string{addr + " 127.0.0.1:9999"},
+	}
+
+	ctx := context.Background()
+	conn.startPortForwarding(ctx, keywords)
+
+	// Give goroutines time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify listener was created
+	conn.lock.Lock()
+	listenerCount := len(conn.LocalForwardListeners)
+	conn.lock.Unlock()
+	if listenerCount != 1 {
+		t.Fatalf("expected 1 LocalForwardListener, got %d", listenerCount)
+	}
+
+	// Close and verify cleanup
+	conn.lifecycleLock.Lock()
+	conn.closeInternal_withlifecyclelock(nil)
+	conn.lifecycleLock.Unlock()
+
+	time.Sleep(50 * time.Millisecond)
+
+	conn.lock.Lock()
+	listenerCount = len(conn.LocalForwardListeners)
+	conn.lock.Unlock()
+	if listenerCount != 0 {
+		t.Fatalf("expected 0 LocalForwardListeners after close, got %d", listenerCount)
+	}
+}
+
+// TestStartPortForwarding_MalformedRule verifies that malformed rules are
+// skipped and logged without crashing.
+func TestStartPortForwarding_MalformedRule(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	client, _ := newMockSSHClient()
+	monitor := makeTestMonitor(conn)
+	conn.WithLock(func() {
+		conn.Client = client
+		conn.Monitor = monitor
+	})
+
+	keywords := &wconfig.ConnKeywords{
+		SshLocalForward:  []string{"only-one-field", "also-wrong", "8080 localhost:80 127.0.0.1:9090"},
+		SshRemoteForward: []string{"valid 127.0.0.1:9090"},
+	}
+
+	ctx := context.Background()
+	conn.startPortForwarding(ctx, keywords)
+
+	// Give goroutines time to start
+	time.Sleep(100 * time.Millisecond)
+
+	// Only the valid RemoteForward should have been attempted (but will fail
+	// because the mock client doesn't support Listen). The malformed rules
+	// should have been skipped.
+	conn.lock.Lock()
+	localCount := len(conn.LocalForwardListeners)
+	remoteCount := len(conn.RemoteForwardListeners)
+	conn.lock.Unlock()
+	if localCount != 0 {
+		t.Fatalf("expected 0 LocalForwardListeners (all malformed), got %d", localCount)
+	}
+	if remoteCount != 0 {
+		t.Fatalf("expected 0 RemoteForwardListeners (mock client can't Listen), got %d", remoteCount)
+	}
+}
+
+// TestStartPortForwarding_NilClient verifies that startPortForwarding
+// returns immediately when client is nil.
+func TestStartPortForwarding_NilClient(t *testing.T) {
+	t.Parallel()
+
+	conn := makeTestConn(Status_Connected)
+	defer cleanupTestConn(conn)
+
+	// Client is nil by default
+	keywords := &wconfig.ConnKeywords{
+		SshLocalForward: []string{"8080 localhost:80"},
+	}
+
+	ctx := context.Background()
+	conn.startPortForwarding(ctx, keywords)
+
+	// Should return without panic
+	conn.lock.Lock()
+	listenerCount := len(conn.LocalForwardListeners)
+	conn.lock.Unlock()
+	if listenerCount != 0 {
+		t.Fatalf("expected 0 listeners with nil client, got %d", listenerCount)
+	}
+}
+
+func TestParseForwardRule(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		input          string
+		direction      sshForwardDirection
+		wantListenType sshForwardType
+		wantListenAddr string
+		wantDialType   sshForwardType
+		wantDialAddr   string
+		wantErr        bool
+	}{
+		// LocalForward - TCP cases
+		{"local port-only bind", "8765 localhost:8765", forwardLocal,
+			forwardTCPListen, "127.0.0.1:8765", forwardTCPDial, "localhost:8765", false},
+		{"local explicit bind", "localhost:8765 remote:80", forwardLocal,
+			forwardTCPListen, "localhost:8765", forwardTCPDial, "remote:80", false},
+		{"local ip bind", "192.168.1.1:8765 remote:80", forwardLocal,
+			forwardTCPListen, "192.168.1.1:8765", forwardTCPDial, "remote:80", false},
+		{"local wildcard bind", "*:8765 remote:80", forwardLocal,
+			forwardTCPListen, "*:8765", forwardTCPDial, "remote:80", false},
+		{"local ipv6 bind", "[::1]:8765 remote:80", forwardLocal,
+			forwardTCPListen, "[::1]:8765", forwardTCPDial, "remote:80", false},
+		// LocalForward - Unix socket cases
+		{"local unix listen", "/tmp/a.sock remote:80", forwardLocal,
+			forwardUnix, "/tmp/a.sock", forwardTCPDial, "remote:80", false},
+		{"local unix dial", "8765 /var/run/app.sock", forwardLocal,
+			forwardTCPListen, "127.0.0.1:8765", forwardUnix, "/var/run/app.sock", false},
+		{"local unix both", "/tmp/a.sock /tmp/b.sock", forwardLocal,
+			forwardUnix, "/tmp/a.sock", forwardUnix, "/tmp/b.sock", false},
+		// RemoteForward - TCP cases
+		{"remote basic", "8765 localhost:8765", forwardRemote,
+			forwardTCPListen, "127.0.0.1:8765", forwardTCPDial, "localhost:8765", false},
+		{"remote explicit bind", "localhost:8765 remote:80", forwardRemote,
+			forwardTCPListen, "localhost:8765", forwardTCPDial, "remote:80", false},
+		// RemoteForward - SOCKS proxy mode
+		{"remote socks proxy", "8080", forwardRemote,
+			forwardTCPListen, "127.0.0.1:8080", forwardSOCKS, "", false},
+		{"remote socks proxy wildcard", "*:8080", forwardRemote,
+			forwardTCPListen, "*:8080", forwardSOCKS, "", false},
+		// RemoteForward - Unix socket cases
+		{"remote unix listen", "/tmp/remote.sock localhost:80", forwardRemote,
+			forwardUnix, "/tmp/remote.sock", forwardTCPDial, "localhost:80", false},
+		{"remote unix dial", "8765 /var/run/app.sock", forwardRemote,
+			forwardTCPListen, "127.0.0.1:8765", forwardUnix, "/var/run/app.sock", false},
+		// Error cases
+		{"local no destination", "8765", forwardLocal,
+			"", "", "", "", true},
+		{"empty input", "", forwardLocal,
+			"", "", "", "", true},
+		{"too many args", "8765 localhost:80 extra", forwardLocal,
+			"", "", "", "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseForwardRule(tc.input, tc.direction)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("parseForwardRule(%q, %v) expected error, got nil", tc.input, tc.direction)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseForwardRule(%q, %v) unexpected error: %v", tc.input, tc.direction, err)
+			}
+			if got.ListenType != tc.wantListenType {
+				t.Fatalf("listen type = %v, want %v", got.ListenType, tc.wantListenType)
+			}
+			if got.ListenAddr != tc.wantListenAddr {
+				t.Fatalf("listen addr = %q, want %q", got.ListenAddr, tc.wantListenAddr)
+			}
+			if got.DialType != tc.wantDialType {
+				t.Fatalf("dial type = %v, want %v", got.DialType, tc.wantDialType)
+			}
+			if got.DialAddr != tc.wantDialAddr {
+				t.Fatalf("dial addr = %q, want %q", got.DialAddr, tc.wantDialAddr)
+			}
+		})
+	}
+}
+
+func TestIsUnixSocket(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"/tmp/app.sock", true},
+		{"/var/run/service.sock", true},
+		{"8765", false},
+		{"localhost:8765", false},
+		{"*:8080", false},
+		{"[::1]:9090", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			got := isUnixSocket(tc.input)
+			if got != tc.want {
+				t.Fatalf("isUnixSocket(%q) = %v, want %v", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeTcpListenAddr(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"port only", "8765", "127.0.0.1:8765"},
+		{"host:port", "localhost:8765", "localhost:8765"},
+		{"ip:port", "192.168.1.1:5173", "192.168.1.1:5173"},
+		{"wildcard:port", "0.0.0.0:8080", "0.0.0.0:8080"},
+		{"empty string", "", "127.0.0.1:"},
+		{"single digit port", "8", "127.0.0.1:8"},
+		{"ipv6 bracket", "[::1]:9090", "[::1]:9090"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeTcpListenAddr(tc.input)
+			if got != tc.expected {
+				t.Fatalf("normalizeTcpListenAddr(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
 	}
 }

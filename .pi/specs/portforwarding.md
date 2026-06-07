@@ -118,7 +118,29 @@ LocalForwardListeners []net.Listener        // local listeners for LocalForward
 RemoteForwardListeners []net.Listener       // remote listeners (from client.Listen) for RemoteForward
 ```
 
-#### 3b. Forwarding setup function
+#### 3b. `copyBoth` helper (unexported)
+
+Add near the `startPortForwarding` method (same file, package-private):
+
+```go
+func copyBoth(a net.Conn, b net.Conn) {
+    var wg sync.WaitGroup
+    wg.Add(2)
+    go func() {
+        defer wg.Done()
+        io.Copy(a, b)
+    }()
+    go func() {
+        defer wg.Done()
+        io.Copy(b, a)
+    }()
+    wg.Wait()
+    a.Close()
+    b.Close()
+}
+```
+
+#### 3c. Forwarding setup function
 
 Add a new unexported method:
 
@@ -153,19 +175,15 @@ func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.
                 if err != nil {
                     return
                 }
-                bindAddr, dest := bindAddr, dest // capture for goroutine
-                go func() {
+                go func(dest string) {
                     defer panichandler.PanicHandler("conncontroller:localforward-tunnel", recover())
                     remoteConn, err := client.Dial("tcp", dest)
                     if err != nil {
                         localConn.Close()
                         return
                     }
-                    conn.MonitorUpdate(localConn, remoteConn)
-                    io.CopyBoth(localConn, remoteConn)
-                    localConn.Close()
-                    remoteConn.Close()
-                }()
+                    copyBoth(localConn, remoteConn)
+                }(dest)
             }
         }()
     }
@@ -194,19 +212,15 @@ func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.
                 if err != nil {
                     return
                 }
-                bindAddr, dest := bindAddr, dest // capture for goroutine
-                go func() {
+                go func(dest string) {
                     defer panichandler.PanicHandler("conncontroller:remoteforward-tunnel", recover())
                     localConn, err := net.Dial("tcp", dest)
                     if err != nil {
                         remoteConn.Close()
                         return
                     }
-                    conn.MonitorUpdate(remoteConn, localConn)
-                    io.CopyBoth(localConn, remoteConn)
-                    localConn.Close()
-                    remoteConn.Close()
-                }()
+                    copyBoth(localConn, remoteConn)
+                }(dest)
             }
         }()
     }
@@ -217,10 +231,9 @@ Notes:
 - Follows the existing goroutine pattern: `defer panichandler.PanicHandler("...", recover())`
 - Listeners are stored on the struct via `conn.WithLock` for cleanup
 - Uses `conn.Infof` for debug logging (consistent with existing connection debug output)
-- `io.CopyBoth` for bidirectional tunneling (standard Go pattern)
-- Variable capture (`bindAddr, dest := bindAddr, dest`) prevents goroutine closure bugs
+- `copyBoth` (unexported helper) for bidirectional tunneling (spawns two `io.Copy` goroutines, waits for both, then closes both connections)
 
-#### 3c. `connectInternal()` — Call forwarding setup
+#### 3d. `connectInternal()` — Call forwarding setup
 
 Change the `ConnectToClient` call to capture the merged keywords:
 
@@ -239,25 +252,31 @@ if sshKeywords != nil {
 
 Placement: after the `conn.WithLock` block that sets `conn.Client` and `conn.Monitor`, before the `waitForDisconnect` goroutine.
 
-#### 3d. `closeInternal_withlifecyclelock()` — Cleanup
+#### 3e. `closeInternal_withlifecyclelock()` — Cleanup
 
-Add listener cleanup before the existing `client.Close()` call:
+Add forwarding listener capture alongside the existing `oldListener` capture, then close them in the cleanup goroutine:
 
 ```go
-// Close local forward listeners
+var oldLocalForwardListeners []net.Listener
+var oldRemoteForwardListeners []net.Listener
 conn.WithLock(func() {
-    for _, l := range conn.LocalForwardListeners {
-        l.Close()
-    }
+    // ... existing oldClient, oldListener, oldController, oldMonitor capture ...
+    oldLocalForwardListeners = conn.LocalForwardListeners
     conn.LocalForwardListeners = nil
-    for _, l := range conn.RemoteForwardListeners {
-        l.Close()
-    }
+    oldRemoteForwardListeners = conn.RemoteForwardListeners
     conn.RemoteForwardListeners = nil
 })
+
+// In the cleanup goroutine (after oldMonitor.Close()):
+for _, l := range oldLocalForwardListeners {
+    l.Close()
+}
+for _, l := range oldRemoteForwardListeners {
+    l.Close()
+}
 ```
 
-This runs inside `lifecycleLock`, before `client.Close()`, ensuring no new connections are accepted during teardown.
+This follows the existing pattern: references are captured and nilled under `conn.WithLock` (protected by the `expectedClient` stale-goroutine guard), then closed in the background goroutine so `lifecycleLock` is freed immediately.
 
 ### 4. Call site updates
 
@@ -269,13 +288,15 @@ Already covered in 3c above.
 
 #### `cmd/test-conn/main-test-conn.go`
 
-Check for any direct calls:
+No direct `ConnectToClient` calls in `cmd/test-conn/` — it uses `conn.Connect()` → `connectInternal()` → `ConnectToClient()` indirectly. No changes needed.
 
-```bash
-grep -rn "ConnectToClient" /home/jeremy/projects/waveterm/
-```
+#### Other direct call sites
 
-Update each call site to capture (or ignore with `_`) the new `*wconfig.ConnKeywords` return value.
+Run `grep -rn "ConnectToClient" --include="*.go" .` to find any direct callers. As of this spec, only these direct calls exist:
+- `pkg/remote/sshclient.go` — the function definition and the recursive ProxyJump call
+- `pkg/remote/conncontroller/conncontroller.go` — `connectInternal`
+
+The recursive ProxyJump call (line ~1057) should capture the returned keywords with `_` since proxy connections don't need forwarding.
 
 ### 5. Tests
 
@@ -405,7 +426,7 @@ Add entry under the current development version.
 |-------|--------|
 | Connect starts | `ConnectToClient` returns merged keywords including forwarding rules |
 | Client established | `startPortForwarding` spawns goroutines, stores listeners on `SSHConn` |
-| Connection active | Tunnels run via `io.CopyBoth`; monitor tracks activity |
+| Connection active | Tunnels run via `copyBoth`; SSH transport activity keeps connection alive |
 | Disconnect starts | `closeInternal_withlifecyclelock` closes all forwarding listeners under `lifecycleLock` |
 | Client closes | `client.Close()` tears down remote listeners and all in-flight tunnels |
 

@@ -97,6 +97,9 @@ type SSHConn struct {
 	ReconnectAttempt     int
 	ReconnectNextAttempt int64
 	ReconnectError       string
+
+	LocalForwardListeners  []net.Listener // local listeners for LocalForward
+	RemoteForwardListeners []net.Listener // remote listeners (from client.Listen) for RemoteForward
 }
 
 var ConnServerCmdTemplate = strings.TrimSpace(
@@ -237,6 +240,8 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 	var oldListener net.Listener
 	var oldController *ssh.Session
 	var oldMonitor *ConnMonitor
+	var oldLocalForwardListeners []net.Listener
+	var oldRemoteForwardListeners []net.Listener
 	conn.WithLock(func() {
 		// If expectedClient is provided and does not match the current Client,
 		// a new connection has been established — do not steal its resources.
@@ -252,6 +257,10 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 		conn.ConnController = nil
 		oldMonitor = conn.Monitor
 		conn.Monitor = nil
+		oldLocalForwardListeners = conn.LocalForwardListeners
+		conn.LocalForwardListeners = nil
+		oldRemoteForwardListeners = conn.RemoteForwardListeners
+		conn.RemoteForwardListeners = nil
 	})
 
 	// Run potentially-blocking cleanup in a goroutine so lifecycleLock
@@ -286,6 +295,12 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 		}
 		if oldMonitor != nil {
 			oldMonitor.Close()
+		}
+		for _, l := range oldLocalForwardListeners {
+			l.Close()
+		}
+		for _, l := range oldRemoteForwardListeners {
+			l.Close()
 		}
 	}()
 }
@@ -974,13 +989,318 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 	// doesn't return an error since none of this is required for connection to work
 }
 
+// halfCloser is the interface for connections that support half-close
+// (shutting down the write side while keeping the read side open).
+// This is implemented by *net.TCPConn (sends TCP FIN) and ssh.Channel
+// (sends SSH_MSG_CHANNEL_EOF via CloseWrite).
+type halfCloser interface {
+	CloseWrite() error
+}
+
+// copyBoth performs bidirectional copying between two connections.
+// It spawns two goroutines (one per direction). When one direction
+// reaches EOF, it does a half-close (CloseWrite) on the destination
+// so the peer knows no more data is coming. This is critical for
+// protocols like HTTP that reuse connections — without the half-close,
+// the browser would think the connection is still alive and try to
+// reuse a dead tunnel, causing subsequent requests to silently fail.
+//
+// Both sides support half-close:
+//   - *net.TCPConn (from listener.Accept / net.Dial) — sends TCP FIN
+//   - chanConn (from ssh.Client.Dial, embeds ssh.Channel) — sends SSH_MSG_CHANNEL_EOF
+//
+// After both directions complete, both connections are fully closed.
+func copyBoth(a net.Conn, b net.Conn) {
+	copyBothWithName(nil, nil, a, b, "", "")
+}
+
+// copyBothWithName is like copyBoth but logs via conn.Debugf when verbose
+// mode is enabled on the connection block.
+func copyBothWithName(ctx context.Context, conn *SSHConn, a net.Conn, b net.Conn, nameA, nameB string) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	copyAndHalfClose := func(dst, src net.Conn, dstName, srcName string) {
+		defer wg.Done()
+		n, err := io.Copy(dst, src)
+		if conn != nil {
+			if err != nil {
+				conn.Debugf(ctx, "[portforward] %s→%s: copy ended after %d bytes, error: %v", srcName, dstName, n, err)
+			} else {
+				conn.Debugf(ctx, "[portforward] %s→%s: copy ended after %d bytes (EOF)", srcName, dstName, n)
+			}
+		}
+		// Half-close: signal to dst that no more data will be written.
+		// For TCP: sends FIN so the peer knows the write side is done.
+		// For SSH channels: sends SSH_MSG_CHANNEL_EOF.
+		// Without this, the peer does not know the stream ended and may
+		// attempt to reuse a dead channel for subsequent requests.
+		if hc, ok := dst.(halfCloser); ok {
+			hcerr := hc.CloseWrite()
+			if hcerr != nil && conn != nil {
+				conn.Debugf(ctx, "[portforward] %s→%s: CloseWrite error: %v", srcName, dstName, hcerr)
+			}
+		}
+	}
+
+	go copyAndHalfClose(a, b, nameA, nameB) // b→a: half-close a when b sends EOF
+	go copyAndHalfClose(b, a, nameB, nameA) // a→b: half-close b when a sends EOF
+
+	wg.Wait()
+	a.Close()
+	b.Close()
+	if conn != nil {
+		conn.Debugf(ctx, "[portforward] tunnel %s↔%s: both directions done, connections closed", nameA, nameB)
+	}
+}
+
+// sshForwardType describes the kind of forwarding endpoint.
+type sshForwardType string
+
+const (
+	forwardTCPListen sshForwardType = "tcp-listen"
+	forwardTCPDial   sshForwardType = "tcp-dial"
+	forwardUnix      sshForwardType = "unix"
+	forwardSOCKS     sshForwardType = "socks"
+)
+
+// sshForwardDirection indicates whether the rule is LocalForward or RemoteForward.
+type sshForwardDirection int
+
+const (
+	forwardLocal sshForwardDirection = iota // LocalForward
+	forwardRemote                           // RemoteForward
+)
+
+// sshForwardParsed is the result of parsing a LocalForward/RemoteForward rule.
+type sshForwardParsed struct {
+	ListenType   sshForwardType
+	ListenAddr   string // "host:port" for tcp, path for unix
+	DialType     sshForwardType
+	DialAddr     string // "host:port" for tcp, path for unix, "" for socks
+}
+
+// parseForwardRule parses a LocalForward/RemoteForward ssh_config rule.
+// The rule is space-separated: <listen_spec> <dial_spec>
+// For RemoteForward, dial_spec is optional (SOCKS proxy mode).
+//
+// Each spec is either:
+//   - Unix socket path (contains '/')
+//   - TCP [bind_address:]port (listen side) or host:hostport (dial side)
+//   - Plain port number (listen side only, defaults to 127.0.0.1:port)
+func parseForwardRule(rule string, direction sshForwardDirection) (sshForwardParsed, error) {
+	parts := strings.Fields(rule)
+	switch len(parts) {
+	case 0:
+		return sshForwardParsed{}, fmt.Errorf("empty forwarding rule")
+	case 1:
+		if direction == forwardLocal {
+			return sshForwardParsed{}, fmt.Errorf("localforward requires <listen_spec> <dial_spec>, got only one argument")
+		}
+		// RemoteForward with one arg = SOCKS proxy mode
+		listenAddr := normalizeTcpListenAddr(parts[0])
+		return sshForwardParsed{
+			ListenType: forwardTCPListen,
+			ListenAddr: listenAddr,
+			DialType:   forwardSOCKS,
+		}, nil
+	case 2:
+		return parseTwoPartRule(parts[0], parts[1])
+	default:
+		return sshForwardParsed{}, fmt.Errorf("forwarding rule has %d arguments, expected 1 or 2", len(parts))
+	}
+}
+
+// parseTwoPartRule handles the common case of <listen_spec> <dial_spec>.
+func parseTwoPartRule(listenSpec, dialSpec string) (sshForwardParsed, error) {
+	var listenType sshForwardType
+	var listenAddr string
+
+	if isUnixSocket(listenSpec) {
+		listenType = forwardUnix
+		listenAddr = listenSpec
+	} else {
+		listenType = forwardTCPListen
+		listenAddr = normalizeTcpListenAddr(listenSpec)
+	}
+
+	var dialType sshForwardType
+	var dialAddr string
+
+	if isUnixSocket(dialSpec) {
+		dialType = forwardUnix
+		dialAddr = dialSpec
+	} else {
+		dialType = forwardTCPDial
+		dialAddr = dialSpec
+	}
+
+	return sshForwardParsed{
+		ListenType: listenType,
+		ListenAddr: listenAddr,
+		DialType:   dialType,
+		DialAddr:   dialAddr,
+	}, nil
+}
+
+// isUnixSocket returns true if the spec looks like a Unix domain socket path.
+// Per ssh_config(5): if the argument contains '/', it's a Unix socket.
+func isUnixSocket(spec string) bool {
+	return strings.Contains(spec, "/")
+}
+
+// normalizeTcpListenAddr handles the listen-side TCP address format.
+// SSH allows "[bind_address:]port" where bind_address is optional.
+// If only a port number is given (e.g. "8765"), we default to "127.0.0.1:8765".
+func normalizeTcpListenAddr(addr string) string {
+	if strings.Contains(addr, ":") {
+		return addr
+	}
+	// Check if it's a plain port number
+	for _, c := range addr {
+		if c < '0' || c > '9' {
+			return addr // contains non-digit, return as-is
+		}
+	}
+	return "127.0.0.1:" + addr
+}
+
+// startPortForwarding sets up local and remote port forwarding tunnels
+// based on the merged SSH config keywords.
+func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.ConnKeywords) {
+	client := conn.GetClient()
+	if client == nil {
+		return
+	}
+
+	// LocalForward: listen locally, dial through SSH to remote
+	for _, fwd := range keywords.SshLocalForward {
+		parsed, err := parseForwardRule(fwd, forwardLocal)
+		if err != nil {
+			conn.Infof(ctx, "LocalForward: skipping malformed rule %q: %v\n", fwd, err)
+			log.Printf("LocalForward: skipping malformed rule %q: %v", fwd, err)
+			continue
+		}
+		switch {
+		case parsed.ListenType == forwardUnix || parsed.DialType == forwardUnix:
+			conn.Infof(ctx, "LocalForward: skipping rule %q: Unix socket forwarding not supported\n", fwd)
+			log.Printf("LocalForward: skipping rule %q: Unix socket forwarding not supported", fwd)
+			continue
+		case parsed.DialType == forwardSOCKS:
+			// Shouldn't happen for LocalForward, but handle gracefully
+			conn.Infof(ctx, "LocalForward: skipping rule %q: SOCKS proxy mode not supported\n", fwd)
+			continue
+		case parsed.ListenType == forwardTCPListen && parsed.DialType == forwardTCPDial:
+			conn.startLocalForwardTCP(ctx, client, fwd, parsed.ListenAddr, parsed.DialAddr)
+		}
+	}
+
+	// RemoteForward: listen on remote via SSH, dial locally
+	for _, fwd := range keywords.SshRemoteForward {
+		parsed, err := parseForwardRule(fwd, forwardRemote)
+		if err != nil {
+			conn.Infof(ctx, "RemoteForward: skipping malformed rule %q: %v\n", fwd, err)
+			log.Printf("RemoteForward: skipping malformed rule %q: %v", fwd, err)
+			continue
+		}
+		switch {
+		case parsed.ListenType == forwardUnix || parsed.DialType == forwardUnix:
+			conn.Infof(ctx, "RemoteForward: skipping rule %q: Unix socket forwarding not supported\n", fwd)
+			log.Printf("RemoteForward: skipping rule %q: Unix socket forwarding not supported", fwd)
+			continue
+		case parsed.DialType == forwardSOCKS:
+			conn.Infof(ctx, "RemoteForward: skipping rule %q: SOCKS proxy mode not supported\n", fwd)
+			log.Printf("RemoteForward: skipping rule %q: SOCKS proxy mode not supported", fwd)
+			continue
+		case parsed.ListenType == forwardTCPListen && parsed.DialType == forwardTCPDial:
+			conn.startRemoteForwardTCP(ctx, client, fwd, parsed.ListenAddr, parsed.DialAddr)
+		}
+	}
+}
+
+// startLocalForwardTCP starts a TCP LocalForward tunnel.
+// Listens on localAddr, dials dialAddr through the SSH client.
+func (conn *SSHConn) startLocalForwardTCP(ctx context.Context, client *ssh.Client, rule, localAddr, dialAddr string) {
+	go func() {
+		defer panichandler.PanicHandler("conncontroller:localforward", recover())
+		listener, err := net.Listen("tcp", localAddr)
+		if err != nil {
+			conn.Infof(ctx, "LocalForward %s: failed to listen on %s: %v\n", rule, localAddr, err)
+			return
+		}
+		conn.WithLock(func() {
+			conn.LocalForwardListeners = append(conn.LocalForwardListeners, listener)
+		})
+		conn.Infof(ctx, "LocalForward started: %s -> %s\n", localAddr, dialAddr)
+		conn.Debugf(ctx, "[portforward] LocalForward listening: %s -> %s", localAddr, dialAddr)
+		for {
+			localConn, err := listener.Accept()
+			if err != nil {
+				conn.Debugf(ctx, "[portforward] LocalForward %s: accept error: %v", localAddr, err)
+				return
+			}
+			conn.Debugf(ctx, "[portforward] LocalForward %s: new connection from %s", localAddr, localConn.RemoteAddr())
+			go func(dialAddr string, localConn net.Conn) {
+				defer panichandler.PanicHandler("conncontroller:localforward-tunnel", recover())
+				defer localConn.Close()
+				remoteConn, err := client.Dial("tcp", dialAddr)
+				if err != nil {
+					conn.Debugf(ctx, "[portforward] LocalForward %s: failed to dial remote %s: %v", localAddr, dialAddr, err)
+					return
+				}
+				defer remoteConn.Close()
+				conn.Debugf(ctx, "[portforward] LocalForward %s: tunnel established %s <-> %s", localAddr, localConn.RemoteAddr(), dialAddr)
+				copyBothWithName(ctx, conn, localConn, remoteConn, "local", "ssh")
+			}(dialAddr, localConn)
+		}
+	}()
+}
+
+// startRemoteForwardTCP starts a TCP RemoteForward tunnel.
+// Listens on remoteAddr via SSH client, dials localAddr locally.
+func (conn *SSHConn) startRemoteForwardTCP(ctx context.Context, client *ssh.Client, rule, remoteAddr, localAddr string) {
+	go func() {
+		defer panichandler.PanicHandler("conncontroller:remoteforward", recover())
+		listener, err := client.Listen("tcp", remoteAddr)
+		if err != nil {
+			conn.Infof(ctx, "RemoteForward %s: failed to listen on %s: %v\n", rule, remoteAddr, err)
+			return
+		}
+		conn.WithLock(func() {
+			conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, listener)
+		})
+		conn.Infof(ctx, "RemoteForward started: %s -> %s\n", remoteAddr, localAddr)
+		conn.Debugf(ctx, "[portforward] RemoteForward listening: %s -> %s", remoteAddr, localAddr)
+		for {
+			remoteConn, err := listener.Accept()
+			if err != nil {
+				conn.Debugf(ctx, "[portforward] RemoteForward %s: accept error: %v", remoteAddr, err)
+				return
+			}
+			conn.Debugf(ctx, "[portforward] RemoteForward %s: new connection from %s", remoteAddr, remoteConn.RemoteAddr())
+			go func(localAddr string, remoteConn net.Conn) {
+				defer panichandler.PanicHandler("conncontroller:remoteforward-tunnel", recover())
+				defer remoteConn.Close()
+				localConn, err := net.Dial("tcp", localAddr)
+				if err != nil {
+					conn.Debugf(ctx, "[portforward] RemoteForward %s: failed to dial local %s: %v", remoteAddr, localAddr, err)
+					return
+				}
+				defer localConn.Close()
+				conn.Debugf(ctx, "[portforward] RemoteForward %s: tunnel established %s <-> %s", remoteAddr, remoteConn.RemoteAddr(), localAddr)
+				copyBothWithName(ctx, conn, localConn, remoteConn, "local", "ssh")
+			}(localAddr, remoteConn)
+		}
+	}()
+}
+
 // returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	if connectInternalTestHook != nil {
 		return connectInternalTestHook(conn, ctx, connFlags)
 	}
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
-	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
+	client, _, sshKeywords, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		conn.Infof(ctx, "ERROR ConnectToClient: %s\n", remote.SimpleMessageFromPossibleConnectionError(err))
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
@@ -1014,6 +1334,14 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		}
 	}
 	conn.persistWshInstalled(ctx, wshResult)
+	// Start port forwarding with merged SSH config keywords
+	if sshKeywords != nil {
+		conn.Infof(ctx, "port forwarding keywords: LocalForward=%v RemoteForward=%v\n",
+			sshKeywords.SshLocalForward, sshKeywords.SshRemoteForward)
+		conn.startPortForwarding(ctx, sshKeywords)
+	} else {
+		conn.Infof(ctx, "skipping port forwarding: sshKeywords is nil\n")
+	}
 	return nil
 }
 
