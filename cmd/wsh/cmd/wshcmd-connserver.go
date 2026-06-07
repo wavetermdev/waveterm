@@ -46,6 +46,7 @@ const (
 
 var connServerRouter bool
 var connServerRouterDomainSocket bool
+var connServerRouterTCP bool
 var connServerConnName string
 var connServerDev bool
 var ConnServerWshRouter *wshutil.WshRouter
@@ -54,6 +55,7 @@ var connServerInitialEnv map[string]string
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode (stdio upstream)")
 	serverCmd.Flags().BoolVar(&connServerRouterDomainSocket, "router-domainsocket", false, "run in local router mode (domain socket upstream)")
+	serverCmd.Flags().BoolVar(&connServerRouterTCP, "router-tcp", false, "run in local router mode (tcp upstream)")
 	serverCmd.Flags().StringVar(&connServerConnName, "conn", "", "connection name")
 	serverCmd.Flags().BoolVar(&connServerDev, "dev", false, "enable dev mode with file logging and PID in logs")
 	rootCmd.AddCommand(serverCmd)
@@ -394,6 +396,114 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 	select {}
 }
 
+func serverRunRouterTCP(jwtToken string) error {
+	log.Printf("starting connserver router (tcp upstream)")
+
+	// extract tcp address from JWT token (unverified - we're on the client side)
+	tcpAddr, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
+	if err != nil {
+		return fmt.Errorf("error extracting tcp address from JWT: %v", err)
+	}
+
+	// connect to the forwarded tcp port
+	conn, err := net.Dial("tcp", tcpAddr)
+	if err != nil {
+		return fmt.Errorf("error connecting to tcp upstream %s: %v", tcpAddr, err)
+	}
+
+	// create router
+	router := wshutil.NewWshRouter()
+	ConnServerWshRouter = router
+
+	// create proxy for the tcp connection
+	upstreamProxy := wshutil.MakeRpcProxy("connserver-upstream")
+
+	// goroutine to write to the tcp connection
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouterTCP:WriteLoop", recover())
+		}()
+		writeErr := wshutil.AdaptOutputChToStream(upstreamProxy.ToRemoteCh, conn)
+		if writeErr != nil {
+			log.Printf("error writing to upstream tcp connection: %v\n", writeErr)
+		}
+	}()
+
+	// goroutine to read from the tcp connection
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouterTCP:ReadLoop", recover())
+		}()
+		defer func() {
+			log.Printf("upstream tcp connection closed, shutting down")
+			wshutil.DoShutdown("", 0, true)
+		}()
+		wshutil.AdaptStreamToMsgCh(conn, upstreamProxy.FromRemoteCh, nil)
+	}()
+
+	// register the tcp connection as upstream
+	router.RegisterUpstream(upstreamProxy)
+
+	// use the router's control RPC to authenticate with upstream
+	controlRpc := router.GetControlRpc()
+
+	// authenticate with the upstream router using the JWT
+	_, err = wshclient.AuthenticateCommand(controlRpc, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRootRoute})
+	if err != nil {
+		return fmt.Errorf("error authenticating with upstream: %v", err)
+	}
+	log.Printf("authenticated with upstream router")
+
+	// fetch and set JWT public key
+	log.Printf("trying to get JWT public key")
+	jwtPublicKeyB64, err := wshclient.GetJwtPublicKeyCommand(controlRpc, nil)
+	if err != nil {
+		return fmt.Errorf("error getting jwt public key: %v", err)
+	}
+	jwtPublicKeyBytes, err := base64.StdEncoding.DecodeString(jwtPublicKeyB64)
+	if err != nil {
+		return fmt.Errorf("error decoding jwt public key: %v", err)
+	}
+	err = wavejwt.SetPublicKey(jwtPublicKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error setting jwt public key: %v", err)
+	}
+	log.Printf("got JWT public key")
+
+	// now setup the connserver rpc client
+	client, bareRouteId, err := setupConnServerRpcClientWithRouter(router, tcpAddr)
+	if err != nil {
+		return fmt.Errorf("error setting up connserver rpc client: %v", err)
+	}
+	wshfs.RpcClient = client
+	wshfs.RpcClientRouteId = bareRouteId
+
+	// set up the local domain socket listener for local wsh commands
+	unixListener, err := MakeRemoteUnixListener()
+	if err != nil {
+		return fmt.Errorf("cannot create unix listener: %v", err)
+	}
+	log.Printf("unix listener started")
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouterTCP:runListener", recover())
+		}()
+		runListener(unixListener, router)
+	}()
+
+	// run the sysinfo loop
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouterTCP:RunSysInfoLoop", recover())
+		}()
+		wshremote.RunSysInfoLoop(client, connServerConnName)
+	}()
+	startJobLogCleanup()
+
+	log.Printf("running server (router-tcp mode), successfully started")
+	select {}
+}
+
 func serverRunNormal(jwtToken string) error {
 	sockName, err := wshutil.ExtractUnverifiedSocketName(jwtToken)
 	if err != nil {
@@ -488,6 +598,20 @@ func serverRun(cmd *cobra.Command, args []string) error {
 		err = serverRunRouterDomainSocket(jwtToken)
 		if err != nil && logFile != nil {
 			fmt.Fprintf(logFile, "serverRunRouterDomainSocket error: %v\n", err)
+		}
+		return err
+	}
+	if connServerRouterTCP {
+		jwtToken, err := askForJwtToken()
+		if err != nil {
+			if logFile != nil {
+				fmt.Fprintf(logFile, "askForJwtToken error: %v\n", err)
+			}
+			return err
+		}
+		err = serverRunRouterTCP(jwtToken)
+		if err != nil && logFile != nil {
+			fmt.Fprintf(logFile, "serverRunRouterTCP error: %v\n", err)
 		}
 		return err
 	}

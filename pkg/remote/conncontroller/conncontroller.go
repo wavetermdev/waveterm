@@ -302,21 +302,20 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
 	client := conn.GetClient()
-	randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
+	// Use TCP forwarding instead of Unix socket forwarding.
+	// sshd creates Unix socket forwards as root:root 0600 (pre-privilege-separation),
+	// making them inaccessible to the connecting user. TCP listeners are kernel-managed
+	// with no file permissions, so this avoids the permission denied error entirely.
+	listener, err := client.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return fmt.Errorf("error generating random string: %w", err)
+		return fmt.Errorf("unable to request tcp connection forward: %v", err)
 	}
-	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
-	conn.Infof(ctx, "generated domain socket name %s\n", sockName)
-	listener, err := client.ListenUnix(sockName)
-	if err != nil {
-		return fmt.Errorf("unable to request connection domain socket: %v", err)
-	}
+	sockName := listener.Addr().String() // e.g. "127.0.0.1:54321"
 	conn.WithLock(func() {
 		conn.DomainSockName = sockName
 		conn.DomainSockListener = listener
 	})
-	conn.Infof(ctx, "successfully connected domain socket\n")
+	conn.Infof(ctx, "successfully connected tcp forward on %s\n", sockName)
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("conncontroller:OpenDomainSocketListener", recover())
