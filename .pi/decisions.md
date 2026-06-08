@@ -186,3 +186,4 @@
 2. SSH port forwarding (spec ready)
 3. Remote file paste (image paste + drag-drop for SSH sessions) — primary use case: pi / Claude Code TUI
 4. MOSH/tsshd support (backlog, if roaming becomes a real pain point)
+
