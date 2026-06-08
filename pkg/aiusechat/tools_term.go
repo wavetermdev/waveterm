@@ -5,6 +5,7 @@ package aiusechat
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -239,6 +240,120 @@ func parseTermCommandOutputInput(input any) (*TermCommandOutputToolInput, error)
 	}
 
 	return result, nil
+}
+
+type TermSendCommandToolInput struct {
+	WidgetId       string `json:"widget_id"`
+	Command        string `json:"command"`
+	WaitForOutput  bool   `json:"wait_for_output,omitempty"`
+}
+
+func parseTermSendCommandInput(input any) (*TermSendCommandToolInput, error) {
+	result := &TermSendCommandToolInput{}
+	if input == nil {
+		return nil, fmt.Errorf("widget_id and command are required")
+	}
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+	if err := json.Unmarshal(inputBytes, result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal input: %w", err)
+	}
+	if result.WidgetId == "" {
+		return nil, fmt.Errorf("widget_id is required")
+	}
+	if result.Command == "" {
+		return nil, fmt.Errorf("command is required")
+	}
+	return result, nil
+}
+
+func GetTermSendCommandToolDefinition(tabId string) uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "term_send_command",
+		DisplayName: "Run Command in Terminal",
+		Description: "Execute a shell command in an open terminal widget. Sends the command text followed by Enter. If wait_for_output is true, returns the terminal scrollback after a short delay so you can see the result. Requires user approval before execution.",
+		ToolLogName: "term:sendcommand",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"widget_id": map[string]any{
+					"type":        "string",
+					"description": "8-character widget ID of the terminal widget to run the command in",
+				},
+				"command": map[string]any{
+					"type":        "string",
+					"description": "The shell command to execute",
+				},
+				"wait_for_output": map[string]any{
+					"type":        "boolean",
+					"description": "If true, wait briefly and return terminal output after the command runs (default: true)",
+				},
+			},
+			"required":             []string{"widget_id", "command"},
+			"additionalProperties": false,
+		},
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
+			parsed, err := parseTermSendCommandInput(input)
+			if err != nil {
+				return fmt.Sprintf("error parsing input: %v", err)
+			}
+			return fmt.Sprintf("running in terminal %s: %s", parsed.WidgetId, parsed.Command)
+		},
+		ToolApproval: func(input any) string {
+			return uctypes.ApprovalNeedsApproval
+		},
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			parsed, err := parseTermSendCommandInput(input)
+			if err != nil {
+				return nil, err
+			}
+
+			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFn()
+
+			fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, parsed.WidgetId)
+			if err != nil {
+				return nil, fmt.Errorf("terminal widget %q not found: %w", parsed.WidgetId, err)
+			}
+
+			inputBytes := []byte(parsed.Command + "\r")
+			inputData64 := base64.StdEncoding.EncodeToString(inputBytes)
+
+			rpcClient := wshclient.GetBareRpcClient()
+			err = wshclient.ControllerInputCommand(
+				rpcClient,
+				wshrpc.CommandBlockInputData{
+					BlockId:     fullBlockId,
+					InputData64: inputData64,
+				},
+				&wshrpc.RpcOpts{},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to send command to terminal: %w", err)
+			}
+
+			waitForOutput := parsed.WaitForOutput || true
+			if waitForOutput {
+				time.Sleep(2 * time.Second)
+				output, err := getTermScrollbackOutput(
+					tabId,
+					parsed.WidgetId,
+					wshrpc.CommandTermGetScrollbackLinesData{
+						LineStart: 0,
+						LineEnd:   50,
+					},
+				)
+				if err != nil {
+					return map[string]any{"sent": true, "note": "command sent; could not read output"}, nil
+				}
+				return map[string]any{"sent": true, "output": output}, nil
+			}
+
+			return map[string]any{"sent": true}, nil
+		},
+	}
 }
 
 func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
