@@ -98,8 +98,13 @@ type SSHConn struct {
 	ReconnectNextAttempt int64
 	ReconnectError       string
 
-	LocalForwardListeners  []net.Listener // local listeners for LocalForward
-	RemoteForwardListeners []net.Listener // remote listeners (from client.Listen) for RemoteForward
+	LocalForwardListeners  []ForwardingRule
+	RemoteForwardListeners []ForwardingRule
+}
+
+type ForwardingRule struct {
+	Listener net.Listener
+	Rule     string // e.g., "127.0.0.1:8080 -> localhost:80"
 }
 
 var ConnServerCmdTemplate = strings.TrimSpace(
@@ -166,6 +171,13 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 		lastActivityBeforeStalledTime = monitor.LastActivityTime.Load()
 		keepAliveSentTime = monitor.KeepAliveSentTime.Load()
 	}
+	var forwardingRules []string
+	for _, rule := range conn.LocalForwardListeners {
+		forwardingRules = append(forwardingRules, "L: "+rule.Rule)
+	}
+	for _, rule := range conn.RemoteForwardListeners {
+		forwardingRules = append(forwardingRules, "R: "+rule.Rule)
+	}
 	return wshrpc.ConnStatus{
 		Status:                        conn.Status,
 		Connected:                     conn.Status == Status_Connected,
@@ -183,6 +195,7 @@ func (conn *SSHConn) DeriveConnStatus() wshrpc.ConnStatus {
 		ReconnectAttempt:              conn.ReconnectAttempt,
 		ReconnectNextAttempt:          conn.ReconnectNextAttempt,
 		ReconnectError:                conn.ReconnectError,
+		ForwardingRules:               forwardingRules,
 	}
 }
 
@@ -240,8 +253,8 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 	var oldListener net.Listener
 	var oldController *ssh.Session
 	var oldMonitor *ConnMonitor
-	var oldLocalForwardListeners []net.Listener
-	var oldRemoteForwardListeners []net.Listener
+	var oldLocalForwardListeners []ForwardingRule
+	var oldRemoteForwardListeners []ForwardingRule
 	conn.WithLock(func() {
 		// If expectedClient is provided and does not match the current Client,
 		// a new connection has been established — do not steal its resources.
@@ -296,11 +309,11 @@ func (conn *SSHConn) closeInternal_withlifecyclelock(expectedClient *ssh.Client)
 		if oldMonitor != nil {
 			oldMonitor.Close()
 		}
-		for _, l := range oldLocalForwardListeners {
-			l.Close()
+		for _, rule := range oldLocalForwardListeners {
+			rule.Listener.Close()
 		}
-		for _, l := range oldRemoteForwardListeners {
-			l.Close()
+		for _, rule := range oldRemoteForwardListeners {
+			rule.Listener.Close()
 		}
 	}()
 }
@@ -1249,18 +1262,21 @@ func (conn *SSHConn) startPortForwarding(ctx context.Context, keywords *wconfig.
 // startLocalForwardTCP starts a TCP LocalForward tunnel.
 // Listens on localAddr, dials dialAddr through the SSH client.
 func (conn *SSHConn) startLocalForwardTCP(ctx context.Context, client *ssh.Client, rule, localAddr, dialAddr string) {
-	go func() {
-		defer panichandler.PanicHandler("conncontroller:localforward", recover())
-		listener, err := net.Listen("tcp", localAddr)
-		if err != nil {
-			conn.Infof(ctx, "LocalForward %s: failed to listen on %s: %v\n", rule, localAddr, err)
-			return
-		}
-		conn.WithLock(func() {
-			conn.LocalForwardListeners = append(conn.LocalForwardListeners, listener)
+	listener, err := net.Listen("tcp", localAddr)
+	if err != nil {
+		conn.Infof(ctx, "LocalForward %s: failed to listen on %s: %v\n", rule, localAddr, err)
+		return
+	}
+	conn.WithLock(func() {
+		conn.LocalForwardListeners = append(conn.LocalForwardListeners, ForwardingRule{
+			Listener: listener,
+			Rule:     fmt.Sprintf("%s -> %s", localAddr, dialAddr),
 		})
-		conn.Infof(ctx, "LocalForward started: %s -> %s\n", localAddr, dialAddr)
-		conn.Debugf(ctx, "[portforward] LocalForward listening: %s -> %s", localAddr, dialAddr)
+	})
+	conn.Infof(ctx, "LocalForward started: %s -> %s\n", localAddr, dialAddr)
+	conn.Debugf(ctx, "[portforward] LocalForward listening: %s -> %s", localAddr, dialAddr)
+	go func() {
+		defer panichandler.PanicHandler("conncontroller:localforward-accept", recover())
 		for {
 			localConn, err := listener.Accept()
 			if err != nil {
@@ -1287,18 +1303,21 @@ func (conn *SSHConn) startLocalForwardTCP(ctx context.Context, client *ssh.Clien
 // startRemoteForwardTCP starts a TCP RemoteForward tunnel.
 // Listens on remoteAddr via SSH client, dials localAddr locally.
 func (conn *SSHConn) startRemoteForwardTCP(ctx context.Context, client *ssh.Client, rule, remoteAddr, localAddr string) {
-	go func() {
-		defer panichandler.PanicHandler("conncontroller:remoteforward", recover())
-		listener, err := client.Listen("tcp", remoteAddr)
-		if err != nil {
-			conn.Infof(ctx, "RemoteForward %s: failed to listen on %s: %v\n", rule, remoteAddr, err)
-			return
-		}
-		conn.WithLock(func() {
-			conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, listener)
+	listener, err := client.Listen("tcp", remoteAddr)
+	if err != nil {
+		conn.Infof(ctx, "RemoteForward %s: failed to listen on %s: %v\n", rule, remoteAddr, err)
+		return
+	}
+	conn.WithLock(func() {
+		conn.RemoteForwardListeners = append(conn.RemoteForwardListeners, ForwardingRule{
+			Listener: listener,
+			Rule:     fmt.Sprintf("%s -> %s", remoteAddr, localAddr),
 		})
-		conn.Infof(ctx, "RemoteForward started: %s -> %s\n", remoteAddr, localAddr)
-		conn.Debugf(ctx, "[portforward] RemoteForward listening: %s -> %s", remoteAddr, localAddr)
+	})
+	conn.Infof(ctx, "RemoteForward started: %s -> %s\n", remoteAddr, localAddr)
+	conn.Debugf(ctx, "[portforward] RemoteForward listening: %s -> %s", remoteAddr, localAddr)
+	go func() {
+		defer panichandler.PanicHandler("conncontroller:remoteforward-accept", recover())
 		for {
 			remoteConn, err := listener.Accept()
 			if err != nil {

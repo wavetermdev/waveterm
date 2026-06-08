@@ -112,6 +112,12 @@
   - [x] Update call sites for new `ConnectToClient` signature
   - [x] Add tests
   - [x] Update documentation (`docs/docs/connections.mdx`)
+- [x] **Port forwarding UI status indicators** (spec: [[.pi/specs/portforwarding-ui.md]]) — completed 2026-06-07
+  - [x] Add `ForwardingRules []string` to `ConnStatus` struct (no new RPC needed)
+  - [x] Populate in `DeriveConnStatus()` from `LocalForwardListeners`/`RemoteForwardListeners`
+  - [x] Create `port-forward-status.tsx` component (plug icon + badge + tooltip)
+  - [x] Wire into `blockframe-header.tsx` between DurableSessionFlyover and badge
+  - [x] Go build passes, Go tests pass, TypeScript compiles cleanly
 - [ ] **Remote file paste** — image paste + drag-drop for remote sessions
   - Primary use case: pasting screenshots and dragging files when using pi or Claude Code's TUI over SSH
   - Currently pastes local file paths that don't exist on the remote server

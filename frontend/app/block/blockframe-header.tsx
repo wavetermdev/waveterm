@@ -10,6 +10,7 @@ import {
 } from "@/app/block/blockutil";
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
+import { PortForwardStatusIndicator } from "@/app/block/port-forward-status";
 import { getBlockBadgeAtom } from "@/app/store/badge";
 import {
     createBlockSplitHorizontally,
@@ -273,6 +274,14 @@ const BlockFrame_Header = ({
                     viewModel={viewModel}
                     placement="bottom"
                     divClassName="iconbutton disabled text-[13px] ml-[-4px]"
+                />
+            )}
+            {useTermHeader && (
+                <PortForwardStatusIndicator
+                    key="port-forward-status"
+                    blockId={nodeModel.blockId}
+                    placement="bottom"
+                    divClassName="iconbutton disabled text-[13px] flex items-center gap-0.5"
                 />
             )}
             {useTermHeader && badge && (
