@@ -62,6 +62,8 @@ const (
 	MetaKey_CmdInitScriptPwsh                = "cmd:initscript.pwsh"
 	MetaKey_CmdInitScriptFish                = "cmd:initscript.fish"
 
+	MetaKey_SessionDaemonId                  = "session:daemonid"
+
 	MetaKey_AiClear                          = "ai:*"
 	MetaKey_AiPresetKey                      = "ai:preset"
 	MetaKey_AiApiType                        = "ai:apitype"

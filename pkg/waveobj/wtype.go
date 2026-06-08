@@ -31,7 +31,8 @@ const (
 	OType_MainServer  = "mainserver"
 	OType_Job         = "job"
 	OType_Temp        = "temp"
-	OType_Builder     = "builder" // not persisted to DB
+	OType_Builder       = "builder" // not persisted to DB
+	OType_SessionDaemon = "sessiondaemon"
 )
 
 var ValidOTypes = map[string]bool{
@@ -45,6 +46,7 @@ var ValidOTypes = map[string]bool{
 	OType_Job:         true,
 	OType_Temp:        true,
 	OType_Builder:     true,
+	OType_SessionDaemon: true,
 }
 
 type WaveObjUpdate struct {
@@ -354,6 +356,26 @@ func (*Job) GetOType() string {
 	return OType_Job
 }
 
+type SessionDaemon struct {
+	OID     string `json:"oid"`
+	Version int    `json:"version"`
+
+	Name        string      `json:"name,omitempty"`
+	Connection  string      `json:"connection,omitempty"`
+	JobId       string      `json:"jobid,omitempty"`
+	IsAnonymous bool        `json:"isanonymous,omitempty"`
+	Status      string      `json:"status,omitempty"`
+	Cwd         string      `json:"cwd,omitempty"`
+	CreatedAt   int64       `json:"createdat,omitempty"`
+	IdleTimeout int64       `json:"idletimeout,omitempty"`
+	IdleSince   int64       `json:"idlesince,omitempty"` // ms timestamp when last block detached (0 = has attached blocks)
+	Meta        MetaMapType `json:"meta"`
+}
+
+func (*SessionDaemon) GetOType() string {
+	return OType_SessionDaemon
+}
+
 func AllWaveObjTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeOf(&Client{}),
@@ -364,6 +386,7 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&LayoutState{}),
 		reflect.TypeOf(&MainServer{}),
 		reflect.TypeOf(&Job{}),
+		reflect.TypeOf(&SessionDaemon{}),
 	}
 }
 

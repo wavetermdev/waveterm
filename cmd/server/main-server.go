@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
+	"github.com/wavetermdev/waveterm/pkg/sessiondaemon"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -525,6 +526,10 @@ func main() {
 		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
+	err = wstore.RunSessionDaemonMigration(context.Background())
+	if err != nil {
+		log.Printf("error running session daemon migration: %v\n", err)
+	}
 	panichandler.PanicTelemetryHandler = panicTelemetryHandler
 	go func() {
 		defer func() {
@@ -553,6 +558,13 @@ func main() {
 		log.Printf("error initializing mainserver: %v\n", err)
 		return
 	}
+
+	ctx := context.Background()
+	err = sessiondaemon.Manager.InitFromDB(ctx)
+	if err != nil {
+		log.Printf("error initializing session daemon manager: %v\n", err)
+	}
+	sessiondaemon.Manager.StartIdleReaper(ctx)
 
 	err = shellutil.FixupWaveZshHistory()
 	if err != nil {

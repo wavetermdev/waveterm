@@ -77,6 +77,7 @@ type TermWrapOptions = {
 export class TermWrap {
     tabId: string;
     blockId: string;
+    zoneId: string;
     ptyOffset: number;
     dataBytesProcessed: number;
     terminal: Terminal;
@@ -132,6 +133,7 @@ export class TermWrap {
         this.loaded = false;
         this.tabId = tabId;
         this.blockId = blockId;
+        this.zoneId = blockId;
         this.sendDataHandler = waveOptions.sendDataHandler;
         this.nodeModel = waveOptions.nodeModel;
         this.ptyOffset = 0;
@@ -325,7 +327,26 @@ export class TermWrap {
     }
 
     getZoneId(): string {
-        return this.blockId;
+        return this.zoneId;
+    }
+
+    async attachToDaemon(jobId: string): Promise<void> {
+        if (this.mainFileSubject) {
+            this.mainFileSubject.release();
+        }
+        this.zoneId = jobId;
+        this.mainFileSubject = getFileSubject(this.getZoneId(), TermFileName);
+        this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
+        await this.loadInitialTerminalData();
+    }
+
+    detachFromDaemon(): void {
+        if (this.mainFileSubject) {
+            this.mainFileSubject.release();
+        }
+        this.zoneId = this.blockId;
+        this.mainFileSubject = getFileSubject(this.getZoneId(), TermFileName);
+        this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
     }
 
     setCursorStyle(cursorStyle: string) {

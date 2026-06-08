@@ -635,6 +635,46 @@ declare global {
         builderid: string;
     };
 
+    // wshrpc.CommandSessionAttachData
+    type CommandSessionAttachData = {
+        daemonid: string;
+        blockid: string;
+    };
+
+    // wshrpc.CommandSessionCreateData
+    type CommandSessionCreateData = {
+        name?: string;
+        connection?: string;
+        idletimeout?: number;
+    };
+
+    // wshrpc.CommandSessionDeleteData
+    type CommandSessionDeleteData = {
+        daemonid: string;
+    };
+
+    // wshrpc.CommandSessionDetachData
+    type CommandSessionDetachData = {
+        daemonid: string;
+        blockid?: string;
+    };
+
+    // wshrpc.CommandSessionInfoData
+    type CommandSessionInfoData = {
+        daemonid: string;
+    };
+
+    // wshrpc.CommandSessionListData
+    type CommandSessionListData = {
+        showall?: boolean;
+    };
+
+    // wshrpc.CommandSessionTagData
+    type CommandSessionTagData = {
+        daemonid: string;
+        name: string;
+    };
+
     // wshrpc.CommandSetMetaData
     type CommandSetMetaData = {
         oref: ORef;
@@ -1133,6 +1173,7 @@ declare global {
         "cmd:initscript.zsh"?: string;
         "cmd:initscript.pwsh"?: string;
         "cmd:initscript.fish"?: string;
+        "session:daemonid"?: string;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -1372,6 +1413,33 @@ declare global {
     type SecretMeta = {
         desc: string;
         optional: boolean;
+    };
+
+    // waveobj.SessionDaemon
+    type SessionDaemon = WaveObj & {
+        name?: string;
+        connection?: string;
+        jobid?: string;
+        isanonymous?: boolean;
+        status?: string;
+        cwd?: string;
+        createdat?: number;
+        idletimeout?: number;
+        idlesince?: number;
+    };
+
+    // wshrpc.SessionInfoRtnData
+    type SessionInfoRtnData = {
+        daemonid: string;
+        name: string;
+        connection: string;
+        jobid?: string;
+        isanonymous: boolean;
+        status: string;
+        createdat: number;
+        idletimeout: number;
+        idlesince?: number;
+        blocks?: string[];
     };
 
     // wconfig.SettingsType

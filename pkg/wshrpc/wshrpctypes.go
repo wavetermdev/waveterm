@@ -211,6 +211,15 @@ type WshRpcInterface interface {
 	JobControllerDetachJobCommand(ctx context.Context, jobId string) error
 	JobControllerGetAllJobManagerStatusCommand(ctx context.Context) ([]*JobManagerStatusUpdate, error)
 	BlockJobStatusCommand(ctx context.Context, blockId string) (*BlockJobStatusData, error)
+
+	// session daemon
+	SessionCreateCommand(ctx context.Context, data CommandSessionCreateData) (*SessionInfoRtnData, error)
+	SessionDeleteCommand(ctx context.Context, data CommandSessionDeleteData) error
+	SessionListCommand(ctx context.Context, data CommandSessionListData) ([]SessionInfoRtnData, error)
+	SessionAttachCommand(ctx context.Context, data CommandSessionAttachData) error
+	SessionDetachCommand(ctx context.Context, data CommandSessionDetachData) error
+	SessionInfoCommand(ctx context.Context, data CommandSessionInfoData) (*SessionInfoRtnData, error)
+	SessionTagCommand(ctx context.Context, data CommandSessionTagData) error
 }
 
 // for frontend
@@ -924,4 +933,51 @@ type CommandRemoteProcessListData struct {
 type CommandRemoteProcessSignalData struct {
 	Pid    int32  `json:"pid"`
 	Signal string `json:"signal"`
+}
+
+// session daemon
+type CommandSessionCreateData struct {
+	Name        string `json:"name,omitempty"`
+	Connection  string `json:"connection,omitempty"`
+	IdleTimeout int64  `json:"idletimeout,omitempty"`
+}
+
+type CommandSessionDeleteData struct {
+	DaemonId string `json:"daemonid"`
+}
+
+type CommandSessionListData struct {
+	ShowAll bool `json:"showall,omitempty"`
+}
+
+type CommandSessionAttachData struct {
+	DaemonId string `json:"daemonid"`
+	BlockId  string `json:"blockid"`
+}
+
+type CommandSessionDetachData struct {
+	DaemonId string `json:"daemonid"`
+	BlockId  string `json:"blockid,omitempty"`
+}
+
+type CommandSessionInfoData struct {
+	DaemonId string `json:"daemonid"`
+}
+
+type CommandSessionTagData struct {
+	DaemonId string `json:"daemonid"`
+	Name     string `json:"name"`
+}
+
+type SessionInfoRtnData struct {
+	DaemonId    string   `json:"daemonid"`
+	Name        string   `json:"name"`
+	Connection  string   `json:"connection"`
+	JobId       string   `json:"jobid,omitempty"`
+	IsAnonymous bool     `json:"isanonymous"`
+	Status      string   `json:"status"`
+	CreatedAt   int64    `json:"createdat"`
+	IdleTimeout int64    `json:"idletimeout"`
+	IdleSince   int64    `json:"idlesince,omitempty"`
+	Blocks      []string `json:"blocks,omitempty"`
 }

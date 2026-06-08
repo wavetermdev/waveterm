@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
@@ -37,6 +38,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
+	"github.com/wavetermdev/waveterm/pkg/sessiondaemon"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -1573,4 +1575,183 @@ func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId st
 
 func (ws *WshServer) BlockJobStatusCommand(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
 	return jobcontroller.GetBlockJobStatus(ctx, blockId)
+}
+
+func (ws *WshServer) SessionCreateCommand(ctx context.Context, data wshrpc.CommandSessionCreateData) (*wshrpc.SessionInfoRtnData, error) {
+	dbDaemon := &waveobj.SessionDaemon{
+		OID:         uuid.New().String(),
+		Name:        data.Name,
+		Connection:  data.Connection,
+		IsAnonymous: data.Name == "",
+		Status:      "init",
+		CreatedAt:   time.Now().UnixMilli(),
+		IdleTimeout: data.IdleTimeout,
+	}
+	if dbDaemon.IsAnonymous {
+		dbDaemon.IdleTimeout = sessiondaemon.DefaultAnonymousIdleTimeout
+	} else if dbDaemon.IdleTimeout <= 0 {
+		dbDaemon.IdleTimeout = sessiondaemon.DefaultNamedIdleTimeout
+	}
+
+	err := wstore.DBInsert(ctx, dbDaemon)
+	if err != nil {
+		return nil, fmt.Errorf("insert session daemon: %w", err)
+	}
+
+	_, err = sessiondaemon.Manager.GetOrCreate(ctx, dbDaemon)
+	if err != nil {
+		return nil, fmt.Errorf("create session daemon in manager: %w", err)
+	}
+
+	return buildSessionInfoRtnData(ctx, dbDaemon)
+}
+
+func (ws *WshServer) SessionDeleteCommand(ctx context.Context, data wshrpc.CommandSessionDeleteData) error {
+	_, err := wstore.DBGet[*waveobj.SessionDaemon](ctx, data.DaemonId)
+	if err != nil {
+		return fmt.Errorf("session daemon %q not found: %w", data.DaemonId, err)
+	}
+
+	memDaemon := sessiondaemon.Manager.Get(data.DaemonId)
+	if memDaemon != nil {
+		memDaemon.Stop(ctx)
+		sessiondaemon.Manager.Remove(data.DaemonId)
+	}
+
+	err = wstore.DBUpdateFn(ctx, data.DaemonId, func(sd *waveobj.SessionDaemon) {
+		sd.Status = "done"
+	})
+	if err != nil {
+		return fmt.Errorf("update session daemon status: %w", err)
+	}
+	return nil
+}
+
+func (ws *WshServer) SessionListCommand(ctx context.Context, data wshrpc.CommandSessionListData) ([]wshrpc.SessionInfoRtnData, error) {
+	allDaemons, err := wstore.DBGetAllObjsByType[*waveobj.SessionDaemon](ctx, waveobj.OType_SessionDaemon)
+	if err != nil {
+		return nil, fmt.Errorf("list session daemons: %w", err)
+	}
+
+	var rtn []wshrpc.SessionInfoRtnData
+	for _, dbDaemon := range allDaemons {
+		if dbDaemon.IsAnonymous && !data.ShowAll {
+			continue
+		}
+		info, err := buildSessionInfoRtnData(ctx, dbDaemon)
+		if err != nil {
+			return nil, err
+		}
+		rtn = append(rtn, *info)
+	}
+	sort.Slice(rtn, func(i, j int) bool {
+		return rtn[i].CreatedAt > rtn[j].CreatedAt
+	})
+	return rtn, nil
+}
+
+func (ws *WshServer) SessionAttachCommand(ctx context.Context, data wshrpc.CommandSessionAttachData) error {
+	_, err := wstore.DBGet[*waveobj.SessionDaemon](ctx, data.DaemonId)
+	if err != nil {
+		return fmt.Errorf("session daemon %q not found: %w", data.DaemonId, err)
+	}
+
+	sessiondaemon.Manager.AttachBlock(ctx, data.DaemonId, data.BlockId)
+
+	err = wstore.DBUpdateFn(ctx, data.BlockId, func(block *waveobj.Block) {
+		block.Meta[waveobj.MetaKey_SessionDaemonId] = data.DaemonId
+	})
+	if err != nil {
+		return fmt.Errorf("update block meta: %w", err)
+	}
+	return nil
+}
+
+func (ws *WshServer) SessionDetachCommand(ctx context.Context, data wshrpc.CommandSessionDetachData) error {
+	_, err := wstore.DBGet[*waveobj.SessionDaemon](ctx, data.DaemonId)
+	if err != nil {
+		return fmt.Errorf("session daemon %q not found: %w", data.DaemonId, err)
+	}
+
+	blockIds := []string{}
+	if data.BlockId != "" {
+		blockIds = append(blockIds, data.BlockId)
+	} else {
+		blockIds = sessiondaemon.Manager.GetBlocksForDaemon(data.DaemonId)
+	}
+
+	for _, blockId := range blockIds {
+		sessiondaemon.Manager.DetachBlock(ctx, data.DaemonId, blockId)
+		err = wstore.DBUpdateFn(ctx, blockId, func(block *waveobj.Block) {
+			delete(block.Meta, waveobj.MetaKey_SessionDaemonId)
+		})
+		if err != nil {
+			return fmt.Errorf("update block meta: %w", err)
+		}
+		resyncBlockController(ctx, blockId)
+	}
+	return nil
+}
+
+func (ws *WshServer) SessionInfoCommand(ctx context.Context, data wshrpc.CommandSessionInfoData) (*wshrpc.SessionInfoRtnData, error) {
+	dbDaemon, err := wstore.DBGet[*waveobj.SessionDaemon](ctx, data.DaemonId)
+	if err != nil {
+		return nil, fmt.Errorf("session daemon %q not found: %w", data.DaemonId, err)
+	}
+	return buildSessionInfoRtnData(ctx, dbDaemon)
+}
+
+func (ws *WshServer) SessionTagCommand(ctx context.Context, data wshrpc.CommandSessionTagData) error {
+	_, err := wstore.DBGet[*waveobj.SessionDaemon](ctx, data.DaemonId)
+	if err != nil {
+		return fmt.Errorf("session daemon %q not found: %w", data.DaemonId, err)
+	}
+
+	memDaemon := sessiondaemon.Manager.Get(data.DaemonId)
+	if memDaemon != nil {
+		memDaemon.Lock.Lock()
+		memDaemon.Name = data.Name
+		memDaemon.Lock.Unlock()
+	}
+
+	err = wstore.DBUpdateFn(ctx, data.DaemonId, func(sd *waveobj.SessionDaemon) {
+		sd.Name = data.Name
+		sd.IsAnonymous = false
+	})
+	if err != nil {
+		return fmt.Errorf("update session daemon: %w", err)
+	}
+	return nil
+}
+
+func buildSessionInfoRtnData(ctx context.Context, dbDaemon *waveobj.SessionDaemon) (*wshrpc.SessionInfoRtnData, error) {
+	blocks := sessiondaemon.Manager.GetBlocksForDaemon(dbDaemon.OID)
+	return &wshrpc.SessionInfoRtnData{
+		DaemonId:    dbDaemon.OID,
+		Name:        dbDaemon.Name,
+		Connection:  dbDaemon.Connection,
+		JobId:       dbDaemon.JobId,
+		IsAnonymous: dbDaemon.IsAnonymous,
+		Status:      dbDaemon.Status,
+		CreatedAt:   dbDaemon.CreatedAt,
+		IdleTimeout: dbDaemon.IdleTimeout,
+		IdleSince:   dbDaemon.IdleSince,
+		Blocks:      blocks,
+	}, nil
+}
+
+func resyncBlockController(ctx context.Context, blockId string) {
+	tabs, err := wstore.DBGetAllObjsByType[*waveobj.Tab](ctx, waveobj.OType_Tab)
+	if err != nil {
+		log.Printf("[sessiondaemon] warning: error getting tabs for resync: %v", err)
+		return
+	}
+	for _, tab := range tabs {
+		for _, bid := range tab.BlockIds {
+			if bid == blockId {
+				blockcontroller.ResyncController(ctx, tab.OID, blockId, nil, true)
+				return
+			}
+		}
+	}
 }

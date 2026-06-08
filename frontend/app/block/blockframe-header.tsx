@@ -10,6 +10,7 @@ import {
 } from "@/app/block/blockutil";
 import { ConnectionButton } from "@/app/block/connectionbutton";
 import { DurableSessionFlyover } from "@/app/block/durable-session-flyover";
+import { SessionDaemonIndicator } from "@/app/block/session-daemon-indicator";
 import { getBlockBadgeAtom } from "@/app/store/badge";
 import {
     createBlockSplitHorizontally,
@@ -280,6 +281,7 @@ const BlockFrame_Header = ({
                     divClassName="iconbutton disabled text-[13px] ml-[-4px]"
                 />
             )}
+            <SessionDaemonIndicator blockId={nodeModel.blockId} useTermHeader={useTermHeader} />
             {useTermHeader && badge && (
                 <div className="pointer-events-none flex items-center px-1" style={{ color: badge.color || "#fbbf24" }}>
                     <i className={makeIconClass(badge.icon, true, { defaultIcon: "circle-small" })} />

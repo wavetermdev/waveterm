@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
@@ -187,8 +186,17 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		return nil
 	}
 
-	// Determine if we should use DurableShellController vs ShellController
-	shouldUseDurableShellController := controllerName == BlockController_Shell && jobcontroller.IsBlockIdTermDurable(blockId)
+	// Check for SessionDaemon controller
+	daemonId := blockData.Meta.GetString(waveobj.MetaKey_SessionDaemonId, "")
+
+	// Auto-create anonymous daemon for SSH blocks without daemonid
+	if daemonId == "" && controllerName == BlockController_Shell && !conncontroller.IsLocalConnName(connName) && !conncontroller.IsWslConnName(connName) {
+		newDaemonId, err := autoCreateSessionDaemon(ctx, blockId, blockData.Meta, connName, rtOpts)
+		if err != nil {
+			return fmt.Errorf("auto-create session daemon: %w", err)
+		}
+		daemonId = newDaemonId
+	}
 
 	// Check if we need to morph controller type
 	if existing != nil {
@@ -196,13 +204,11 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 
 		switch existing.(type) {
 		case *ShellController:
-			if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
-				needsReplace = true
-			} else if shouldUseDurableShellController {
+			if daemonId != "" || (controllerName != BlockController_Shell && controllerName != BlockController_Cmd) {
 				needsReplace = true
 			}
-		case *DurableShellController:
-			if !shouldUseDurableShellController {
+		case *SessionDaemonController:
+			if daemonId == "" {
 				needsReplace = true
 			}
 		case *TsunamiController:
@@ -242,17 +248,18 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	if existing != nil {
 		controller = existing
 	} else {
-		// Create new controller based on type
-		switch controllerName {
-		case BlockController_Shell, BlockController_Cmd:
-			if shouldUseDurableShellController {
-				controller = MakeDurableShellController(tabId, blockId, controllerName, connName)
-			} else {
-				controller = MakeShellController(tabId, blockId, controllerName, connName)
-			}
+		switch {
+		case daemonId != "":
+			sdc := MakeSessionDaemonController(tabId, blockId, connName)
+			sdc.DaemonId = daemonId
+			controller = sdc
 			registerController(blockId, controller)
 
-		case BlockController_Tsunami:
+		case controllerName == BlockController_Shell || controllerName == BlockController_Cmd:
+			controller = MakeShellController(tabId, blockId, controllerName, connName)
+			registerController(blockId, controller)
+
+		case controllerName == BlockController_Tsunami:
 			controller = MakeTsunamiController(tabId, blockId, connName)
 			registerController(blockId, controller)
 

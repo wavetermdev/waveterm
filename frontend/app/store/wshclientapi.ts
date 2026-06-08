@@ -834,6 +834,48 @@ export class RpcApiType {
         return client.wshRpcCall("sendtelemetry", null, opts);
     }
 
+    // command "sessionattach" [call]
+    SessionAttachCommand(client: WshClient, data: CommandSessionAttachData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessionattach", data, opts);
+        return client.wshRpcCall("sessionattach", data, opts);
+    }
+
+    // command "sessioncreate" [call]
+    SessionCreateCommand(client: WshClient, data: CommandSessionCreateData, opts?: RpcOpts): Promise<SessionInfoRtnData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessioncreate", data, opts);
+        return client.wshRpcCall("sessioncreate", data, opts);
+    }
+
+    // command "sessiondelete" [call]
+    SessionDeleteCommand(client: WshClient, data: CommandSessionDeleteData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessiondelete", data, opts);
+        return client.wshRpcCall("sessiondelete", data, opts);
+    }
+
+    // command "sessiondetach" [call]
+    SessionDetachCommand(client: WshClient, data: CommandSessionDetachData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessiondetach", data, opts);
+        return client.wshRpcCall("sessiondetach", data, opts);
+    }
+
+    // command "sessioninfo" [call]
+    SessionInfoCommand(client: WshClient, data: CommandSessionInfoData, opts?: RpcOpts): Promise<SessionInfoRtnData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessioninfo", data, opts);
+        return client.wshRpcCall("sessioninfo", data, opts);
+    }
+
+    // command "sessionlist" [call]
+    SessionListCommand(client: WshClient, data: CommandSessionListData, opts?: RpcOpts): Promise<SessionInfoRtnData[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessionlist", data, opts);
+        return client.wshRpcCall("sessionlist", data, opts);
+    }
+
+    // command "sessiontag" [call]
+    SessionTagCommand(client: WshClient, data: CommandSessionTagData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "sessiontag", data, opts);
+        return client.wshRpcCall("sessiontag", data, opts);
+    }
+
     // command "setblockfocus" [call]
     SetBlockFocusCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "setblockfocus", data, opts);

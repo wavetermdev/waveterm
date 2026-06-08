@@ -30,7 +30,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -792,23 +791,7 @@ func doWFSAppend(ctx context.Context, oref waveobj.ORef, fileName string, data [
 }
 
 func handleAppendJobFile(ctx context.Context, jobId string, fileName string, data []byte) error {
-	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Job, jobId), fileName, data)
-	if err != nil {
-		return fmt.Errorf("error appending to job file: %w", err)
-	}
-
-	job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
-	if err != nil {
-		return fmt.Errorf("error getting job: %w", err)
-	}
-	if job != nil && job.AttachedBlockId != "" {
-		err = doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, job.AttachedBlockId), fileName, data)
-		if err != nil {
-			return fmt.Errorf("error appending to block file: %w", err)
-		}
-	}
-
-	return nil
+	return doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Job, jobId), fileName, data)
 }
 
 func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *streamclient.Reader) {
@@ -1345,59 +1328,6 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 }
 
 // this function must be kept up to date with getBlockTermDurableAtom in frontend/app/store/global.ts
-func IsBlockTermDurable(block *waveobj.Block) bool {
-	if block == nil {
-		return false
-	}
-
-	// Check if view is "term", and controller is "shell"
-	if block.Meta.GetString(waveobj.MetaKey_View, "") != "term" || block.Meta.GetString(waveobj.MetaKey_Controller, "") != "shell" {
-		return false
-	}
-
-	// 1. Check if block has a JobId
-	if block.JobId != "" {
-		return true
-	}
-
-	// 2. Check if connection is local or WSL (not durable)
-	connName := block.Meta.GetString(waveobj.MetaKey_Connection, "")
-	if conncontroller.IsLocalConnName(connName) || conncontroller.IsWslConnName(connName) {
-		return false
-	}
-
-	// 3. Check config hierarchy: blockmeta → connection → global (default true)
-	// Check block meta first
-	if val, exists := block.Meta[waveobj.MetaKey_TermDurable]; exists {
-		if boolVal, ok := val.(bool); ok {
-			return boolVal
-		}
-	}
-	// Check connection config
-	fullConfig := wconfig.GetWatcher().GetFullConfig()
-	if connName != "" {
-		if connConfig, exists := fullConfig.Connections[connName]; exists {
-			if connConfig.TermDurable != nil {
-				return *connConfig.TermDurable
-			}
-		}
-	}
-	// Check global settings
-	if fullConfig.Settings.TermDurable != nil {
-		return *fullConfig.Settings.TermDurable
-	}
-	// Default to true for non-local connections
-	return true
-}
-
-func IsBlockIdTermDurable(blockId string) bool {
-	block, err := wstore.DBGet[*waveobj.Block](context.Background(), blockId)
-	if err != nil || block == nil {
-		return false
-	}
-	return IsBlockTermDurable(block)
-}
-
 func DeleteJob(ctx context.Context, jobId string) error {
 	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
 	jobTerminationMessageWritten.Delete(jobId)
