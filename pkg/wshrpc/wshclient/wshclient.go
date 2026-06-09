@@ -464,12 +464,6 @@ func GetTempDirCommand(w *wshutil.WshRpc, data wshrpc.CommandGetTempDirData, opt
 	return resp, err
 }
 
-// command "getupdatechannel", wshserver.GetUpdateChannelCommand
-func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
-	resp, err := sendRpcRequestCallHelper[string](w, "getupdatechannel", nil, opts)
-	return resp, err
-}
-
 // command "getvar", wshserver.GetVarCommand
 func GetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) (*wshrpc.CommandVarResponseData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandVarResponseData](w, "getvar", data, opts)

@@ -468,12 +468,6 @@ export class RpcApiType {
         return client.wshRpcCall("gettempdir", data, opts);
     }
 
-    // command "getupdatechannel" [call]
-    GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
-        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getupdatechannel", null, opts);
-        return client.wshRpcCall("getupdatechannel", null, opts);
-    }
-
     // command "getvar" [call]
     GetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<CommandVarResponseData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getvar", data, opts);

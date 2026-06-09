@@ -13,7 +13,6 @@ import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { buildTabBarContextMenu, buildTabContextMenu } from "./tabcontextmenu";
-import { UpdateStatusBanner } from "./updatebanner";
 import { VTab, VTabItem } from "./vtab";
 import { VTabBarEnv } from "./vtabbarenv";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
@@ -42,7 +41,6 @@ const MacOSHeader = memo(() => {
                 <Tooltip content="Workspace Switcher" placement="bottom" hideOnClick divClassName="flex items-center">
                     <WorkspaceSwitcher />
                 </Tooltip>
-                <UpdateStatusBanner />
             </div>
         </>
     );

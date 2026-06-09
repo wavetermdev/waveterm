@@ -91,7 +91,6 @@
         "css-tree": "^3.1.0",
         "dayjs": "^1.11.19",
         "debug": "^4.4.3",
-        "electron-updater": "^6.6",
         "env-paths": "^3.0.0",
         "fast-average-color": "^9.5.0",
         "htl": "^0.3.1",

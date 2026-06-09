@@ -20,8 +20,6 @@ import {
     WaveBrowserWindow,
 } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
-import { updater } from "./updater";
-
 type AppMenuCallbacks = {
     createNewWaveWindow: () => Promise<void>;
     relaunchBrowserWindows: () => Promise<void>;
@@ -177,12 +175,6 @@ function makeAppMenuItems(webContents: electron.WebContents): Electron.MenuItemC
             label: "About Wave Terminal",
             click: (_, window) => {
                 (getWindowWebContents(window) ?? webContents)?.send("menu-item-about");
-            },
-        },
-        {
-            label: "Check for Updates",
-            click: () => {
-                fireAndForget(() => updater?.checkForUpdates(true));
             },
         },
         { type: "separator" },

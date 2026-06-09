@@ -139,7 +139,6 @@ type WshRpcInterface interface {
 	GetSecretsLinuxStorageBackendCommand(ctx context.Context) (string, error)
 
 	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
-	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
 	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)

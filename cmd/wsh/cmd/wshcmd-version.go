@@ -11,7 +11,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var versionVerbose bool
@@ -46,19 +45,13 @@ func runVersionCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	updateChannel, err := wshclient.GetUpdateChannelCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000, Route: wshutil.ElectronRoute})
-	if err != nil {
-		return err
-	}
-
 	if versionJSON {
 		info := map[string]interface{}{
-			"version":       resp.Version,
-			"clientid":      resp.ClientId,
-			"buildtime":     resp.BuildTime,
-			"configdir":     resp.ConfigDir,
-			"datadir":       resp.DataDir,
-			"updatechannel": updateChannel,
+			"version":   resp.Version,
+			"clientid":  resp.ClientId,
+			"buildtime": resp.BuildTime,
+			"configdir": resp.ConfigDir,
+			"datadir":   resp.DataDir,
 		}
 		outBArr, err := json.MarshalIndent(info, "", "  ")
 		if err != nil {
@@ -73,6 +66,5 @@ func runVersionCmd(cmd *cobra.Command, args []string) error {
 	fmt.Printf("clientid:  %s\n", resp.ClientId)
 	fmt.Printf("configdir: %s\n", resp.ConfigDir)
 	fmt.Printf("datadir:   %s\n", resp.DataDir)
-	fmt.Printf("update-channel: %s\n", updateChannel)
 	return nil
 }

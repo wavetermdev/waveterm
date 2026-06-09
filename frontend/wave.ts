@@ -116,7 +116,6 @@ async function reinitWave() {
     document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
     globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
-    globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
     setTimeout(() => {
         globalRefocus();
     }, 50);

@@ -15,11 +15,10 @@ import { Modal } from "./modal";
 
 interface AboutModalVProps {
     versionString: string;
-    updaterChannel: string;
     onClose: () => void;
 }
 
-const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProps) => {
+const AboutModalV = ({ versionString, onClose }: AboutModalVProps) => {
     const currentDate = new Date();
 
     return (
@@ -37,8 +36,6 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
                     Client Version {versionString}
-                    <br />
-                    Update Channel: {updaterChannel}
                 </div>
                 <div className="grid grid-cols-2 gap-[10px] self-stretch w-full">
                     <a
@@ -87,7 +84,6 @@ AboutModalV.displayName = "AboutModalV";
 const AboutModal = () => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const versionString = `${fullConfig?.version ?? ""} (${isDev() ? "dev-" : ""}${fullConfig?.buildtime ?? ""})`;
-    const updaterChannel = fullConfig?.settings?.["autoupdate:channel"] ?? "latest";
 
     useEffect(() => {
         fireAndForget(async () => {        });
@@ -96,7 +92,6 @@ const AboutModal = () => {
     return (
         <AboutModalV
             versionString={versionString}
-            updaterChannel={updaterChannel}
             onClose={() => modalsModel.popModal()}
         />
     );

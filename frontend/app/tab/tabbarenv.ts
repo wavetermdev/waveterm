@@ -9,7 +9,6 @@ export type TabBarEnv = WaveEnvSubset<{
         closeTab: WaveEnv["electron"]["closeTab"];
         setActiveTab: WaveEnv["electron"]["setActiveTab"];
         showWorkspaceAppMenu: WaveEnv["electron"]["showWorkspaceAppMenu"];
-        installAppUpdate: WaveEnv["electron"]["installAppUpdate"];
     };
     rpc: {        SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
         SetMetaCommand: WaveEnv["rpc"]["SetMetaCommand"];
@@ -23,7 +22,6 @@ export type TabBarEnv = WaveEnvSubset<{
         isFullScreen: WaveEnv["atoms"]["isFullScreen"];
         zoomFactorAtom: WaveEnv["atoms"]["zoomFactorAtom"];
         reinitVersion: WaveEnv["atoms"]["reinitVersion"];
-        updaterStatusAtom: WaveEnv["atoms"]["updaterStatusAtom"];
     };
     wos: WaveEnv["wos"];
     getSettingsKeyAtom: SettingsKeyAtomFnType<"app:tabbar" | "tab:confirmclose" | "window:showmenubar">;

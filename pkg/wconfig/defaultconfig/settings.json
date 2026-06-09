@@ -6,7 +6,7 @@
     "app:disablectrlshiftarrows": false,
     "app:disablectrlshiftdisplay": false,
     "app:focusfollowscursor": "off",
-    "autoupdate:enabled": true,
+    "autoupdate:enabled": false,
     "autoupdate:installonquit": true,
     "autoupdate:intervalms": 3600000,
     "conn:askbeforewshinstall": true,

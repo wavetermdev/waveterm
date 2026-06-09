@@ -52,7 +52,7 @@ import {
 } from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
-import { configureAutoUpdater, updater } from "./updater";
+
 
 const electronApp = electron.app;
 
@@ -172,7 +172,7 @@ electronApp.on("before-quit", (e) => {
         return;
     }
     setGlobalIsQuitting(true);
-    updater?.stop();
+
     if (unamePlatform == "win32") {
         // win32 doesn't have a SIGINT, so we just let electron die, which
         // ends up killing wavesrv via closing it's stdin.
@@ -223,7 +223,7 @@ process.on("uncaughtException", (error) => {
         return;
     }
 
-    // Check if the error is related to QUIC protocol, if so, ignore (can happen with the updater)
+    // Check if the error is related to QUIC protocol, if so, ignore (can happen during network changes)
     if (error?.message?.includes("net::ERR_QUIC_PROTOCOL_ERROR")) {
         console.log("Ignoring QUIC protocol error:", error.message);
         console.log("Stack Trace:", error.stack);
@@ -300,7 +300,7 @@ async function appMain() {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     makeAndSetAppMenu();
     makeDockTaskbar();
-    await configureAutoUpdater();
+
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
         setMaxTabCacheSize(fullConfig.settings["window:maxtabcachesize"]);
