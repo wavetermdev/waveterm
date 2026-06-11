@@ -84,6 +84,8 @@
                 font: var(--header-font);
                 border-bottom: 1px solid var(--border-color);
                 border-radius: var(--block-border-radius) var(--block-border-radius) 0 0;
+                position: relative;
+                z-index: 1;
 
                 .block-frame-default-header-iconview {
                     display: flex;

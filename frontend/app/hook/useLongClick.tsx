@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export const useLongClick = (ref, onClick, onLongClick, disabled = false, ms = 300) => {
     const timerRef = useRef(null);
     const [longClickTriggered, setLongClickTriggered] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     const startPress = useCallback(
         (e: React.MouseEvent<any>) => {
@@ -38,6 +39,10 @@ export const useLongClick = (ref, onClick, onLongClick, disabled = false, ms = 3
     );
 
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
         const element = ref.current;
 
         if (!element || disabled) return;
@@ -53,7 +58,7 @@ export const useLongClick = (ref, onClick, onLongClick, disabled = false, ms = 3
             element.removeEventListener("mouseleave", stopPress);
             element.removeEventListener("click", handleClick);
         };
-    }, [ref.current, startPress, stopPress, handleClick]);
+    }, [disabled, startPress, stopPress, handleClick, mounted]);
 
     return ref;
 };
