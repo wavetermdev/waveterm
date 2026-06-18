@@ -21,6 +21,7 @@ import {
     WOS,
 } from "@/app/store/global";
 import { getActiveTabModel } from "@/app/store/tab-model";
+import { closeTabWithConfirmation } from "@/app/tab/closetab";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -132,16 +133,13 @@ function simpleCloseStaticTab() {
     const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
     const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
-    getApi()
-        .closeTab(workspaceId, tabId, confirmClose)
-        .then((didClose) => {
-            if (didClose) {
-                deleteLayoutModelForTab(tabId);
-            }
-        })
-        .catch((e) => {
-            console.log("error closing tab", e);
-        });
+    closeTabWithConfirmation({
+        confirmClose,
+        closeTab: () => getApi().closeTab(workspaceId, tabId, false),
+        onDidClose: () => deleteLayoutModelForTab(tabId),
+    }).catch((e) => {
+        console.log("error closing tab", e);
+    });
 }
 
 function uxCloseBlock(blockId: string) {

@@ -12,6 +12,7 @@ import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
+import { closeTabWithConfirmation } from "./closetab";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { TabBarEnv } from "./tabbarenv";
@@ -283,16 +284,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
                 prevAllLoadedRef.current = true;
             }
         }
-    }, [
-        tabIds,
-        tabsLoaded,
-        newTabId,
-        saveTabsPosition,
-        hideAiButton,
-        appUpdateStatus,
-        zoomFactor,
-        showMenuBar,
-    ]);
+    }, [tabIds, tabsLoaded, newTabId, saveTabsPosition, hideAiButton, appUpdateStatus, zoomFactor, showMenuBar]);
 
     const getDragDirection = (currentX: number) => {
         let dragDirection: string;
@@ -541,17 +533,18 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        env.electron
-            .closeTab(workspace.oid, tabId, confirmClose)
-            .then((didClose) => {
-                if (didClose) {
+        closeTabWithConfirmation({
+            confirmClose,
+            closeTab: () => env.electron.closeTab(workspace.oid, tabId, false),
+            onDidClose: () => {
+                if (tabsWrapperRef.current) {
                     tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
-                    deleteLayoutModelForTab(tabId);
                 }
-            })
-            .catch((e) => {
-                console.log("error closing tab", e);
-            });
+                deleteLayoutModelForTab(tabId);
+            },
+        }).catch((e) => {
+            console.log("error closing tab", e);
+        });
     };
 
     const handleTabLoaded = useCallback((tabId: string) => {
@@ -576,9 +569,7 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     // Calculate window drag left width based on platform and state
     let windowDragLeftWidth = 10;
     if (env.isMacOS() && !isFullScreen) {
-        const trafficLightsWidth = isMacOSTahoeOrLater()
-            ? MacOSTahoeTrafficLightsWidth
-            : MacOSTrafficLightsWidth;
+        const trafficLightsWidth = isMacOSTahoeOrLater() ? MacOSTahoeTrafficLightsWidth : MacOSTrafficLightsWidth;
         if (zoomFactor > 0) {
             windowDragLeftWidth = trafficLightsWidth / zoomFactor;
         } else {
