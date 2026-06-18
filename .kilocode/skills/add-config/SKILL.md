@@ -1,24 +1,13 @@
 ---
 name: add-config
-description: Guide for adding new configuration settings to Wave Terminal. Use when adding a new setting to the configuration system, implementing a new config key, or adding user-customizable settings.
+description: Guide for adding new configuration settings to Wave Terminal — define config schema, register defaults, add validation, and wire up frontend access. Use when adding a new setting to the configuration system, implementing a new config key, or adding user-customizable settings.
 ---
 
 # Adding a New Configuration Setting to Wave Terminal
 
-This guide explains how to add a new configuration setting to Wave Terminal's hierarchical configuration system.
+Settings cascade: defaults → user settings → connection config → block overrides.
 
-## Configuration System Overview
-
-Wave Terminal uses a hierarchical configuration system with:
-
-1. **Go Struct Definitions** - Type-safe configuration structure in `pkg/wconfig/settingsconfig.go`
-2. **JSON Schema** - Auto-generated validation schema in `schema/settings.json`
-3. **Default Values** - Built-in defaults in `pkg/wconfig/defaultconfig/settings.json`
-4. **User Configuration** - User overrides in `~/.config/waveterm/settings.json`
-5. **Block Metadata** - Block-level overrides in `pkg/waveobj/wtypemeta.go`
-6. **Documentation** - User-facing docs in `docs/docs/config.mdx`
-
-Settings cascade from defaults → user settings → connection config → block overrides.
+Key files: `pkg/wconfig/settingsconfig.go` (Go structs), `pkg/wconfig/defaultconfig/settings.json` (defaults), `pkg/waveobj/wtypemeta.go` (block overrides), `docs/docs/config.mdx` (docs).
 
 ## Step-by-Step Guide
 
@@ -48,23 +37,9 @@ type SettingsType struct {
 - Field names should be descriptive and follow Go naming conventions
 - Use `omitempty` tag to exclude empty values from JSON
 
-**Type Guidelines:**
+**Type Guidelines:** Use `*int64`/`*float64` for optional numerics, `*bool` only if unset differs from false, `string` for text, `[]string` for arrays.
 
-- Use `*int64` and `*float64` for optional numeric values
-- Use `*bool` for optional boolean values (or `bool` if default is false)
-- Use `string` for text values
-- Use `[]string` for arrays
-- Use `float64` for numbers that can be decimals
-
-**Namespace Organization:**
-
-- `app:*` - Application-level settings
-- `term:*` - Terminal-specific settings
-- `window:*` - Window and UI settings
-- `ai:*` - AI-related settings
-- `web:*` - Web browser settings
-- `editor:*` - Code editor settings
-- `conn:*` - Connection settings
+**Namespaces:** `app:*`, `term:*`, `window:*`, `ai:*`, `web:*`, `editor:*`, `conn:*`
 
 ### Step 1.5: Add to Block Metadata (Optional)
 
@@ -139,20 +114,11 @@ Add your new setting to the configuration table in `docs/docs/config.mdx`:
 
 ### Step 4: Regenerate Schema and TypeScript Types
 
-Run the generate task to automatically regenerate the JSON schema and TypeScript types:
-
 ```bash
 task generate
 ```
 
-**What this does:**
-
-- Runs `task build:schema` (automatically generates JSON schema from Go structs)
-- Generates TypeScript type definitions in `frontend/types/gotypes.d.ts`
-- Generates RPC client APIs
-- Generates metadata constants
-
-**Important:** The JSON schema in `schema/settings.json` is **automatically generated** from the Go struct definitions - you don't need to edit it manually.
+This regenerates the JSON schema from Go structs, TypeScript types in `frontend/types/gotypes.d.ts`, and RPC client APIs. Do not edit `schema/settings.json` manually — it is auto-generated.
 
 ### Step 5: Use in Frontend Code
 
@@ -386,72 +352,6 @@ await RpcApi.SetMetaCommand(TabRpcClient, {
   meta: { "mynew:setting": "block-specific value" },
 });
 ```
-
-## Common Pitfalls
-
-### 1. Forgetting to Run `task generate`
-
-**Problem:** TypeScript types not updated, schema out of sync
-
-**Solution:** Always run `task generate` after modifying Go structs
-
-### 2. Type Mismatch Between Settings and Metadata
-
-**Problem:** Settings uses `string`, metadata uses `*int`
-
-**Solution:** Ensure types match (except metadata uses pointers for optionals)
-
-### 3. Not Providing Fallback Values
-
-**Problem:** Component breaks if setting is undefined
-
-**Solution:** Always use `??` operator with fallback:
-
-```typescript
-const value = useAtomValue(getSettingsKeyAtom("key")) ?? "default";
-```
-
-### 4. Using Wrong Config Atom
-
-**Problem:** Using `getSettingsKeyAtom()` for settings that need block overrides
-
-**Solution:** Use `getOverrideConfigAtom()` for any setting in `MetaTSType`
-
-## Best Practices
-
-### Naming
-
-- **Use descriptive names**: `term:fontsize` not `term:fs`
-- **Follow namespace conventions**: Group related settings with common prefix
-- **Use consistent casing**: Always lowercase with colons
-
-### Types
-
-- **Use `bool`** for simple on/off settings (no pointer if false is default)
-- **Use `*bool`** only if you need to distinguish unset from false
-- **Use `*int64`/`*float64`** for optional numeric values
-- **Use `string`** for text, paths, or enum-like values
-- **Use `[]string`** for lists
-
-### Defaults
-
-- **Provide sensible defaults** for settings users will commonly change
-- **Omit defaults** for advanced/optional settings
-- **Keep defaults safe** - don't enable experimental features by default
-- **Document defaults** clearly in config.mdx
-
-### Block Overrides
-
-- **Enable for view/display settings**: Font sizes, colors, themes, etc.
-- **Don't enable for app-wide settings**: Global hotkeys, window behavior, etc.
-- **Consider the use case**: Would a user want different values per block or connection?
-
-### Documentation
-
-- **Be specific**: Explain what the setting does and what values are valid
-- **Provide examples**: Show common use cases
-- **Add version badges**: Mark new settings with `<VersionBadge version="v0.x" />`
-- **Keep it current**: Update docs when behavior changes
 
 ## Quick Reference
 

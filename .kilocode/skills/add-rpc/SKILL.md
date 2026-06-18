@@ -1,15 +1,9 @@
 ---
 name: add-rpc
-description: Guide for adding new RPC calls to Wave Terminal. Use when implementing new RPC commands, adding server-client communication methods, or extending the RPC interface with new functionality.
+description: Guide for adding new RPC calls to Wave Terminal — define message types, register handlers, generate TypeScript bindings, and implement service methods. Use when implementing new RPC commands, adding a wsh command backend, creating API endpoints, extending the RPC interface, or adding remote procedure calls for server-client communication.
 ---
 
 # Adding RPC Calls Guide
-
-## Overview
-
-Wave Terminal uses a WebSocket-based RPC (Remote Procedure Call) system for communication between different components. The RPC system allows the frontend, backend, electron main process, remote servers, and terminal blocks to communicate with each other through well-defined commands.
-
-This guide covers how to add a new RPC command to the system.
 
 ## Key Files
 
@@ -44,14 +38,6 @@ type WshRpcInterface interface {
     YourNewCommand(ctx context.Context, data CommandYourNewData) (*YourNewResponse, error)
 }
 ```
-
-**Method Signature Rules:**
-
-- Method name must end with `Command`
-- First parameter must be `ctx context.Context`
-- Remaining parameters are a regular Go parameter list (zero or more)
-- Return either `error` or `(ReturnType, error)`
-- For streaming, return `chan RespOrErrorUnion[T]`
 
 ### Step 2: Define Request and Response Types
 
@@ -318,92 +304,13 @@ func (ws *WshServer) StreamYourDataCommand(ctx context.Context, request wshrpc.Y
 
 ## Best Practices
 
-1. **Validation First**: Always validate input parameters at the start of your implementation
-
-2. **Descriptive Names**: Use clear, action-oriented command names (e.g., `GetFullConfigCommand`, not `ConfigCommand`)
-
-3. **Error Handling**: Return descriptive errors with context:
-   ```go
-   return nil, fmt.Errorf("error creating block: %w", err)
-   ```
-
-4. **Context Awareness**: Respect context cancellation for long-running operations:
-   ```go
-   select {
-   case <-ctx.Done():
-       return ctx.Err()
-   default:
-       // continue
-   }
-   ```
-
-5. **Consistent Types**: Follow existing naming patterns for request/response types
-
-6. **JSON Tags**: Always use lowercase JSON tags matching frontend conventions
-
-7. **Documentation**: Add comments explaining complex commands or special behaviors
-
-8. **Type Safety**: Leverage TypeScript generation - your types will be checked on both ends
-
-9. **Panic Recovery**: Use `panichandler.PanicHandler` in goroutines to prevent crashes
-
-10. **Route Awareness**: For multi-route scenarios, use `wshutil.GetRpcSourceFromContext(ctx)` to identify callers
-
-## Common Command Patterns
-
-### Simple Query
-
-```go
-func (ws *WshServer) GetSomethingCommand(ctx context.Context, id string) (*Something, error) {
-    obj, err := wstore.DBGet[*Something](ctx, id)
-    if err != nil {
-        return nil, fmt.Errorf("error getting something: %w", err)
-    }
-    return obj, nil
-}
-```
-
-### Mutation with Updates
-
-```go
-func (ws *WshServer) UpdateSomethingCommand(ctx context.Context, data wshrpc.CommandUpdateData) error {
-    ctx = waveobj.ContextWithUpdates(ctx)
-    
-    // Make changes
-    err := wstore.UpdateObject(ctx, data.ORef, data.Updates)
-    if err != nil {
-        return fmt.Errorf("error updating: %w", err)
-    }
-    
-    // Broadcast updates
-    updates := waveobj.ContextGetUpdatesRtn(ctx)
-    wps.Broker.SendUpdateEvents(updates)
-    
-    return nil
-}
-```
-
-### Command with Side Effects
-
-```go
-func (ws *WshServer) DoActionCommand(ctx context.Context, data wshrpc.CommandActionData) error {
-    // Perform action
-    result, err := performAction(data)
-    if err != nil {
-        return err
-    }
-    
-    // Publish event about the action
-    go func() {
-        wps.Broker.Publish(wps.WaveEvent{
-            Event: wps.Event_ActionComplete,
-            Data:  result,
-        })
-    }()
-    
-    return nil
-}
-```
+1. **Validation First**: Validate input parameters at the start of your implementation
+2. **Descriptive Names**: Use action-oriented names (e.g., `GetFullConfigCommand`, not `ConfigCommand`)
+3. **Error Handling**: Return descriptive errors with context: `fmt.Errorf("error creating block: %w", err)`
+4. **Context Awareness**: Respect `ctx.Done()` for long-running operations
+5. **JSON Tags**: Always use lowercase JSON tags matching frontend conventions
+6. **Panic Recovery**: Use `panichandler.PanicHandler` in goroutines
+7. **Route Awareness**: For multi-route scenarios, use `wshutil.GetRpcSourceFromContext(ctx)`
 
 ## Troubleshooting
 
