@@ -3,15 +3,14 @@
 
 import type { WebSocket as NodeWebSocketType } from "ws";
 
-let NodeWebSocket: typeof NodeWebSocketType = null;
+let NodeWebSocket: any = null;
 
-if (typeof window === "undefined") {
-    // Necessary to avoid issues with Rollup: https://github.com/websockets/ws/issues/2057
-    import("ws")
-        .then((ws) => (NodeWebSocket = ws.default))
-        .catch((e) => {
-            console.log("Error importing 'ws':", e);
-        });
+if (typeof window === "undefined" || (typeof process !== "undefined" && process.type === "browser")) {
+    try {
+        NodeWebSocket = require("ws").WebSocket;
+    } catch (e) {
+        import("ws").then((ws) => (NodeWebSocket = ws.default)).catch((e) => console.log("ws import error:", e));
+    }
 }
 
 type ComboWebSocket = NodeWebSocketType | WebSocket;
@@ -20,6 +19,9 @@ function newWebSocket(url: string, headers: { [key: string]: string }): ComboWeb
     if (NodeWebSocket) {
         return new NodeWebSocket(url, { headers });
     } else {
+        if (typeof WebSocket === "undefined") {
+            throw new Error("WebSocket not available in this environment");
+        }
         return new WebSocket(url);
     }
 }
