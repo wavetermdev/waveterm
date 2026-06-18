@@ -18,8 +18,13 @@ if [[ -n ${_comps+x} ]]; then
   source <(wsh completion zsh)
 fi
 
-# fix history (macos)
-if [[ "$HISTFILE" == "$WAVETERM_ZDOTDIR/.zsh_history" ]]; then
+# per-block independent history
+if [[ -n "$WAVETERM_BLOCKID" ]]; then
+  _waveterm_hist_dir="$HOME/.waveterm/shell/zsh/history/$WAVETERM_BLOCKID"
+  [[ -d "$_waveterm_hist_dir" ]] || mkdir -p "$_waveterm_hist_dir"
+  HISTFILE="$_waveterm_hist_dir/.zsh_history"
+  unset _waveterm_hist_dir
+elif [[ "$HISTFILE" == "$WAVETERM_ZDOTDIR/.zsh_history" ]]; then
   HISTFILE="$HOME/.zsh_history"
 fi
 
