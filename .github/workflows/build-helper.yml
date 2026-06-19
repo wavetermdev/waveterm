@@ -28,8 +28,8 @@ jobs:
                       runner: ubuntu-24.04-arm
                     - platform: "windows"
                       runner: "windows-latest"
-                    # - platform: "windows"
-                    #   runner: "windows-11-arm64-16core"
+                    - platform: "windows"
+                      runner: "windows-11-arm"
         runs-on: ${{ matrix.runner }}
         steps:
             - uses: actions/checkout@v6
@@ -80,7 +80,7 @@ jobs:
                   command: npm ci --no-audit --no-fund
                   retry_on: error
                   max_attempts: 3
-                  timeout_minutes: 5
+                  timeout_minutes: 15
               env:
                   GIT_ASKPASS: "echo"
                   GIT_TERMINAL_PROMPT: "0"
@@ -156,6 +156,7 @@ jobs:
                   CSC_LINK: ${{ steps.variables.outputs.SM_CLIENT_CERT_FILE }}
                   CSC_KEY_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
                   STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
+                  CC: ${{ contains(matrix.runner, 'arm') && 'zig cc -target aarch64-windows-gnu' || '' }}
               shell: powershell # electron-builder's Windows code signing package has some compatibility issues with pwsh, so we need to use Windows Powershell
 
             # Upload artifacts to the S3 staging and to the workflow output for the draft release job
