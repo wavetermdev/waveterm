@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/termlistensrv"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
@@ -1241,6 +1242,14 @@ func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.
 	}, nil
 }
 
+func (ws *WshServer) DraftHasLocalVersionCommand(ctx context.Context, draftAppId string) (bool, error) {
+	hasLocal, err := waveappstore.DraftHasLocalVersion(draftAppId)
+	if err != nil {
+		return false, fmt.Errorf("error checking draft local version: %w", err)
+	}
+	return hasLocal, nil
+}
+
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	err := telemetry.RecordTEvent(ctx, &data)
 	if err != nil {
@@ -1573,4 +1582,8 @@ func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId st
 
 func (ws *WshServer) BlockJobStatusCommand(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
 	return jobcontroller.GetBlockJobStatus(ctx, blockId)
+}
+
+func (ws *WshServer) TermListenCheckPortCommand(ctx context.Context, data wshrpc.CommandTermListenCheckPortData) (bool, error) {
+	return termlistensrv.IsPortActive(data.Port), nil
 }

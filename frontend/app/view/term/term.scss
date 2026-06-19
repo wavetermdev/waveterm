@@ -82,6 +82,9 @@
         .term-htmlelem {
             display: none;
         }
+        .term-tsunamielem {
+            display: none;
+        }
     }
 
     &.term-mode-vdom {
@@ -96,6 +99,31 @@
             width: 100%;
             height: 100%;
             border: none;
+        }
+    }
+
+    .term-tsunamielem {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        flex-grow: 1;
+        min-height: 0;
+        overflow: hidden;
+
+        .block-content {
+            padding: 0;
+        }
+    }
+
+    &.term-mode-tsunami {
+        .term-connectelem {
+            display: none;
+        }
+        .term-htmlelem {
+            display: none;
+        }
+        .term-tsunamielem {
+            display: flex;
         }
     }
 

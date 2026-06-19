@@ -175,6 +175,9 @@ type WshRpcInterface interface {
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
+	// termlisten
+	TermListenCheckPortCommand(ctx context.Context, data CommandTermListenCheckPortData) (bool, error)
+
 	// file
 	WshRpcFileInterface
 	WaveFileReadStreamCommand(ctx context.Context, data CommandWaveFileReadStreamData) (*WaveFileInfo, error)
@@ -340,7 +343,6 @@ type CommandEventReadHistoryData struct {
 	Scope    string `json:"scope"`
 	MaxItems int    `json:"maxitems"`
 }
-
 
 type CpuDataRequest struct {
 	Id    string `json:"id"`
@@ -652,6 +654,10 @@ type CommandSetRTInfoData struct {
 	ORef   waveobj.ORef   `json:"oref"`
 	Data   map[string]any `json:"data" tstype:"ObjRTInfo"`
 	Delete bool           `json:"delete,omitempty"`
+}
+
+type CommandTermListenCheckPortData struct {
+	Port int `json:"port"`
 }
 
 type CommandTermGetScrollbackLinesData struct {
