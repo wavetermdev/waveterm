@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms } from "@/app/store/global";
@@ -33,12 +33,15 @@ function SuggestionControl({
     onTab,
     fetchSuggestions,
     className,
+    placeholderText,
     children,
 }: SuggestionControlProps) {
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
 
     return (
-        <SuggestionControlInner {...{ anchorRef, onClose, onSelect, onTab, fetchSuggestions, className, children }} />
+        <SuggestionControlInner
+            {...{ anchorRef, onClose, onSelect, onTab, fetchSuggestions, className, placeholderText, children }}
+        />
     );
 }
 
