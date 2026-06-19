@@ -44,7 +44,7 @@
         "@types/throttle-debounce": "^5",
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "4.3.1",
-        "@vitest/coverage-istanbul": "^3.0.9",
+        "@vitest/coverage-istanbul": "^4.1.9",
         "electron": "^41.1.0",
         "electron-builder": "^26.8",
         "electron-vite": "^5.0",
@@ -65,7 +65,7 @@
         "vite-plugin-image-optimizer": "^2.0.3",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^5.1.4",
-        "vitest": "^3.0.9"
+        "vitest": "^4.1.9"
     },
     "dependencies": {
         "@ai-sdk/react": "^2.0.104",
