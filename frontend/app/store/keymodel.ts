@@ -655,6 +655,10 @@ function registerGlobalKeys() {
             return true;
         }
     });
+    globalKeyMap.set("Cmd:,", () => {
+        createBlock({ meta: { view: "waveconfig" } }, false, true);
+        return true;
+    });
     globalKeyMap.set("Ctrl:Shift:i", () => {
         const tabModel = getActiveTabModel();
         if (tabModel == null) {
@@ -737,6 +741,17 @@ function registerGlobalKeys() {
         }
         if (deactivateSearch()) {
             return true;
+        }
+        const layoutModel = getLayoutModelForStaticTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null) {
+            const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+            const blockData = globalStore.get(blockAtom);
+            if (blockData?.meta?.view === "waveconfig" || blockData?.meta?.view === "tips") {
+                fireAndForget(layoutModel.closeFocusedNode.bind(layoutModel));
+                return true;
+            }
         }
         return false;
     });
