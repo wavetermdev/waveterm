@@ -191,6 +191,12 @@ func CreateSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateSubBlockD
 	return resp, err
 }
 
+// command "createtab", wshserver.CreateTabCommand
+func CreateTabCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateTabData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "createtab", data, opts)
+	return resp, err
+}
+
 // command "debugterm", wshserver.DebugTermCommand
 func DebugTermCommand(w *wshutil.WshRpc, data wshrpc.CommandDebugTermData, opts *wshrpc.RpcOpts) (*wshrpc.CommandDebugTermRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandDebugTermRtnData](w, "debugterm", data, opts)
@@ -386,6 +392,12 @@ func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcO
 func FindGitBashCommand(w *wshutil.WshRpc, data bool, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "findgitbash", data, opts)
 	return resp, err
+}
+
+// command "focustab", wshserver.FocusTabCommand
+func FocusTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "focustab", data, opts)
+	return err
 }
 
 // command "focuswindow", wshserver.FocusWindowCommand

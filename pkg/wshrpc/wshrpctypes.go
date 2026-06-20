@@ -96,6 +96,8 @@ type WshRpcInterface interface {
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
 	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
+	CreateTabCommand(ctx context.Context, data CommandCreateTabData) (string, error)
+	FocusTabCommand(ctx context.Context, tabId string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions
@@ -296,6 +298,13 @@ type CommandCreateBlockData struct {
 type CommandCreateSubBlockData struct {
 	ParentBlockId string            `json:"parentblockid"`
 	BlockDef      *waveobj.BlockDef `json:"blockdef"`
+}
+
+type CommandCreateTabData struct {
+	WorkspaceId string            `json:"workspaceid,omitempty"`
+	TabName     string            `json:"tabname,omitempty"`
+	ActivateTab bool              `json:"activatetab,omitempty"`
+	Meta        map[string]string `json:"meta,omitempty"`
 }
 
 type CommandControllerResyncData struct {

@@ -192,6 +192,12 @@ export class RpcApiType {
         return client.wshRpcCall("createsubblock", data, opts);
     }
 
+    // command "createtab" [call]
+    CreateTabCommand(client: WshClient, data: CommandCreateTabData, opts?: RpcOpts): Promise<string> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "createtab", data, opts);
+        return client.wshRpcCall("createtab", data, opts);
+    }
+
     // command "debugterm" [call]
     DebugTermCommand(client: WshClient, data: CommandDebugTermData, opts?: RpcOpts): Promise<CommandDebugTermRtnData> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "debugterm", data, opts);
@@ -388,6 +394,12 @@ export class RpcApiType {
     FindGitBashCommand(client: WshClient, data: boolean, opts?: RpcOpts): Promise<string> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "findgitbash", data, opts);
         return client.wshRpcCall("findgitbash", data, opts);
+    }
+
+    // command "focustab" [call]
+    FocusTabCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "focustab", data, opts);
+        return client.wshRpcCall("focustab", data, opts);
     }
 
     // command "focuswindow" [call]
