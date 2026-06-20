@@ -16,6 +16,7 @@ import { makeORef } from "../store/wos";
 import { TabBadges } from "./tabbadges";
 import "./tab.scss";
 import { buildTabContextMenu } from "./tabcontextmenu";
+import { TabLockedColor } from "./tablock";
 
 export type TabEnv = WaveEnvSubset<{
     rpc: {
@@ -42,6 +43,7 @@ interface TabVProps {
     isNew: boolean;
     badges?: Badge[] | null;
     flagColor?: string | null;
+    locked?: boolean;
     onClick: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
@@ -51,6 +53,7 @@ interface TabVProps {
     renameRef?: React.RefObject<(() => void) | null>;
 }
 
+/** Presentational top-bar tab: renders the name, badges, and either a close button or, when locked, a lock icon. */
 const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
     const {
         tabId,
@@ -62,6 +65,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         isNew,
         badges,
         flagColor,
+        locked,
         onClick,
         onClose,
         onDragStart,
@@ -185,6 +189,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                 active,
                 dragging: isDragging,
                 "new-tab": isNew,
+                locked,
             })}
             onMouseDown={onDragStart}
             onClick={onClick}
@@ -205,14 +210,22 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                     {displayName}
                 </div>
                 <TabBadges badges={badges} flagColor={flagColor} />
-                <Button
-                    className="ghost grey close"
-                    onClick={onClose}
-                    onMouseDown={handleMouseDownOnClose}
-                    title="Close Tab"
-                >
-                    <i className="fa fa-solid fa-xmark" />
-                </Button>
+                {locked ? (
+                    <i
+                        className="lock-icon fa fa-solid fa-lock"
+                        style={{ color: TabLockedColor }}
+                        title="Tab is locked"
+                    />
+                ) : (
+                    <Button
+                        className="ghost grey close"
+                        onClick={onClose}
+                        onMouseDown={handleMouseDownOnClose}
+                        title="Close Tab"
+                    >
+                        <i className="fa fa-solid fa-xmark" />
+                    </Button>
+                )}
             </div>
         </div>
     );
@@ -233,6 +246,7 @@ interface TabProps {
     onLoaded: () => void;
 }
 
+/** Connects a top-bar tab to its wave object, deriving name, badges, flag color, and locked state from tab meta. */
 const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, showDivider, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const env = useWaveEnv<TabEnv>();
@@ -249,6 +263,8 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             flagColor = null;
         }
     }
+
+    const locked = !!tabData?.meta?.["tab:locked"];
 
     const loadedRef = useRef(false);
     const renameRef = useRef<(() => void) | null>(null);
@@ -304,6 +320,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             isNew={isNew}
             badges={badges}
             flagColor={flagColor}
+            locked={locked}
             onClick={handleTabClick}
             onClose={onClose}
             onDragStart={onDragStart}

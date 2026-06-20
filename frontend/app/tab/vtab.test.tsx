@@ -4,11 +4,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { VTab, VTabItem } from "./vtab";
+import { TabLockedColor } from "./tablock";
 
 const OriginalCss = globalThis.CSS;
 const HexColorRegex = /^#([\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i;
 
-function renderVTab(tab: VTabItem): string {
+/** Renders a VTab to static markup for assertions; pass withClose to supply an onClose handler. */
+function renderVTab(tab: VTabItem, withClose = false): string {
     return renderToStaticMarkup(
         <VTab
             tab={tab}
@@ -16,6 +18,7 @@ function renderVTab(tab: VTabItem): string {
             isDragging={false}
             isReordering={false}
             onSelect={() => null}
+            onClose={withClose ? () => null : undefined}
             onDragStart={() => null}
             onDragOver={() => null}
             onDrop={() => null}
@@ -59,5 +62,22 @@ describe("VTab badges", () => {
         expect(markup).not.toContain("definitely-not-a-color");
         expect(markup).not.toContain("fa-flag");
         expect(markup).toContain("#4ade80");
+    });
+});
+
+describe("VTab lock", () => {
+    it("shows a lock icon and hides the close button when locked", () => {
+        const markup = renderVTab({ id: "tab-3", name: "Prod", locked: true }, true);
+
+        expect(markup).toContain("fa-lock");
+        expect(markup).toContain(TabLockedColor);
+        expect(markup).not.toContain("fa-xmark");
+    });
+
+    it("shows the close button and no lock icon when unlocked", () => {
+        const markup = renderVTab({ id: "tab-4", name: "Scratch" }, true);
+
+        expect(markup).toContain("fa-xmark");
+        expect(markup).not.toContain("fa-lock");
     });
 });
