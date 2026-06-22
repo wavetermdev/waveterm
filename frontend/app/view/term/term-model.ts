@@ -506,9 +506,16 @@ export class TermViewModel implements ViewModel {
         }
     }
 
+    // Serialize input RPCs to preserve order. Without this, fire-and-forget
+    // calls can be processed concurrently on the backend and reorder bytes
+    // (especially visible with fast IME composition followed by ASCII input).
+    inputQueue: Promise<void> = Promise.resolve();
+
     sendDataToController(data: string) {
         const b64data = stringToBase64(data);
-        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+        this.inputQueue = this.inputQueue
+            .then(() => RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data }))
+            .catch(() => {});
     }
 
     setTermMode(mode: "term" | "vdom") {
@@ -697,6 +704,9 @@ export class TermViewModel implements ViewModel {
     }
 
     handleTerminalKeydown(event: KeyboardEvent): boolean {
+        if (event.isComposing || event.keyCode === 229) {
+            return false;
+        }
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (waveEvent.type != "keydown") {
             return true;
