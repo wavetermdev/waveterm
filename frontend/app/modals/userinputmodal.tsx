@@ -13,6 +13,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
     const checkboxRef = useRef<HTMLInputElement>(null);
+    const [capsLockOn, setCapsLockOn] = useState(false);
 
     const handleSendErrResponse = useCallback(() => {
         fireAndForget(() =>
@@ -73,10 +74,14 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 handleSubmit();
                 return true;
             }
-			return false;
+            return false;
         },
         [handleSendErrResponse, handleSubmit]
     );
+
+    const handleCapsLockCheck = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        setCapsLockOn(e.getModifierState("CapsLock") ?? false);
+    }, []);
 
     const queryText = useMemo(() => {
         if (userInputRequest.markdown) {
@@ -97,10 +102,21 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 maxLength={400}
                 className="resize-none bg-panel rounded-md border border-border py-1.5 pl-4 min-h-[30px] text-inherit cursor-text focus:ring-2 focus:ring-accent focus:outline-none"
                 autoFocus={true}
-                onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
+                onKeyDown={(e) => {
+                    handleCapsLockCheck(e);
+                    keyutil.keydownWrapper(handleKeyDown)(e);
+                }}
+                onKeyUp={handleCapsLockCheck}
             />
         );
-    }, [userInputRequest.responsetype, userInputRequest.publictext, responseText, handleKeyDown, setResponseText]);
+    }, [
+        userInputRequest.responsetype,
+        userInputRequest.publictext,
+        responseText,
+        handleKeyDown,
+        setResponseText,
+        handleCapsLockCheck,
+    ]);
 
     const optionalCheckbox = useMemo(() => {
         if (userInputRequest.checkboxmsg == "") {
@@ -115,7 +131,9 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                         className="accent-accent cursor-pointer"
                         ref={checkboxRef}
                     />
-                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}`} className="cursor-pointer">{userInputRequest.checkboxmsg}</label>
+                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}`} className="cursor-pointer">
+                        {userInputRequest.checkboxmsg}
+                    </label>
                 </div>
             </div>
         );
@@ -159,6 +177,9 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             <div className="flex flex-col justify-between gap-4 mx-4 mb-4 max-w-[500px] font-mono text-primary">
                 {queryText}
                 {inputBox}
+                {!userInputRequest.publictext && capsLockOn && (
+                    <div className="text-xs text-warning">Caps Lock is ON</div>
+                )}
                 {optionalCheckbox}
             </div>
         </Modal>
