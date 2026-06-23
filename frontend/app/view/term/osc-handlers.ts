@@ -218,7 +218,7 @@ export function handleOsc52Command(data: string, blockId: string, loaded: boolea
 
 // for xterm handlers, we return true always because we "own" OSC 7.
 // even if it is invalid we dont want to propagate to other handlers
-export function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
+export function handleOsc7Command(data: string, blockId: string, loaded: boolean, termWrap: TermWrap): boolean {
     if (!loaded) {
         return true;
     }
@@ -260,6 +260,8 @@ export function handleOsc7Command(data: string, blockId: string, loaded: boolean
         console.log("Invalid OSC 7 command received (parse error)", data, e);
         return true;
     }
+
+    globalStore.set(termWrap.currentCwdAtom, pathPart);
 
     setTimeout(() => {
         fireAndForget(async () => {

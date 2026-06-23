@@ -671,6 +671,10 @@ export class TermViewModel implements ViewModel {
         }
         const blockData = globalStore.get(this.blockAtom);
         if (blockData.meta?.["term:mode"] == "vdom") {
+            // Don't consume Escape key - let it propagate to global handler for quick terminal close
+            if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+                return false;
+            }
             const vdomModel = this.getVDomModel();
             return vdomModel?.keyDownHandler(waveEvent);
         }
