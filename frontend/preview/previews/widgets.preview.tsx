@@ -87,7 +87,10 @@ function makeWidgetsEnv(
 ) {
     return applyMockEnvOverrides(baseEnv, {
         isDev,
-        rpc: { ListAllAppsCommand: () => Promise.resolve(apps ?? []) },
+        rpc: {
+            ListAllAppsCommand: () => Promise.resolve(apps ?? []),
+            GetFocusedBlockDataCommand: () => Promise.resolve(null),
+        },
         atoms: {
             fullConfigAtom,
             ...atomOverrides,

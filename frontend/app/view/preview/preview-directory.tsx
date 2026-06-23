@@ -4,6 +4,7 @@
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { TreeNodeData, TreeView } from "@/app/treeview/treeview";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -45,6 +46,12 @@ import {
 } from "./preview-directory-utils";
 import { type PreviewModel } from "./preview-model";
 import type { PreviewEnv } from "./previewenv";
+
+const TREE_HEIGHT = "100%";
+const TREE_ROW_HEIGHT = 24;
+const TREE_INDENT_WIDTH = 16;
+const TREE_MAX_DIR_ENTRIES = 500;
+
 
 const PageJumpSize = 20;
 
@@ -904,4 +911,115 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     );
 }
 
-export { DirectoryPreview };
+function fileInfoToTreeNodes(fileInfos: FileInfo[], parentId: string): TreeNodeData[] {
+    return fileInfos.map((fi) => ({
+        id: fi.path,
+        parentId,
+        label: fi.name ?? fi.path.split("/").filter(Boolean).pop() ?? fi.path,
+        path: fi.path,
+        isDirectory: fi.isdir ?? false,
+        mimeType: fi.mimetype,
+        isReadonly: fi.readonly ?? false,
+        notfound: fi.notfound ?? false,
+        staterror: fi.staterror,
+        childrenStatus: fi.isdir ? ("unloaded" as const) : ("loaded" as const),
+    }));
+}
+
+async function treeFetchDir(
+    id: string,
+    _limit: number,
+    formatUri: (path: string, get: any) => Promise<string>,
+    rpc: PreviewEnv["rpc"],
+    get: any
+): Promise<{ nodes: TreeNodeData[]; capped?: boolean }> {
+    try {
+        const remotePath = await formatUri(id, get);
+        const stream = rpc.FileListStreamCommand(TabRpcClient, { path: remotePath }, null);
+        const entries: FileInfo[] = [];
+        for await (const chunk of stream) {
+            if (chunk?.fileinfo) {
+                entries.push(...chunk.fileinfo);
+            }
+        }
+        const nodes = fileInfoToTreeNodes(entries, id);
+        return { nodes, capped: entries.length >= TREE_MAX_DIR_ENTRIES };
+    } catch (e) {
+        throw e;
+    }
+}
+
+function DirectoryTreePreview({ model }: { model: PreviewModel }) {
+    const env = useWaveEnv<PreviewEnv>();
+    const finfo = useAtomValue(model.statFile);
+    const dirPath = finfo?.path;
+
+    const initialNodes = useMemo(() => {
+        if (!dirPath) return {};
+        return {
+            [dirPath]: {
+                id: dirPath,
+                path: dirPath,
+                label: dirPath.split("/").filter(Boolean).pop() ?? dirPath,
+                isDirectory: true,
+                childrenStatus: "unloaded" as const,
+            },
+        };
+    }, [dirPath]);
+
+    const handleOpenFile = useCallback(
+        (id: string, _node: TreeNodeData) => {
+            model.handleOpenFile(id);
+        },
+        [model]
+    );
+
+    if (!dirPath) {
+        return (
+            <div className="flex items-center justify-center w-full h-full text-muted text-sm">
+                <span>No directory selected</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col w-full h-full overflow-hidden">
+            <div
+                className="shrink-0 px-3 py-1.5 text-xs text-muted border-b border-border truncate select-none"
+                title={dirPath}
+            >
+                {dirPath}
+            </div>
+            <div className="flex-1 overflow-hidden p-1">
+                <TreeView
+                    rootIds={[dirPath]}
+                    initialNodes={initialNodes}
+                    width="100%"
+                    height={TREE_HEIGHT}
+                    minWidth={150}
+                    maxWidth={800}
+                    rowHeight={TREE_ROW_HEIGHT}
+                    indentWidth={TREE_INDENT_WIDTH}
+                    maxDirEntries={TREE_MAX_DIR_ENTRIES}
+                    fetchDir={async (id, limit) => {
+                        return treeFetchDir(id, limit, model.formatRemoteUri, env.rpc, globalStore.get);
+                    }}
+                    onOpenFile={handleOpenFile}
+                    className="border-none rounded-none"
+                />
+            </div>
+        </div>
+    );
+}
+
+function DirectoryTableOrTree({ model }: DirectoryPreviewProps) {
+    const blockData = useAtomValue(model.blockAtom);
+    const isTreeMode = blockData?.meta?.["preview:treemode"] === true;
+
+    if (isTreeMode) {
+        return <DirectoryTreePreview model={model} />;
+    }
+    return <DirectoryPreview model={model} />;
+}
+
+export { DirectoryPreview, DirectoryTableOrTree };

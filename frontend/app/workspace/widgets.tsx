@@ -27,6 +27,7 @@ export type WidgetsEnv = WaveEnvSubset<{
     };
     rpc: {
         ListAllAppsCommand: WaveEnv["rpc"]["ListAllAppsCommand"];
+        GetFocusedBlockDataCommand: WaveEnv["rpc"]["GetFocusedBlockDataCommand"];
     };
     atoms: {
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
@@ -57,6 +58,29 @@ type WidgetPropsType = {
 
 async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
     const blockDef = widget.blockdef;
+    const meta = blockDef?.meta ?? {};
+    // For preview widgets targeting a directory (no specific file), resolve
+    // the path from the focused terminal's cwd.
+    if (meta.view === "preview" && (isBlank(meta.file) || meta.file === "~")) {
+        try {
+            const focusedData = await env.rpc.GetFocusedBlockDataCommand(TabRpcClient);
+            if (focusedData?.viewtype === "term" && focusedData.blockmeta?.["cmd:cwd"]) {
+                const cwd = focusedData.blockmeta["cmd:cwd"];
+                const resolvedMeta: Record<string, any> = {
+                    ...meta,
+                    file: cwd,
+                    "preview:treemode": true,
+                };
+                if (focusedData.connname) {
+                    resolvedMeta.connection = focusedData.connname;
+                }
+                env.createBlock({ ...blockDef, meta: resolvedMeta }, widget.magnified);
+                return;
+            }
+        } catch (e) {
+            console.log("failed to resolve focused terminal cwd", e);
+        }
+    }
     env.createBlock(blockDef, widget.magnified);
 }
 
