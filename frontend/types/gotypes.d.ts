@@ -1069,6 +1069,7 @@ declare global {
         ephemeral: boolean;
         targetblockid?: string;
         position?: string;
+        rootnode?: any;
     };
 
     // waveobj.LayoutState
@@ -1263,6 +1264,23 @@ declare global {
     type Point = {
         x: number;
         y: number;
+    };
+
+    // waveobj.PortableLayoutEntry
+    type PortableLayoutEntry = {
+        indexarr: number[];
+        size?: number;
+        blockdef: BlockDef;
+        focused: boolean;
+    };
+
+    // waveobj.PortableLayoutNode
+    type PortableLayoutNode = {
+        flexdirection: string;
+        size?: number;
+        children?: PortableLayoutNode[];
+        blockdef?: BlockDef;
+        focused?: boolean;
     };
 
     // wshrpc.ProcessInfo
@@ -1681,6 +1699,14 @@ declare global {
         name: string;
         layoutstate: string;
         blockids: string[];
+    };
+
+    // waveobj.TabTemplate
+    type TabTemplate = WaveObj & {
+        name: string;
+        srctabid?: string;
+        layout?: PortableLayoutEntry[];
+        layouttree?: PortableLayoutNode;
     };
 
     // waveobj.TermSize

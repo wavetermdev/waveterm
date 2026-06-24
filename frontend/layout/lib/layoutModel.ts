@@ -23,6 +23,7 @@ import {
     moveNode,
     replaceNode,
     resizeNode,
+    setRoot,
     splitHorizontal,
     splitVertical,
     swapNode,
@@ -45,6 +46,7 @@ import {
     LayoutTreeReplaceNodeAction,
     LayoutTreeResizeNodeAction,
     LayoutTreeSetPendingAction,
+    LayoutTreeSetRootAction,
     LayoutTreeSplitHorizontalAction,
     LayoutTreeSplitVerticalAction,
     LayoutTreeState,
@@ -563,6 +565,19 @@ export class LayoutModel {
                 this.treeReducer(splitAction, false);
                 break;
             }
+            case LayoutTreeActionType.SetRoot: {
+                if (!action.rootnode) {
+                    console.error("Cannot apply SetRoot action, rootnode field is missing");
+                    break;
+                }
+                const setRootAction: LayoutTreeSetRootAction = {
+                    type: LayoutTreeActionType.SetRoot,
+                    rootNode: action.rootnode,
+                    focusedBlockId: action.blockid || undefined,
+                };
+                this.treeReducer(setRootAction, false);
+                break;
+            }
             case "cleanuporphaned": {
                 await this.cleanupOrphanedBlocks();
                 break;
@@ -676,6 +691,12 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
+                break;
+            case LayoutTreeActionType.SetRoot:
+                setRoot(this.treeState, action as LayoutTreeSetRootAction);
+                if ((action as LayoutTreeSetRootAction).focusedBlockId) {
+                    FocusManager.getInstance().requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.ReplaceNode:
                 replaceNode(this.treeState, action as LayoutTreeReplaceNodeAction);

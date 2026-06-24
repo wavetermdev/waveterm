@@ -110,6 +110,45 @@ export class ObjectServiceType {
 
 export const ObjectService = new ObjectServiceType();
 
+// tabtemplateservice.TabTemplateService (tabtemplate)
+export class TabTemplateServiceType {
+    waveEnv: WaveEnv;
+
+    constructor(waveEnv?: WaveEnv) {
+        this.waveEnv = waveEnv;
+    }
+
+    // @returns tabId (and object updates)
+    CreateTabFromTemplate(workspaceId: string, templateId: string): Promise<string> {
+        return callBackendService(this?.waveEnv, "tabtemplate", "CreateTabFromTemplate", Array.from(arguments))
+    }
+    DeleteTabTemplate(templateId: string): Promise<void> {
+        return callBackendService(this?.waveEnv, "tabtemplate", "DeleteTabTemplate", Array.from(arguments))
+    }
+
+    // @returns template
+    GetTabTemplate(templateId: string): Promise<TabTemplate> {
+        return callBackendService(this?.waveEnv, "tabtemplate", "GetTabTemplate", Array.from(arguments))
+    }
+
+    // @returns templates
+    ListTabTemplates(): Promise<TabTemplate[]> {
+        return callBackendService(this?.waveEnv, "tabtemplate", "ListTabTemplates", Array.from(arguments))
+    }
+
+    // @returns templateId
+    SaveTabAsTemplate(tabId: string, name: string): Promise<string> {
+        return callBackendService(this?.waveEnv, "tabtemplate", "SaveTabAsTemplate", Array.from(arguments))
+    }
+
+    // @returns object updates
+    UpdateTabTemplate(templateId: string, name: string): Promise<void> {
+        return callBackendService(this?.waveEnv, "tabtemplate", "UpdateTabTemplate", Array.from(arguments))
+    }
+}
+
+export const TabTemplateService = new TabTemplateServiceType();
+
 // userinputservice.UserInputService (userinput)
 export class UserInputServiceType {
     waveEnv: WaveEnv;
@@ -218,6 +257,7 @@ export const AllServiceTypes = {
     "block": BlockServiceType,
     "client": ClientServiceType,
     "object": ObjectServiceType,
+    "tabtemplate": TabTemplateServiceType,
     "userinput": UserInputServiceType,
     "window": WindowServiceType,
     "workspace": WorkspaceServiceType,
@@ -227,6 +267,7 @@ export const AllServiceImpls = {
     "block": BlockService,
     "client": ClientService,
     "object": ObjectService,
+    "tabtemplate": TabTemplateService,
     "userinput": UserInputService,
     "window": WindowService,
     "workspace": WorkspaceService,

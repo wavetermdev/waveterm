@@ -3,6 +3,7 @@
 
 import { getOrefMetaKeyAtom, globalStore, recordTEvent } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { modalsModel } from "@/store/modalmodel";
 import { fireAndForget } from "@/util/util";
 import { makeORef } from "../store/wos";
 import type { TabEnv } from "./tab";
@@ -115,6 +116,13 @@ export function buildTabContextMenu(
         menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
     }
     menu.push(...buildTabBarContextMenu(env), { type: "separator" });
+    menu.push({
+        label: "Save as Template...",
+        click: () => {
+            modalsModel.pushModal("SaveTemplateModal", { tabId: id });
+        },
+    });
+    menu.push({ type: "separator" });
     menu.push({ label: "Close Tab", click: () => onClose(null) });
     return menu;
 }

@@ -61,6 +61,7 @@ const config = {
         singleArchFiles: "**/dist/bin/wavesrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
+        notarize: !!process.env.APPLE_TEAM_ID,
         extendInfo: {
             NSContactsUsageDescription: "A CLI application running in Wave wants to use your contacts.",
             NSRemindersUsageDescription: "A CLI application running in Wave wants to use your reminders.",
