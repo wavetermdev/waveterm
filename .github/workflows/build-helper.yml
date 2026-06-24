@@ -190,7 +190,7 @@ jobs:
                   path: make
                   merge-multiple: true
             - name: Create draft release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@v3
               with:
                   prerelease: ${{ contains(github.ref_name, '-beta') }}
                   name: Wave Terminal ${{ github.ref_name }} Release
