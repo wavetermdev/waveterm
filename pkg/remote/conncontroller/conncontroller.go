@@ -80,6 +80,7 @@ type SSHConn struct {
 	Status             string
 	ConnHealthStatus   string
 	WshEnabled         *atomic.Bool
+	WshEnsuring        *atomic.Bool
 	Opts               *remote.SSHOpts
 	Client             *ssh.Client
 	DomainSockName     string // if "", then no domain socket
@@ -269,13 +270,28 @@ func (conn *SSHConn) GetName() string {
 
 func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 	conn.Infof(ctx, "running OpenDomainSocketListener...\n")
+	var existingListener net.Listener
+	var existingSockName string
 	allowed := WithLockRtn(conn, func() bool {
+		// If it's already set up, allow callers to reuse it even if the conn is already connected.
+		if conn.DomainSockListener != nil && conn.DomainSockName != "" {
+			existingListener = conn.DomainSockListener
+			existingSockName = conn.DomainSockName
+			return true
+		}
 		return conn.Status == Status_Connecting
 	})
 	if !allowed {
 		return fmt.Errorf("cannot open domain socket for %q when status is %q", conn.GetName(), conn.GetStatus())
 	}
+	if existingListener != nil && existingSockName != "" {
+		conn.Infof(ctx, "domain socket already active (%s)\n", existingSockName)
+		return nil
+	}
 	client := conn.GetClient()
+	if client == nil {
+		return fmt.Errorf("cannot open domain socket for %q: ssh client is not connected", conn.GetName())
+	}
 	randStr, err := utilfn.RandomHexString(16) // 64-bits of randomness
 	if err != nil {
 		return fmt.Errorf("error generating random string: %w", err)
@@ -1075,6 +1091,7 @@ func getConnInternal(opts *remote.SSHOpts, createIfNotExists bool) *SSHConn {
 			Status:           Status_Init,
 			ConnHealthStatus: ConnHealthStatus_Good,
 			WshEnabled:       &atomic.Bool{},
+			WshEnsuring:      &atomic.Bool{},
 			Opts:             opts,
 		}
 		clientControllerMap[*opts] = rtn
@@ -1125,6 +1142,40 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	connStatus := conn.DeriveConnStatus()
 	switch connStatus.Status {
 	case Status_Connected:
+		// If wsh is enabled for this connection, ensure the connserver route exists.
+		// This prevents "no route for \"conn:...\"" errors when using remote file browsing after a
+		// connserver restart/termination.
+		enableWsh, _ := conn.getConnWshSettings()
+		if enableWsh {
+			routeId := wshutil.MakeConnectionRouteId(conn.GetName())
+			fastCtx, cancelFn := context.WithTimeout(ctx, 75*time.Millisecond)
+			fastErr := wshutil.DefaultRouter.WaitForRegister(fastCtx, routeId)
+			cancelFn()
+			if fastErr != nil {
+				// Avoid a thundering herd when multiple blocks ensure concurrently.
+				if conn.WshEnsuring != nil && !conn.WshEnsuring.CompareAndSwap(false, true) {
+					waitCtx, cancelWait := context.WithTimeout(ctx, 5*time.Second)
+					defer cancelWait()
+					if err := wshutil.DefaultRouter.WaitForRegister(waitCtx, routeId); err != nil {
+						return fmt.Errorf("waiting for concurrent wsh setup for %q: %w", conn.GetName(), err)
+					}
+					return nil
+				}
+				if conn.WshEnsuring != nil {
+					defer conn.WshEnsuring.Store(false)
+				}
+				wshResult := conn.tryEnableWsh(ctx, conn.GetName())
+				conn.persistWshInstalled(ctx, wshResult)
+				if !wshResult.WshEnabled {
+					if wshResult.WshError != nil {
+						return wshResult.WshError
+					}
+					if wshResult.NoWshReason != "" {
+						return fmt.Errorf("wsh unavailable for %q: %s", conn.GetName(), wshResult.NoWshReason)
+					}
+				}
+			}
+		}
 		return nil
 	case Status_Connecting:
 		return conn.WaitForConnect(ctx)
