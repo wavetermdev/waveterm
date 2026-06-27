@@ -12,19 +12,6 @@ import tsconfigPaths from "vite-tsconfig-paths";
 // from our electron build
 const CHROME = "chrome140";
 const NODE = "node22";
-const MERMAID_CORE = path.resolve(__dirname, "node_modules/mermaid/dist/mermaid.core.mjs");
-
-function streamdownMermaidFix() {
-    return {
-        name: "streamdown-mermaid-fix",
-        enforce: "pre" as const,
-        transform(code: string, id: string) {
-            if (!id.includes("node_modules/streamdown")) return null;
-            if (!code.includes("import('mermaid')")) return null;
-            return code.replaceAll("import('mermaid')", `import('/@fs${MERMAID_CORE}')`);
-        },
-    };
-}
 
 export default defineConfig({
     main: {
@@ -43,7 +30,6 @@ export default defineConfig({
         resolve: {
             alias: {
                 "@": "frontend",
-                mermaid: path.resolve(__dirname, "node_modules/mermaid/dist/mermaid.js"),
             },
         },
         server: {
@@ -148,7 +134,6 @@ export default defineConfig({
         },
         plugins: [
             tsconfigPaths(),
-            streamdownMermaidFix(),
             { ...ViteImageOptimizer(), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
