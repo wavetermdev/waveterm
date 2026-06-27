@@ -4,6 +4,7 @@
 package wshremote
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -660,4 +662,165 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.Comm
 		return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
 	}
 	return nil
+}
+
+func (impl *ServerImpl) RemoteFileSearchCommand(ctx context.Context, data wshrpc.CommandFileSearchData) ([]*wshrpc.FileSearchResult, error) {
+	searchPath, err := wavebase.ExpandHomeDir(data.Path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid search path %q: %w", data.Path, err)
+	}
+	searchPath = filepath.Clean(searchPath)
+
+	log.Printf("RemoteFileSearchCommand: path=%q query=%q regex=%v ignorecase=%v resolved_path=%q", data.Path, data.Query, data.Regex, data.IgnoreCase, searchPath)
+
+	if data.Query == "" {
+		return nil, nil
+	}
+
+	var re *regexp.Regexp
+	if data.Regex {
+		regexQuery := data.Query
+		if data.IgnoreCase {
+			regexQuery = "(?i)" + regexQuery
+		}
+		var err error
+		re, err = regexp.Compile(regexQuery)
+		if err != nil {
+			return nil, fmt.Errorf("invalid regex: %w", err)
+		}
+	}
+
+	queryLower := strings.ToLower(data.Query)
+	var results []*wshrpc.FileSearchResult
+	totalMatches := 0
+	const maxMatches = 2000
+	const maxFileSize = 5 * 1024 * 1024 // 5MB
+	const maxLineLen = 1000
+
+	excludedDirs := map[string]bool{
+		".git":           true,
+		"node_modules":   true,
+		".gemini":        true,
+		".roo":           true,
+		".task":          true,
+		".vscode":        true,
+		".zed":           true,
+		"dist":           true,
+		"build":          true,
+		"tmp":            true,
+		"__pycache__":    true,
+		".venv":          true,
+		"venv":           true,
+		"env":            true,
+		".pytest_cache":  true,
+		"vendor":         true,
+		".idea":          true,
+	}
+
+	err = filepath.WalkDir(searchPath, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			log.Printf("RemoteFileSearchCommand: walk error at %q: %v", path, walkErr)
+			if d != nil && d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if d.IsDir() {
+			if path != searchPath && excludedDirs[d.Name()] {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if !d.Type().IsRegular() {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		if info.Size() > maxFileSize || info.Size() == 0 {
+			return nil
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer f.Close()
+
+		buf := make([]byte, 1024)
+		n, err := f.Read(buf)
+		if err != nil && err != io.EOF {
+			return nil
+		}
+		for i := 0; i < n; i++ {
+			if buf[i] == 0 {
+				return nil
+			}
+		}
+
+		_, err = f.Seek(0, 0)
+		if err != nil {
+			return nil
+		}
+
+		var matches []wshrpc.FileSearchMatch
+		scanner := bufio.NewScanner(f)
+		lineNum := 0
+		for scanner.Scan() {
+			lineNum++
+			line := scanner.Text()
+			matched := false
+
+			if data.Regex {
+				matched = re.MatchString(line)
+			} else {
+				if data.IgnoreCase {
+					matched = strings.Contains(strings.ToLower(line), queryLower)
+				} else {
+					matched = strings.Contains(line, data.Query)
+				}
+			}
+
+			if matched {
+				displayLine := line
+				if len(displayLine) > maxLineLen {
+					displayLine = displayLine[:maxLineLen] + "..."
+				}
+				matches = append(matches, wshrpc.FileSearchMatch{
+					LineNum: lineNum,
+					Line:    displayLine,
+				})
+				totalMatches++
+				if totalMatches >= maxMatches {
+					break
+				}
+			}
+		}
+
+		if len(matches) > 0 {
+			log.Printf("RemoteFileSearchCommand: found %d matches in %q", len(matches), path)
+			results = append(results, &wshrpc.FileSearchResult{
+				Path:    path,
+				Matches: matches,
+			})
+		}
+
+		if totalMatches >= maxMatches {
+			return io.EOF
+		}
+
+		return nil
+	})
+
+	if err != nil && err != io.EOF {
+		log.Printf("RemoteFileSearchCommand: walk completed with error: %v", err)
+		return nil, err
+	}
+
+	log.Printf("RemoteFileSearchCommand: completed search, found %d results in %d files", totalMatches, len(results))
+	return results, nil
 }

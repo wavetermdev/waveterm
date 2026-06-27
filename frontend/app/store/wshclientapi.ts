@@ -372,6 +372,12 @@ export class RpcApiType {
         return client.wshRpcCall("filerestorebackup", data, opts);
     }
 
+    // command "filesearch" [call]
+    FileSearchCommand(client: WshClient, data: CommandFileSearchData, opts?: RpcOpts): Promise<FileSearchResult[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "filesearch", data, opts);
+        return client.wshRpcCall("filesearch", data, opts);
+    }
+
     // command "filestream" [call]
     FileStreamCommand(client: WshClient, data: CommandFileStreamData, opts?: RpcOpts): Promise<FileInfo> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "filestream", data, opts);
@@ -718,6 +724,12 @@ export class RpcApiType {
     RemoteFileMultiInfoCommand(client: WshClient, data: CommandRemoteFileMultiInfoData, opts?: RpcOpts): Promise<{[key: string]: FileInfo}> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotefilemultiinfo", data, opts);
         return client.wshRpcCall("remotefilemultiinfo", data, opts);
+    }
+
+    // command "remotefilesearch" [call]
+    RemoteFileSearchCommand(client: WshClient, data: CommandFileSearchData, opts?: RpcOpts): Promise<FileSearchResult[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotefilesearch", data, opts);
+        return client.wshRpcCall("remotefilesearch", data, opts);
     }
 
     // command "remotefilestream" [call]

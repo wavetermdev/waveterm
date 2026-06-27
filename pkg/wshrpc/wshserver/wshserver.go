@@ -399,6 +399,11 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.FileData
 	return wshfs.Append(ctx, data)
 }
 
+func (ws *WshServer) FileSearchCommand(ctx context.Context, data wshrpc.CommandFileSearchData) ([]*wshrpc.FileSearchResult, error) {
+	return wshfs.FileSearch(ctx, data)
+}
+
+
 func (ws *WshServer) FileJoinCommand(ctx context.Context, paths []string) (*wshrpc.FileInfo, error) {
 	if len(paths) < 2 {
 		if len(paths) == 0 {

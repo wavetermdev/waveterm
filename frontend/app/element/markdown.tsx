@@ -10,7 +10,7 @@ import {
     transformBlocks,
 } from "@/app/element/markdown-util";
 import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
-import { boundNumber, useAtomValueSafe, cn } from "@/util/util";
+import { boundNumber, cn, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -31,7 +31,7 @@ let mermaidInstance: any = null;
 
 const initializeMermaid = async () => {
     if (!mermaidInitialized) {
-        const mermaid = await import("mermaid");
+        const mermaid = await import("mermaid/dist/mermaid.js");
         mermaidInstance = mermaid.default;
         mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
         mermaidInitialized = true;

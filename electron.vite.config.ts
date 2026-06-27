@@ -4,6 +4,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
+import path from "path";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -11,63 +12,16 @@ import tsconfigPaths from "vite-tsconfig-paths";
 // from our electron build
 const CHROME = "chrome140";
 const NODE = "node22";
+const MERMAID_CORE = path.resolve(__dirname, "node_modules/mermaid/dist/mermaid.core.mjs");
 
-// for debugging
-// target is like -- path.resolve(__dirname, "frontend/app/workspace/workspace-layout-model.ts");
-function whoImportsTarget(target: string) {
+function streamdownMermaidFix() {
     return {
-        name: "who-imports-target",
-        buildEnd() {
-            // Build reverse graph: child -> [importers...]
-            const parents = new Map<string, string[]>();
-            for (const id of (this as any).getModuleIds()) {
-                const info = (this as any).getModuleInfo(id);
-                if (!info) continue;
-                for (const child of [...info.importedIds, ...info.dynamicallyImportedIds]) {
-                    const arr = parents.get(child) ?? [];
-                    arr.push(id);
-                    parents.set(child, arr);
-                }
-            }
-
-            // Walk upward from TARGET and print paths to entries
-            const entries = [...parents.keys()].filter((id) => {
-                const m = (this as any).getModuleInfo(id);
-                return m?.isEntry;
-            });
-
-            const seen = new Set<string>();
-            const stack: string[] = [];
-            const dfs = (node: string) => {
-                if (seen.has(node)) return;
-                seen.add(node);
-                stack.push(node);
-                const ps = parents.get(node) || [];
-                if (ps.length === 0) {
-                    // hit a root (likely main entry or plugin virtual)
-                    console.log("\nImporter chain:");
-                    stack
-                        .slice()
-                        .reverse()
-                        .forEach((s) => console.log("  ↳", s));
-                } else {
-                    for (const p of ps) dfs(p);
-                }
-                stack.pop();
-            };
-
-            if (!parents.has(target)) {
-                console.log(`[who-imports] TARGET not in MAIN graph: ${target}`);
-            } else {
-                dfs(target);
-            }
-        },
-        async resolveId(id: any, importer: any) {
-            const r = await (this as any).resolve(id, importer, { skipSelf: true });
-            if (r?.id === target) {
-                console.log(`[resolve] ${importer} -> ${id} -> ${r.id}`);
-            }
-            return null;
+        name: "streamdown-mermaid-fix",
+        enforce: "pre" as const,
+        transform(code: string, id: string) {
+            if (!id.includes("node_modules/streamdown")) return null;
+            if (!code.includes("import('mermaid')")) return null;
+            return code.replaceAll("import('mermaid')", `import('/@fs${MERMAID_CORE}')`);
         },
     };
 }
@@ -89,6 +43,7 @@ export default defineConfig({
         resolve: {
             alias: {
                 "@": "frontend",
+                mermaid: path.resolve(__dirname, "node_modules/mermaid/dist/mermaid.js"),
             },
         },
         server: {
@@ -147,8 +102,25 @@ export default defineConfig({
                 },
             },
         },
+        resolve: {
+            alias: {
+                "style-to-js$": path.resolve(__dirname, "frontend/style-to-js-compat.ts"),
+                "extend$": path.resolve(__dirname, "frontend/extend-compat.ts"),
+            },
+        },
         optimizeDeps: {
-            include: ["monaco-yaml/yaml.worker.js"],
+            include: [
+                "monaco-yaml/yaml.worker.js",
+                "style-to-js",
+                "style-to-object",
+                "react-markdown",
+                "rehype-raw",
+                "rehype-sanitize",
+                "hast-util-to-estree",
+                "hast-util-to-jsx-runtime",
+                "extend"
+            ],
+            exclude: ["mermaid", "streamdown"],
         },
         server: {
             open: false,
@@ -176,6 +148,7 @@ export default defineConfig({
         },
         plugins: [
             tsconfigPaths(),
+            streamdownMermaidFix(),
             { ...ViteImageOptimizer(), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },

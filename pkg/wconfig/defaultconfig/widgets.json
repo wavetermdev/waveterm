@@ -20,6 +20,16 @@
             }
         }
     },
+    "defwidget@search": {
+        "display:order": -3.5,
+        "icon": "search",
+        "label": "search",
+        "blockdef": {
+            "meta": {
+                "view": "search"
+            }
+        }
+    },
     "defwidget@web": {
         "display:order": -3,
         "icon": "globe",

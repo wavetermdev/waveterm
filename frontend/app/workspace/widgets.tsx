@@ -61,16 +61,18 @@ async function handleWidgetSelect(widget: WidgetConfigType, env: WidgetsEnv) {
     const meta = blockDef?.meta ?? {};
     // For preview widgets targeting a directory (no specific file), resolve
     // the path from the focused terminal's cwd.
-    if (meta.view === "preview" && (isBlank(meta.file) || meta.file === "~")) {
+    if ((meta.view === "preview" || meta.view === "search") && (isBlank(meta.file) || meta.file === "~")) {
         try {
-            const focusedData = await env.rpc.GetFocusedBlockDataCommand(TabRpcClient);
+            const focusedData = await env.rpc.GetFocusedBlockDataCommand(TabRpcClient, { route: TabRpcClient.routeId });
             if (focusedData?.viewtype === "term" && focusedData.blockmeta?.["cmd:cwd"]) {
                 const cwd = focusedData.blockmeta["cmd:cwd"];
                 const resolvedMeta: Record<string, any> = {
                     ...meta,
                     file: cwd,
-                    "preview:treemode": true,
                 };
+                if (meta.view === "preview") {
+                    resolvedMeta["preview:treemode"] = true;
+                }
                 if (focusedData.connname) {
                     resolvedMeta.connection = focusedData.connname;
                 }

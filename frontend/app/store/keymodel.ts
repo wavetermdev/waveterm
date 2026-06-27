@@ -24,6 +24,7 @@ import { getActiveTabModel } from "@/app/store/tab-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
+import { focusedBlockId } from "@/util/focusutil";
 import { isWindows } from "@/util/platformutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
@@ -452,7 +453,11 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     if (isTabWindow()) {
         const layoutModel = getLayoutModelForStaticTab();
         const focusedNode = globalStore.get(layoutModel.focusedNode);
-        const blockId = focusedNode?.data?.blockId;
+        let blockId = focusedNode?.data?.blockId;
+        const domFocusedId = focusedBlockId();
+        if (domFocusedId) {
+            blockId = domFocusedId;
+        }
         if (blockId != null && shouldDispatchToBlock(waveEvent)) {
             const bcm = getBlockComponentModel(blockId);
             const viewModel = bcm?.viewModel;

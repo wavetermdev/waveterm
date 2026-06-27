@@ -273,17 +273,22 @@ const BlockInner = memo((props: BlockProps & { viewType: string }) => {
     const waveEnv = useWaveEnv();
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
-    if (viewModel == null) {
-        // viewModel gets the full waveEnv
+    if (viewModel == null || viewModel.viewType !== props.viewType) {
+        if (viewModel != null) {
+            viewModel.dispose?.();
+        }
         viewModel = makeViewModel(props.nodeModel.blockId, props.viewType, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
         return () => {
-            unregisterBlockComponentModel(props.nodeModel.blockId);
+            const currentBcm = getBlockComponentModel(props.nodeModel.blockId);
+            if (currentBcm?.viewModel === viewModel) {
+                unregisterBlockComponentModel(props.nodeModel.blockId);
+            }
             viewModel?.dispose?.();
         };
-    }, []);
+    }, [viewModel]);
     if (props.preview) {
         return <BlockPreview {...props} viewModel={viewModel} />;
     }
@@ -308,17 +313,22 @@ const SubBlockInner = memo((props: SubBlockProps & { viewType: string }) => {
     const waveEnv = useWaveEnv();
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
-    if (viewModel == null) {
-        // viewModel gets the full waveEnv
+    if (viewModel == null || viewModel.viewType !== props.viewType) {
+        if (viewModel != null) {
+            viewModel.dispose?.();
+        }
         viewModel = makeViewModel(props.nodeModel.blockId, props.viewType, props.nodeModel, tabModel, waveEnv);
         registerBlockComponentModel(props.nodeModel.blockId, { viewModel });
     }
     useEffect(() => {
         return () => {
-            unregisterBlockComponentModel(props.nodeModel.blockId);
+            const currentBcm = getBlockComponentModel(props.nodeModel.blockId);
+            if (currentBcm?.viewModel === viewModel) {
+                unregisterBlockComponentModel(props.nodeModel.blockId);
+            }
             viewModel?.dispose?.();
         };
-    }, []);
+    }, [viewModel]);
     return <BlockSubBlock {...props} viewModel={viewModel} />;
 });
 SubBlockInner.displayName = "SubBlockInner";
