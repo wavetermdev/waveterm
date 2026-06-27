@@ -238,7 +238,7 @@ export function handleOsc7Command(data: string, blockId: string, loaded: boolean
             console.log("Invalid OSC 7 command received (non-file protocol)", data);
             return true;
         }
-        pathPart = decodeURIComponent(url.pathname);
+        pathPart = decodeURIComponent(url.pathname.replace(/\+/g, " "));
 
         // Normalize double slashes at the beginning to single slash
         if (pathPart.startsWith("//")) {
