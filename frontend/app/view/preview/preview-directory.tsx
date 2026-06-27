@@ -4,6 +4,7 @@
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { TreeNodeData, TreeView } from "@/app/treeview/treeview";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -11,6 +12,7 @@ import { addOpenMenuItems } from "@/util/previewutil";
 import { fireAndForget } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
+import { refocusNode } from "@/store/global";
 import {
     Header,
     Row,
@@ -46,6 +48,11 @@ import {
 import { type PreviewModel } from "./preview-model";
 import type { PreviewEnv } from "./previewenv";
 
+const TREE_HEIGHT = "100%";
+const TREE_ROW_HEIGHT = 24;
+const TREE_INDENT_WIDTH = 16;
+const TREE_MAX_DIR_ENTRIES = 500;
+
 const PageJumpSize = 20;
 
 interface DirectoryTableHeaderCellProps {
@@ -76,6 +83,7 @@ function DirectoryTableHeaderCell({ header }: DirectoryTableHeaderCellProps) {
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
+        readonly __tdata?: TData;
         updateName: (path: string, isDir: boolean) => void;
         newFile: () => void;
         newDirectory: () => void;
@@ -129,7 +137,71 @@ function DirectoryTable({
         [fullConfig.mimetypes]
     );
     const getIconColor = useCallback(
-        (mimeType: string): string => fullConfig.mimetypes?.[mimeType]?.color ?? "inherit",
+        (mimeType: string, fileInfo?: FileInfo): string => {
+            const configColor = fullConfig.mimetypes?.[mimeType]?.color;
+            if (configColor) {
+                return configColor;
+            }
+            if (fileInfo) {
+                if (fileInfo.isdir) {
+                    return "var(--color-folder, var(--term-bright-blue))";
+                }
+                const label = (fileInfo.name ?? "").toLowerCase();
+                if (label === "dockerfile" || label.startsWith("docker-compose")) {
+                    return "#0db7ed";
+                }
+                if (label.startsWith(".env")) {
+                    return "#c5c5c5";
+                }
+                if (label.startsWith(".git")) {
+                    return "#f1502f";
+                }
+                const extension = label.split(".").pop();
+                switch (extension) {
+                    case "py":
+                        return "#3572a5";
+                    case "js":
+                    case "jsx":
+                        return "#f1e05a";
+                    case "ts":
+                    case "tsx":
+                        return "#3178c6";
+                    case "json":
+                        return "#cbcb41";
+                    case "yaml":
+                    case "yml":
+                        return "#cb6341";
+                    case "md":
+                    case "mdx":
+                        return "#0083fe";
+                    case "html":
+                    case "htm":
+                        return "#e34c26";
+                    case "css":
+                    case "scss":
+                        return "#563d7c";
+                    case "go":
+                        return "#00add8";
+                    case "rs":
+                        return "#dea584";
+                    case "sh":
+                    case "bash":
+                    case "zsh":
+                        return "#4e9a06";
+                    case "sql":
+                        return "#e38c00";
+                    case "pdf":
+                        return "#e52237";
+                    case "png":
+                    case "jpg":
+                    case "jpeg":
+                    case "gif":
+                    case "svg":
+                        return "#a074c4";
+                }
+            }
+            return "inherit";
+        },
         [fullConfig.mimetypes]
     );
     const columns = useMemo(
@@ -138,7 +210,7 @@ function DirectoryTable({
                 cell: (info) => (
                     <i
                         className={getIconFromMimeType(info.getValue() ?? "")}
-                        style={{ color: getIconColor(info.getValue() ?? "") }}
+                        style={{ color: getIconColor(info.getValue() ?? "", info.row.original) }}
                     ></i>
                 ),
                 header: () => <span></span>,
@@ -634,7 +706,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     useEffect(() => {
         model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {
             if (checkKeyPressed(waveEvent, "Cmd:f")) {
-                globalStore.set(model.directorySearchActive, true);
+                const curPath = globalStore.get(model.metaFilePath);
+                const conn = globalStore.get(model.connectionImmediate);
+                model.env.rpc.SetMetaCommand(TabRpcClient, {
+                    oref: `block:${model.blockId}`,
+                    meta: {
+                        view: "search",
+                        file: curPath,
+                        connection: conn,
+                    },
+                });
                 return true;
             }
             if (checkKeyPressed(waveEvent, "Escape")) {
@@ -904,4 +985,281 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     );
 }
 
-export { DirectoryPreview };
+function fileInfoToTreeNodes(fileInfos: FileInfo[], parentId: string): TreeNodeData[] {
+    return fileInfos.map((fi) => ({
+        id: fi.path,
+        parentId,
+        label: fi.name ?? fi.path.split("/").filter(Boolean).pop() ?? fi.path,
+        path: fi.path,
+        isDirectory: fi.isdir ?? false,
+        mimeType: fi.mimetype,
+        isReadonly: fi.readonly ?? false,
+        notfound: fi.notfound ?? false,
+        staterror: fi.staterror,
+        childrenStatus: fi.isdir ? ("unloaded" as const) : ("loaded" as const),
+    }));
+}
+
+async function treeFetchDir(
+    id: string,
+    _limit: number,
+    formatUri: (path: string, get: any) => Promise<string>,
+    rpc: PreviewEnv["rpc"],
+    get: any
+): Promise<{ nodes: TreeNodeData[]; capped?: boolean }> {
+    const remotePath = await formatUri(id, get);
+    const stream = rpc.FileListStreamCommand(TabRpcClient, { path: remotePath }, null);
+    const entries: FileInfo[] = [];
+    for await (const chunk of stream) {
+        if (chunk?.fileinfo) {
+            entries.push(...chunk.fileinfo);
+        }
+    }
+    const nodes = fileInfoToTreeNodes(entries, id);
+    return { nodes, capped: entries.length >= TREE_MAX_DIR_ENTRIES };
+}
+
+function DirectoryTreePreview({ model }: { model: PreviewModel }) {
+    const env = useWaveEnv<PreviewEnv>();
+    const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
+    const finfo = useAtomValue(model.statFile);
+    const dirPath = finfo?.path;
+
+    const [searchText, setSearchText] = useState("");
+    const searchActive = useAtomValue(model.directorySearchActive);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    const initialNodes = useMemo(() => {
+        if (!dirPath) return {};
+        return {
+            [dirPath]: {
+                id: dirPath,
+                path: dirPath,
+                label: dirPath.split("/").filter(Boolean).pop() ?? dirPath,
+                isDirectory: true,
+                childrenStatus: "unloaded" as const,
+            },
+        };
+    }, [dirPath]);
+
+    const handleOpenFile = useCallback(
+        (id: string, _node: TreeNodeData) => {
+            model.handleOpenFile(id);
+        },
+        [model]
+    );
+
+    const getIconColorForTree = useCallback(
+        (node: TreeNodeData, isExpanded: boolean): string => {
+            const configColor = fullConfig.mimetypes?.[node.mimeType ?? ""]?.color;
+            if (configColor) {
+                return configColor;
+            }
+            if (node.isDirectory) {
+                return "var(--color-folder, var(--term-bright-blue))";
+            }
+            const label = (node.label ?? "").toLowerCase();
+            if (label === "dockerfile" || label.startsWith("docker-compose")) {
+                return "#0db7ed";
+            }
+            if (label.startsWith(".env")) {
+                return "#c5c5c5";
+            }
+            if (label.startsWith(".git")) {
+                return "#f1502f";
+            }
+            const extension = label.split(".").pop();
+            switch (extension) {
+                case "py":
+                    return "#3572a5";
+                case "js":
+                case "jsx":
+                    return "#f1e05a";
+                case "ts":
+                case "tsx":
+                    return "#3178c6";
+                case "json":
+                    return "#cbcb41";
+                case "yaml":
+                case "yml":
+                    return "#cb6341";
+                case "md":
+                case "mdx":
+                    return "#0083fe";
+                case "html":
+                case "htm":
+                    return "#e34c26";
+                case "css":
+                case "scss":
+                    return "#563d7c";
+                case "go":
+                    return "#00add8";
+                case "rs":
+                    return "#dea584";
+                case "sh":
+                case "bash":
+                case "zsh":
+                    return "#4e9a06";
+                case "sql":
+                    return "#e38c00";
+                case "pdf":
+                    return "#e52237";
+                case "png":
+                case "jpg":
+                case "jpeg":
+                case "gif":
+                    return "#a074c4";
+                case "svg":
+                    return "#a074c4";
+            }
+            return "inherit";
+        },
+        [fullConfig.mimetypes]
+    );
+
+    const directoryKeyDownHandler = useCallback(
+        (waveEvent: WaveKeyboardEvent): boolean => {
+            if (waveEvent.key === "/" || checkKeyPressed(waveEvent, "Cmd:f")) {
+                waveEvent.originalEvent.preventDefault();
+                const curPath = globalStore.get(model.metaFilePath);
+                const conn = globalStore.get(model.connectionImmediate);
+                model.env.rpc.SetMetaCommand(TabRpcClient, {
+                    oref: `block:${model.blockId}`,
+                    meta: {
+                        view: "search",
+                        file: curPath,
+                        connection: conn,
+                    },
+                });
+                return true;
+            }
+            return false;
+        },
+        [model]
+    );
+
+    const handleTreeKeyDown = useCallback(
+        (event: React.KeyboardEvent<HTMLDivElement>) => {
+            if (event.key === "/") {
+                event.preventDefault();
+                const curPath = globalStore.get(model.metaFilePath);
+                const conn = globalStore.get(model.connectionImmediate);
+                model.env.rpc.SetMetaCommand(TabRpcClient, {
+                    oref: `block:${model.blockId}`,
+                    meta: {
+                        view: "search",
+                        file: curPath,
+                        connection: conn,
+                    },
+                });
+            } else if ((event.metaKey || event.ctrlKey) && event.key === "f") {
+                event.preventDefault();
+                const curPath = globalStore.get(model.metaFilePath);
+                const conn = globalStore.get(model.connectionImmediate);
+                model.env.rpc.SetMetaCommand(TabRpcClient, {
+                    oref: `block:${model.blockId}`,
+                    meta: {
+                        view: "search",
+                        file: curPath,
+                        connection: conn,
+                    },
+                });
+            }
+        },
+        [model]
+    );
+
+    useEffect(() => {
+        model.directoryKeyDownHandler = directoryKeyDownHandler;
+        return () => {
+            model.directoryKeyDownHandler = null;
+        };
+    }, [directoryKeyDownHandler, model]);
+
+    useEffect(() => {
+        if (searchActive && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    }, [searchActive]);
+
+    if (!dirPath) {
+        return (
+            <div className="flex items-center justify-center w-full h-full text-muted text-sm">
+                <span>No directory selected</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col w-full h-full overflow-hidden">
+            <div
+                className="shrink-0 px-3 py-1.5 text-xs text-muted border-b border-border truncate select-none"
+                title={dirPath}
+            >
+                {dirPath}
+            </div>
+            {searchActive && (
+                <div className="flex items-center shrink-0 px-3 py-1 text-sm border-b border-border bg-panel">
+                    <i className="fa fa-solid fa-magnifying-glass text-xs text-muted mr-2"></i>
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Search files by name..."
+                        className="bg-transparent text-sm w-full outline-none text-foreground"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                                setSearchText("");
+                                globalStore.set(model.directorySearchActive, false);
+                                refocusNode(model.blockId);
+                            }
+                        }}
+                    />
+                    {searchText && (
+                        <button
+                            onClick={() => setSearchText("")}
+                            className="text-xs text-muted hover:text-foreground ml-2"
+                        >
+                            <i className="fa fa-solid fa-xmark"></i>
+                        </button>
+                    )}
+                </div>
+            )}
+            <div className="flex-1 overflow-hidden p-1">
+                <TreeView
+                    rootIds={[dirPath]}
+                    initialNodes={initialNodes}
+                    defaultExpandedIds={[dirPath]}
+                    width="100%"
+                    height={TREE_HEIGHT}
+                    minWidth={150}
+                    maxWidth={800}
+                    rowHeight={TREE_ROW_HEIGHT}
+                    indentWidth={TREE_INDENT_WIDTH}
+                    maxDirEntries={TREE_MAX_DIR_ENTRIES}
+                    fetchDir={async (id, limit) => {
+                        return treeFetchDir(id, limit, model.formatRemoteUri, env.rpc, globalStore.get);
+                    }}
+                    onOpenFile={handleOpenFile}
+                    getIconColor={getIconColorForTree}
+                    filterText={searchText}
+                    onKeyDown={handleTreeKeyDown}
+                    className="border-none rounded-none"
+                />
+            </div>
+        </div>
+    );
+}
+
+function DirectoryTableOrTree({ model }: DirectoryPreviewProps) {
+    const blockData = useAtomValue(model.blockAtom);
+    const isTreeMode = blockData?.meta?.["preview:treemode"] === true;
+
+    if (isTreeMode) {
+        return <DirectoryTreePreview model={model} />;
+    }
+    return <DirectoryPreview model={model} />;
+}
+
+export { DirectoryPreview, DirectoryTableOrTree };

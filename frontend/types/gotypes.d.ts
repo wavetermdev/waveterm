@@ -391,6 +391,14 @@ declare global {
         restoretofilename: string;
     };
 
+    // wshrpc.CommandFileSearchData
+    type CommandFileSearchData = {
+        path: string;
+        query: string;
+        ignorecase: boolean;
+        regex: boolean;
+    };
+
     // wshrpc.CommandFileStreamData
     type CommandFileStreamData = {
         info: FileInfo;
@@ -994,6 +1002,18 @@ declare global {
         append?: boolean;
     };
 
+    // wshrpc.FileSearchMatch
+    type FileSearchMatch = {
+        linenum: number;
+        line: string;
+    };
+
+    // wshrpc.FileSearchResult
+    type FileSearchResult = {
+        path: string;
+        matches: FileSearchMatch[];
+    };
+
     // wshrpc.FocusedBlockData
     type FocusedBlockData = {
         blockid: string;
@@ -1589,6 +1609,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

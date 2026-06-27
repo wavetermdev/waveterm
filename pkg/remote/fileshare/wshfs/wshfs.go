@@ -301,3 +301,18 @@ func copyInternal(srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopy
 	}
 	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
+
+func FileSearch(ctx context.Context, data wshrpc.CommandFileSearchData) ([]*wshrpc.FileSearchResult, error) {
+	log.Printf("FileSearch: %v", data.Path)
+	conn, err := parseConnection(ctx, data.Path)
+	if err != nil {
+		return nil, err
+	}
+	return wshclient.RemoteFileSearchCommand(RpcClient, wshrpc.CommandFileSearchData{
+		Path:       conn.Path,
+		Query:      data.Query,
+		IgnoreCase: data.IgnoreCase,
+		Regex:      data.Regex,
+	}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+}
+
