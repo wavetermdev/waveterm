@@ -1,13 +1,9 @@
 ---
 name: wps-events
-description: Guide for working with Wave Terminal's WPS (Wave PubSub) event system. Use when implementing new event types, publishing events, subscribing to events, or adding asynchronous communication between components.
+description: Guide for working with Wave Terminal's WPS (Wave PubSub) event system — define event constants, register data types, publish and subscribe to events. Use when implementing new event types, creating event handlers, publishing events, subscribing to events, adding real-time component messaging, or setting up asynchronous communication between components.
 ---
 
 # WPS Events Guide
-
-## Overview
-
-WPS (Wave PubSub) is Wave Terminal's publish-subscribe event system that enables different parts of the application to communicate asynchronously. The system uses a broker pattern to route events from publishers to subscribers based on event types and scopes.
 
 ## Key Files
 
@@ -261,68 +257,11 @@ wps.Broker.Subscribe(routeId, wps.SubscriptionRequest{
 ## Best Practices
 
 1. **Use Namespaces**: Prefix event names with a namespace (e.g., `waveai:`, `workspace:`, `block:`)
-
 2. **Don't Block**: Use goroutines when publishing from performance-critical code or while holding locks
-
 3. **Type-Safe Data**: Define struct types for event data rather than using maps
-
 4. **Scope Wisely**: Use scopes to limit event delivery and reduce unnecessary processing
-
-5. **Document Events**: Add comments explaining when events are fired and what data they carry
-
-6. **Consider Persistence**: Use `Persist` for events that late subscribers might need (like status updates). This is normally not used. We normally do a live RPC call to get the current value and then subscribe for updates.
-
-## Common Event Patterns
-
-### Status Updates
-
-```go
-wps.Broker.Publish(wps.WaveEvent{
-    Event:   wps.Event_ControllerStatus,
-    Scopes:  []string{blockId},
-    Persist: 1,  // Keep only latest status
-    Data:    statusData,
-})
-```
-
-### Object Updates
-
-```go
-wps.Broker.Publish(wps.WaveEvent{
-    Event:  wps.Event_WaveObjUpdate,
-    Scopes: []string{oref.String()},
-    Data: waveobj.WaveObjUpdate{
-        UpdateType: waveobj.UpdateType_Update,
-        OType:      obj.GetOType(),
-        OID:        waveobj.GetOID(obj),
-        Obj:        obj,
-    },
-})
-```
-
-### Batch Updates
-
-```go
-// Helper function for multiple updates
-func (b *BrokerType) SendUpdateEvents(updates waveobj.UpdatesRtnType) {
-    for _, update := range updates {
-        b.Publish(WaveEvent{
-            Event:  Event_WaveObjUpdate,
-            Scopes: []string{waveobj.MakeORef(update.OType, update.OID).String()},
-            Data:   update,
-        })
-    }
-}
-```
-
-## Debugging
-
-To debug event flow:
-
-1. Check broker subscription map: `wps.Broker.SubMap`
-2. View persisted events: `wps.Broker.ReadEventHistory(eventType, scope, maxItems)`
-3. Add logging in publish/subscribe methods
-4. Monitor WebSocket traffic in browser dev tools
+5. **Document Events**: Add `// type: <TypeName>` comments explaining what data events carry
+6. **Persistence**: Rarely used — prefer live RPC call + subscribe for updates pattern
 
 ## Quick Reference
 
