@@ -648,8 +648,12 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 	  overrides them to point to snap directories. We will get the correct values, if
 	  set, from the PAM environment. If the XDG variables are set in profile or in an
 	  RC file, it will be overridden when the shell initializes.
+
+	  Only apply this correction when Wave itself is running as a Snap (SNAP_NAME == "waveterm"),
+	  not when $SNAP is merely inherited from a parent Snap process (e.g. a CLI tool
+	  installed via Snap).
 	*/
-	if os.Getenv("SNAP") != "" {
+	if os.Getenv("SNAP_NAME") == "waveterm" {
 		log.Printf("Detected Snap installation, correcting XDG environment variables")
 		varsToReplace := map[string]string{"XDG_CONFIG_HOME": "", "XDG_DATA_HOME": "", "XDG_CACHE_HOME": "", "XDG_RUNTIME_DIR": "", "XDG_CONFIG_DIRS": "", "XDG_DATA_DIRS": ""}
 		pamEnvs := tryGetPamEnvVars()
@@ -659,6 +663,15 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 				if _, ok := varsToReplace[k]; ok {
 					varsToReplace[k] = pamEnvs[k]
 				}
+			}
+		}
+		// Remove keys that still have empty values so they are not explicitly set to
+		// empty strings in the child environment (which breaks tools that fall back to
+		// XDG spec defaults).  When a key is absent from varsToReplace the child will
+		// either inherit the parent value or rely on shell rc files / spec defaults.
+		for k, v := range varsToReplace {
+			if v == "" {
+				delete(varsToReplace, k)
 			}
 		}
 		log.Printf("Setting XDG environment variables to: %v", varsToReplace)
