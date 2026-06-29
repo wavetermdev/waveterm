@@ -94,6 +94,7 @@ mkdir -p {{.installDir}} || exit 1;
 cat > {{.tempPath}} || exit 1;
 mv {{.tempPath}} {{.installPath}} || exit 1;
 chmod a+x {{.installPath}} || exit 1;
+cp {{.installPath}} {{.wavePath}} || exit 1;
 `)
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
@@ -115,6 +116,7 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
 		"tempPath":    wavebase.RemoteFullWshBinPath + ".temp",
 		"installPath": wavebase.RemoteFullWshBinPath,
+		"wavePath":    wavebase.RemoteFullWaveBinPath,
 	}
 	var installCmd bytes.Buffer
 	if err := installTemplate.Execute(&installCmd, installWords); err != nil {

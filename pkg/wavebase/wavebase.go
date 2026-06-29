@@ -64,6 +64,7 @@ const ConfigDir = "config"
 const RemoteWaveHomeDirName = ".waveterm"
 const RemoteWshBinDirName = "bin"
 const RemoteFullWshBinPath = "~/.waveterm/bin/wsh"
+const RemoteFullWaveBinPath = "~/.waveterm/bin/wave"
 const RemoteFullDomainSocketPath = "~/.waveterm/wave-remote.sock"
 
 const AppPathBinDir = "bin"
