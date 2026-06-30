@@ -776,6 +776,17 @@ export class TermViewModel implements ViewModel {
             event.stopPropagation();
             return false;
         }
+        // Fallback: send ASCII control character for Ctrl+key combos that xterm.js
+        // may mishandle on non-US keyboard layouts (e.g. Ctrl+[ should send ESC).
+        if (waveEvent.control && !waveEvent.alt && !waveEvent.meta) {
+            const ascii = keyutil.keyboardEventToASCII(waveEvent);
+            if (ascii.length > 0) {
+                this.sendDataToController(ascii);
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        }
         return true;
     }
 
