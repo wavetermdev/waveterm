@@ -293,6 +293,7 @@ const ctrlCodeMap: Record<string, string> = {
     BracketLeft: "[",
     Backslash: "\\",
     BracketRight: "]",
+    Slash: "/",
     Space: " ",
 };
 
