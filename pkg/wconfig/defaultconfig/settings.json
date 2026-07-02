@@ -29,6 +29,7 @@
     "window:magnifiedblockblursecondarypx": 2,
     "window:confirmclose": true,
     "window:savelastwindow": true,
+    "window:restoreallwindows": true,
     "telemetry:enabled": true,
     "term:bellsound": false,
     "term:bellindicator": true,
