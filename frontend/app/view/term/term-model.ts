@@ -732,6 +732,12 @@ export class TermViewModel implements ViewModel {
                 return false;
             }
         }
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Enter")) {
+            this.sendDataToController("\x1b[13;5u");
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
 
         // Check for Ctrl-V paste (platform-dependent)
         if (this.shouldHandleCtrlVPaste() && keyutil.checkKeyPressed(waveEvent, "Ctrl:v")) {
