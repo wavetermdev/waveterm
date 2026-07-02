@@ -618,6 +618,10 @@ func selectDirEntsBySuffix(dirEnts []fs.DirEntry, fileNameSuffix string) []fs.Di
 		if ent.IsDir() {
 			continue
 		}
+		// skip hidden files, notably macOS AppleDouble sidecars ("._ai.json") which are binary and fail JSON parsing
+		if strings.HasPrefix(ent.Name(), ".") {
+			continue
+		}
 		if !strings.HasSuffix(ent.Name(), fileNameSuffix) {
 			continue
 		}
