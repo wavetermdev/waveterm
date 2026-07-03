@@ -733,10 +733,14 @@ export class TermViewModel implements ViewModel {
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Enter")) {
-            this.sendDataToController("\x1b[13;5u");
-            event.preventDefault();
-            event.stopPropagation();
-            return false;
+            const ctrlEnterAtom = getOverrideConfigAtom(this.blockId, "term:ctrlenter");
+            const ctrlEnterEnabled = globalStore.get(ctrlEnterAtom) ?? true;
+            if (ctrlEnterEnabled) {
+                this.sendDataToController("\x1b[13;5u");
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
         }
 
         // Check for Ctrl-V paste (platform-dependent)

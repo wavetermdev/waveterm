@@ -121,6 +121,7 @@ const (
 	MetaKey_TermTransparency                 = "term:transparency"
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
+	MetaKey_TermCtrlEnter                    = "term:ctrlenter"
 	MetaKey_TermMacOptionIsMeta              = "term:macoptionismeta"
 	MetaKey_TermCursor                       = "term:cursor"
 	MetaKey_TermCursorBlink                  = "term:cursorblink"
