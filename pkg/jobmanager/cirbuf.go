@@ -161,6 +161,12 @@ func (cb *CirBuf) TotalSize() int64 {
 	return cb.totalSize
 }
 
+func (cb *CirBuf) SetTotalSize(val int64) {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+	cb.totalSize = val
+}
+
 func tryWriteCh[T any](ch chan<- T, val T) bool {
 	select {
 	case ch <- val:

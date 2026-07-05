@@ -8,10 +8,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"sync"
+	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
+
+const SendDataTimeout = 5 * time.Second
 
 const (
 	CwndSize      = 64 * 1024       // 64 KB window for connected mode
@@ -21,7 +26,7 @@ const (
 )
 
 type DataSender interface {
-	SendData(dataPk wshrpc.CommandStreamData)
+	SendData(dataPk wshrpc.CommandStreamData) error
 }
 
 type streamTerminalEvent struct {
@@ -35,6 +40,7 @@ type StreamManager struct {
 	drainCond *sync.Cond
 
 	streamId string
+	jobId    string
 
 	// this is the data read from the attached reader
 	buf           *CirBuf
@@ -60,6 +66,21 @@ type StreamManager struct {
 	// terminal state - once true, stream is complete
 	terminalEventAcked bool
 	closed             bool
+
+	// disk-backed history
+	diskFile     *os.File // nil when not using disk
+	diskStartSeq int64    // totalSize at which disk writing began
+	diskEndSeq   int64    // last byte written to disk (= totalSize of last write)
+	diskReadPos  int64    // next byte to read from disk during drain (absolute Seq)
+	drainGen     int64    // generation counter: incremented on disconnect to kill old drain goroutines
+}
+
+// SetJobId sets the job ID for disk file path generation. Must be called before
+// disk buffering is activated.
+func (sm *StreamManager) SetJobId(jobId string) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	sm.jobId = jobId
 }
 
 func MakeStreamManager() *StreamManager {
@@ -111,13 +132,23 @@ func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender,
 	}
 
 	headPos := sm.buf.HeadPos()
+	effectiveEnd := headPos + int64(sm.buf.Size())
+	if sm.diskEndSeq > effectiveEnd {
+		effectiveEnd = sm.diskEndSeq
+	}
+	if clientSeq > effectiveEnd {
+		return 0, fmt.Errorf("client seq %d beyond stream end %d", clientSeq, effectiveEnd)
+	}
+
 	if clientSeq > headPos {
 		bytesToConsume := int(clientSeq - headPos)
 		available := sm.buf.Size()
 		if bytesToConsume > available {
-			return 0, fmt.Errorf("client seq %d is beyond our stream end (head=%d, size=%d)", clientSeq, headPos, available)
-		}
-		if bytesToConsume > 0 {
+			// Client is ahead of CirBuf but within disk range — sync totalSize
+			sm.buf.SetTotalSize(clientSeq)
+			sm.buf.Consume(sm.buf.Size())
+			headPos = sm.buf.HeadPos()
+		} else if bytesToConsume > 0 {
 			if err := sm.buf.Consume(bytesToConsume); err != nil {
 				return 0, fmt.Errorf("failed to consume buffer: %w", err)
 			}
@@ -140,6 +171,22 @@ func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender,
 	startSeq := headPos
 	if clientSeq > startSeq {
 		startSeq = clientSeq
+	}
+
+	// Start disk drain if disk data exists and client is behind
+	if sm.diskFile != nil && clientSeq < sm.diskEndSeq {
+		if sm.diskReadPos < sm.diskStartSeq {
+			sm.diskReadPos = sm.diskStartSeq
+		}
+		if clientSeq > sm.diskReadPos {
+			sm.diskReadPos = clientSeq
+		}
+		sm.drainGen++
+		go sm.drainDiskToCirBuf(sm.drainGen)
+	} else if sm.diskFile != nil {
+		// Client is caught up or ahead — no drain needed.
+		// Deactivate disk so readLoop resumes writing to CirBuf directly.
+		sm.deactivateDiskBuffering()
 	}
 
 	return startSeq, nil
@@ -184,6 +231,7 @@ func (sm *StreamManager) ClientDisconnected() {
 		sm.terminalEventSent = false
 	}
 	sm.buf.SetEffectiveWindow(false, CirBufSize)
+	sm.drainGen++ // kill any running drain goroutine
 	sm.drainCond.Signal()
 }
 
@@ -273,6 +321,15 @@ func (sm *StreamManager) Close() {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 	sm.closed = true
+	if sm.diskFile != nil {
+		diskFile := sm.diskFile
+		diskPath := sm.diskFile.Name()
+		sm.diskFile = nil
+		go func() {
+			diskFile.Close()
+			os.Remove(diskPath)
+		}()
+	}
 	sm.drainCond.Signal()
 }
 
@@ -306,6 +363,31 @@ func (sm *StreamManager) readLoop() {
 }
 
 func (sm *StreamManager) handleReadData(data []byte) {
+	sm.lock.Lock()
+	diskFile := sm.diskFile
+	sm.lock.Unlock()
+
+	if diskFile != nil {
+		n, err := diskFile.Write(data)
+		sm.lock.Lock()
+		if err != nil || sm.diskFile != diskFile {
+			if err != nil && sm.diskFile == diskFile {
+				diskPath := diskFile.Name()
+				sm.diskFile = nil
+				go func() {
+					diskFile.Close()
+					os.Remove(diskPath)
+				}()
+			}
+			sm.lock.Unlock()
+		} else {
+			sm.diskEndSeq += int64(n)
+			sm.drainCond.Signal()
+			sm.lock.Unlock()
+			return
+		}
+	}
+
 	offset := 0
 	for offset < len(data) {
 		n, waitCh := sm.buf.WriteAvailable(data[offset:])
@@ -327,8 +409,12 @@ func (sm *StreamManager) handleEOF() {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	log.Printf("handleEOF: PTY reached EOF, totalSize=%d", sm.buf.TotalSize())
-	sm.eofPos = sm.buf.TotalSize()
+	eofPos := sm.buf.TotalSize()
+	if sm.diskEndSeq > eofPos {
+		eofPos = sm.diskEndSeq
+	}
+	log.Printf("handleEOF: PTY reached EOF, totalSize=%d, diskEndSeq=%d, eofPos=%d", sm.buf.TotalSize(), sm.diskEndSeq, eofPos)
+	sm.eofPos = eofPos
 	sm.terminalEvent = &streamTerminalEvent{isEof: true}
 	sm.drainCond.Signal()
 }
@@ -337,10 +423,152 @@ func (sm *StreamManager) handleError(err error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	log.Printf("handleError: PTY error=%v, totalSize=%d", err, sm.buf.TotalSize())
-	sm.eofPos = sm.buf.TotalSize()
+	eofPos := sm.buf.TotalSize()
+	if sm.diskEndSeq > eofPos {
+		eofPos = sm.diskEndSeq
+	}
+	log.Printf("handleError: PTY error=%v, totalSize=%d, diskEndSeq=%d, eofPos=%d", err, sm.buf.TotalSize(), sm.diskEndSeq, eofPos)
+	sm.eofPos = eofPos
 	sm.terminalEvent = &streamTerminalEvent{err: err.Error()}
 	sm.drainCond.Signal()
+}
+
+func (sm *StreamManager) handleSendFailure() {
+	log.Printf("handleSendFailure: send timeout, transitioning to disconnected mode")
+	sm.ClientDisconnected()
+	sm.activateDiskBuffering()
+}
+
+func (sm *StreamManager) activateDiskBuffering() {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if sm.diskFile != nil {
+		return // already activated
+	}
+	if sm.reader == nil {
+		return // no PTY data flowing
+	}
+	if sm.terminalEvent != nil {
+		return // process already exited
+	}
+
+	diskPath := wavebase.GetRemoteJobFilePath(sm.jobId, "stream")
+	f, err := os.Create(diskPath)
+	if err != nil {
+		log.Printf("activateDiskBuffering: failed to create disk file %s: %v", diskPath, err)
+		return
+	}
+	sm.diskFile = f
+	sm.diskStartSeq = sm.buf.TotalSize()
+	sm.diskEndSeq = sm.buf.TotalSize()
+	sm.diskReadPos = sm.buf.TotalSize()
+	log.Printf("activateDiskBuffering: disk buffering activated at path=%s startSeq=%d", diskPath, sm.diskStartSeq)
+}
+
+func (sm *StreamManager) drainDiskToCirBuf(myGen int64) {
+	for {
+		sm.lock.Lock()
+		generation := sm.drainGen
+		connected := sm.connected
+		diskFile := sm.diskFile
+		curDiskEnd := sm.diskEndSeq
+		readPos := sm.diskReadPos
+		diskStartSeq := sm.diskStartSeq
+		sm.lock.Unlock()
+
+		if generation != myGen || !connected || diskFile == nil {
+			return
+		}
+		if readPos >= curDiskEnd {
+			sm.lock.Lock()
+			if sm.terminalEvent != nil && sm.diskReadPos >= sm.diskEndSeq {
+				// Process exited and all data drained — complete
+				sm.deactivateDiskBuffering()
+				sm.lock.Unlock()
+				return
+			}
+			sm.lock.Unlock()
+			// Live process, caught up — spin
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+
+		// Calculate offset into disk file
+		fileOffset := readPos - diskStartSeq
+		toRead := curDiskEnd - readPos
+		if toRead > MaxPacketSize {
+			toRead = MaxPacketSize
+		}
+
+		buf := make([]byte, toRead)
+		n, err := diskFile.ReadAt(buf, fileOffset)
+		if err != nil && err != io.EOF {
+			log.Printf("drainDiskToCirBuf: read error: %v", err)
+			return
+		}
+		if n == 0 {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+
+		data := buf[:n]
+		written := 0
+		for written < len(data) {
+			sm.lock.Lock()
+			stillConnected := sm.connected
+			sm.lock.Unlock()
+			if !stillConnected {
+				return
+			}
+
+			nw, waitCh := sm.buf.WriteAvailable(data[written:])
+			written += nw
+
+			if nw > 0 {
+				sm.lock.Lock()
+				if sm.drainGen == myGen {
+					sm.diskReadPos += int64(nw)
+				}
+				sm.drainCond.Signal()
+				sm.lock.Unlock()
+			}
+
+			if waitCh != nil {
+				<-waitCh
+			}
+		}
+
+		// Check if drain is complete (process exited + all data drained)
+		sm.lock.Lock()
+		if sm.terminalEvent != nil && sm.diskReadPos >= sm.diskEndSeq {
+			sm.deactivateDiskBuffering()
+			sm.lock.Unlock()
+			return
+		}
+		sm.lock.Unlock()
+	}
+}
+
+func (sm *StreamManager) deactivateDiskBuffering() {
+	// Called with sm.lock held
+	if sm.diskFile == nil {
+		return
+	}
+	sm.buf.SetTotalSize(sm.diskEndSeq)
+	diskFile := sm.diskFile
+	diskPath := sm.diskFile.Name()
+	sm.diskFile = nil
+	sm.diskStartSeq = 0
+	sm.diskEndSeq = 0
+	sm.diskReadPos = 0
+	sm.drainGen++
+	sm.drainCond.Signal()
+	go func() {
+		diskFile.Close()
+		os.Remove(diskPath)
+	}()
+	log.Printf("deactivateDiskBuffering: disk drain complete, file deleted")
 }
 
 func (sm *StreamManager) senderLoop() {
@@ -352,7 +580,15 @@ func (sm *StreamManager) senderLoop() {
 		if pkt == nil {
 			continue
 		}
-		sender.SendData(*pkt)
+		if sender == nil {
+			sm.lock.Lock()
+			sm.drainCond.Signal()
+			sm.lock.Unlock()
+			continue
+		}
+		if err := sender.SendData(*pkt); err != nil {
+			sm.handleSendFailure()
+		}
 	}
 }
 
@@ -372,7 +608,7 @@ func (sm *StreamManager) prepareNextPacket() (done bool, pkt *wshrpc.CommandStre
 	}
 
 	if available == 0 {
-		if sm.terminalEvent != nil && !sm.terminalEventSent {
+		if sm.terminalEvent != nil && !sm.terminalEventSent && sm.diskFile == nil {
 			return false, sm.prepareTerminalPacket(), sm.dataSender
 		}
 		sm.drainCond.Wait()

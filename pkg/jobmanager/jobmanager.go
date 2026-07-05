@@ -54,7 +54,15 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	WshCmdJobManager.JwtPublicKey = publicKeyBytes
 	WshCmdJobManager.JobAuthToken = jobAuthToken
 	WshCmdJobManager.StreamManager = MakeStreamManager()
+	WshCmdJobManager.StreamManager.SetJobId(jobId)
 	WshCmdJobManager.InputQueue = utilds.MakeQuickReorderQueue[wshrpc.CommandJobInputData](JobInputQueueSize, JobInputQueueTimeout)
+
+	// Clean up stale disk files from prior sessions
+	staleStreamPath := wavebase.GetRemoteJobFilePath(jobId, "stream")
+	if err := os.Remove(staleStreamPath); err == nil {
+		log.Printf("SetupJobManager: removed stale stream file %s", staleStreamPath)
+	}
+
 	err := wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to set public key: %w", err)
@@ -173,10 +181,12 @@ func (jm *JobManager) connectToStreamHelper_withlock(mainServerConn *MainServerC
 
 	if jm.connectedStreamClient != nil {
 		log.Printf("connectToStreamHelper: disconnecting existing client\n")
+		oldClient := jm.connectedStreamClient
 		oldStreamId := jm.StreamManager.GetStreamId()
 		jm.StreamManager.ClientDisconnected()
+		jm.StreamManager.activateDiskBuffering()
 		if oldStreamId != "" {
-			mainServerConn.WshRpc.StreamBroker.DetachStreamWriter(oldStreamId)
+			oldClient.WshRpc.StreamBroker.DetachStreamWriter(oldStreamId)
 			log.Printf("connectToStreamHelper: detached old stream id=%s\n", oldStreamId)
 		}
 		jm.connectedStreamClient = nil
@@ -205,6 +215,7 @@ func (jm *JobManager) disconnectFromStreamHelper(mainServerConn *MainServerConn)
 		return
 	}
 	jm.StreamManager.ClientDisconnected()
+	jm.StreamManager.activateDiskBuffering()
 	jm.connectedStreamClient = nil
 }
 
