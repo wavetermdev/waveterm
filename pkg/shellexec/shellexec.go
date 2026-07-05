@@ -580,6 +580,10 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	return jobId, nil
 }
 
+// StartLocalShellProc starts a local shell process with the given command string,
+// terminal size, command options, and connection name. It configures the shell
+// environment (including correcting XDG directory variables when running as a Snap),
+// sets up a PTY, and returns a ShellProc instance managing the running process.
 func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, connName string) (*ShellProc, error) {
 	if cmdOpts.SwapToken == nil {
 		return nil, fmt.Errorf("SwapToken is required in CommandOptsType")
