@@ -174,5 +174,31 @@
         "foreground": "#e0def4",
         "background": "#191724",
         "cursor": "#524f67"
+    },
+    "iterm-light": {
+        "display:name": "iTerm Light",
+        "display:order": 8,
+        "black": "#14191E",
+        "red": "#B43C2A",
+        "green": "#00C200",
+        "yellow": "#C7C400",
+        "blue": "#2744C7",
+        "magenta": "#C040BE",
+        "cyan": "#00C5C7",
+        "white": "#C7C7C7",
+        "brightBlack": "#686868",
+        "brightRed": "#DD7975",
+        "brightGreen": "#58E790",
+        "brightYellow": "#ECE100",
+        "brightBlue": "#A7ABF2",
+        "brightMagenta": "#E17EE1",
+        "brightCyan": "#60FDFF",
+        "brightWhite": "#FFFFFF",
+        "gray": "#686868",
+        "cmdtext": "#101010",
+        "foreground": "#101010",
+        "selectionBackground": "#B3D7FF",
+        "background": "#FAFAFA",
+        "cursor": "#000000"
     }
 }
