@@ -12,8 +12,10 @@ import (
 )
 
 var deleteBlockCmd = &cobra.Command{
-	Use:     "deleteblock",
+	Use:     "deleteblock [-b {blockid|blocknum|this}]",
 	Short:   "delete a block",
+	Long:    "Delete a block. If no block is specified with -b, deletes the current block (this).",
+	Args:    cobra.NoArgs,
 	RunE:    deleteBlockRun,
 	PreRunE: preRunSetupRpcClient,
 }
