@@ -754,7 +754,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
-func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
+func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, agent.ExtendedAgent, error) {
 	chosenUser := utilfn.SafeDeref(sshKeywords.SshUser)
 	chosenHostName := utilfn.SafeDeref(sshKeywords.SshHostName)
 	chosenPort := utilfn.SafeDeref(sshKeywords.SshPort)
@@ -784,10 +784,10 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		secretName := *sshKeywords.SshPasswordSecretName
 		password, exists, err := secretstore.GetSecret(secretName)
 		if err != nil {
-			return nil, utilds.Errorf(ConnErrCode_SecretStore, "error retrieving ssh:passwordsecretname %q: %w", secretName, err)
+			return nil, nil, utilds.Errorf(ConnErrCode_SecretStore, "error retrieving ssh:passwordsecretname %q: %w", secretName, err)
 		}
 		if !exists {
-			return nil, utilds.Errorf(ConnErrCode_SecretNotFound, "ssh:passwordsecretname %q not found in secret store", secretName)
+			return nil, nil, utilds.Errorf(ConnErrCode_SecretNotFound, "ssh:passwordsecretname %q not found in secret store", secretName)
 		}
 		blocklogger.Infof(connCtx, "[conndebug] successfully retrieved ssh:passwordsecretname %q from secret store\n", secretName)
 		sshPassword = &password
@@ -826,7 +826,7 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 
 	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(connCtx, sshKeywords)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	networkAddr := chosenHostName + ":" + chosenPort
@@ -835,7 +835,7 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		Auth:              authMethods,
 		HostKeyCallback:   hostKeyCallback,
 		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
-	}, nil
+	}, agentClient, nil
 }
 
 func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.ClientConfig, currentClient *ssh.Client) (*ssh.Client, error) {
@@ -868,7 +868,10 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
+// the returned bool indicates whether ssh agent forwarding was successfully
+// set up on the client; callers must still request forwarding per session
+// via agent.RequestAgentForwarding
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, bool, int32, error) {
 	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
@@ -876,7 +879,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		JumpNum:       jumpNum,
 	}
 	if jumpNum > SshProxyJumpMaxDepth {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
+		return nil, false, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
 
 	rawName := opts.String()
@@ -892,14 +895,14 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
 			err = utilds.MakeCodedError(ConnErrCode_ConfigDefault, fmt.Errorf("cannot determine default config keywords: %w", err))
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, false, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	} else {
 		var err error
 		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
 		if err != nil {
 			err = utilds.MakeCodedError(ConnErrCode_ConfigParse, fmt.Errorf("cannot determine config keywords: %w", err))
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, false, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	}
 
@@ -930,7 +933,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	for _, proxyName := range sshKeywords.SshProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
+			return nil, false, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
 		}
 
 		// ensure no overflow (this will likely never happen)
@@ -939,23 +942,35 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		}
 
 		// do not apply supplied keywords to proxies - ssh config must be used for that
-		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{})
+		// agent forwarding is only set up on the final hop, so the proxy's forwarding flag is ignored
+		debugInfo.CurrentClient, _, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{})
 		if err != nil {
 			// do not add a context on a recursive call
 			// (this can cause a recursive nested context that's arbitrarily deep)
-			return nil, jumpNum, err
+			return nil, false, jumpNum, err
 		}
 	}
-	clientConfig, err := createClientConfig(connCtx, sshKeywords, debugInfo)
+	clientConfig, agentClient, err := createClientConfig(connCtx, sshKeywords, debugInfo)
 	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, false, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	networkAddr := utilfn.SafeDeref(sshKeywords.SshHostName) + ":" + utilfn.SafeDeref(sshKeywords.SshPort)
 	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
 	if err != nil {
-		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return client, false, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	return client, debugInfo.JumpNum, nil
+	forwardAgent := false
+	if utilfn.SafeDeref(sshKeywords.SshForwardAgent) {
+		if agentClient == nil {
+			blocklogger.Infof(connCtx, "[conndebug] ForwardAgent requested but no ssh agent available, skipping\n")
+		} else if err := agent.ForwardToAgent(client, agentClient); err != nil {
+			blocklogger.Infof(connCtx, "[conndebug] error setting up agent forwarding: %v\n", err)
+		} else {
+			blocklogger.Infof(connCtx, "[conndebug] ssh agent forwarding enabled\n")
+			forwardAgent = true
+		}
+	}
+	return client, forwardAgent, debugInfo.JumpNum, nil
 }
 
 // note that a `var == "yes"` will default to false
@@ -1048,6 +1063,12 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 	}
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
 
+	forwardAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "ForwardAgent")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.SshForwardAgent = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(forwardAgentRaw)) == "yes")
+
 	identitiesOnly, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentitiesOnly")
 	if err != nil {
 		return nil, err
@@ -1125,6 +1146,7 @@ func findSshDefaults(hostPattern string) (connKeywords *wconfig.ConnKeywords, ou
 	sshKeywords.SshKbdInteractiveAuthentication = utilfn.Ptr(true)
 	sshKeywords.SshPreferredAuthentications = strings.Split(ssh_config.Default("PreferredAuthentications"), ",")
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
+	sshKeywords.SshForwardAgent = utilfn.Ptr(false)
 	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
 	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
 	sshKeywords.SshProxyJump = []string{}
@@ -1190,6 +1212,9 @@ func mergeKeywords(oldKeywords *wconfig.ConnKeywords, newKeywords *wconfig.ConnK
 	}
 	if newKeywords.SshIdentityAgent != nil {
 		outKeywords.SshIdentityAgent = newKeywords.SshIdentityAgent
+	}
+	if newKeywords.SshForwardAgent != nil {
+		outKeywords.SshForwardAgent = newKeywords.SshForwardAgent
 	}
 	if newKeywords.SshIdentitiesOnly != nil {
 		outKeywords.SshIdentitiesOnly = newKeywords.SshIdentitiesOnly
