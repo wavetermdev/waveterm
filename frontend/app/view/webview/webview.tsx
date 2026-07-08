@@ -285,10 +285,10 @@ export class WebViewModel implements ViewModel {
         globalStore.set(this.typeaheadOpen, open);
     }
 
-    async fetchBookmarkSuggestions(
+    fetchBookmarkSuggestions = async (
         query: string,
         reqContext: SuggestionRequestContext
-    ): Promise<FetchSuggestionsResponse> {
+    ): Promise<FetchSuggestionsResponse> => {
         const result = await this.env.rpc.FetchSuggestionsCommand(TabRpcClient, {
             suggestiontype: "bookmark",
             query,
@@ -296,7 +296,7 @@ export class WebViewModel implements ViewModel {
             reqnum: reqContext.reqnum,
         });
         return result;
-    }
+    };
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
         const urlInputFocused = globalStore.get(this.urlInputFocused);
@@ -755,7 +755,7 @@ const BookmarkTypeahead = memo(
         const env = useWaveEnv<WebViewEnv>();
         const openBookmarksJson = () => {
             fireAndForget(async () => {
-                const path = `${env.electron.getConfigDir()}/presets/bookmarks.json`;
+                const path = `${env.electron.getConfigDir()}/bookmarks.json`;
                 const blockDef: BlockDef = {
                     meta: {
                         view: "preview",
