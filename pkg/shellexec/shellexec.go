@@ -649,7 +649,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 	  set, from the PAM environment. If the XDG variables are set in profile or in an
 	  RC file, it will be overridden when the shell initializes.
 	*/
-	if os.Getenv("SNAP") != "" {
+	if os.Getenv("SNAP_NAME") == "waveterm" {
 		log.Printf("Detected Snap installation, correcting XDG environment variables")
 		varsToReplace := map[string]string{"XDG_CONFIG_HOME": "", "XDG_DATA_HOME": "", "XDG_CACHE_HOME": "", "XDG_RUNTIME_DIR": "", "XDG_CONFIG_DIRS": "", "XDG_DATA_DIRS": ""}
 		pamEnvs := tryGetPamEnvVars()
