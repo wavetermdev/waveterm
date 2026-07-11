@@ -37,7 +37,7 @@ func workspaceListRun(cmd *cobra.Command, args []string) {
 	WriteStdout("[\n")
 	for i, w := range workspaces {
 		WriteStdout("  {\n    \"windowId\": \"%s\",\n", w.WindowId)
-		WriteStderr("    \"workspaceId\": \"%s\",\n", w.WorkspaceData.OID)
+		WriteStdout("    \"workspaceId\": \"%s\",\n", w.WorkspaceData.OID)
 		WriteStdout("    \"name\": \"%s\",\n", w.WorkspaceData.Name)
 		WriteStdout("    \"icon\": \"%s\",\n", w.WorkspaceData.Icon)
 		WriteStdout("    \"color\": \"%s\"\n", w.WorkspaceData.Color)
