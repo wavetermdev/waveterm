@@ -55,6 +55,7 @@ func init() {
 
 	tabMoveCmd.Flags().StringVar(&tabWorkspaceId, "workspace", "", "workspace id (defaults to WAVETERM_WORKSPACEID)")
 	tabMoveCmd.Flags().IntVar(&tabMoveIndex, "index", -1, "0-based target position (required)")
+	tabMoveCmd.MarkFlagRequired("index")
 	tabCommand.AddCommand(tabMoveCmd)
 
 	rootCmd.AddCommand(tabCommand)
@@ -108,7 +109,7 @@ func tabListRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return err
 	}
 
-	var entries []tabListEntry
+	var entries []tabListEntry = make([]tabListEntry, 0)
 	for i, tabId := range ws.TabIds {
 		tabData, err := wshclient.GetTabCommand(RpcClient, tabId, &wshrpc.RpcOpts{Timeout: 2000})
 		if err != nil {
@@ -155,10 +156,6 @@ func tabMoveRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("tab-move", rtnErr == nil)
 	}()
-
-	if !cmd.Flags().Changed("index") {
-		return fmt.Errorf("--index is required (0-based target position)")
-	}
 
 	tabId := args[0]
 	wsId, err := resolveWorkspaceId()
