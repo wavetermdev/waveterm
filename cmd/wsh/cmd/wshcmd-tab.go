@@ -109,7 +109,7 @@ func tabListRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return err
 	}
 
-	entries := make([]tabListEntry, 0)
+	entries := make([]tabListEntry, 0, len(ws.TabIds))
 	for i, tabId := range ws.TabIds {
 		tabData, err := wshclient.GetTabCommand(RpcClient, tabId, &wshrpc.RpcOpts{Timeout: 2000})
 		if err != nil {
