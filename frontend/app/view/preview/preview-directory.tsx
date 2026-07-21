@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { createBlock } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
@@ -501,6 +502,7 @@ type TableRowProps = {
 function TableRow({ model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps) {
     const dirPath = useAtomValue(model.statFilePath);
     const connection = useAtomValue(model.connection);
+    const openFileInNewBlock = useAtomValue(model.env.getSettingsKeyAtom("preview:openfileinnewblock")) ?? false;
 
     const dragItem: DraggedFile = {
         relName: row.getValue("name") as string,
@@ -530,7 +532,15 @@ function TableRow({ model, row, focusIndex, setFocusIndex, setSearch, idx, handl
             data-rowindex={idx}
             onDoubleClick={() => {
                 const newFileName = row.getValue("path") as string;
-                model.goHistory(newFileName);
+                if (openFileInNewBlock && !row.original.isdir) {
+                    fireAndForget(() =>
+                        createBlock({
+                            meta: { view: "preview", file: newFileName, connection },
+                        })
+                    );
+                } else {
+                    model.goHistory(newFileName);
+                }
                 setSearch("");
                 globalStore.set(model.directorySearchActive, false);
             }}
@@ -569,6 +579,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
     const conn = useAtomValue(model.connection);
+    const openFileInNewBlock = useAtomValue(env.getSettingsKeyAtom("preview:openfileinnewblock")) ?? false;
     const blockData = useAtomValue(model.blockAtom);
     const finfo = useAtomValue(model.statFile);
     const dirPath = finfo?.path;
@@ -662,7 +673,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 if (filteredData.length == 0) {
                     return;
                 }
-                model.goHistory(selectedPath);
+                const selectedFinfo = filteredData.find((f) => f.path == selectedPath);
+                if (openFileInNewBlock && selectedFinfo != null && !selectedFinfo.isdir) {
+                    fireAndForget(() =>
+                        createBlock({
+                            meta: { view: "preview", file: selectedFinfo.path, connection: conn },
+                        })
+                    );
+                } else {
+                    model.goHistory(selectedPath);
+                }
                 setSearchText("");
                 globalStore.set(model.directorySearchActive, false);
                 return true;
@@ -692,7 +712,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         return () => {
             model.directoryKeyDownHandler = null;
         };
-    }, [filteredData, selectedPath, searchText]);
+    }, [filteredData, selectedPath, searchText, conn, openFileInNewBlock]);
 
     useEffect(() => {
         if (filteredData.length != 0 && focusIndex > filteredData.length - 1) {
