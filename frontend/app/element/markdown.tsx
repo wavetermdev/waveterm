@@ -10,7 +10,7 @@ import {
     transformBlocks,
 } from "@/app/element/markdown-util";
 import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
-import { boundNumber, useAtomValueSafe, cn } from "@/util/util";
+import { boundNumber, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -324,6 +324,8 @@ const Markdown = ({
     const tocRef = useRef<TocItem[]>([]);
     const showToc = useAtomValueSafe(showTocAtom) ?? false;
     const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
+    const scrollTopRef = useRef<number>(0);
+    const prevTextRef = useRef<string>(null);
     const [focusedHeading, setFocusedHeading] = useState<string>(null);
 
     // Ensure uniqueness of ids between MD preview instances.
@@ -333,6 +335,21 @@ const Markdown = ({
     const transformedOutput = transformBlocks(text);
     const transformedText = transformedOutput.content;
     const contentBlocksMap = transformedOutput.blocks;
+
+    // Preserve the scroll position across content changes (e.g. refreshing an edited file)
+    // so the viewer stays where the user was instead of jumping back to the top.
+    useLayoutEffect(() => {
+        const isContentUpdate = prevTextRef.current != null && prevTextRef.current !== transformedText;
+        prevTextRef.current = transformedText;
+        if (!isContentUpdate) {
+            return;
+        }
+        const osInstance = contentsOsRef.current?.osInstance();
+        if (!osInstance) {
+            return;
+        }
+        osInstance.elements().viewport.scrollTop = scrollTopRef.current;
+    }, [transformedText]);
 
     useEffect(() => {
         if (focusedHeading && contentsOsRef.current && contentsOsRef.current.osInstance()) {
@@ -453,37 +470,11 @@ const Markdown = ({
         [createContentBlockPlugin, { blocks: contentBlocksMap }],
     ];
 
-    const ScrollableMarkdown = () => {
-        return (
-            <OverlayScrollbarsComponent
-                ref={contentsOsRef}
-                className={cn("content", contentClassName)}
-                options={{ scrollbars: { autoHide: "leave" } }}
-            >
-                <ReactMarkdown
-                    remarkPlugins={remarkPlugins}
-                    rehypePlugins={rehypePlugins}
-                    components={markdownComponents}
-                >
-                    {transformedText}
-                </ReactMarkdown>
-            </OverlayScrollbarsComponent>
-        );
-    };
-
-    const NonScrollableMarkdown = () => {
-        return (
-            <div className={cn("content non-scrollable", contentClassName)}>
-                <ReactMarkdown
-                    remarkPlugins={remarkPlugins}
-                    rehypePlugins={rehypePlugins}
-                    components={markdownComponents}
-                >
-                    {transformedText}
-                </ReactMarkdown>
-            </div>
-        );
-    };
+    const markdownContent = (
+        <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={markdownComponents}>
+            {transformedText}
+        </ReactMarkdown>
+    );
 
     const mergedStyle = { ...style };
     if (fontSizeOverride != null) {
@@ -494,7 +485,22 @@ const Markdown = ({
     }
     return (
         <div className={clsx("markdown", className)} style={mergedStyle}>
-            {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
+            {scrollable ? (
+                <OverlayScrollbarsComponent
+                    ref={contentsOsRef}
+                    className={cn("content", contentClassName)}
+                    options={{ scrollbars: { autoHide: "leave" } }}
+                    events={{
+                        scroll: (instance) => {
+                            scrollTopRef.current = instance.elements().viewport.scrollTop;
+                        },
+                    }}
+                >
+                    {markdownContent}
+                </OverlayScrollbarsComponent>
+            ) : (
+                <div className={cn("content non-scrollable", contentClassName)}>{markdownContent}</div>
+            )}
             {toc && (
                 <OverlayScrollbarsComponent className="toc mt-1" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">
