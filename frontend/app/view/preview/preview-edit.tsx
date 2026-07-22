@@ -38,6 +38,7 @@ export const shellFileMap: Record<string, string> = {
 
 function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
+    const pendingLocation = useAtomValue(model.pendingLocationAtom);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileInfo = useAtomValue(model.statFile);
     const fileName = fileInfo?.path || fileInfo?.name;
@@ -66,15 +67,37 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         model.refreshCallback = () => {
             globalStore.set(model.refreshVersion, (v) => v + 1);
         };
+        model.captureLocationCallback = () => {
+            const line = model.monacoRef.current?.getPosition()?.lineNumber;
+            return line ? { line } : null;
+        };
         return () => {
             model.codeEditKeyDownHandler = null;
             model.monacoRef.current = null;
             model.refreshCallback = null;
+            model.captureLocationCallback = null;
         };
     }, []);
 
+    useEffect(() => {
+        const editor = model.monacoRef.current;
+        if (!editor || !pendingLocation?.line) {
+            return;
+        }
+        editor.revealLineNearTop(pendingLocation.line);
+        editor.setPosition({ lineNumber: pendingLocation.line, column: 1 });
+        globalStore.set(model.pendingLocationAtom, null);
+    }, [pendingLocation]);
+
     function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monacoApi: typeof monaco): () => void {
         model.monacoRef.current = editor;
+
+        const pending = globalStore.get(model.pendingLocationAtom);
+        if (pending?.line) {
+            editor.revealLineNearTop(pending.line);
+            editor.setPosition({ lineNumber: pending.line, column: 1 });
+            globalStore.set(model.pendingLocationAtom, null);
+        }
 
         const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
