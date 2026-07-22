@@ -378,6 +378,9 @@ export class PreviewModel implements ViewModel {
                     },
                 ] as IconButtonDecl[];
             }
+            if (mimeType) {
+                return [starButton] as IconButtonDecl[];
+            }
             return null;
         });
         this.metaFilePath = atom<string>((get) => {

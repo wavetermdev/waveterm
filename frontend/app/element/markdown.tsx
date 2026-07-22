@@ -308,7 +308,7 @@ type MarkdownProps = {
 };
 
 type MarkdownHandle = {
-    scrollToAnchor: (anchor: string) => void;
+    scrollToAnchor: (anchor: string) => boolean;
     getCurrentAnchor: () => string | null;
 };
 
@@ -344,15 +344,16 @@ const Markdown = forwardRef<MarkdownHandle, MarkdownProps>(
         const scrollToAnchorEl = (anchor: string) => {
             const osInstance = contentsOsRef.current?.osInstance();
             if (!osInstance || !anchor) {
-                return;
+                return false;
             }
             const { viewport } = osInstance.elements();
             const heading = document.getElementById(idPrefix + anchor.slice(1));
             if (!heading) {
-                return;
+                return false;
             }
             const headingTop = heading.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
             viewport.scrollBy({ top: headingTop });
+            return true;
         };
 
         text = textAtomValue ?? text ?? "";

@@ -11,6 +11,7 @@ import type { SpecializedViewProps } from "./preview";
 function MarkdownPreview({ model }: SpecializedViewProps) {
     const markdownRef = useRef<MarkdownHandle>(null);
     const pendingLocation = useAtomValue(model.pendingLocationAtom);
+    const fileContent = useAtomValue(model.fileContent);
     useEffect(() => {
         model.refreshCallback = () => {
             globalStore.set(model.refreshVersion, (v) => v + 1);
@@ -28,9 +29,11 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
         if (!pendingLocation?.anchor) {
             return;
         }
-        markdownRef.current?.scrollToAnchor(pendingLocation.anchor);
-        globalStore.set(model.pendingLocationAtom, null);
-    }, [pendingLocation]);
+        const scrolled = markdownRef.current?.scrollToAnchor(pendingLocation.anchor);
+        if (scrolled) {
+            globalStore.set(model.pendingLocationAtom, null);
+        }
+    }, [pendingLocation, fileContent]);
     const connName = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
     const fontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fontsize"));
