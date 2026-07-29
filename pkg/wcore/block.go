@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -173,6 +174,10 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 	parentBlockCount, err := deleteBlockObj(ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
+	}
+	// Clean up per-block zsh history directory
+	if cleanupErr := shellutil.CleanupBlockZshHistory(blockId); cleanupErr != nil {
+		log.Printf("error cleaning up block zsh history for %s: %v\n", blockId, cleanupErr)
 	}
 	log.Printf("DeleteBlock: parentBlockCount: %d", parentBlockCount)
 	parentORef := waveobj.ParseORefNoErr(block.ParentORef)
