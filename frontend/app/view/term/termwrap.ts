@@ -336,6 +336,14 @@ export class TermWrap {
         this.terminal.options.cursorBlink = cursorBlink ?? false;
     }
 
+    setTheme(theme: TermTypes.ITerminalOptions["theme"]) {
+        if (typeof (this.terminal as any).setOption === "function") {
+            (this.terminal as any).setOption("theme", theme);
+        } else {
+            this.terminal.options.theme = theme;
+        }
+    }
+
     setTermRenderer(renderer: "webgl" | "dom") {
         if (renderer === "webgl") {
             if (this.webglAddon != null) {
