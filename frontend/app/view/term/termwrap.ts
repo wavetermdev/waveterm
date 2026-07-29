@@ -143,6 +143,29 @@ export class TermWrap {
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.claudeCodeActiveAtom = jotai.atom(false);
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
+        const activateLink = (e: MouseEvent, uri: string) => {
+            e.preventDefault();
+            const modifierPressed = PLATFORM === PlatformMacOS ? e.metaKey : e.ctrlKey;
+            if (!modifierPressed) {
+                return;
+            }
+            fireAndForget(() => openLink(uri));
+        };
+        const linkHover = (e: MouseEvent, uri: string) => {
+            this.hoveredLinkUri = uri;
+            this.onLinkHover?.(uri, e.clientX, e.clientY);
+        };
+        const linkLeave = () => {
+            this.hoveredLinkUri = null;
+            this.onLinkHover?.(null, 0, 0);
+        };
+        // OSC 8 hyperlinks don't go through the WebLinksAddon; without a linkHandler they fall back to
+        // xterm's default window.open() handler, which Electron's window-open handler silently blocks.
+        options.linkHandler = {
+            activate: (e, uri) => activateLink(e, uri),
+            hover: (e, uri) => linkHover(e, uri),
+            leave: () => linkLeave(),
+        };
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon();
@@ -151,33 +174,10 @@ export class TermWrap {
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
-            new WebLinksAddon(
-                (e, uri) => {
-                    e.preventDefault();
-                    switch (PLATFORM) {
-                        case PlatformMacOS:
-                            if (e.metaKey) {
-                                fireAndForget(() => openLink(uri));
-                            }
-                            break;
-                        default:
-                            if (e.ctrlKey) {
-                                fireAndForget(() => openLink(uri));
-                            }
-                            break;
-                    }
-                },
-                {
-                    hover: (e, uri) => {
-                        this.hoveredLinkUri = uri;
-                        this.onLinkHover?.(uri, e.clientX, e.clientY);
-                    },
-                    leave: () => {
-                        this.hoveredLinkUri = null;
-                        this.onLinkHover?.(null, 0, 0);
-                    },
-                }
-            )
+            new WebLinksAddon(activateLink, {
+                hover: linkHover,
+                leave: linkLeave,
+            })
         );
         this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
