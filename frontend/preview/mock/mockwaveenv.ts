@@ -187,6 +187,7 @@ function makeMockGlobalAtoms(
         allConnStatus: atom([] as ConnStatus[]),
         reinitVersion: atom(0) as any,
         waveAIRateLimitInfoAtom: atom(null) as any,
+        quickTerminalAtom: atom({ visible: false, blockId: null, opening: false, closing: false }) as any,
     };
     if (!atomOverrides) {
         return defaults;

@@ -29,6 +29,12 @@ declare global {
         allConnStatus: jotai.Atom<ConnStatus[]>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
+        quickTerminalAtom: jotai.PrimitiveAtom<{
+            visible: boolean;
+            blockId: string | null;
+            opening: boolean;
+            closing: boolean;
+        }>;
     };
 
     type ThrottledValueAtom<T> = jotai.WritableAtom<T, [update: jotai.SetStateAction<T>], void>;
@@ -50,6 +56,8 @@ declare global {
 
     type TabLayoutData = {
         blockId: string;
+        ephemeralType?: "quick-terminal";
+        quickTerminalSourceBlockId?: string | null;
     };
 
     type GlobalInitOptions = {
