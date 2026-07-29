@@ -288,9 +288,19 @@ const keyMap = {
     PageDown: "\x1b[6~",
 };
 
+// Maps physical key codes to base characters for Ctrl combinations (fallback for non-US keyboard layouts)
+const ctrlCodeMap: Record<string, string> = {
+    BracketLeft: "[",
+    Backslash: "\\",
+    BracketRight: "]",
+    Slash: "/",
+    Space: " ",
+};
+
+/**
+ * Converts a WaveKeyboardEvent to its ASCII control sequence for terminal input.
+ */
 function keyboardEventToASCII(event: WaveKeyboardEvent): string {
-    // check modifiers
-    // if no modifiers are set, just send the key
     if (!event.alt && !event.control && !event.meta) {
         if (event.key == null || event.key == "") {
             return "";
@@ -304,18 +314,29 @@ function keyboardEventToASCII(event: WaveKeyboardEvent): string {
             console.log("not sending keyboard event", event.key, event);
         }
     }
-    // if meta or alt is set, there is no ASCII representation
     if (event.meta || event.alt) {
         return "";
     }
-    // if ctrl is set, if it is a letter, subtract 64 from the uppercase value to get the ASCII value
     if (event.control) {
-        if (
-            (event.key.length === 1 && event.key >= "A" && event.key <= "Z") ||
-            (event.key >= "a" && event.key <= "z")
-        ) {
-            const key = event.key.toUpperCase();
-            return String.fromCharCode(key.charCodeAt(0) - 64);
+        if (event.key === " " || event.code === "Space") {
+            return "\x00";
+        }
+        if (event.key === "?") {
+            return "\x7f";
+        }
+        let ctrlChar: string | null = null;
+        if (ctrlCodeMap[event.code] != null) {
+            ctrlChar = ctrlCodeMap[event.code];
+        } else if (event.key != null && event.key.length === 1) {
+            ctrlChar = event.key;
+        }
+        if (ctrlChar != null) {
+            const upperChar = ctrlChar.toUpperCase();
+            const code = upperChar.charCodeAt(0);
+            if (code >= 64 && code <= 95) {
+                return String.fromCharCode(code - 64);
+            }
+            return String.fromCharCode(ctrlChar.charCodeAt(0) & 0x1f);
         }
     }
     return "";
