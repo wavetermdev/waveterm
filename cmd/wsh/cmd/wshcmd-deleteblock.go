@@ -12,8 +12,10 @@ import (
 )
 
 var deleteBlockCmd = &cobra.Command{
-	Use:     "deleteblock",
+	Use:     "deleteblock [block-ref]",
 	Short:   "delete a block",
+	Long:    "Delete a block. Optionally specify a block reference (block:oid, uuid, block number, or keyword like 'this'). If no block is specified, deletes the current block. Can also use --block/-b flag.",
+	Args:    cobra.MaximumNArgs(1),
 	RunE:    deleteBlockRun,
 	PreRunE: preRunSetupRpcClient,
 }
@@ -26,7 +28,11 @@ func deleteBlockRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	defer func() {
 		sendActivity("deleteblock", rtnErr == nil)
 	}()
-	fullORef, err := resolveBlockArg()
+	var blockRef string
+	if len(args) > 0 {
+		blockRef = args[0]
+	}
+	fullORef, err := resolveBlockArgWithOverride(blockRef)
 	if err != nil {
 		return err
 	}
