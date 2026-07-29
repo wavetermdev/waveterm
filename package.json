@@ -61,7 +61,7 @@
         "tsx": "^4.22.4",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.61",
-        "vite": "^6.4.2",
+        "vite": "^6.4.3",
         "vite-plugin-image-optimizer": "^2.0.3",
         "vite-plugin-svgr": "^4.5.0",
         "vite-tsconfig-paths": "^5.1.4",
