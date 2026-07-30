@@ -41,6 +41,8 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileInfo = useAtomValue(model.statFile);
     const fileName = fileInfo?.path || fileInfo?.name;
+    const blockData = useAtomValue(model.blockAtom);
+    const lineVal = blockData?.meta?.["editor:line"];
 
     const baseName = fileName ? fileName.split("/").pop() : null;
     const language = baseName && shellFileMap[baseName] ? shellFileMap[baseName] : undefined;
@@ -73,6 +75,18 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         };
     }, []);
 
+    useEffect(() => {
+        const editor = model.monacoRef.current;
+        if (editor && lineVal) {
+            const lineNum = typeof lineVal === "number" ? lineVal : parseInt(lineVal, 10);
+            if (!isNaN(lineNum) && lineNum > 0) {
+                editor.revealLineInCenter(lineNum);
+                editor.setPosition({ lineNumber: lineNum, column: 1 });
+                editor.focus();
+            }
+        }
+    }, [lineVal, fileContent]);
+
     function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monacoApi: typeof monaco): () => void {
         model.monacoRef.current = editor;
 
@@ -84,6 +98,15 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
                 e.preventDefault();
             }
         });
+
+        const currentLineVal = globalStore.get(model.blockAtom)?.meta?.["editor:line"];
+        if (currentLineVal) {
+            const lineNum = typeof currentLineVal === "number" ? currentLineVal : parseInt(currentLineVal, 10);
+            if (!isNaN(lineNum) && lineNum > 0) {
+                editor.revealLineInCenter(lineNum);
+                editor.setPosition({ lineNumber: lineNum, column: 1 });
+            }
+        }
 
         const isFocused = globalStore.get(model.nodeModel.isFocused);
         if (isFocused) {

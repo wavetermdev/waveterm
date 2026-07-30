@@ -16,8 +16,17 @@
         "label": "files",
         "blockdef": {
             "meta": {
-                "view": "preview",
-                "file": "~"
+                "view": "preview"
+            }
+        }
+    },
+    "defwidget@search": {
+        "display:order": -3.5,
+        "icon": "search",
+        "label": "search",
+        "blockdef": {
+            "meta": {
+                "view": "search"
             }
         }
     },

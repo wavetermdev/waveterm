@@ -10,7 +10,7 @@ import { isBlank, makeConnRoute } from "@/util/util";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { memo, useEffect } from "react";
 import { CSVView } from "./csvview";
-import { DirectoryPreview } from "./preview-directory";
+import { DirectoryTableOrTree } from "./preview-directory";
 import { CodeEditPreview } from "./preview-edit";
 import { ErrorOverlay } from "./preview-error-overlay";
 import { MarkdownPreview } from "./preview-markdown";
@@ -28,7 +28,7 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
     markdown: MarkdownPreview,
     codeedit: CodeEditPreview,
     csv: CSVViewPreview,
-    directory: DirectoryPreview,
+    directory: DirectoryTableOrTree,
 };
 
 function canPreview(mimeType: string): boolean {

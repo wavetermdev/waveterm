@@ -25,6 +25,7 @@ type WshRpcFileInterface interface {
 	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	FileStreamCommand(ctx context.Context, data CommandFileStreamData) (*FileInfo, error)
+	FileSearchCommand(ctx context.Context, data CommandFileSearchData) ([]*FileSearchResult, error)
 }
 
 type WshRpcRemoteFileInterface interface {
@@ -39,6 +40,7 @@ type WshRpcRemoteFileInterface interface {
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
+	RemoteFileSearchCommand(ctx context.Context, data CommandFileSearchData) ([]*FileSearchResult, error)
 }
 
 type FileDataAt struct {
@@ -154,4 +156,21 @@ type CommandRemoteFileMultiInfoData struct {
 
 type CommandRemoteListEntriesRtnData struct {
 	FileInfo []*FileInfo `json:"fileinfo,omitempty"`
+}
+
+type CommandFileSearchData struct {
+	Path       string `json:"path"`
+	Query      string `json:"query"`
+	IgnoreCase bool   `json:"ignorecase"`
+	Regex      bool   `json:"regex"`
+}
+
+type FileSearchMatch struct {
+	LineNum int    `json:"linenum"`
+	Line    string `json:"line"`
+}
+
+type FileSearchResult struct {
+	Path    string            `json:"path"`
+	Matches []FileSearchMatch `json:"matches"`
 }

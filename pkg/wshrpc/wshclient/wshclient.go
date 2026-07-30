@@ -370,6 +370,12 @@ func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreB
 	return err
 }
 
+// command "filesearch", wshserver.FileSearchCommand
+func FileSearchCommand(w *wshutil.WshRpc, data wshrpc.CommandFileSearchData, opts *wshrpc.RpcOpts) ([]*wshrpc.FileSearchResult, error) {
+	resp, err := sendRpcRequestCallHelper[[]*wshrpc.FileSearchResult](w, "filesearch", data, opts)
+	return resp, err
+}
+
 // command "filestream", wshserver.FileStreamCommand
 func FileStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandFileStreamData, opts *wshrpc.RpcOpts) (*wshrpc.FileInfo, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.FileInfo](w, "filestream", data, opts)
@@ -715,6 +721,12 @@ func RemoteFileMoveCommand(w *wshutil.WshRpc, data wshrpc.CommandFileCopyData, o
 // command "remotefilemultiinfo", wshserver.RemoteFileMultiInfoCommand
 func RemoteFileMultiInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileMultiInfoData, opts *wshrpc.RpcOpts) (map[string]wshrpc.FileInfo, error) {
 	resp, err := sendRpcRequestCallHelper[map[string]wshrpc.FileInfo](w, "remotefilemultiinfo", data, opts)
+	return resp, err
+}
+
+// command "remotefilesearch", wshserver.RemoteFileSearchCommand
+func RemoteFileSearchCommand(w *wshutil.WshRpc, data wshrpc.CommandFileSearchData, opts *wshrpc.RpcOpts) ([]*wshrpc.FileSearchResult, error) {
+	resp, err := sendRpcRequestCallHelper[[]*wshrpc.FileSearchResult](w, "remotefilesearch", data, opts)
 	return resp, err
 }
 

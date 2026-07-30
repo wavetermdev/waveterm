@@ -6,7 +6,9 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import type { TabModel } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getOverrideConfigAtom, refocusNode } from "@/store/global";
+import { createBlockSplitVertically, getOverrideConfigAtom, refocusNode, getBlockComponentModel } from "@/store/global";
+import { getLayoutModelForStaticTab } from "@/layout/index";
+import { walkNodes } from "@/layout/lib/layoutNode";
 import * as WOS from "@/store/wos";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { checkKeyPressed } from "@/util/keyutil";
@@ -337,6 +339,23 @@ export class PreviewModel implements ViewModel {
                 return [
                     {
                         elemtype: "iconbutton",
+                        icon: "magnifying-glass",
+                        title: "Search Files (/) or (Cmd+F)",
+                        click: () => {
+                            const curPath = globalStore.get(this.metaFilePath);
+                            const conn = globalStore.get(this.connectionImmediate);
+                            this.env.rpc.SetMetaCommand(TabRpcClient, {
+                                oref: `block:${this.blockId}`,
+                                meta: {
+                                    view: "search",
+                                    file: curPath,
+                                    connection: conn,
+                                },
+                            });
+                        },
+                    },
+                    {
+                        elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",
                         title: showHiddenFiles ? "Hide Hidden Files" : "Show Hidden Files",
                         click: () => {
@@ -429,6 +448,7 @@ export class PreviewModel implements ViewModel {
         this.fileMimeTypeLoadable = loadable(this.fileMimeType);
         this.newFileContent = atom(null) as PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
+        this.formatRemoteUri = this.formatRemoteUri.bind(this);
 
         const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             get(this.refreshVersion); // Subscribe to refreshVersion to trigger re-fetch
@@ -687,8 +707,56 @@ export class PreviewModel implements ViewModel {
             return true;
         }
         try {
-            this.goHistory(filePath);
-            refocusNode(this.blockId);
+            const blockData = globalStore.get(this.blockAtom);
+            const isTreeMode = blockData?.meta?.["preview:treemode"] === true;
+            if (isTreeMode) {
+                const layoutModel = getLayoutModelForStaticTab();
+                let targetBlockId: string | null = null;
+                if (layoutModel) {
+                    walkNodes(layoutModel.treeState.rootNode, (node) => {
+                        const bId = node.data?.blockId;
+                        if (bId && bId !== this.blockId) {
+                            const otherBlockAtom = WOS.getWaveObjectAtom<Block>(`block:${bId}`);
+                            const otherBlockData = globalStore.get(otherBlockAtom);
+                            if (otherBlockData?.meta?.view === "preview" && !otherBlockData?.meta?.["preview:treemode"]) {
+                                targetBlockId = bId;
+                            }
+                        }
+                    });
+                }
+                if (targetBlockId) {
+                    const targetBCM = getBlockComponentModel(targetBlockId);
+                    if (targetBCM && targetBCM.viewModel) {
+                        const targetModel = targetBCM.viewModel as PreviewModel;
+                        if (targetModel.fileContentSaved) {
+                            globalStore.set(targetModel.fileContentSaved, null);
+                        }
+                        if (targetModel.newFileContent) {
+                            globalStore.set(targetModel.newFileContent, null);
+                        }
+                    }
+                    await this.env.rpc.SetMetaCommand(TabRpcClient, {
+                        oref: `block:${targetBlockId}`,
+                        meta: {
+                            file: filePath,
+                            connection: blockData?.meta?.connection ?? "",
+                        },
+                    });
+                    refocusNode(targetBlockId);
+                } else {
+                    const blockDef = {
+                        meta: {
+                            view: "preview",
+                            file: filePath,
+                            connection: blockData?.meta?.connection ?? "",
+                        },
+                    };
+                    await createBlockSplitVertically(blockDef, this.blockId, "after");
+                }
+            } else {
+                this.goHistory(filePath);
+                refocusNode(this.blockId);
+            }
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
             console.error("Error opening file", filePath, e);
@@ -819,6 +887,24 @@ export class PreviewModel implements ViewModel {
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
+        const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
+        if (mimeType == "directory" && (e.key === "/" || checkKeyPressed(e, "Cmd:f"))) {
+            const activeElem = document.activeElement;
+            const inInput = activeElem != null && (activeElem.tagName == "INPUT" || activeElem.tagName == "TEXTAREA" || activeElem.contentEditable == "true");
+            if (!inInput) {
+                const curPath = globalStore.get(this.metaFilePath);
+                const conn = globalStore.get(this.connectionImmediate);
+                this.env.rpc.SetMetaCommand(TabRpcClient, {
+                    oref: `block:${this.blockId}`,
+                    meta: {
+                        view: "search",
+                        file: curPath,
+                        connection: conn,
+                    },
+                });
+                return true;
+            }
+        }
         if (checkKeyPressed(e, "Cmd:ArrowLeft")) {
             fireAndForget(this.goHistoryBack.bind(this));
             return true;
