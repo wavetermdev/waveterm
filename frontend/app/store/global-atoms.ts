@@ -7,7 +7,7 @@ import { setWaveWindowType } from "./windowtype";
 import * as WOS from "./wos";
 
 let atoms!: GlobalAtomsType;
-const blockComponentModelMap = new Map<string, BlockComponentModel>();
+const blockComponentModelMap = new Map<string, PrimitiveAtom<BlockComponentModel>>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 

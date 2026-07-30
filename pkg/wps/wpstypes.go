@@ -31,6 +31,7 @@ const (
 	Event_WaveAIRateLimit     = "waveai:ratelimit"     // type: *uctypes.RateLimitInfo
 	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated" // type: none
 	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"   // type: wshrpc.AppMeta
+	Event_TermListenDown      = "termlisten:down"      // type: wshrpc.TermListenDownData
 	Event_AIModeConfig        = "waveai:modeconfig"    // type: wconfig.AIModeConfigUpdate
 	Event_BlockJobStatus      = "block:jobstatus"      // type: wshrpc.BlockJobStatusData
 	Event_Badge               = "badge"                // type: baseds.BadgeEvent
@@ -53,6 +54,7 @@ var AllEvents []string = []string{
 	Event_WaveAIRateLimit,
 	Event_WaveAppAppGoUpdated,
 	Event_TsunamiUpdateMeta,
+	Event_TermListenDown,
 	Event_AIModeConfig,
 	Event_BlockJobStatus,
 	Event_Badge,

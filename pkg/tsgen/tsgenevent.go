@@ -38,6 +38,7 @@ var WaveEventDataTypes = map[string]reflect.Type{
 	wps.Event_WaveAIRateLimit:     reflect.TypeOf((*uctypes.RateLimitInfo)(nil)),
 	wps.Event_WaveAppAppGoUpdated: nil,
 	wps.Event_TsunamiUpdateMeta:   reflect.TypeOf(wshrpc.AppMeta{}),
+	wps.Event_TermListenDown:      reflect.TypeOf(wshrpc.TermListenDownData{}),
 	wps.Event_AIModeConfig:        reflect.TypeOf(wconfig.AIModeConfigUpdate{}),
 	wps.Event_BlockJobStatus:      reflect.TypeOf(wshrpc.BlockJobStatusData{}),
 	wps.Event_Badge:               reflect.TypeOf(baseds.BadgeEvent{}),

@@ -105,11 +105,13 @@ var runCmd = &cobra.Command{
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		open, _ := cmd.Flags().GetBool("open")
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
+		termProxy, _ := cmd.Flags().GetBool("termproxy")
 		opts := build.BuildOpts{
 			AppPath:      args[0],
 			Verbose:      verbose,
 			Open:         open,
 			KeepTemp:     keepTemp,
+			TermProxy:    termProxy,
 			MoveFileBack: true,
 			SdkVersion:   TsunamiSdkVersion,
 		}
@@ -163,6 +165,7 @@ func init() {
 	runCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
 	runCmd.Flags().Bool("open", false, "Open the application in the browser after starting")
 	runCmd.Flags().Bool("keeptemp", false, "Keep temporary build directory")
+	runCmd.Flags().Bool("termproxy", false, "Proxy HTTP through the terminal via OSC 9010")
 	rootCmd.AddCommand(runCmd)
 
 	packageCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")

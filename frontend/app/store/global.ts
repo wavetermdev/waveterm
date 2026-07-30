@@ -547,20 +547,29 @@ async function openLink(uri: string, forceOpenInternally = false) {
     }
 }
 
+function getBlockComponentModelAtom(blockId: string): PrimitiveAtom<BlockComponentModel> {
+    let bcmAtom = blockComponentModelMap.get(blockId);
+    if (bcmAtom == null) {
+        bcmAtom = atom(null) as PrimitiveAtom<BlockComponentModel>;
+        blockComponentModelMap.set(blockId, bcmAtom);
+    }
+    return bcmAtom;
+}
+
 function registerBlockComponentModel(blockId: string, bcm: BlockComponentModel) {
-    blockComponentModelMap.set(blockId, bcm);
+    globalStore.set(getBlockComponentModelAtom(blockId), bcm);
 }
 
 function unregisterBlockComponentModel(blockId: string) {
-    blockComponentModelMap.delete(blockId);
+    globalStore.set(getBlockComponentModelAtom(blockId), null);
 }
 
 function getBlockComponentModel(blockId: string): BlockComponentModel {
-    return blockComponentModelMap.get(blockId);
+    return globalStore.get(getBlockComponentModelAtom(blockId));
 }
 
 function getAllBlockComponentModels(): BlockComponentModel[] {
-    return Array.from(blockComponentModelMap.values());
+    return Array.from(blockComponentModelMap.values()).map((a) => globalStore.get(a)).filter((bcm) => bcm != null);
 }
 
 function getFocusedBlockId(): string {
@@ -683,6 +692,7 @@ export {
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
+    getBlockComponentModelAtom,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
     getTabMetaKeyAtom,

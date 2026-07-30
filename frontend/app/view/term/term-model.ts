@@ -12,6 +12,7 @@ import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TermClaudeIcon, TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
+import type { TsunamiDirectViewModel } from "@/app/view/tsunamidirect/tsunamidirect";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
@@ -21,7 +22,7 @@ import {
     createBlockSplitVertically,
     getAllBlockComponentModels,
     getApi,
-    getBlockComponentModel,
+    getBlockComponentModelAtom,
     getBlockMetaKeyAtom,
     getBlockTermDurableAtom,
     getConnStatusAtom,
@@ -63,6 +64,8 @@ export class TermViewModel implements ViewModel {
     termWshClient: TermWshClient;
     vdomBlockId: jotai.Atom<string>;
     vdomToolbarBlockId: jotai.Atom<string>;
+    tsunamiBlockId: jotai.Atom<string>;
+    tsunamiLocalPort: jotai.Atom<number>;
     vdomToolbarTarget: jotai.PrimitiveAtom<VDomTargetToolbar>;
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
@@ -77,6 +80,7 @@ export class TermViewModel implements ViewModel {
     blockJobStatusVersionTs: number;
     blockJobStatusUnsubFn: () => void;
     termBPMUnsubFn: () => void;
+    termModeUnsubFn: () => void;
     termCursorUnsubFn: () => void;
     termCursorBlinkUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
@@ -101,6 +105,14 @@ export class TermViewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:vdomtoolbarblockid"];
         });
+        this.tsunamiBlockId = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:tsunamiblockid"];
+        });
+        this.tsunamiLocalPort = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:tsunamilocalport"] ?? 0;
+        });
         this.vdomToolbarTarget = jotai.atom<VDomTargetToolbar>(null) as jotai.PrimitiveAtom<VDomTargetToolbar>;
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
@@ -112,6 +124,15 @@ export class TermViewModel implements ViewModel {
             if (termMode == "vdom") {
                 return { elemtype: "iconbutton", icon: "bolt" };
             }
+            if (termMode == "tsunami") {
+                const tsunamiBlockId = get(this.tsunamiBlockId);
+                const tsunamiBcm = tsunamiBlockId ? get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
+                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiDirectViewModel;
+                if (tsunamiVM?.viewIcon) {
+                    return get(tsunamiVM.viewIcon);
+                }
+                return { elemtype: "iconbutton", icon: "browser" };
+            }
             return { elemtype: "iconbutton", icon: "terminal" };
         });
         this.viewName = jotai.atom((get) => {
@@ -120,6 +141,15 @@ export class TermViewModel implements ViewModel {
             if (termMode == "vdom") {
                 return "Wave App";
             }
+            if (termMode == "tsunami") {
+                const tsunamiBlockId = get(this.tsunamiBlockId);
+                const tsunamiBcm = tsunamiBlockId ? get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
+                const tsunamiVM = tsunamiBcm?.viewModel as TsunamiDirectViewModel;
+                if (tsunamiVM?.viewName) {
+                    return get(tsunamiVM.viewName);
+                }
+                return "WaveApp";
+            }
             if (blockData?.meta?.controller == "cmd") {
                 return "";
             }
@@ -127,7 +157,7 @@ export class TermViewModel implements ViewModel {
         });
         this.viewText = jotai.atom((get) => {
             const termMode = get(this.termMode);
-            if (termMode == "vdom") {
+            if (termMode == "vdom" || termMode == "tsunami") {
                 return [
                     {
                         elemtype: "iconbutton",
@@ -140,6 +170,7 @@ export class TermViewModel implements ViewModel {
                 ];
             }
             const vdomBlockId = get(this.vdomBlockId);
+            const tsunamiBlockId = get(this.tsunamiBlockId);
             const rtn: HeaderElem[] = [];
             if (vdomBlockId) {
                 rtn.push({
@@ -148,6 +179,16 @@ export class TermViewModel implements ViewModel {
                     title: "Switch to Wave App",
                     click: () => {
                         this.setTermMode("vdom");
+                    },
+                });
+            }
+            if (tsunamiBlockId) {
+                rtn.push({
+                    elemtype: "iconbutton",
+                    icon: "browser",
+                    title: "Switch to App",
+                    click: () => {
+                        this.setTermMode("tsunami");
                     },
                 });
             }
@@ -224,7 +265,7 @@ export class TermViewModel implements ViewModel {
         });
         this.useTermHeader = jotai.atom((get) => {
             const termMode = get(this.termMode);
-            if (termMode == "vdom") {
+            if (termMode == "vdom" || termMode == "tsunami") {
                 return false;
             }
             const isCmd = get(this.isCmdController);
@@ -397,6 +438,16 @@ export class TermViewModel implements ViewModel {
                 this.termRef.current.setCursorBlink(globalStore.get(termCursorBlinkAtom) ?? false);
             }
         });
+        this.termModeUnsubFn = globalStore.sub(this.termMode, () => {
+            const termMode = globalStore.get(this.termMode);
+            setTimeout(() => {
+                if (termMode == "tsunami") {
+                    this.focusTsunamiSubBlock();
+                } else if (!termMode || termMode == "term") {
+                    this.termRef.current?.terminal?.focus();
+                }
+            }, 10);
+        });
     }
 
     getShellIntegrationIconButton(get: jotai.Getter): IconButtonDecl | null {
@@ -487,7 +538,7 @@ export class TermViewModel implements ViewModel {
 
     isBasicTerm(getFn: jotai.Getter): boolean {
         const termMode = getFn(this.termMode);
-        if (termMode == "vdom") {
+        if (termMode == "vdom" || termMode == "tsunami") {
             return false;
         }
         const blockData = getFn(this.blockAtom);
@@ -511,7 +562,7 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
-    setTermMode(mode: "term" | "vdom") {
+    setTermMode(mode: "term" | "vdom" | "tsunami") {
         if (mode == "term") {
             mode = null;
         }
@@ -570,7 +621,7 @@ export class TermViewModel implements ViewModel {
         if (!vdomBlockId) {
             return null;
         }
-        const bcm = getBlockComponentModel(vdomBlockId);
+        const bcm = globalStore.get(getBlockComponentModelAtom(vdomBlockId));
         if (!bcm) {
             return null;
         }
@@ -582,11 +633,29 @@ export class TermViewModel implements ViewModel {
         if (!vdomToolbarBlockId) {
             return null;
         }
-        const bcm = getBlockComponentModel(vdomToolbarBlockId);
+        const bcm = globalStore.get(getBlockComponentModelAtom(vdomToolbarBlockId));
         if (!bcm) {
             return null;
         }
         return bcm.viewModel as VDomModel;
+    }
+
+    teardownTsunamiSubBlock() {
+        const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+        if (tsunamiBlockId) {
+            RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: tsunamiBlockId });
+        }
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "term:mode": null, "term:tsunamiblockid": null, "term:tsunamilocalport": null },
+        });
+    }
+
+    focusTsunamiSubBlock() {
+        const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+        if (!tsunamiBlockId) return;
+        const bcm = globalStore.get(getBlockComponentModelAtom(tsunamiBlockId));
+        bcm?.viewModel?.giveFocus?.();
     }
 
     dispose() {
@@ -594,6 +663,7 @@ export class TermViewModel implements ViewModel {
         this.shellProcStatusUnsubFn?.();
         this.blockJobStatusUnsubFn?.();
         this.termBPMUnsubFn?.();
+        this.termModeUnsubFn?.();
         this.termCursorUnsubFn?.();
         this.termCursorBlinkUnsubFn?.();
     }
@@ -604,6 +674,10 @@ export class TermViewModel implements ViewModel {
             return true;
         }
         const termMode = globalStore.get(this.termMode);
+        if (termMode == "tsunami") {
+            this.focusTsunamiSubBlock();
+            return true;
+        }
         if (termMode == "term") {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.focus();
@@ -625,13 +699,22 @@ export class TermViewModel implements ViewModel {
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
             const blockData = globalStore.get(blockAtom);
-            const newTermMode = blockData?.meta?.["term:mode"] == "vdom" ? null : "vdom";
-            const vdomBlockId = globalStore.get(this.vdomBlockId);
-            if (newTermMode == "vdom" && !vdomBlockId) {
-                return;
+            const termMode = blockData?.meta?.["term:mode"];
+            if (termMode == "vdom" || termMode == "tsunami") {
+                this.setTermMode("term");
+                return true;
             }
-            this.setTermMode(newTermMode);
-            return true;
+            const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+            if (tsunamiBlockId) {
+                this.setTermMode("tsunami");
+                return true;
+            }
+            const vdomBlockId = globalStore.get(this.vdomBlockId);
+            if (vdomBlockId) {
+                this.setTermMode("vdom");
+                return true;
+            }
+            return;
         }
         if (keyutil.checkKeyPressed(waveEvent, "Shift:End")) {
             if (this.termRef?.current?.terminal) {
@@ -936,6 +1019,24 @@ export class TermViewModel implements ViewModel {
         };
 
         const fullMenu: ContextMenuItem[] = [];
+
+        const termMode = globalStore.get(this.termMode);
+        if (termMode === "tsunami") {
+            const tsunamiBlockId = globalStore.get(this.tsunamiBlockId);
+            const bcm = tsunamiBlockId ? globalStore.get(getBlockComponentModelAtom(tsunamiBlockId)) : null;
+            const tsunamiVM = bcm?.viewModel as TsunamiDirectViewModel;
+            const promotedItems = tsunamiVM?.getPromotedContextMenuItems?.() ?? [];
+            fullMenu.push({
+                label: "Send ^C to Tsunami App",
+                click: () => this.sendDataToController("\x03"),
+            });
+            if (promotedItems.length > 0) {
+                fullMenu.push({ type: "separator" });
+                fullMenu.push(...promotedItems);
+            }
+            fullMenu.push({ type: "separator" });
+        }
+
         fullMenu.push({
             label: "Split Horizontally",
             click: () => {

@@ -36,4 +36,23 @@ document.addEventListener("mouseup", (event) => {
     }
 });
 
+let tsunamiParentBlockId: string | null = null;
+
+ipcRenderer.on("enable-tsunami-termlisten", (_event, parentBlockId: string) => {
+    tsunamiParentBlockId = parentBlockId;
+});
+
+document.addEventListener("keydown", (event) => {
+    if (!tsunamiParentBlockId) return;
+    if (event.defaultPrevented) return;
+    if ((event.metaKey || event.ctrlKey) && event.key === "Escape") {
+        ipcRenderer.sendToHost("tsunami-key", { parentBlockId: tsunamiParentBlockId, key: "cmd-escape" });
+        return;
+    }
+    if (!event.ctrlKey) return;
+    if (event.key !== "c" && event.key !== "C" && event.key !== "z" && event.key !== "Z") return;
+    const key = event.key.toLowerCase() === "c" ? "ctrl-c" : "ctrl-z";
+    ipcRenderer.sendToHost("tsunami-key", { parentBlockId: tsunamiParentBlockId, key });
+});
+
 console.log("loaded wave preload-webview.ts");
