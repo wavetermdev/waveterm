@@ -26,6 +26,7 @@ import (
 const SettingsFile = "settings.json"
 const ConnectionsFile = "connections.json"
 const ProfilesFile = "profiles.json"
+const FileBookmarksFile = "filebookmarks.json"
 
 var configWriteLock sync.Mutex
 
@@ -283,6 +284,16 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
+type FileBookmark struct {
+	DisplayOrder float64 `json:"display:order,omitempty"`
+	BookmarkType string  `json:"bookmarktype"`
+	Label        string  `json:"label"`
+	Path         string  `json:"path"`
+	Connection   string  `json:"connection,omitempty"`
+	Anchor       string  `json:"anchor,omitempty"`
+	Line         int     `json:"line,omitempty"`
+}
+
 // Wave AI panel mode configuration (NEW)
 type AIModeConfigType struct {
 	DisplayName        string   `json:"display:name"`
@@ -375,6 +386,7 @@ type FullConfigType struct {
 	TermThemes     map[string]TermThemeType        `json:"termthemes"`
 	Connections    map[string]ConnKeywords         `json:"connections"`
 	Bookmarks      map[string]WebBookmark          `json:"bookmarks"`
+	FileBookmarks  map[string]FileBookmark         `json:"filebookmarks"`
 	WaveAIModes    map[string]AIModeConfigType     `json:"waveai"`
 	ConfigErrors   []ConfigError                   `json:"configerrors" configfile:"-"`
 	Version        string                          `json:"version" configfile:"-"`
@@ -897,6 +909,51 @@ func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) err
 	}
 	m[connName] = connData
 	return WriteWaveHomeConfigFile(ConnectionsFile, m)
+}
+
+func UpsertFileBookmarkInMap(m waveobj.MetaMapType, key string, bookmark FileBookmark) (waveobj.MetaMapType, error) {
+	if m == nil {
+		m = make(waveobj.MetaMapType)
+	}
+	barr, err := json.Marshal(bookmark)
+	if err != nil {
+		return nil, fmt.Errorf("cannot marshal bookmark: %w", err)
+	}
+	var bmMap map[string]any
+	if err := json.Unmarshal(barr, &bmMap); err != nil {
+		return nil, fmt.Errorf("cannot unmarshal bookmark: %w", err)
+	}
+	m[key] = bmMap
+	return m, nil
+}
+
+func RemoveFileBookmarkInMap(m waveobj.MetaMapType, key string) waveobj.MetaMapType {
+	if m == nil {
+		return make(waveobj.MetaMapType)
+	}
+	delete(m, key)
+	return m
+}
+
+func SetFileBookmarkConfigValue(key string, bookmark FileBookmark) error {
+	m, cerrs := ReadWaveHomeConfigFile(FileBookmarksFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	m, err := UpsertFileBookmarkInMap(m, key, bookmark)
+	if err != nil {
+		return err
+	}
+	return WriteWaveHomeConfigFile(FileBookmarksFile, m)
+}
+
+func DeleteFileBookmarkConfigValue(key string) error {
+	m, cerrs := ReadWaveHomeConfigFile(FileBookmarksFile)
+	if len(cerrs) > 0 {
+		return fmt.Errorf("error reading config file: %v", cerrs[0])
+	}
+	m = RemoveFileBookmarkInMap(m, key)
+	return WriteWaveHomeConfigFile(FileBookmarksFile, m)
 }
 
 func MigratePresetsBackgrounds() {

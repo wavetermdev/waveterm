@@ -10,11 +10,11 @@ import {
     transformBlocks,
 } from "@/app/element/markdown-util";
 import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
-import { boundNumber, useAtomValueSafe, cn } from "@/util/util";
+import { boundNumber, cn, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
@@ -24,6 +24,7 @@ import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
+import { pickCurrentAnchor } from "./markdown-anchor";
 import "./markdown.scss";
 
 let mermaidInitialized = false;
@@ -306,205 +307,253 @@ type MarkdownProps = {
     fixedFontSizeOverride?: number;
 };
 
-const Markdown = ({
-    text,
-    textAtom,
-    showTocAtom,
-    style,
-    className,
-    contentClassName,
-    resolveOpts,
-    fontSizeOverride,
-    fixedFontSizeOverride,
-    scrollable = true,
-    rehype = true,
-    onClickExecute,
-}: MarkdownProps) => {
-    const textAtomValue = useAtomValueSafe<string>(textAtom);
-    const tocRef = useRef<TocItem[]>([]);
-    const showToc = useAtomValueSafe(showTocAtom) ?? false;
-    const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
-    const [focusedHeading, setFocusedHeading] = useState<string>(null);
-
-    // Ensure uniqueness of ids between MD preview instances.
-    const [idPrefix] = useState<string>(crypto.randomUUID());
-
-    text = textAtomValue ?? text ?? "";
-    const transformedOutput = transformBlocks(text);
-    const transformedText = transformedOutput.content;
-    const contentBlocksMap = transformedOutput.blocks;
-
-    useEffect(() => {
-        if (focusedHeading && contentsOsRef.current && contentsOsRef.current.osInstance()) {
-            const { viewport } = contentsOsRef.current.osInstance().elements();
-            const heading = document.getElementById(idPrefix + focusedHeading.slice(1));
-            if (heading) {
-                const headingBoundingRect = heading.getBoundingClientRect();
-                const viewportBoundingRect = viewport.getBoundingClientRect();
-                const headingTop = headingBoundingRect.top - viewportBoundingRect.top;
-                viewport.scrollBy({ top: headingTop });
-            }
-        }
-    }, [focusedHeading]);
-
-    const markdownComponents: Partial<Components> = {
-        a: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
-            <Link props={props} setFocusedHeading={setFocusedHeading} />
-        ),
-        p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <div className="paragraph" {...props} />,
-        h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={1} />,
-        h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={2} />,
-        h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={3} />,
-        h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={4} />,
-        h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={5} />,
-        h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={6} />,
-        img: (props: React.HTMLAttributes<HTMLImageElement>) => <MarkdownImg props={props} resolveOpts={resolveOpts} />,
-        source: (props: React.HTMLAttributes<HTMLSourceElement>) => (
-            <MarkdownSource props={props} resolveOpts={resolveOpts} />
-        ),
-        code: Code,
-        pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
-            <CodeBlock children={props.children} onClickExecute={onClickExecute} />
-        ),
-    };
-    markdownComponents["waveblock"] = (props: any) => <WaveBlock {...props} blockmap={contentBlocksMap} />;
-    markdownComponents["mermaidblock"] = (props: any) => {
-        const getTextContent = (children: any): string => {
-            if (typeof children === "string") {
-                return children;
-            } else if (Array.isArray(children)) {
-                return children.map(getTextContent).join("");
-            } else if (children && typeof children === "object" && children.props && children.props.children) {
-                return getTextContent(children.props.children);
-            }
-            return String(children || "");
-        };
-
-        const chartText = getTextContent(props.children);
-        return <Mermaid chart={chartText} />;
-    };
-
-    const toc = useMemo(() => {
-        if (showToc) {
-            if (tocRef.current.length > 0) {
-                return tocRef.current.map((item) => {
-                    return (
-                        <a
-                            key={item.href}
-                            className="toc-item text-accent hover:underline"
-                            style={{ "--indent-factor": item.depth } as React.CSSProperties}
-                            onClick={() => setFocusedHeading(item.href)}
-                        >
-                            {item.value}
-                        </a>
-                    );
-                });
-            } else {
-                return (
-                    <div
-                        className="toc-item toc-empty text-secondary"
-                        style={{ "--indent-factor": 2 } as React.CSSProperties}
-                    >
-                        No sub-headings found
-                    </div>
-                );
-            }
-        }
-    }, [showToc, tocRef]);
-
-    let rehypePlugins = null;
-    if (rehype) {
-        rehypePlugins = [
-            rehypeRaw,
-            rehypeHighlight,
-            () =>
-                rehypeSanitize({
-                    ...defaultSchema,
-                    attributes: {
-                        ...defaultSchema.attributes,
-                        span: [
-                            ...(defaultSchema.attributes?.span || []),
-                            // Allow all class names starting with `hljs-`.
-                            ["className", /^hljs-./],
-                            ["srcset"],
-                            ["media"],
-                            ["type"],
-                            // Alternatively, to allow only certain class names:
-                            // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
-                        ],
-                        waveblock: [["blockkey"]],
-                    },
-                    tagNames: [
-                        ...(defaultSchema.tagNames || []),
-                        "span",
-                        "waveblock",
-                        "picture",
-                        "source",
-                        "mermaidblock",
-                    ],
-                }),
-            () => rehypeSlug({ prefix: idPrefix }),
-        ];
-    }
-    const remarkPlugins: any = [
-        remarkMermaidToTag,
-        remarkGfm,
-        [RemarkFlexibleToc, { tocRef: tocRef.current }],
-        [createContentBlockPlugin, { blocks: contentBlocksMap }],
-    ];
-
-    const ScrollableMarkdown = () => {
-        return (
-            <OverlayScrollbarsComponent
-                ref={contentsOsRef}
-                className={cn("content", contentClassName)}
-                options={{ scrollbars: { autoHide: "leave" } }}
-            >
-                <ReactMarkdown
-                    remarkPlugins={remarkPlugins}
-                    rehypePlugins={rehypePlugins}
-                    components={markdownComponents}
-                >
-                    {transformedText}
-                </ReactMarkdown>
-            </OverlayScrollbarsComponent>
-        );
-    };
-
-    const NonScrollableMarkdown = () => {
-        return (
-            <div className={cn("content non-scrollable", contentClassName)}>
-                <ReactMarkdown
-                    remarkPlugins={remarkPlugins}
-                    rehypePlugins={rehypePlugins}
-                    components={markdownComponents}
-                >
-                    {transformedText}
-                </ReactMarkdown>
-            </div>
-        );
-    };
-
-    const mergedStyle = { ...style };
-    if (fontSizeOverride != null) {
-        mergedStyle["--markdown-font-size"] = `${boundNumber(fontSizeOverride, 6, 64)}px`;
-    }
-    if (fixedFontSizeOverride != null) {
-        mergedStyle["--markdown-fixed-font-size"] = `${boundNumber(fixedFontSizeOverride, 6, 64)}px`;
-    }
-    return (
-        <div className={clsx("markdown", className)} style={mergedStyle}>
-            {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
-            {toc && (
-                <OverlayScrollbarsComponent className="toc mt-1" options={{ scrollbars: { autoHide: "leave" } }}>
-                    <div className="toc-inner">
-                        <h4 className="font-bold">Table of Contents</h4>
-                        {toc}
-                    </div>
-                </OverlayScrollbarsComponent>
-            )}
-        </div>
-    );
+type MarkdownHandle = {
+    scrollToAnchor: (anchor: string) => boolean;
+    getCurrentAnchor: () => string | null;
 };
 
+const Markdown = forwardRef<MarkdownHandle, MarkdownProps>(
+    (
+        {
+            text,
+            textAtom,
+            showTocAtom,
+            style,
+            className,
+            contentClassName,
+            resolveOpts,
+            fontSizeOverride,
+            fixedFontSizeOverride,
+            scrollable = true,
+            rehype = true,
+            onClickExecute,
+        },
+        ref
+    ) => {
+        const textAtomValue = useAtomValueSafe<string>(textAtom);
+        const tocRef = useRef<TocItem[]>([]);
+        const showToc = useAtomValueSafe(showTocAtom) ?? false;
+        const contentsOsRef = useRef<OverlayScrollbarsComponentRef>(null);
+        const scrollTopRef = useRef<number>(0);
+        const prevTextRef = useRef<string>(null);
+        const [focusedHeading, setFocusedHeading] = useState<string>(null);
+
+        // Ensure uniqueness of ids between MD preview instances.
+        const [idPrefix] = useState<string>(crypto.randomUUID());
+
+        const scrollToAnchorEl = (anchor: string) => {
+            const osInstance = contentsOsRef.current?.osInstance();
+            if (!osInstance || !anchor) {
+                return false;
+            }
+            const { viewport } = osInstance.elements();
+            const heading = document.getElementById(idPrefix + anchor.slice(1));
+            if (!heading) {
+                return false;
+            }
+            const headingTop = heading.getBoundingClientRect().top - viewport.getBoundingClientRect().top;
+            viewport.scrollBy({ top: headingTop });
+            return true;
+        };
+
+        text = textAtomValue ?? text ?? "";
+        const transformedOutput = transformBlocks(text);
+        const transformedText = transformedOutput.content;
+        const contentBlocksMap = transformedOutput.blocks;
+
+        // Preserve the scroll position across content changes (e.g. refreshing an edited file)
+        // so the viewer stays where the user was instead of jumping back to the top.
+        useLayoutEffect(() => {
+            const isContentUpdate = prevTextRef.current != null && prevTextRef.current !== transformedText;
+            prevTextRef.current = transformedText;
+            if (!isContentUpdate) {
+                return;
+            }
+            const osInstance = contentsOsRef.current?.osInstance();
+            if (!osInstance) {
+                return;
+            }
+            osInstance.elements().viewport.scrollTop = scrollTopRef.current;
+        }, [transformedText]);
+
+        useEffect(() => {
+            if (focusedHeading) {
+                scrollToAnchorEl(focusedHeading);
+            }
+        }, [focusedHeading]);
+
+        useImperativeHandle(ref, () => ({
+            scrollToAnchor: (anchor: string) => scrollToAnchorEl(anchor),
+            getCurrentAnchor: () => {
+                const osInstance = contentsOsRef.current?.osInstance();
+                if (!osInstance) {
+                    return null;
+                }
+                const { viewport } = osInstance.elements();
+                const viewportTop = viewport.getBoundingClientRect().top;
+                const items = tocRef.current.map((t) => {
+                    const el = document.getElementById(idPrefix + t.href.slice(1));
+                    return {
+                        href: t.href,
+                        top: el ? el.getBoundingClientRect().top - viewportTop : Number.POSITIVE_INFINITY,
+                    };
+                });
+                return pickCurrentAnchor(items, 0);
+            },
+        }));
+
+        const markdownComponents: Partial<Components> = {
+            a: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
+                <Link props={props} setFocusedHeading={setFocusedHeading} />
+            ),
+            p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <div className="paragraph" {...props} />,
+            h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={1} />,
+            h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={2} />,
+            h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={3} />,
+            h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={4} />,
+            h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={5} />,
+            h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={6} />,
+            img: (props: React.HTMLAttributes<HTMLImageElement>) => (
+                <MarkdownImg props={props} resolveOpts={resolveOpts} />
+            ),
+            source: (props: React.HTMLAttributes<HTMLSourceElement>) => (
+                <MarkdownSource props={props} resolveOpts={resolveOpts} />
+            ),
+            code: Code,
+            pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
+                <CodeBlock children={props.children} onClickExecute={onClickExecute} />
+            ),
+        };
+        markdownComponents["waveblock"] = (props: any) => <WaveBlock {...props} blockmap={contentBlocksMap} />;
+        markdownComponents["mermaidblock"] = (props: any) => {
+            const getTextContent = (children: any): string => {
+                if (typeof children === "string") {
+                    return children;
+                } else if (Array.isArray(children)) {
+                    return children.map(getTextContent).join("");
+                } else if (children && typeof children === "object" && children.props && children.props.children) {
+                    return getTextContent(children.props.children);
+                }
+                return String(children || "");
+            };
+
+            const chartText = getTextContent(props.children);
+            return <Mermaid chart={chartText} />;
+        };
+
+        const toc = useMemo(() => {
+            if (showToc) {
+                if (tocRef.current.length > 0) {
+                    return tocRef.current.map((item) => {
+                        return (
+                            <a
+                                key={item.href}
+                                className="toc-item text-accent hover:underline"
+                                style={{ "--indent-factor": item.depth } as React.CSSProperties}
+                                onClick={() => setFocusedHeading(item.href)}
+                            >
+                                {item.value}
+                            </a>
+                        );
+                    });
+                } else {
+                    return (
+                        <div
+                            className="toc-item toc-empty text-secondary"
+                            style={{ "--indent-factor": 2 } as React.CSSProperties}
+                        >
+                            No sub-headings found
+                        </div>
+                    );
+                }
+            }
+        }, [showToc, tocRef]);
+
+        let rehypePlugins = null;
+        if (rehype) {
+            rehypePlugins = [
+                rehypeRaw,
+                rehypeHighlight,
+                () =>
+                    rehypeSanitize({
+                        ...defaultSchema,
+                        attributes: {
+                            ...defaultSchema.attributes,
+                            span: [
+                                ...(defaultSchema.attributes?.span || []),
+                                // Allow all class names starting with `hljs-`.
+                                ["className", /^hljs-./],
+                                ["srcset"],
+                                ["media"],
+                                ["type"],
+                                // Alternatively, to allow only certain class names:
+                                // ['className', 'hljs-number', 'hljs-title', 'hljs-variable']
+                            ],
+                            waveblock: [["blockkey"]],
+                        },
+                        tagNames: [
+                            ...(defaultSchema.tagNames || []),
+                            "span",
+                            "waveblock",
+                            "picture",
+                            "source",
+                            "mermaidblock",
+                        ],
+                    }),
+                () => rehypeSlug({ prefix: idPrefix }),
+            ];
+        }
+        const remarkPlugins: any = [
+            remarkMermaidToTag,
+            remarkGfm,
+            [RemarkFlexibleToc, { tocRef: tocRef.current }],
+            [createContentBlockPlugin, { blocks: contentBlocksMap }],
+        ];
+
+        const markdownContent = (
+            <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={markdownComponents}>
+                {transformedText}
+            </ReactMarkdown>
+        );
+
+        const mergedStyle = { ...style };
+        if (fontSizeOverride != null) {
+            mergedStyle["--markdown-font-size"] = `${boundNumber(fontSizeOverride, 6, 64)}px`;
+        }
+        if (fixedFontSizeOverride != null) {
+            mergedStyle["--markdown-fixed-font-size"] = `${boundNumber(fixedFontSizeOverride, 6, 64)}px`;
+        }
+        return (
+            <div className={clsx("markdown", className)} style={mergedStyle}>
+                {scrollable ? (
+                    <OverlayScrollbarsComponent
+                        ref={contentsOsRef}
+                        className={cn("content", contentClassName)}
+                        options={{ scrollbars: { autoHide: "leave" } }}
+                        events={{
+                            scroll: (instance) => {
+                                scrollTopRef.current = instance.elements().viewport.scrollTop;
+                            },
+                        }}
+                    >
+                        {markdownContent}
+                    </OverlayScrollbarsComponent>
+                ) : (
+                    <div className={cn("content non-scrollable", contentClassName)}>{markdownContent}</div>
+                )}
+                {toc && (
+                    <OverlayScrollbarsComponent className="toc mt-1" options={{ scrollbars: { autoHide: "leave" } }}>
+                        <div className="toc-inner">
+                            <h4 className="font-bold">Table of Contents</h4>
+                            {toc}
+                        </div>
+                    </OverlayScrollbarsComponent>
+                )}
+            </div>
+        );
+    }
+);
+Markdown.displayName = "Markdown";
+
 export { Markdown };
+export type { MarkdownHandle };
