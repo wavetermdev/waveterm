@@ -13,6 +13,7 @@ import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { buildTabBarContextMenu, buildTabContextMenu } from "./tabcontextmenu";
+import { isTabLocked } from "./tablock";
 import { UpdateStatusBanner } from "./updatebanner";
 import { VTab, VTabItem } from "./vtab";
 import { VTabBarEnv } from "./vtabbarenv";
@@ -102,6 +103,7 @@ interface VTabWrapperProps {
     onHoverChanged: (isHovered: boolean) => void;
 }
 
+/** Connects a left-bar tab to its wave object, deriving name, badges, flag color, and locked state from tab meta. */
 function VTabWrapper({
     tabId,
     active,
@@ -150,6 +152,7 @@ function VTabWrapper({
         name: tabData?.name ?? "",
         badges,
         flagColor,
+        locked: !!tabData?.meta?.["tab:locked"],
     };
 
     const handleContextMenu = useCallback(
@@ -184,6 +187,7 @@ function VTabWrapper({
     );
 }
 
+/** The vertical (left) tab bar: renders the workspace's tabs as a reorderable list and routes close requests, honoring tab locks. */
 export function VTabBar({ workspace, className }: VTabBarProps) {
     const env = useWaveEnv<VTabBarEnv>();
     const activeTabId = useAtomValue(env.atoms.staticTabId);
@@ -374,7 +378,12 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
                             hoverResetVersion={hoverResetVersion}
                             index={index}
                             onSelect={() => env.electron.setActiveTab(tabId)}
-                            onClose={() => fireAndForget(() => env.electron.closeTab(workspace.oid, tabId, false))}
+                            onClose={() => {
+                                if (isTabLocked(tabId)) {
+                                    return;
+                                }
+                                fireAndForget(() => env.electron.closeTab(workspace.oid, tabId, false));
+                            }}
                             onRename={(newName) =>
                                 fireAndForget(() => env.rpc.UpdateTabNameCommand(TabRpcClient, tabId, newName))
                             }
