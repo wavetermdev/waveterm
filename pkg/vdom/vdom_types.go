@@ -236,6 +236,8 @@ type WaveKeyboardEvent struct {
 	Code     string `json:"code"` // KeyboardEvent.code
 	Repeat   bool   `json:"repeat,omitempty"`
 	Location int    `json:"location,omitempty"` // KeyboardEvent.location
+	// True while an IME composition is active. These key events should not trigger app shortcuts.
+	IsComposing bool `json:"isComposing,omitempty"`
 
 	// modifiers
 	Shift   bool `json:"shift,omitempty"`
