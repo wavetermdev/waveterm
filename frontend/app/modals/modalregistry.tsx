@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { MessageModal } from "@/app/modals/messagemodal";
+import { AlertModal } from "@/app/modals/alertmodal";
 import { NewInstallOnboardingModal } from "@/app/onboarding/onboarding";
 import { UpgradeOnboardingModal } from "@/app/onboarding/onboarding-upgrade";
 import { UpgradeOnboardingPatch } from "@/app/onboarding/onboarding-upgrade-patch";
@@ -16,7 +16,7 @@ const modalRegistry: { [key: string]: React.ComponentType<any> } = {
     [UpgradeOnboardingPatch.displayName || "UpgradeOnboardingPatch"]: UpgradeOnboardingPatch,
     [UserInputModal.displayName || "UserInputModal"]: UserInputModal,
     [AboutModal.displayName || "AboutModal"]: AboutModal,
-    [MessageModal.displayName || "MessageModal"]: MessageModal,
+    [AlertModal.displayName || "AlertModal"]: AlertModal,
     [PublishAppModal.displayName || "PublishAppModal"]: PublishAppModal,
     [RenameFileModal.displayName || "RenameFileModal"]: RenameFileModal,
     [DeleteFileModal.displayName || "DeleteFileModal"]: DeleteFileModal,

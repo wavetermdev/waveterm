@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/notesmanager"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
@@ -1470,6 +1471,14 @@ func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.
 
 func (ws *WshServer) GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error) {
 	return wcore.GetAllBadges(), nil
+}
+
+func (ws *WshServer) WriteNoteCommand(ctx context.Context, data wshrpc.CommandWriteNoteData) error {
+	return notesmanager.GetNotesManager().WriteNote(ctx, data)
+}
+
+func (ws *WshServer) GetNoteCommand(ctx context.Context) (wshrpc.NoteData, error) {
+	return notesmanager.GetNotesManager().GetNote(ctx)
 }
 
 func (ws *WshServer) GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error) {

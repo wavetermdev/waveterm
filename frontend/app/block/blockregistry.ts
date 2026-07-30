@@ -16,6 +16,7 @@ import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 import { HelpViewModel } from "@/view/helpview/helpview";
+import { NotesViewModel } from "@/app/view/notes/notes-model";
 import { TermViewModel } from "@/view/term/term-model";
 import { WaveAiModel } from "@/view/waveai/waveai";
 import { WebViewModel } from "@/view/webview/webview";
@@ -35,6 +36,7 @@ BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 BlockRegistry.set("processviewer", ProcessViewerViewModel);
+BlockRegistry.set("notes", NotesViewModel);
 
 function makeDefaultViewModel(viewType: string): ViewModel {
     const viewModel: ViewModel = {

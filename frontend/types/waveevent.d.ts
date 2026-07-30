@@ -26,6 +26,7 @@ declare global {
         | "waveai:modeconfig"
         | "block:jobstatus"
         | "badge"
+        | "notes:updated"
     ;
 
     type WaveEvent = {
@@ -53,7 +54,8 @@ declare global {
         { event: "tsunami:updatemeta"; data?: AppMeta; } | 
         { event: "waveai:modeconfig"; data?: AIModeConfigUpdate; } | 
         { event: "block:jobstatus"; data?: BlockJobStatusData; } | 
-        { event: "badge"; data?: BadgeEvent; }
+        { event: "badge"; data?: BadgeEvent; } | 
+        { event: "notes:updated"; data?: NotesUpdatedData; }
     );
 
 }
