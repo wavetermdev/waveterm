@@ -1,6 +1,6 @@
 ---
 name: create-view
-description: Guide for implementing a new view type in Wave Terminal. Use when creating a new view component, implementing the ViewModel interface, registering a new view type in BlockRegistry, or adding a new content type to display within blocks.
+description: Guide for implementing a new view type in Wave Terminal — create model class, build React component, register in BlockRegistry. Use when creating a new view component, adding a custom block type, implementing the ViewModel interface, registering a new view type in BlockRegistry, building a new panel or display widget, or adding a new content type to display within blocks.
 ---
 
 # Creating a New View in Wave Terminal
@@ -81,25 +81,6 @@ interface ViewModel {
   // Optional: Cleanup when block is closed
   dispose?: () => void;
 }
-```
-
-### Key Concepts
-
-**Atoms**: All UI-related properties must be Jotai atoms. This enables:
-
-- Reactive updates when state changes
-- Access from anywhere via `globalStore.get()`/`globalStore.set()`
-- Derived atoms that compute values from other atoms
-
-**ViewComponent**: The React component receives these props:
-
-```typescript
-type ViewComponentProps<T extends ViewModel> = {
-  blockId: string; // Unique ID for this block
-  blockRef: React.RefObject<HTMLDivElement>; // Ref to block container
-  contentRef: React.RefObject<HTMLDivElement>; // Ref to content area
-  model: T; // Your ViewModel instance
-};
 ```
 
 ## Step-by-Step Guide
