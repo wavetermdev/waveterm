@@ -29,6 +29,7 @@ export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
     isPrimaryStartupWindow?: boolean;
     foregroundWindow?: boolean;
+    cwd?: string;
 };
 
 export const MinWindowWidth = 800;
@@ -724,6 +725,9 @@ export async function createBrowserWindow(
     if (!waveWindow) {
         console.log("createBrowserWindow: no waveWindow");
         waveWindow = await WindowService.CreateWindow(null, "");
+        if (opts.cwd && waveWindow?.workspaceid) {
+            await ObjectService.UpdateObjectMeta(`workspace:${waveWindow.workspaceid}`, { "cmd:cwd": opts.cwd } as MetaType);
+        }
     }
     let workspace = await WorkspaceService.GetWorkspace(waveWindow.workspaceid);
     if (!workspace) {
@@ -847,8 +851,8 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
     });
 });
 
-export async function createNewWaveWindow() {
-    log("createNewWaveWindow");
+export async function createNewWaveWindow(cwd?: string) {
+    log("createNewWaveWindow" + (cwd ? ` cwd=${cwd}` : ""));
     const clientData = await ClientService.GetClientData();
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     let recreatedWindow = false;
@@ -862,6 +866,7 @@ export async function createNewWaveWindow() {
             const win = await createBrowserWindow(existingWindowData, fullConfig, {
                 unamePlatform,
                 isPrimaryStartupWindow: false,
+                cwd,
             });
             if (quakeWindow == null) {
                 quakeWindow = win;
@@ -878,6 +883,7 @@ export async function createNewWaveWindow() {
     const newBrowserWindow = await createBrowserWindow(null, fullConfig, {
         unamePlatform,
         isPrimaryStartupWindow: false,
+        cwd,
     });
     if (quakeWindow == null) {
         quakeWindow = newBrowserWindow;
