@@ -431,7 +431,13 @@ function TableBody({
 
     const allRows = table.getRowModel().flatRows;
     const dotdotRow = allRows.find((row) => row.getValue("name") === "..");
-    const otherRows = allRows.filter((row) => row.getValue("name") !== "..");
+    const nonDotDotRows = allRows.filter((row) => row.getValue("name") !== "..");
+    // group directories ahead of files (Windows Explorer style) while keeping the
+    // active column sort within each group
+    const otherRows = [
+        ...nonDotDotRows.filter((row) => row.original.isdir),
+        ...nonDotDotRows.filter((row) => !row.original.isdir),
+    ];
 
     return (
         <div className="dir-table-body" ref={bodyRef}>
