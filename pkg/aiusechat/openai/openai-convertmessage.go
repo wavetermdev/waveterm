@@ -299,6 +299,8 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	// Azure OpenAI uses "api-key" header instead of "Authorization: Bearer"
 	if opts.Provider == uctypes.AIProvider_Azure || opts.Provider == uctypes.AIProvider_AzureLegacy {
 		req.Header.Set("api-key", opts.APIToken)
+	} else if opts.APIKeyHeader != "" {
+		req.Header.Set(opts.APIKeyHeader, opts.APIToken)
 	} else {
 		req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 	}

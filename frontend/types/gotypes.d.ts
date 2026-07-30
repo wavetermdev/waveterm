@@ -31,6 +31,7 @@ declare global {
         "ai:apitokensecretname"?: string;
         "ai:azureresourcename"?: string;
         "ai:azuredeployment"?: string;
+        "ai:apikeyheader"?: string;
         "ai:capabilities"?: string[];
         "ai:switchcompat"?: string[];
         "waveai:cloud"?: boolean;
@@ -1589,6 +1590,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

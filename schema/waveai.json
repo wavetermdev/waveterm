@@ -72,6 +72,10 @@
         "ai:apitokensecretname": {
           "type": "string"
         },
+        "ai:apikeyheader": {
+          "type": "string",
+          "description": "Custom header name for the API token. When set, sends `<header>: <token>` instead of `Authorization: Bearer <token>`. Not used for Azure providers (they always use api-key). Example: \"x-api-key\""
+        },
         "ai:azureresourcename": {
           "type": "string"
         },

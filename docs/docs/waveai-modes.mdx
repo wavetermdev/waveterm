@@ -228,6 +228,28 @@ If you provide only the baseurl, you are likely to get a 404 message.
 
 The `ai:apitokensecretname` should be the name of an environment variable that contains your API key. Set this environment variable before running Wave Terminal.
 
+#### Enterprise Gateways (e.g. Apigee, x-api-key)
+
+Some enterprise LLM gateways (e.g. behind Apigee) require the API key in a custom header like `x-api-key` instead of the standard `Authorization: Bearer`. For these gateways, use the `ai:apikeyheader` field to override the header name:
+
+```json
+{
+  "my-apigee-gateway": {
+    "display:name": "Corporate LLM Gateway",
+    "display:order": 1,
+    "display:icon": "building",
+    "ai:apitype": "openai-chat",
+    "ai:model": "gpt-5.4",
+    "ai:endpoint": "https://gateway.corp.example/v1/chat/completions",
+    "ai:apitokensecretname": "CORP_LLM_KEY",
+    "ai:apikeyheader": "x-api-key",
+    "ai:capabilities": ["tools"]
+  }
+}
+```
+
+When `ai:apikeyheader` is set, Wave sends the API token using the specified header name (e.g. `x-api-key: <token>`) instead of `Authorization: Bearer <token>`. This field is not used for Azure providers, which always use the `api-key` header.
+
 
 ### OpenRouter
 
@@ -517,6 +539,7 @@ If you get "model not found" errors:
     "ai:azureapiversion": "v1",
     "ai:apitoken": "your-token",
     "ai:apitokensecretname": "PROVIDER_KEY",
+    "ai:apikeyheader": "x-api-key",
     "ai:azureresourcename": "your-resource",
     "ai:azuredeployment": "your-deployment",
     "ai:capabilities": ["tools", "images", "pdfs"]
@@ -540,6 +563,7 @@ If you get "model not found" errors:
 | `ai:azureapiversion` | No | Azure API version (for `azure-legacy` provider, defaults to `2025-04-01-preview`) |
 | `ai:apitoken` | No | API key/token (not recommended - use secrets instead) |
 | `ai:apitokensecretname` | No | Name of secret containing API token (auto-set by provider) |
+| `ai:apikeyheader` | No | Custom header name for API token. When set, sends `<header>: <token>` instead of `Authorization: Bearer <token>`. Not used for Azure providers (they always use `api-key`). Example: `"x-api-key"` |
 | `ai:azureresourcename` | No | Azure resource name (for Azure providers) |
 | `ai:azuredeployment` | No | Azure deployment name (for `azure-legacy` provider) |
 | `ai:capabilities` | No | Array of supported capabilities: `"tools"`, `"images"`, `"pdfs"` |

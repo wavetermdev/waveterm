@@ -267,6 +267,7 @@ type AIOptsType struct {
 	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
 	WaveAIPremium bool     `json:"waveaipremium,omitempty"`
+	APIKeyHeader  string   `json:"apikeyheader,omitempty"` // Custom header name for API token (e.g. "x-api-key"); when empty, defaults to "Authorization: Bearer <token>"
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
