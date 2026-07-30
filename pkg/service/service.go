@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/service/blockservice"
 	"github.com/wavetermdev/waveterm/pkg/service/clientservice"
 	"github.com/wavetermdev/waveterm/pkg/service/objectservice"
+	"github.com/wavetermdev/waveterm/pkg/service/tabtemplateservice"
 	"github.com/wavetermdev/waveterm/pkg/service/userinputservice"
 	"github.com/wavetermdev/waveterm/pkg/service/windowservice"
 	"github.com/wavetermdev/waveterm/pkg/service/workspaceservice"
@@ -22,12 +23,13 @@ import (
 )
 
 var ServiceMap = map[string]any{
-	"block":     blockservice.BlockServiceInstance,
-	"object":    &objectservice.ObjectService{},
-	"client":    &clientservice.ClientService{},
-	"window":    &windowservice.WindowService{},
-	"workspace": &workspaceservice.WorkspaceService{},
-	"userinput": &userinputservice.UserInputService{},
+	"block":       blockservice.BlockServiceInstance,
+	"object":      &objectservice.ObjectService{},
+	"client":      &clientservice.ClientService{},
+	"window":      &windowservice.WindowService{},
+	"workspace":   &workspaceservice.WorkspaceService{},
+	"userinput":   &userinputservice.UserInputService{},
+	"tabtemplate": &tabtemplateservice.TabTemplateService{},
 }
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()

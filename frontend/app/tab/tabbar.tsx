@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { TabTemplateService } from "@/app/store/services";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
+import { modalsModel } from "@/store/modalmodel";
 import { isMacOSTahoeOrLater } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -141,7 +143,8 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
     // Update refs when tabIds change
     useEffect(() => {
         tabRefs.current = tabIds.map((_, index) => tabRefs.current[index] || createRef());
-    }, [tabIds]);
+        updateScrollDebounced();
+    }, [tabIds, updateScrollDebounced]);
 
     useEffect(() => {
         if (!workspace) {
@@ -530,13 +533,67 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         []
     );
 
-    const handleAddTab = () => {
-        env.electron.createTab();
-        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+    const applyTabTransition = useCallback(() => {
+        tabsWrapperRef.current?.style.setProperty("--tabs-wrapper-transition", "width 0.1s ease");
+    }, []);
 
-        updateScrollDebounced();
+    const handleAddTab = (e: React.MouseEvent) => {
+        fireAndForget(async () => {
+            let templates: TabTemplate[] = [];
+            try {
+                templates = (await TabTemplateService.ListTabTemplates()) ?? [];
+            } catch (err) {
+                console.error("Failed to load templates:", err);
+                modalsModel.pushModal("MessageModal", {
+                    children: `Failed to load tab templates: ${err?.message ?? "unknown error"}`,
+                });
+            }
 
-        setNewTabIdDebounced(null);
+            const menu: ContextMenuItem[] = [
+                {
+                    label: "New Tab",
+                    click: () => {
+                        env.electron.createTab();
+                        applyTabTransition();
+                        setNewTabIdDebounced(null);
+                    },
+                },
+            ];
+
+            if (templates.length > 0) {
+                menu.push({ type: "separator" });
+                menu.push({
+                    label: "From Template",
+                    type: "submenu",
+                    submenu: templates.map((t) => ({
+                        label: t.name,
+                        click: () => {
+                            fireAndForget(async () => {
+                                try {
+                                    await TabTemplateService.CreateTabFromTemplate(workspace.oid, t.oid);
+                                    applyTabTransition();
+                                } catch (err) {
+                                    console.error("Failed to create tab from template:", err);
+                                    modalsModel.pushModal("MessageModal", {
+                                        children: `Failed to create tab from template: ${err?.message ?? "unknown error"}`,
+                                    });
+                                }
+                            });
+                        },
+                    })),
+                });
+            }
+
+            menu.push({ type: "separator" });
+            menu.push({
+                label: "Manage Templates...",
+                click: () => {
+                    modalsModel.pushModal("TemplateManagerModal", {});
+                },
+            });
+
+            env.showContextMenu(menu, e);
+        });
     };
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {

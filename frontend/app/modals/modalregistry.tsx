@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MessageModal } from "@/app/modals/messagemodal";
+import { SaveTemplateModal } from "@/app/modals/savetemplatemodal";
+import { TemplateManagerModal } from "@/app/modals/templatemanagermodal";
 import { NewInstallOnboardingModal } from "@/app/onboarding/onboarding";
 import { UpgradeOnboardingModal } from "@/app/onboarding/onboarding-upgrade";
 import { UpgradeOnboardingPatch } from "@/app/onboarding/onboarding-upgrade-patch";
@@ -21,6 +23,8 @@ const modalRegistry: { [key: string]: React.ComponentType<any> } = {
     [RenameFileModal.displayName || "RenameFileModal"]: RenameFileModal,
     [DeleteFileModal.displayName || "DeleteFileModal"]: DeleteFileModal,
     [SetSecretDialog.displayName || "SetSecretDialog"]: SetSecretDialog,
+    [SaveTemplateModal.displayName || "SaveTemplateModal"]: SaveTemplateModal,
+    [TemplateManagerModal.displayName || "TemplateManagerModal"]: TemplateManagerModal,
 };
 
 export const getModalComponent = (key: string): React.ComponentType<any> | undefined => {
