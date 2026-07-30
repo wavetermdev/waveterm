@@ -105,6 +105,7 @@ var installTemplatesRawBash = map[string]string{
 	"cat":   `bash -c 'cat > {{.tempPath}}'`,
 	"mv":    `bash -c 'mv {{.tempPath}} {{.installPath}}'`,
 	"chmod": `bash -c 'chmod a+x {{.installPath}}'`,
+	"cp":    `bash -c 'cp {{.installPath}} {{.wavePath}}'`,
 }
 
 var installTemplatesRawDefault = map[string]string{
@@ -112,6 +113,7 @@ var installTemplatesRawDefault = map[string]string{
 	"cat":   `cat > {{.tempPath}}`,
 	"mv":    `mv {{.tempPath}} {{.installPath}}`,
 	"chmod": `chmod a+x {{.installPath}}`,
+	"cp":    `cp {{.installPath}} {{.wavePath}}`,
 }
 
 func makeCancellableCommand(ctx context.Context, client *wsl.Distro, cmdTemplateRaw string, words map[string]string) (*CancellableCmd, error) {
@@ -154,6 +156,7 @@ func CpWshToRemote(ctx context.Context, client *wsl.Distro, clientOs string, cli
 		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
 		"tempPath":    wavebase.RemoteFullWshBinPath + ".temp",
 		"installPath": wavebase.RemoteFullWshBinPath,
+		"wavePath":    wavebase.RemoteFullWaveBinPath,
 	}
 
 	blocklogger.Infof(ctx, "[conndebug] copying %q to remote server %q\n", wshLocalPath, wavebase.RemoteFullWshBinPath)
@@ -212,6 +215,11 @@ func CpWshToRemote(ctx context.Context, client *wsl.Distro, clientOs string, cli
 	}
 
 	_, err = installStepCmds["chmod"].Cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	_, err = installStepCmds["cp"].Cmd.Output()
 	if err != nil {
 		return err
 	}
