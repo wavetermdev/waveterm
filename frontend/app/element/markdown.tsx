@@ -26,16 +26,29 @@ import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.scss";
 
-let mermaidInitialized = false;
-let mermaidInstance: any = null;
+let mermaidInitPromise: Promise<any> = null;
+let mermaidRenderQueue: Promise<void> = Promise.resolve();
 
-const initializeMermaid = async () => {
-    if (!mermaidInitialized) {
-        const mermaid = await import("mermaid");
-        mermaidInstance = mermaid.default;
-        mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
-        mermaidInitialized = true;
-    }
+const initializeMermaid = async (): Promise<any> => {
+    // Memoize the promise rather than setting a flag after the await. A page with several
+    // diagrams mounts every Mermaid component at once, so all of them would pass a flag guard
+    // before the first import resolved and each would call initialize() again, resetting
+    // mermaid's global config while other renders were in flight.
+    mermaidInitPromise ??= import("mermaid").then((mermaid) => {
+        mermaid.default.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+        return mermaid.default;
+    });
+    return mermaidInitPromise;
+};
+
+// mermaid.run() mutates module-global state and derives its SVG element id from Date.now(), so
+// two calls that overlap (or land in the same millisecond) can produce colliding ids and render
+// into each other. Queue the calls so only one runs at a time.
+const runMermaid = (mermaidInstance: any, node: HTMLElement): Promise<void> => {
+    const result = mermaidRenderQueue.then(() => mermaidInstance.run({ nodes: [node] }));
+    // Keep the queue alive when a diagram fails to parse; the caller still sees the rejection.
+    mermaidRenderQueue = result.catch(() => {});
+    return result;
 };
 
 const Link = ({
@@ -79,7 +92,7 @@ const Mermaid = ({ chart }: { chart: string }) => {
                 setIsLoading(true);
                 setError(null);
 
-                await initializeMermaid();
+                const mermaidInstance = await initializeMermaid();
                 if (!ref.current || !mermaidInstance) {
                     return;
                 }
@@ -93,7 +106,7 @@ const Mermaid = ({ chart }: { chart: string }) => {
                 ref.current.removeAttribute("data-processed");
                 ref.current.textContent = normalizedChart;
                 // console.log("mermaid", normalizedChart);
-                await mermaidInstance.run({ nodes: [ref.current] });
+                await runMermaid(mermaidInstance, ref.current);
                 setIsLoading(false);
             } catch (err) {
                 console.error("Error rendering mermaid diagram:", err);
