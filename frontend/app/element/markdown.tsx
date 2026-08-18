@@ -44,8 +44,15 @@ const initializeMermaid = async (): Promise<any> => {
 // mermaid.run() mutates module-global state and derives its SVG element id from Date.now(), so
 // two calls that overlap (or land in the same millisecond) can produce colliding ids and render
 // into each other. Queue the calls so only one runs at a time.
-const runMermaid = (mermaidInstance: any, node: HTMLElement): Promise<void> => {
-    const result = mermaidRenderQueue.then(() => mermaidInstance.run({ nodes: [node] }));
+const runMermaid = (mermaidInstance: any, node: HTMLElement, chartText: string): Promise<void> => {
+    const result = mermaidRenderQueue.then(() => {
+        // Fill the node inside the queued task, not before queueing. mermaid reads the node's
+        // contents when the task runs, so if a later effect wrote to the same node while this
+        // task was waiting its turn, the render would pick up the wrong chart.
+        node.removeAttribute("data-processed");
+        node.textContent = chartText;
+        return mermaidInstance.run({ nodes: [node] });
+    });
     // Keep the queue alive when a diagram fails to parse; the caller still sees the rejection.
     mermaidRenderQueue = result.catch(() => {});
     return result;
@@ -103,10 +110,8 @@ const Mermaid = ({ chart }: { chart: string }) => {
                     .replace(/\r\n?/g, "\n") // Normalize \r \r\n to \n
                     .replace(/\n+$/, ""); // Remove final newline
 
-                ref.current.removeAttribute("data-processed");
-                ref.current.textContent = normalizedChart;
                 // console.log("mermaid", normalizedChart);
-                await runMermaid(mermaidInstance, ref.current);
+                await runMermaid(mermaidInstance, ref.current, normalizedChart);
                 setIsLoading(false);
             } catch (err) {
                 console.error("Error rendering mermaid diagram:", err);
