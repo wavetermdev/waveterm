@@ -81,7 +81,6 @@ func BlockReadTermFileCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOp
 	return resp, err
 }
 
-
 // command "blockrestartstream", wshserver.BlockRestartStreamCommand
 func BlockRestartStreamCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "blockrestartstream", data, opts)

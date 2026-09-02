@@ -50,6 +50,10 @@
         "feature:waveappbuilder": {
           "type": "boolean"
         },
+        "agent:allowremotelocalcontrol": {
+          "type": "boolean",
+          "description": "Allow remote wsh sessions to control the local machine"
+        },
         "term:*": {
           "type": "boolean"
         },

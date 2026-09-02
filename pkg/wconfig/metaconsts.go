@@ -68,6 +68,8 @@ const (
 	ConfigKey_PreviewShowHiddenFiles         = "preview:showhiddenfiles"
 	ConfigKey_PreviewDefaultSort             = "preview:defaultsort"
 
+	ConfigKey_FilesMaxUploadSize             = "files:maxuploadsize"
+
 	ConfigKey_TabPreset                      = "tab:preset"
 	ConfigKey_TabConfirmClose                = "tab:confirmclose"
 	ConfigKey_TabBackground                  = "tab:background"
