@@ -51,6 +51,12 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
         tbodyHeight: 0,
     });
 
+    // Sync the parsed content when the underlying file content changes
+    // (e.g. after a refresh re-reads the file from disk).
+    useEffect(() => {
+        setState((prevState) => ({ ...prevState, content }));
+    }, [content]);
+
     const [tableLoaded, setTableLoaded] = useState(false);
 
     const { listeners } = useTableNav();

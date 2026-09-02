@@ -605,6 +605,20 @@ Gates are soft (delay/retry, user Connect can bypass). They do not prove the SSH
 
 **Open:** root cause not yet identified; the instrumentation is intended to capture the exact stuck state on the next occurrence (likely seq drift or an ACK deadlock in the durable-shell stream path).
 
+## 2026-08-16: Files-widget transfer transport — application-layer tar.gz, SSH compression deferred
+
+**Context:** The files widget (preview block in directory mode) transfers files over the WSH RPC protocol, which is JSON text; binary payloads are base64-encoded (`Data64`). The whole-file write/upload path carries a 32 MB cap and ships the entire file as one base64 blob in a single RPC; there is no progress, cancel, or recursive (directory) transfer. We considered enabling SSH channel compression to reclaim base64's ~33% overhead. `golang.org/x/crypto/ssh` (vendored via `local_crypto_patch/contents`) does not implement compression — `supportedCompressions = []string{compressionNone}` — so SSH compression would require implementing the `zlib@openssh.com` codec in the local crypto patch, and it taxes every byte on the connection (terminal traffic included) and gives no benefit on already-compressed files.
+
+**Decision:**
+
+1. **Application-layer compression only.** Use tar.gz streaming on the transfer path for recursive (directory) transfers and bulk multi-file transfers. This compresses only where it helps, doubles as the recursive-transfer mechanism, and leaves the SSH layer untouched.
+2. **Do not implement SSH channel compression** (`zlib@openssh.com`) for now. Revisit only if profile data shows base64 overhead on non-archive (single-file) transfers is the bottleneck after window/chunk tuning.
+3. **Stream-broker transport for all transfers.** Move upload/write off the whole-file base64 RPC onto the existing stream broker (chunked, ACK flow-controlled, no total-size limit). Progress and cancellation derive from `Writer.GetAckState()` / `Writer.GetCanceledChan()`.
+4. **Transparency requirement:** archive/bulk transfers must be surfaced distinctly from single-file transfers (phase: preparing → transferring → extracting, with file count and totals) so users do not expect scp-style per-file appearance.
+5. **Hybrid archive strategy:** pre-archive to a temp tar.gz when the tree crosses **either** a size threshold or a file-count threshold (OR-trigger: `totalSize > sizeThreshold` OR `fileCount > fileCountThreshold`), giving a determinate progress bar for large or many-file trees; stream-compress on the fly otherwise (faster start, indeterminate bar). Defaults ~64 MB / ~1,000 files, TBD. Size predicts network time; file count predicts archive/extract syscall time — either can dominate (e.g. `node_modules`-shaped trees).
+
+**Files:** (new) `.pi/specs/files-widget-transfer-engine.md`; code changes tracked there.
+
 ## 2026-08-16: wsh Agent API ("Agent Control Fabric") — design decisions
 
 **Decision:** Expose terminal orchestration to AI agents via `wsh`, modeled on tmux, with two execution modes and flat geometry for layout understanding.
@@ -625,3 +639,33 @@ Gates are soft (delay/retry, user Connect can bypass). They do not prove the SSH
 **Consequences:**
 - Build order: Mode A → Mode B → layout → settings → prompt → trust gate.
 - Requires new RPCs (geometry, process state, input injection, prompt) and CLI surface; the existing `ResolveIds` resolver already covers most addressing forms (blocknum, `view:N`, `tab:N`, `this`, uuid).
+
+## 2026-08-22: Stream freeze — A1 ACK retry + B2 lock-free recv metadata
+
+**Context:** Recurring "connected but frozen" terminal is a flow-control deadlock: the backend drops a stream ACK after `timeout sending request` (5s wait on bare-client `OutputCh`, cap 32), the remote 64 KB window never advances, and the remote does not probe. Diagnosis: `.pi/stream-freeze-diagnosis.md` (on `odds-and-ends`). Review rejected the diagnosis's "snapshot trust/source at recv-loop start" (loop starts untrusted) and deferred BlockFile coalescing (frontend paints `data64`; dropping chunks corrupts the terminal).
+
+**Decision:** Implement A1 + B2 on `feat/files-widget` (already merged with `odds-and-ends` stream code). Not B1 (snapshot at start), not C1 (drop BlockFile events).
+
+1. **A1 — never drop the last ACK.** On send failure, keep one pending ACK per stream (highest seq + rwnd; Fin/Cancel OR'd). Retry on a short interval. ACK enqueue uses a 10ms fail-fast timeout so the single send worker is not blocked for 5s. Cleanup of the reader happens only after a successful Fin/Cancel send. Missing writer-route ACKs are still dropped (nowhere to send).
+2. **B2 — lock-free recv-loop metadata.** `trusted` / `sourceRouteId` / `alive` are atomics, loaded every message. Recv loop no longer takes `router.lock` via `getLinkMeta`. Trust/bind after loop start is still observed. `UnregisterLink` sets `alive=false`.
+
+**Deferred:** B3 (non-blocking `inputCh` send), B4 (per-link sender / don't hold `router.lock` around `SendRpcMessage`), C2 (concatenating BlockFile flush).
+
+**Files:** `pkg/streamclient/streambroker.go`, `pkg/wshutil/wshstreamadapter.go`, `pkg/wshutil/wshrouter.go`, tests in `pkg/streamclient/ack_retry_test.go` and `pkg/wshutil/wshrouter_recvloop_test.go`.
+
+## 2026-08-24: RemoteTerm external rename — external surfaces only, upstream identifiers kept
+
+**Context:** The fork's public identity is **RemoteTerm**. A partial rename had already landed (`package.json` name/productName/appId, `app.setName()`, window titles, About modal, app menu, TERM_PROGRAM). The review spec (`.pi/specs/remoteterm-rename-review.md`) tiered the remaining work: Tier A (user-facing) renames, Tier B (internal/upstream identifiers) kept as-is to preserve clean upstream merges.
+
+**Decision:**
+
+1. **External-only rename.** Rename UI strings, window titles, menus, dialogs, onboarding, packaging metadata, and repo docs. Do NOT rename Go import paths, internal TS identifiers, `WAVETERM_*` env vars, or the on-disk `~/.waveterm` data dir — merge friction and user-data migration risk outweigh branding purity.
+2. **GitHub repo renamed** to `github.com/whoisjeremylam/remoteterm`; all docs/links updated. (GitHub redirects the old `waveterm-remote` URL.)
+3. **Domain is `remoteterm.io`** (`remoteterm.dev` was taken). `package.json` `homepage` and the About modal "Website" button point at it; the domain is not yet registered — accepted as a temporary dead link. `appId` changed `dev.remoteterm.app` → `io.remoteterm.app` (correct reverse-DNS while install base is small; changes macOS bundle ID / Windows AppUserModelID / Linux desktop file identity).
+4. **Upgrade modals suppressed.** `onboarding-upgrade-*` (Wave AI feature history) no longer opens on version bump, and the widgets-bar "Release Notes" entry is removed. Files left on disk unreferenced to avoid upstream delete-conflicts.
+5. **Onboarding:** GitHub star links → fork repo; upstream Discord section removed.
+6. **Stale upstream docs deleted:** `README.ko.md`, `README.zh-TW.md`, `ROADMAP.md`. CONTRIBUTING/SECURITY/BUILD/CODE_OF_CONDUCT left as upstream.
+
+**Deferred (with rationale):** `docs/` Docusaurus site (no fork docs host — in-app links stay on `docs.waveterm.dev`, accurate for the shared codebase); `build/deb-postinstall.tpl` `/opt/Wave` paths and `Taskfile.yml` `APP_NAME` (packaging identity / migration risk); `wsh` CLI help and Go dialog strings (code, not chrome); logo artwork (wave motif acceptable; `aria-label` already RemoteTerm); data-dir/env-var rename (needs tested migration, own spec).
+
+**Files:** `package.json`, `index.html`, `electron-builder.config.cjs`, `frontend/app/{onboarding/onboarding.tsx, modals/{about,modalsrenderer,modalregistry}.tsx, workspace/widgets.tsx, element/quicktips.tsx}`, `README.md`, `AGENTS.md`, `.pi/`, `.github/ISSUE_TEMPLATE/bug-report.yml`.

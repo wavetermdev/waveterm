@@ -1,11 +1,11 @@
-# waveterm-remote Fork
+# RemoteTerm Fork
 
 A fork of [Wave Terminal](https://github.com/wavetermdev/waveterm) optimized for **remote development workflows**.
 
 ## Upstream
 
 - Original: `https://github.com/wavetermdev/waveterm`
-- This fork: `https://github.com/whoisjeremylam/waveterm-remote`
+- This fork: `https://github.com/whoisjeremylam/remoteterm`
 - CWD origin points to this fork
 
 ## Purpose
@@ -25,9 +25,9 @@ Most developer terminals assume code is installed, built, and tested locally. Th
 
 ## Current branch / handoff
 
-- **Branch:** `odds-and-ends` (reconnection UX P0/P1/P2 already merged into `main`/`odds-and-ends`)
+- **Branch:** `feat/agent-control-fabric` (worktree `waveterm-remote-agent-fabric`; based on `feat/files-widget`)
+- **In progress:** wsh Agent API ("agent control fabric") — see [[specs/wsh-agent-api.md]]
 - **⚠️ ACTION (Jeremy):** run the reconnection UX-3.2 QA matrix (Q1–Q17) — manual tests, see [[specs/reconnection-p1-p2-verification.md]] for steps/expected results and [[todos.md]] for the recommended order
-- **Next (agent):** wsh Agent API ("agent control fabric") — see [[specs/wsh-agent-api.md]]; developed in worktree `waveterm-remote-agent-fabric` on branch `feat/agent-control-fabric` (branched off `odds-and-ends`, which will merge first)
 - **Todos:** [[todos.md]] — see the "Open action — manual QA" section at top
 
 ## Context & Decisions

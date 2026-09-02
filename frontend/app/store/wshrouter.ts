@@ -54,18 +54,18 @@ class WshRouter {
         }
     }
 
-    // returns true if the message was sent
-    _sendRoutedMessage(msg: RpcMessage, destRouteId: string) {
+    // returns true if the message was sent (or accepted for later delivery)
+    _sendRoutedMessage(msg: RpcMessage, destRouteId: string): boolean {
         const client = this.routeMap.get(destRouteId);
         if (client) {
             client.recvRpcMessage(msg);
-            return;
+            return true;
         }
         // there should always an upstream client
         if (!this.upstreamClient) {
             throw new Error(`no upstream client for message: ${msg}`);
         }
-        this.upstreamClient?.recvRpcMessage(msg);
+        return this.upstreamClient?.recvRpcMessage(msg) ?? false;
     }
 
     _registerRouteInfo(reqid: string, sourceRouteId: string, destRouteId: string) {
@@ -81,50 +81,50 @@ class WshRouter {
         this.rpcMap.set(reqid, routeInfo);
     }
 
-    recvRpcMessage(msg: RpcMessage) {
+    // returns true if the message was sent (or accepted for later delivery)
+    recvRpcMessage(msg: RpcMessage): boolean {
         dlog("router received message", msg);
         // we are a terminal node by definition, so we don't need to process with announce/unannounce messages
         if (msg.command == "routeannounce" || msg.command == "routeunannounce") {
-            return;
+            return true;
         }
         // handle events
         if (msg.command == "eventrecv") {
             handleWaveEvent(msg.data);
-            return;
+            return true;
         }
         if (!util.isBlank(msg.command)) {
             // send + register routeinfo
             if (!util.isBlank(msg.reqid)) {
                 this._registerRouteInfo(msg.reqid, msg.source, msg.route);
             }
-            this._sendRoutedMessage(msg, msg.route);
-            return;
+            return this._sendRoutedMessage(msg, msg.route);
         }
         if (!util.isBlank(msg.reqid)) {
             const routeInfo = this.rpcMap.get(msg.reqid);
             if (!routeInfo) {
                 // no route info, discard
                 dlog("no route info for reqid, discarding", msg);
-                return;
+                return true;
             }
-            this._sendRoutedMessage(msg, routeInfo.destRouteId);
-            return;
+            return this._sendRoutedMessage(msg, routeInfo.destRouteId);
         }
         if (!util.isBlank(msg.resid)) {
             const routeInfo = this.rpcMap.get(msg.resid);
             if (!routeInfo) {
                 // no route info, discard
                 dlog("no route info for resid, discarding", msg);
-                return;
+                return true;
             }
             this._sendRoutedMessage(msg, routeInfo.sourceRouteId);
             if (!msg.cont) {
                 dlog("deleting route info", msg.resid);
                 this.rpcMap.delete(msg.resid);
             }
-            return;
+            return true;
         }
         dlog("bad rpc message recevied by router, no command, reqid, or resid (discarding)", msg);
+        return true;
     }
 
     registerRoute(routeId: string, client: AbstractWshClient) {

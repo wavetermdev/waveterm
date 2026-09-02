@@ -27,6 +27,132 @@
         pointer-events: none;
         border-radius: 5px;
     }
+    .dir-drag-chip {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        z-index: 100;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        background: var(--conn-status-overlay-bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+        white-space: nowrap;
+    }
+    .dir-transfer-banner {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 101;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 6px 12px;
+        min-width: min(200px, calc(100% - 12px));
+        max-width: min(340px, calc(100% - 12px));
+        background: var(--conn-status-overlay-bg-color);
+        backdrop-filter: blur(50px);
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+
+        .dir-transfer-banner-text {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--secondary-text-color);
+            // Two-line layout: let long filenames wrap instead of truncating into
+            // uselessness at narrow widths.
+            overflow-wrap: anywhere;
+        }
+        .dir-transfer-banner-top {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+
+            .dir-transfer-banner-text {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+        }
+        .dir-transfer-banner-bottom {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .dir-transfer-progress-bar {
+                flex: 1 1 auto;
+                min-width: 0;
+            }
+            .dir-transfer-speed {
+                flex: 0 0 auto;
+                font-size: 11px;
+                font-weight: 500;
+                color: var(--secondary-text-color);
+                white-space: nowrap;
+            }
+        }
+        .dir-transfer-cancel {
+            // The banner itself is pointer-events:none (clicks pass through to the
+            // table); the button opts back in so it is clickable.
+            pointer-events: auto;
+            flex: 0 0 auto;
+            padding: 2px 10px;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 16px;
+            white-space: nowrap;
+            color: var(--main-text-color);
+            background: var(--button-red-bg);
+            border: 1px solid var(--button-red-border-color);
+            border-radius: 4px;
+            cursor: pointer;
+
+            &:hover {
+                background: var(--button-red-hover-bg);
+            }
+        }
+        .dir-transfer-dismiss {
+            // Same opt-back-in as the cancel button (banner is pointer-events:none).
+            pointer-events: auto;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            font-family: inherit;
+            font-size: 11px;
+            line-height: 1;
+            color: var(--secondary-text-color);
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+
+            &:hover {
+                color: var(--main-text-color);
+                background: var(--highlight-bg-color);
+            }
+        }
+        .dir-transfer-progress-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+        }
+        .dir-transfer-progress-fill {
+            height: 100%;
+            background: var(--accent-color);
+            transition: width 0.15s ease;
+        }
+    }
     .dir-table {
         height: 100%;
         width: 100%;
@@ -134,6 +260,30 @@
                     padding: 0 6px;
                     min-width: var(--min-row-width);
 
+                    &.selected {
+                        background-color: rgb(from var(--accent-color) r g b / 0.35);
+                        color: var(--main-text-color);
+
+                        .dir-table-body-cell {
+                            .dir-table-lastmod,
+                            .dir-table-modestr,
+                            .dir-table-size,
+                            .dir-table-type {
+                                color: var(--main-text-color);
+                            }
+                        }
+                    }
+
+                    &.dir-drop-target {
+                        // Strong drop-target affordance for internal drags: an accent
+                        // outline plus a tint. !important on the tint so it wins over
+                        // the row's :hover/:nth-child background rules, which have
+                        // higher selector specificity.
+                        outline: 2px solid var(--accent-color);
+                        outline-offset: -2px;
+                        background-color: rgb(from var(--accent-color) r g b / 0.3) !important;
+                    }
+
                     &.focused {
                         background-color: rgb(from var(--accent-color) r g b / 0.5);
                         color: var(--main-text-color);
@@ -162,7 +312,7 @@
                         }
                     }
 
-                    &:nth-child(odd):not(.focused):not(:focus) {
+                    &:nth-child(odd):not(.focused):not(.selected):not(:focus) {
                         background-color: rgba(255, 255, 255, 0.06);
                     }
 

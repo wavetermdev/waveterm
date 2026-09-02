@@ -203,34 +203,46 @@ class WSControl {
         this.wsConn.send(JSON.stringify({ type: "ping", stime: Date.now() }));
     }
 
-    sendMessage(data: WSCommandType) {
+    // Returns true if the message was delivered to the socket, false if it was
+    // dropped (socket closed, or oversized). Callers that need delivery
+    // guarantees use this to reject a pending operation instead of hanging.
+    sendMessage(data: WSCommandType): boolean {
         if (!this.open) {
-            return;
+            return false;
         }
         const msg = JSON.stringify(data);
         const byteSize = new Blob([msg]).size;
         if (byteSize > MaxWebSocketSendSize) {
-            console.log("ws message too large", byteSize, data.wscommand, msg.substring(0, 100));
-            return;
+            console.error(
+                "ws message too large, dropping",
+                byteSize,
+                data.wscommand,
+                data?.message?.command,
+                msg.substring(0, 100)
+            );
+            return false;
         }
         if (byteSize > WarnWebSocketSendSize) {
             console.log("ws message large", byteSize, data.wscommand, msg.substring(0, 100));
         }
         this.wsConn.send(msg);
+        return true;
     }
 
-    pushMessage(data: WSCommandType) {
+    // Returns true if the message was sent or queued for later delivery, false
+    // if it was dropped because it is too large to ever send.
+    pushMessage(data: WSCommandType): boolean {
         if (!this.open) {
             if (data.wscommand === "rpc" && data.message) {
                 const cmd = data.message.command;
                 if (cmd === "routeannounce" || cmd === "routeunannounce") {
-                    return;
+                    return true;
                 }
             }
             this.msgQueue.push(data);
-            return;
+            return true;
         }
-        this.sendMessage(data);
+        return this.sendMessage(data);
     }
 }
 
@@ -249,8 +261,8 @@ function sendRawRpcMessage(msg: RpcMessage) {
     sendWSCommand(wsMsg);
 }
 
-function sendWSCommand(cmd: WSCommandType) {
-    globalWS?.pushMessage(cmd);
+function sendWSCommand(cmd: WSCommandType): boolean {
+    return globalWS?.pushMessage(cmd) ?? false;
 }
 
 export {

@@ -329,6 +329,12 @@ export interface BlockUploadState {
     active: boolean;
     fileName: string;
     fileSize: number;
+    // Bytes sent so far. When present, the overlay renders a determinate
+    // percentage (sent/fileSize); when absent it shows an indeterminate spinner.
+    sent?: number;
+    // A terminal upload error, shown in the overlay in place of progress.
+    // Auto-cleared by the caller after a short delay.
+    error?: string;
 }
 
 const uploadStateAtoms = new Map<string, PrimitiveAtom<BlockUploadState | null>>();

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,14 +60,45 @@ const LinkKind_Router = "router"
 
 type linkMeta struct {
 	linkId        baseds.LinkId
-	trusted       bool
+	trusted       atomic.Bool
+	alive         atomic.Bool
 	linkKind      string
-	sourceRouteId string
+	sourceRouteId atomic.Value // string
 	client        AbstractRpcClient
 }
 
 func (lm *linkMeta) Name() string {
 	return fmt.Sprintf("%d#[%s]", lm.linkId, lm.client.GetPeerInfo())
+}
+
+func (lm *linkMeta) isAlive() bool {
+	if lm == nil {
+		return false
+	}
+	return lm.alive.Load()
+}
+
+func (lm *linkMeta) isTrusted() bool {
+	if lm == nil {
+		return false
+	}
+	return lm.trusted.Load()
+}
+
+func (lm *linkMeta) getSourceRouteId() string {
+	if lm == nil {
+		return ""
+	}
+	v := lm.sourceRouteId.Load()
+	if v == nil {
+		return ""
+	}
+	s, _ := v.(string)
+	return s
+}
+
+func (lm *linkMeta) setSourceRouteId(routeId string) {
+	lm.sourceRouteId.Store(routeId)
 }
 
 type rpcRoutingInfo struct {
@@ -507,13 +539,13 @@ func (router *WshRouter) RegisterUntrustedLink(client AbstractRpcClient) baseds.
 	router.nextLinkId++
 	linkId := router.nextLinkId
 	lm := &linkMeta{
-		linkId:  linkId,
-		trusted: false,
-		client:  client,
+		linkId: linkId,
+		client: client,
 	}
+	lm.alive.Store(true)
 	log.Printf("wshrouter register link %s", lm.Name())
 	router.linkMap[linkId] = lm
-	go router.runLinkClientRecvLoop(linkId, client)
+	go router.runLinkClientRecvLoop(linkId, lm, client)
 	return linkId
 }
 
@@ -525,19 +557,18 @@ func (router *WshRouter) trustLink(linkId baseds.LinkId, linkKind string) {
 		return
 	}
 	log.Printf("wshrouter trust link %s kind=%s", lm.Name(), linkKind)
-	lm.trusted = true
+	lm.trusted.Store(true)
 	lm.linkKind = linkKind
 }
 
-func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client AbstractRpcClient) {
+func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, lm *linkMeta, client AbstractRpcClient) {
 	defer func() {
 		panichandler.PanicHandler("WshRouter:runLinkClientRecvLoop", recover())
 	}()
 	exitReason := "unknown"
-	lmForLog := router.getLinkMeta(linkId)
 	linkName := fmt.Sprintf("%d", linkId)
-	if lmForLog != nil {
-		linkName = lmForLog.Name()
+	if lm != nil {
+		linkName = lm.Name()
 	}
 	log.Printf("link recvloop start for %s", linkName)
 	defer log.Printf("link recvloop done for %s (%s)", linkName, exitReason)
@@ -552,14 +583,18 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client Abst
 		if err != nil {
 			continue
 		}
-		lm := router.getLinkMeta(linkId)
-		if lm == nil {
+		// Lock-free liveness / trust / source reads. These are atomics updated
+		// by trustLink / bindRoute / UnregisterLink; the recv loop must not take
+		// router.lock per message or ACK drain stalls under output load.
+		if !lm.isAlive() {
 			exitReason = "link-gone"
 			break
 		}
+		trusted := lm.isTrusted()
+		sourceRouteId := lm.getSourceRouteId()
 		if rpcMsg.IsRpcRequest() {
-			if lm.sourceRouteId != "" {
-				rpcMsg.Source = lm.sourceRouteId
+			if sourceRouteId != "" {
+				rpcMsg.Source = sourceRouteId
 			}
 			if rpcMsg.Route == "" {
 				rpcMsg.Route = DefaultRoute
@@ -570,16 +605,16 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client Abst
 			}
 			// allow control routes even for untrusted links (for authentication)
 			isControlRoute := rpcMsg.Route == ControlRoute || rpcMsg.Route == ControlRootRoute
-			if !lm.trusted {
+			if !trusted {
 				if !isControlRoute {
-					sendControlUnauthenticatedErrorResponse(rpcMsg, *lm, router)
+					sendControlUnauthenticatedErrorResponse(rpcMsg, lm, router)
 					continue
 				}
 				log.Printf("wshrouter control-msg route=%s link=%s command=%s source=%s", rpcMsg.Route, lm.Name(), rpcMsg.Command, rpcMsg.Source)
 			}
 		} else {
 			// non-request messages (responses)
-			if !lm.trusted {
+			if !trusted {
 				// allow responses to RPCs we initiated
 				if rpcMsg.ResId == "" || router.getRouteInfo(rpcMsg.ResId) == nil {
 					continue
@@ -590,22 +625,19 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client Abst
 	}
 }
 
-// synchronized, returns a copy
+// synchronized; returns the live pointer. Callers must not mutate fields
+// without holding router.lock. trusted / sourceRouteId / alive are atomics
+// and may be read lock-free via the helpers.
 func (router *WshRouter) getLinkMeta(linkId baseds.LinkId) *linkMeta {
 	if linkId == baseds.NoLinkId {
 		return nil
 	}
 	router.lock.Lock()
 	defer router.lock.Unlock()
-	lm := router.linkMap[linkId]
-	if lm == nil {
-		return nil
-	}
-	lmCopy := *lm
-	return &lmCopy
+	return router.linkMap[linkId]
 }
 
-// synchronized, returns a copy
+// synchronized; returns the live pointer (see getLinkMeta).
 func (router *WshRouter) getLinkForRoute(routeId string) *linkMeta {
 	if routeId == "" {
 		return nil
@@ -616,12 +648,7 @@ func (router *WshRouter) getLinkForRoute(routeId string) *linkMeta {
 	if linkId == baseds.NoLinkId {
 		return nil
 	}
-	lm := router.linkMap[linkId]
-	if lm == nil {
-		return nil
-	}
-	lmCopy := *lm
-	return &lmCopy
+	return router.linkMap[linkId]
 }
 
 func (router *WshRouter) GetLinkIdForRoute(routeId string) baseds.LinkId {
@@ -674,7 +701,7 @@ func (router *WshRouter) registerControlPlane() {
 	defer router.lock.Unlock()
 	lm := router.linkMap[linkId]
 	if lm != nil {
-		lm.sourceRouteId = ControlRoute
+		lm.setSourceRouteId(ControlRoute)
 		router.routeMap[ControlRoute] = linkId
 		log.Printf("wshrouter registered control route %q linkid=%d", ControlRoute, linkId)
 	}
@@ -722,6 +749,7 @@ func (router *WshRouter) UnregisterLink(linkId baseds.LinkId) {
 	lm := router.linkMap[linkId]
 	if lm != nil {
 		log.Printf("wshrouter unregister link %s", lm.Name())
+		lm.alive.Store(false)
 	}
 	delete(router.linkMap, linkId)
 	if router.upstreamLinkId == linkId {
@@ -777,17 +805,18 @@ func (router *WshRouter) bindRouteLocally(linkId baseds.LinkId, routeId string, 
 	if lm == nil {
 		return fmt.Errorf("cannot bind route %q, no link with id %d found", routeId, linkId)
 	}
-	if !lm.trusted {
+	if !lm.isTrusted() {
 		return fmt.Errorf("cannot bind route %q, link %d is not trusted", routeId, linkId)
 	}
 	if isSourceRoute {
 		if lm.linkKind != LinkKind_Leaf {
 			return fmt.Errorf("cannot bind source route %q to link %d (link is not a leaf)", routeId, linkId)
 		}
-		if lm.sourceRouteId != "" && lm.sourceRouteId != routeId {
-			return fmt.Errorf("cannot bind source route %q to link %d (link already has source route %q)", routeId, linkId, lm.sourceRouteId)
+		curSource := lm.getSourceRouteId()
+		if curSource != "" && curSource != routeId {
+			return fmt.Errorf("cannot bind source route %q to link %d (link already has source route %q)", routeId, linkId, curSource)
 		}
-		lm.sourceRouteId = routeId
+		lm.setSourceRouteId(routeId)
 	} else {
 		if lm.linkKind != LinkKind_Router {
 			return fmt.Errorf("cannot bind route %q to link %d (link is not a router)", routeId, linkId)
@@ -844,15 +873,15 @@ func (router *WshRouter) unsubscribeFromBroker(routeId string) {
 	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteDown, Scopes: []string{routeId}})
 }
 
-func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta, router *WshRouter) {
-	if cmdMsg.ReqId == "" {
+func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, lm *linkMeta, router *WshRouter) {
+	if cmdMsg.ReqId == "" || lm == nil {
 		return
 	}
 	rtnMsg := RpcMessage{
 		Source: ControlRoute,
 		ResId:  cmdMsg.ReqId,
-		Error:  fmt.Sprintf("link is unauthenticated (%s), cannot call %q", linkMeta.Name(), cmdMsg.Command),
+		Error:  fmt.Sprintf("link is unauthenticated (%s), cannot call %q", lm.Name(), cmdMsg.Command),
 	}
 	rtnBytes, _ := json.Marshal(rtnMsg)
-	router.sendRpcMessageToLink(linkMeta.linkId, linkMeta.client, rtnBytes, baseds.NoLinkId, "unauthenticated")
+	router.sendRpcMessageToLink(lm.linkId, lm.client, rtnBytes, baseds.NoLinkId, "unauthenticated")
 }

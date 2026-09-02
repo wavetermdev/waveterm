@@ -1099,6 +1099,11 @@ func TestHandleReadDataPostWriteIdentityCheck(t *testing.T) {
 }
 
 func TestSendTimeoutFiresHandleSendFailure(t *testing.T) {
+	// Sustained failure must disconnect (single failures now retry instead).
+	oldMax := MaxConsecutiveSendFails
+	MaxConsecutiveSendFails = 3
+	defer func() { MaxConsecutiveSendFails = oldMax }()
+
 	sm := MakeStreamManager()
 	sm.SetJobId(t.Name())
 
@@ -1115,8 +1120,8 @@ func TestSendTimeoutFiresHandleSendFailure(t *testing.T) {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
 
-	// Wait for the timeout to fire
-	time.Sleep(timeout + 200*time.Millisecond)
+	// Wait for the sustained-failure gate to fire (3 fails x 100ms + retries)
+	time.Sleep(timeout*time.Duration(MaxConsecutiveSendFails) + 500*time.Millisecond)
 
 	// After timeout, handleSendFailure should have set connected=false
 	sm.lock.Lock()

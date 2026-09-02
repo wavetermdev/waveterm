@@ -1,5 +1,44 @@
 # Active Tasks
 
+## Files widget follow-ups (from multiselect QA 2026-08-17)
+
+- [x] 2026-08-17 — **Add Cmd+R refresh to files-widget directory view** — done in QA-fixes phase 7 (commit a415c708).
+- [x] 2026-08-17 — **Bump selection highlight visibility** — done in QA-fixes phase 5? No — verify. NOTE: `.selected` bump was NOT in the 7-phase spec's committed scope; check `directorypreview.scss` and apply if still at 0.2.
+
+## Files widget QA fixes (2026-08-17) — implemented, awaiting final user QA on next CI build
+
+All punch-list items from the multiselect QA pass are implemented across 7 phases (spec: [[specs/files-widget-qa-fixes.md]], state: [[phase-state.md]]). Highlights: stale-closure menu fix, full-file paste destinations, dir drag in-app + clean copy-unsupported error, row-level drop targeting, always-confirm deletes with named text, no-flash confirm overlay, empty-click deselect, chunked uploads (>3.7MB works again) with progress overlay, loud oversize-RPC failures, Cmd+R refresh, editable path input, fork About dialog.
+
+## Files widget QA round 2 findings (2026-08-17 build) — ALL 3 FIX PHASES IMPLEMENTED, awaiting user QA
+
+Spec: [[specs/files-widget-qa2-fixes.md]] · state: [[phase-state.md]] · commits: 5b9bc8b4, b03ae283, 0f848d15.
+
+QA checklist for next build:
+1. Off-grid click / Escape → zero row highlight; arrows re-enter list skipping `..`; Enter inert after off-grid
+2. Hidden files hidden by default (fresh settings); toggle persists
+3. Delete confirm: destructive button autofocused (red), Tab cycles, Enter/Space = Delete, Esc = Cancel; no key leakage (Cmd+F/A/arrows/delete inert while open)
+4. Copy-overwrite wording: files [Overwrite][Cancel]; dirs [Merge][Replace][Cancel]; same keyboard treatment
+5. Internal drag: corner chip "Copying/Moving N items" + hovered dir-row accent highlight; NO full-width banner; drops onto rows AND empty space leave zero residue
+6. External OS drop: full-width upload banner unchanged
+7. Upload failure (wifi off): "Upload interrupted at N%" PERSISTS with X dismiss; success/cancel auto-clear
+8. Two-line transfer banner readable at narrow widths
+9. Terminal drag-drop: >50MB file succeeds with % in overlay; over-cap shows inline error in overlay (not console); screenshot paste still works
+10. Dropdown respects Hide Hidden Files toggle; SCM dropdown unchanged
+
+Decisions locked with Jeremy: overwrite dialog buttons = **Overwrite / Cancel**, focused default = the **destructive affirmative**; Tab cycles highlighted button; Space/Enter activates; Esc cancels; underlying widget keys fully suppressed while a confirm is open. Dir-overwrite variant to propose: [Merge] [Replace] [Cancel]. Transfer banner = two lines (filename+% / bar+speed+cancel); failure states persist-until-dismissed. Internal-drag UX: drop the full-width banner; rows self-highlight as drop targets + tiny corner chip "Copying/Moving N items"; external drops keep the loud upload banner.
+
+1. **Off-grid click leaves `..` highlighted** — root-caused: handleContainerClick sets focusIndex=0 → `.focused` class lands on `..` row (index 0); also syncs selectedPath to parent via pre-existing effect (Enter would navigate up). Fix: focusIndex=-1 "no-focus" state tolerated by arrow handlers/scroll effect/Enter/row class.
+2. **Hidden files shown by default** — `preview-model.tsx:207` `?? true` → `?? false` (unset installs only; explicit toggles persist).
+3. **Confirm-dialog focus management** — applies to delete-confirm AND copy-overwrite dialog (see decisions above).
+4. **Copy-overwrite dialog wording** — currently "Delete Then Copy"/"Sync". New: files → Overwrite/Cancel; dirs → propose Merge/Replace/Cancel.
+5. **Terminal-block drag-drop** — separate path (termutil createRemoteTempFileFromBlob): whole-file single RPC, silent >3.7MB failure (console-only catch), hard 50MB throw, spinner-only overlay, whole-file memory. MANDATE: reuse preview-model-upload.ts pure helpers (planUploadChunks/readChunkAsBase64/raceWithCancel/resolveMaxUploadSize/formatBytesSize) — no second implementation; unify cap source.
+6. **Directory dropdown ignores show-hidden setting** — FileListCommand(path, undefined) lists dotfiles always. Fix: pass filter or client-side filter keyed off same showHiddenFiles value; decide SCM-widget behavior (shared component).
+7. **Stale internal-drop banner** — root-caused: folder-row drop stopPropagation prevents container reset of dragCounterRef/isDragOver; after dropSource cleared, banner shows external text. Fix: shared cleanup between row-drop and container-drop paths. Superseded in severity by the chip redesign but root fix still required.
+8. **Transfer banner redesign** — two-line layout; truncated text today hides %/speed/filename; failure states persist-until-dismissed (was 3s transient); consider faster stall detection than 2×120s timeout chain; low-pri: surface effective maxuploadsize cap.
+9. Low-pri backlog: mergeError dead constant cleanup; self-drop guard (dir onto own row); dir-only HTML5 drag fallback; raise-cap memory notes done.
+
+Closed this round: #17 Cmd+R works (wiring identical to header button); move-to-row works (narrow banner complaint folded into item 8).
+
 ## ⚠️ Open action — manual QA (Jeremy)
 
 - [ ] **Run the reconnection UX-3.2 QA matrix (Q1–Q17)** — these are manual tests that must be done on a real machine with real SSH hosts (network flaps, sleep/wake, VPN, remote reboots + visual UI checks cannot be automated). Steps + expected results: [[specs/reconnection-p1-p2-verification.md]].
@@ -98,8 +137,8 @@ Kitchen-sink branch: reconnection UX P0 + password cold-start + new-tab dropdown
   - [x] Bug #2 (P0): connStates reconciliation race — replaced `processed bool` with generation counters (`actualGen` / `procGen`); `reconcileConn` now sends follow-up signal if `actualGen != procGen` at finish
   - [x] Bug #3 (P0): singleflight caches transient reconnect failures — split `reconnectGroup` into `reconnectConnGroup` and `reconnectRouteGroup`; route-level `attemptAutoReconnect` now calls `ReconnectJobRoute` instead of sharing the connection-level cache
   - [x] Decision 2026-05-23: Server reboot / `wsh` death → manual reconnect (do NOT auto-restart fresh shell). Auto-restart would change durable-session semantics from "resume existing shell" to "keep shell open at all costs," creating context-loss confusion and `wsh` re-install loops.
-  - GitHub issue (problem): https://github.com/whoisjeremylam/waveterm-remote/issues/7
-  - GitHub issue (implementation): https://github.com/whoisjeremylam/waveterm-remote/issues/8
+  - GitHub issue (problem): https://github.com/whoisjeremylam/remoteterm/issues/7
+  - GitHub issue (implementation): https://github.com/whoisjeremylam/remoteterm/issues/8
   - Branch: `fix/auto-reconnect-detection-gaps`
   - [x] Phase 1 (Gap C): Auto-disconnect on stall — `ConnMonitor` detects stall but doesn't set `Status=Disconnected`
     - Commit `b4c4dbea`: Add configurable `ConnStallDisconnectThreshold` to `ConnKeywords`

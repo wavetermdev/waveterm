@@ -1549,6 +1549,13 @@ func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId
 	return jobcontroller.ReconnectJob(ctx, jobId, nil)
 }
 
+// StreamStatusReportCommand consumes fire-and-forget state reports from a
+// remote jobmanager (spec: .pi/specs/stream-data-path-resilience.md).
+func (ws *WshServer) StreamStatusReportCommand(ctx context.Context, data wshrpc.CommandStreamStatusData) error {
+	jobcontroller.HandleStreamStatusReport(data)
+	return nil
+}
+
 func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {
 	return jobcontroller.ReconnectJobsForConn(ctx, connName)
 }

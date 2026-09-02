@@ -84,12 +84,19 @@ function sendRpcCommand(
     openRpcs: Map<string, ClientRpcEntry>,
     msg: RpcMessage
 ): AsyncGenerator<RpcMessage, void, boolean> {
-    DefaultRouter.recvRpcMessage(msg);
+    const sent = DefaultRouter.recvRpcMessage(msg);
     if (msg.reqid == null) {
         return null;
     }
     const rtnGen = rpcResponseGenerator(openRpcs, msg.command, msg.reqid, msg.timeout);
     rtnGen.next();
+    if (sent === false) {
+        // The transport refused to deliver this message (e.g. it exceeded the
+        // WebSocket send-size cap). Reject the pending RPC now instead of
+        // leaving the caller's promise hanging forever.
+        const entry = openRpcs.get(msg.reqid);
+        entry?.msgFn({ resid: msg.reqid, error: "RPC message too large to send" });
+    }
     return rtnGen;
 }
 
@@ -131,9 +138,9 @@ function shutdownWshrpc() {
 }
 
 class UpstreamWshRpcProxy implements AbstractWshClient {
-    recvRpcMessage(msg: RpcMessage): void {
+    recvRpcMessage(msg: RpcMessage): boolean {
         const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
-        globalWS?.pushMessage(wsMsg);
+        return globalWS?.pushMessage(wsMsg) ?? false;
     }
 }
 

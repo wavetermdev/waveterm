@@ -47,4 +47,5 @@ const (
 	Command_Message                      = "message"
 	Command_StreamData                   = "streamdata"
 	Command_StreamDataAck                = "streamdataack"
+	Command_StreamStatusReport           = "streamstatusreport"
 )

@@ -172,7 +172,7 @@ function makeFileMenu(
 function makeAppMenuItems(webContents: electron.WebContents): Electron.MenuItemConstructorOptions[] {
     const appMenuItems: Electron.MenuItemConstructorOptions[] = [
         {
-            label: "About Wave Terminal",
+            label: "About RemoteTerm",
             click: (_, window) => {
                 (getWindowWebContents(window) ?? webContents)?.send("menu-item-about");
             },

@@ -73,3 +73,17 @@ func (sm *SyncMap[T]) GetOrCreate(key string, createFn func() T) T {
 	sm.m[key] = v
 	return v
 }
+
+// ForEach calls fn for each entry. The callback runs outside the lock against a
+// point-in-time snapshot, so fn may safely re-enter this SyncMap.
+func (sm *SyncMap[T]) ForEach(fn func(key string, value T)) {
+	sm.lock.Lock()
+	snapshot := make(map[string]T, len(sm.m))
+	for k, v := range sm.m {
+		snapshot[k] = v
+	}
+	sm.lock.Unlock()
+	for k, v := range snapshot {
+		fn(k, v)
+	}
+}

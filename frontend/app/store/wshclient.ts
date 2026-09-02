@@ -126,15 +126,15 @@ class WshClient {
         return;
     }
 
-    recvRpcMessage(msg: RpcMessage) {
+    recvRpcMessage(msg: RpcMessage): boolean {
         const isRequest = msg.command != null || msg.reqid != null;
         if (isRequest) {
             this.handleIncomingCommand(msg);
-            return;
+            return true;
         }
         if (msg.resid == null) {
             console.log("rpc response missing resid", msg);
-            return;
+            return true;
         }
         const entry = this.openRpcs.get(msg.resid);
         if (entry == null) {
@@ -142,9 +142,10 @@ class WshClient {
                 notFoundLogMap.set(msg.resid, true);
                 console.log("rpc response generator not found", msg);
             }
-            return;
+            return true;
         }
         entry.msgFn(msg);
+        return true;
     }
 
     async handle_message(helper: RpcResponseHelper, data: CommandMessageData): Promise<void> {

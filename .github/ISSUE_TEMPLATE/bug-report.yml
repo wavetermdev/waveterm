@@ -36,11 +36,11 @@ body:
           value: |
               ## Environment details
 
-              We require that you provide us the version of Wave you're running so we can track issues across versions. To find the Wave version, go to the app menu (this always visible on macOS, for Windows and Linux, click the `...` button) and navigate to `Wave -> About Wave Terminal`. This will bring up the About modal. Copy the client version and paste it below.
+              We require that you provide us the version of RemoteTerm you're running so we can track issues across versions. To find the RemoteTerm version, go to the app menu (this always visible on macOS, for Windows and Linux, click the `...` button) and navigate to `RemoteTerm -> About RemoteTerm`. This will bring up the About modal. Copy the client version and paste it below.
     - type: input
       attributes:
-          label: Wave Version
-          description: The version of Wave you are running
+          label: RemoteTerm Version
+          description: The version of RemoteTerm you are running
           placeholder: v0.8.8
       validations:
           required: true

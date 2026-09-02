@@ -10,6 +10,7 @@ import {
     fetchWaveFile,
     getApi,
     getBlockMetaKeyAtom,
+    getBlockUploadStateAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
@@ -616,16 +617,9 @@ export class TermWrap {
             for (let i = 0; i < e.dataTransfer.files.length; i++) {
                 const file = e.dataTransfer.files[i];
                 if (isRemote) {
-                    this.uploadActive = true;
-                    setBlockUploadState(this.blockId, { active: true, fileName: file.name, fileSize: file.size });
-                    try {
-                        const tempPath = await createRemoteTempFileFromBlob(file, file.name, connName);
+                    const tempPath = await this.uploadFileToRemote(file, connName, file.name, file.name);
+                    if (tempPath) {
                         paths.push(quoteForPosixShell(tempPath));
-                    } catch (err) {
-                        console.error("Failed to transfer file to remote:", err);
-                    } finally {
-                        this.uploadActive = false;
-                        setBlockUploadState(this.blockId, null);
                     }
                 } else {
                     const filePath = getApi().getPathForFile(file);
@@ -1230,6 +1224,46 @@ export class TermWrap {
         }, 5000);
     }
 
+    // Uploads a Blob to a temp file on the remote connection, driving the
+    // block upload overlay with progress and surfacing failures there instead
+    // of console-only. The cap comes from the `files:maxuploadsize` setting
+    // (resolved/clamped inside createRemoteTempFileFromBlob). Returns the temp
+    // path on success, or null on failure (error already shown in the overlay).
+    async uploadFileToRemote(blob: Blob, connName: string, fileName?: string, displayName?: string): Promise<string | null> {
+        const maxUploadSize = globalStore.get(getSettingsKeyAtom("files:maxuploadsize"));
+        const label = displayName ?? fileName ?? blob.type ?? "file";
+        this.uploadActive = true;
+        setBlockUploadState(this.blockId, { active: true, fileName: label, fileSize: blob.size });
+        try {
+            const tempPath = await createRemoteTempFileFromBlob(blob, fileName, connName, {
+                maxUploadSize,
+                onProgress: (sent) => {
+                    setBlockUploadState(this.blockId, { active: true, fileName: label, fileSize: blob.size, sent });
+                },
+            });
+            setBlockUploadState(this.blockId, null);
+            return tempPath;
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            setBlockUploadState(this.blockId, { active: true, fileName: label, fileSize: blob.size, error: message });
+            this.scheduleUploadErrorClear(label, message);
+            return null;
+        } finally {
+            this.uploadActive = false;
+        }
+    }
+
+    // Auto-clears a transient upload error from the overlay after ~3s, but only
+    // if the overlay still shows that same error (a newer file may have started).
+    scheduleUploadErrorClear(fileName: string, message: string) {
+        setTimeout(() => {
+            const current = globalStore.get(getBlockUploadStateAtom(this.blockId));
+            if (current?.error === message && current.fileName === fileName) {
+                setBlockUploadState(this.blockId, null);
+            }
+        }, 3000);
+    }
+
     async pasteHandler(e?: ClipboardEvent): Promise<void> {
         this.pasteActive = true;
         e?.preventDefault();
@@ -1247,15 +1281,8 @@ export class TermWrap {
                     }
                     let tempPath: string;
                     if (isRemote) {
-                        this.uploadActive = true;
                         const fileName = `screenshot_${Date.now()}.png`;
-                        setBlockUploadState(this.blockId, { active: true, fileName, fileSize: data.image.size });
-                        try {
-                            tempPath = await createRemoteTempFileFromBlob(data.image, undefined, connName);
-                        } finally {
-                            this.uploadActive = false;
-                            setBlockUploadState(this.blockId, null);
-                        }
+                        tempPath = (await this.uploadFileToRemote(data.image, connName, undefined, fileName)) ?? "";
                     } else {
                         tempPath = await createTempFileFromBlob(data.image);
                     }

@@ -81,6 +81,7 @@ func BlockReadTermFileCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOp
 	return resp, err
 }
 
+
 // command "blockrestartstream", wshserver.BlockRestartStreamCommand
 func BlockRestartStreamCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "blockrestartstream", data, opts)
@@ -962,6 +963,12 @@ func StreamDataCommand(w *wshutil.WshRpc, data wshrpc.CommandStreamData, opts *w
 // command "streamdataack", wshserver.StreamDataAckCommand
 func StreamDataAckCommand(w *wshutil.WshRpc, data wshrpc.CommandStreamAckData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "streamdataack", data, opts)
+	return err
+}
+
+// command "streamstatusreport", wshserver.StreamStatusReportCommand
+func StreamStatusReportCommand(w *wshutil.WshRpc, data wshrpc.CommandStreamStatusData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "streamstatusreport", data, opts)
 	return err
 }
 

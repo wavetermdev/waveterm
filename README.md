@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="https://www.waveterm.dev">
+  <a href="https://remoteterm.io">
 	<picture>
 		<source media="(prefers-color-scheme: dark)" srcset="./assets/wave-dark.png">
 		<source media="(prefers-color-scheme: light)" srcset="./assets/wave-light.png">
-		<img alt="Wave Terminal Logo" src="./assets/wave-light.png" width="240">
+		<img alt="RemoteTerm Logo" src="./assets/wave-light.png" width="240">
 	</picture>
   </a>
   <br/>
@@ -11,36 +11,31 @@
 
 > **Fork:** This is a fork of [Wave Terminal](https://github.com/wavetermdev/waveterm) optimized for remote development workflows.
 
-# Wave Terminal
+# RemoteTerm
 
-<div align="center">
+RemoteTerm is an open-source terminal for macOS, Linux, and Windows. No accounts required.
 
-[English](README.md) | [한국어](README.ko.md) | [繁體中文](README.zh-TW.md)
+RemoteTerm supports durable SSH sessions that survive network interruptions and restarts, with automatic reconnection. Edit remote files with a built-in graphical editor and preview files inline without leaving the terminal.
 
-</div>
+## What's different
 
-Wave is an open-source terminal for macOS, Linux, and Windows. No accounts required.
+This fork is tuned for developers who work on remote machines, with the local app as a thin client.
 
-Wave supports durable SSH sessions that survive network interruptions and restarts, with automatic reconnection. Edit remote files with a built-in graphical editor and preview files inline without leaving the terminal.
+**Sessions that heal themselves.** Durable SSH sessions survive network drops, laptop sleep/wake, VPN changes, and app restarts. When a connection drops it reconnects automatically.
 
-## Fork Notes
+**Remote work feels local.** Inline images render right in the terminal (Sixel, iTerm2, Kitty). Copy-and-paste screenshots and drag-and-drop files into remote sessions. Review, stage, commit, and push changes on any connected host with the built-in source-control sidebar.
 
-This fork is optimized for remote development workflows with a focus on macOS.
+**Your AI agents stay running.** Claude Code, Grok Build, OpenCode, and Pi work in the terminal — durable sessions survive disconnects, irrespective if your local machine is offline and inline images render their output.
 
-- **No telemetry** — All analytics, telemetry, and cloud data collection have been completely removed; no usage data is sent to external servers
-- **Local toolchain** — Go and Task are installed locally (not global), no system dependencies required
-- **macOS builds** — CI builds macOS `.dmg` via GitHub Actions (manual trigger)
-- **Bug fixes** — Fixed tmux mouse integration lost on durable SSH session reconnect (commit `01f5073d`, issue #2); fixed crash on tab close after SSH session exit (commit `0cd6489b`)
-- **Image rendering** — Inline image display via `@xterm/addon-image` supporting Sixel, iTerm2 (IIP), and Kitty protocols. Tools like `chafa`, `imgcat`, and pi-tui can render images directly in the terminal
-- **SSH port forwarding** — Local and remote port forwarding via SSH config (`LocalForward`/`RemoteForward`)
-- **Source control widget** — Visual git interface in the sidebar with staged/unstaged/untracked file lists, side-by-side Monaco diffs, stage/unstage files and hunks, commit, and push authentication. Works on any connected remote host via wsh RPC. Includes a directory dropdown to browse repos across connections.
-- **Planned changes** — Remote file paste (image/drag-drop for SSH sessions), SSH config as source of truth for connections
+**Your SSH config is automatically detected.** `LocalForward` / `RemoteForward` from `~/.ssh/config` are applied automatically — no extra setup.
 
-![WaveTerm Screenshot](./assets/wave-screenshot.webp)
+**Private by default.** Zero telemetry, analytics, and cloud data collection. Always.
+
+![RemoteTerm Screenshot](./assets/wave-screenshot.webp)
 
 ## Key Features
 
-- Durable SSH Sessions - Remote terminal sessions survive connection interruptions, network changes, and Wave restarts with automatic reconnection
+- Durable SSH Sessions - Remote terminal sessions survive connection interruptions, network changes, and app restarts with automatic reconnection
 - Flexible drag & drop interface to organize terminal blocks, editors, web browsers, and previews
 - Built-in editor for editing remote files with syntax highlighting and modern editor features
 - Rich file preview system for remote files (markdown, images, video, PDFs, CSVs, directories)
@@ -53,13 +48,25 @@ This fork is optimized for remote development workflows with a focus on macOS.
 - Connected file management with `wsh file` - seamlessly copy and sync files between local and remote SSH hosts
 - Inline image rendering - display images directly in the terminal using Sixel, iTerm2, or Kitty protocols
 
+## Download
+
+Pre-built binaries are produced by GitHub Actions CI on the [fork's repo](https://github.com/whoisjeremylam/remoteterm) — grab the latest build from [Releases](https://github.com/whoisjeremylam/remoteterm/releases) or from the artifacts of a recent successful workflow run.
+
+## Quickstart
+
+1. Add a host to your `~/.ssh/config` (RemoteTerm reads it automatically).
+2. Launch RemoteTerm.
+3. Click the connection dropdown in the terminal header and pick your host.
+
+Port forwarding (`LocalForward` / `RemoteForward`) from your SSH config is applied automatically — no extra setup.
+
 ## Installation
 
-Wave Terminal works on macOS, Linux, and Windows.
+RemoteTerm works on macOS, Linux, and Windows.
 
 ### Minimum requirements
 
-Wave Terminal runs on the following platforms:
+RemoteTerm runs on the following platforms:
 
 - macOS 11 or later (arm64, x64)
 - Windows 10 1809 or later (x64)
@@ -73,11 +80,11 @@ The WSH helper runs on the following platforms:
 
 ## Building from Source
 
-See [Building Wave Terminal](BUILD.md).
+See [Building from Source](BUILD.md).
 
 ## Contributing
 
-Wave uses GitHub Issues for issue tracking.
+Issues and feature requests belong in [this fork's issue tracker](https://github.com/whoisjeremylam/remoteterm/issues) — please don't file fork-specific bugs against upstream Wave Terminal.
 
 Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
 
@@ -86,4 +93,6 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 ## License
 
-Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
+RemoteTerm is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
+
+RemoteTerm is forked from [Wave Terminal](https://github.com/wavetermdev/waveterm) — all credit for the underlying platform goes to the upstream project.

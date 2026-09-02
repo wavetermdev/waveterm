@@ -13,6 +13,7 @@ export type PreviewEnv = WaveEnvSubset<{
         FileReadCommand: WaveEnv["rpc"]["FileReadCommand"];
         FileListStreamCommand: WaveEnv["rpc"]["FileListStreamCommand"];
         FileWriteCommand: WaveEnv["rpc"]["FileWriteCommand"];
+        FileAppendCommand: WaveEnv["rpc"]["FileAppendCommand"];
         FileMoveCommand: WaveEnv["rpc"]["FileMoveCommand"];
         FileDeleteCommand: WaveEnv["rpc"]["FileDeleteCommand"];
         SetConfigCommand: WaveEnv["rpc"]["SetConfigCommand"];
@@ -30,6 +31,6 @@ export type PreviewEnv = WaveEnvSubset<{
         object: WaveEnv["services"]["object"];
     };
     wos: WaveEnv["wos"];
-    getSettingsKeyAtom: SettingsKeyAtomFnType<"preview:showhiddenfiles" | "editor:fontsize" | "preview:defaultsort">;
+    getSettingsKeyAtom: SettingsKeyAtomFnType<"preview:showhiddenfiles" | "editor:fontsize" | "preview:defaultsort" | "files:maxuploadsize">;
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
 }>;

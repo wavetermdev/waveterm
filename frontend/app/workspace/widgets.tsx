@@ -16,7 +16,6 @@ import * as WOS from "@/app/store/wos";
 import { useWaveEnv, WaveEnv, WaveEnvSubset } from "@/app/waveenv/waveenv";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
 import { getLayoutModelForStaticTab } from "@/layout/index";
-import { modalsModel } from "@/store/modalmodel";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     autoUpdate,
@@ -380,14 +379,6 @@ const SettingsFloatingWindow = memo(
                         },
                     };
                     env.createBlock(blockDef, false, true);
-                    onClose();
-                },
-            },
-            {
-                icon: "book-open",
-                label: "Release Notes",
-                onClick: () => {
-                    modalsModel.pushModal("UpgradeOnboardingPatch", { isReleaseNotes: true });
                     onClose();
                 },
             },

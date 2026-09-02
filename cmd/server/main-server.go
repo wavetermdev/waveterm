@@ -66,6 +66,9 @@ func doShutdown(reason string) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		go blockcontroller.StopAllBlockControllersForShutdown()
+		// Persist acked-but-unwritten stream tails before the filestore flush so
+		// an app update/quit does not lose them (spec stream-gap-on-reconnect.md).
+		jobcontroller.DrainAllJobReaders(ctx)
 		// TODO deal with flush in progress
 		clearTempFiles()
 		filestore.WFS.FlushCache(ctx)

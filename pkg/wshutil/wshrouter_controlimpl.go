@@ -67,7 +67,7 @@ func (impl *WshRouterControlImpl) ControlGetRouteIdCommand(ctx context.Context) 
 	if lm == nil {
 		return "", nil
 	}
-	return lm.sourceRouteId, nil
+	return lm.getSourceRouteId(), nil
 }
 
 func (impl *WshRouterControlImpl) SetPeerInfoCommand(ctx context.Context, peerInfo string) error {

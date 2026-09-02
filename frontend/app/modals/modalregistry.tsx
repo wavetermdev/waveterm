@@ -3,17 +3,15 @@
 
 import { MessageModal } from "@/app/modals/messagemodal";
 import { NewInstallOnboardingModal } from "@/app/onboarding/onboarding";
-import { UpgradeOnboardingModal } from "@/app/onboarding/onboarding-upgrade";
-import { UpgradeOnboardingPatch } from "@/app/onboarding/onboarding-upgrade-patch";
 import { DeleteFileModal, PublishAppModal, RenameFileModal } from "@/builder/builder-apppanel";
 import { SetSecretDialog } from "@/builder/tabs/builder-secrettab";
 import { AboutModal } from "./about";
 import { UserInputPrompt } from "./userinputprompt";
 
+// RemoteTerm: upstream upgrade modals (UpgradeOnboardingModal / UpgradeOnboardingPatch)
+// are intentionally not registered — they describe Wave's feature history, not the fork's.
 const modalRegistry: { [key: string]: React.ComponentType<any> } = {
     [NewInstallOnboardingModal.displayName || "NewInstallOnboardingModal"]: NewInstallOnboardingModal,
-    [UpgradeOnboardingModal.displayName || "UpgradeOnboardingModal"]: UpgradeOnboardingModal,
-    [UpgradeOnboardingPatch.displayName || "UpgradeOnboardingPatch"]: UpgradeOnboardingPatch,
     [UserInputPrompt.displayName || "UserInputPrompt"]: UserInputPrompt,
     [AboutModal.displayName || "AboutModal"]: AboutModal,
     [MessageModal.displayName || "MessageModal"]: MessageModal,

@@ -1,6 +1,6 @@
 # Fork Features vs. Upstream — High-Level Summary
 
-- **Fork:** `whoisjeremylam/waveterm-remote` (RemoteTerm)
+- **Fork:** `whoisjeremylam/remoteterm` (RemoteTerm)
 - **Upstream:** `wavetermdev/waveterm` (Wave Terminal)
 - **Compiled:** 2026-08-13
 - **Scope:** User-visible features and notable architectural changes introduced in this fork that are **not** in upstream Wave Terminal.
@@ -66,7 +66,7 @@ The fork diverged early (initial commits: `.pi/` planning docs, AGENTS.md, local
 - **x/crypto/ssh drain loop spin bug** — patched `golang.org/x/crypto` drain loop (upstream Go bug `golang/go#79658`), DomainSockListener close ordering to prevent CPU spin on closed mux, close-involuntary preserves cached password, stream-reader leak fix on reconnect, xterm `_isPaused` reset on resume, per-job bounded retry in `onConnectionUp`, runtime auth-prompt tracking, term-file corruption on stream supersession. Commits `51577106`, `eb2c659a`, `402acb77`, `6f04028a`, `b6f7487a`, `3cd17d3c`, `634bdc27`, `f4a2a60c`/`590b107f`.
 
 ### Branding / build / infra
-- **RemoteTerm branding** — `productName`/`appId`/`name`/`app.setName()`/`TERM_PROGRAM` set to RemoteTerm/remoteterm (partial; UI chrome rename still in progress — see `specs/remoteterm-rename-review.md`). Commit `146ceb1e`, `6aae307e`.
+- **RemoteTerm branding** — `productName`/`appId`/`name`/`app.setName()`/`TERM_PROGRAM` set to RemoteTerm/remoteterm; UI chrome, onboarding, README rename landed (see `specs/remoteterm-rename-review.md`). Commit `146ceb1e`, `6aae307e`.
 - **Local build toolchain** — Go and Task installed locally (not global); `golang-1.26.2/` local install; macOS CI workflow via GitHub Actions. Commits `4828633a`, `18c93b6b`, `6f7ad3fc`, `d4d5a158`.
 - **CI artifact sanitization** — sanitize branch name in CI artifact upload. Commit `ab2f1256`.
 
@@ -79,7 +79,7 @@ From `.pi/specs/` and `.pi/todos.md` with no landed implementation commit yet:
 - **Configurable reconnect thresholds** — `.pi/specs/configurable-reconnect-thresholds.md` (user-tunable reconnect timing).
 - **P1 reconnection UX clarity** — post-give-up copy, interactive idle overlay, wrong-password feedback, drain indicator (`.pi/specs/reconnection-ux-backlog.md`, marked "next" not blocking).
 - **Soft network readiness gates before automatic TCP dial** (P2 / UX-2.8) — defer dialing until network is actually ready.
-- **Full external rename to RemoteTerm** — `.pi/specs/remoteterm-rename-review.md` (UI chrome, onboarding, README, data dir). In progress.
+- **Data-dir / env-var rename to RemoteTerm** — `.pi/specs/remoteterm-rename-review.md` §3.6; external rename landed, on-disk `~/.waveterm` / `WAVETERM_*` deliberately kept (migration risk, see decisions.md 2026-08-24).
 - **Remote-first onboarding / new-user UX** — same review spec; no connection-setup welcome flow yet.
 - **wsh agent API** — `.pi/specs/wsh-agent-api.md` (listed as spec; verify implementation status separately if needed).
 - **Widget follow-focus** — `.pi/specs/widget-follow-focus.md` (spec exists; check whether landed).

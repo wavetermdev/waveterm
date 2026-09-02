@@ -2,9 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const DefaultTermTheme = "default-dark";
+import {
+    formatBytesSize,
+    planUploadChunks,
+    raceWithCancel,
+    readChunkAsBase64,
+    resolveMaxUploadSize,
+    UploadChunkSize,
+    UploadChunkTimeoutMs,
+} from "@/app/view/preview/preview-model-upload";
+import type { CancelToken } from "@/app/view/preview/preview-model-upload";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { makeConnRoute } from "@/util/util";
+import { formatRemoteUri } from "@/util/waveutil";
 import * as TermTypes from "@xterm/xterm";
 import base64 from "base64-js";
 import { colord } from "colord";
@@ -114,9 +125,48 @@ export async function createTempFileFromBlob(blob: Blob): Promise<string> {
     return tempPath;
 }
 
-export async function createRemoteTempFileFromBlob(blob: Blob, fileName?: string, connName?: string): Promise<string> {
-    if (blob.size > 50 * 1024 * 1024) {
-        throw new Error("File too large (>50MB)");
+export type RemoteTempUploadOpts = {
+    maxUploadSize?: number;
+    onProgress?: (sent: number, total: number) => void;
+    cancelToken?: CancelToken;
+};
+
+/**
+ * Creates a temporary file on a (typically remote) connection from a Blob, in
+ * size-bounded chunks.
+ *
+ * The first chunk is written via RemoteWriteTempFileCommand, which always
+ * creates a fresh temp file and returns its path (a bare remote-local path
+ * like /tmp/waveterm-XXX/<name>). Remaining chunks append to that returned
+ * path via FileAppendCommand.
+ *
+ * Routing note: FileAppendCommand is a *main server* command — it derives the
+ * target host from the path itself (see wshfs.Append -> parseConnection) and
+ * re-routes the append internally. So the append path must be a remote URI
+ * (wsh://host//path), NOT a bare path, and the RPC must not carry a remote
+ * route. That is why the temp path is wrapped with formatRemoteUri here rather
+ * than passing makeConnRoute(connName) as RPC route opts.
+ *
+ * @param blob - The Blob to save
+ * @param fileName - Optional filename (falls back to a waveterm_paste name)
+ * @param connName - Optional SSH connection name
+ * @param opts - Optional cap/progress/cancellation plumbing
+ * @returns The path to the created temporary file
+ * @throws Error if the blob exceeds the resolved upload cap (see resolveMaxUploadSize)
+ */
+export async function createRemoteTempFileFromBlob(
+    blob: Blob,
+    fileName?: string,
+    connName?: string,
+    opts?: RemoteTempUploadOpts
+): Promise<string> {
+    // Single cap source: the `files:maxuploadsize` setting, threaded in by the
+    // caller (termwrap) and clamped by resolveMaxUploadSize. A missing/garbage
+    // value falls back to the 5GB default.
+    const maxUploadSize = resolveMaxUploadSize(opts?.maxUploadSize);
+    if (blob.size > maxUploadSize) {
+        const displayName = fileName || blob.type || "file";
+        throw new Error(`File "${displayName}" exceeds ${formatBytesSize(maxUploadSize)} size limit`);
     }
 
     if (!fileName) {
@@ -126,20 +176,33 @@ export async function createRemoteTempFileFromBlob(blob: Blob, fileName?: string
         fileName = `waveterm_paste_${timestamp}_${random}.${ext}`;
     }
 
-    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as ArrayBuffer);
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(blob);
-    });
+    const chunks = planUploadChunks(blob.size, UploadChunkSize);
+    const cancelToken = opts?.cancelToken;
+    const raceOr = <T>(p: Promise<T>): Promise<T> => (cancelToken ? raceWithCancel(p, cancelToken) : p);
 
-    const base64Data = base64.fromByteArray(new Uint8Array(arrayBuffer));
-
-    const opts = connName ? { route: makeConnRoute(connName) } : undefined;
-    const tempPath = await RpcApi.RemoteWriteTempFileCommand(TabRpcClient, {
-        filename: fileName,
-        data64: base64Data,
-    }, opts);
+    let tempPath = "";
+    for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        // Only ~one chunk (~3MB) is materialized in memory at a time.
+        const data64 = await raceOr(readChunkAsBase64(blob, chunk.offset, chunk.length));
+        if (i === 0) {
+            const routeOpts = connName
+                ? { route: makeConnRoute(connName), timeout: UploadChunkTimeoutMs }
+                : { timeout: UploadChunkTimeoutMs };
+            tempPath = await raceOr(
+                RpcApi.RemoteWriteTempFileCommand(TabRpcClient, { filename: fileName, data64 }, routeOpts)
+            );
+        } else {
+            await raceOr(
+                RpcApi.FileAppendCommand(
+                    TabRpcClient,
+                    { info: { path: formatRemoteUri(tempPath, connName || "local") }, data64 },
+                    { timeout: UploadChunkTimeoutMs }
+                )
+            );
+        }
+        opts?.onProgress?.(chunk.offset + chunk.length, blob.size);
+    }
 
     return tempPath;
 }

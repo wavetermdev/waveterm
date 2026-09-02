@@ -55,6 +55,17 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	WshCmdJobManager.JobAuthToken = jobAuthToken
 	WshCmdJobManager.StreamManager = MakeStreamManager()
 	WshCmdJobManager.StreamManager.SetJobId(jobId)
+	WshCmdJobManager.StreamManager.SetStatusFn(func(data wshrpc.CommandStreamStatusData) {
+		jm := &WshCmdJobManager
+		jm.lock.Lock()
+		msc := jm.attachedClient
+		jm.lock.Unlock()
+		if msc == nil || msc.WshRpc == nil {
+			return
+		}
+		// fire-and-forget; delivery is best-effort
+		_ = wshclient.StreamStatusReportCommand(msc.WshRpc, data, &wshrpc.RpcOpts{NoResponse: true})
+	})
 	WshCmdJobManager.InputQueue = utilds.MakeQuickReorderQueue[wshrpc.CommandJobInputData](JobInputQueueSize, JobInputQueueTimeout)
 
 	// Clean up stale disk files from prior sessions

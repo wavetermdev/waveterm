@@ -12,8 +12,16 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, parseDataUrl } from "../frontend/util/util";
-import {    setWasActive,
-} from "./emain-activity";
+import {
+    buildStreamFileUrl,
+    cleanupAllTempDragFiles,
+    cleanupTempDragDir,
+    cleanupTempDirsForWebContents,
+    registerTempDragDir,
+    scheduleTempDragDirCleanup,
+    TEMP_DRAG_DIR_PREFIX,
+} from "./drag-temp-files";
+import { setWasActive } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
@@ -187,6 +195,43 @@ function saveImageFileWithNativeDialog(
         });
 }
 
+async function startFileDrag(
+    sender: electron.WebContents,
+    payload: { items: { remoteUri: string; fileName: string }[] }
+): Promise<void> {
+    if (payload.items == null || payload.items.length === 0) {
+        return;
+    }
+    let tempDir: string = null;
+    try {
+        tempDir = await fs.promises.mkdtemp(path.join(electronApp.getPath("temp"), TEMP_DRAG_DIR_PREFIX));
+        registerTempDragDir(sender.id, tempDir);
+        const tempPaths: string[] = [];
+        for (const item of payload.items) {
+            const tempPath = path.join(tempDir, item.fileName);
+            const result = await getUrlInSession(sender.session, buildStreamFileUrl(item.remoteUri));
+            const writeStream = fs.createWriteStream(tempPath);
+            await new Promise<void>((resolve, reject) => {
+                writeStream.on("finish", () => resolve());
+                writeStream.on("error", (err) => reject(err));
+                result.stream.on("error", (err) => reject(err));
+                result.stream.pipe(writeStream);
+            });
+            tempPaths.push(tempPath);
+        }
+        const icon = await electronApp.getFileIcon(tempPaths[0]);
+        sender.startDrag({ files: tempPaths, icon });
+        scheduleTempDragDirCleanup(tempDir);
+    } catch (err) {
+        console.error("start-file-drag failed:", err);
+        if (tempDir != null) {
+            await cleanupTempDragDir(tempDir).catch((cleanupErr) => {
+                console.error("start-file-drag: failed to clean up temp dir:", cleanupErr);
+            });
+        }
+    }
+}
+
 export function initIpcHandlers() {
     electron.ipcMain.on("open-external", (event, url) => {
         if (url && typeof url === "string") {
@@ -244,6 +289,61 @@ export function initIpcHandlers() {
         const streamingUrl =
             getWebServerEndpoint() + "/wave/stream-file/" + baseName + "?path=" + encodeURIComponent(payload.filePath);
         event.sender.downloadURL(streamingUrl);
+    });
+
+    // Real download progress: Electron's native download (triggered by the
+    // `download` handler above) emits progress on the session's `will-download`
+    // event, which carries the initiating webContents as its third argument. We
+    // forward started/progress/terminal states to that renderer over a dedicated
+    // IPC channel ("download-progress"), exposed in preload as
+    // onDownloadProgress. Registered once at startup on the default session —
+    // Wave windows declare no custom partition, so downloadURL targets it.
+    //
+    // Transport rationale (vs. Wave's event system): the Go-backed wave event
+    // bus is round-tripped through the wavesrv process and keyed to WOS objects;
+    // download progress is a transient, per-webContents UI concern with no WOS
+    // lifetime, so a direct emain→renderer webContents.send is the cheapest safe
+    // path and matches the existing push pattern (reinject-key, zoom-factor-
+    // change, etc.).
+    electron.session.defaultSession.on("will-download", (_event, item, webContents) => {
+        if (webContents == null || webContents.isDestroyed()) {
+            return;
+        }
+        const pushProgress = (done?: "completed" | "cancelled" | "interrupted") => {
+            if (webContents.isDestroyed()) {
+                return;
+            }
+            webContents.send("download-progress", {
+                fileName: item.getFilename(),
+                sent: item.getReceivedBytes(),
+                total: item.getTotalBytes(),
+                ...(done != null ? { done } : {}),
+            });
+        };
+        item.on("updated", (_event, state) => {
+            // `updated` also fires with "interrupted" for non-fatal stalls; the
+            // terminal interruption is always delivered via `done`, so ignore it
+            // here to avoid a premature/duplicate failure state.
+            if (state === "interrupted") {
+                return;
+            }
+            pushProgress();
+        });
+        item.once("done", (_event, state) => {
+            pushProgress(state === "completed" ? "completed" : state === "cancelled" ? "cancelled" : "interrupted");
+        });
+    });
+
+    electron.ipcMain.on("start-file-drag", (event, payload: { items: { remoteUri: string; fileName: string }[] }) => {
+        fireAndForget(() => startFileDrag(event.sender, payload));
+    });
+
+    electron.ipcMain.on("cleanup-drag-temp", (event) => {
+        fireAndForget(() => cleanupTempDirsForWebContents(event.sender.id));
+    });
+
+    electronApp.on("will-quit", () => {
+        fireAndForget(() => cleanupAllTempDragFiles());
     });
 
     electron.ipcMain.on("get-cursor-point", (event) => {

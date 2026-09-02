@@ -12,11 +12,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const SendDataTimeout = 5 * time.Second
+// Send retry tuning. A single send failure is treated as transient congestion
+// (e.g., SSH channel saturation from a concurrent file transfer); only SUSTAINED
+// failure disconnects the stream and activates disk buffering.
+// Spec: .pi/specs/stream-data-path-resilience.md
+var (
+	SendRetryInterval        = 25 * time.Millisecond
+	MaxConsecutiveSendFails  = 20
+	MaxSendFailureDuration   = 30 * time.Second
+	SendDataEnqueueTimeoutMs = int64(10) // fail-fast enqueue timeout for StreamData RPCs
+)
 
 const (
 	CwndSize      = 64 * 1024       // 64 KB window for connected mode
@@ -68,6 +78,14 @@ type StreamManager struct {
 	lastAckAt time.Time
 	// lastRejectLogAt rate-limits logging of rejected/stale ACKs.
 	lastRejectLogAt time.Time
+
+	// send-failure gate: consecutive failures / cumulative duration must both
+	// stay under threshold before we declare the client disconnected.
+	sendFailStreak int
+	sendFailSince  time.Time
+	// statusFn (optional) reports stream state transitions to wavesrv via the
+	// StreamStatusReport RPC. Wired by jobmanager Setup; nil disables reporting.
+	statusFn func(wshrpc.CommandStreamStatusData)
 
 	// terminal state - once true, stream is complete
 	terminalEventAcked bool
@@ -131,6 +149,7 @@ func (sm *StreamManager) stallWatchdog() {
 		if stalled {
 			log.Printf("[streammanager] STALL-WATCH jobid=%s connected=%v sentNotAcked=%d rwndSize=%d bufCount=%d bufTotal=%d headPos=%d maxAckedSeq=%d maxAckedRwnd=%d lastAckAgo=%s",
 				sm.jobId, connected, sentNotAcked, sm.rwndSize, bufCount, sm.buf.TotalSize(), sm.buf.HeadPos(), sm.maxAckedSeq, sm.maxAckedRwnd, time.Since(sm.lastAckAt))
+			sm.emitStatusLocked(wshrpc.StreamStateStalled)
 		}
 		sm.lock.Unlock()
 	}
@@ -206,6 +225,8 @@ func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender,
 	sm.connected = true
 	sm.rwndSize = rwndSize
 	sm.sentNotAcked = 0
+	sm.sendFailStreak = 0
+	sm.sendFailSince = time.Time{}
 	sm.lastAckAt = time.Now()
 	effectiveWindow := sm.cwndSize
 	if sm.rwndSize < effectiveWindow {
@@ -527,9 +548,51 @@ func (sm *StreamManager) handleError(err error) {
 }
 
 func (sm *StreamManager) handleSendFailure() {
-	log.Printf("handleSendFailure: send timeout, transitioning to disconnected mode")
+	log.Printf("handleSendFailure: sends failing sustained, transitioning to disconnected mode")
 	sm.ClientDisconnected()
 	sm.activateDiskBuffering()
+	sm.lock.Lock()
+	sm.emitStatusLocked(wshrpc.StreamStateDiskBuffer)
+	sm.lock.Unlock()
+}
+
+// SetStatusFn installs the remote-state reporting hook (jobmanager wires this
+// to the StreamStatusReport RPC). Fire-and-forget; nil disables reporting.
+func (sm *StreamManager) SetStatusFn(fn func(wshrpc.CommandStreamStatusData)) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	sm.statusFn = fn
+}
+
+// emitStatusLocked builds and asynchronously dispatches a status report.
+// Must be called with sm.lock held. Delivery is best-effort; errors are
+// swallowed by the installed statusFn.
+func (sm *StreamManager) emitStatusLocked(state string) {
+	if sm.statusFn == nil {
+		return
+	}
+	data := wshrpc.CommandStreamStatusData{
+		JobId:        sm.jobId,
+		StreamId:     sm.streamId,
+		State:        state,
+		SentNotAcked: sm.sentNotAcked,
+		BufCount:     int64(sm.buf.Size()),
+		RWnd:         sm.rwndSize,
+		RetryCount:   sm.sendFailStreak,
+	}
+	if !sm.lastAckAt.IsZero() {
+		data.LastAckAgeMs = time.Since(sm.lastAckAt).Milliseconds()
+	}
+	if sm.diskFile != nil {
+		data.DiskBufBytes = sm.diskEndSeq - sm.diskStartSeq
+	}
+	fn := sm.statusFn
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("StreamManager:emitStatus", recover())
+		}()
+		fn(data)
+	}()
 }
 
 func (sm *StreamManager) activateDiskBuffering() {
@@ -700,8 +763,80 @@ func (sm *StreamManager) senderLoop() {
 			continue
 		}
 		if err := sender.SendData(*pkt); err != nil {
-			sm.handleSendFailure()
+			// A failed send does NOT mean the client is gone: transient congestion
+			// (e.g., SSH channel saturation from a concurrent file transfer) can
+			// backpressure OutputCh for seconds. Retry the same packet FIFO until
+			// delivered or sustained failure (spec: stream-data-path-resilience.md).
+			sm.retrySendLoop(pkt, sender)
+		} else {
+			sm.noteSendSuccess()
 		}
+	}
+}
+
+// retrySendLoop re-attempts pkt in-order until it is delivered or the failure
+// is sustained (then disconnects + activates disk buffering). Invariants:
+// strict FIFO retry (a skipped data packet would wedge the reader's cumulative
+// ACK window forever) and accounting consistency (sentNotAcked already counts
+// this packet; it stays counted until the reader ACKs it).
+func (sm *StreamManager) retrySendLoop(pkt *wshrpc.CommandStreamData, sender DataSender) {
+	sm.lock.Lock()
+	sm.sendFailStreak++
+	first := sm.sendFailStreak == 1
+	if first {
+		sm.sendFailSince = time.Now()
+	}
+	sm.lock.Unlock()
+	if first {
+		log.Printf("[streammanager] send failed seq=%d, entering retry mode (interval=%s, disconnect after %d fails or %s)",
+			pkt.Seq, SendRetryInterval, MaxConsecutiveSendFails, MaxSendFailureDuration)
+		sm.lock.Lock()
+		sm.emitStatusLocked(wshrpc.StreamStateRetrying)
+		sm.lock.Unlock()
+	}
+	for {
+		sm.lock.Lock()
+		stopped := !sm.connected || sm.closed
+		streak := sm.sendFailStreak
+		var failDur time.Duration
+		if !sm.sendFailSince.IsZero() {
+			failDur = time.Since(sm.sendFailSince)
+		}
+		sustained := streak >= MaxConsecutiveSendFails || failDur >= MaxSendFailureDuration
+		sm.lock.Unlock()
+		if stopped {
+			return
+		}
+		if sustained {
+			log.Printf("[streammanager] send failures sustained (%d consecutive / %s total), seq=%d — transitioning to disconnected mode",
+				streak, failDur.Round(time.Millisecond), pkt.Seq)
+			sm.handleSendFailure()
+			return
+		}
+		time.Sleep(SendRetryInterval)
+		if err := sender.SendData(*pkt); err == nil {
+			sm.noteSendSuccess()
+			return
+		}
+		sm.lock.Lock()
+		sm.sendFailStreak++
+		sm.lock.Unlock()
+	}
+}
+
+// noteSendSuccess resets the failure gate after a successful send.
+func (sm *StreamManager) noteSendSuccess() {
+	sm.lock.Lock()
+	recovered := sm.sendFailStreak > 0
+	streak := sm.sendFailStreak
+	sm.sendFailStreak = 0
+	sm.sendFailSince = time.Time{}
+	sm.lock.Unlock()
+	if recovered {
+		log.Printf("[streammanager] send recovered after %d consecutive failure(s)", streak)
+		sm.lock.Lock()
+		sm.emitStatusLocked(wshrpc.StreamStateConnected)
+		sm.lock.Unlock()
 	}
 }
 

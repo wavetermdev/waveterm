@@ -181,6 +181,9 @@
             "modtime"
           ]
         },
+        "files:maxuploadsize": {
+          "type": "integer"
+        },
         "tab:preset": {
           "type": "string"
         },

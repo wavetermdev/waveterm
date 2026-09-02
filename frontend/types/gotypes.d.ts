@@ -726,6 +726,19 @@ declare global {
         error?: string;
     };
 
+    // wshrpc.CommandStreamStatusData
+    type CommandStreamStatusData = {
+        jobid: string;
+        streamid?: string;
+        state: string;
+        sentnotacked: number;
+        bufcount: number;
+        rwnd: number;
+        lastackagems?: number;
+        retrycount?: number;
+        diskbufbytes?: number;
+    };
+
     // wshrpc.CommandTermGetScrollbackLinesData
     type CommandTermGetScrollbackLinesData = {
         linestart: number;
@@ -1488,6 +1501,7 @@ declare global {
         "markdown:fixedfontsize"?: number;
         "preview:showhiddenfiles"?: boolean;
         "preview:defaultsort"?: string;
+        "files:maxuploadsize"?: number;
         "tab:preset"?: string;
         "tab:confirmclose"?: boolean;
         "tab:background"?: string;

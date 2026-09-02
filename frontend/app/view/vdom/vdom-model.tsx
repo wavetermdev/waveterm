@@ -148,7 +148,7 @@ export class VDomModel {
         this.contextActive = jotai.atom(false);
         this.reset();
         this.viewIcon = jotai.atom("bolt");
-        this.viewName = jotai.atom("Wave App");
+        this.viewName = jotai.atom("RemoteTerm");
         this.backendRoute = jotai.atom((get) => {
             const blockData = get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
             return blockData?.meta?.["vdom:route"];

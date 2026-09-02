@@ -10,7 +10,6 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
@@ -43,22 +42,18 @@ type routedDataSender struct {
 }
 
 func (rds *routedDataSender) SendData(dataPk wshrpc.CommandStreamData) error {
-	doneCh := make(chan error, 1)
-	go func() {
-		err := wshclient.StreamDataCommand(rds.wshRpc, dataPk, &wshrpc.RpcOpts{NoResponse: true, Route: rds.route})
-		if err != nil {
-			log.Printf("SendData: error sending stream data: %v\n", err)
-		}
-		doneCh <- err
-	}()
-
-	select {
-	case err := <-doneCh:
-		return err
-	case <-time.After(SendDataTimeout):
-		log.Printf("SendData: timeout after %v sending seq=%d", SendDataTimeout, dataPk.Seq)
-		return fmt.Errorf("send timeout after %v", SendDataTimeout)
+	// Fail-fast enqueue: a full downstream OutputCh must not park the broker's
+	// single send worker for DefaultTimeoutMs (5s). StreamManager owns the
+	// retry policy (FIFO retry, sustained-failure disconnect gate).
+	err := wshclient.StreamDataCommand(rds.wshRpc, dataPk, &wshrpc.RpcOpts{
+		NoResponse: true,
+		Route:      rds.route,
+		Timeout:    SendDataEnqueueTimeoutMs,
+	})
+	if err != nil {
+		log.Printf("SendData: error sending seq=%d: %v", dataPk.Seq, err)
 	}
+	return err
 }
 
 func (msc *MainServerConn) authenticateSelfToServer(jobAuthToken string) error {

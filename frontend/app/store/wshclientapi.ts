@@ -84,6 +84,7 @@ export class RpcApiType {
         return client.wshRpcCall("blockreadtermfile", data, opts);
     }
 
+
     // command "blockrestartstream" [call]
     BlockRestartStreamCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "blockrestartstream", data, opts);
@@ -970,6 +971,12 @@ export class RpcApiType {
     StreamDataAckCommand(client: WshClient, data: CommandStreamAckData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "streamdataack", data, opts);
         return client.wshRpcCall("streamdataack", data, opts);
+    }
+
+    // command "streamstatusreport" [call]
+    StreamStatusReportCommand(client: WshClient, data: CommandStreamStatusData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "streamstatusreport", data, opts);
+        return client.wshRpcCall("streamstatusreport", data, opts);
     }
 
     // command "streamtest" [responsestream]

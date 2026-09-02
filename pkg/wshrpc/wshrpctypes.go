@@ -194,6 +194,7 @@ type WshRpcInterface interface {
 	// streams
 	StreamDataCommand(ctx context.Context, data CommandStreamData) error
 	StreamDataAckCommand(ctx context.Context, data CommandStreamAckData) error
+	StreamStatusReportCommand(ctx context.Context, data CommandStreamStatusData) error
 
 	// jobs
 	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData) error
@@ -704,6 +705,28 @@ type CommandStreamAckData struct {
 	Delay  int64  `json:"delay,omitempty"`  // ack delay in microseconds (from when data was received to when we sent out ack -- monotonic clock)
 	Cancel bool   `json:"cancel,omitempty"` // used to cancel the stream
 	Error  string `json:"error,omitempty"`  // reason for cancel (may only be set if cancel is true)
+}
+
+// Stream state values for CommandStreamStatusData.State. Reported by the
+// remote jobmanager so wavesrv can distinguish idle from wedged from
+// disconnected (spec: .pi/specs/stream-data-path-resilience.md).
+const (
+	StreamStateConnected  = "connected"
+	StreamStateRetrying   = "retrying"
+	StreamStateStalled    = "stalled"
+	StreamStateDiskBuffer = "disconnected-diskbuffer"
+)
+
+type CommandStreamStatusData struct {
+	JobId        string `json:"jobid"`
+	StreamId     string `json:"streamid,omitempty"`
+	State        string `json:"state"` // StreamState* constant
+	SentNotAcked int64  `json:"sentnotacked"`
+	BufCount     int64  `json:"bufcount"`
+	RWnd         int    `json:"rwnd"`
+	LastAckAgeMs int64  `json:"lastackagems,omitempty"`
+	RetryCount   int    `json:"retrycount,omitempty"`
+	DiskBufBytes int64  `json:"diskbufbytes,omitempty"`
 }
 
 type StreamMeta struct {

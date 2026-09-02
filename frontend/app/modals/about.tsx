@@ -19,19 +19,17 @@ interface AboutModalVProps {
 }
 
 const AboutModalV = ({ versionString, onClose }: AboutModalVProps) => {
-    const currentDate = new Date();
-
     return (
         <Modal className="pt-[34px] pb-[34px] overflow-hidden w-[450px]" onClose={onClose}>
             <OnboardingGradientBg />
             <div className="flex flex-col gap-[26px] w-full relative z-10">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
-                    <div className="text-[25px]">Wave Terminal</div>
+                    <div className="text-[25px]">RemoteTerm</div>
                     <div className="leading-5">
-                        Open-Source AI-Integrated Terminal
+                        Open-Source Remote-First Terminal
                         <br />
-                        Built for Seamless Workflows
+                        Built for Remote Development
                     </div>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
@@ -39,7 +37,7 @@ const AboutModalV = ({ versionString, onClose }: AboutModalVProps) => {
                 </div>
                 <div className="grid grid-cols-2 gap-[10px] self-stretch w-full">
                     <a
-                        href="https://github.com/wavetermdev/waveterm?ref=about"
+                        href="https://github.com/whoisjeremylam/remoteterm"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -47,7 +45,7 @@ const AboutModalV = ({ versionString, onClose }: AboutModalVProps) => {
                         <i className="fa-brands fa-github mr-2"></i>GitHub
                     </a>
                     <a
-                        href="https://www.waveterm.dev/?ref=about"
+                        href="https://remoteterm.io"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -63,7 +61,7 @@ const AboutModalV = ({ versionString, onClose }: AboutModalVProps) => {
                         <i className="fa-sharp fa-light fa-book mr-2"></i>Open Source
                     </a>
                     <a
-                        href="https://github.com/sponsors/wavetermdev"
+                        href="https://github.com/whoisjeremylam/remoteterm"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center justify-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -71,8 +69,21 @@ const AboutModalV = ({ versionString, onClose }: AboutModalVProps) => {
                         <i className="fa-sharp fa-light fa-heart mr-2"></i>Sponsor
                     </a>
                 </div>
+                <div className="items-center gap-4 self-stretch w-full text-center text-[11px]">
+                    Built on{" "}
+                    <a
+                        href="https://github.com/wavetermdev/waveterm"
+                        target="_blank"
+                        rel="noopener"
+                        className="underline"
+                    >
+                        WaveTerm
+                    </a>
+                    {" "}
+                    &mdash; the open-source terminal this fork builds on.
+                </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
-                    &copy; {currentDate.getFullYear()} Command Line Inc.
+                    &copy; 2026 LannaCo Contributors
                 </div>
             </div>
         </Modal>

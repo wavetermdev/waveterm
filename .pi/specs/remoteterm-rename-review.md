@@ -14,22 +14,21 @@ Partial rename is **already done**:
 |---|---|
 | `package.json` `name` | ✅ `remoteterm` |
 | `productName` | ✅ `RemoteTerm` |
-| `appId` | ✅ `dev.remoteterm.app` |
+| `appId` | ✅ `io.remoteterm.app` (was `dev.remoteterm.app`; switched 2026-08-24 — `remoteterm.io` was taken, fork domain is `remoteterm.io`) |
 | `app.setName()` (Electron app name) | ✅ `RemoteTerm` (prod) / `RemoteTerm (Dev)` |
 | `TERM_PROGRAM` env (shells) | ✅ `remoteterm` (commit `6aae307e`) |
-| `homepage` | ✅ `https://remoteterm.dev` |
+| `homepage` | ✅ `https://remoteterm.io` (not yet registered — accepted dead link for now) |
+| GitHub repo | ✅ renamed to `whoisjeremylam/remoteterm` (2026-08-24) |
 
-**Not done — still "Wave" / "waveterm" externally:**
-- Window title (`frontend/wave.ts`: `"Wave Terminal"`)
-- About modal (`frontend/app/modals/about.tsx`: "Wave Terminal")
-- Welcome onboarding (`onboarding.tsx`: "Welcome to Wave Terminal")
-- App menu (`emain/emain-menu.ts`: "About Wave Terminal", "quit Wave Terminal")
-- ARM64 translation dialog (`emain/emain-platform.ts`: "Wave has detected…")
-- All `onboarding-upgrade-*` modals ("Wave AI …")
-- Docs site (`docs/docusaurus.config.ts`: title, URLs, org)
-- README + README.ko + README.zh-TW
-- Assets (logo files `waveterm-logo-*`, `wave-*`)
+**Rename landed 2026-08-24** (this branch): window title, About modal (branding + fork links + website → remoteterm.io), welcome onboarding (star → fork repo, Discord removed), app menu, quit dialog, ARM64 dialog, `index.html` title, macOS permission strings (`electron-builder.config.cjs`), upgrade modals suppressed (auto-open + widgets-bar "Release Notes" entry removed; files left unreferenced), Wave AI quicktips removed, README rewritten (Download + Quickstart + fork attribution), stale `README.ko.md` / `README.zh-TW.md` / `ROADMAP.md` deleted, `.github/ISSUE_TEMPLATE` menu path fixed.
+
+**Still deferred — intentionally "Wave" / "waveterm":**
+- Docs site (`docs/docusaurus.config.ts`: title, URLs, org) — no fork docs host exists
+- Assets (logo artwork `waveterm-logo-*`, `wave-*`; `logo.svg` artwork — aria-label already RemoteTerm)
 - Data/config directory env vars `WAVETERM_HOME` / `WAVETERM_CONFIG_HOME` / `WAVETERM_DATA_HOME` and on-disk dir `~/.waveterm` / `waveterm/electron`
+- Packaging internals: `build/deb-postinstall.tpl` `/opt/Wave` paths, `Taskfile.yml` `APP_NAME` (winget)
+- `wsh` CLI help strings + Go dialog titles (code, not chrome)
+- Dev-only strings (`frontend/preview/*`, builder)
 
 **Rough scale:** ~318 files still mention "waveterm" (case-insensitive), but the vast majority are **internal** — Go import paths (`github.com/wavetermdev/waveterm/pkg/...`), `tsunami/`, internal identifiers. These should NOT be renamed (see §3).
 
@@ -68,20 +67,20 @@ Anything that matches upstream code and would cause merge conflicts if changed:
 Ordered by user-visibility. Each is a small, merge-friendly change.
 
 ### 3.1 Window & app chrome
-- [ ] `frontend/wave.ts` lines 40, 119, 187 — `document.title = "Wave Terminal"` → `"RemoteTerm"` (and tab-title variants)
-- [ ] `emain/emain-menu.ts:175` — `"About Wave Terminal"` → `"About RemoteTerm"`
-- [ ] `emain/emain.ts:163` — `"Are you sure you want to quit Wave Terminal?"` → `"…RemoteTerm?"`
-- [ ] `emain/emain-platform.ts:50-51,60` — ARM64 dialog text "Wave has detected…" / "Wave is running…" → "RemoteTerm…" (and the docs link, see 3.5)
+- [x] `frontend/wave.ts` lines 40, 119, 187 — `document.title = "Wave Terminal"` → `"RemoteTerm"` (and tab-title variants)
+- [x] `emain/emain-menu.ts:175` — `"About Wave Terminal"` → `"About RemoteTerm"`
+- [x] `emain/emain.ts:163` — `"Are you sure you want to quit Wave Terminal?"` → `"…RemoteTerm?"`
+- [x] `emain/emain-platform.ts:50-51` — ARM64 dialog text "Wave has detected…" / "Wave is running…" → "RemoteTerm…" (docs link left on `docs.waveterm.dev`, see 3.5)
 
 ### 3.2 About modal
-- [ ] `frontend/app/modals/about.tsx:30` — "Wave Terminal" → "RemoteTerm"
-- [ ] `about.tsx:42,50,58,66` — update the GitHub/website/acknowledgements/sponsor links to the fork's repo (`whoisjeremylam/waveterm-remote`) and homepage (`remoteterm.dev` if/when stood up)
+- [x] `frontend/app/modals/about.tsx:30` — "Wave Terminal" → "RemoteTerm" (+ tagline "Open-Source AI-Integrated Terminal" → "Open-Source Remote-First Terminal")
+- [x] `about.tsx:42,50,58,66` — GitHub/Sponsor links → fork repo (`whoisjeremylam/remoteterm`); Website → `remoteterm.io`; acknowledgements → upstream (done earlier per files-widget-qa-fixes spec)
 
 ### 3.3 Onboarding & upgrade modals
-- [ ] `frontend/app/onboarding/onboarding.tsx:57` — "Welcome to Wave Terminal" → "Welcome to RemoteTerm"
-- [ ] `onboarding.tsx:68,83,88` + `onboarding-starask.tsx` — GitHub star/links currently point to `wavetermdev/waveterm`. **Decision needed:** keep upstream star target (good citizenship) or redirect to fork repo. Recommend: keep the star link to upstream (it's genuinely upstream's project) but add a "fork by Jeremy Lam" credit line; don't pretend the fork is upstream.
-- [ ] All `onboarding-upgrade-v01xx.tsx` + `onboarding-upgrade-minor.tsx`: these describe **upstream Wave's** feature history (Wave AI, etc.). Since this fork has removed AI/telemetry, showing "Wave AI" upgrade pages is **incoherent for a RemoteTerm user**. Recommend: suppress or replace these upgrade modals entirely (see §5 onboarding audit). At minimum, strip "Wave AI" references.
-- [ ] `frontend/app/element/quicktips.tsx:160,196` — "Open Wave AI Panel" / "Focus Wave AI": these reference an AI feature the fork removed. Remove or repurpose these tips.
+- [x] `frontend/app/onboarding/onboarding.tsx:57` — "Welcome to Wave Terminal" → "Welcome to RemoteTerm"
+- [x] `onboarding.tsx:68,83,88` + `onboarding-starask.tsx` — **Resolved 2026-08-24:** star links point to the fork repo (`whoisjeremylam/remoteterm`); the Wave Discord section was removed from the welcome page. `onboarding-starask.tsx` is now unreferenced (see upgrade-modal suppression below).
+- [x] All `onboarding-upgrade-v01xx.tsx` + `onboarding-upgrade-minor.tsx` — **Resolved 2026-08-24: suppressed entirely.** Removed the auto-open effect in `modalsrenderer.tsx`, the `UpgradeOnboarding*` registrations in `modalregistry.tsx`, and the widgets-bar "Release Notes" entry in `widgets.tsx`. Files left on disk unreferenced to avoid upstream delete-conflicts.
+- [x] `frontend/app/element/quicktips.tsx:160,196` — "Open Wave AI Panel" / "Focus Wave AI" tips removed (feature removed in fork).
 
 ### 3.4 Assets / logo
 - [ ] The visible logo is `frontend/app/asset/logo.svg`. Currently renders the Wave "wave" mark. For a real rename, commission/replace with a RemoteTerm mark. Low priority if the wave motif is acceptable as a logo, but the *wordmark* must not say "Wave Terminal".
@@ -89,8 +88,8 @@ Ordered by user-visibility. Each is a small, merge-friendly change.
 - [ ] `README.md` logo `<picture>` sources point to `./assets/wave-dark.png` etc. — fine to keep art, but the README itself must be rewritten (§6).
 
 ### 3.5 Docs site
-- [ ] `docs/docusaurus.config.ts` — `title: "Wave Terminal Documentation"` → "RemoteTerm Documentation"; `url`/`baseUrl`/`organizationName`/`projectName`/editUrl/Algolia `indexName` → fork's values (only once a docs site is hosted for the fork). **Caveat:** the fork currently relies on `docs.waveterm.dev` for in-app help links. If the fork doesn't host its own docs, in-app links should keep pointing to upstream docs (they're accurate for the shared codebase) OR be removed. Don't link `remoteterm.dev` docs that don't exist yet.
-- [ ] Decide: does the fork host `docs.remoteterm.dev`? If no, leave in-app doc links pointing at `docs.waveterm.dev` and add a "Docs by upstream Wave" note in About. This is honest and avoids dead links.
+- [ ] `docs/docusaurus.config.ts` — `title: "Wave Terminal Documentation"` → "RemoteTerm Documentation"; `url`/`baseUrl`/`organizationName`/`projectName`/editUrl/Algolia `indexName` → fork's values (only once a docs site is hosted for the fork). **Caveat:** the fork currently relies on `docs.waveterm.dev` for in-app help links. If the fork doesn't host its own docs, in-app links should keep pointing to upstream docs (they're accurate for the shared codebase) OR be removed. Don't link `remoteterm.io` docs that don't exist yet.
+- [x] Decide: does the fork host `docs.remoteterm.io`? → **No (2026-08-24).** In-app doc links stay on `docs.waveterm.dev`.
 
 ### 3.6 App data directory & env vars (highest user-impact, needs care)
 This is the one Tier-A change with **migration risk**:
@@ -172,7 +171,7 @@ Current `README.md` is upstream's README with a small "Fork Notes" section bolte
 | Renaming on-disk data dir breaks existing users' sessions/config | **High** | Keep `waveterm` dir name for now, or add legacy-detection migration. Never silently move user data. |
 | Renaming `WAVETERM_*` env vars breaks user scripts | Medium | Accept both old + new; warn on old. |
 | Upgrade modals reference removed features (Wave AI) | Medium (UX) | Suppress/replace in fork. |
-| In-app doc links go to `docs.waveterm.dev` | Low | Keep (accurate for shared code) or remove; don't dead-link to `remoteterm.dev` docs that don't exist. |
+| In-app doc links go to `docs.waveterm.dev` | Low | Keep (accurate for shared code) or remove; don't dead-link to `remoteterm.io` docs that don't exist. |
 | Renaming Go import paths | High (merge pain) | **Don't.** Tier B. |
 | Logo/wordmark still says "Wave" | Medium (brand) | Replace `logo.svg` content; can keep wave *motif* if acceptable. |
 
@@ -184,19 +183,20 @@ Current `README.md` is upstream's README with a small "Fork Notes" section bolte
 2. **Phase 2 — onboarding coherence:** suppress/replace upgrade modals, remove Wave AI tips, add remote-first welcome content. One PR (can be the PR that also does §5 items 1–4).
 3. **Phase 3 — README rewrite** + attribution. One PR.
 4. **Phase 4 — data dir / env var rename** (separate, tested, with legacy compat). Own PR + decision record in `.pi/decisions.md`.
-5. **Phase 5 — docs site & assets** (only if/when a `docs.remoteterm.dev` is hosted; otherwise skip).
+5. **Phase 5 — docs site & assets** (only if/when a `docs.remoteterm.io` is hosted; otherwise skip).
 6. **Defer:** Go import paths, internal identifiers (never rename).
 
 Each phase keeps diff surface small and upstream-mergeable. Phases 1–3 unblock a coherent "RemoteTerm" first impression without touching risky data-dir logic.
 
 ---
 
-## 9. Open questions for the user
+## 9. Open questions for the user — RESOLVED 2026-08-24
 
-1. **Data directory:** keep on-disk `~/.waveterm` (safe) or rename to `~/.remoteterm` with migration? Recommend keep for now.
-2. **Fork's own docs site:** will `docs.remoteterm.dev` exist? If not, in-app help links should stay on `docs.waveterm.dev`.
-3. **GitHub star/community links in welcome:** keep pointing at upstream `wavetermdev/waveterm` (honest, good citizenship) or redirect to the fork repo?
-4. **Upgrade modals:** suppress entirely, or replace with a single "What's different in RemoteTerm" page?
-5. **Default first tab:** local shell (status quo) vs. "add a connection" prompt (remote-first)? Separate spec either way.
-6. **Logo:** keep the wave motif, or commission a new RemoteTerm mark?
-7. **Translations (ko/zh-TW README):** maintain or delete?
+1. **Data directory:** keep on-disk `~/.waveterm` (safe) or rename to `~/.remoteterm` with migration? → **Keep `waveterm` on-disk** (migration risk not worth it now; own spec if revisited).
+2. **Fork's own docs site:** will `docs.remoteterm.io` exist? → **No fork docs host for now**; in-app help links stay on `docs.waveterm.dev`.
+3. **GitHub star/community links in welcome:** → **Star links point to the fork repo; Discord section removed.**
+4. **Upgrade modals:** → **Suppressed entirely** (auto-open, registry, and "Release Notes" menu entry removed; files left unreferenced).
+5. **Default first tab:** local shell (status quo) vs. "add a connection" prompt (remote-first)? → **Separate future spec** (see §5 item 5), not part of the rename.
+6. **Logo:** keep the wave motif, or commission a new RemoteTerm mark? → **Keep the wave motif**; `aria-label`/wordmark surfaces already say RemoteTerm.
+7. **Translations (ko/zh-TW README):** maintain or delete? → **Deleted** (plus `ROADMAP.md`) — stale upstream content advertising Wave AI / waveterm.dev.
+8. **Repo/domain:** → **GitHub repo renamed to `whoisjeremylam/remoteterm`; domain is `remoteterm.io`** (not yet registered); `appId` → `io.remoteterm.app`.

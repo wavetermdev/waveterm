@@ -29,9 +29,9 @@ function initWshrpc(routeId: string): WSControl {
 }
 
 class UpstreamWshRpcProxy implements AbstractWshClient {
-    recvRpcMessage(msg: RpcMessage): void {
+    recvRpcMessage(msg: RpcMessage): boolean {
         const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
-        globalWS?.pushMessage(wsMsg);
+        return globalWS?.pushMessage(wsMsg) ?? false;
     }
 }
 

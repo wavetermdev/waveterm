@@ -11,15 +11,32 @@ import * as WOS from "@/store/wos";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { checkKeyPressed } from "@/util/keyutil";
 import { addOpenMenuItems } from "@/util/previewutil";
-import { arrayToBase64, base64ToString, fireAndForget, isBlank, jotaiLoadableValue, stringToBase64 } from "@/util/util";
+import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, stringToBase64 } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
+import type { ColumnSizingState, SortingState, VisibilityState } from "@tanstack/react-table";
 import type * as MonacoTypes from "monaco-editor";
 import { createRef } from "react";
 import { PreviewView } from "./preview";
 import { makeDirectoryDefaultMenuItems } from "./preview-directory-utils";
+import {
+    CancelledError,
+    computeSpeedBps,
+    createCancelToken,
+    formatBytesSize,
+    isDownloadFailure,
+    planUploadChunks,
+    raceWithCancel,
+    readChunkAsBase64,
+    reconcileChunkFailure,
+    resolveMaxUploadSize,
+    UploadChunkSize,
+    UploadChunkTimeoutMs,
+} from "./preview-model-upload";
+import type { CancelToken, DownloadProgress, UploadProgress, UploadStatusState } from "./preview-model-upload";
+import { claimDownloadProgressSlot } from "./download-progress";
 import type { PreviewEnv } from "./previewenv";
 
 // TODO drive this using config
@@ -166,7 +183,18 @@ export class PreviewModel implements ViewModel {
     refreshVersion: PrimitiveAtom<number>;
     directorySearchActive: PrimitiveAtom<boolean>;
     directoryDropdownOpen: PrimitiveAtom<boolean>;
-    refreshCallback: () => void;
+    directorySorting: PrimitiveAtom<SortingState>;
+    dragSource: PrimitiveAtom<DragSourceState | null>;
+    selectedPaths: PrimitiveAtom<Set<string>>;
+    selectionAnchor: PrimitiveAtom<string | null>;
+    fileClipboard: PrimitiveAtom<FileClipboardState | null>;
+    directorySelectablePaths: PrimitiveAtom<string[]>;
+    directoryColumnSizing: PrimitiveAtom<ColumnSizingState>;
+    directoryColumnVisibility: PrimitiveAtom<VisibilityState>;
+    uploadProgress: PrimitiveAtom<UploadProgress | null>;
+    downloadProgress: PrimitiveAtom<DownloadProgress | null>;
+    uploadCancel: PrimitiveAtom<CancelToken | null>;
+    uploadStatus: PrimitiveAtom<UploadStatusState | null>;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     env: PreviewEnv;
@@ -177,9 +205,27 @@ export class PreviewModel implements ViewModel {
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
         this.env = waveEnv;
-        let showHiddenFiles = globalStore.get(this.env.getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
+        // Fork decision: remote-dev dotfiles are noise, so hidden files are
+        // hidden by default. Explicit user toggles still persist via the
+        // "preview:showhiddenfiles" setting.
+        let showHiddenFiles = globalStore.get(this.env.getSettingsKeyAtom("preview:showhiddenfiles")) ?? false;
         this.showHiddenFiles = atom<boolean>(showHiddenFiles);
         this.refreshVersion = atom(0);
+        const defaultSort = globalStore.get(this.env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
+        this.directorySorting = atom<SortingState>(
+            defaultSort === "modtime" ? [{ id: "modtime", desc: true }] : [{ id: "name", desc: false }]
+        );
+        this.directoryColumnSizing = atom<ColumnSizingState>({});
+        this.directoryColumnVisibility = atom<VisibilityState>({ path: false });
+        this.dragSource = atom(null) as PrimitiveAtom<DragSourceState | null>;
+        this.selectedPaths = atom<Set<string>>(new Set());
+        this.selectionAnchor = atom<string | null>(null);
+        this.fileClipboard = atom(null) as PrimitiveAtom<FileClipboardState | null>;
+        this.directorySelectablePaths = atom<string[]>([]);
+        this.uploadProgress = atom(null) as PrimitiveAtom<UploadProgress | null>;
+        this.downloadProgress = atom(null) as PrimitiveAtom<DownloadProgress | null>;
+        this.uploadCancel = atom(null) as PrimitiveAtom<CancelToken | null>;
+        this.uploadStatus = atom(null) as PrimitiveAtom<UploadStatusState | null>;
         this.directorySearchActive = atom(false);
         this.directoryDropdownOpen = atom(false);
         this.previewTextRef = createRef();
@@ -356,6 +402,12 @@ export class PreviewModel implements ViewModel {
                     click: () => this.goHistory(getFocusedTerminalCwd() ?? "~"),
                 },
             ];
+            const refreshIconButton: IconButtonDecl = {
+                elemtype: "iconbutton",
+                icon: "arrows-rotate",
+                title: "Refresh",
+                click: () => this.refresh(),
+            };
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
                 return [
@@ -368,13 +420,12 @@ export class PreviewModel implements ViewModel {
                             globalStore.set(this.showHiddenFiles, (prev) => !prev);
                         },
                     },
-                    {
-                        elemtype: "iconbutton",
-                        icon: "arrows-rotate",
-                        click: () => this.refreshCallback?.(),
-                    },
+                    refreshIconButton,
                 ] as IconButtonDecl[];
-            } else if (!isCeView && isMarkdownLike(mimeType)) {
+            } else if (isCeView) {
+                // code edit view: add a refresh (re-read from disk) button
+                return [...navIconButtons, refreshIconButton] as IconButtonDecl[];
+            } else if (isMarkdownLike(mimeType)) {
                 return [
                     ...navIconButtons,
                     {
@@ -383,24 +434,11 @@ export class PreviewModel implements ViewModel {
                         title: "Table of Contents",
                         click: () => this.markdownShowTocToggle(),
                     },
-                    {
-                        elemtype: "iconbutton",
-                        icon: "arrows-rotate",
-                        title: "Refresh",
-                        click: () => this.refreshCallback?.(),
-                    },
+                    refreshIconButton,
                 ] as IconButtonDecl[];
-            } else if (!isCeView && mimeType) {
-                // For all other file types (text, code, etc.), add refresh button
-                return [
-                    ...navIconButtons,
-                    {
-                        elemtype: "iconbutton",
-                        icon: "arrows-rotate",
-                        title: "Refresh",
-                        click: () => this.refreshCallback?.(),
-                    },
-                ] as IconButtonDecl[];
+            } else if (mimeType) {
+                // For all other file types (csv, streaming, etc.), add refresh button
+                return [...navIconButtons, refreshIconButton] as IconButtonDecl[];
             }
             return null;
         });
@@ -521,6 +559,14 @@ export class PreviewModel implements ViewModel {
 
     markdownShowTocToggle() {
         globalStore.set(this.markdownShowToc, !globalStore.get(this.markdownShowToc));
+    }
+
+    // Re-read the current file from disk (or re-list the current directory).
+    // Clears the saved-content buffer so a previously saved file falls through
+    // to a fresh read; unsaved edits (newFileContent) are left intact.
+    refresh() {
+        globalStore.set(this.fileContentSaved, null);
+        globalStore.set(this.refreshVersion, (v) => v + 1);
     }
 
     get viewComponent(): ViewComponent {
@@ -764,7 +810,7 @@ export class PreviewModel implements ViewModel {
         });
         menuItems.push({ type: "separator" });
         const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
-        addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo);
+        addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo, (remoteUri) => this.downloadFile(remoteUri));
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
         const wordWrap = globalStore.get(wordWrapAtom) ?? false;
@@ -888,47 +934,233 @@ export class PreviewModel implements ViewModel {
     }
 
     async uploadFiles(files: File[], targetDir: string) {
-        const MaxUploadSize = 50 * 1024 * 1024; // 50MB
+        // Effective per-file upload cap: 5GB by default, overridable via the
+        // `files:maxuploadsize` setting (bytes). Missing/garbage/out-of-range
+        // values fall back to the default (see resolveMaxUploadSize).
+        const maxUploadSize = resolveMaxUploadSize(globalStore.get(this.env.getSettingsKeyAtom("files:maxuploadsize")));
         const cleanTargetDir = targetDir.replace(/\/+$/, "");
         const remoteDir = await this.formatRemoteUri(cleanTargetDir, globalStore.get);
         let successCount = 0;
-        for (const file of files) {
-            if (file.size > MaxUploadSize) {
-                const errorStatus: ErrorMsg = {
-                    status: "Upload Failed",
-                    text: `File "${file.name}" exceeds 50MB size limit`,
-                };
-                globalStore.set(this.errorMsgAtom, errorStatus);
-                continue;
+        // One fresh cancellation token per uploadFiles run. Its trigger is
+        // published to the uploadCancel atom so the banner's Cancel button can
+        // fire it; each chunk RPC is raced against it so cancel takes effect in
+        // milliseconds even while a chunk is in flight.
+        const cancelToken = createCancelToken();
+        globalStore.set(this.uploadCancel, cancelToken);
+        // Clear any lingering transient status from a previous (cancelled) run
+        // so a new upload shows its progress banner, not the old status.
+        globalStore.set(this.uploadStatus, null);
+        // Set when the run ends early for any reason — user cancellation or an
+        // irrecoverable chunk interruption. Suppresses the success count and the
+        // "Upload complete" status so a terminal status isn't clobbered.
+        let stopped = false;
+        try {
+            for (const file of files) {
+                if (stopped) {
+                    break;
+                }
+                if (file.size > maxUploadSize) {
+                    const errorStatus: ErrorMsg = {
+                        status: "Upload Failed",
+                        text: `File "${file.name}" exceeds ${formatBytesSize(maxUploadSize)} size limit`,
+                    };
+                    globalStore.set(this.errorMsgAtom, errorStatus);
+                    continue;
+                }
+                const filePath = `${remoteDir}/${file.name}`;
+                try {
+                    const chunks = planUploadChunks(file.size, UploadChunkSize);
+                    const startedAt = Date.now();
+                    for (let i = 0; i < chunks.length; i++) {
+                        const chunk = chunks[i];
+                        // Read this chunk lazily via Blob.slice(...).arrayBuffer() so
+                        // only ~one chunk (~3MB) of file bytes is held in memory at a
+                        // time, instead of the whole file. Both the slice/encode step
+                        // and the RPC are raced against cancellation.
+                        const data64 = await raceWithCancel(
+                            readChunkAsBase64(file, chunk.offset, chunk.length),
+                            cancelToken
+                        );
+                        const sent = chunk.offset + chunk.length;
+                        globalStore.set(this.uploadProgress, {
+                            fileName: file.name,
+                            sent,
+                            total: file.size,
+                            speedBps: computeSpeedBps(sent, startedAt, Date.now()),
+                        });
+                        // Send this chunk with a single automatic retry and, on a
+                        // second failure, size-based reconciliation against the
+                        // destination. Cancellation is raced at every step.
+                        const chunkResult = await this.sendUploadChunk(filePath, data64, i === 0, sent, cancelToken);
+                        if (chunkResult === "failed") {
+                            // Irrecoverable: report how far we got (confirmed bytes
+                            // before this chunk) and stop the whole run without
+                            // deleting the partial file (the user may re-upload).
+                            const pct = file.size > 0 ? Math.floor((chunk.offset / file.size) * 100) : 0;
+                            this.setUploadStatus(`Upload interrupted at ${pct}%`, true);
+                            stopped = true;
+                            break;
+                        }
+                    }
+                    if (!stopped) {
+                        successCount++;
+                    }
+                } catch (e) {
+                    if (e instanceof CancelledError) {
+                        // User-initiated cancel: stop the whole run, best-effort
+                        // delete the partial destination, and show a transient
+                        // status. Not an error — no error banner, no success count.
+                        this.setUploadStatus("Upload cancelled", false);
+                        stopped = true;
+                        try {
+                            await this.env.rpc.FileDeleteCommand(TabRpcClient, {
+                                path: filePath,
+                                recursive: false,
+                            });
+                        } catch (_deleteErr) {
+                            // Best-effort cleanup: the in-flight append may still
+                            // land server-side after we return, but a failed delete
+                            // leaves the partial file for the user to remove.
+                        }
+                        break;
+                    }
+                    const errorStatus: ErrorMsg = {
+                        status: "Upload Failed",
+                        text: `Failed to upload "${file.name}": ${e}`,
+                    };
+                    globalStore.set(this.errorMsgAtom, errorStatus);
+                } finally {
+                    globalStore.set(this.uploadProgress, null);
+                }
             }
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const bytes = new Uint8Array(arrayBuffer);
-                const data64 = arrayToBase64(bytes);
-                await this.env.rpc.FileWriteCommand(TabRpcClient, {
-                    info: {
-                        path: `${remoteDir}/${file.name}`,
-                    },
-                    data64,
-                });
-                successCount++;
-            } catch (e) {
-                const errorStatus: ErrorMsg = {
-                    status: "Upload Failed",
-                    text: `Failed to upload "${file.name}": ${e}`,
-                };
-                globalStore.set(this.errorMsgAtom, errorStatus);
+        } finally {
+            globalStore.set(this.uploadCancel, null);
+        }
+        if (successCount > 0 && !stopped) {
+            // Brief terminal confirmation after the last successful file, then
+            // re-read the directory so the new files appear. Skipped when the run
+            // stopped early (cancelled or interrupted) so that status stays visible.
+            this.setUploadStatus("Upload complete", false);
+            this.refresh();
+        }
+    }
+
+    // Sends one upload chunk — FileWriteCommand (truncate) for the first chunk,
+    // FileAppendCommand (O_APPEND) for the rest — each raced against
+    // cancellation. On a non-cancelled failure the chunk is retried once; if the
+    // retry also fails, the destination is statted and reconciled against the
+    // expected bytes sent so far (see reconcileChunkFailure). Returns:
+    //   - "ok"        the write/append succeeded (or was delivered on retry)
+    //   - "delivered" both attempts failed but the remote size proves the bytes
+    //                 actually landed (lost-ACK) — safe to continue
+    //   - "failed"    irrecoverable — caller should abort the upload cleanly
+    // Cancellation always wins: CancelledError is rethrown from every step.
+    async sendUploadChunk(
+        filePath: string,
+        data64: string,
+        isFirstChunk: boolean,
+        expectedSent: number,
+        cancelToken: CancelToken
+    ): Promise<"ok" | "delivered" | "failed"> {
+        const send = () =>
+            isFirstChunk
+                ? this.env.rpc.FileWriteCommand(
+                      TabRpcClient,
+                      { info: { path: filePath }, data64 },
+                      { timeout: UploadChunkTimeoutMs }
+                  )
+                : this.env.rpc.FileAppendCommand(
+                      TabRpcClient,
+                      { info: { path: filePath }, data64 },
+                      { timeout: UploadChunkTimeoutMs }
+                  );
+        try {
+            await raceWithCancel(send(), cancelToken);
+            return "ok";
+        } catch (e) {
+            if (e instanceof CancelledError) {
+                throw e;
             }
+            // fall through to the single retry
         }
-        if (successCount > 0) {
-            this.refreshCallback?.();
+        try {
+            await raceWithCancel(send(), cancelToken);
+            return "ok";
+        } catch (e) {
+            if (e instanceof CancelledError) {
+                throw e;
+            }
+            // retry also failed — reconcile against the remote size
         }
+        let remoteSize: number | null = null;
+        try {
+            const stat = await raceWithCancel(
+                this.env.rpc.FileInfoCommand(
+                    TabRpcClient,
+                    { info: { path: filePath } },
+                    { timeout: UploadChunkTimeoutMs }
+                ),
+                cancelToken
+            );
+            remoteSize = stat?.size ?? null;
+        } catch (e) {
+            if (e instanceof CancelledError) {
+                throw e;
+            }
+            // Stat itself errored: treat as failed rather than guessing.
+            return "failed";
+        }
+        return reconcileChunkFailure(remoteSize, expectedSent);
+    }
+
+    // Shows a terminal banner status for an upload. Transient statuses
+    // (success/cancelled) clear themselves after a short delay; persistent
+    // statuses (failures/interruptions) stay visible until the user dismisses
+    // them via the banner's X affordance.
+    setUploadStatus(text: string, persist: boolean) {
+        globalStore.set(this.uploadStatus, { text, persist });
+        if (persist) {
+            return;
+        }
+        const status = { text, persist };
+        setTimeout(() => {
+            // Only clear if we are still showing this same status — a new upload
+            // may have started and set its own status in the meantime.
+            if (globalStore.get(this.uploadStatus) === status) {
+                globalStore.set(this.uploadStatus, null);
+            }
+        }, 3000);
     }
 
     downloadFile(remoteUri: string) {
         try {
+            const fileName = remoteUri.split("/").at(-1) ?? remoteUri;
+            // Route real download progress from Electron (emain `will-download`
+            // → "download-progress" IPC) into this model's banner atom. The slot
+            // is window/tab-wide and single-slot: a concurrent download from
+            // another block overwrites the handler, so progress follows the most
+            // recent download (documented in download-progress.ts).
+            claimDownloadProgressSlot((progress) => {
+                globalStore.set(this.downloadProgress, progress);
+                if (progress.done != null && !isDownloadFailure(progress.done)) {
+                    // Brief terminal status ("Download complete"/"Download
+                    // cancelled"), then clear. Failures ("Download failed"/
+                    // interrupted) persist until dismissed via the banner's X.
+                    // The reference-equality guard ensures a newer download's
+                    // progress isn't cleared by a stale timer.
+                    const terminal = progress;
+                    setTimeout(() => {
+                        if (globalStore.get(this.downloadProgress) === terminal) {
+                            globalStore.set(this.downloadProgress, null);
+                        }
+                    }, 3000);
+                }
+            });
+            // Initial indeterminate state until the first progress event lands.
+            globalStore.set(this.downloadProgress, { fileName, sent: 0, total: 0 });
             getApi().downloadFile(remoteUri);
         } catch (e) {
+            globalStore.set(this.downloadProgress, null);
             const errorStatus: ErrorMsg = {
                 status: "Download Failed",
                 text: `Failed to download: ${e}`,

@@ -15,6 +15,10 @@ type DirectoryDropdownProps = {
     onClose: () => void;
     anchorRef: React.RefObject<HTMLElement>;
     dirsOnly?: boolean;
+    // When false, dotfiles/dot-directories are hidden. Defaults to true (current
+    // behavior). FileListCommand has no server-side hidden filter, so filtering
+    // is done client-side; the `..` parent entry is always kept.
+    showHidden?: boolean;
 };
 
 type DirEntry = {
@@ -30,13 +34,16 @@ export const DirectoryDropdown = memo(function DirectoryDropdown({
     onClose,
     anchorRef,
     dirsOnly = false,
+    showHidden = true,
 }: DirectoryDropdownProps) {
     const [entries, setEntries] = useState<DirEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [dirError, setDirError] = useState<string | null>(null);
     const [posStyle, setPosStyle] = useState<React.CSSProperties>({});
     const [browsePath, setBrowsePath] = useState(currentPath);
+    const [editingPath, setEditingPath] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const pathInputRef = useRef<HTMLInputElement>(null);
 
     // Reset browsePath when the widget's currentPath changes (e.g. dropdown reopened)
     useEffect(() => {
@@ -86,6 +93,7 @@ export const DirectoryDropdown = memo(function DirectoryDropdown({
                 if (result) {
                     for (const item of result) {
                         if (item.name !== "." && item.name !== "..") {
+                            if (!showHidden && item.name.startsWith(".")) continue;
                             if (dirsOnly && !item.isdir) continue;
                             dirs.push({
                                 name: item.name,
@@ -110,7 +118,7 @@ export const DirectoryDropdown = memo(function DirectoryDropdown({
             });
             setEntries(dirs);
         },
-        [connection, dirsOnly]
+        [connection, dirsOnly, showHidden]
     );
 
     // Load entries from browsePath (local dropdown state), not currentPath
@@ -138,6 +146,23 @@ export const DirectoryDropdown = memo(function DirectoryDropdown({
         []
     );
 
+    const startEditPath = useCallback(() => {
+        setEditingPath(true);
+    }, []);
+
+    const commitPathEdit = useCallback(() => {
+        const value = pathInputRef.current?.value?.trim();
+        setEditingPath(false);
+        if (value) {
+            onSelect(value);
+            onClose();
+        }
+    }, [onSelect, onClose]);
+
+    const cancelPathEdit = useCallback(() => {
+        setEditingPath(false);
+    }, []);
+
     return createPortal(
         <div ref={dropdownRef} className="directory-dropdown" style={posStyle}>
             <div className="directory-dropdown-breadcrumb">
@@ -148,7 +173,35 @@ export const DirectoryDropdown = memo(function DirectoryDropdown({
                         title="Up to parent directory"
                     />
                 )}
-                <span className="directory-dropdown-breadcrumb-path" title={browsePath}>{browsePath}</span>
+                {editingPath ? (
+                    <input
+                        ref={pathInputRef}
+                        type="text"
+                        className="directory-dropdown-path-input"
+                        defaultValue={browsePath}
+                        autoFocus
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                commitPathEdit();
+                            } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelPathEdit();
+                            }
+                        }}
+                        onBlur={cancelPathEdit}
+                    />
+                ) : (
+                    <span
+                        className="directory-dropdown-breadcrumb-path"
+                        title={browsePath}
+                        onClick={startEditPath}
+                    >
+                        {browsePath}
+                    </span>
+                )}
             </div>
             <div className="directory-dropdown-list">
                 {loading ? (

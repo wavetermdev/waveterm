@@ -41,6 +41,23 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     flex: 1 1 auto;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--text-primary-color, #fff);
+    }
+}
+
+.directory-dropdown-path-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 11px;
+    color: var(--text-primary-color, #fff);
+    background: transparent;
+    border: 1px solid var(--modal-border-color);
+    border-radius: 3px;
+    padding: 2px 4px;
+    outline: none;
 }
 
 .directory-dropdown-list {

@@ -5,11 +5,15 @@ import { Button } from "@/app/element/button";
 import { CopyButton } from "@/app/element/copybutton";
 import clsx from "clsx";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
-export const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; resetOverlay: () => void }) => {
+const buttonClassName = "outlined grey text-[11px] py-[3px] px-[7px]";
+const destructiveButtonClassName = "solid red text-[11px] py-[3px] px-[7px]";
+const highlightedButtonClassName = "ring-2 ring-accent";
+const EMPTY_BUTTONS: ErrorButtonDef[] = [];
+
+export const ErrorOverlay = memo(({ errorMsg, resetOverlay, className }: { errorMsg: ErrorMsg; resetOverlay: () => void; className?: string }) => {
     const showDismiss = errorMsg.showDismiss ?? true;
-    const buttonClassName = "outlined grey text-[11px] py-[3px] px-[7px]";
 
     let iconClass = "fa-solid fa-circle-exclamation text-error text-base";
     if (errorMsg.level == "warning") {
@@ -20,8 +24,73 @@ export const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorM
         await navigator.clipboard.writeText(errorMsg.text);
     }, [errorMsg.text]);
 
+    const buttons = errorMsg.buttons ?? EMPTY_BUTTONS;
+    const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+    // The destructive affirmative is the default focused button. When no button
+    // is flagged destructive, fall back to the first button.
+    const [highlightIndex, setHighlightIndex] = useState<number>(() => {
+        const destructiveIdx = buttons.findIndex((btn) => btn.destructive);
+        return destructiveIdx !== -1 ? destructiveIdx : 0;
+    });
+
+    // Focus the default (destructive) button whenever the overlay mounts or the
+    // errorMsg is replaced, and keep the highlight in sync with it.
+    useEffect(() => {
+        const list = errorMsg.buttons ?? EMPTY_BUTTONS;
+        const destructiveIdx = list.findIndex((btn) => btn.destructive);
+        const initialIdx = destructiveIdx !== -1 ? destructiveIdx : 0;
+        setHighlightIndex(initialIdx);
+        buttonRefs.current[initialIdx]?.focus();
+    }, [errorMsg]);
+
+    const activateButton = useCallback(
+        (idx: number) => {
+            const buttonDef = buttons[idx];
+            if (buttonDef == null) {
+                return;
+            }
+            buttonDef.onClick();
+            resetOverlay();
+        },
+        [buttons, resetOverlay]
+    );
+
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent<HTMLDivElement>) => {
+            const buttonCount = buttons.length;
+            if (e.key === "Tab" && buttonCount > 0) {
+                e.preventDefault();
+                const direction = e.shiftKey ? -1 : 1;
+                const nextIdx = (highlightIndex + direction + buttonCount) % buttonCount;
+                setHighlightIndex(nextIdx);
+                buttonRefs.current[nextIdx]?.focus();
+                return;
+            }
+            if ((e.key === "Enter" || e.key === " ") && buttonCount > 0) {
+                e.preventDefault();
+                activateButton(highlightIndex);
+                return;
+            }
+            if (e.key === "Escape") {
+                e.preventDefault();
+                resetOverlay();
+                return;
+            }
+            // All other keys bubble up to the directory keydown guard, which
+            // swallows them while a confirm dialog is open.
+        },
+        [buttons, highlightIndex, activateButton, resetOverlay]
+    );
+
     return (
-        <div className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg">
+        <div
+            className={clsx(
+                "absolute top-[0] left-1.5 right-1.5 overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg",
+                className ?? "z-[var(--zindex-block-mask-inner)]"
+            )}
+            onKeyDown={handleKeyDown}
+        >
             <div className="flex flex-row justify-between p-2.5 pl-3 font-normal text-sm leading-normal font-sans text-secondary">
                 <div
                     className={clsx("flex flex-row items-center gap-3 grow min-w-0 shrink", {
@@ -46,16 +115,20 @@ export const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorM
                             />
                             <div>{errorMsg.text}</div>
                         </OverlayScrollbarsComponent>
-                        {!!errorMsg.buttons && (
+                        {buttons.length > 0 && (
                             <div className="flex flex-row gap-2">
-                                {errorMsg.buttons?.map((buttonDef) => (
+                                {buttons.map((buttonDef, i) => (
                                     <Button
-                                        className={buttonClassName}
-                                        onClick={() => {
-                                            buttonDef.onClick();
-                                            resetOverlay();
+                                        className={clsx(
+                                            buttonDef.destructive ? destructiveButtonClassName : buttonClassName,
+                                            i === highlightIndex && highlightedButtonClassName
+                                        )}
+                                        onClick={() => activateButton(i)}
+                                        onFocus={() => setHighlightIndex(i)}
+                                        ref={(el) => {
+                                            buttonRefs.current[i] = el;
                                         }}
-                                        key={crypto.randomUUID()}
+                                        key={i}
                                     >
                                         {buttonDef.text}
                                     </Button>

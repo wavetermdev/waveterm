@@ -1,10 +1,10 @@
-# AGENTS.md — waveterm-remote Fork
+# AGENTS.md — RemoteTerm Fork
 
 This fork of Wave Terminal is optimized for remote development workflows. The local machine is a thin client; remote SSH environments are primary workspaces.
 
 ## Git Remotes
 
-- `origin` → `https://github.com/whoisjeremylam/waveterm-remote` (this fork)
+- `origin` → `https://github.com/whoisjeremylam/remoteterm` (this fork)
 - `upstream` → `https://github.com/wavetermdev/waveterm` (original)
 - Do not run `git push` — the user handles pushes interactively with 2FA
 

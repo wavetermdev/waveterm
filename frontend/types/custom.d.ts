@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { WaveEnv } from "@/app/waveenv/waveenv";
+import type { DownloadProgress } from "@/app/view/preview/preview-model-upload";
 import { type Placement } from "@floating-ui/react";
 import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
@@ -95,6 +96,9 @@ declare global {
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
         downloadFile: (path: string) => void; // download
+        onDownloadProgress: (callback: (progress: DownloadProgress) => void) => void; // download-progress
+        startFileDrag: (items: { remoteUri: string; fileName: string }[]) => void; // start-file-drag
+        cleanupDragTemp: () => void; // cleanup-drag-temp
         openExternal: (url: string) => void; // open-external
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void; // fullscreen-change
         onZoomFactorChange: (callback: (zoomFactor: number) => void) => void; // zoom-factor-change
@@ -418,7 +422,7 @@ declare global {
     };
 
     interface AbstractWshClient {
-        recvRpcMessage(msg: RpcMessage): void;
+        recvRpcMessage(msg: RpcMessage): boolean;
     }
 
     type ClientRpcEntry = {
@@ -452,9 +456,20 @@ declare global {
         isDir: boolean;
     };
 
+    type DragSourceState = {
+        files: DraggedFile[];
+        move: boolean;
+    };
+
+    type FileClipboardState = {
+        sources: DraggedFile[];
+        cut: boolean;
+    };
+
     type ErrorButtonDef = {
         text: string;
         onClick: () => void;
+        destructive?: boolean;
     };
 
     type ErrorMsg = {
