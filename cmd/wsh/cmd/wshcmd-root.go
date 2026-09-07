@@ -124,6 +124,21 @@ func resolveBlockArg() (*waveobj.ORef, error) {
 	return fullORef, nil
 }
 
+func resolveBlockArgWithOverride(override string) (*waveobj.ORef, error) {
+	oref := override
+	if oref == "" {
+		oref = blockArg
+	}
+	if oref == "" {
+		oref = "this"
+	}
+	fullORef, err := resolveSimpleId(oref)
+	if err != nil {
+		return nil, fmt.Errorf("resolving blockid: %w", err)
+	}
+	return fullORef, nil
+}
+
 func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtnData, error) {
 	var rtn wshrpc.CommandAuthenticateRtnData
 	token, err := shellutil.UnpackSwapToken(swapTokenStr)
