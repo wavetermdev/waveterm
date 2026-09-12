@@ -125,8 +125,8 @@ func encodeEnvVarsForPowerShell(env map[string]string) (string, error) {
 	var encoded string
 	for k, v := range env {
 		// PowerShell's braced environment-variable syntax supports Windows names
-		// such as ProgramFiles(x86), but a closing brace cannot be represented.
-		if k == "" || strings.Contains(k, "}") {
+		// such as ProgramFiles(x86), but backticks and closing braces cannot be represented safely.
+		if k == "" || strings.ContainsAny(k, "}`") {
 			return "", fmt.Errorf("invalid env var name: %q", k)
 		}
 		encoded += fmt.Sprintf("${env:%s} = %s\n", k, HardQuotePowerShell(v))

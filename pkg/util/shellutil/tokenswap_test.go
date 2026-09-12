@@ -46,7 +46,7 @@ func TestEncodeEnvVarsForPowerShell(t *testing.T) {
 }
 
 func TestEncodeEnvVarsForPowerShellRejectsUnrepresentableNames(t *testing.T) {
-	for _, name := range []string{"", "invalid}name"} {
+	for _, name := range []string{"", "invalid}name", "FOO`"} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := EncodeEnvVarsForShell(ShellType_pwsh, map[string]string{name: "value"}); err == nil {
 				t.Errorf("EncodeEnvVarsForShell() accepted unrepresentable name %q", name)
