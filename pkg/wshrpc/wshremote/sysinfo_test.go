@@ -1,0 +1,208 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package wshremote
+
+import "testing"
+
+func TestParseNvidiaSmiOutput(t *testing.T) {
+	output := []byte("1, 50, 4096, 8192\n0, 25.5, 1024, 4096\n")
+	samples := parseNvidiaSmiOutput(output)
+
+	if len(samples) != 2 {
+		t.Fatalf("expected 2 samples, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 25.5 || samples[0].memUsedGB != 1 || samples[0].memTotalGB != 4 {
+		t.Fatalf("unexpected first sample: %#v", samples[0])
+	}
+	if samples[1].idx != 1 || samples[1].util != 50 || samples[1].memUsedGB != 4 || samples[1].memTotalGB != 8 {
+		t.Fatalf("unexpected second sample: %#v", samples[1])
+	}
+
+	values := map[string]float64{}
+	addGpuSamples(values, samples)
+	if values["gpu"] != 37.75 {
+		t.Fatalf("expected aggregate gpu utilization 37.75, got %v", values["gpu"])
+	}
+	if values["gpumem:used"] != 5 || values["gpumem:total"] != 12 {
+		t.Fatalf("unexpected aggregate gpu memory: %#v", values)
+	}
+}
+
+func TestParseNvidiaSmiOutputSkipsMalformedRows(t *testing.T) {
+	output := []byte("bad\n0, 101, 1024, 2048\n1, 33, 4096, 2048\n2, 44, 1024, 2048\n")
+	samples := parseNvidiaSmiOutput(output)
+
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 valid sample, got %d", len(samples))
+	}
+	if samples[0].idx != 2 || samples[0].util != 44 || samples[0].memUsedGB != 1 || samples[0].memTotalGB != 2 {
+		t.Fatalf("unexpected sample: %#v", samples[0])
+	}
+}
+
+func TestParseAmdSmiMonitorOutput(t *testing.T) {
+	output := []byte(`GPU  XCP  POWER   GPU_T   MEM_T   GFX_CLK   GFX%   MEM%   ENC%   DEC%      VRAM_USAGE
+0    0    183 W   49 C    48 C    1427 MHz  12 %   0 %    N/A    0 %       0.3/192.0 GB
+1    0    42 W    29 C    30 C    47 MHz    2 %    0 %    N/A    0 %       512.0/8192.0 MB
+2    0    42 W    29 C    30 C    47 MHz    3 %    0 %    N/A    0 %       0.5/ 48.0 GB
+`)
+	samples := parseAmdSmiMonitorOutput(output)
+
+	if len(samples) != 3 {
+		t.Fatalf("expected 3 samples, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 12 || samples[0].memUsedGB != 0.3 || samples[0].memTotalGB != 192 {
+		t.Fatalf("unexpected first sample: %#v", samples[0])
+	}
+	if samples[1].idx != 1 || samples[1].util != 2 || samples[1].memUsedGB != 0.5 || samples[1].memTotalGB != 8 {
+		t.Fatalf("unexpected second sample: %#v", samples[1])
+	}
+	if samples[2].idx != 2 || samples[2].util != 3 || samples[2].memUsedGB != 0.5 || samples[2].memTotalGB != 48 {
+		t.Fatalf("unexpected third sample: %#v", samples[2])
+	}
+}
+
+func TestParseRocmSmiJSONOutput(t *testing.T) {
+	output := []byte(`{
+  "card1": {
+    "GPU use (%)": "7",
+    "VRAM Total Memory (B)": "2147483648",
+    "VRAM Total Used Memory (B)": "1073741824"
+  },
+  "card0": {
+    "GPU use (%)": "50",
+    "VRAM Total Memory (B)": "4294967296",
+    "VRAM Total Used Memory (B)": "2147483648"
+  }
+}`)
+	samples := parseRocmSmiJSONOutput(output)
+
+	if len(samples) != 2 {
+		t.Fatalf("expected 2 samples, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 50 || samples[0].memUsedGB != 2 || samples[0].memTotalGB != 4 {
+		t.Fatalf("unexpected first sample: %#v", samples[0])
+	}
+	if samples[1].idx != 1 || samples[1].util != 7 || samples[1].memUsedGB != 1 || samples[1].memTotalGB != 2 {
+		t.Fatalf("unexpected second sample: %#v", samples[1])
+	}
+}
+
+func TestParseMacosIORegGpuOutput(t *testing.T) {
+	output := []byte(`+-o AGXAccelerator  <class AGXAccelerator, id 0x100000123, registered, matched, active, busy 0 (5 ms), retain 8>
+    "PerformanceStatistics" = {"Device Utilization %"=42,"Renderer Utilization %"=25,"Tiler Utilization %"=17,"In use system memory"=268435456}
++-o IntelAccelerator  <class IntelAccelerator, id 0x100000456, registered, matched, active, busy 0 (5 ms), retain 8>
+    "PerformanceStatistics" = {"Renderer Utilization %"=20,"Tiler Utilization %"=10,"vramUsedBytes"=1073741824,"vramFreeBytes"=3221225472}
+`)
+	samples := parseMacosIORegGpuOutput(output)
+
+	if len(samples) != 2 {
+		t.Fatalf("expected 2 samples, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 42 || samples[0].memUsedGB != 0 || samples[0].memTotalGB != 0 {
+		t.Fatalf("unexpected Apple Silicon sample: %#v", samples[0])
+	}
+	if samples[1].idx != 1 || samples[1].util != 30 || samples[1].memUsedGB != 1 || samples[1].memTotalGB != 4 {
+		t.Fatalf("unexpected Intel macOS sample: %#v", samples[1])
+	}
+}
+
+func TestParseIntelGpuTopJSONOutput(t *testing.T) {
+	output := []byte(`[
+  {
+    "rc6": {"value": 99, "unit": "%"},
+    "engines": {
+      "Render/3D/0": {"busy": 3.5, "unit": "%"},
+      "Video/0": {"busy": "-", "unit": "%"}
+    }
+  },
+  {
+    "rc6": {"value": 74.5, "unit": "%"},
+    "engines": {
+      "Render/3D/0": {"busy": 25.5, "unit": "%"},
+      "Blitter/0": {"busy": "5", "unit": "%"},
+      "Frequency": {"busy": 1200, "unit": "MHz"}
+    }
+  }
+]`)
+	samples := parseIntelGpuTopJSONOutput(output)
+
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 25.5 {
+		t.Fatalf("unexpected Intel GPU sample: %#v", samples[0])
+	}
+}
+
+func TestParseIntelGpuTopJSONOutputRepairsUnterminatedArray(t *testing.T) {
+	output := []byte(`[
+  {
+    "rc6": {"value": 88, "unit": "%"},
+    "engines": {
+      "Render/3D/0": {"busy": 5, "unit": "%"}
+    }
+  },
+`)
+	samples := parseIntelGpuTopJSONOutput(output)
+
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 12 {
+		t.Fatalf("unexpected Intel GPU sample: %#v", samples[0])
+	}
+}
+
+func TestParseIntelGpuTopJSONOutputFallsBackToEngineBusy(t *testing.T) {
+	output := []byte(`{
+  "engines": {
+    "Render/3D/0": {"busy": 25.5, "unit": "%"},
+    "Blitter/0": {"busy": "5", "unit": "%"},
+    "Frequency": {"busy": 1200, "unit": "MHz"}
+  }
+}`)
+	samples := parseIntelGpuTopJSONOutput(output)
+
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 30.5 {
+		t.Fatalf("unexpected Intel GPU fallback sample: %#v", samples[0])
+	}
+}
+
+func TestEncodeGpuSampleSourcePreservesCollectorIdentity(t *testing.T) {
+	sourceCount := len(defaultGpuCollectors())
+	samples := append(
+		encodeGpuSampleSource([]gpuSample{
+			{idx: 0, util: 10, memUsedGB: 1, memTotalGB: 2},
+			{idx: 1, util: 20, memUsedGB: 2, memTotalGB: 4},
+		}, 0, sourceCount),
+		encodeGpuSampleSource([]gpuSample{
+			{idx: 0, util: 30, memUsedGB: 3, memTotalGB: 6},
+		}, 1, sourceCount)...,
+	)
+
+	if samples[0].idx != 0 || samples[1].idx != sourceCount || samples[2].idx != 1 {
+		t.Fatalf("expected source-stable indices, got %#v", samples)
+	}
+}
+
+func TestCollectGpuSamplesFromCollectorsKeepsActiveCollectors(t *testing.T) {
+	collectors := []gpuCollector{
+		{sourceIdx: 0, getSamples: func() []gpuSample { return []gpuSample{{idx: 0, util: 10}} }},
+		{sourceIdx: 1, getSamples: func() []gpuSample { return nil }},
+		{sourceIdx: 2, getSamples: func() []gpuSample { return []gpuSample{{idx: 0, util: 30}} }},
+	}
+
+	samples, activeCollectors := collectGpuSamplesFromCollectors(collectors, len(collectors))
+
+	if len(samples) != 2 || samples[0].idx != 0 || samples[1].idx != 2 {
+		t.Fatalf("expected source-stable collected samples, got %#v", samples)
+	}
+	if len(activeCollectors) != 2 || activeCollectors[0].sourceIdx != 0 || activeCollectors[1].sourceIdx != 2 {
+		t.Fatalf("expected only active collectors, got %#v", activeCollectors)
+	}
+}
