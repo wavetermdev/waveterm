@@ -6,6 +6,7 @@ export const MockSysinfoConnection = "local";
 
 const MockMemoryTotal = 32;
 const MockCoreCount = 6;
+const MockGpuMemoryTotal = 12;
 
 function clamp(value: number, minValue: number, maxValue: number): number {
     return Math.min(maxValue, Math.max(minValue, value));
@@ -23,12 +24,20 @@ export function makeMockSysinfoEvent(
     const baseCpu = clamp(42 + 18 * Math.sin(step / 6) + 8 * Math.cos(step / 3.5), 8, 96);
     const memUsed = clamp(12 + 4 * Math.sin(step / 10) + 2 * Math.cos(step / 7), 6, MockMemoryTotal - 4);
     const memAvailable = clamp(MockMemoryTotal - memUsed + 1.5, 0, MockMemoryTotal);
+    const gpu = clamp(34 + 22 * Math.sin(step / 8) + 10 * Math.cos(step / 5), 0, 100);
+    const gpuMemUsed = clamp(4 + 2 * Math.sin(step / 9) + 1.5 * Math.cos(step / 4), 1, MockGpuMemoryTotal - 1);
     const values: Record<string, number> = {
         cpu: round1(baseCpu),
         "mem:total": MockMemoryTotal,
         "mem:used": round1(memUsed),
         "mem:free": round1(MockMemoryTotal - memUsed),
         "mem:available": round1(memAvailable),
+        gpu: round1(gpu),
+        "gpu:0": round1(gpu),
+        "gpumem:used": round1(gpuMemUsed),
+        "gpumem:total": MockGpuMemoryTotal,
+        "gpumem:0:used": round1(gpuMemUsed),
+        "gpumem:0:total": MockGpuMemoryTotal,
     };
 
     for (let i = 0; i < MockCoreCount; i++) {
