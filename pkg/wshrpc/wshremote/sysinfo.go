@@ -5,6 +5,7 @@ package wshremote
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -24,10 +25,10 @@ import (
 )
 
 const (
-	BYTES_PER_GB            = 1073741824
-	mibPerGB                = 1024
-	nvidiaSmiMaxOutputBytes = 64 * 1024
-	nvidiaSmiTimeout        = 750 * time.Millisecond
+	BYTES_PER_GB           = 1073741824
+	mibPerGB               = 1024
+	gpuQueryMaxOutputBytes = 64 * 1024
+	gpuQueryTimeout        = 750 * time.Millisecond
 )
 
 type gpuSample struct {
@@ -65,9 +66,18 @@ func getMemData(values map[string]float64) {
 	values["mem:free"] = float64(memData.Free) / BYTES_PER_GB
 }
 
-func parseNvidiaSmiFloat(raw string) (float64, bool) {
-	val, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+func parseGpuFloat(raw string) (float64, bool) {
+	raw = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(raw), "%"))
+	val, err := strconv.ParseFloat(raw, 64)
 	if err != nil || math.IsNaN(val) || math.IsInf(val, 0) || val < 0 {
+		return 0, false
+	}
+	return val, true
+}
+
+func parseGpuInt(raw string) (int, bool) {
+	val, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || val < 0 {
 		return 0, false
 	}
 	return val, true
@@ -85,19 +95,19 @@ func parseNvidiaSmiOutput(output []byte) []gpuSample {
 		if len(parts) != 4 {
 			continue
 		}
-		idx, err := strconv.Atoi(strings.TrimSpace(parts[0]))
-		if err != nil || idx < 0 {
-			continue
-		}
-		util, ok := parseNvidiaSmiFloat(parts[1])
-		if !ok || util > 100 {
-			continue
-		}
-		memUsedMIB, ok := parseNvidiaSmiFloat(parts[2])
+		idx, ok := parseGpuInt(parts[0])
 		if !ok {
 			continue
 		}
-		memTotalMIB, ok := parseNvidiaSmiFloat(parts[3])
+		util, ok := parseGpuFloat(parts[1])
+		if !ok || util > 100 {
+			continue
+		}
+		memUsedMIB, ok := parseGpuFloat(parts[2])
+		if !ok {
+			continue
+		}
+		memTotalMIB, ok := parseGpuFloat(parts[3])
 		if !ok || memTotalMIB <= 0 || memUsedMIB > memTotalMIB {
 			continue
 		}
@@ -112,6 +122,182 @@ func parseNvidiaSmiOutput(output []byte) []gpuSample {
 		return samples[i].idx < samples[j].idx
 	})
 	return samples
+}
+
+func parseAmdSmiMemoryUsage(raw string, unit string) (float64, float64, bool) {
+	parts := strings.Split(raw, "/")
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	used, ok := parseGpuFloat(parts[0])
+	if !ok {
+		return 0, 0, false
+	}
+	total, ok := parseGpuFloat(parts[1])
+	if !ok || total <= 0 || used > total {
+		return 0, 0, false
+	}
+	switch strings.ToLower(strings.TrimSpace(unit)) {
+	case "gb", "gib":
+		return used, total, true
+	case "mb", "mib":
+		return used / mibPerGB, total / mibPerGB, true
+	case "b", "bytes":
+		return used / BYTES_PER_GB, total / BYTES_PER_GB, true
+	default:
+		return 0, 0, false
+	}
+}
+
+func parseAmdSmiMemoryFields(fields []string) (float64, float64, bool) {
+	for fieldIdx, field := range fields {
+		if !strings.Contains(field, "/") {
+			continue
+		}
+		if fieldIdx+1 >= len(fields) {
+			continue
+		}
+		if strings.HasSuffix(field, "/") {
+			if fieldIdx+2 >= len(fields) {
+				continue
+			}
+			used, total, ok := parseAmdSmiMemoryUsage(field+fields[fieldIdx+1], fields[fieldIdx+2])
+			if ok {
+				return used, total, true
+			}
+			continue
+		}
+		used, total, ok := parseAmdSmiMemoryUsage(field, fields[fieldIdx+1])
+		if ok {
+			return used, total, true
+		}
+	}
+	return 0, 0, false
+}
+
+func parseAmdSmiUtil(fields []string) (float64, bool) {
+	for idx := 1; idx < len(fields)-1; idx++ {
+		if fields[idx+1] != "%" {
+			continue
+		}
+		util, ok := parseGpuFloat(fields[idx])
+		if ok && util <= 100 {
+			return util, true
+		}
+	}
+	return 0, false
+}
+
+func parseAmdSmiMonitorOutput(output []byte) []gpuSample {
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	var samples []gpuSample
+	for _, line := range lines {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) < 4 {
+			continue
+		}
+		idx, ok := parseGpuInt(fields[0])
+		if !ok {
+			continue
+		}
+		util, ok := parseAmdSmiUtil(fields)
+		if !ok {
+			continue
+		}
+		memUsedGB, memTotalGB, ok := parseAmdSmiMemoryFields(fields)
+		if !ok {
+			continue
+		}
+		samples = append(samples, gpuSample{
+			idx:        idx,
+			util:       util,
+			memUsedGB:  memUsedGB,
+			memTotalGB: memTotalGB,
+		})
+	}
+	sort.Slice(samples, func(i int, j int) bool {
+		return samples[i].idx < samples[j].idx
+	})
+	return samples
+}
+
+func parseRocmSmiMemoryGB(card map[string]string, keys ...string) (float64, bool) {
+	for _, key := range keys {
+		raw, ok := card[key]
+		if !ok {
+			continue
+		}
+		bytes, ok := parseGpuFloat(raw)
+		if ok {
+			return bytes / BYTES_PER_GB, true
+		}
+	}
+	return 0, false
+}
+
+func rocmSmiCardIndex(key string, fallback int) int {
+	if strings.HasPrefix(key, "card") {
+		idx, ok := parseGpuInt(strings.TrimPrefix(key, "card"))
+		if ok {
+			return idx
+		}
+	}
+	return fallback
+}
+
+func parseRocmSmiJSONOutput(output []byte) []gpuSample {
+	cardData := make(map[string]map[string]string)
+	if err := json.Unmarshal(output, &cardData); err != nil {
+		return nil
+	}
+	cardKeys := make([]string, 0, len(cardData))
+	for key := range cardData {
+		cardKeys = append(cardKeys, key)
+	}
+	sort.Strings(cardKeys)
+	var samples []gpuSample
+	for fallbackIdx, key := range cardKeys {
+		card := cardData[key]
+		util, ok := parseGpuFloat(card["GPU use (%)"])
+		if !ok || util > 100 {
+			continue
+		}
+		memUsedGB, ok := parseRocmSmiMemoryGB(card,
+			"VRAM Total Used Memory (B)",
+			"VIS_VRAM Total Used Memory (B)",
+			"GTT Total Used Memory (B)",
+		)
+		if !ok {
+			continue
+		}
+		memTotalGB, ok := parseRocmSmiMemoryGB(card,
+			"VRAM Total Memory (B)",
+			"VIS_VRAM Total Memory (B)",
+			"GTT Total Memory (B)",
+		)
+		if !ok || memTotalGB <= 0 || memUsedGB > memTotalGB {
+			continue
+		}
+		samples = append(samples, gpuSample{
+			idx:        rocmSmiCardIndex(key, fallbackIdx),
+			util:       util,
+			memUsedGB:  memUsedGB,
+			memTotalGB: memTotalGB,
+		})
+	}
+	sort.Slice(samples, func(i int, j int) bool {
+		return samples[i].idx < samples[j].idx
+	})
+	return samples
+}
+
+func normalizeGpuSamples(samples []gpuSample) []gpuSample {
+	rtn := make([]gpuSample, 0, len(samples))
+	for idx, sample := range samples {
+		sample.idx = idx
+		rtn = append(rtn, sample)
+	}
+	return rtn
 }
 
 func addGpuSamples(values map[string]float64, samples []gpuSample) {
@@ -135,13 +321,8 @@ func addGpuSamples(values map[string]float64, samples []gpuSample) {
 	values["gpumem:total"] = memTotalSum
 }
 
-func runNvidiaSmiQuery(ctx context.Context) ([]byte, error) {
-	cmd := exec.CommandContext(
-		ctx,
-		"nvidia-smi",
-		"--query-gpu=index,utilization.gpu,memory.used,memory.total",
-		"--format=csv,noheader,nounits",
-	)
+func runGpuQuery(ctx context.Context, name string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -150,13 +331,13 @@ func runNvidiaSmiQuery(ctx context.Context) ([]byte, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	output, readErr := io.ReadAll(io.LimitReader(stdout, nvidiaSmiMaxOutputBytes + 1))
+	output, readErr := io.ReadAll(io.LimitReader(stdout, gpuQueryMaxOutputBytes+1))
 	waitErr := cmd.Wait()
 	if readErr != nil {
 		return nil, readErr
 	}
-	if len(output) > nvidiaSmiMaxOutputBytes {
-		return nil, fmt.Errorf("nvidia-smi output exceeded %d bytes", nvidiaSmiMaxOutputBytes)
+	if len(output) > gpuQueryMaxOutputBytes {
+		return nil, fmt.Errorf("%s output exceeded %d bytes", name, gpuQueryMaxOutputBytes)
 	}
 	if waitErr != nil {
 		return nil, waitErr
@@ -164,18 +345,66 @@ func runNvidiaSmiQuery(ctx context.Context) ([]byte, error) {
 	return output, nil
 }
 
-func getNvidiaGpuData(values map[string]float64) {
-	ctx, cancel := context.WithTimeout(context.Background(), nvidiaSmiTimeout)
+func runNvidiaSmiQuery(ctx context.Context) ([]byte, error) {
+	return runGpuQuery(
+		ctx,
+		"nvidia-smi",
+		"--query-gpu=index,utilization.gpu,memory.used,memory.total",
+		"--format=csv,noheader,nounits",
+	)
+}
+
+func runAmdSmiQuery(ctx context.Context) ([]byte, error) {
+	return runGpuQuery(ctx, "amd-smi", "monitor", "--gfx", "--vram-usage")
+}
+
+func runRocmSmiQuery(ctx context.Context) ([]byte, error) {
+	return runGpuQuery(ctx, "rocm-smi", "--showuse", "--showmeminfo", "vram", "--json")
+}
+
+func getNvidiaGpuSamples() []gpuSample {
+	ctx, cancel := context.WithTimeout(context.Background(), gpuQueryTimeout)
 	defer cancel()
 	output, err := runNvidiaSmiQuery(ctx)
 	if err != nil {
-		return
+		return nil
 	}
-	addGpuSamples(values, parseNvidiaSmiOutput(output))
+	return parseNvidiaSmiOutput(output)
+}
+
+func getAmdSmiGpuSamples() []gpuSample {
+	ctx, cancel := context.WithTimeout(context.Background(), gpuQueryTimeout)
+	defer cancel()
+	output, err := runAmdSmiQuery(ctx)
+	if err != nil {
+		return nil
+	}
+	return parseAmdSmiMonitorOutput(output)
+}
+
+func getRocmSmiGpuSamples() []gpuSample {
+	ctx, cancel := context.WithTimeout(context.Background(), gpuQueryTimeout)
+	defer cancel()
+	output, err := runRocmSmiQuery(ctx)
+	if err != nil {
+		return nil
+	}
+	return parseRocmSmiJSONOutput(output)
+}
+
+func getAmdGpuSamples() []gpuSample {
+	samples := getAmdSmiGpuSamples()
+	if len(samples) > 0 {
+		return samples
+	}
+	return getRocmSmiGpuSamples()
 }
 
 func getGpuData(values map[string]float64) {
-	getNvidiaGpuData(values)
+	var samples []gpuSample
+	samples = append(samples, getNvidiaGpuSamples()...)
+	samples = append(samples, getAmdGpuSamples()...)
+	addGpuSamples(values, normalizeGpuSamples(samples))
 }
 
 func generateSingleServerData(client *wshutil.WshRpc, connName string) {

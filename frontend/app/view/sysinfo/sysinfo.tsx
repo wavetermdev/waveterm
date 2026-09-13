@@ -139,7 +139,7 @@ const MetricToggles: Array<{ label: string; getMetrics: PlotTypeFn; sublabel?: s
     },
     {
         label: "GPU",
-        sublabel: "NVIDIA via nvidia-smi",
+        sublabel: "Installed GPU tools",
         getMetrics: function (_dataItem: DataItem | null): Array<string> {
             return ["gpu"];
         },
