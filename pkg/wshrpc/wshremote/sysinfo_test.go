@@ -89,6 +89,69 @@ func TestParseRocmSmiJSONOutput(t *testing.T) {
 	}
 }
 
+func TestParseMacosIORegGpuOutput(t *testing.T) {
+	output := []byte(`+-o AGXAccelerator  <class AGXAccelerator, id 0x100000123, registered, matched, active, busy 0 (5 ms), retain 8>
+    "PerformanceStatistics" = {"Device Utilization %"=42,"Renderer Utilization %"=25,"Tiler Utilization %"=17,"In use system memory"=268435456}
++-o IntelAccelerator  <class IntelAccelerator, id 0x100000456, registered, matched, active, busy 0 (5 ms), retain 8>
+    "PerformanceStatistics" = {"Renderer Utilization %"=20,"Tiler Utilization %"=10,"vramUsedBytes"=1073741824,"vramFreeBytes"=3221225472}
+`)
+	samples := parseMacosIORegGpuOutput(output)
+
+	if len(samples) != 2 {
+		t.Fatalf("expected 2 samples, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 42 || samples[0].memUsedGB != 0 || samples[0].memTotalGB != 0 {
+		t.Fatalf("unexpected Apple Silicon sample: %#v", samples[0])
+	}
+	if samples[1].idx != 1 || samples[1].util != 30 || samples[1].memUsedGB != 1 || samples[1].memTotalGB != 4 {
+		t.Fatalf("unexpected Intel macOS sample: %#v", samples[1])
+	}
+}
+
+func TestParseIntelGpuTopJSONOutput(t *testing.T) {
+	output := []byte(`[
+  {
+    "engines": {
+      "Render/3D/0": {"busy": 3.5, "unit": "%"},
+      "Video/0": {"busy": "-", "unit": "%"}
+    }
+  },
+  {
+    "engines": {
+      "Render/3D/0": {"busy": 25.5, "unit": "%"},
+      "Blitter/0": {"busy": "5", "unit": "%"},
+      "Frequency": {"busy": 1200, "unit": "MHz"}
+    }
+  }
+]`)
+	samples := parseIntelGpuTopJSONOutput(output)
+
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 30.5 {
+		t.Fatalf("unexpected Intel GPU sample: %#v", samples[0])
+	}
+}
+
+func TestParseIntelGpuTopJSONOutputRepairsUnterminatedArray(t *testing.T) {
+	output := []byte(`[
+  {
+    "engines": {
+      "Render/3D/0": {"busy": 12, "unit": "%"}
+    }
+  },
+`)
+	samples := parseIntelGpuTopJSONOutput(output)
+
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 12 {
+		t.Fatalf("unexpected Intel GPU sample: %#v", samples[0])
+	}
+}
+
 func TestNormalizeGpuSamples(t *testing.T) {
 	samples := normalizeGpuSamples([]gpuSample{
 		{idx: 3, util: 10, memUsedGB: 1, memTotalGB: 2},
