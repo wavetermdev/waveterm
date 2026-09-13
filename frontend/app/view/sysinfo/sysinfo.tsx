@@ -140,7 +140,10 @@ const MetricToggles: Array<{ label: string; getMetrics: PlotTypeFn; sublabel?: s
     {
         label: "GPU",
         sublabel: "Installed GPU tools",
-        getMetrics: function (_dataItem: DataItem | null): Array<string> {
+        getMetrics: function (dataItem: DataItem | null): Array<string> {
+            if (typeof dataItem?.gpu != "number" || !Number.isFinite(dataItem.gpu)) {
+                return [];
+            }
             return ["gpu"];
         },
     },

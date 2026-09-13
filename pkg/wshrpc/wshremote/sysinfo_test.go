@@ -111,12 +111,14 @@ func TestParseMacosIORegGpuOutput(t *testing.T) {
 func TestParseIntelGpuTopJSONOutput(t *testing.T) {
 	output := []byte(`[
   {
+    "rc6": {"value": 99, "unit": "%"},
     "engines": {
       "Render/3D/0": {"busy": 3.5, "unit": "%"},
       "Video/0": {"busy": "-", "unit": "%"}
     }
   },
   {
+    "rc6": {"value": 74.5, "unit": "%"},
     "engines": {
       "Render/3D/0": {"busy": 25.5, "unit": "%"},
       "Blitter/0": {"busy": "5", "unit": "%"},
@@ -129,7 +131,7 @@ func TestParseIntelGpuTopJSONOutput(t *testing.T) {
 	if len(samples) != 1 {
 		t.Fatalf("expected 1 sample, got %d", len(samples))
 	}
-	if samples[0].idx != 0 || samples[0].util != 30.5 {
+	if samples[0].idx != 0 || samples[0].util != 25.5 {
 		t.Fatalf("unexpected Intel GPU sample: %#v", samples[0])
 	}
 }
@@ -137,8 +139,9 @@ func TestParseIntelGpuTopJSONOutput(t *testing.T) {
 func TestParseIntelGpuTopJSONOutputRepairsUnterminatedArray(t *testing.T) {
 	output := []byte(`[
   {
+    "rc6": {"value": 88, "unit": "%"},
     "engines": {
-      "Render/3D/0": {"busy": 12, "unit": "%"}
+      "Render/3D/0": {"busy": 5, "unit": "%"}
     }
   },
 `)
@@ -152,13 +155,54 @@ func TestParseIntelGpuTopJSONOutputRepairsUnterminatedArray(t *testing.T) {
 	}
 }
 
-func TestNormalizeGpuSamples(t *testing.T) {
-	samples := normalizeGpuSamples([]gpuSample{
-		{idx: 3, util: 10, memUsedGB: 1, memTotalGB: 2},
-		{idx: 9, util: 20, memUsedGB: 2, memTotalGB: 4},
-	})
+func TestParseIntelGpuTopJSONOutputFallsBackToEngineBusy(t *testing.T) {
+	output := []byte(`{
+  "engines": {
+    "Render/3D/0": {"busy": 25.5, "unit": "%"},
+    "Blitter/0": {"busy": "5", "unit": "%"},
+    "Frequency": {"busy": 1200, "unit": "MHz"}
+  }
+}`)
+	samples := parseIntelGpuTopJSONOutput(output)
 
-	if samples[0].idx != 0 || samples[1].idx != 1 {
-		t.Fatalf("expected normalized indices, got %#v", samples)
+	if len(samples) != 1 {
+		t.Fatalf("expected 1 sample, got %d", len(samples))
+	}
+	if samples[0].idx != 0 || samples[0].util != 30.5 {
+		t.Fatalf("unexpected Intel GPU fallback sample: %#v", samples[0])
+	}
+}
+
+func TestEncodeGpuSampleSourcePreservesCollectorIdentity(t *testing.T) {
+	sourceCount := len(defaultGpuCollectors())
+	samples := append(
+		encodeGpuSampleSource([]gpuSample{
+			{idx: 0, util: 10, memUsedGB: 1, memTotalGB: 2},
+			{idx: 1, util: 20, memUsedGB: 2, memTotalGB: 4},
+		}, 0, sourceCount),
+		encodeGpuSampleSource([]gpuSample{
+			{idx: 0, util: 30, memUsedGB: 3, memTotalGB: 6},
+		}, 1, sourceCount)...,
+	)
+
+	if samples[0].idx != 0 || samples[1].idx != sourceCount || samples[2].idx != 1 {
+		t.Fatalf("expected source-stable indices, got %#v", samples)
+	}
+}
+
+func TestCollectGpuSamplesFromCollectorsKeepsActiveCollectors(t *testing.T) {
+	collectors := []gpuCollector{
+		{sourceIdx: 0, getSamples: func() []gpuSample { return []gpuSample{{idx: 0, util: 10}} }},
+		{sourceIdx: 1, getSamples: func() []gpuSample { return nil }},
+		{sourceIdx: 2, getSamples: func() []gpuSample { return []gpuSample{{idx: 0, util: 30}} }},
+	}
+
+	samples, activeCollectors := collectGpuSamplesFromCollectors(collectors, len(collectors))
+
+	if len(samples) != 2 || samples[0].idx != 0 || samples[1].idx != 2 {
+		t.Fatalf("expected source-stable collected samples, got %#v", samples)
+	}
+	if len(activeCollectors) != 2 || activeCollectors[0].sourceIdx != 0 || activeCollectors[1].sourceIdx != 2 {
+		t.Fatalf("expected only active collectors, got %#v", activeCollectors)
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -30,6 +31,7 @@ const (
 	mibPerGB               = 1024
 	gpuQueryMaxOutputBytes = 64 * 1024
 	gpuQueryTimeout        = 750 * time.Millisecond
+	gpuDetectionInterval   = 30 * time.Second
 )
 
 type gpuSample struct {
@@ -38,6 +40,17 @@ type gpuSample struct {
 	memUsedGB  float64
 	memTotalGB float64
 }
+
+type gpuCollector struct {
+	sourceIdx  int
+	getSamples func() []gpuSample
+}
+
+var (
+	cachedGpuCollectorsMu sync.Mutex
+	cachedGpuCollectors   []gpuCollector
+	nextGpuDetectionTime  time.Time
+)
 
 func getCpuData(values map[string]float64) {
 	percentArr, err := cpu.Percent(0, false)
@@ -435,13 +448,22 @@ type intelGpuTopEngineStat struct {
 	Unit string `json:"unit"`
 }
 
+type intelGpuTopMetric struct {
+	Value any    `json:"value"`
+	Unit  string `json:"unit"`
+}
+
 type intelGpuTopSample struct {
 	Engines map[string]intelGpuTopEngineStat `json:"engines"`
+	RC6     intelGpuTopMetric                `json:"rc6"`
 }
 
 func parseIntelGpuTopSampleUtil(sample intelGpuTopSample) (float64, bool) {
-	if len(sample.Engines) == 0 {
-		return 0, false
+	if sample.RC6.Unit == "" || sample.RC6.Unit == "%" {
+		rc6, ok := parseGpuJSONFloat(sample.RC6.Value)
+		if ok && rc6 <= 100 {
+			return 100 - rc6, true
+		}
 	}
 	var utilSum float64
 	var found bool
@@ -467,17 +489,12 @@ func parseIntelGpuTopJSONOutput(output []byte) []gpuSample {
 	if jsonText == "" {
 		return nil
 	}
-	if strings.HasPrefix(jsonText, "[") && !strings.HasSuffix(jsonText, "]") {
-		jsonText = strings.TrimRight(jsonText, " \t\r\n,") + "]"
-	}
 	var samples []intelGpuTopSample
 	if strings.HasPrefix(jsonText, "{") {
-		var sample intelGpuTopSample
-		if err := json.Unmarshal([]byte(jsonText), &sample); err != nil {
-			return nil
-		}
-		samples = append(samples, sample)
-	} else if err := json.Unmarshal([]byte(jsonText), &samples); err != nil {
+		samples = parseIntelGpuTopJSONObjects(jsonText)
+	} else if strings.HasPrefix(jsonText, "[") {
+		samples = parseIntelGpuTopJSONObjects(strings.TrimPrefix(jsonText, "["))
+	} else {
 		return nil
 	}
 	for idx := len(samples) - 1; idx >= 0; idx-- {
@@ -489,13 +506,48 @@ func parseIntelGpuTopJSONOutput(output []byte) []gpuSample {
 	return nil
 }
 
-func normalizeGpuSamples(samples []gpuSample) []gpuSample {
+func parseIntelGpuTopJSONObjects(jsonText string) []intelGpuTopSample {
+	var samples []intelGpuTopSample
+	for {
+		jsonText = strings.TrimLeft(jsonText, " \t\r\n,")
+		jsonText = strings.TrimRight(jsonText, " \t\r\n,]")
+		if jsonText == "" {
+			return samples
+		}
+		var sample intelGpuTopSample
+		decoder := json.NewDecoder(strings.NewReader(jsonText))
+		if err := decoder.Decode(&sample); err != nil {
+			return samples
+		}
+		samples = append(samples, sample)
+		jsonText = jsonText[decoder.InputOffset():]
+	}
+}
+
+func encodeGpuSampleSource(samples []gpuSample, sourceIdx int, sourceCount int) []gpuSample {
 	rtn := make([]gpuSample, 0, len(samples))
-	for idx, sample := range samples {
-		sample.idx = idx
+	for _, sample := range samples {
+		if sample.idx < 0 || sourceIdx < 0 || sourceIdx >= sourceCount {
+			continue
+		}
+		sample.idx = sample.idx*sourceCount + sourceIdx
 		rtn = append(rtn, sample)
 	}
 	return rtn
+}
+
+func collectGpuSamplesFromCollectors(collectors []gpuCollector, sourceCount int) ([]gpuSample, []gpuCollector) {
+	var samples []gpuSample
+	var activeCollectors []gpuCollector
+	for _, collector := range collectors {
+		collectorSamples := collector.getSamples()
+		if len(collectorSamples) == 0 {
+			continue
+		}
+		samples = append(samples, encodeGpuSampleSource(collectorSamples, collector.sourceIdx, sourceCount)...)
+		activeCollectors = append(activeCollectors, collector)
+	}
+	return samples, activeCollectors
 }
 
 func addGpuSamples(values map[string]float64, samples []gpuSample) {
@@ -681,13 +733,57 @@ func getIntelGpuSamples() []gpuSample {
 	return parseIntelGpuTopJSONOutput(output)
 }
 
+func defaultGpuCollectors() []gpuCollector {
+	return []gpuCollector{
+		{sourceIdx: 0, getSamples: getNvidiaGpuSamples},
+		{sourceIdx: 1, getSamples: getAmdGpuSamples},
+		{sourceIdx: 2, getSamples: getMacosGpuSamples},
+		{sourceIdx: 3, getSamples: getIntelGpuSamples},
+	}
+}
+
+func getCachedGpuCollectors(now time.Time) ([]gpuCollector, bool) {
+	cachedGpuCollectorsMu.Lock()
+	defer cachedGpuCollectorsMu.Unlock()
+	if len(cachedGpuCollectors) > 0 {
+		return append([]gpuCollector(nil), cachedGpuCollectors...), false
+	}
+	if now.Before(nextGpuDetectionTime) {
+		return nil, false
+	}
+	return nil, true
+}
+
+func setCachedGpuCollectors(collectors []gpuCollector, now time.Time) {
+	cachedGpuCollectorsMu.Lock()
+	defer cachedGpuCollectorsMu.Unlock()
+	cachedGpuCollectors = append(cachedGpuCollectors[:0], collectors...)
+	if len(cachedGpuCollectors) == 0 {
+		nextGpuDetectionTime = now.Add(gpuDetectionInterval)
+	} else {
+		nextGpuDetectionTime = time.Time{}
+	}
+}
+
 func getGpuData(values map[string]float64) {
-	var samples []gpuSample
-	samples = append(samples, getNvidiaGpuSamples()...)
-	samples = append(samples, getAmdGpuSamples()...)
-	samples = append(samples, getMacosGpuSamples()...)
-	samples = append(samples, getIntelGpuSamples()...)
-	addGpuSamples(values, normalizeGpuSamples(samples))
+	allCollectors := defaultGpuCollectors()
+	now := time.Now()
+	collectors, shouldDetect := getCachedGpuCollectors(now)
+	if len(collectors) > 0 {
+		samples, activeCollectors := collectGpuSamplesFromCollectors(collectors, len(allCollectors))
+		setCachedGpuCollectors(activeCollectors, now)
+		if len(samples) > 0 {
+			addGpuSamples(values, samples)
+			return
+		}
+		shouldDetect = true
+	}
+	if !shouldDetect {
+		return
+	}
+	samples, activeCollectors := collectGpuSamplesFromCollectors(allCollectors, len(allCollectors))
+	setCachedGpuCollectors(activeCollectors, now)
+	addGpuSamples(values, samples)
 }
 
 func generateSingleServerData(client *wshutil.WshRpc, connName string) {
