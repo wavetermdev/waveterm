@@ -89,6 +89,7 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     hasResized: boolean;
+    pendingResyncReason: string;
     multiInputCallback: (data: string) => void;
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
@@ -437,6 +438,11 @@ export class TermWrap {
             await this.loadInitialTerminalData();
         } finally {
             this.loaded = true;
+            if (this.pendingResyncReason != null) {
+                const reason = this.pendingResyncReason;
+                this.pendingResyncReason = null;
+                fireAndForget(() => this.resyncController(reason));
+            }
         }
         this.runProcessIdleTimeout();
     }
@@ -553,6 +559,11 @@ export class TermWrap {
     }
 
     async resyncController(reason: string) {
+        if (!this.loaded) {
+            // replies to the shell's startup queries (e.g. fish's DA1) are dropped until loaded
+            this.pendingResyncReason = reason;
+            return;
+        }
         dlog("resync controller", this.blockId, reason);
         const rtOpts: RuntimeOpts = { termsize: { rows: this.terminal.rows, cols: this.terminal.cols } };
         try {
