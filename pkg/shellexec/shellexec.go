@@ -166,20 +166,27 @@ func describeForLog(outerShellType string, innerShellType string, shellPath stri
 	return fmt.Sprintf("outerShell=%s innerShell=%s exe=%q argc=%d envKeys=%v", outerShellType, innerShellType, shellPath, len(shellOpts)+1, envKeys)
 }
 
+// wslNoWshArgv builds the wsl.exe argv for the no-wsh fallback launch. When
+// cmdStr is non-empty, the requested command is executed via a plain POSIX
+// "sh -c" inside the distro; cmdStr is passed as a single argv element (via
+// exec.Command's structured argv, never joined into a string), so no
+// quoting/flattening is needed or possible here. When cmdStr is empty, WSL's
+// own default interactive shell is launched instead — this is what the
+// no-wsh fallback did unconditionally before the fix, silently ignoring any
+// requested cmdStr.
+func wslNoWshArgv(distroName string, cmdStr string) []string {
+	if cmdStr != "" {
+		return []string{"wsl.exe", "~", "-d", distroName, "--", "sh", "-c", cmdStr}
+	}
+	return []string{"wsl.exe", "~", "-d", distroName}
+}
+
 func StartWslShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wslconn.WslConn) (*ShellProc, error) {
 	client := conn.GetClient()
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProcNoWsh)")
 
-	var ecmd *exec.Cmd
-	if cmdStr != "" {
-		// No wsh installed on this WSL distro, so we cannot detect the
-		// remote shell/home dir. Run the requested command via a plain
-		// POSIX "sh -c" — cmdStr is passed as a single argv element, so no
-		// quoting/flattening is needed or possible here.
-		ecmd = exec.Command("wsl.exe", "~", "-d", client.Name(), "--", "sh", "-c", cmdStr)
-	} else {
-		ecmd = exec.Command("wsl.exe", "~", "-d", client.Name())
-	}
+	argv := wslNoWshArgv(client.Name(), cmdStr)
+	ecmd := exec.Command(argv[0], argv[1:]...)
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
