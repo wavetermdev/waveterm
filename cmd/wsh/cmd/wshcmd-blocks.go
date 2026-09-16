@@ -106,7 +106,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 
 	var allBlocks []BlockDetails
 
-	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout)})
+	workspaces, err := wshclient.WorkspaceListAllCommand(RpcClient, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout)})
 	if err != nil {
 		return fmt.Errorf("failed to list workspaces: %v", err)
 	}
