@@ -100,7 +100,11 @@ func HardQuotePowerShell(s string) string {
 		case '"', '`', '$':
 			buf = append(buf, '`')
 		case '\n':
-			buf = append(buf, '`', 'n') // PowerShell uses `n for newline
+			// `n is the full replacement for the newline byte, not an
+			// escape prefix for it - unlike the cases above, don't also
+			// emit the original byte or the newline is doubled.
+			buf = append(buf, '`', 'n')
+			continue
 		}
 		buf = append(buf, c)
 	}

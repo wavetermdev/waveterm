@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -252,7 +251,6 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	// always POSIX regardless of the inner shellType we're launching.
 	outerShellType := shellutil.ShellType_unknown
 	conn.Infof(ctx, "detected shell type: %s\n", shellType)
-	conn.Debugf(ctx, "cmdStr: %q\n", cmdStr)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -417,7 +415,6 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 	// session's inner shell).
 	outerShellType := shellutil.GetShellTypeFromShellPath(remoteInfo.Shell)
 	conn.Infof(logCtx, "detected shell type: %s\n", shellType)
-	conn.Debugf(logCtx, "cmdStr: %q\n", cmdStr)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
@@ -542,7 +539,6 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	conn.Infof(logCtx, "detected shell type: %s\n", shellType)
-	conn.Debugf(logCtx, "cmdStr: %q\n", cmdStr)
 
 	if cmdStr == "" {
 		if shellType == shellutil.ShellType_bash {
@@ -569,7 +565,6 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	} else {
 		shellOpts = append(shellOpts, "-c", cmdStr)
 	}
-	conn.Infof(logCtx, "starting shell job, using command: %s %s\n", shellPath, strings.Join(shellOpts, " "))
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -591,16 +586,18 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 		if err != nil {
 			conn.Infof(logCtx, "error packing swap token: %v", err)
 		} else {
-			conn.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
 			env[wavebase.WaveSwapTokenVarName] = packedToken
 		}
 		jwtToken := cmdOpts.SwapToken.Env[wavebase.WaveJwtTokenVarName]
 		if jwtToken != "" && cmdOpts.ForceJwt {
-			conn.Debugf(logCtx, "adding JWT token to environment\n")
 			env[wavebase.WaveJwtTokenVarName] = jwtToken
 		}
 		shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	}
+	// StartRemoteShellJob dispatches via structured Args (jobParams.Args
+	// below), never a flattened shell string, so there is no separate outer
+	// shell to reparse it - shellType doubles as both fields here.
+	conn.Infof(logCtx, "starting shell job: %s\n", describeForLog(shellType, shellType, shellPath, shellOpts, env))
 
 	jobParams := jobcontroller.StartJobParams{
 		ConnName: conn.GetName(),
@@ -673,7 +670,6 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 	if err != nil {
 		blocklogger.Infof(logCtx, "error packing swap token: %v", err)
 	} else {
-		blocklogger.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
 		shellutil.UpdateCmdEnv(ecmd, map[string]string{wavebase.WaveSwapTokenVarName: packedToken})
 	}
 	jwtToken := cmdOpts.SwapToken.Env[wavebase.WaveJwtTokenVarName]

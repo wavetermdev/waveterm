@@ -69,6 +69,21 @@ func TestSerializeCommandForShell_Basic(t *testing.T) {
 	}
 }
 
+// HardQuotePowerShell must emit exactly one representation of a newline byte
+// (the `n escape), not the escape followed by the original byte - the loop's
+// unconditional trailing append previously doubled it, turning one newline
+// in the input into two in the quoted output.
+func TestHardQuotePowerShell_NewlineNotDoubled(t *testing.T) {
+	got := HardQuotePowerShell("line one\nline two")
+	want := "\"line one`nline two\""
+	if got != want {
+		t.Errorf("HardQuotePowerShell(%q) = %q, want %q", "line one\nline two", got, want)
+	}
+	if strings.Contains(got, "\n") {
+		t.Errorf("HardQuotePowerShell(%q) = %q, still contains a raw newline byte", "line one\nline two", got)
+	}
+}
+
 // This is the exact bug class SerializeCommandForShell exists to close: the
 // old code built cmdCombined via `shellPath + " " + strings.Join(shellOpts, " ")`
 // with no quoting at all, so `shellOpts = ["-c", "tmux attach -t foo"]` became

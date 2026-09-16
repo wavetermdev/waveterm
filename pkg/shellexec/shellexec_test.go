@@ -3,6 +3,7 @@
 package shellexec
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -67,16 +68,23 @@ func TestNoWsh_SessionWrapDeliversCmdStrOverRealSSH(t *testing.T) {
 	defer session.Close()
 
 	// Mirrors StartRemoteShellProcNoWsh's fixed branch: cmdStr != "" -> use
-	// MakeSessionWrap + sessionWrap.Start(cmdStr).
+	// MakeSessionWrap + sessionWrap.Start(cmdStr). Exercise SessionWrap.Start
+	// itself (not session.Output directly), since that's the actual
+	// production call path and Output/Shell would both pass a test that
+	// regressed to ignoring StartCmd.
+	var outBuf bytes.Buffer
+	session.Stdout = &outBuf
 	sessionWrap := MakeSessionWrap(session, cmdStr, nil)
 	if sessionWrap.StartCmd != cmdStr {
 		t.Fatalf("SessionWrap.StartCmd = %q, want %q", sessionWrap.StartCmd, cmdStr)
 	}
-	out, err := session.Output(sessionWrap.StartCmd)
-	if err != nil {
-		t.Fatalf("session.Output failed: %v", err)
+	if err := sessionWrap.Start(); err != nil {
+		t.Fatalf("SessionWrap.Start failed: %v", err)
 	}
-	if got := strings.TrimSpace(string(out)); got != "marker-a marker-b" {
+	if err := session.Wait(); err != nil {
+		t.Fatalf("session.Wait failed: %v", err)
+	}
+	if got := strings.TrimSpace(outBuf.String()); got != "marker-a marker-b" {
 		t.Fatalf("got %q, want %q", got, "marker-a marker-b")
 	}
 }

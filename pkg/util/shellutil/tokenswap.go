@@ -164,14 +164,14 @@ func PrefixEnvAssignmentsForShell(shellType string, env map[string]string, cmd s
 	case ShellType_fish:
 		var sb strings.Builder
 		for _, k := range keys {
-			sb.WriteString(fmt.Sprintf("set -x %s %s; ", k, HardQuoteFish(env[k])))
+			fmt.Fprintf(&sb, "set -x %s %s; ", k, HardQuoteFish(env[k]))
 		}
 		sb.WriteString(cmd)
 		return sb.String()
 	case ShellType_pwsh:
 		var sb strings.Builder
 		for _, k := range keys {
-			sb.WriteString(fmt.Sprintf("$env:%s = %s; ", k, HardQuotePowerShell(env[k])))
+			fmt.Fprintf(&sb, "$env:%s = %s; ", k, HardQuotePowerShell(env[k]))
 		}
 		sb.WriteString(cmd)
 		return sb.String()
