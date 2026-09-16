@@ -272,7 +272,7 @@ const BlockFrame_Header = ({
                 />
             )}
             {useTermHeader && metaFrameTitle && (
-                <div className="block-frame-view-type" key="frame-title">
+                <div className="block-frame-durable-title" key="frame-title">
                     {metaFrameTitle}
                 </div>
             )}
