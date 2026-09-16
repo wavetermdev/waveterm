@@ -52,8 +52,11 @@ func TestTmuxE2E_QuotingFixOverRealSSH(t *testing.T) {
 		var last string
 		for {
 			last = capture()
-			if ready(last) || time.Now().After(end) {
+			if ready(last) {
 				return last
+			}
+			if time.Now().After(end) {
+				t.Fatalf("timed out waiting for tmux pane state: %q", last)
 			}
 			time.Sleep(20 * time.Millisecond)
 		}
