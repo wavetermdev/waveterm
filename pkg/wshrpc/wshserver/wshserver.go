@@ -945,7 +945,11 @@ func (ws *WshServer) BlocksListCommand(
 }
 
 func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.WorkspaceInfoData, error) {
-	workspaceList, err := wcore.ListWorkspaces(ctx)
+	// This backs wsh workspace list / wsh blocks list, not the frontend
+	// switcher (WorkspaceService.ListWorkspaces, unchanged) - CLI tooling
+	// needs every live workspace's tabs/blocks, including unsaved scratch
+	// ones the switcher intentionally hides. See ListAllWorkspaces.
+	workspaceList, err := wcore.ListAllWorkspaces(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error listing workspaces: %w", err)
 	}

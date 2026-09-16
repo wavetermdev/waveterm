@@ -383,7 +383,32 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 	return nil
 }
 
+// ListWorkspaces returns only "saved" workspaces (Name, Icon, and Color all
+// set) - the ones worth offering in the cross-window switcher. CreateWindow
+// deliberately creates a blank, unsaved scratch workspace for a new window
+// (CreateWorkspace with applyDefaults=false; see CreateWindow), and
+// DeleteWorkspace auto-cleans one of those up on close unless it's since
+// been named. Excluding unsaved workspaces here is that same intentional
+// lifecycle, not a data-completeness bug - do not backfill or persist
+// defaults into them, that would silently and permanently "save" scratch
+// workspaces the user never asked to keep, defeating DeleteWorkspace's
+// cleanup and orphaning them.
 func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
+	return listWorkspacesInternal(ctx, false)
+}
+
+// ListAllWorkspaces includes unsaved (scratch) workspaces too - CLI tooling
+// (wsh workspace list, wsh blocks list) needs visibility into every live
+// workspace's tabs and blocks regardless of whether the user has gotten
+// around to naming it, unlike the switcher's "workspaces you'd want to
+// jump to" framing. A confirmed real case: a workspace holding a
+// continuously-used session's own tab, never named, was completely
+// invisible to wsh blocks list because of this filter.
+func ListAllWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
+	return listWorkspacesInternal(ctx, true)
+}
+
+func listWorkspacesInternal(ctx context.Context, includeUnsaved bool) (waveobj.WorkspaceList, error) {
 	workspaces, err := wstore.DBGetAllObjsByType[*waveobj.Workspace](ctx, waveobj.OType_Workspace)
 	if err != nil {
 		return nil, err
@@ -399,27 +424,8 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 
 	var wl waveobj.WorkspaceList
 	for _, workspace := range workspaces {
-		if workspace.Name == "" || workspace.Icon == "" || workspace.Color == "" {
-			// CreateWorkspace always backfills these via UpdateWorkspace
-			// immediately after insert, so a workspace missing any of them
-			// isn't a half-created/zombie record - it's a real, live
-			// workspace (with real tabs and blocks) that predates these
-			// fields or a migration gap. Backfill once and persist, rather
-			// than silently and permanently hiding it - and everything
-			// inside it - from every listing. Same default values
-			// UpdateWorkspace itself uses, computed without a recursive
-			// ListWorkspaces call: WorkspaceColors is cycled against the
-			// count already backfilled in this pass instead.
-			if workspace.Name == "" {
-				workspace.Name = fmt.Sprintf("New Workspace (%s)", workspace.OID[0:5])
-			}
-			if workspace.Icon == "" {
-				workspace.Icon = WorkspaceIcons[0]
-			}
-			if workspace.Color == "" {
-				workspace.Color = WorkspaceColors[len(wl)%len(WorkspaceColors)]
-			}
-			wstore.DBUpdate(ctx, workspace)
+		if !includeUnsaved && (workspace.Name == "" || workspace.Icon == "" || workspace.Color == "") {
+			continue
 		}
 		windowId, ok := workspaceToWindow[workspace.OID]
 		if !ok {
