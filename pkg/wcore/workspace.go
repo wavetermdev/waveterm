@@ -400,7 +400,26 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 	var wl waveobj.WorkspaceList
 	for _, workspace := range workspaces {
 		if workspace.Name == "" || workspace.Icon == "" || workspace.Color == "" {
-			continue
+			// CreateWorkspace always backfills these via UpdateWorkspace
+			// immediately after insert, so a workspace missing any of them
+			// isn't a half-created/zombie record - it's a real, live
+			// workspace (with real tabs and blocks) that predates these
+			// fields or a migration gap. Backfill once and persist, rather
+			// than silently and permanently hiding it - and everything
+			// inside it - from every listing. Same default values
+			// UpdateWorkspace itself uses, computed without a recursive
+			// ListWorkspaces call: WorkspaceColors is cycled against the
+			// count already backfilled in this pass instead.
+			if workspace.Name == "" {
+				workspace.Name = fmt.Sprintf("New Workspace (%s)", workspace.OID[0:5])
+			}
+			if workspace.Icon == "" {
+				workspace.Icon = WorkspaceIcons[0]
+			}
+			if workspace.Color == "" {
+				workspace.Color = WorkspaceColors[len(wl)%len(WorkspaceColors)]
+			}
+			wstore.DBUpdate(ctx, workspace)
 		}
 		windowId, ok := workspaceToWindow[workspace.OID]
 		if !ok {
