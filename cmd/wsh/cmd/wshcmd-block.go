@@ -7,10 +7,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -20,6 +22,12 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+)
+
+const (
+	defaultCaptureTail        = 200
+	sendKeysHumanInputGuardMs = int64(2000)
+	pngDataURLPrefix          = "data:image/png;base64,"
 )
 
 // blockCmd is the singular "block" command group. It is distinct from the
@@ -35,21 +43,25 @@ var blockCaptureCmd = &cobra.Command{
 	Short: "Capture terminal scrollback from a block",
 	Long: `Capture the terminal scrollback from a terminal block.
 
-By default, retrieves all lines as text. Use --start/--end for a line range,
---tail for the last N lines, or --last-command for the output of the last
-command (requires shell integration).
+By default, retrieves the last 200 lines as text. Use --all for the full
+buffer, --start/--end for a line range, --tail for the last N lines,
+--since-line for incremental capture from a line cursor, or --last-command
+for the output of the last command (requires shell integration).
 
 When --json is given, output is a single JSON object with the shape:
 
   {
     "lines": ["line 1", "line 2", "..."],
     "totallines": 123,
-    "lastupdated": 1690000000000
+    "lastupdated": 1690000000000,
+    "linestart": 0
   }
 
 where "lines" are the captured lines, "totallines" is the total number of
-lines in the terminal buffer, and "lastupdated" is the Unix millisecond
-timestamp of the last buffer update.`,
+lines in the terminal buffer, "lastupdated" is the Unix millisecond timestamp
+of the last buffer update, and "linestart" is the starting line index of the
+returned slice. If --max-bytes truncated the joined output, "truncated" is
+true.`,
 	Args:                  cobra.MaximumNArgs(1),
 	RunE:                  blockCaptureRun,
 	PreRunE:               preRunSetupRpcClient,
@@ -63,6 +75,10 @@ var (
 	blockCaptureLastCommand bool
 	blockCaptureJSON        bool
 	blockCaptureOutputFile  string
+	blockCaptureAll         bool
+	blockCaptureMaxBytes    int
+	blockCaptureSinceLine   int
+	blockCaptureSince       int64
 )
 
 var blockSendKeysCmd = &cobra.Command{
@@ -73,7 +89,8 @@ var blockSendKeysCmd = &cobra.Command{
 The text is the optional positional argument (or use --secret to type a stored
 secret's value). By default text is sent literally. Use --escapes to interpret
 backslash escape sequences (\uXXXX, \n, \t, \r, \\). Use --enter to append the
-Enter key (0x0d) to the input.`,
+Enter key (0x0d) to the input. Without --force, send-keys is refused if a human
+typed in the block within the last 2 seconds.`,
 	Args:                  cobra.MaximumNArgs(2),
 	RunE:                  blockSendKeysRun,
 	PreRunE:               preRunSetupRpcClient,
@@ -104,6 +121,7 @@ var (
 	blockSendKeysEnter   bool
 	blockSendKeysEscapes bool
 	blockSendKeysSecret  string
+	blockSendKeysForce   bool
 	blockStatusJSON      bool
 )
 
@@ -155,6 +173,20 @@ var blockRenameCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 }
 
+var blockScreenshotCmd = &cobra.Command{
+	Use:   "screenshot [block_ref]",
+	Short: "Capture a PNG screenshot of a block",
+	Long: `Capture a PNG screenshot of a block.
+
+--output <file> is required unless --json is set. --json prints the block id
+and byte length (not the image data). Combined with --output, JSON also
+includes the file path.`,
+	Args:                  cobra.MaximumNArgs(1),
+	RunE:                  blockScreenshotRun,
+	PreRunE:               preRunSetupRpcClient,
+	DisableFlagsInUseLine: true,
+}
+
 var (
 	blockNewView       string
 	blockNewConnection string
@@ -164,9 +196,13 @@ var (
 	blockNewRelativeTo string
 	blockNewTab        string
 	blockNewJSON       bool
+	blockNewNoFocus    bool
 
 	blockSplitDirection string
 	blockSplitJSON      bool
+
+	blockScreenshotOutput string
+	blockScreenshotJSON   bool
 )
 
 func init() {
@@ -182,8 +218,12 @@ func init() {
 	blockNewCmd.Flags().StringVar(&blockNewRelativeTo, "relative-to", "", "block reference to split (requires --split)")
 	blockNewCmd.Flags().StringVar(&blockNewTab, "tab", "", "target tab (tab:N, uuid, or tab ORef; defaults to current tab)")
 	blockNewCmd.Flags().BoolVar(&blockNewJSON, "json", false, "output as JSON")
+	blockNewCmd.Flags().BoolVar(&blockNewNoFocus, "no-focus", false, "create the block without stealing focus")
 
 	addSplitFlags(blockSplitCmd)
+
+	blockScreenshotCmd.Flags().StringVarP(&blockScreenshotOutput, "output", "o", "", "write PNG to this file")
+	blockScreenshotCmd.Flags().BoolVar(&blockScreenshotJSON, "json", false, "output block id and byte length as JSON")
 
 	blockCmd.AddCommand(blockSendKeysCmd)
 	blockCmd.AddCommand(blockStatusCmd)
@@ -191,6 +231,7 @@ func init() {
 	blockCmd.AddCommand(blockNewCmd)
 	blockCmd.AddCommand(blockSplitCmd)
 	blockCmd.AddCommand(blockRenameCmd)
+	blockCmd.AddCommand(blockScreenshotCmd)
 	rootCmd.AddCommand(blockCmd)
 }
 
@@ -199,10 +240,14 @@ func init() {
 func addCaptureFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&blockCaptureStart, "start", 0, "starting line number (0 = beginning)")
 	cmd.Flags().IntVar(&blockCaptureEnd, "end", 0, "ending line number (0 = all lines)")
-	cmd.Flags().IntVar(&blockCaptureTail, "tail", 0, "return only the last N lines (mutually exclusive with --start/--end)")
+	cmd.Flags().IntVar(&blockCaptureTail, "tail", 0, "return only the last N lines (mutually exclusive with --start/--end/--all)")
+	cmd.Flags().BoolVar(&blockCaptureAll, "all", false, "return the full scrollback buffer")
+	cmd.Flags().IntVar(&blockCaptureMaxBytes, "max-bytes", 0, "truncate joined output to at most N bytes")
+	cmd.Flags().IntVar(&blockCaptureSinceLine, "since-line", 0, "return lines starting at this line cursor (maps to LineStart)")
+	cmd.Flags().Int64Var(&blockCaptureSince, "since", 0, "if the buffer has not changed since this Unix millisecond timestamp, return empty lines")
 	cmd.Flags().BoolVar(&blockCaptureLastCommand, "last-command", false, "get output of last command (requires shell integration)")
 	cmd.Flags().BoolVar(&blockCaptureLastCommand, "lastcommand", false, "get output of last command (requires shell integration)")
-	cmd.Flags().BoolVar(&blockCaptureJSON, "json", false, "output as JSON (includes totallines and lastupdated)")
+	cmd.Flags().BoolVar(&blockCaptureJSON, "json", false, "output as JSON (includes totallines, lastupdated, and linestart)")
 	cmd.Flags().StringVarP(&blockCaptureOutputFile, "output", "o", "", "write output to file instead of stdout")
 	cmd.Flags().MarkHidden("lastcommand")
 }
@@ -213,6 +258,7 @@ func addSendKeysFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&blockSendKeysEnter, "enter", false, "append the Enter key to the input")
 	cmd.Flags().BoolVar(&blockSendKeysEscapes, "escapes", false, "interpret \\uXXXX, \\n, \\t, \\r, \\\\ escape sequences in the input text")
 	cmd.Flags().StringVar(&blockSendKeysSecret, "secret", "", "type the value of a stored secret instead of literal text")
+	cmd.Flags().BoolVar(&blockSendKeysForce, "force", false, "send keys even if a human recently typed in this block")
 }
 
 // addSplitFlags registers the split command flags on cmd. It is shared between
@@ -227,18 +273,86 @@ type blockCaptureJSONOutput struct {
 	Lines       []string `json:"lines"`
 	TotalLines  int      `json:"totallines"`
 	LastUpdated int64    `json:"lastupdated"`
+	LineStart   int      `json:"linestart"`
+	Truncated   bool     `json:"truncated,omitempty"`
 }
 
-// validateCaptureFlags checks the --tail/--start/--end flag combination.
-// --tail is mutually exclusive with --start and --end, and must be positive.
-func validateCaptureFlags(tailSet, startSet, endSet bool, tail int) error {
-	if tailSet && (startSet || endSet) {
+// captureFlags is the parsed capture range/limit flag state. It is used by
+// validation and by the default-tail / LineStart resolution helpers.
+type captureFlags struct {
+	TailSet        bool
+	StartSet       bool
+	EndSet         bool
+	AllSet         bool
+	SinceLineSet   bool
+	MaxBytesSet    bool
+	LastCommandSet bool
+	Tail           int
+	Start          int
+	End            int
+	SinceLine      int
+	MaxBytes       int
+}
+
+// validateCaptureFlags checks mutually exclusive capture range flags and
+// that --tail / --max-bytes / --since-line have valid values when set.
+func validateCaptureFlags(f captureFlags) error {
+	if f.TailSet && f.AllSet {
+		return fmt.Errorf("--tail cannot be combined with --all")
+	}
+	if f.TailSet && (f.StartSet || f.EndSet) {
 		return fmt.Errorf("--tail cannot be combined with --start or --end")
 	}
-	if tailSet && tail <= 0 {
+	if f.TailSet && f.SinceLineSet {
+		return fmt.Errorf("--tail cannot be combined with --since-line")
+	}
+	if f.AllSet && (f.StartSet || f.EndSet) {
+		return fmt.Errorf("--all cannot be combined with --start or --end")
+	}
+	if f.AllSet && f.SinceLineSet {
+		return fmt.Errorf("--all cannot be combined with --since-line")
+	}
+	if f.SinceLineSet && f.StartSet {
+		return fmt.Errorf("--since-line cannot be combined with --start")
+	}
+	if f.TailSet && f.Tail <= 0 {
 		return fmt.Errorf("--tail must be a positive integer")
 	}
+	if f.SinceLineSet && f.SinceLine < 0 {
+		return fmt.Errorf("--since-line must be a non-negative integer")
+	}
+	if f.MaxBytesSet && f.MaxBytes <= 0 {
+		return fmt.Errorf("--max-bytes must be a positive integer")
+	}
 	return nil
+}
+
+// shouldApplyDefaultTail reports whether capture should use the default
+// --tail 200. Default tail applies only when the user did not pass --tail,
+// --all, --start, --end, --since-line, or --last-command. --last-command already
+// scopes the buffer to one command; applying the default tail would truncate it.
+func shouldApplyDefaultTail(f captureFlags) bool {
+	return !f.TailSet && !f.StartSet && !f.EndSet && !f.AllSet && !f.SinceLineSet && !f.LastCommandSet
+}
+
+// resolveCaptureRequest maps capture flags to the TermGetScrollbackLines
+// LineStart/LineEnd and whether the result should be tailed locally.
+func resolveCaptureRequest(f captureFlags) (lineStart, lineEnd, tail int, applyTail bool) {
+	if f.AllSet {
+		return 0, 0, 0, false
+	}
+	if f.TailSet {
+		return 0, 0, f.Tail, true
+	}
+	if shouldApplyDefaultTail(f) {
+		return 0, 0, defaultCaptureTail, true
+	}
+	lineStart = f.Start
+	lineEnd = f.End
+	if f.SinceLineSet {
+		lineStart = f.SinceLine
+	}
+	return lineStart, lineEnd, 0, false
 }
 
 // tailLines returns the last tail lines of lines. If tail is <= 0 or the
@@ -250,11 +364,62 @@ func tailLines(lines []string, tail int) []string {
 	return lines[len(lines)-tail:]
 }
 
+// effectiveLineStart returns the LineStart cursor after a local tail slice.
+func effectiveLineStart(rpcLineStart, fetchedCount, returnedCount int) int {
+	skipped := fetchedCount - returnedCount
+	if skipped < 0 {
+		skipped = 0
+	}
+	return rpcLineStart + skipped
+}
+
+// applySinceFilter returns empty lines when the buffer has not changed since
+// sinceMs. Cursors are left to the caller. If sinceSet is false, lines are
+// returned unchanged.
+func applySinceFilter(lines []string, lastUpdated, sinceMs int64, sinceSet bool) []string {
+	if !sinceSet {
+		return lines
+	}
+	if lastUpdated <= sinceMs {
+		return []string{}
+	}
+	return lines
+}
+
+// truncateJoinedOutput truncates the newline-joined output to maxBytes.
+// Individual lines are not independently truncated; the joined string is
+// sliced and split back into lines. maxBytes <= 0 means no limit.
+func truncateJoinedOutput(lines []string, maxBytes int) (out []string, truncated bool) {
+	if maxBytes <= 0 {
+		return lines, false
+	}
+	joined := strings.Join(lines, "\n")
+	if len(joined) <= maxBytes {
+		return lines, false
+	}
+	joined = joined[:maxBytes]
+	if joined == "" {
+		return []string{}, true
+	}
+	return strings.Split(joined, "\n"), true
+}
+
 func blockCaptureRun(cmd *cobra.Command, args []string) error {
-	tailSet := cmd.Flags().Changed("tail")
-	startSet := cmd.Flags().Changed("start")
-	endSet := cmd.Flags().Changed("end")
-	if err := validateCaptureFlags(tailSet, startSet, endSet, blockCaptureTail); err != nil {
+	flags := captureFlags{
+		TailSet:        cmd.Flags().Changed("tail"),
+		StartSet:       cmd.Flags().Changed("start"),
+		EndSet:         cmd.Flags().Changed("end"),
+		AllSet:         blockCaptureAll,
+		SinceLineSet:   cmd.Flags().Changed("since-line"),
+		MaxBytesSet:    cmd.Flags().Changed("max-bytes"),
+		LastCommandSet: blockCaptureLastCommand,
+		Tail:           blockCaptureTail,
+		Start:          blockCaptureStart,
+		End:            blockCaptureEnd,
+		SinceLine:      blockCaptureSinceLine,
+		MaxBytes:       blockCaptureMaxBytes,
+	}
+	if err := validateCaptureFlags(flags); err != nil {
 		return err
 	}
 
@@ -281,30 +446,24 @@ func blockCaptureRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("block %s is not a terminal block (view type: %s)", fullORef.OID, viewType)
 	}
 
-	// Fetch the scrollback. For --tail we fetch all lines and slice locally so
-	// that TotalLines/LastUpdated are surfaced in a single RPC round-trip.
-	scrollbackData := wshrpc.CommandTermGetScrollbackLinesData{
-		LineStart:   blockCaptureStart,
-		LineEnd:     blockCaptureEnd,
-		LastCommand: blockCaptureLastCommand,
-	}
-	if tailSet {
-		scrollbackData.LineStart = 0
-		scrollbackData.LineEnd = 0
-	}
+	lineStart, lineEnd, effectiveTail, applyTail := resolveCaptureRequest(flags)
 
-	result, err := wshclient.TermGetScrollbackLinesCommand(RpcClient, scrollbackData, &wshrpc.RpcOpts{
-		Route:   wshutil.MakeFeBlockRouteId(fullORef.OID),
-		Timeout: 5000,
-	})
+	// Fetch the scrollback. For --tail (including the default) we fetch the
+	// requested range and slice locally so TotalLines/LastUpdated are
+	// surfaced in a single RPC round-trip.
+	result, err := termGetScrollback(fullORef.OID, lineStart, lineEnd, blockCaptureLastCommand)
 	if err != nil {
-		return fmt.Errorf("error getting terminal scrollback: %w", err)
+		return err
 	}
 
 	lines := result.Lines
-	if tailSet {
-		lines = tailLines(result.Lines, blockCaptureTail)
+	if applyTail {
+		lines = tailLines(result.Lines, effectiveTail)
 	}
+	outLineStart := effectiveLineStart(result.LineStart, len(result.Lines), len(lines))
+	sinceSet := cmd.Flags().Changed("since")
+	lines = applySinceFilter(lines, result.LastUpdated, blockCaptureSince, sinceSet)
+	lines, truncated := truncateJoinedOutput(lines, flags.MaxBytes)
 
 	// Format the output.
 	var output string
@@ -313,6 +472,8 @@ func blockCaptureRun(cmd *cobra.Command, args []string) error {
 			Lines:       lines,
 			TotalLines:  result.TotalLines,
 			LastUpdated: result.LastUpdated,
+			LineStart:   outLineStart,
+			Truncated:   truncated,
 		}, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
@@ -336,6 +497,23 @@ func blockCaptureRun(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// termGetScrollback fetches terminal scrollback for blockId via the frontend
+// block route used by capture and wait --contains/--idle.
+func termGetScrollback(blockId string, lineStart, lineEnd int, lastCommand bool) (*wshrpc.CommandTermGetScrollbackLinesRtnData, error) {
+	result, err := wshclient.TermGetScrollbackLinesCommand(RpcClient, wshrpc.CommandTermGetScrollbackLinesData{
+		LineStart:   lineStart,
+		LineEnd:     lineEnd,
+		LastCommand: lastCommand,
+	}, &wshrpc.RpcOpts{
+		Route:   wshutil.MakeFeBlockRouteId(blockId),
+		Timeout: 5000,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error getting terminal scrollback: %w", err)
+	}
+	return result, nil
 }
 
 // blockStatusJSONOutput is the structured output shape for `block status --json`.
@@ -474,6 +652,65 @@ func getTermBlockMeta(blockRef string) (*waveobj.ORef, waveobj.MetaMapType, erro
 	return fullORef, metaData, nil
 }
 
+// tabRouteForBlock returns the tab:<tabid> route for a block. Prefers the
+// block's owning tab (BlockInfo) so send-keys/screenshot work across tabs;
+// falls back to WAVETERM_TABID. Empty string means no route is available.
+func tabRouteForBlock(blockId string) string {
+	blockTabId := ""
+	info, err := wshclient.BlockInfoCommand(RpcClient, blockId, &wshrpc.RpcOpts{Timeout: 2000})
+	if err == nil && info != nil {
+		blockTabId = info.TabId
+	}
+	tabId := pickTabIdForBlockRoute(blockTabId, getTabIdFromEnv())
+	if tabId == "" {
+		return ""
+	}
+	return wshutil.MakeTabRouteId(tabId)
+}
+
+// pickTabIdForBlockRoute prefers the block's owning tab over the CLI process
+// WAVETERM_TABID so send-keys/screenshot route to the tab that hosts the block.
+func pickTabIdForBlockRoute(blockTabId, envTabId string) string {
+	if blockTabId != "" {
+		return blockTabId
+	}
+	return envTabId
+}
+
+// checkSendKeysHumanInput refuses send-keys when a human typed in the block
+// within sendKeysHumanInputGuardMs. RPC failures fail open (proceed) so
+// older frontends that lack GetBlockInputState still work. The input-state
+// RPC is handled by the tab client, so it must be routed to the block's tab
+// (not a feblock: route, and not a different tab's route).
+func checkSendKeysHumanInput(blockId string) error {
+	route := tabRouteForBlock(blockId)
+	if route == "" {
+		return nil
+	}
+	state, err := wshclient.GetBlockInputStateCommand(RpcClient, blockId, &wshrpc.RpcOpts{
+		Route:   route,
+		Timeout: 2000,
+	})
+	if err != nil || state == nil {
+		return nil
+	}
+	ago, refuse := shouldRefuseSendKeys(state.LastUserInputMs, time.Now().UnixMilli(), sendKeysHumanInputGuardMs)
+	if refuse {
+		return fmt.Errorf("refusing send-keys: human typed in this block %dms ago (pass --force to override)", ago)
+	}
+	return nil
+}
+
+// shouldRefuseSendKeys reports whether lastUserInputMs is within guardMs of
+// nowMs. lastUserInputMs <= 0 means no recorded human input.
+func shouldRefuseSendKeys(lastUserInputMs, nowMs, guardMs int64) (ago int64, refuse bool) {
+	if lastUserInputMs <= 0 {
+		return 0, false
+	}
+	ago = nowMs - lastUserInputMs
+	return ago, ago < guardMs
+}
+
 func blockSendKeysRun(cmd *cobra.Command, args []string) error {
 	blockRef := ""
 	text := ""
@@ -492,6 +729,12 @@ func blockSendKeysRun(cmd *cobra.Command, args []string) error {
 	fullORef, _, err := getTermBlockMeta(blockRef)
 	if err != nil {
 		return err
+	}
+
+	if !blockSendKeysForce {
+		if err := checkSendKeysHumanInput(fullORef.OID); err != nil {
+			return err
+		}
 	}
 
 	// Build the input bytes. The secret value is never logged or printed.
@@ -513,6 +756,7 @@ func blockSendKeysRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	log.Printf("[agent-audit] send-keys block=%s force=%v\n", fullORef.OID, blockSendKeysForce)
 	err = wshclient.ControllerInputCommand(RpcClient, wshrpc.CommandBlockInputData{
 		BlockId:     fullORef.OID,
 		InputData64: base64.StdEncoding.EncodeToString(input),
@@ -594,6 +838,8 @@ type blockNewOptions struct {
 	split      string
 	relativeTo string
 	tabRef     string
+	focused    bool
+	extraMeta  waveobj.MetaMapType
 }
 
 // blockNewJSONOutput is the structured output shape for `block new` and
@@ -612,6 +858,7 @@ func blockNewRun(cmd *cobra.Command, args []string) error {
 		split:      blockNewSplit,
 		relativeTo: blockNewRelativeTo,
 		tabRef:     blockNewTab,
+		focused:    !blockNewNoFocus,
 	})
 	if err != nil {
 		return err
@@ -632,6 +879,7 @@ func blockSplitRun(cmd *cobra.Command, args []string) error {
 		viewType:   "term",
 		split:      direction,
 		relativeTo: blockRef,
+		focused:    true,
 	})
 	if err != nil {
 		return err
@@ -701,6 +949,9 @@ func createBlockNew(opts blockNewOptions) (waveobj.ORef, error) {
 	}
 
 	meta := buildBlockNewMeta(opts.viewType, opts.cmd, cwd, connName)
+	for k, v := range opts.extraMeta {
+		meta[k] = v
+	}
 	blockDef := &waveobj.BlockDef{Meta: meta}
 	if opts.cmd != "" {
 		blockDef.Files = map[string]*waveobj.FileDef{
@@ -714,7 +965,7 @@ func createBlockNew(opts blockNewOptions) (waveobj.ORef, error) {
 		TabId:         tabId,
 		BlockDef:      blockDef,
 		Magnified:     opts.magnified,
-		Focused:       true,
+		Focused:       opts.focused,
 		TargetBlockId: targetBlockId,
 		TargetAction:  targetAction,
 	}
@@ -853,4 +1104,103 @@ func resolveTabIdArg(tabRef string) (string, error) {
 		return "", fmt.Errorf("--tab %q resolved to a %s, expected a tab", tabRef, oref.OType)
 	}
 	return oref.OID, nil
+}
+
+// blockScreenshotJSONOutput is the structured output for `block screenshot --json`.
+type blockScreenshotJSONOutput struct {
+	BlockId string `json:"blockid"`
+	Bytes   int    `json:"bytes"`
+	Path    string `json:"path,omitempty"`
+}
+
+// validateScreenshotFlags requires --output unless --json is set.
+func validateScreenshotFlags(outputFile string, jsonOut bool) error {
+	if outputFile == "" && !jsonOut {
+		return fmt.Errorf("--output is required unless --json is set")
+	}
+	return nil
+}
+
+// decodeScreenshotPNG strips a data:image/png;base64, prefix if present and
+// base64-decodes the PNG bytes.
+func decodeScreenshotPNG(dataURL string) ([]byte, error) {
+	s := strings.TrimSpace(dataURL)
+	if s == "" {
+		return nil, fmt.Errorf("empty screenshot data")
+	}
+	if strings.HasPrefix(s, pngDataURLPrefix) {
+		s = strings.TrimPrefix(s, pngDataURLPrefix)
+	} else if strings.HasPrefix(s, "data:") {
+		if i := strings.Index(s, ","); i >= 0 {
+			s = s[i+1:]
+		}
+	}
+	decoded, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("decoding screenshot: %w", err)
+	}
+	if len(decoded) == 0 {
+		return nil, fmt.Errorf("empty screenshot data")
+	}
+	return decoded, nil
+}
+
+func blockScreenshotRun(cmd *cobra.Command, args []string) error {
+	if err := validateScreenshotFlags(blockScreenshotOutput, blockScreenshotJSON); err != nil {
+		return err
+	}
+
+	blockRef := ""
+	if len(args) > 0 {
+		blockRef = args[0]
+	}
+	fullORef, err := resolveBlockArgWithOverride(blockRef)
+	if err != nil {
+		return err
+	}
+
+	route := tabRouteForBlock(fullORef.OID)
+	if route == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
+	dataURL, err := wshclient.CaptureBlockScreenshotCommand(RpcClient, wshrpc.CommandCaptureBlockScreenshotData{
+		BlockId: fullORef.OID,
+	}, &wshrpc.RpcOpts{
+		Route:   route,
+		Timeout: 10000,
+	})
+	if err != nil {
+		return fmt.Errorf("capturing screenshot of block %s: %w", fullORef.OID, err)
+	}
+
+	pngBytes, err := decodeScreenshotPNG(dataURL)
+	if err != nil {
+		return err
+	}
+
+	if blockScreenshotOutput != "" {
+		if err := os.WriteFile(blockScreenshotOutput, pngBytes, 0644); err != nil {
+			return fmt.Errorf("error writing screenshot to %s: %w", blockScreenshotOutput, err)
+		}
+	}
+
+	if blockScreenshotJSON {
+		out := blockScreenshotJSONOutput{
+			BlockId: fullORef.OID,
+			Bytes:   len(pngBytes),
+		}
+		if blockScreenshotOutput != "" {
+			out.Path = blockScreenshotOutput
+		}
+		outBytes, err := json.Marshal(out)
+		if err != nil {
+			return fmt.Errorf("marshaling JSON output: %w", err)
+		}
+		WriteStdout("%s\n", string(outBytes))
+		return nil
+	}
+
+	WriteStdout("screenshot written to %s (%d bytes)\n", blockScreenshotOutput, len(pngBytes))
+	return nil
 }

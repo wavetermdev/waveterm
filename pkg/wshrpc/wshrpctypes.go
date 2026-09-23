@@ -90,6 +90,9 @@ type WshRpcInterface interface {
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
 	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
+	CreateTabCommand(ctx context.Context, data CommandCreateTabData) (CommandCreateTabRtnData, error)
+	SetActiveTabCommand(ctx context.Context, data CommandSetActiveTabData) error
+	DeleteTabCommand(ctx context.Context, data CommandDeleteTabData) (CommandDeleteTabRtnData, error)
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
 
 	// connection functions
@@ -142,6 +145,9 @@ type WshRpcInterface interface {
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
+	WebRunCommand(ctx context.Context, data CommandWebRunData) (*WebRunResult, error)
+	WebSnapshotCommand(ctx context.Context, data CommandWebSnapshotData) (*WebSnapshotResult, error)
+	WebScreenshotCommand(ctx context.Context, data CommandWebScreenshotData) (*WebScreenshotResult, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 	FocusWindowCommand(ctx context.Context, windowId string) error
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
@@ -167,6 +173,7 @@ type WshRpcInterface interface {
 	// block focus
 	SetBlockFocusCommand(ctx context.Context, blockId string) error
 	GetFocusedBlockDataCommand(ctx context.Context) (*FocusedBlockData, error)
+	GetBlockInputStateCommand(ctx context.Context, blockId string) (*BlockInputState, error)
 	ResolveDirectionalCommand(ctx context.Context, data CommandResolveDirectionalData) (*waveobj.ORef, error)
 
 	// rtinfo
@@ -272,9 +279,42 @@ type CommandMessageData struct {
 }
 
 type CommandPromptData struct {
-	Question string   `json:"question"`
-	Options  []string `json:"options,omitempty"`
-	Title    string   `json:"title,omitempty"`
+	Question      string   `json:"question"`
+	Options       []string `json:"options,omitempty"`
+	Title         string   `json:"title,omitempty"`
+	TimeoutMs     int      `json:"timeoutms,omitempty"`
+	DefaultOption string   `json:"defaultoption,omitempty"`
+}
+
+type CommandCreateTabData struct {
+	WorkspaceId string `json:"workspaceid,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Connection  string `json:"connection,omitempty"`
+	Activate    bool   `json:"activate"`
+}
+
+type CommandCreateTabRtnData struct {
+	TabId string `json:"tabid"`
+	Name  string `json:"name,omitempty"`
+}
+
+type CommandSetActiveTabData struct {
+	WorkspaceId string `json:"workspaceid"`
+	TabId       string `json:"tabid"`
+}
+
+type CommandDeleteTabData struct {
+	WorkspaceId string `json:"workspaceid"`
+	TabId       string `json:"tabid"`
+}
+
+type CommandDeleteTabRtnData struct {
+	NewActiveTabId string `json:"newactivetabid,omitempty"`
+}
+
+type BlockInputState struct {
+	BlockId         string `json:"blockid"`
+	LastUserInputMs int64  `json:"lastuserinputms"`
 }
 
 type CommandGetMetaData struct {
@@ -486,6 +526,48 @@ type CommandWebSelectorData struct {
 	TabId       string           `json:"tabid"`
 	Selector    string           `json:"selector"`
 	Opts        *WebSelectorOpts `json:"opts,omitempty"`
+}
+
+type CommandWebRunData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+	Script      string `json:"script"`
+	TimeoutMs   int64  `json:"timeoutms,omitempty"` // default 60000
+}
+
+type WebRunResult struct {
+	BlockId   string          `json:"blockid"`
+	URL       string          `json:"url,omitempty"`
+	Title     string          `json:"title,omitempty"`
+	Stdout    string          `json:"stdout"`
+	Result    json.RawMessage `json:"result,omitempty"` // script return value, if any
+	Truncated bool            `json:"truncated,omitempty"`
+}
+
+type CommandWebSnapshotData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+}
+
+type WebSnapshotResult struct {
+	BlockId   string `json:"blockid"`
+	URL       string `json:"url,omitempty"`
+	Title     string `json:"title,omitempty"`
+	Snapshot  string `json:"snapshot"`
+	Truncated bool   `json:"truncated,omitempty"`
+}
+
+type CommandWebScreenshotData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+}
+
+type WebScreenshotResult struct {
+	BlockId string `json:"blockid"`
+	Data64  string `json:"data64"` // raw PNG base64, no data: URL prefix
 }
 
 type BlockInfoData struct {

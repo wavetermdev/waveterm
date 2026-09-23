@@ -355,10 +355,22 @@ Flags:
 - `-p, --paused` - create block in paused state
 - `-a, --append` - append output on command restart instead of clearing
 - `--cwd string` - set working directory for command
+- `--wait` - wait for the command to complete and print stdout/exit code (does not steal focus; closes the block unless `--keep-block`)
+- `--json` - with `--wait`, print JSON (`stdout`, `stderr`, `exitcode`, `durationms`, `blockid`, `outputmerged`). A PTY merges streams so `stderr` is always empty
+- `--timeout` - with `--wait`, max wait (default `5m`; e.g. `30s`, `2m`)
+- `--focus` - steal focus for the new block (default: no)
+- `--keep-block` - with `--wait`, leave the block open after exit
+- `--connection` - run on the specified connection
 
 Examples:
 
 ```sh
+# Agent-friendly: wait, JSON, no focus steal, auto-close
+wsh run --wait --json -- npm test
+
+# Wait up to two minutes on a remote
+wsh run --wait --json --connection prod --timeout 2m -- ./deploy.sh
+
 # Run a build command in magnified mode
 wsh run -m -- npm run build
 
@@ -385,6 +397,97 @@ The `-p` flag creates the block in a paused state, allowing you to review the co
 :::tip
 You can use either `--` followed by your command and arguments, or the `-c` flag with a quoted command string. The `--` method is preferred when you want to preserve argument handling, while `-c` is useful for shell commands with pipes or redirections.
 :::
+
+---
+
+## agent
+
+Control Wave/RemoteTerm from an in-terminal coding agent. Detect the environment with `WAVETERM=1` (also `WAVETERM_BLOCKID`, `WAVETERM_TABID`, `WAVETERM_CONN`, `WAVETERM_VERSION`). Start with:
+
+```sh
+wsh agent context --json
+wsh agent help --json
+```
+
+### help
+
+Print the agent command card. `--json` emits a versioned capability document.
+
+### context
+
+One-shot JSON snapshot of the current workspace: this block, focused block, tabs, connections, and blocks (geometry, cwd, best-effort process state).
+
+### spawn
+
+```sh
+wsh agent spawn --cmd "claude" --name fixer --connection prod
+wsh agent spawn --cmd "claude" --prompt "Fix the build" --split right
+wsh agent spawn --cmd "claude" --idempotency-key build-fixer
+```
+
+Creates a terminal block tagged `agent:owned` (shown as an **agent** chip in the header). Does **not** steal focus unless `--focus`. `--idempotency-key` reuses a still-running owned block with the same key.
+
+### list / stop
+
+```sh
+wsh agent list --json
+wsh agent stop [block_ref]   # omit ref to stop every owned block in the workspace
+wsh agent stop <block_ref> --force   # allow stopping a non-owned block
+```
+
+---
+
+## block
+
+tmux-style control of a single block. Top-level aliases: `capture-pane`, `send-keys`, `split-pane`, `select-pane`, `kill-pane`, `rename-pane`, `list-panes`.
+
+```sh
+wsh block list --json
+wsh block capture [block_ref]            # default last 200 lines
+wsh block capture [block_ref] --all
+wsh block capture [block_ref] --since-line N --json
+wsh block send-keys [block_ref] "ls -la" --enter
+wsh block wait [block_ref] --until-exit --timeout 60s
+wsh block wait [block_ref] --contains "Ready"
+wsh block wait [block_ref] --idle 1500
+wsh block screenshot [block_ref] --output /tmp/block.png
+wsh block new --view term --no-focus --connection prod
+wsh block split [block_ref] --direction right
+wsh block select [block_ref]
+wsh block rename [block_ref] fixer-agent
+wsh block kill [block_ref]
+wsh block status [block_ref] --json
+```
+
+Capture defaults to a **tail of 200 lines** (`--all` for the full buffer, `--max-bytes` to cap). `--last-command` requires shell integration and is not tailed by default. `send-keys` refuses if a human typed in that block in the last 2s unless `--force`. Secrets: `--secret <label>` types the stored value (never put secrets on the argv).
+
+---
+
+## tab
+
+```sh
+wsh tab list --json
+wsh tab new [--name NAME] [--connection CONN] [--activate] [--json]
+wsh tab select <tab_ref>
+wsh tab rename <tab_ref> <name>
+wsh tab close <tab_ref>
+wsh tab move <tabid> --index N
+```
+
+`tab_ref` is a uuid, `tab:N` (1-indexed), or a case-insensitive name substring. Closing the last tab in a workspace is refused.
+
+---
+
+## prompt
+
+Ask the user a question in a UI modal (works from hidden/background blocks).
+
+```sh
+wsh prompt "Deploy to production?" --options "yes,no" --default no --timeout 60s
+wsh prompt "What should we name the branch?"
+```
+
+On timeout, `--default` is printed and the command exits 0. Cancel still errors.
 
 ---
 
@@ -420,18 +523,54 @@ This will connect to a WSL distribution on the local machine. It will use the de
 
 ## web
 
-The `web` command opens URLs in a web block within Wave Terminal.
+The `web` command opens URLs in a web block and (when enabled) drives the embedded page via CDP.
 
 ```sh
 wsh web open [url] [-m] [-r blockid]
+wsh web get [--inner] [--all] [--json] css-selector
+wsh web snapshot [-b block] [--json]
+wsh web screenshot [-b block] [--path file] [--json]
+wsh web run [-b block] [--timeout duration] [--json] [--] [script]
 ```
 
-You can open a specific URL or perform a search using the configured search engine.
+`open` creates a web block (same class as `wsh block new --view web`). You can open a specific URL or perform a search using the configured search engine.
 
-Flags:
+`get`, `snapshot`, `screenshot`, and `run` require `agent:allowbrowsercontrol` (default off). Remote-origin `wsh` also requires `agent:allowremotelocalcontrol`. Target a web block with `-b` / `--block` (`this`, uuid, uuid8, block number, `view:N`, or title substring). Error if the block's view is not `web`.
+
+`snapshot` prints a compact accessibility tree with `@N` refs. Those refs are for reading; they are **not** valid in a later process. Use `snapshot()` inside `web run` to click or fill.
+
+`screenshot` captures the **page** via CDP (`Page.captureScreenshot`), not the block chrome. `--path` writes a PNG on the machine where `wsh` runs. `--json` prints `{ "blockid", "bytes", "path"? }` (not the PNG). Without `--path` and without `--json`, PNG bytes go to stdout.
+
+`run` executes a JavaScript snippet in the Electron main process with injected helpers (`navigate`, `snapshot`, `click`, `fill`, `type`, `js`, `cdp`, `screenshot`, `secret`, `sleep`, `print`, `pageInfo`). Remaining args are joined with space; if there are no args, the script is read from stdin (must be non-empty). A TTY with no args errors instead of hanging. Script max 256 KiB. Default timeout 60s, max 5m.
+
+Flags for `open`:
 
 - `-m, --magnified` - open the web block in magnified mode
 - `-r, --replace <blockid>` - replace an existing block instead of creating a new one
+
+Flags for `get`:
+
+- `--inner` - inner HTML instead of outer
+- `--all` - all matches (`querySelectorAll`)
+- `--json` - JSON array of HTML strings
+- `-b, --block` - target web block (default: this)
+
+Flags for `snapshot`:
+
+- `-b, --block`
+- `--json` - `{ "blockid", "url", "title", "snapshot", "truncated" }`
+
+Flags for `screenshot`:
+
+- `-b, --block`
+- `--path` - write PNG here
+- `--json` - `{ "blockid", "bytes", "path"? }`
+
+Flags for `run`:
+
+- `-b, --block`
+- `--timeout` - run budget (default 60s, max 5m; `30s`, `5m`, or integer seconds)
+- `--json` - `{ "blockid", "url", "title", "stdout", "result", "truncated" }`
 
 Examples:
 
@@ -447,9 +586,23 @@ wsh web open -m https://github.com
 
 # Replace an existing block
 wsh web open -r 2 https://example.com
+
+# Snapshot / screenshot / get (gated)
+wsh web snapshot -b <web-block>
+wsh web screenshot -b <web-block> --path /tmp/page.png
+wsh web get -b <web-block> "h1" --json
+
+# Mini-API: observe then act in one RPC
+wsh web run -b <web-block> -- 'await navigate("https://example.com"); await print(await snapshot())'
+wsh web run -b <web-block> --timeout 2m <<'EOF'
+await navigate("https://example.com");
+const snap = await snapshot();
+await print(snap);
+await click("@1");
+EOF
 ```
 
-The command will open a new web block with the desired page, or replace an existing block if the `-r` flag is used. Note that `--replace` and `--magnified` cannot be used together.
+`open` will open a new web block with the desired page, or replace an existing block if the `-r` flag is used. Note that `--replace` and `--magnified` cannot be used together.
 
 ---
 

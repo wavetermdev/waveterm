@@ -129,9 +129,17 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
     const showSplitButtons = jotai.useAtomValue(blockEnv.getSettingsKeyAtom("term:showsplitbuttons"));
+    const agentOwned = !!jotai.useAtomValue(blockEnv.getBlockMetaKeyAtom(blockId, "agent:owned"));
 
     const endIconsElem: React.ReactElement[] = [];
 
+    if (agentOwned) {
+        endIconsElem.push(
+            <div key="agent-owned" className="block-frame-agent-owned-label" title="Agent-owned block">
+                agent
+            </div>
+        );
+    }
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }

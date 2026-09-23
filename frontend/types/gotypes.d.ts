@@ -110,6 +110,12 @@ declare global {
         files: WaveFileInfo[];
     };
 
+    // wshrpc.BlockInputState
+    type BlockInputState = {
+        blockid: string;
+        lastuserinputms: number;
+    };
+
     // wshrpc.BlockJobStatusData
     type BlockJobStatusData = {
         blockid: string;
@@ -262,6 +268,20 @@ declare global {
         blockdef: BlockDef;
     };
 
+    // wshrpc.CommandCreateTabData
+    type CommandCreateTabData = {
+        workspaceid?: string;
+        name?: string;
+        connection?: string;
+        activate: boolean;
+    };
+
+    // wshrpc.CommandCreateTabRtnData
+    type CommandCreateTabRtnData = {
+        tabid: string;
+        name?: string;
+    };
+
     // wshrpc.CommandDebugTermData
     type CommandDebugTermData = {
         blockid: string;
@@ -289,6 +309,17 @@ declare global {
     type CommandDeleteFileData = {
         path: string;
         recursive: boolean;
+    };
+
+    // wshrpc.CommandDeleteTabData
+    type CommandDeleteTabData = {
+        workspaceid: string;
+        tabid: string;
+    };
+
+    // wshrpc.CommandDeleteTabRtnData
+    type CommandDeleteTabRtnData = {
+        newactivetabid?: string;
     };
 
     // wshrpc.CommandDisposeData
@@ -527,6 +558,8 @@ declare global {
         question: string;
         options?: string[];
         title?: string;
+        timeoutms?: number;
+        defaultoption?: string;
     };
 
     // wshrpc.CommandPublishAppData
@@ -671,6 +704,12 @@ declare global {
         builderid: string;
     };
 
+    // wshrpc.CommandSetActiveTabData
+    type CommandSetActiveTabData = {
+        workspaceid: string;
+        tabid: string;
+    };
+
     // wshrpc.CommandSetMetaData
     type CommandSetMetaData = {
         oref: ORef;
@@ -783,6 +822,22 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandWebRunData
+    type CommandWebRunData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+        script: string;
+        timeoutms?: number;
+    };
+
+    // wshrpc.CommandWebScreenshotData
+    type CommandWebScreenshotData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         workspaceid: string;
@@ -790,6 +845,13 @@ declare global {
         tabid: string;
         selector: string;
         opts?: WebSelectorOpts;
+    };
+
+    // wshrpc.CommandWebSnapshotData
+    type CommandWebSnapshotData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
     };
 
     // wshrpc.CommandWriteAppFileData
@@ -1212,6 +1274,10 @@ declare global {
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
+        "agent:owned"?: boolean;
+        "agent:parent"?: string;
+        "agent:cmd"?: string;
+        "agent:idempotency-key"?: string;
         "cmd:*"?: boolean;
         cmd?: string;
         "cmd:interactive"?: boolean;
@@ -1461,6 +1527,7 @@ declare global {
         "app:tabbar"?: string;
         "feature:waveappbuilder"?: boolean;
         "agent:allowremotelocalcontrol"?: boolean;
+        "agent:allowbrowsercontrol"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1664,6 +1731,7 @@ declare global {
         connname?: string;
         prompttype?: string;
         options?: string[];
+        defaultoption?: string;
         queueposition?: number;
         queuetotal?: number;
     };
@@ -2027,10 +2095,35 @@ declare global {
         updates?: WaveObjUpdate[];
     };
 
+    // wshrpc.WebRunResult
+    type WebRunResult = {
+        blockid: string;
+        url?: string;
+        title?: string;
+        stdout: string;
+        result?: string;
+        truncated?: boolean;
+    };
+
+    // wshrpc.WebScreenshotResult
+    type WebScreenshotResult = {
+        blockid: string;
+        data64: string;
+    };
+
     // wshrpc.WebSelectorOpts
     type WebSelectorOpts = {
         all?: boolean;
         inner?: boolean;
+    };
+
+    // wshrpc.WebSnapshotResult
+    type WebSnapshotResult = {
+        blockid: string;
+        url?: string;
+        title?: string;
+        snapshot: string;
+        truncated?: boolean;
     };
 
     // wconfig.WidgetConfigType

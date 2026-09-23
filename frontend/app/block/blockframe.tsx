@@ -117,6 +117,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
     const iconColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "icon:color"));
+    const agentOwned = !!jotai.useAtomValue(
+        waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "agent:owned")
+    );
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
     React.useEffect(() => {
@@ -170,6 +173,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
                 "block-no-highlight": numBlocksInTab === 1,
+                "block-frame-agent-owned": agentOwned,
                 ephemeral: isEphemeral,
                 magnified: isMagnified,
             })}

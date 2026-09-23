@@ -21,6 +21,7 @@ const (
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 
 	ConfigKey_AgentAllowRemoteLocalControl   = "agent:allowremotelocalcontrol"
+	ConfigKey_AgentAllowBrowserControl       = "agent:allowbrowsercontrol"
 
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"

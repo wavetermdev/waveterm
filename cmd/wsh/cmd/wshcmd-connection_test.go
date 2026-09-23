@@ -23,11 +23,11 @@ func TestConnectionEntryFromStatus(t *testing.T) {
 		{
 			name: "connected with wsh",
 			status: wshrpc.ConnStatus{
-				Connection:  "ssh://host",
-				Connected:   true,
-				Status:      "connected",
-				WshEnabled:  true,
-				Error:       "",
+				Connection: "ssh://host",
+				Connected:  true,
+				Status:     "connected",
+				WshEnabled: true,
+				Error:      "",
 			},
 			wantName: "ssh://host",
 			wantConn: true,
@@ -37,11 +37,11 @@ func TestConnectionEntryFromStatus(t *testing.T) {
 		{
 			name: "disconnected with error",
 			status: wshrpc.ConnStatus{
-				Connection:  "ssh://broken",
-				Connected:   false,
-				Status:      "disconnected",
-				WshEnabled:  false,
-				Error:       "timeout",
+				Connection: "ssh://broken",
+				Connected:  false,
+				Status:     "disconnected",
+				WshEnabled: false,
+				Error:      "timeout",
 			},
 			wantName: "ssh://broken",
 			wantConn: false,

@@ -110,11 +110,12 @@ func TestCleanCmdOutput(t *testing.T) {
 
 func TestRunJSONOutputMarshal(t *testing.T) {
 	out := runJSONOutput{
-		Stdout:     "hello",
-		Stderr:     "",
-		ExitCode:   0,
-		DurationMs: 123,
-		BlockId:    "block:abc",
+		Stdout:       "hello",
+		Stderr:       "",
+		ExitCode:     0,
+		DurationMs:   123,
+		BlockId:      "block:abc",
+		OutputMerged: true,
 	}
 	data, err := json.Marshal(out)
 	if err != nil {
@@ -139,9 +140,26 @@ func TestRunJSONOutputMarshal(t *testing.T) {
 	if m["blockid"] != "block:abc" {
 		t.Errorf("blockid = %v, want block:abc", m["blockid"])
 	}
+	if m["outputmerged"] != true {
+		t.Errorf("outputmerged = %v, want true", m["outputmerged"])
+	}
 	// JSON must be a single line (no stray newlines on stdout).
 	if strings.Contains(string(data), "\n") {
 		t.Errorf("marshaled JSON contains newline: %q", string(data))
+	}
+}
+
+func TestRunWaitTimeoutErrorIncludesBlockId(t *testing.T) {
+	err := runWaitTimeoutError("abc-block", "running")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "abc-block") {
+		t.Errorf("timeout error %q missing block id", msg)
+	}
+	if !strings.Contains(msg, "running") {
+		t.Errorf("timeout error %q missing last status", msg)
 	}
 }
 

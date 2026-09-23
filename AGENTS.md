@@ -33,7 +33,7 @@ All fork planning lives in `.pi/`:
 - `.pi/decisions.md` — architecture decisions
 - `.pi/specs/` — feature specifications
 
-Current active spec: `.pi/specs/portforwarding.md`
+Current active spec: `.pi/specs/web-agent-api-v1.md` (Locked — implement useful-v1 web CDP). Agent fabric v2 is already implemented (`feat/agent-control-fabric`).
 
 ## Architecture
 

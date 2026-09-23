@@ -1,5 +1,15 @@
 # Active Tasks
 
+## Next session — Web CDP useful v1 (implement)
+
+Spec is **Locked:** [[specs/web-agent-api-v1.md]]. Parent vision stays draft: [[specs/web-agent-api.md]].
+
+- [x] **Lock useful-v1 web CDP spec** — 2026-09-02. Asymmetric hybrid: discrete observation (`snapshot`/`screenshot`/`get`); code-first `web run`. Open questions resolved on that file.
+- [ ] **Implement useful v1** — ~1.5–2.5 weeks; skills: `add-rpc`, `add-wshcmd`, `add-config`; `node version.cjs minor` at the end
+  - Embedded `<webview>` only; emain `webContents.debugger`; `@N` refs live for one `web run`
+  - Gate `agent:allowbrowsercontrol` (default off), stacked with existing `agent:allowremotelocalcontrol` (do not widen)
+  - Out: Playwright locators, discrete `web click`, downloads, `--background`, partition CLI, MCP
+
 ## Files widget follow-ups (from multiselect QA 2026-08-17)
 
 - [x] 2026-08-17 — **Add Cmd+R refresh to files-widget directory view** — done in QA-fixes phase 7 (commit a415c708).
@@ -431,14 +441,16 @@ Backend + **P0 + P1 + most of P2** implemented and merged (see [[specs/reconnect
 
 ### Agent Orchestration API
 
-- [ ] **wsh Agent API** — Agent orchestration via wsh commands (spec: [[.pi/specs/wsh-agent-api.md]])
-  - Scope guardrail: "anything a human could do via the UI or keyboard"
-  - Phase 1: `--json` output on existing read commands (`block list`, `connection list`, `tab list`)
-  - Phase 2: New read commands (`block get` with scrollback, `config get`)
-  - Phase 3: Write commands (`block create` with options, `block send-keys`, `block focus`, `config set`)
-  - Phase 4: Agent helpers (`agent spawn`, `agent help`)
-  - Discovery: `WAVE_TERMINAL=1` env var + `wsh agent help`
-  - Security: no new auth surface — agent inherits user's permissions
+- [x] **wsh Agent API v2** — spec [[.pi/specs/wsh-agent-api.md]] + [[.pi/specs/agent-control-fabric-v2.md]]
+  - Mode A: `wsh run --wait --json` (no-focus, auto-close, `--timeout`, `outputmerged`)
+  - Mode B: `block capture/send-keys/wait/status/split/screenshot` + tmux aliases
+  - Orientation: `wsh agent context --json`, `wsh agent help --json`
+  - Lifecycle: `agent spawn/list/stop` with `agent:owned` metadata + idempotency key
+  - Tabs: `tab new/select/close/rename`; prompt `--timeout --default`
+  - Discovery: `WAVETERM=1` (already set) + `skills/wsh-agent/SKILL.md`
+  - Connection gate `agent:allowremotelocalcontrol` **unchanged** (explicitly sufficient for now)
+  - Follow-on: web CDP useful v1 — spec locked [[specs/web-agent-api-v1.md]]; implement next
+  - Still out of scope for agent-fabric v2: MCP adapter, secret-store grants, cross-connection policy, full web CDP vision
 
 ### Forwarding Enhancements
 

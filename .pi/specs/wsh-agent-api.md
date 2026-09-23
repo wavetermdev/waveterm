@@ -1,7 +1,7 @@
 # Spec: wsh Agent API — "Agent Control Fabric"
 
 **Date:** 2026-08-16
-**Status:** Accepted — design converged, ready for phased implementation
+**Status:** Implemented — v1 (phases 1–6) landed on `feat/agent-control-fabric`; v2 design-review items landed separately (see [[agent-control-fabric-v2.md]])
 **Alias:** this feature is also referred to as the "agent control fabric"
 
 ## Problem
@@ -273,8 +273,8 @@ Secrets are referenced **by name**, never inlined. `wsh` resolves the name again
 ```bash
 wsh block send-keys <block_ref> --secret <secret_label> --enter   # type the secret's VALUE
 wsh run --wait --json --secret <secret_label> -- ./deploy.sh      # secret injected as env, not in args
-wsh web run -- <<'EOF'                                             # web: secret() helper (see web-agent-api.md)
-await fill(getByRole("textbox", { name: "password" }), secret("<secret_label>"));
+wsh web run -- <<'EOF'                                             # web: secret() helper — useful v1: [[web-agent-api-v1.md]]
+await fill("@password", secret("<secret_label>"));                 # v1 uses @N refs; getByRole is post-v1
 EOF
 ```
 
@@ -387,7 +387,9 @@ Tests are table-driven Go tests (`t.Run`, manual `if` assertions, no testify) fo
 
 ## Discovery
 
-1. **Environment variable** — `WAVE_TERMINAL=1` set in all terminal sessions.
-2. **`wsh agent help`** — lists all agent-capable commands with examples.
-3. **tmux aliases** — an agent that tries `wsh capture-pane` / `wsh send-keys` / `wsh split-pane` lands on working commands.
-4. **Documentation** — this spec + public docs in `docs/docs/`.
+1. **Environment variable** — `WAVETERM=1` is set in every session (along with `WAVETERM_BLOCKID`, `WAVETERM_TABID`, `WAVETERM_CONN`, `WAVETERM_VERSION`). There is no `WAVE_TERMINAL` variable.
+2. **`wsh agent help`** / **`wsh agent help --json`** — command card and versioned capability document.
+3. **`wsh agent context --json`** — one-shot workspace snapshot; this is the first command an agent should run.
+4. **`skills/wsh-agent/SKILL.md`** — the document in-terminal coding agents should load.
+5. **tmux aliases** — an agent that tries `wsh capture-pane` / `wsh send-keys` / `wsh split-pane` lands on working commands.
+6. **Documentation** — this spec, [[agent-control-fabric-v2.md]], and `docs/docs/wsh-reference.mdx`.

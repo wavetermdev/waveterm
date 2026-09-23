@@ -6,6 +6,7 @@ package userinput
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func TestHasActiveAuthPromptForConn(t *testing.T) {
@@ -192,4 +193,63 @@ func TestCancelAllAuthPromptsForConn(t *testing.T) {
 		t.Fatal("expected other@host prompt to remain open")
 	default:
 	}
+}
+
+func TestPromptWaitDuration(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		timeoutMs int
+		want      time.Duration
+	}{
+		{name: "zero uses 60s default", timeoutMs: 0, want: 60 * time.Second},
+		{name: "negative uses 60s default", timeoutMs: -1, want: 60 * time.Second},
+		{name: "positive honored", timeoutMs: 120000, want: 120 * time.Second},
+		{name: "one millisecond honored", timeoutMs: 1, want: time.Millisecond},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := promptWaitDuration(tt.timeoutMs)
+			if got != tt.want {
+				t.Errorf("promptWaitDuration(%d) = %s, want %s", tt.timeoutMs, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResponseOnPromptTimeout(t *testing.T) {
+	t.Parallel()
+	t.Run("default option returns text and no error", func(t *testing.T) {
+		t.Parallel()
+		resp, err := responseOnPromptTimeout("req-1", "no")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp == nil {
+			t.Fatal("expected response")
+		}
+		if resp.Text != "no" {
+			t.Errorf("Text = %q, want %q", resp.Text, "no")
+		}
+		if resp.RequestId != "req-1" {
+			t.Errorf("RequestId = %q, want req-1", resp.RequestId)
+		}
+		if resp.ErrorMsg != "" {
+			t.Errorf("ErrorMsg = %q, want empty", resp.ErrorMsg)
+		}
+	})
+	t.Run("no default is timeout error", func(t *testing.T) {
+		t.Parallel()
+		resp, err := responseOnPromptTimeout("req-2", "")
+		if err == nil {
+			t.Fatal("expected timeout error")
+		}
+		if resp != nil {
+			t.Errorf("expected nil response, got %+v", resp)
+		}
+		if err.Error() != "timed out waiting for user input" {
+			t.Errorf("error = %q, want timed out waiting for user input", err.Error())
+		}
+	})
 }

@@ -34,6 +34,7 @@ type BlockDetails struct {
 	TabId       string                `json:"tabid"`       // ID of the tab containing the block
 	View        string                `json:"view"`        // Canonical view type (term, web, preview, edit, sysinfo)
 	Connection  string                `json:"connection,omitempty"`
+	Cwd         string                `json:"cwd,omitempty"`
 	Title       string                `json:"title,omitempty"`
 	Index       int                   `json:"index,omitempty"`
 	Geometry    *wshrpc.BlockGeometry `json:"geometry,omitempty"`
@@ -47,7 +48,7 @@ var blocksListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls", "get"},
 	Short:   "List blocks in workspaces/windows",
-	Long:    `List blocks with optional filtering by workspace, window, tab, or view type.
+	Long: `List blocks with optional filtering by workspace, window, tab, or view type.
 
 Examples:
   # List blocks from all workspaces
@@ -70,8 +71,8 @@ Examples:
 
   # Set a different timeout (in milliseconds)
   wsh blocks list --timeout=10000`,
-	RunE:    blocksListRun,
-	PreRunE: preRunSetupRpcClient,
+	RunE:         blocksListRun,
+	PreRunE:      preRunSetupRpcClient,
 	SilenceUsage: true,
 }
 
@@ -88,9 +89,9 @@ func init() {
 	}
 
 	blocksCmd := &cobra.Command{
-		Use:     "blocks",
-		Short:   "Manage blocks",
-		Long:    "Commands for working with blocks",
+		Use:   "blocks",
+		Short: "Manage blocks",
+		Long:  "Commands for working with blocks",
 	}
 
 	blocksCmd.AddCommand(blocksListCmd)
@@ -195,6 +196,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 				TabId:       b.TabId,
 				View:        v,
 				Connection:  b.Meta.GetString(waveobj.MetaKey_Connection, ""),
+				Cwd:         b.Meta.GetString(waveobj.MetaKey_CmdCwd, ""),
 				Title:       b.Meta.GetString(waveobj.MetaKey_FrameTitle, ""),
 				Index:       b.Index,
 				Geometry:    b.Geometry,

@@ -80,6 +80,16 @@ ipcRenderer.on("webview-new-window", (e, webContentsId, details) => {
 
 ipcRenderer.on("webcontentsid-from-blockid", (e, blockId, responseCh) => {
     const webviewElem: WebviewTag = document.querySelector("div[data-blockid='" + blockId + "'] webview");
-    const wcId = webviewElem?.dataset?.webcontentsid;
+    let wcId: string | number | undefined = webviewElem?.dataset?.webcontentsid;
+    if (wcId == null || wcId === "") {
+        try {
+            const fromApi = webviewElem?.getWebContentsId?.();
+            if (fromApi) {
+                wcId = fromApi;
+            }
+        } catch {
+            /* guest not attached yet; emain will retry */
+        }
+    }
     ipcRenderer.send(responseCh, wcId);
 });

@@ -3,6 +3,7 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { setBadge } from "@/app/store/badge";
+import { clearBlockUserInput, recordBlockUserInput } from "@/app/store/block-input-state";
 import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -857,6 +858,7 @@ export class TermWrap {
             }
         });
         this.mainFileSubject.release();
+        clearBlockUserInput(this.blockId);
     }
 
     handleTermData(data: string) {
@@ -865,6 +867,9 @@ export class TermWrap {
         }
         if (this.uploadActive) {
             return;
+        }
+        if (data) {
+            recordBlockUserInput(this.blockId);
         }
 
         this.sendDataHandler?.(data);

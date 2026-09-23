@@ -37,6 +37,11 @@ const (
 	MetaKey_FrameIcon                        = "frame:icon"
 	MetaKey_FrameText                        = "frame:text"
 
+	MetaKey_AgentOwned                       = "agent:owned"
+	MetaKey_AgentParent                      = "agent:parent"
+	MetaKey_AgentCmd                         = "agent:cmd"
+	MetaKey_AgentIdempotencyKey              = "agent:idempotency-key"
+
 	MetaKey_CmdClear                         = "cmd:*"
 	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdInteractive                   = "cmd:interactive"

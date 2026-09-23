@@ -15,24 +15,25 @@ import (
 )
 
 const (
-	runWaitPollInterval = 200 * time.Millisecond
-	runWaitTimeout      = 5 * time.Minute
-	runWaitOutputSettle = 2 * time.Second
+	runWaitPollInterval   = 200 * time.Millisecond
+	runWaitDefaultTimeout = 5 * time.Minute
+	runWaitOutputSettle   = 2 * time.Second
 )
 
 // runJSONOutput is the machine-readable result of `wsh run --wait --json`.
 type runJSONOutput struct {
-	Stdout     string `json:"stdout"`
-	Stderr     string `json:"stderr"`
-	ExitCode   int    `json:"exitcode"`
-	DurationMs int64  `json:"durationms"`
-	BlockId    string `json:"blockid,omitempty"`
+	Stdout       string `json:"stdout"`
+	Stderr       string `json:"stderr"`
+	ExitCode     int    `json:"exitcode"`
+	DurationMs   int64  `json:"durationms"`
+	BlockId      string `json:"blockid,omitempty"`
+	OutputMerged bool   `json:"outputmerged"`
 }
 
 // waitForRunBlock blocks until the spawned cmd block completes, then prints its
 // output (and exit code/duration) either as a JSON object (--json) or as a
 // human-readable summary.
-func waitForRunBlock(blockId, connName string, jsonOut bool) error {
+func waitForRunBlock(blockId, connName string, jsonOut bool, timeout time.Duration) error {
 	startTime := time.Now()
 
 	// Best-effort pre-flight check: a non-local connection that is definitively
@@ -43,7 +44,7 @@ func waitForRunBlock(blockId, connName string, jsonOut bool) error {
 		return err
 	}
 
-	exitCode, err := pollForBlockExit(blockId)
+	exitCode, err := pollForBlockExit(blockId, timeout)
 	if err != nil {
 		return err
 	}
@@ -57,11 +58,12 @@ func waitForRunBlock(blockId, connName string, jsonOut bool) error {
 
 	if jsonOut {
 		out := runJSONOutput{
-			Stdout:     stdout,
-			Stderr:     "",
-			ExitCode:   exitCode,
-			DurationMs: durationMs,
-			BlockId:    blockId,
+			Stdout:       stdout,
+			Stderr:       "",
+			ExitCode:     exitCode,
+			DurationMs:   durationMs,
+			BlockId:      blockId,
+			OutputMerged: true,
 		}
 		outBytes, err := json.Marshal(out)
 		if err != nil {
@@ -84,8 +86,11 @@ func waitForRunBlock(blockId, connName string, jsonOut bool) error {
 
 // pollForBlockExit polls the block controller status until the cmd block reports
 // ShellProcStatus == "done", then returns its exit code.
-func pollForBlockExit(blockId string) (int, error) {
-	deadline := time.Now().Add(runWaitTimeout)
+func pollForBlockExit(blockId string, timeout time.Duration) (int, error) {
+	if timeout <= 0 {
+		timeout = runWaitDefaultTimeout
+	}
+	deadline := time.Now().Add(timeout)
 	for {
 		status, err := wshclient.BlockControllerStatusCommand(RpcClient, blockId, &wshrpc.RpcOpts{Timeout: 2000})
 		if err == nil && status != nil && status.ShellProcStatus == "done" {
@@ -96,10 +101,14 @@ func pollForBlockExit(blockId string) (int, error) {
 			if status != nil {
 				lastStatus = status.ShellProcStatus
 			}
-			return 0, fmt.Errorf("timed out waiting for command to complete (last block status: %s)", lastStatus)
+			return 0, runWaitTimeoutError(blockId, lastStatus)
 		}
 		time.Sleep(runWaitPollInterval)
 	}
+}
+
+func runWaitTimeoutError(blockId, lastStatus string) error {
+	return fmt.Errorf("timed out waiting for command to complete in block %s (last block status: %s)", blockId, lastStatus)
 }
 
 // readRunOutput reads the block term file, polling briefly until the synthetic

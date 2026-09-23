@@ -73,6 +73,7 @@ func TestBlockCaptureJSONShape(t *testing.T) {
 		Lines:       []string{"line 1", "line 2"},
 		TotalLines:  42,
 		LastUpdated: 1690000000000,
+		LineStart:   10,
 	}
 	bytes, err := json.Marshal(out)
 	if err != nil {
@@ -93,11 +94,20 @@ func TestBlockCaptureJSONShape(t *testing.T) {
 	if _, ok := decoded["lastupdated"]; !ok {
 		t.Errorf("JSON missing key %q: %s", "lastupdated", string(bytes))
 	}
+	if _, ok := decoded["linestart"]; !ok {
+		t.Errorf("JSON missing key %q: %s", "linestart", string(bytes))
+	}
+	if _, ok := decoded["truncated"]; ok {
+		t.Errorf("JSON should omit truncated when false: %s", string(bytes))
+	}
 	if totallines, ok := decoded["totallines"].(float64); !ok || int(totallines) != 42 {
 		t.Errorf("totallines = %v, want 42", decoded["totallines"])
 	}
 	if lastupdated, ok := decoded["lastupdated"].(float64); !ok || int64(lastupdated) != 1690000000000 {
 		t.Errorf("lastupdated = %v, want 1690000000000", decoded["lastupdated"])
+	}
+	if linestart, ok := decoded["linestart"].(float64); !ok || int(linestart) != 10 {
+		t.Errorf("linestart = %v, want 10", decoded["linestart"])
 	}
 	lines, ok := decoded["lines"].([]interface{})
 	if !ok || len(lines) != 2 || lines[0] != "line 1" || lines[1] != "line 2" {
@@ -105,83 +115,155 @@ func TestBlockCaptureJSONShape(t *testing.T) {
 	}
 }
 
+func TestBlockCaptureJSONTruncated(t *testing.T) {
+	out := blockCaptureJSONOutput{
+		Lines:       []string{"ab"},
+		TotalLines:  2,
+		LastUpdated: 1,
+		LineStart:   0,
+		Truncated:   true,
+	}
+	bytes, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal() error: %v", err)
+	}
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(bytes, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error: %v", err)
+	}
+	truncated, ok := decoded["truncated"].(bool)
+	if !ok || !truncated {
+		t.Errorf("truncated = %v, want true", decoded["truncated"])
+	}
+}
+
 func TestValidateCaptureFlags(t *testing.T) {
 	tests := []struct {
-		name     string
-		tailSet  bool
-		startSet bool
-		endSet   bool
-		tail     int
-		wantErr  bool
+		name    string
+		flags   captureFlags
+		wantErr bool
 	}{
 		{
 			name:    "no flags is valid",
 			wantErr: false,
 		},
 		{
-			name:     "start only is valid",
-			startSet: true,
-			wantErr:  false,
+			name:    "start only is valid",
+			flags:   captureFlags{StartSet: true, Start: 1},
+			wantErr: false,
 		},
 		{
 			name:    "end only is valid",
-			endSet:  true,
+			flags:   captureFlags{EndSet: true, End: 10},
 			wantErr: false,
 		},
 		{
-			name:     "start and end is valid",
-			startSet: true,
-			endSet:   true,
-			wantErr:  false,
+			name:    "start and end is valid",
+			flags:   captureFlags{StartSet: true, EndSet: true, Start: 1, End: 10},
+			wantErr: false,
 		},
 		{
 			name:    "tail alone is valid",
-			tailSet: true,
-			tail:    10,
+			flags:   captureFlags{TailSet: true, Tail: 10},
 			wantErr: false,
 		},
 		{
-			name:     "tail with start is invalid",
-			tailSet:  true,
-			startSet: true,
-			tail:     10,
-			wantErr:  true,
+			name:    "all alone is valid",
+			flags:   captureFlags{AllSet: true},
+			wantErr: false,
 		},
 		{
-			name:    "tail with end is invalid",
-			tailSet: true,
-			endSet:  true,
-			tail:    10,
+			name:    "since-line alone is valid",
+			flags:   captureFlags{SinceLineSet: true, SinceLine: 5},
+			wantErr: false,
+		},
+		{
+			name:    "since-line with end is valid",
+			flags:   captureFlags{SinceLineSet: true, EndSet: true, SinceLine: 5, End: 20},
+			wantErr: false,
+		},
+		{
+			name:    "max-bytes positive is valid",
+			flags:   captureFlags{MaxBytesSet: true, MaxBytes: 1024},
+			wantErr: false,
+		},
+		{
+			name:    "tail with start is invalid",
+			flags:   captureFlags{TailSet: true, StartSet: true, Tail: 10},
 			wantErr: true,
 		},
 		{
-			name:     "tail with start and end is invalid",
-			tailSet:  true,
-			startSet: true,
-			endSet:   true,
-			tail:     10,
-			wantErr:  true,
+			name:    "tail with end is invalid",
+			flags:   captureFlags{TailSet: true, EndSet: true, Tail: 10},
+			wantErr: true,
+		},
+		{
+			name:    "tail with start and end is invalid",
+			flags:   captureFlags{TailSet: true, StartSet: true, EndSet: true, Tail: 10},
+			wantErr: true,
+		},
+		{
+			name:    "tail with all is invalid",
+			flags:   captureFlags{TailSet: true, AllSet: true, Tail: 10},
+			wantErr: true,
+		},
+		{
+			name:    "tail with since-line is invalid",
+			flags:   captureFlags{TailSet: true, SinceLineSet: true, Tail: 10, SinceLine: 5},
+			wantErr: true,
+		},
+		{
+			name:    "all with start is invalid",
+			flags:   captureFlags{AllSet: true, StartSet: true},
+			wantErr: true,
+		},
+		{
+			name:    "all with end is invalid",
+			flags:   captureFlags{AllSet: true, EndSet: true},
+			wantErr: true,
+		},
+		{
+			name:    "all with since-line is invalid",
+			flags:   captureFlags{AllSet: true, SinceLineSet: true, SinceLine: 5},
+			wantErr: true,
+		},
+		{
+			name:    "since-line with start is invalid",
+			flags:   captureFlags{SinceLineSet: true, StartSet: true, SinceLine: 5, Start: 1},
+			wantErr: true,
 		},
 		{
 			name:    "tail zero is invalid",
-			tailSet: true,
-			tail:    0,
+			flags:   captureFlags{TailSet: true, Tail: 0},
 			wantErr: true,
 		},
 		{
 			name:    "tail negative is invalid",
-			tailSet: true,
-			tail:    -5,
+			flags:   captureFlags{TailSet: true, Tail: -5},
+			wantErr: true,
+		},
+		{
+			name:    "since-line negative is invalid",
+			flags:   captureFlags{SinceLineSet: true, SinceLine: -1},
+			wantErr: true,
+		},
+		{
+			name:    "max-bytes zero is invalid when set",
+			flags:   captureFlags{MaxBytesSet: true, MaxBytes: 0},
+			wantErr: true,
+		},
+		{
+			name:    "max-bytes negative is invalid",
+			flags:   captureFlags{MaxBytesSet: true, MaxBytes: -10},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateCaptureFlags(tt.tailSet, tt.startSet, tt.endSet, tt.tail)
+			err := validateCaptureFlags(tt.flags)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("validateCaptureFlags(%v, %v, %v, %d) error = %v, wantErr %v",
-					tt.tailSet, tt.startSet, tt.endSet, tt.tail, err, tt.wantErr)
+				t.Errorf("validateCaptureFlags(%+v) error = %v, wantErr %v", tt.flags, err, tt.wantErr)
 			}
 		})
 	}
@@ -623,5 +705,463 @@ func TestBlockNewJSONShape(t *testing.T) {
 	}
 	if id, ok := decoded["blockid"].(string); !ok || id != "1234" {
 		t.Errorf("blockid = %v, want %q", decoded["blockid"], "1234")
+	}
+}
+
+func TestShouldApplyDefaultTail(t *testing.T) {
+	tests := []struct {
+		name  string
+		flags captureFlags
+		want  bool
+	}{
+		{name: "no flags applies default", want: true},
+		{name: "tail set does not apply", flags: captureFlags{TailSet: true, Tail: 10}, want: false},
+		{name: "all set does not apply", flags: captureFlags{AllSet: true}, want: false},
+		{name: "start set does not apply", flags: captureFlags{StartSet: true}, want: false},
+		{name: "end set does not apply", flags: captureFlags{EndSet: true}, want: false},
+		{name: "since-line set does not apply", flags: captureFlags{SinceLineSet: true, SinceLine: 4}, want: false},
+		{name: "max-bytes alone still applies default", flags: captureFlags{MaxBytesSet: true, MaxBytes: 100}, want: true},
+		{name: "last-command does not apply default tail", flags: captureFlags{LastCommandSet: true}, want: false},
+		{name: "last-command with max-bytes does not apply default", flags: captureFlags{LastCommandSet: true, MaxBytesSet: true, MaxBytes: 100}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldApplyDefaultTail(tt.flags)
+			if got != tt.want {
+				t.Errorf("shouldApplyDefaultTail(%+v) = %v, want %v", tt.flags, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveCaptureRequest(t *testing.T) {
+	tests := []struct {
+		name          string
+		flags         captureFlags
+		wantStart     int
+		wantEnd       int
+		wantTail      int
+		wantApplyTail bool
+	}{
+		{
+			name:          "default tail 200",
+			wantStart:     0,
+			wantEnd:       0,
+			wantTail:      defaultCaptureTail,
+			wantApplyTail: true,
+		},
+		{
+			name:          "explicit tail",
+			flags:         captureFlags{TailSet: true, Tail: 50},
+			wantStart:     0,
+			wantEnd:       0,
+			wantTail:      50,
+			wantApplyTail: true,
+		},
+		{
+			name:      "all",
+			flags:     captureFlags{AllSet: true},
+			wantStart: 0,
+			wantEnd:   0,
+		},
+		{
+			name:      "start and end",
+			flags:     captureFlags{StartSet: true, EndSet: true, Start: 10, End: 20},
+			wantStart: 10,
+			wantEnd:   20,
+		},
+		{
+			name:      "since-line maps to LineStart",
+			flags:     captureFlags{SinceLineSet: true, SinceLine: 15},
+			wantStart: 15,
+			wantEnd:   0,
+		},
+		{
+			name:      "since-line with end",
+			flags:     captureFlags{SinceLineSet: true, EndSet: true, SinceLine: 15, End: 40},
+			wantStart: 15,
+			wantEnd:   40,
+		},
+		{
+			name:      "last-command does not tail",
+			flags:     captureFlags{LastCommandSet: true},
+			wantStart: 0,
+			wantEnd:   0,
+		},
+		{
+			name:          "last-command with explicit tail still tails",
+			flags:         captureFlags{LastCommandSet: true, TailSet: true, Tail: 10},
+			wantStart:     0,
+			wantEnd:       0,
+			wantTail:      10,
+			wantApplyTail: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotStart, gotEnd, gotTail, gotApply := resolveCaptureRequest(tt.flags)
+			if gotStart != tt.wantStart || gotEnd != tt.wantEnd || gotTail != tt.wantTail || gotApply != tt.wantApplyTail {
+				t.Errorf("resolveCaptureRequest(%+v) = (%d, %d, %d, %v), want (%d, %d, %d, %v)",
+					tt.flags, gotStart, gotEnd, gotTail, gotApply, tt.wantStart, tt.wantEnd, tt.wantTail, tt.wantApplyTail)
+			}
+		})
+	}
+}
+
+func TestTruncateJoinedOutput(t *testing.T) {
+	tests := []struct {
+		name          string
+		lines         []string
+		maxBytes      int
+		want          []string
+		wantTruncated bool
+	}{
+		{
+			name:     "no limit returns original",
+			lines:    []string{"hello", "world"},
+			maxBytes: 0,
+			want:     []string{"hello", "world"},
+		},
+		{
+			name:     "under limit unchanged",
+			lines:    []string{"ab", "cd"},
+			maxBytes: 100,
+			want:     []string{"ab", "cd"},
+		},
+		{
+			name:          "truncates joined output not per line",
+			lines:         []string{"hello", "world"},
+			maxBytes:      8,
+			want:          []string{"hello", "wo"},
+			wantTruncated: true,
+		},
+		{
+			name:          "exact length not truncated",
+			lines:         []string{"ab", "cd"},
+			maxBytes:      5, // "ab\ncd"
+			want:          []string{"ab", "cd"},
+			wantTruncated: false,
+		},
+		{
+			name:          "empty after truncate",
+			lines:         []string{"hello"},
+			maxBytes:      0,
+			want:          []string{"hello"},
+			wantTruncated: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, truncated := truncateJoinedOutput(tt.lines, tt.maxBytes)
+			if truncated != tt.wantTruncated {
+				t.Errorf("truncateJoinedOutput(%v, %d) truncated = %v, want %v", tt.lines, tt.maxBytes, truncated, tt.wantTruncated)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("truncateJoinedOutput(%v, %d) = %v, want %v", tt.lines, tt.maxBytes, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestApplySinceFilter(t *testing.T) {
+	lines := []string{"a", "b"}
+	tests := []struct {
+		name        string
+		lastUpdated int64
+		sinceMs     int64
+		sinceSet    bool
+		wantEmpty   bool
+	}{
+		{name: "not set returns lines", lastUpdated: 100, sinceMs: 200, wantEmpty: false},
+		{name: "lastupdated equal to since returns empty", lastUpdated: 100, sinceMs: 100, sinceSet: true, wantEmpty: true},
+		{name: "lastupdated less than since returns empty", lastUpdated: 50, sinceMs: 100, sinceSet: true, wantEmpty: true},
+		{name: "lastupdated greater than since returns lines", lastUpdated: 150, sinceMs: 100, sinceSet: true, wantEmpty: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := applySinceFilter(lines, tt.lastUpdated, tt.sinceMs, tt.sinceSet)
+			if tt.wantEmpty {
+				if len(got) != 0 {
+					t.Errorf("applySinceFilter(...) = %v, want empty", got)
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, lines) {
+				t.Errorf("applySinceFilter(...) = %v, want %v", got, lines)
+			}
+		})
+	}
+}
+
+func TestEffectiveLineStart(t *testing.T) {
+	tests := []struct {
+		name          string
+		rpcLineStart  int
+		fetchedCount  int
+		returnedCount int
+		want          int
+	}{
+		{name: "no tail", rpcLineStart: 10, fetchedCount: 5, returnedCount: 5, want: 10},
+		{name: "tailed last 2 of 5 from 0", rpcLineStart: 0, fetchedCount: 5, returnedCount: 2, want: 3},
+		{name: "tailed last 2 of 5 from 10", rpcLineStart: 10, fetchedCount: 5, returnedCount: 2, want: 13},
+		{name: "returned more than fetched clamps skip to 0", rpcLineStart: 4, fetchedCount: 2, returnedCount: 5, want: 4},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := effectiveLineStart(tt.rpcLineStart, tt.fetchedCount, tt.returnedCount)
+			if got != tt.want {
+				t.Errorf("effectiveLineStart(%d, %d, %d) = %d, want %d",
+					tt.rpcLineStart, tt.fetchedCount, tt.returnedCount, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateWaitFlags(t *testing.T) {
+	tests := []struct {
+		name      string
+		untilExit bool
+		contains  string
+		idleSet   bool
+		idleMs    int
+		wantErr   bool
+	}{
+		{name: "until-exit only", untilExit: true},
+		{name: "contains only", contains: "done"},
+		{name: "idle only", idleSet: true, idleMs: 500},
+		{name: "none is invalid", wantErr: true},
+		{name: "until-exit and contains", untilExit: true, contains: "x", wantErr: true},
+		{name: "until-exit and idle", untilExit: true, idleSet: true, idleMs: 100, wantErr: true},
+		{name: "contains and idle", contains: "x", idleSet: true, idleMs: 100, wantErr: true},
+		{name: "all three", untilExit: true, contains: "x", idleSet: true, idleMs: 100, wantErr: true},
+		{name: "idle zero is invalid", idleSet: true, idleMs: 0, wantErr: true},
+		{name: "idle negative is invalid", idleSet: true, idleMs: -1, wantErr: true},
+		{name: "empty contains without other flags is invalid", contains: "", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateWaitFlags(tt.untilExit, tt.contains, tt.idleSet, tt.idleMs)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateWaitFlags(%v, %q, %v, %d) error = %v, wantErr %v",
+					tt.untilExit, tt.contains, tt.idleSet, tt.idleMs, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestParseWaitTimeout(t *testing.T) {
+	got, err := parseDurationFlag("", blockWaitDefaultTimeout)
+	if err != nil {
+		t.Fatalf("parseDurationFlag empty error: %v", err)
+	}
+	if got != blockWaitDefaultTimeout {
+		t.Errorf("empty timeout = %s, want %s", got, blockWaitDefaultTimeout)
+	}
+	got, err = parseDurationFlag("30s", blockWaitDefaultTimeout)
+	if err != nil {
+		t.Fatalf("parseDurationFlag 30s error: %v", err)
+	}
+	if got.Seconds() != 30 {
+		t.Errorf("30s = %s, want 30s", got)
+	}
+}
+
+func TestBlockWaitJSONShape(t *testing.T) {
+	out := blockWaitJSONOutput{OK: true, Reason: "exit", ElapsedMs: 42}
+	bytes, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal() error: %v", err)
+	}
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(bytes, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error: %v", err)
+	}
+	if ok, isBool := decoded["ok"].(bool); !isBool || !ok {
+		t.Errorf("ok = %v, want true", decoded["ok"])
+	}
+	if reason, _ := decoded["reason"].(string); reason != "exit" {
+		t.Errorf("reason = %v, want %q", decoded["reason"], "exit")
+	}
+	if elapsed, ok := decoded["elapsedms"].(float64); !ok || int(elapsed) != 42 {
+		t.Errorf("elapsedms = %v, want 42", decoded["elapsedms"])
+	}
+}
+
+func TestScrollbackContains(t *testing.T) {
+	tests := []struct {
+		name   string
+		lines  []string
+		substr string
+		want   bool
+	}{
+		{name: "found in one line", lines: []string{"hello", "world"}, substr: "ell", want: true},
+		{name: "not found", lines: []string{"hello"}, substr: "xyz", want: false},
+		{name: "empty substr matches", lines: []string{"hello"}, substr: "", want: true},
+		{name: "spans joined newline", lines: []string{"ab", "cd"}, substr: "b\nc", want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := scrollbackContains(tt.lines, tt.substr)
+			if got != tt.want {
+				t.Errorf("scrollbackContains(%v, %q) = %v, want %v", tt.lines, tt.substr, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestShouldRefuseSendKeys(t *testing.T) {
+	const now = int64(10_000)
+	tests := []struct {
+		name            string
+		lastUserInputMs int64
+		wantRefuse      bool
+		wantAgo         int64
+	}{
+		{name: "never typed", lastUserInputMs: 0, wantRefuse: false},
+		{name: "negative treated as never", lastUserInputMs: -1, wantRefuse: false},
+		{name: "typed 1999ms ago refuses", lastUserInputMs: now - 1999, wantRefuse: true, wantAgo: 1999},
+		{name: "typed 2000ms ago allows", lastUserInputMs: now - 2000, wantRefuse: false, wantAgo: 2000},
+		{name: "typed 1ms ago refuses", lastUserInputMs: now - 1, wantRefuse: true, wantAgo: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ago, refuse := shouldRefuseSendKeys(tt.lastUserInputMs, now, sendKeysHumanInputGuardMs)
+			if refuse != tt.wantRefuse {
+				t.Errorf("shouldRefuseSendKeys(%d) refuse = %v, want %v", tt.lastUserInputMs, refuse, tt.wantRefuse)
+			}
+			if refuse && ago != tt.wantAgo {
+				t.Errorf("shouldRefuseSendKeys(%d) ago = %d, want %d", tt.lastUserInputMs, ago, tt.wantAgo)
+			}
+		})
+	}
+}
+
+func TestValidateScreenshotFlags(t *testing.T) {
+	tests := []struct {
+		name       string
+		outputFile string
+		jsonOut    bool
+		wantErr    bool
+	}{
+		{name: "output only", outputFile: "out.png"},
+		{name: "json only", jsonOut: true},
+		{name: "both", outputFile: "out.png", jsonOut: true},
+		{name: "neither is invalid", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateScreenshotFlags(tt.outputFile, tt.jsonOut)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateScreenshotFlags(%q, %v) error = %v, wantErr %v", tt.outputFile, tt.jsonOut, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDecodeScreenshotPNG(t *testing.T) {
+	raw := "aGVsbG8=" // "hello"
+	t.Run("data url prefix stripped", func(t *testing.T) {
+		got, err := decodeScreenshotPNG(pngDataURLPrefix + raw)
+		if err != nil {
+			t.Fatalf("decodeScreenshotPNG error: %v", err)
+		}
+		if string(got) != "hello" {
+			t.Errorf("decodeScreenshotPNG = %q, want %q", got, "hello")
+		}
+	})
+	t.Run("raw base64", func(t *testing.T) {
+		got, err := decodeScreenshotPNG(raw)
+		if err != nil {
+			t.Fatalf("decodeScreenshotPNG error: %v", err)
+		}
+		if string(got) != "hello" {
+			t.Errorf("decodeScreenshotPNG = %q, want %q", got, "hello")
+		}
+	})
+	t.Run("empty is error", func(t *testing.T) {
+		_, err := decodeScreenshotPNG("")
+		if err == nil {
+			t.Errorf("decodeScreenshotPNG empty: want error")
+		}
+	})
+	t.Run("invalid base64 is error", func(t *testing.T) {
+		_, err := decodeScreenshotPNG("not-valid-base64!!!")
+		if err == nil {
+			t.Errorf("decodeScreenshotPNG invalid: want error")
+		}
+	})
+}
+
+func TestBlockScreenshotJSONShape(t *testing.T) {
+	out := blockScreenshotJSONOutput{BlockId: "abc", Bytes: 12, Path: "out.png"}
+	bytes, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal() error: %v", err)
+	}
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(bytes, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error: %v", err)
+	}
+	if id, _ := decoded["blockid"].(string); id != "abc" {
+		t.Errorf("blockid = %v, want abc", decoded["blockid"])
+	}
+	if n, ok := decoded["bytes"].(float64); !ok || int(n) != 12 {
+		t.Errorf("bytes = %v, want 12", decoded["bytes"])
+	}
+	if path, _ := decoded["path"].(string); path != "out.png" {
+		t.Errorf("path = %v, want out.png", decoded["path"])
+	}
+}
+
+func TestBlockDetailsCwdJSON(t *testing.T) {
+	out := BlockDetails{
+		BlockId: "b1",
+		Id:      "block:b1",
+		Cwd:     "/home/user/proj",
+	}
+	bytes, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("json.Marshal() error: %v", err)
+	}
+	var decoded map[string]interface{}
+	if err := json.Unmarshal(bytes, &decoded); err != nil {
+		t.Fatalf("json.Unmarshal() error: %v", err)
+	}
+	if cwd, ok := decoded["cwd"].(string); !ok || cwd != "/home/user/proj" {
+		t.Errorf("cwd = %v, want /home/user/proj", decoded["cwd"])
+	}
+
+	empty := BlockDetails{BlockId: "b2"}
+	bytes, err = json.Marshal(empty)
+	if err != nil {
+		t.Fatalf("json.Marshal() empty error: %v", err)
+	}
+	var decodedEmpty map[string]interface{}
+	if err := json.Unmarshal(bytes, &decodedEmpty); err != nil {
+		t.Fatalf("json.Unmarshal() empty error: %v", err)
+	}
+	if _, ok := decodedEmpty["cwd"]; ok {
+		t.Errorf("empty cwd should be omitted, got %s", string(bytes))
+	}
+}
+
+func TestPickTabIdForBlockRoute(t *testing.T) {
+	tests := []struct {
+		name       string
+		blockTabId string
+		envTabId   string
+		want       string
+	}{
+		{name: "block tab wins over env", blockTabId: "tab-block", envTabId: "tab-env", want: "tab-block"},
+		{name: "falls back to env", blockTabId: "", envTabId: "tab-env", want: "tab-env"},
+		{name: "both empty", blockTabId: "", envTabId: "", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pickTabIdForBlockRoute(tt.blockTabId, tt.envTabId)
+			if got != tt.want {
+				t.Errorf("pickTabIdForBlockRoute(%q, %q) = %q, want %q", tt.blockTabId, tt.envTabId, got, tt.want)
+			}
+		})
 	}
 }

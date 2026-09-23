@@ -233,6 +233,21 @@
                 .block-frame-end-icons {
                     display: flex;
                     flex-shrink: 0;
+                    align-items: center;
+
+                    .block-frame-agent-owned-label {
+                        flex-shrink: 0;
+                        margin-right: 2px;
+                        padding: 1px 5px;
+                        font-size: 10px;
+                        font-weight: 600;
+                        line-height: 14px;
+                        letter-spacing: 0.02em;
+                        color: var(--accent-color);
+                        border: 1px solid rgb(from var(--accent-color) r g b / 0.45);
+                        border-radius: 2px;
+                        opacity: 0.85;
+                    }
 
                     .wave-iconbutton {
                         display: flex;
@@ -431,6 +446,12 @@
                     font-weight: bold;
                     opacity: 0.7;
                 }
+            }
+        }
+
+        &.block-frame-agent-owned:not(.block-focused) {
+            .block-mask {
+                border-color: rgb(from var(--accent-color) r g b / 0.35);
             }
         }
 

@@ -967,19 +967,21 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     }, []);
 
     useEffect(() => {
-        if (model.webviewRef.current == null || !domReady) {
+        if (model.webviewRef.current == null) {
             return;
         }
         try {
             const wcId = model.webviewRef.current.getWebContentsId?.();
             if (wcId) {
                 setWebContentsId(wcId);
-                if (model.webviewRef.current.getZoomFactor() != zoomFactor) {
+                if (domReady && model.webviewRef.current.getZoomFactor() != zoomFactor) {
                     model.webviewRef.current.setZoomFactor(zoomFactor);
                 }
             }
         } catch (e) {
-            console.error("Failed to get webcontentsid / setzoomlevel (webview)", e);
+            if (domReady) {
+                console.error("Failed to get webcontentsid / setzoomlevel (webview)", e);
+            }
         }
     }, [model.webviewRef.current, domReady, zoomFactor]);
 
@@ -1065,6 +1067,16 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
             globalStore.set(model.domReady, true);
             setBgColor();
         };
+        const handleDidAttach = () => {
+            try {
+                const wcId = webview.getWebContentsId?.();
+                if (wcId) {
+                    setWebContentsId(wcId);
+                }
+            } catch (e) {
+                console.error("Failed to get webcontentsid on did-attach", e);
+            }
+        };
         const handleMediaPlaying = () => {
             model.setMediaPlaying(true);
         };
@@ -1082,6 +1094,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         webview.addEventListener("focus", webviewFocus);
         webview.addEventListener("blur", webviewBlur);
         webview.addEventListener("dom-ready", handleDomReady);
+        webview.addEventListener("did-attach", handleDidAttach);
         webview.addEventListener("media-started-playing", handleMediaPlaying);
         webview.addEventListener("media-paused", handleMediaPaused);
         webview.addEventListener("found-in-page", onFoundInPage);
@@ -1098,6 +1111,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
             webview.removeEventListener("focus", webviewFocus);
             webview.removeEventListener("blur", webviewBlur);
             webview.removeEventListener("dom-ready", handleDomReady);
+            webview.removeEventListener("did-attach", handleDidAttach);
             webview.removeEventListener("media-started-playing", handleMediaPlaying);
             webview.removeEventListener("media-paused", handleMediaPaused);
             webview.removeEventListener("found-in-page", onFoundInPage);

@@ -6,6 +6,7 @@ import type { TermViewModel } from "@/app/view/term/term-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { base64ToArrayBuffer } from "@/util/util";
+import { getBlockLastUserInputMs } from "./block-input-state";
 import { RpcResponseHelper, WshClient } from "./wshclient";
 import { RpcApi } from "./wshclientapi";
 
@@ -142,5 +143,15 @@ export class TabClient extends WshClient {
         }
 
         return result;
+    }
+
+    async handle_getblockinputstate(rh: RpcResponseHelper, blockId: string): Promise<BlockInputState> {
+        if (!blockId) {
+            throw new Error("blockid is required");
+        }
+        return {
+            blockid: blockId,
+            lastuserinputms: getBlockLastUserInputMs(blockId),
+        };
     }
 }

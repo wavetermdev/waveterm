@@ -36,6 +36,11 @@ type MetaTSType struct {
 	FrameIcon              string `json:"frame:icon,omitempty"`
 	FrameText              string `json:"frame:text,omitempty"`
 
+	AgentOwned          bool   `json:"agent:owned,omitempty"`
+	AgentParent         string `json:"agent:parent,omitempty"`
+	AgentCmd            string `json:"agent:cmd,omitempty"`
+	AgentIdempotencyKey string `json:"agent:idempotency-key,omitempty"`
+
 	CmdClear            bool     `json:"cmd:*,omitempty"`
 	Cmd                 string   `json:"cmd,omitempty"`
 	CmdInteractive      bool     `json:"cmd:interactive,omitempty"`
@@ -86,8 +91,8 @@ type MetaTSType struct {
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
 	// for workspace
-	LayoutVTabBarWidth      int  `json:"layout:vtabbarwidth,omitempty"`
-	LayoutWidgetsVisible    *bool `json:"layout:widgetsvisible,omitempty"`
+	LayoutVTabBarWidth   int   `json:"layout:vtabbarwidth,omitempty"`
+	LayoutWidgetsVisible *bool `json:"layout:widgetsvisible,omitempty"`
 
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            int      `json:"term:fontsize,omitempty"`

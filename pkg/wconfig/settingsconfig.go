@@ -52,6 +52,7 @@ type SettingsType struct {
 	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
 
 	AgentAllowRemoteLocalControl bool `json:"agent:allowremotelocalcontrol,omitempty" jsonschema:"description=Allow remote wsh sessions to control the local machine"`
+	AgentAllowBrowserControl     bool `json:"agent:allowbrowsercontrol,omitempty" jsonschema:"description=Allow wsh to drive the embedded web widget via CDP (snapshot/screenshot/run/get)"`
 
 	TermClear                  bool     `json:"term:*,omitempty"`
 	TermFontSize               float64  `json:"term:fontsize,omitempty" jsonschema:"description=Terminal font size"`
@@ -230,15 +231,15 @@ type FullConfigType struct {
 }
 
 type ConnKeywords struct {
-	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
-	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
-	ConnWshPath             string `json:"conn:wshpath,omitempty"`
-	ConnShellPath           string `json:"conn:shellpath,omitempty"`
-	ConnIgnoreSshConfig          *bool `json:"conn:ignoresshconfig,omitempty"`
-	ConnStallAutoDisconnect      *bool `json:"conn:stallautodisconnect,omitempty"`
-	ConnStallDisconnectThreshold *int  `json:"conn:stalldisconnectthreshold,omitempty"`
-	ConnConnectCount        *int64 `json:"conn:connectcount,omitempty"`
-	ConnLastConnectTime     *int64 `json:"conn:lastconnecttime,omitempty"`
+	ConnWshEnabled               *bool  `json:"conn:wshenabled,omitempty"`
+	ConnAskBeforeWshInstall      *bool  `json:"conn:askbeforewshinstall,omitempty"`
+	ConnWshPath                  string `json:"conn:wshpath,omitempty"`
+	ConnShellPath                string `json:"conn:shellpath,omitempty"`
+	ConnIgnoreSshConfig          *bool  `json:"conn:ignoresshconfig,omitempty"`
+	ConnStallAutoDisconnect      *bool  `json:"conn:stallautodisconnect,omitempty"`
+	ConnStallDisconnectThreshold *int   `json:"conn:stalldisconnectthreshold,omitempty"`
+	ConnConnectCount             *int64 `json:"conn:connectcount,omitempty"`
+	ConnLastConnectTime          *int64 `json:"conn:lastconnecttime,omitempty"`
 	// ConnAuthPromptUsed records whether the last successful SSH handshake required
 	// an interactive prompt (password typed, key passphrase, or keyboard-interactive).
 	// Persisted so cold-start reconnect can skip the publickey false-positive path

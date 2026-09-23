@@ -2,26 +2,75 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ipcMain, webContents, WebContents } from "electron";
+import { getWaveTabView } from "./emain-tabview";
 import { WaveBrowserWindow } from "./emain-window";
+import { isUsableWebContentsId, tabNotLoadedError } from "./web-agent-pure";
+
+const WebContentsLookupTimeoutMs = 5000;
+const WebContentsLookupPollMs = 200;
 
 export function getWebContentsByBlockId(ww: WaveBrowserWindow, tabId: string, blockId: string): Promise<WebContents> {
-    const prtn = new Promise<WebContents>((resolve, reject) => {
+    const tabView = getWaveTabView(tabId) ?? ww?.allLoadedTabViews?.get(tabId);
+    if (tabView == null || tabView.webContents == null || tabView.webContents.isDestroyed()) {
+        return Promise.reject(tabNotLoadedError(blockId));
+    }
+    return new Promise<WebContents>((resolve, reject) => {
+        let settled = false;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let poll: ReturnType<typeof setInterval> | undefined;
         const randId = Math.floor(Math.random() * 1000000000).toString();
         const respCh = `getWebContentsByBlockId-${randId}`;
-        ww?.activeTabView?.webContents.send("webcontentsid-from-blockid", blockId, respCh);
-        ipcMain.once(respCh, (event, webContentsId) => {
-            if (webContentsId == null) {
-                resolve(null);
+        const finish = (err: Error | null, wc?: WebContents) => {
+            if (settled) {
                 return;
             }
-            const wc = webContents.fromId(parseInt(webContentsId));
+            settled = true;
+            if (timer != null) {
+                clearTimeout(timer);
+            }
+            if (poll != null) {
+                clearInterval(poll);
+            }
+            ipcMain.removeAllListeners(respCh);
+            if (err) {
+                reject(err);
+                return;
+            }
             resolve(wc);
+        };
+        const trySend = () => {
+            if (settled) {
+                return;
+            }
+            if (tabView.webContents == null || tabView.webContents.isDestroyed()) {
+                finish(tabNotLoadedError(blockId));
+                return;
+            }
+            try {
+                tabView.webContents.send("webcontentsid-from-blockid", blockId, respCh);
+            } catch (err) {
+                finish(err instanceof Error ? err : new Error(String(err)));
+            }
+        };
+        timer = setTimeout(() => {
+            finish(tabNotLoadedError(blockId));
+        }, WebContentsLookupTimeoutMs);
+        ipcMain.on(respCh, (_event, webContentsId) => {
+            if (settled) {
+                return;
+            }
+            if (!isUsableWebContentsId(webContentsId)) {
+                return;
+            }
+            const wc = webContents.fromId(parseInt(String(webContentsId), 10));
+            if (wc == null || wc.isDestroyed()) {
+                return;
+            }
+            finish(null, wc);
         });
-        setTimeout(() => {
-            reject(new Error("timeout waiting for response"));
-        }, 2000);
+        trySend();
+        poll = setInterval(trySend, WebContentsLookupPollMs);
     });
-    return prtn;
 }
 
 function escapeSelector(selector: string): string {

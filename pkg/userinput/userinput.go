@@ -43,6 +43,7 @@ type UserInputRequest struct {
 	ConnName      string   `json:"connname,omitempty"`
 	PromptType    string   `json:"prompttype,omitempty"`    // "password", "confirm", etc.
 	Options       []string `json:"options,omitempty"`       // N-option prompt choices (responsetype == "options")
+	DefaultOption string   `json:"defaultoption,omitempty"` // returned on timeout instead of error
 	QueuePosition int      `json:"queueposition,omitempty"` // UX-1.6: 1-based position in prompt queue
 	QueueTotal    int      `json:"queuetotal,omitempty"`    // UX-1.6: total queued prompts for this window
 }
@@ -402,9 +403,10 @@ func (p *FrontendProvider) GetUserInput(ctx context.Context, request *UserInputR
 	}
 
 	// Prompt timeout starts only after queue lock (or immediately if no queue).
-	// Fresh 60s timer — not remaining parent deadline (queue wait may have
+	// Fresh timer — not remaining parent deadline (queue wait may have
 	// consumed most of it). Parent cancel still aborts the prompt wait.
-	const promptWait = 60 * time.Second
+	// Non-auth prompts (wsh prompt) may override via request.TimeoutMs.
+	promptWait := promptWaitDuration(request.TimeoutMs)
 
 	// UX-1.6 residual: now that we are actually prompting (not queued behind
 	// another prompt), re-arm the SSH handshake deadline so the time spent in
@@ -433,7 +435,7 @@ func (p *FrontendProvider) GetUserInput(ctx context.Context, request *UserInputR
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return nil, fmt.Errorf("input wait canceled: %w", context.Canceled)
 		}
-		return nil, fmt.Errorf("timed out waiting for user input")
+		return responseOnPromptTimeout(id, request.DefaultOption)
 	}
 
 	if response.ErrorMsg != "" {
@@ -441,6 +443,28 @@ func (p *FrontendProvider) GetUserInput(ctx context.Context, request *UserInputR
 	}
 
 	return response, err
+}
+
+// promptWaitDuration is the per-request prompt timer. TimeoutMs > 0 overrides
+// the 60s default (used by wsh prompt).
+func promptWaitDuration(timeoutMs int) time.Duration {
+	if timeoutMs > 0 {
+		return time.Duration(timeoutMs) * time.Millisecond
+	}
+	return 60 * time.Second
+}
+
+// responseOnPromptTimeout returns the safe-default response when DefaultOption
+// is set; otherwise a timeout error. User cancel is handled separately.
+func responseOnPromptTimeout(requestId, defaultOption string) (*UserInputResponse, error) {
+	if defaultOption != "" {
+		return &UserInputResponse{
+			Type:      "userinputresp",
+			RequestId: requestId,
+			Text:      defaultOption,
+		}, nil
+	}
+	return nil, fmt.Errorf("timed out waiting for user input")
 }
 
 // waitForWindowPromptLock blocks until mu is locked or ctx is explicitly

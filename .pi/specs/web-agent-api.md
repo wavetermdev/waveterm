@@ -1,8 +1,10 @@
 # Spec: Web Agent API — Browser Control Fabric
 
 **Date:** 2026-08-16
-**Status:** Draft — for discussion
-**Companion to:** [[wsh-agent-api.md]] ("agent control fabric")
+**Status:** Draft — full vision. **Useful v1 is locked:** [[web-agent-api-v1.md]] (implement next; do not implement the full surface from this file).
+**Companion to:** [[wsh-agent-api.md]] ("agent control fabric" — v2 already shipped)
+
+This file is the long-term design. Do not implement the full surface from here. Cut, gates, and the locked v1 command surface live in [[web-agent-api-v1.md]].
 
 ## Problem
 
@@ -98,12 +100,16 @@ await click("@submit");
 
 ## Build Order (phases)
 
+Useful v1 (see [[web-agent-api-v1.md]]) is phases 1–4 + 6, **without** Playwright locators, downloads, or new partition CLI:
+
 1. Un-hide and extend `wsh web get` (executeJavaScript path already works).
 2. AX-snapshot RPC + `wsh web snapshot`.
-3. CDP bridge in emain (`webContents.debugger`) + `wsh web run` runtime + mini-API.
+3. CDP bridge in emain (`webContents.debugger`) + `wsh web run` runtime + mini-API (`navigate`, `snapshot`, `click`/`fill`/`type` by `@N`, `js`, `cdp`, `secret`).
 4. Screenshot + `Input.*` dispatch for click/type.
-5. Partition/session support + auth-flow validation.
-6. `agent:allowbrowsercontrol` trust gate.
+5. Partition/session support + auth-flow validation — **after v1**.
+6. `agent:allowbrowsercontrol` trust gate — **in v1**, default off; still stacked with `agent:allowremotelocalcontrol`.
+
+Playwright-style `getByRole` / `waitFor(selector)` / `--background` / download handling are post-v1.
 
 ## Out of Scope (for now)
 
@@ -132,9 +138,15 @@ await click("@submit");
 
 ## Open Questions
 
-- Download handling — needed for v1?
-- One shared mini-API versioned under `wsh web run`, or per-skill scripts?
+Answered on [[web-agent-api-v1.md]] (locked). Remaining for the **full vision**, not v1:
+
+- Per-partition allowlists
+- Secret namespace grants
+- Whether a later discrete `web click` should use an emain ref cache
+- Downloads, locators, `--background`, MCP
 
 ## Resolved
 
 - **2026-08-16 — Passkeys/WebAuthn: not a blocker.** Too few target sites require them yet; deferred until demand. The Electron rough edge stays documented under Limitations.
+- **2026-09-02 — Useful v1 cut.** Embedded `<webview>` + emain CDP + `@N` snapshot + click/fill + `secret()` + `agent:allowbrowsercontrol` (default off). Locators, downloads, `--background`, partition CLI, MCP: later.
+- **2026-09-02 — Useful v1 locked.** Asymmetric hybrid: discrete observation (`snapshot` / `screenshot` / `get`); code-first action (`web run` mini-API). No discrete click/fill; no Playwright `page` object; no ego-lite task spaces. Details on [[web-agent-api-v1.md]].

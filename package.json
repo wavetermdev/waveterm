@@ -7,7 +7,7 @@
     "productName": "RemoteTerm",
     "description": "Open-Source Remote Development Terminal — SSH-first, local client",
     "license": "Apache-2.0",
-    "version": "0.18.0",
+    "version": "0.19.0",
     "homepage": "https://remoteterm.io",
     "build": {
         "appId": "io.remoteterm.app"

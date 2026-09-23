@@ -36,8 +36,11 @@ func init() {
 	flags.String("cwd", "", "set working directory for command")
 	flags.BoolP("append", "a", false, "append output on restart instead of clearing")
 	flags.Bool("wait", false, "wait for the command to complete and print its output/exit code")
-	flags.Bool("json", false, "with --wait, print machine-readable JSON (stdout, stderr, exitcode, durationms). stderr is always empty because the pty merges stdout and stderr")
+	flags.Bool("json", false, "with --wait, print machine-readable JSON (stdout, stderr, exitcode, durationms, blockid, outputmerged). A PTY merges stdout and stderr, so stderr is always empty and outputmerged is true")
 	flags.String("connection", "", "run the command on the specified connection (overrides the session default connection)")
+	flags.Bool("focus", false, "focus the new block (default: do not steal focus)")
+	flags.Bool("keep-block", false, "with --wait, leave the block open after the command exits")
+	flags.String("timeout", "", "with --wait, max time to wait (default 5m; e.g. 30s, 5m)")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -57,9 +60,16 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	waitForExit, _ := flags.GetBool("wait")
 	jsonOut, _ := flags.GetBool("json")
 	connection, _ := flags.GetString("connection")
+	focus, _ := flags.GetBool("focus")
+	keepBlock, _ := flags.GetBool("keep-block")
+	timeoutStr, _ := flags.GetString("timeout")
 	if jsonOut && !waitForExit {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("--json requires --wait")
+	}
+	timeout, err := parseDurationFlag(timeoutStr, runWaitDefaultTimeout)
+	if err != nil {
+		return fmt.Errorf("parsing --timeout: %w", err)
 	}
 	var cmdArgs []string
 	var useShell bool
@@ -97,7 +107,7 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			return fmt.Errorf("getting current directory: %w", err)
 		}
 	}
-	cwd, err := filepath.Abs(cwd)
+	cwd, err = filepath.Abs(cwd)
 	if err != nil {
 		return fmt.Errorf("getting absolute path: %w", err)
 	}
@@ -128,7 +138,15 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		createMeta[waveobj.MetaKey_CmdRunOnce] = true
 		createMeta[waveobj.MetaKey_CmdRunOnStart] = true
 	}
-	if forceExit {
+	if waitForExit && !keepBlock {
+		createMeta[waveobj.MetaKey_CmdCloseOnExitForce] = true
+		// close-on-exit races with reading the term file (2s settle). Keep a
+		// delay long enough that waitForRunBlock can finish the read; the CLI
+		// then deletes the block itself.
+		if delayMs < 5000 {
+			delayMs = 5000
+		}
+	} else if forceExit {
 		createMeta[waveobj.MetaKey_CmdCloseOnExitForce] = true
 	} else if exit {
 		createMeta[waveobj.MetaKey_CmdCloseOnExit] = true
@@ -162,7 +180,7 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: magnified,
-		Focused:   true,
+		Focused:   focus,
 	}
 
 	oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
@@ -175,5 +193,11 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return nil
 	}
 
-	return waitForRunBlock(oref.OID, connName, jsonOut)
+	if err := waitForRunBlock(oref.OID, connName, jsonOut, timeout); err != nil {
+		return err
+	}
+	if !keepBlock {
+		_ = wshclient.DeleteBlockCommand(RpcClient, wshrpc.CommandDeleteBlockData{BlockId: oref.OID}, &wshrpc.RpcOpts{Timeout: 2000})
+	}
+	return nil
 }

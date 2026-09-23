@@ -9,7 +9,8 @@
           "type": "boolean"
         },
         "app:globalhotkey": {
-          "type": "string"
+          "type": "string",
+          "description": "Global hotkey to summon Wave"
         },
         "app:dismissarchitecturewarning": {
           "type": "boolean"
@@ -24,7 +25,8 @@
           "type": "boolean"
         },
         "app:confirmquit": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Prompt for confirmation before quitting"
         },
         "app:disablectrlshiftarrows": {
           "type": "boolean"
@@ -45,7 +47,8 @@
           "enum": [
             "top",
             "left"
-          ]
+          ],
+          "description": "Tab bar placement"
         },
         "feature:waveappbuilder": {
           "type": "boolean"
@@ -54,23 +57,31 @@
           "type": "boolean",
           "description": "Allow remote wsh sessions to control the local machine"
         },
+        "agent:allowbrowsercontrol": {
+          "type": "boolean",
+          "description": "Allow wsh to drive the embedded web widget via CDP (snapshot/screenshot/run/get)"
+        },
         "term:*": {
           "type": "boolean"
         },
         "term:fontsize": {
-          "type": "number"
+          "type": "number",
+          "description": "Terminal font size"
         },
         "term:fontfamily": {
-          "type": "string"
+          "type": "string",
+          "description": "Terminal font family"
         },
         "term:theme": {
-          "type": "string"
+          "type": "string",
+          "description": "Terminal color theme"
         },
         "term:disablewebgl": {
           "type": "boolean"
         },
         "term:localshellpath": {
-          "type": "string"
+          "type": "string",
+          "description": "Path to the local shell binary"
         },
         "term:localshellopts": {
           "items": {
@@ -82,13 +93,15 @@
           "type": "string"
         },
         "term:scrollback": {
-          "type": "integer"
+          "type": "integer",
+          "description": "Terminal scrollback buffer size (lines)"
         },
         "term:copyonselect": {
           "type": "boolean"
         },
         "term:transparency": {
-          "type": "number"
+          "type": "number",
+          "description": "Terminal background transparency"
         },
         "term:allowbracketedpaste": {
           "type": "boolean"
@@ -137,7 +150,8 @@
           "type": "boolean"
         },
         "editor:fontsize": {
-          "type": "number"
+          "type": "number",
+          "description": "Editor font size"
         },
         "editor:inlinediff": {
           "type": "boolean"

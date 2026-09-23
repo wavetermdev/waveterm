@@ -94,17 +94,19 @@ func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMess
 // buildPromptRequest builds the userinput.UserInputRequest for the `wsh prompt`
 // RPC. Pure function kept separate for testability. When options is empty the
 // prompt is a free-text input; otherwise it becomes an N-option picker.
-func buildPromptRequest(question string, title string, options []string) *userinput.UserInputRequest {
+func buildPromptRequest(question string, title string, options []string, timeoutMs int, defaultOption string) *userinput.UserInputRequest {
 	if title == "" {
 		title = "Wave Terminal"
 	}
 	request := &userinput.UserInputRequest{
-		QueryText:    question,
-		Title:        title,
-		ResponseType: "text",
-		Markdown:     false,
-		PublicText:   true,
-		PromptType:   "confirm",
+		QueryText:     question,
+		Title:         title,
+		ResponseType:  "text",
+		Markdown:      false,
+		PublicText:    true,
+		PromptType:    "confirm",
+		TimeoutMs:     timeoutMs,
+		DefaultOption: defaultOption,
 	}
 	if len(options) > 0 {
 		request.ResponseType = "options"
@@ -120,7 +122,8 @@ func (ws *WshServer) PromptCommand(ctx context.Context, data wshrpc.CommandPromp
 	defer func() {
 		panichandler.PanicHandler("PromptCommand", recover())
 	}()
-	request := buildPromptRequest(data.Question, data.Title, data.Options)
+	request := buildPromptRequest(data.Question, data.Title, data.Options, data.TimeoutMs, data.DefaultOption)
+	log.Printf("[agent-audit] prompt shown timeoutms=%d hasdefault=%v\n", request.TimeoutMs, request.DefaultOption != "")
 	response, err := userinput.GetUserInput(ctx, request)
 	if err != nil {
 		return "", err
@@ -210,6 +213,69 @@ func (ws *WshServer) UpdateWorkspaceTabIdsCommand(ctx context.Context, workspace
 	}
 	wcore.SendWaveObjUpdate(oref)
 	return nil
+}
+
+func sendWorkspaceUpdates(ctx context.Context, label string) {
+	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler(label, recover())
+		}()
+		wps.Broker.SendUpdateEvents(updates)
+	}()
+}
+
+func (ws *WshServer) CreateTabCommand(ctx context.Context, data wshrpc.CommandCreateTabData) (wshrpc.CommandCreateTabRtnData, error) {
+	if data.WorkspaceId == "" {
+		return wshrpc.CommandCreateTabRtnData{}, fmt.Errorf("workspaceid is required")
+	}
+	ctx = waveobj.ContextWithUpdates(ctx)
+	tabId, err := wcore.CreateTab(ctx, data.WorkspaceId, data.Name, data.Activate, false, data.Connection)
+	if err != nil {
+		return wshrpc.CommandCreateTabRtnData{}, fmt.Errorf("creating tab: %w", err)
+	}
+	sendWorkspaceUpdates(ctx, "CreateTabCommand:SendUpdateEvents")
+	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+	name := data.Name
+	if err == nil && tab != nil {
+		name = tab.Name
+	}
+	log.Printf("[agent-audit] tab create workspace=%s tab=%s name=%q\n", data.WorkspaceId, tabId, name)
+	return wshrpc.CommandCreateTabRtnData{TabId: tabId, Name: name}, nil
+}
+
+func (ws *WshServer) SetActiveTabCommand(ctx context.Context, data wshrpc.CommandSetActiveTabData) error {
+	if data.WorkspaceId == "" || data.TabId == "" {
+		return fmt.Errorf("workspaceid and tabid are required")
+	}
+	ctx = waveobj.ContextWithUpdates(ctx)
+	err := wcore.SetActiveTab(ctx, data.WorkspaceId, data.TabId)
+	if err != nil {
+		return fmt.Errorf("setting active tab: %w", err)
+	}
+	sendWorkspaceUpdates(ctx, "SetActiveTabCommand:SendUpdateEvents")
+	return nil
+}
+
+func (ws *WshServer) DeleteTabCommand(ctx context.Context, data wshrpc.CommandDeleteTabData) (wshrpc.CommandDeleteTabRtnData, error) {
+	if data.WorkspaceId == "" || data.TabId == "" {
+		return wshrpc.CommandDeleteTabRtnData{}, fmt.Errorf("workspaceid and tabid are required")
+	}
+	wsObj, err := wcore.GetWorkspace(ctx, data.WorkspaceId)
+	if err != nil {
+		return wshrpc.CommandDeleteTabRtnData{}, err
+	}
+	if len(wsObj.TabIds) <= 1 {
+		return wshrpc.CommandDeleteTabRtnData{}, fmt.Errorf("refusing to close the last tab in the workspace")
+	}
+	ctx = waveobj.ContextWithUpdates(ctx)
+	newActive, err := wcore.DeleteTab(ctx, data.WorkspaceId, data.TabId, true)
+	if err != nil {
+		return wshrpc.CommandDeleteTabRtnData{}, fmt.Errorf("closing tab: %w", err)
+	}
+	sendWorkspaceUpdates(ctx, "DeleteTabCommand:SendUpdateEvents")
+	log.Printf("[agent-audit] tab close workspace=%s tab=%s newactive=%s\n", data.WorkspaceId, data.TabId, newActive)
+	return wshrpc.CommandDeleteTabRtnData{NewActiveTabId: newActive}, nil
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {

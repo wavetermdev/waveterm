@@ -124,6 +124,19 @@ const UserInputPrompt = (userInputRequest: UserInputPromptProps) => {
         return <span>{userInputRequest.querytext}</span>;
     }, [userInputRequest.markdown, userInputRequest.querytext]);
 
+    const defaultTimeoutHint = useMemo(() => {
+        if (!userInputRequest.defaultoption) {
+            return null;
+        }
+        const timeoutMs = userInputRequest.timeoutms;
+        const timeoutSec = timeoutMs > 0 ? Math.round(timeoutMs / 1000) : 60;
+        return (
+            <div className="text-xs text-white/50">
+                If you don't answer, this will default to {userInputRequest.defaultoption} in {timeoutSec}s
+            </div>
+        );
+    }, [userInputRequest.defaultoption, userInputRequest.timeoutms]);
+
     const inputBox = useMemo(() => {
         if (userInputRequest.responsetype === "confirm" || userInputRequest.responsetype === "options") {
             return <></>;
@@ -219,6 +232,7 @@ const UserInputPrompt = (userInputRequest: UserInputPromptProps) => {
                 </div>
                 <div className="userinput-prompt-body">
                     {queryText}
+                    {defaultTimeoutHint}
                     {inputBox}
                     {optionsBox}
                     {optionalCheckbox}

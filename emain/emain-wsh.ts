@@ -6,9 +6,11 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification, net, safeStorage, shell } from "electron";
 
+import { assertWebAgentControl, runWebRun, runWebScreenshot, runWebSnapshot } from "./emain-web-agent";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
+import { tabNotLoadedError } from "./web-agent-pure";
 
 export class ElectronWshClientType extends WshClient {
     constructor() {
@@ -16,6 +18,8 @@ export class ElectronWshClientType extends WshClient {
     }
 
     async handle_webselector(rh: RpcResponseHelper, data: CommandWebSelectorData): Promise<string[]> {
+        await assertWebAgentControl(rh);
+        console.log("[agent-audit]", "web get", data.blockid, data.selector);
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("tabid and blockid are required");
         }
@@ -25,10 +29,25 @@ export class ElectronWshClientType extends WshClient {
         }
         const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
         if (wc == null) {
-            throw new Error(`no webcontents found with blockid ${data.blockid}`);
+            throw tabNotLoadedError(data.blockid);
         }
         const rtn = await webGetSelector(wc, data.selector, data.opts);
         return rtn;
+    }
+
+    async handle_webrun(rh: RpcResponseHelper, data: CommandWebRunData): Promise<WebRunResult> {
+        return runWebRun(rh, data);
+    }
+
+    async handle_websnapshot(rh: RpcResponseHelper, data: CommandWebSnapshotData): Promise<WebSnapshotResult> {
+        return runWebSnapshot(rh, data);
+    }
+
+    async handle_webscreenshot(
+        rh: RpcResponseHelper,
+        data: CommandWebScreenshotData
+    ): Promise<WebScreenshotResult> {
+        return runWebScreenshot(rh, data);
     }
 
     async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {

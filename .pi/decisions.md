@@ -669,3 +669,45 @@ Gates are soft (delay/retry, user Connect can bypass). They do not prove the SSH
 **Deferred (with rationale):** `docs/` Docusaurus site (no fork docs host — in-app links stay on `docs.waveterm.dev`, accurate for the shared codebase); `build/deb-postinstall.tpl` `/opt/Wave` paths and `Taskfile.yml` `APP_NAME` (packaging identity / migration risk); `wsh` CLI help and Go dialog strings (code, not chrome); logo artwork (wave motif acceptable; `aria-label` already RemoteTerm); data-dir/env-var rename (needs tested migration, own spec).
 
 **Files:** `package.json`, `index.html`, `electron-builder.config.cjs`, `frontend/app/{onboarding/onboarding.tsx, modals/{about,modalsrenderer,modalregistry}.tsx, workspace/widgets.tsx, element/quicktips.tsx}`, `README.md`, `AGENTS.md`, `.pi/`, `.github/ISSUE_TEMPLATE/bug-report.yml`.
+
+## 2026-09-02: Web CDP companion — useful v1 cut (spec next)
+
+**Decision:** Treat Wave’s existing web widget (Electron `<webview>`, `wsh web open`) as the agent browser. Do not add a separate Chrome, cloud browser, or Playwright/Puppeteer dependency. Ship a **useful v1** smaller than [[specs/web-agent-api.md]], specified in [[specs/web-agent-api-v1.md]] before any implementation.
+
+**Context:** Agent Control Fabric v2 is implemented on `feat/agent-control-fabric`. Agents still cannot drive the embedded browser. The parent web spec is the ego-lite-shaped full vision (code-first mini-API over `webContents.debugger`, AX `@N` refs, partitions, locators). Effort for that full surface is ~3–5 weeks; a useful first ship is ~1.5–2.5 weeks.
+
+**v1 includes:** CDP attach in emain; compact AX snapshot with `@N` refs; `click`/`fill`/`type` via `Input.*`; `js` / optional `cdp` escape hatch; `secret(name)` from the Wave secret store; `wsh web snapshot` / `screenshot`; un-hide `wsh web get`; setting `agent:allowbrowsercontrol` default **off**, stacked with existing `agent:allowremotelocalcontrol`. Connection gate is **not** widened.
+
+**v1 excludes:** Playwright locators (`getByRole` etc.), downloads, `--background` / partition CLI flags, MCP, passkeys (already deferred 2026-08-16).
+
+**Next:** implement from the locked spec. Do not start from the parent vision doc.
+
+**Reuse:** `emain/emain-web.ts` (`getWebContentsByBlockId`, `webGetSelector`), `cmd/wsh/cmd/wshcmd-web.go`, `web:partition`, `clear-webview-storage`. Block-layout screenshots are not page CDP screenshots.
+
+## 2026-09-02: Web CDP v1 surface — asymmetric hybrid (locked)
+
+**Decision:** Surface the embedded `<webview>` to agents as **discrete observation + code-first action**, not as ego-lite’s product CLI and not as Playwright MCP.
+
+**Context:** ego-lite’s agent API is a Node heredoc (`ego-browser nodejs <<'EOF'`) with injected JS helpers, not `ego-browser click 3`. That is the right *mechanism* (CDP + AX `@N` + `Input.*` in a host runtime). Wave already has `wsh` as the agent CLI, emain as a long-lived host, and a remote-first RPC path. Cloning task spaces, a fake `page` object, locators, or a discrete click CLI would either lie to agents or add ref-cache work we do not need for v1.
+
+**Surface:**
+
+1. **Look** with `wsh web snapshot` / `screenshot` / un-hidden `get` — one RPC, data out, no action refs that survive the process.
+2. **Act** with `wsh web run` and a small function mini-API (`navigate`, `snapshot`, `click`/`fill`/`type`, `js`, `cdp`, `secret`, `sleep`, `print`, `pageInfo`). `@N` refs live for that run only.
+3. **Do not ship** discrete `web click` / `fill` / top-level `cdp`, Playwright locators, `--background`, MCP, or ego-lite task spaces.
+
+**Gates:** `agent:allowbrowsercontrol` default off on `run`/`snapshot`/`screenshot`/`get` (not `open`). Stack with existing `agent:allowremotelocalcontrol` for remote-origin → local webview. Connection gate unchanged.
+
+**Other locks:** refuse DevTools conflict (do not steal); detach debugger after every command; fix `getWebContentsByBlockId` to the block’s tab (no auto-focus); `sleep` + snapshot loop (no `waitFor`); any secret name, audit the name; 256 KiB / 60s default / 5m max on `web run`.
+
+**Files:** `.pi/specs/web-agent-api-v1.md` (locked). Parent vision remains draft: `.pi/specs/web-agent-api.md`.
+
+## 2026-09-02: Crawl4AI is not the Wave web-agent surface
+
+**Decision:** Do not vendor Crawl4AI (`crwl`), Firecrawl, or Playwright-as-a-crawler into Wave. Do not pivot v1 off `webContents.debugger` + AX `@N` + `web run`.
+
+**Context:** Reading a page well (boilerplate, shadow DOM, iframes, cookie banners, markdown-for-LLM) is a real problem. Crawl4AI is built for that: Playwright crawler → cleaned HTML → markdown / `fit_markdown` / CSS-or-LLM extraction. Identity crawling uses **its** Chromium `user_data_dir`, not Wave’s web widget. Connecting it to Electron would mean `--remote-debugging-port`, which v1 already forbids.
+
+**Split:** crawlers ingest **URLs** into text. Wave v1 drives the **user’s logged-in `<webview>`** so an agent can click, fill, and submit. An agent that only needs public-page markdown can already run `crwl` on the remote machine as a user-installed tool.
+
+**Later (not v1):** if article-style reading of the *current widget* is painful, add a thin `wsh web markdown` that runs Readability/html2text/pruning on HTML taken from the guest. Steal the extraction idea, not the crawler.
