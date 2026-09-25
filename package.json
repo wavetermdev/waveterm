@@ -56,6 +56,7 @@
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",
         "sass": "1.91.0",
+        "sharp": "^0.34.5",
         "tailwindcss": "^4.3.1",
         "ts-node": "^10.9.2",
         "tsx": "^4.22.4",
