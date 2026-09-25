@@ -91,6 +91,27 @@
     .close {
         visibility: hidden;
     }
+
+    &.locked {
+        .tab-inner {
+            box-shadow: inset 0 0 0 1px rgb(255 180 0 / 0.45);
+            background: rgb(255 180 0 / 0.08);
+        }
+
+        .close {
+            display: none;
+        }
+
+        .lock-icon {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            transform: translate3d(0, -50%, 0);
+            z-index: var(--zindex-tab-name);
+            font-size: 11px;
+            pointer-events: none;
+        }
+    }
 }
 
 // Only apply hover effects when not in nohover mode. This prevents the previously-hovered tab from remaining hovered while a tab view is not mounted.

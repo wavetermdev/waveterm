@@ -91,6 +91,7 @@ const (
 
 	MetaKey_TabFlagColor                     = "tab:flagcolor"
 	MetaKey_TabBackground                    = "tab:background"
+	MetaKey_TabLocked                        = "tab:locked"
 
 	MetaKey_BgClear                          = "bg:*"
 	MetaKey_Bg                               = "bg"

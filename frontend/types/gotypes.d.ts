@@ -1156,6 +1156,7 @@ declare global {
         "sysinfo:type"?: string;
         "tab:flagcolor"?: string;
         "tab:background"?: string;
+        "tab:locked"?: boolean;
         "bg:*"?: boolean;
         bg?: string;
         "bg:opacity"?: number;
@@ -1589,6 +1590,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
