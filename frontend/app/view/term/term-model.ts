@@ -1,10 +1,10 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { showAlert, showErrorAlert } from "@/app/modals/alertmodal";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
-import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -998,15 +998,11 @@ export class TermViewModel implements ViewModel {
                             } catch (error) {
                                 console.error("Failed to save scrollback:", error);
                                 const errorMessage = error?.message || "An unknown error occurred";
-                                modalsModel.pushModal("MessageModal", {
-                                    children: `Failed to save session scrollback: ${errorMessage}`,
-                                });
+                                showErrorAlert(`Failed to save session scrollback: ${errorMessage}`);
                             }
                         });
                     } else {
-                        modalsModel.pushModal("MessageModal", {
-                            children: "No scrollback content to save.",
-                        });
+                        showAlert({ title: "Save Session", message: "No scrollback content to save." });
                     }
                 }
             },

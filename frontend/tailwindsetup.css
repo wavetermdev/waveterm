@@ -24,6 +24,7 @@
     --color-accent-800: rgb(22, 81, 35);
     --color-accent-900: rgb(15, 61, 29);
     --color-error: rgb(229, 77, 46);
+    --color-errormsg: rgb(255, 80, 60);
     --color-warning: rgb(224, 185, 86);
     --color-success: rgb(78, 154, 6);
     --color-panel: rgba(31, 33, 31, 0.5);

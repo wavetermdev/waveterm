@@ -23,6 +23,7 @@ export const PreviewClientId = crypto.randomUUID();
 export const WebBlockId = crypto.randomUUID();
 export const SysinfoBlockId = crypto.randomUUID();
 export const ProcessViewerBlockId = crypto.randomUUID();
+export const NotesBlockId = crypto.randomUUID();
 
 // What works "out of the box" in the mock environment (no MockEnv overrides needed):
 //
@@ -417,6 +418,14 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
             version: 1,
             meta: {
                 view: "processviewer",
+            },
+        } as Block,
+        [`block:${NotesBlockId}`]: {
+            otype: "block",
+            oid: NotesBlockId,
+            version: 1,
+            meta: {
+                view: "notes",
             },
         } as Block,
     };

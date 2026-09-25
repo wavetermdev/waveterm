@@ -26,4 +26,6 @@ type ObjRTInfo struct {
 	WaveAIChatId          string `json:"waveai:chatid,omitempty"`
 	WaveAIMode            string `json:"waveai:mode,omitempty"`
 	WaveAIMaxOutputTokens int    `json:"waveai:maxoutputtokens,omitempty"`
+
+	NotesCursorPos int `json:"notes:cursorpos,omitempty"`
 }

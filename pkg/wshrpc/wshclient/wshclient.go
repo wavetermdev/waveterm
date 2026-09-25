@@ -442,6 +442,12 @@ func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wsh
 	return resp, err
 }
 
+// command "getnote", wshserver.GetNoteCommand
+func GetNoteCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.NoteData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.NoteData](w, "getnote", nil, opts)
+	return resp, err
+}
+
 // command "getrtinfo", wshserver.GetRTInfoCommand
 func GetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandGetRTInfoData, opts *wshrpc.RpcOpts) (*waveobj.ObjRTInfo, error) {
 	resp, err := sendRpcRequestCallHelper[*waveobj.ObjRTInfo](w, "getrtinfo", data, opts)
@@ -1039,6 +1045,12 @@ func WriteAppGoFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppGoFileD
 // command "writeappsecretbindings", wshserver.WriteAppSecretBindingsCommand
 func WriteAppSecretBindingsCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppSecretBindingsData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "writeappsecretbindings", data, opts)
+	return err
+}
+
+// command "writenote", wshserver.WriteNoteCommand
+func WriteNoteCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteNoteData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "writenote", data, opts)
 	return err
 }
 
