@@ -945,7 +945,29 @@ func (ws *WshServer) BlocksListCommand(
 }
 
 func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.WorkspaceInfoData, error) {
-	workspaceList, err := wcore.ListWorkspaces(ctx)
+	return workspaceListInternal(ctx, false)
+}
+
+// WorkspaceListAllCommand is the CLI-only counterpart backing wsh workspace
+// list / wsh blocks list: it includes unsaved (scratch) workspaces too,
+// since CLI tooling needs visibility into every live workspace's tabs and
+// blocks regardless of whether the user has named it. WorkspaceListCommand
+// itself is also called from emain (Electron Workspace menu, Alt+Ctrl+N
+// workspace switching), which relies on unsaved workspaces staying
+// excluded there to avoid blank menu entries and shortcut slots - so it
+// must keep its original behavior unchanged.
+func (ws *WshServer) WorkspaceListAllCommand(ctx context.Context) ([]wshrpc.WorkspaceInfoData, error) {
+	return workspaceListInternal(ctx, true)
+}
+
+func workspaceListInternal(ctx context.Context, includeUnsaved bool) ([]wshrpc.WorkspaceInfoData, error) {
+	var workspaceList waveobj.WorkspaceList
+	var err error
+	if includeUnsaved {
+		workspaceList, err = wcore.ListAllWorkspaces(ctx)
+	} else {
+		workspaceList, err = wcore.ListWorkspaces(ctx)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error listing workspaces: %w", err)
 	}

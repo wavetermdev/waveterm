@@ -1032,6 +1032,12 @@ export class RpcApiType {
         return client.wshRpcCall("workspacelist", null, opts);
     }
 
+    // command "workspacelistall" [call]
+    WorkspaceListAllCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceInfoData[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "workspacelistall", null, opts);
+        return client.wshRpcCall("workspacelistall", null, opts);
+    }
+
     // command "writeappfile" [call]
     WriteAppFileCommand(client: WshClient, data: CommandWriteAppFileData, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "writeappfile", data, opts);
