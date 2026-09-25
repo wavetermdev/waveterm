@@ -2052,6 +2052,7 @@ declare global {
         code: string;
         repeat?: boolean;
         location?: number;
+        isComposing?: boolean;
         shift?: boolean;
         control?: boolean;
         alt?: boolean;
