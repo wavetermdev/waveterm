@@ -198,6 +198,15 @@ func EnsureWaveDBDir() error {
 }
 
 func EnsureWaveConfigDir() error {
+	// Symlink ~/.config/waveterm → snap config dir so external edits are visible.
+	if ClientPackageType() == "snap" {
+		stdDir := filepath.Join(GetHomeDir(), ".config", "waveterm")
+		if _, err := os.Lstat(stdDir); os.IsNotExist(err) {
+			if err := os.Symlink(GetWaveConfigDir(), stdDir); err != nil {
+				log.Printf("wavebase: symlink %s: %v\n", stdDir, err)
+			}
+		}
+	}
 	return CacheEnsureDir(GetWaveConfigDir(), "waveconfig", 0700, "wave config directory")
 }
 
