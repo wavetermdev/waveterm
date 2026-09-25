@@ -271,6 +271,11 @@ const BlockFrame_Header = ({
                     isTerminalBlock={isTerminalBlock}
                 />
             )}
+            {useTermHeader && metaFrameTitle && (
+                <div className="block-frame-durable-title" key="frame-title">
+                    {metaFrameTitle}
+                </div>
+            )}
             {useTermHeader && termConfigedDurable != null && (
                 <DurableSessionFlyover
                     key="durable-status"

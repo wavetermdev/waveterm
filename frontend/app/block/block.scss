@@ -115,6 +115,20 @@
                     }
                 }
 
+                // Durable shell blocks (useTermHeader) render frame:title as
+                // a direct child of block-frame-default-header, outside
+                // block-frame-default-header-iconview, so it needs its own
+                // copy of the shrink/truncate rules rather than reusing
+                // block-frame-view-type - that class only has an effect
+                // nested under the iconview wrapper above.
+                .block-frame-durable-title {
+                    overflow-x: hidden;
+                    text-wrap: nowrap;
+                    text-overflow: ellipsis;
+                    flex-shrink: 1;
+                    min-width: 0;
+                }
+
                 .block-frame-text {
                     font: var(--fixed-font);
                     font-size: 11px;
