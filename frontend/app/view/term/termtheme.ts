@@ -20,8 +20,8 @@ const TermThemeUpdater = ({ blockId, model, termRef }: TermThemeProps) => {
     const transparency = useAtomValue(model.termTransparencyAtom);
     const [theme, _] = computeTheme(fullConfig, blockTermTheme, transparency);
     useEffect(() => {
-        if (termRef.current?.terminal) {
-            termRef.current.terminal.options.theme = theme;
+        if (termRef.current != null) {
+            termRef.current.setTheme(theme);
         }
     }, [theme]);
     return null;
