@@ -120,10 +120,14 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         }
         setBlockClicked(false);
         const focusWithin = focusedBlockId() == nodeModel.blockId;
-        if (!focusWithin) {
+        // blockClicked is state and lags one commit, so this effect also runs when the block is
+        // losing focus. In that case DOM focus already moved to another block (focusWithin is false)
+        // and isFocused is false. Without these guards the de-focusing block re-grabs both DOM and
+        // logical focus, which makes two web blocks fight over focus indefinitely (webview-focus flap).
+        if (!focusWithin && isFocused) {
             setFocusTarget();
         }
-        if (!isFocused) {
+        if (!isFocused && focusWithin) {
             nodeModel.focusNode();
         }
     }, [blockClicked, isFocused]);
