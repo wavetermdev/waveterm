@@ -353,7 +353,7 @@ declare global {
         isBasicTerm?: (getFn: jotai.Getter) => boolean;
 
         // Returns menu items for the settings dropdown.
-        getSettingsMenuItems?: () => ContextMenuItem[];
+        getSettingsMenuItems?: () => ContextMenuItem[] | Promise<ContextMenuItem[]>;
 
         // Attempts to give focus to the block, returning true if successful.
         giveFocus?: () => boolean;

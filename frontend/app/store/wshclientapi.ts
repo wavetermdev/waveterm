@@ -618,6 +618,12 @@ export class RpcApiType {
         return client.wshRpcCall("listalleditableapps", null, opts);
     }
 
+    // command "listtmuxsessions" [call]
+    ListTmuxSessionsCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<string[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "listtmuxsessions", data, opts);
+        return client.wshRpcCall("listtmuxsessions", data, opts);
+    }
+
     // command "macosversion" [call]
     MacOSVersionCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "macosversion", null, opts);
