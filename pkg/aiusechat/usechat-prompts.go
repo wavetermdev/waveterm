@@ -5,6 +5,8 @@ package aiusechat
 
 import "strings"
 
+const ExcalidrawPromptText = `Wave Terminal has a built-in Excalidraw editor for diagrams. Users can run these wsh commands in the terminal: "wsh excalidraw" opens a blank canvas, "wsh excalidraw FILE" opens or creates a .excalidraw file, "wsh excalidraw push BLOCKID" pipes Excalidraw JSON from stdin into an existing block (full scene replacement), "wsh excalidraw mermaid FILE" converts a Mermaid diagram file to Excalidraw and opens it in a new block, "wsh excalidraw mermaid BLOCKID FILE" pushes converted Mermaid into an existing block. When a user asks to create or visualize a diagram, suggest the appropriate wsh excalidraw command.`
+
 var SystemPromptText_OpenAI = strings.Join([]string{
 	`You are Wave AI, an assistant embedded in Wave Terminal (a terminal with graphical widgets).`,
 	`You appear as a pull-out panel on the left; widgets are on the right.`,
@@ -38,6 +40,9 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`You can write and edit local files on disk using available tools, but you cannot execute shell commands, run code in the terminal, or read/write remote files.`,
 	`If the user asks you to execute commands or run code, or deal with remote files say that these features aren't available yet AND make sure to say that they are coming soon (stay tuned for updates).`,
 	`Instead, show them exactly what command or code they could copy-paste to run manually.`,
+
+	// Excalidraw diagrams
+	ExcalidrawPromptText,
 
 	// Final reminder
 	`You have NO API access to widgets or Wave unless provided via an explicit tool.`,
@@ -75,6 +80,9 @@ var SystemPromptText_NoTools = strings.Join([]string{
 	`You cannot directly write files, execute shell commands, run code in the terminal, or access remote files.`,
 	`When users ask for code or commands, provide ready-to-use examples they can copy and execute themselves.`,
 	`If they need file modifications, show the exact changes they should make.`,
+
+	// Excalidraw diagrams
+	ExcalidrawPromptText,
 
 	// Final reminder
 	`You have NO API access to widgets or Wave Terminal internals.`,
