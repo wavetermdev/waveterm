@@ -24,7 +24,6 @@ import { getActiveTabModel } from "@/app/store/tab-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
-import { isWindows } from "@/util/platformutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
@@ -500,274 +499,250 @@ function countTermBlocks(): number {
     return count;
 }
 
-function registerGlobalKeys() {
-    globalKeyMap.set("Cmd:]", () => {
-        switchTab(1);
-        return true;
-    });
-    globalKeyMap.set("Shift:Cmd:]", () => {
-        switchTab(1);
-        return true;
-    });
-    globalKeyMap.set("Cmd:[", () => {
-        switchTab(-1);
-        return true;
-    });
-    globalKeyMap.set("Shift:Cmd:[", () => {
-        switchTab(-1);
-        return true;
-    });
-    globalKeyMap.set("Cmd:n", () => {
-        handleCmdN();
-        return true;
-    });
-    globalKeyMap.set("Cmd:d", () => {
-        handleSplitHorizontal("after");
-        return true;
-    });
-    globalKeyMap.set("Shift:Cmd:d", () => {
-        handleSplitVertical("after");
-        return true;
-    });
-    globalKeyMap.set("Cmd:i", () => {
-        handleCmdI();
-        return true;
-    });
-    globalKeyMap.set("Cmd:t", () => {
-        createTab();
-        return true;
-    });
-    globalKeyMap.set("Cmd:w", () => {
-        genericClose();
-        return true;
-    });
-    globalKeyMap.set("Cmd:Shift:w", () => {
-        simpleCloseStaticTab();
-        return true;
-    });
-    globalKeyMap.set("Cmd:m", () => {
-        const layoutModel = getLayoutModelForStaticTab();
-        const focusedNode = globalStore.get(layoutModel.focusedNode);
-        if (focusedNode != null) {
-            const ephemeralNode = globalStore.get(layoutModel.ephemeralNode);
-            if (ephemeralNode?.id === focusedNode.id) {
-                layoutModel.addEphemeralNodeToLayout();
-            } else {
-                layoutModel.magnifyNodeToggle(focusedNode.id);
-            }
-        }
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:ArrowUp", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Up);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:ArrowDown", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Down);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:ArrowLeft", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Left);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:ArrowRight", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Right);
-        return true;
-    });
-    // Vim-style aliases for block focus navigation.
-    globalKeyMap.set("Ctrl:Shift:h", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Left);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:j", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Down);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:k", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Up);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:l", () => {
-        const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
-        if (disableCtrlShiftArrows) {
-            return false;
-        }
-        switchBlockInDirection(NavigateDirection.Right);
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:x", () => {
-        const blockId = getFocusedBlockId();
-        if (blockId == null) {
-            return true;
-        }
-        replaceBlock(
-            blockId,
-            {
-                meta: {
-                    view: "launcher",
-                },
-            },
-            true
-        );
-        return true;
-    });
-    globalKeyMap.set("F2", () => {
-        const tabModel = getActiveTabModel();
-        if (tabModel?.startRenameCallback != null) {
-            tabModel.startRenameCallback();
-            return true;
-        }
-        return false;
-    });
-    globalKeyMap.set("Cmd:g", () => {
-        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.openSwitchConnection != null) {
-            recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "keyboard" });
-            bcm.openSwitchConnection();
-            return true;
-        }
-    });
-    globalKeyMap.set("Ctrl:Shift:i", () => {
-        const tabModel = getActiveTabModel();
-        if (tabModel == null) {
-            return true;
-        }
-        const curMI = globalStore.get(tabModel.isTermMultiInput);
-        if (!curMI && countTermBlocks() <= 1) {
-            // don't turn on multi-input unless there are 2 or more basic term blocks
-            return true;
-        }
-        globalStore.set(tabModel.isTermMultiInput, !curMI);
-        return true;
-    });
-    for (let idx = 1; idx <= 9; idx++) {
-        globalKeyMap.set(`Cmd:${idx}`, () => {
-            switchTabAbs(idx);
-            return true;
-        });
-        globalKeyMap.set(`Ctrl:Shift:c{Digit${idx}}`, () => {
-            switchBlockByBlockNum(idx);
-            return true;
-        });
-        globalKeyMap.set(`Ctrl:Shift:c{Numpad${idx}}`, () => {
-            switchBlockByBlockNum(idx);
-            return true;
-        });
-    }
-    if (isWindows()) {
-        globalKeyMap.set("Alt:c{Digit0}", () => {
-            WaveAIModel.getInstance().focusInput();
-            return true;
-        });
-        globalKeyMap.set("Alt:c{Numpad0}", () => {
-            WaveAIModel.getInstance().focusInput();
-            return true;
-        });
-    } else {
-        globalKeyMap.set("Ctrl:Shift:c{Digit0}", () => {
-            WaveAIModel.getInstance().focusInput();
-            return true;
-        });
-        globalKeyMap.set("Ctrl:Shift:c{Numpad0}", () => {
-            WaveAIModel.getInstance().focusInput();
-            return true;
-        });
-    }
-    function activateSearch(event: WaveKeyboardEvent): boolean {
-        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        // Ctrl+f is reserved in most shells
-        if (event.control && bcm.viewModel.viewType == "term") {
-            return false;
-        }
-        if (bcm.viewModel.searchAtoms) {
-            if (globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
-                // Already open — increment the focusInput counter so this block's
-                // SearchComponent focuses its own input (avoids a global DOM query
-                // that could target the wrong block when multiple searches are open).
-                const cur = globalStore.get(bcm.viewModel.searchAtoms.focusInput) as number;
-                globalStore.set(bcm.viewModel.searchAtoms.focusInput, cur + 1);
-            } else {
-                globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
-            }
-            return true;
-        }
-        return false;
-    }
-    function deactivateSearch(): boolean {
-        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        if (bcm.viewModel.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
-            return true;
-        }
-        return false;
-    }
-    globalKeyMap.set("Cmd:f", activateSearch);
-    globalKeyMap.set("Escape", () => {
-        if (modalsModel.hasOpenModals()) {
-            modalsModel.popModal();
-            return true;
-        }
-        if (deactivateSearch()) {
-            return true;
-        }
-        return false;
-    });
-    globalKeyMap.set("Cmd:Shift:a", () => {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
-        return true;
-    });
-    const allKeys = Array.from(globalKeyMap.keys());
-    // special case keys, handled by web view
-    allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");
-    getApi().registerGlobalWebviewKeys(allKeys);
+const DirectionMap: Record<string, NavigateDirection> = {
+    up: NavigateDirection.Up,
+    down: NavigateDirection.Down,
+    left: NavigateDirection.Left,
+    right: NavigateDirection.Right,
+};
 
-    const splitBlockKeys = new Map<string, KeyHandler>();
-    splitBlockKeys.set("ArrowUp", () => {
-        handleSplitVertical("before");
+function activateSearch(event: WaveKeyboardEvent): boolean {
+    const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+    if (bcm?.viewModel == null) {
+        return false;
+    }
+    if (event.control && bcm.viewModel.viewType == "term") {
+        return false;
+    }
+    if (bcm.viewModel.searchAtoms) {
+        if (globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+            const cur = globalStore.get(bcm.viewModel.searchAtoms.focusInput) as number;
+            globalStore.set(bcm.viewModel.searchAtoms.focusInput, cur + 1);
+        } else {
+            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+        }
         return true;
-    });
-    splitBlockKeys.set("ArrowDown", () => {
-        handleSplitVertical("after");
+    }
+    return false;
+}
+
+function deactivateSearch(): boolean {
+    const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+    if (bcm?.viewModel?.searchAtoms && globalStore.get(bcm.viewModel.searchAtoms.isOpen)) {
+        globalStore.set(bcm.viewModel.searchAtoms.isOpen, false);
         return true;
-    });
-    splitBlockKeys.set("ArrowLeft", () => {
-        handleSplitHorizontal("before");
-        return true;
-    });
-    splitBlockKeys.set("ArrowRight", () => {
-        handleSplitHorizontal("after");
-        return true;
-    });
-    globalChordMap.set("Ctrl:Shift:s", splitBlockKeys);
+    }
+    return false;
+}
+
+type CommandHandler = (commandStr?: string) => KeyHandler;
+
+function getCommandHandlers(): Record<string, CommandHandler> {
+    return {
+        "tab:next": () => () => {
+            switchTab(1);
+            return true;
+        },
+        "tab:prev": () => () => {
+            switchTab(-1);
+            return true;
+        },
+        "tab:new": () => () => {
+            createTab();
+            return true;
+        },
+        "tab:close": () => () => {
+            simpleCloseStaticTab();
+            return true;
+        },
+        "tab:switch-num": (commandStr) => () => {
+            const tabNum = parseInt(commandStr);
+            if (isNaN(tabNum)) {
+                return false;
+            }
+            switchTabAbs(tabNum);
+            return true;
+        },
+        "block:new": () => () => {
+            handleCmdN();
+            return true;
+        },
+        "block:close": () => () => {
+            genericClose();
+            return true;
+        },
+        "block:split-right": () => () => {
+            handleSplitHorizontal("after");
+            return true;
+        },
+        "block:split-down": () => () => {
+            handleSplitVertical("after");
+            return true;
+        },
+        "block:magnify": () => () => {
+            const layoutModel = getLayoutModelForStaticTab();
+            const focusedNode = globalStore.get(layoutModel.focusedNode);
+            if (focusedNode != null) {
+                const ephemeralNode = globalStore.get(layoutModel.ephemeralNode);
+                if (ephemeralNode?.id === focusedNode.id) {
+                    layoutModel.addEphemeralNodeToLayout();
+                } else {
+                    layoutModel.magnifyNodeToggle(focusedNode.id);
+                }
+            }
+            return true;
+        },
+        "block:refocus": () => () => {
+            handleCmdI();
+            return true;
+        },
+        "block:focus": (commandStr) => (waveEvent) => {
+            const direction = DirectionMap[commandStr];
+            if (direction == null) {
+                return false;
+            }
+            if (waveEvent?.control && waveEvent?.shift) {
+                const disableCtrlShiftArrows = globalStore.get(getSettingsKeyAtom("app:disablectrlshiftarrows"));
+                if (disableCtrlShiftArrows) {
+                    return false;
+                }
+            }
+            switchBlockInDirection(direction);
+            return true;
+        },
+        "block:focus-num": (commandStr) => () => {
+            const blockNum = parseInt(commandStr);
+            if (isNaN(blockNum)) {
+                return false;
+            }
+            switchBlockByBlockNum(blockNum);
+            return true;
+        },
+        "block:replace-launcher": () => () => {
+            const blockId = getFocusedBlockId();
+            if (blockId == null) {
+                return true;
+            }
+            replaceBlock(blockId, { meta: { view: "launcher" } }, true);
+            return true;
+        },
+        "block:rename": () => () => {
+            const tabModel = getActiveTabModel();
+            if (tabModel?.startRenameCallback != null) {
+                tabModel.startRenameCallback();
+                return true;
+            }
+            return false;
+        },
+        "block:connection": () => () => {
+            const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+            if (bcm?.openSwitchConnection != null) {
+                recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "keyboard" });
+                bcm.openSwitchConnection();
+                return true;
+            }
+            return false;
+        },
+        "block:search": () => activateSearch,
+        "generic:escape": () => () => {
+            if (modalsModel.hasOpenModals()) {
+                modalsModel.popModal();
+                return true;
+            }
+            if (deactivateSearch()) {
+                return true;
+            }
+            return false;
+        },
+        "ai:toggle": () => () => {
+            const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+            WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+            return true;
+        },
+        "ai:focus": () => () => {
+            WaveAIModel.getInstance().focusInput();
+            return true;
+        },
+        "ai:focus-windows": () => () => {
+            WaveAIModel.getInstance().focusInput();
+            return true;
+        },
+        "term:multi-input": () => () => {
+            const tabModel = getActiveTabModel();
+            if (tabModel == null) {
+                return true;
+            }
+            const curMI = globalStore.get(tabModel.isTermMultiInput);
+            if (!curMI && countTermBlocks() <= 1) {
+                return true;
+            }
+            globalStore.set(tabModel.isTermMultiInput, !curMI);
+            return true;
+        },
+        "block:split-chord": (commandStr) => () => {
+            const direction = commandStr;
+            if (direction === "up") {
+                handleSplitVertical("before");
+            } else if (direction === "down") {
+                handleSplitVertical("after");
+            } else if (direction === "left") {
+                handleSplitHorizontal("before");
+            } else if (direction === "right") {
+                handleSplitHorizontal("after");
+            }
+            return true;
+        },
+    };
+}
+
+function registerGlobalKeys() {
+    const fullConfig = globalStore.get(atoms.fullConfigAtom);
+    const keybindings: KeybindingConfigType[] = fullConfig?.keybindings ?? [];
+    const commandHandlers = getCommandHandlers();
+
+    for (const kb of keybindings) {
+        const handlerFactory = commandHandlers[kb.command];
+        if (handlerFactory == null) {
+            continue;
+        }
+        const handler = handlerFactory(kb.commandstr);
+        for (const keyStr of kb.keys ?? []) {
+            const parts = keyStr.trim().split(/\s+/);
+            if (parts.length > 2 || parts[0] === "") {
+                console.warn("ignoring invalid keybinding (expected a key or a two-key chord):", keyStr);
+                continue;
+            }
+            if (parts.length === 2) {
+                const [chordKey, secondKey] = parts;
+                if (!globalChordMap.has(chordKey)) {
+                    globalChordMap.set(chordKey, new Map<string, KeyHandler>());
+                }
+                globalChordMap.get(chordKey).set(secondKey, handler);
+            } else {
+                globalKeyMap.set(parts[0], handler);
+            }
+        }
+    }
+
+    const allKeys = Array.from(
+        new Set([
+            ...globalKeyMap.keys(),
+            ...globalChordMap.keys(),
+            "Cmd:l",
+            "Cmd:r",
+            "Cmd:ArrowRight",
+            "Cmd:ArrowLeft",
+            "Cmd:o",
+        ])
+    );
+    getApi().registerGlobalWebviewKeys(allKeys);
+}
+
+function reregisterGlobalKeys() {
+    resetChord();
+    globalKeyMap.clear();
+    globalChordMap.clear();
+    registerGlobalKeys();
 }
 
 function registerBuilderGlobalKeys() {
@@ -795,6 +770,7 @@ export {
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
+    reregisterGlobalKeys,
     tryReinjectKey,
     unsetControlShift,
     uxCloseBlock,
