@@ -125,6 +125,7 @@ type MetaTSType struct {
 	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
+	TermCtrlEnter           *bool    `json:"term:ctrlenter,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 	TermCursor              string   `json:"term:cursor,omitempty"`
 	TermCursorBlink         *bool    `json:"term:cursorblink,omitempty"`
