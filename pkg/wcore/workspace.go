@@ -5,6 +5,7 @@ package wcore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"regexp"
@@ -195,6 +196,23 @@ func getTabBackground() string {
 	return config.Settings.TabPreset
 }
 
+// getNewTabLayoutFromConfig returns the user-configured layout for new tabs,
+// falling back to the default single-terminal layout if not configured.
+func getNewTabLayoutFromConfig() PortableLayout {
+	settings := wconfig.GetWatcher().GetFullConfig()
+	rawLayout := settings.Settings.TabNewTabLayout
+	if rawLayout != nil {
+		barr, err := json.Marshal(rawLayout)
+		if err == nil {
+			var layout PortableLayout
+			if json.Unmarshal(barr, &layout) == nil && len(layout) > 0 {
+				return layout
+			}
+		}
+	}
+	return GetNewTabLayout()
+}
+
 var tabNameRe = regexp.MustCompile(`^T(\d+)$`)
 
 // getNextTabName returns the next auto-generated tab name (e.g. "T3") given a
@@ -250,7 +268,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after onboarding modal dismissal
 	if !isInitialLaunch {
-		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(), true)
+		err = ApplyPortableLayout(ctx, tab.OID, getNewTabLayoutFromConfig(), true)
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}
