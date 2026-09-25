@@ -11,8 +11,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -152,11 +152,40 @@ func (pp *PipePty) WriteString(s string) (n int, err error) {
 	return pp.Write([]byte(s))
 }
 
+// describeForLog builds a log-safe summary of a shell launch: shell types,
+// executable, argc, and env var NAMES only (never values) — swap tokens and
+// JWTs must never reach a log line, so this is the only helper allowed to
+// summarize a launch for logging, and it never accepts the fully-assembled
+// (env-prefixed) command string.
+func describeForLog(outerShellType string, innerShellType string, shellPath string, shellOpts []string, env map[string]string) string {
+	envKeys := make([]string, 0, len(env))
+	for k := range env {
+		envKeys = append(envKeys, k)
+	}
+	return fmt.Sprintf("outerShell=%s innerShell=%s exe=%q argc=%d envKeys=%v", outerShellType, innerShellType, shellPath, len(shellOpts)+1, envKeys)
+}
+
+// wslNoWshArgv builds the wsl.exe argv for the no-wsh fallback launch. When
+// cmdStr is non-empty, the requested command is executed via a plain POSIX
+// "sh -c" inside the distro; cmdStr is passed as a single argv element (via
+// exec.Command's structured argv, never joined into a string), so no
+// quoting/flattening is needed or possible here. When cmdStr is empty, WSL's
+// own default interactive shell is launched instead — this is what the
+// no-wsh fallback did unconditionally before the fix, silently ignoring any
+// requested cmdStr.
+func wslNoWshArgv(distroName string, cmdStr string) []string {
+	if cmdStr != "" {
+		return []string{"wsl.exe", "~", "-d", distroName, "--", "sh", "-c", cmdStr}
+	}
+	return []string{"wsl.exe", "~", "-d", distroName}
+}
+
 func StartWslShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdStr string, cmdOpts CommandOptsType, conn *wslconn.WslConn) (*ShellProc, error) {
 	client := conn.GetClient()
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProcNoWsh)")
 
-	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name())
+	argv := wslNoWshArgv(client.Name(), cmdStr)
+	ecmd := exec.Command(argv[0], argv[1:]...)
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -186,6 +215,9 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		return nil, fmt.Errorf("unable to obtain client info: %w", err)
 	}
 	log.Printf("client info collected: %+#v", remoteInfo)
+	if remoteInfo.HomeDir == "" {
+		return nil, fmt.Errorf("unable to obtain home directory from remote machine")
+	}
 	var shellPath string
 	if cmdOpts.ShellPath != "" {
 		conn.Infof(ctx, "using shell path from command opts: %s\n", cmdOpts.ShellPath)
@@ -205,7 +237,6 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		shellPath = "/bin/bash"
 	}
 	var shellOpts []string
-	var cmdCombined string
 	log.Printf("detected shell %q for conn %q\n", shellPath, conn.GetName())
 
 	err = wshclient.RemoteInstallRcFilesCommand(rpcClient, &wshrpc.RpcOpts{Route: connRoute, Timeout: 2000})
@@ -215,28 +246,29 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
+	// The command reaching WSL is always relayed through a POSIX "sh -c"
+	// wrapper (see the exec.Command call below), so the outer shell is
+	// always POSIX regardless of the inner shellType we're launching.
+	outerShellType := shellutil.ShellType_unknown
 	conn.Infof(ctx, "detected shell type: %s\n", shellType)
-	conn.Debugf(ctx, "cmdStr: %q\n", cmdStr)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
 		if shellType == shellutil.ShellType_bash {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			bashPath := fmt.Sprintf("~/.waveterm/%s/.bashrc", shellutil.BashIntegrationDir)
+			bashPath := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.BashIntegrationDir, ".bashrc")
 			shellOpts = append(shellOpts, "--rcfile", bashPath)
 		} else if shellType == shellutil.ShellType_fish {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
 			}
 			// source the wave.fish file
-			waveFishPath := fmt.Sprintf("~/.waveterm/%s/wave.fish", shellutil.FishIntegrationDir)
-			carg := fmt.Sprintf(`"source %s"`, waveFishPath)
+			waveFishPath := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.FishIntegrationDir, "wave.fish")
+			carg := fmt.Sprintf("source %s", shellutil.HardQuoteFish(waveFishPath))
 			shellOpts = append(shellOpts, "-C", carg)
 		} else if shellType == shellutil.ShellType_pwsh {
-			pwshPath := fmt.Sprintf("~/.waveterm/%s/wavepwsh.ps1", shellutil.PwshIntegrationDir)
-			// powershell is weird about quoted path executables and requires an ampersand first
-			shellPath = "& " + shellPath
+			pwshPath := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.PwshIntegrationDir, "wavepwsh.ps1")
 			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", pwshPath)
 		} else {
 			if cmdOpts.Login {
@@ -247,33 +279,30 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 			}
 			// zdotdir setting moved to after session is created
 		}
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	} else {
-		// TODO check quoting of cmdStr
 		shellOpts = append(shellOpts, "-c", cmdStr)
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	}
-	conn.Infof(ctx, "starting shell, using command: %s\n", cmdCombined)
+	cmdCombined := shellutil.SerializeCommandForShell(outerShellType, append([]string{shellPath}, shellOpts...))
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProc)\n")
 
+	env := make(map[string]string)
 	if shellType == shellutil.ShellType_zsh {
-		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
+		zshDir := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.ZshIntegrationDir)
 		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
-		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
+		env["ZDOTDIR"] = zshDir
 	}
 	packedToken, err := cmdOpts.SwapToken.PackForClient()
 	if err != nil {
 		conn.Infof(ctx, "error packing swap token: %v", err)
 	} else {
-		conn.Debugf(ctx, "packed swaptoken %s\n", packedToken)
-		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, packedToken, cmdCombined)
+		env[wavebase.WaveSwapTokenVarName] = packedToken
 	}
 	jwtToken := cmdOpts.SwapToken.Env[wavebase.WaveJwtTokenVarName]
 	if jwtToken != "" && cmdOpts.ForceJwt {
-		conn.Debugf(ctx, "adding JWT token to environment\n")
-		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveJwtTokenVarName, jwtToken, cmdCombined)
+		env[wavebase.WaveJwtTokenVarName] = jwtToken
 	}
-	log.Printf("full combined command: %s", cmdCombined)
+	conn.Infof(ctx, "starting shell: %s\n", describeForLog(outerShellType, shellType, shellPath, shellOpts, env))
+	cmdCombined = shellutil.PrefixEnvAssignmentsForShell(outerShellType, env, cmdCombined)
 	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name(), "--", "sh", "-c", cmdCombined)
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -325,8 +354,17 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 	session.Stderr = remoteStdoutWrite
 
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
-	sessionWrap := MakeSessionWrap(session, "", pipePty)
-	err = session.Shell()
+	sessionWrap := MakeSessionWrap(session, cmdStr, pipePty)
+	if cmdStr != "" {
+		// No wsh installed on this remote, so we cannot detect its shell
+		// type or home dir to build an integration command line. Send
+		// cmdStr as-is, exactly as a plain "ssh host cmdStr" invocation
+		// would — this is the one raw string handed to the SSH exec
+		// channel, and it is never reconstructed via string-join here.
+		err = sessionWrap.Start()
+	} else {
+		err = session.Shell()
+	}
 	if err != nil {
 		pipePty.Close()
 		return nil, err
@@ -368,33 +406,33 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 		shellPath = "/bin/bash"
 	}
 	var shellOpts []string
-	var cmdCombined string
 	log.Printf("detected shell %q for conn %q\n", shellPath, conn.GetName())
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
+	// The outer shell is whatever shell the remote sshd invokes to run our
+	// raw exec-request string — that's the remote's login shell, which may
+	// differ from shellPath (the shell we're asking to launch as the
+	// session's inner shell).
+	outerShellType := shellutil.GetShellTypeFromShellPath(remoteInfo.Shell)
 	conn.Infof(logCtx, "detected shell type: %s\n", shellType)
-	conn.Infof(logCtx, "swaptoken: %s\n", cmdOpts.SwapToken.Token)
-	conn.Debugf(logCtx, "cmdStr: %q\n", cmdStr)
 
 	if cmdStr == "" {
 		/* transform command in order to inject environment vars */
 		if shellType == shellutil.ShellType_bash {
 			// add --rcfile
 			// cant set -l or -i with --rcfile
-			bashPath := fmt.Sprintf("%s/.waveterm/%s/.bashrc", remoteInfo.HomeDir, shellutil.BashIntegrationDir)
+			bashPath := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.BashIntegrationDir, ".bashrc")
 			shellOpts = append(shellOpts, "--rcfile", bashPath)
 		} else if shellType == shellutil.ShellType_fish {
 			if cmdOpts.Login {
 				shellOpts = append(shellOpts, "-l")
 			}
 			// source the wave.fish file
-			waveFishPath := fmt.Sprintf("%s/.waveterm/%s/wave.fish", remoteInfo.HomeDir, shellutil.FishIntegrationDir)
-			carg := fmt.Sprintf(`"source %s"`, waveFishPath)
+			waveFishPath := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.FishIntegrationDir, "wave.fish")
+			carg := fmt.Sprintf("source %s", shellutil.HardQuoteFish(waveFishPath))
 			shellOpts = append(shellOpts, "-C", carg)
 		} else if shellType == shellutil.ShellType_pwsh {
-			pwshPath := fmt.Sprintf("%s/.waveterm/%s/wavepwsh.ps1", remoteInfo.HomeDir, shellutil.PwshIntegrationDir)
-			// powershell is weird about quoted path executables and requires an ampersand first
-			shellPath = "& " + shellPath
+			pwshPath := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.PwshIntegrationDir, "wavepwsh.ps1")
 			shellOpts = append(shellOpts, "-ExecutionPolicy", "Bypass", "-NoExit", "-File", pwshPath)
 		} else {
 			if cmdOpts.Login {
@@ -405,13 +443,10 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 			}
 			// zdotdir setting moved to after session is created
 		}
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	} else {
-		// TODO check quoting of cmdStr
 		shellOpts = append(shellOpts, "-c", cmdStr)
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	}
-	conn.Infof(logCtx, "starting shell, using command: %s\n", cmdCombined)
+	cmdCombined := shellutil.SerializeCommandForShell(outerShellType, append([]string{shellPath}, shellOpts...))
 	conn.Infof(logCtx, "SSH-NEWSESSION (StartRemoteShellProc)\n")
 	session, err := client.NewSession()
 	if err != nil {
@@ -441,23 +476,24 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 	session.Stdin = remoteStdinRead
 	session.Stdout = remoteStdoutWrite
 	session.Stderr = remoteStdoutWrite
+	env := make(map[string]string)
 	if shellType == shellutil.ShellType_zsh {
-		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
+		zshDir := path.Join(remoteInfo.HomeDir, ".waveterm", shellutil.ZshIntegrationDir)
 		conn.Infof(logCtx, "setting ZDOTDIR to %s\n", zshDir)
-		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
+		env["ZDOTDIR"] = zshDir
 	}
 	packedToken, err := cmdOpts.SwapToken.PackForClient()
 	if err != nil {
 		conn.Infof(logCtx, "error packing swap token: %v", err)
 	} else {
-		conn.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
-		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, packedToken, cmdCombined)
+		env[wavebase.WaveSwapTokenVarName] = packedToken
 	}
 	jwtToken := cmdOpts.SwapToken.Env[wavebase.WaveJwtTokenVarName]
 	if jwtToken != "" && cmdOpts.ForceJwt {
-		conn.Debugf(logCtx, "adding JWT token to environment\n")
-		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveJwtTokenVarName, jwtToken, cmdCombined)
+		env[wavebase.WaveJwtTokenVarName] = jwtToken
 	}
+	conn.Infof(logCtx, "starting shell: %s\n", describeForLog(outerShellType, shellType, shellPath, shellOpts, env))
+	cmdCombined = shellutil.PrefixEnvAssignmentsForShell(outerShellType, env, cmdCombined)
 	shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	sessionWrap := MakeSessionWrap(session, cmdCombined, pipePty)
@@ -503,7 +539,6 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
 	conn.Infof(logCtx, "detected shell type: %s\n", shellType)
-	conn.Debugf(logCtx, "cmdStr: %q\n", cmdStr)
 
 	if cmdStr == "" {
 		if shellType == shellutil.ShellType_bash {
@@ -530,7 +565,6 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 	} else {
 		shellOpts = append(shellOpts, "-c", cmdStr)
 	}
-	conn.Infof(logCtx, "starting shell job, using command: %s %s\n", shellPath, strings.Join(shellOpts, " "))
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -552,16 +586,18 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 		if err != nil {
 			conn.Infof(logCtx, "error packing swap token: %v", err)
 		} else {
-			conn.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
 			env[wavebase.WaveSwapTokenVarName] = packedToken
 		}
 		jwtToken := cmdOpts.SwapToken.Env[wavebase.WaveJwtTokenVarName]
 		if jwtToken != "" && cmdOpts.ForceJwt {
-			conn.Debugf(logCtx, "adding JWT token to environment\n")
 			env[wavebase.WaveJwtTokenVarName] = jwtToken
 		}
 		shellutil.AddTokenSwapEntry(cmdOpts.SwapToken)
 	}
+	// StartRemoteShellJob dispatches via structured Args (jobParams.Args
+	// below), never a flattened shell string, so there is no separate outer
+	// shell to reparse it - shellType doubles as both fields here.
+	conn.Infof(logCtx, "starting shell job: %s\n", describeForLog(shellType, shellType, shellPath, shellOpts, env))
 
 	jobParams := jobcontroller.StartJobParams{
 		ConnName: conn.GetName(),
@@ -634,7 +670,6 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 	if err != nil {
 		blocklogger.Infof(logCtx, "error packing swap token: %v", err)
 	} else {
-		blocklogger.Debugf(logCtx, "packed swaptoken %s\n", packedToken)
 		shellutil.UpdateCmdEnv(ecmd, map[string]string{wavebase.WaveSwapTokenVarName: packedToken})
 	}
 	jwtToken := cmdOpts.SwapToken.Env[wavebase.WaveJwtTokenVarName]
