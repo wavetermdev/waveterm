@@ -4,7 +4,7 @@
 export function makeTermLinkHandlers(
     isMacOS: boolean,
     openUri: (uri: string) => void,
-    onHover: (uri: string | null, x: number, y: number) => void
+    onHover: (uri: string | null, x: number, y: number, showUrl: boolean) => void
 ) {
     return {
         activate: (event: MouseEvent, uri: string) => {
@@ -14,7 +14,8 @@ export function makeTermLinkHandlers(
             }
             openUri(uri);
         },
-        hover: (event: MouseEvent, uri: string) => onHover(uri, event.clientX, event.clientY),
-        leave: () => onHover(null, 0, 0),
+        hover: (event: MouseEvent, uri: string) => onHover(uri, event.clientX, event.clientY, false),
+        osc8Hover: (event: MouseEvent, uri: string) => onHover(uri, event.clientX, event.clientY, true),
+        leave: () => onHover(null, 0, 0, false),
     };
 }

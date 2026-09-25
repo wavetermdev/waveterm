@@ -29,14 +29,16 @@ describe("terminal link handlers", () => {
         expect(openUri).toHaveBeenCalledExactlyOnceWith("https://example.com/third");
     });
 
-    it("reports hovered links and clears them on leave", () => {
+    it("shows the destination for OSC 8 links but keeps plain URL hover unchanged", () => {
         const onHover = vi.fn();
         const handlers = makeTermLinkHandlers(false, vi.fn(), onHover);
-        handlers.hover(linkEvent(), "https://example.com");
+        handlers.hover(linkEvent(), "https://example.com/visible");
+        handlers.osc8Hover(linkEvent(), "https://example.com/hidden");
         handlers.leave();
         expect(onHover.mock.calls).toEqual([
-            ["https://example.com", 12, 34],
-            [null, 0, 0],
+            ["https://example.com/visible", 12, 34, false],
+            ["https://example.com/hidden", 12, 34, true],
+            [null, 0, 0, false],
         ]);
     });
 });

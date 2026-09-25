@@ -105,7 +105,7 @@ export class TermWrap {
     claudeCodeActiveAtom: jotai.PrimitiveAtom<boolean>;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
-    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
+    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number, showUrl: boolean) => void;
 
     // Paste deduplication
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
@@ -147,19 +147,28 @@ export class TermWrap {
         const linkHandlers = makeTermLinkHandlers(
             PLATFORM === PlatformMacOS,
             (uri) => fireAndForget(() => openLink(uri)),
-            (uri, x, y) => {
+            (uri, x, y, showUrl) => {
                 this.hoveredLinkUri = uri;
-                this.onLinkHover?.(uri, x, y);
+                this.onLinkHover?.(uri, x, y, showUrl);
             }
         );
-        this.terminal = new Terminal({ ...options, linkHandler: linkHandlers });
+        this.terminal = new Terminal({
+            ...options,
+            linkHandler: {
+                activate: linkHandlers.activate,
+                hover: linkHandlers.osc8Hover,
+                leave: linkHandlers.leave,
+            },
+        });
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
-        this.terminal.loadAddon(new WebLinksAddon(linkHandlers.activate, linkHandlers));
+        this.terminal.loadAddon(
+            new WebLinksAddon(linkHandlers.activate, { hover: linkHandlers.hover, leave: linkHandlers.leave })
+        );
         this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
