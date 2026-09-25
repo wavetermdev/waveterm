@@ -36,6 +36,7 @@ import {
     isClaudeCodeCommand,
     type ShellIntegrationStatus,
 } from "./osc-handlers";
+import { makeTermLinkHandlers } from "./term-links";
 import {
     bufferLinesToText,
     createTempFileFromBlob,
@@ -104,7 +105,7 @@ export class TermWrap {
     claudeCodeActiveAtom: jotai.PrimitiveAtom<boolean>;
     nodeModel: BlockNodeModel; // this can be null
     hoveredLinkUri: string | null = null;
-    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number) => void;
+    onLinkHover?: (uri: string | null, mouseX: number, mouseY: number, showUrl: boolean) => void;
 
     // Paste deduplication
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
@@ -143,7 +144,22 @@ export class TermWrap {
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.claudeCodeActiveAtom = jotai.atom(false);
         this.webglEnabledAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
-        this.terminal = new Terminal(options);
+        const linkHandlers = makeTermLinkHandlers(
+            PLATFORM === PlatformMacOS,
+            (uri) => fireAndForget(() => openLink(uri)),
+            (uri, x, y, showUrl) => {
+                this.hoveredLinkUri = uri;
+                this.onLinkHover?.(uri, x, y, showUrl);
+            }
+        );
+        this.terminal = new Terminal({
+            ...options,
+            linkHandler: {
+                activate: linkHandlers.activate,
+                hover: linkHandlers.osc8Hover,
+                leave: linkHandlers.leave,
+            },
+        });
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
@@ -151,33 +167,7 @@ export class TermWrap {
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
-            new WebLinksAddon(
-                (e, uri) => {
-                    e.preventDefault();
-                    switch (PLATFORM) {
-                        case PlatformMacOS:
-                            if (e.metaKey) {
-                                fireAndForget(() => openLink(uri));
-                            }
-                            break;
-                        default:
-                            if (e.ctrlKey) {
-                                fireAndForget(() => openLink(uri));
-                            }
-                            break;
-                    }
-                },
-                {
-                    hover: (e, uri) => {
-                        this.hoveredLinkUri = uri;
-                        this.onLinkHover?.(uri, e.clientX, e.clientY);
-                    },
-                    leave: () => {
-                        this.hoveredLinkUri = null;
-                        this.onLinkHover?.(null, 0, 0);
-                    },
-                }
-            )
+            new WebLinksAddon(linkHandlers.activate, { hover: linkHandlers.hover, leave: linkHandlers.leave })
         );
         this.setTermRenderer(WebGLSupported && waveOptions.useWebGl ? "webgl" : "dom");
         // Register OSC handlers
