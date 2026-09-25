@@ -28,7 +28,7 @@ const TelemetryRequiredMessage = ({ className }: TelemetryRequiredMessageProps) 
     };
 
     return (
-        <div className={cn("flex flex-col h-full", className)}>
+        <div className={cn("flex flex-col h-full overflow-y-auto", className)}>
             <div className="flex-grow"></div>
             <div className="flex items-center justify-center p-8 text-center">
                 <div className="max-w-md space-y-6">
