@@ -147,6 +147,7 @@ type SettingsType struct {
 	WindowFullscreenOnLaunch            bool     `json:"window:fullscreenonlaunch,omitempty"`
 	WindowTransparent                   bool     `json:"window:transparent,omitempty"`
 	WindowBlur                          bool     `json:"window:blur,omitempty"`
+	WindowVisualEffectState             string   `json:"window:visualeffectstate,omitempty" jsonschema:"enum=followWindow,enum=active,enum=inactive"`
 	WindowOpacity                       *float64 `json:"window:opacity,omitempty"`
 	WindowBgColor                       string   `json:"window:bgcolor,omitempty"`
 	WindowReducedMotion                 bool     `json:"window:reducedmotion,omitempty"`

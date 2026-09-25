@@ -96,6 +96,7 @@ const (
 	ConfigKey_WindowFullscreenOnLaunch       = "window:fullscreenonlaunch"
 	ConfigKey_WindowTransparent              = "window:transparent"
 	ConfigKey_WindowBlur                     = "window:blur"
+	ConfigKey_WindowVisualEffectState        = "window:visualeffectstate"
 	ConfigKey_WindowOpacity                  = "window:opacity"
 	ConfigKey_WindowBgColor                  = "window:bgcolor"
 	ConfigKey_WindowReducedMotion            = "window:reducedmotion"
