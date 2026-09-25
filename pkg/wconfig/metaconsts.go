@@ -58,6 +58,7 @@ const (
 	ConfigKey_TermBellSound                  = "term:bellsound"
 	ConfigKey_TermBellIndicator              = "term:bellindicator"
 	ConfigKey_TermOsc52                      = "term:osc52"
+	ConfigKey_TermAllowTermListen            = "term:allowtermlisten"
 	ConfigKey_TermDurable                    = "term:durable"
 	ConfigKey_TermShowSplitButtons           = "term:showsplitbuttons"
 	ConfigKey_TermTrimTrailingWhitespace     = "term:trimtrailingwhitespace"

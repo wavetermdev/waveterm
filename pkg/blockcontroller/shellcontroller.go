@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
+	"github.com/wavetermdev/waveterm/pkg/termlistensrv"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -531,7 +532,30 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		defer func() {
 			panichandler.PanicHandler("blockcontroller:shellproc-pty-read-loop", recover())
 		}()
+		var termSrv *termlistensrv.TermListenSrv
+		var ptyReader io.Reader = shellProc.Cmd
+		allowTermListen := wconfig.DefaultBoolPtr(wconfig.GetWatcher().GetFullConfig().Settings.TermAllowTermListen, true)
+		if allowTermListen {
+			termSrv = termlistensrv.MakeTermListenSrv(func(data []byte) {
+				shellProc.Cmd.Write(data)
+			})
+			blockId := bc.BlockId
+			termSrv.OnTeardown = func(port int) {
+				log.Printf("[termlistensrv] OnTeardown fired for blockId=%s port=%d\n", blockId, port)
+				wps.Broker.Publish(wps.WaveEvent{
+					Event:  wps.Event_TermListenDown,
+					Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, blockId).String()},
+					Data:   wshrpc.TermListenDownData{Port: port},
+				})
+			}
+			ptyReader = wshutil.MakePtyBuffer(shellProc.Cmd, map[string]func([]byte){
+				termlistensrv.OSCNum: termSrv.HandleOSC,
+			})
+		}
 		defer func() {
+			if termSrv != nil {
+				termSrv.Close()
+			}
 			log.Printf("[shellproc] pty-read loop done\n")
 			shellProc.Close()
 			bc.WithLock(func() {
@@ -551,7 +575,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}()
 		buf := make([]byte, 4096)
 		for {
-			nr, err := shellProc.Cmd.Read(buf)
+			nr, err := ptyReader.Read(buf)
 			if nr > 0 {
 				err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf[:nr])
 				if err != nil {

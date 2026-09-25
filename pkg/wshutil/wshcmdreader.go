@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -13,40 +13,45 @@ import (
 )
 
 const (
-	Mode_Normal  = "normal"
-	Mode_Esc     = "esc"
-	Mode_WaveEsc = "waveesc"
+	ModeNormal     = "normal"
+	ModeEscStart   = "escstart"
+	ModeOSCNum     = "oscnum"
+	ModeOSCPayload = "oscpayload"
 )
 
 const MaxBufferedDataSize = 256 * 1024
+const MaxOSCNumLen = 5
 
 type PtyBuffer struct {
-	CVar        *sync.Cond
-	DataBuf     *bytes.Buffer
-	EscMode     string
-	EscSeqBuf   []byte
-	OSCPrefix   string
-	InputReader io.Reader
-	MessageCh   chan baseds.RpcInputChType
-	AtEOF       bool
-	Err         error
+	CVar           *sync.Cond
+	DataBuf        *bytes.Buffer
+	EscMode        string
+	EscSeqBuf      []byte         // raw bytes buffered for passthrough if no handler matches
+	PayloadBuf     []byte         // OSC payload accumulation (ModeOSCPayload)
+	Handlers       map[string]func([]byte)
+	CurrentHandler func([]byte)
+	InputReader    io.Reader
+	AtEOF          bool
+	Err            error
 }
 
-// closes messageCh when input is closed (or error)
-func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan baseds.RpcInputChType) *PtyBuffer {
-	if len(oscPrefix) != WaveOSCPrefixLen {
-		panic(fmt.Sprintf("invalid OSC prefix length: %d", len(oscPrefix)))
-	}
+func MakePtyBuffer(input io.Reader, handlers map[string]func([]byte)) *PtyBuffer {
 	b := &PtyBuffer{
 		CVar:        sync.NewCond(&sync.Mutex{}),
 		DataBuf:     &bytes.Buffer{},
-		OSCPrefix:   oscPrefix,
-		EscMode:     Mode_Normal,
+		EscMode:     ModeNormal,
+		Handlers:    handlers,
 		InputReader: input,
-		MessageCh:   messageCh,
 	}
 	go b.run()
 	return b
+}
+
+// MakeWaveOSCHandler returns a handler func for OSC WaveOSC that sends payloads to messageCh.
+func MakeWaveOSCHandler(messageCh chan baseds.RpcInputChType) func([]byte) {
+	return func(payload []byte) {
+		messageCh <- baseds.RpcInputChType{MsgBytes: payload}
+	}
 }
 
 func (b *PtyBuffer) setErr(err error) {
@@ -65,12 +70,7 @@ func (b *PtyBuffer) setEOF() {
 	b.CVar.Broadcast()
 }
 
-func (b *PtyBuffer) processWaveEscSeq(escSeq []byte) {
-	b.MessageCh <- baseds.RpcInputChType{MsgBytes: escSeq}
-}
-
 func (b *PtyBuffer) run() {
-	defer close(b.MessageCh)
 	buf := make([]byte, 4096)
 	for {
 		n, err := b.InputReader.Read(buf)
@@ -89,56 +89,76 @@ func (b *PtyBuffer) run() {
 func (b *PtyBuffer) processData(data []byte) {
 	outputBuf := make([]byte, 0, len(data))
 	for _, ch := range data {
-		if b.EscMode == Mode_WaveEsc {
+		switch b.EscMode {
+		case ModeOSCPayload:
 			if ch == ESC {
-				// terminates the escape sequence (and the rest was invalid)
-				b.EscMode = Mode_Normal
-				outputBuf = append(outputBuf, b.EscSeqBuf...)
-				outputBuf = append(outputBuf, ch)
-				b.EscSeqBuf = nil
+				// invalid terminator — discard in-progress sequence, start new escape
+				b.CurrentHandler = nil
+				b.PayloadBuf = nil
+				b.EscMode = ModeEscStart
+				b.EscSeqBuf = []byte{ESC}
 			} else if ch == BEL || ch == ST {
-				// terminates the escpae sequence (is a valid Wave OSC command)
-				b.EscMode = Mode_Normal
-				waveEscSeq := b.EscSeqBuf[WaveOSCPrefixLen:]
-				b.EscSeqBuf = nil
-				b.processWaveEscSeq(waveEscSeq)
+				b.CurrentHandler(b.PayloadBuf)
+				b.CurrentHandler = nil
+				b.PayloadBuf = nil
+				b.EscMode = ModeNormal
 			} else {
+				b.PayloadBuf = append(b.PayloadBuf, ch)
+			}
+
+		case ModeOSCNum:
+			// EscSeqBuf holds \x1b] + any digits accumulated so far
+			numLen := len(b.EscSeqBuf) - 2 // subtract \x1b and ]
+			if ch == ';' && numLen > 0 {
+				oscNum := string(b.EscSeqBuf[2:])
+				if handler, ok := b.Handlers[oscNum]; ok {
+					b.CurrentHandler = handler
+					b.EscSeqBuf = nil
+					b.PayloadBuf = nil
+					b.EscMode = ModeOSCPayload
+				} else {
+					outputBuf = append(outputBuf, b.EscSeqBuf...)
+					outputBuf = append(outputBuf, ch)
+					b.EscSeqBuf = nil
+					b.EscMode = ModeNormal
+				}
+			} else if ch >= '0' && ch <= '9' && numLen < MaxOSCNumLen {
 				b.EscSeqBuf = append(b.EscSeqBuf, ch)
-			}
-			continue
-		}
-		if b.EscMode == Mode_Esc {
-			if ch == ESC || ch == BEL || ch == ST {
-				// these all terminate the escape sequence (invalid, not a Wave OSC)
-				b.EscMode = Mode_Normal
+			} else if ch == ESC {
+				outputBuf = append(outputBuf, b.EscSeqBuf...)
+				b.EscSeqBuf = []byte{ESC}
+				b.EscMode = ModeEscStart
+			} else {
+				// non-digit, no `;` yet, or too many digits — passthrough
 				outputBuf = append(outputBuf, b.EscSeqBuf...)
 				outputBuf = append(outputBuf, ch)
 				b.EscSeqBuf = nil
-				continue
+				b.EscMode = ModeNormal
 			}
-			if ch != b.OSCPrefix[len(b.EscSeqBuf)] {
-				// this is not a Wave OSC sequence, just an escape sequence
-				b.EscMode = Mode_Normal
+
+		case ModeEscStart:
+			if ch == ']' {
+				b.EscSeqBuf = append(b.EscSeqBuf, ch)
+				b.EscMode = ModeOSCNum
+			} else if ch == ESC {
+				outputBuf = append(outputBuf, b.EscSeqBuf...)
+				b.EscSeqBuf = []byte{ESC}
+				// stay in ModeEscStart
+			} else {
 				outputBuf = append(outputBuf, b.EscSeqBuf...)
 				outputBuf = append(outputBuf, ch)
 				b.EscSeqBuf = nil
-				continue
+				b.EscMode = ModeNormal
 			}
-			// we're still building what could be a Wave OSC sequence
-			b.EscSeqBuf = append(b.EscSeqBuf, ch)
-			// check to see if we have a full Wave OSC prefix
-			if len(b.EscSeqBuf) == len(b.OSCPrefix) {
-				b.EscMode = Mode_WaveEsc
+
+		default: // ModeNormal
+			if ch == ESC {
+				b.EscMode = ModeEscStart
+				b.EscSeqBuf = []byte{ESC}
+			} else {
+				outputBuf = append(outputBuf, ch)
 			}
-			continue
 		}
-		// Mode_Normal
-		if ch == ESC {
-			b.EscMode = Mode_Esc
-			b.EscSeqBuf = []byte{ch}
-			continue
-		}
-		outputBuf = append(outputBuf, ch)
 	}
 	if len(outputBuf) > 0 {
 		b.writeData(outputBuf)
