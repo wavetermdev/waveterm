@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -123,11 +124,12 @@ func encodeEnvVarsForFish(env map[string]string) (string, error) {
 func encodeEnvVarsForPowerShell(env map[string]string) (string, error) {
 	var encoded string
 	for k, v := range env {
-		// validate key
-		if !IsValidEnvVarName(k) {
+		// PowerShell's braced environment-variable syntax supports Windows names
+		// such as ProgramFiles(x86), but backticks and closing braces cannot be represented safely.
+		if k == "" || strings.ContainsAny(k, "}`=") {
 			return "", fmt.Errorf("invalid env var name: %q", k)
 		}
-		encoded += fmt.Sprintf("$env:%s = %s\n", k, HardQuotePowerShell(v))
+		encoded += fmt.Sprintf("${env:%s} = %s\n", k, HardQuotePowerShell(v))
 	}
 	return encoded, nil
 }
