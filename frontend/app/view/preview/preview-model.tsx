@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { BookmarksModel, fileBookmarksAtom, type BookmarkEntry } from "@/app/store/bookmarksmodel";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
+import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getOverrideConfigAtom, refocusNode } from "@/store/global";
@@ -18,18 +20,10 @@ import { Atom, atom, Getter, PrimitiveAtom, WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor";
 import { createRef } from "react";
+import { buildBookmarkMenu } from "./bookmarks-menu";
 import { PreviewView } from "./preview";
 import { makeDirectoryDefaultMenuItems } from "./preview-directory-utils";
 import type { PreviewEnv } from "./previewenv";
-
-// TODO drive this using config
-const BOOKMARKS: { label: string; path: string }[] = [
-    { label: "Home", path: "~" },
-    { label: "Desktop", path: "~/Desktop" },
-    { label: "Downloads", path: "~/Downloads" },
-    { label: "Documents", path: "~/Documents" },
-    { label: "Root", path: "/" },
-];
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
@@ -166,6 +160,8 @@ export class PreviewModel implements ViewModel {
     refreshVersion: PrimitiveAtom<number>;
     directorySearchActive: PrimitiveAtom<boolean>;
     refreshCallback: () => void;
+    pendingLocationAtom: PrimitiveAtom<{ anchor?: string; line?: number }>;
+    captureLocationCallback: () => { anchor?: string; line?: number } | null;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     env: PreviewEnv;
@@ -190,6 +186,8 @@ export class PreviewModel implements ViewModel {
         this.markdownShowToc = atom(false);
         this.filterOutNowsh = atom(true);
         this.monacoRef = createRef();
+        this.pendingLocationAtom = atom(null) as PrimitiveAtom<{ anchor?: string; line?: number }>;
+        this.captureLocationCallback = null;
         this.connectionError = atom("");
         this.errorMsgAtom = atom(null) as PrimitiveAtom<ErrorMsg | null>;
         this.viewIcon = atom((get) => {
@@ -208,11 +206,7 @@ export class PreviewModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "folder-open",
                     longClick: (e: React.MouseEvent<any>) => {
-                        const menuItems: ContextMenuItem[] = BOOKMARKS.map((bookmark) => ({
-                            label: `Go to ${bookmark.label} (${bookmark.path})`,
-                            click: () => this.goHistory(bookmark.path),
-                        }));
-                        ContextMenuModel.getInstance().showContextMenu(menuItems, e);
+                        this.showBookmarkMenu(e);
                     },
                 };
             }
@@ -332,9 +326,16 @@ export class PreviewModel implements ViewModel {
             const mimeType = jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             const loadableSV = get(this.loadableSpecializedView);
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
+            const starButton: IconButtonDecl = {
+                elemtype: "iconbutton",
+                icon: "bookmark",
+                title: "Bookmarks",
+                click: (e: React.MouseEvent<any>) => this.showBookmarkMenu(e),
+            };
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
                 return [
+                    starButton,
                     {
                         elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",
@@ -351,6 +352,7 @@ export class PreviewModel implements ViewModel {
                 ] as IconButtonDecl[];
             } else if (!isCeView && isMarkdownLike(mimeType)) {
                 return [
+                    starButton,
                     {
                         elemtype: "iconbutton",
                         icon: "book",
@@ -367,6 +369,7 @@ export class PreviewModel implements ViewModel {
             } else if (!isCeView && mimeType) {
                 // For all other file types (text, code, etc.), add refresh button
                 return [
+                    starButton,
                     {
                         elemtype: "iconbutton",
                         icon: "arrows-rotate",
@@ -374,6 +377,9 @@ export class PreviewModel implements ViewModel {
                         click: () => this.refreshCallback?.(),
                     },
                 ] as IconButtonDecl[];
+            }
+            if (mimeType) {
+                return [starButton] as IconButtonDecl[];
             }
             return null;
         });
@@ -593,6 +599,75 @@ export class PreviewModel implements ViewModel {
         // Clear the saved file buffers
         globalStore.set(this.fileContentSaved, null);
         globalStore.set(this.newFileContent, null);
+    }
+
+    async openBookmark(bm: BookmarkEntry) {
+        const currentConn = globalStore.get(this.blockAtom)?.meta?.connection ?? "";
+        const bmConn = bm.connection ?? "";
+        if (bmConn != currentConn) {
+            const blockOref = WOS.makeORef("block", this.blockId);
+            await this.env.services.object.UpdateObjectMeta(blockOref, { connection: bmConn, file: bm.path });
+            globalStore.set(this.fileContentSaved, null);
+            globalStore.set(this.newFileContent, null);
+        } else {
+            await this.goHistory(bm.path);
+        }
+        if (bm.bookmarktype == "docpos") {
+            const target: { anchor?: string; line?: number } = {};
+            if (bm.anchor) {
+                target.anchor = bm.anchor;
+            }
+            if (bm.line) {
+                target.line = bm.line;
+            }
+            globalStore.set(this.pendingLocationAtom, target);
+        }
+        refocusNode(this.blockId);
+    }
+
+    async addCurrentLocationBookmark() {
+        const path = globalStore.get(this.metaFilePath);
+        const connection = (await globalStore.get(this.connection)) ?? "";
+        const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
+        const basename = path?.split("/").pop() || path;
+        if (mimeType == "directory") {
+            await BookmarksModel.getInstance().add({
+                bookmarktype: "folder",
+                label: basename,
+                path,
+                connection,
+            } as FileBookmark);
+            return;
+        }
+        const loc = this.captureLocationCallback?.() ?? null;
+        if (loc == null) {
+            await BookmarksModel.getInstance().add({
+                bookmarktype: "file",
+                label: basename,
+                path,
+                connection,
+            } as FileBookmark);
+            return;
+        }
+        const label = loc.anchor ? `${basename} · §${loc.anchor.slice(1)}` : `${basename} : L${loc.line}`;
+        await BookmarksModel.getInstance().add({
+            bookmarktype: "docpos",
+            label,
+            path,
+            connection,
+            anchor: loc.anchor ?? "",
+            line: loc.line ?? 0,
+        } as FileBookmark);
+    }
+
+    showBookmarkMenu(e: React.MouseEvent<any>) {
+        const entries = globalStore.get(fileBookmarksAtom);
+        const menu = buildBookmarkMenu(entries, {
+            onOpen: (bm) => fireAndForget(() => this.openBookmark(bm)),
+            onAddCurrent: () => fireAndForget(() => this.addCurrentLocationBookmark()),
+            onEdit: () => modalsModel.pushModal("EditBookmarksModal"),
+        });
+        ContextMenuModel.getInstance().showContextMenu(menu, e);
     }
 
     async goParentDirectory({ fileInfo = null }: { fileInfo?: FileInfo | null }) {
