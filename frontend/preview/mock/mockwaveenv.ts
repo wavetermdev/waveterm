@@ -14,6 +14,7 @@ import { showPreviewContextMenu } from "../preview-contextmenu";
 import { MockSysinfoConnection } from "../previews/sysinfo.preview-util";
 import { DefaultFullConfig } from "./defaultconfig";
 import { DefaultMockFilesystem } from "./mockfilesystem";
+import { fetchMockSuggestions } from "./mocksuggestions";
 import { previewElectronApi } from "./preview-electron-api";
 
 export const PreviewTabId = crypto.randomUUID();
@@ -312,6 +313,11 @@ export function makeMockRpc(
     setCallHandler("fileread", async (_client, data: FileData) => DefaultMockFilesystem.fileRead(data));
     setCallHandler("filelist", async (_client, data: FileListData) => DefaultMockFilesystem.fileList(data));
     setCallHandler("filejoin", async (_client, data: string[]) => DefaultMockFilesystem.fileJoin(data));
+    setCallHandler("fetchsuggestions", async (_client, data: FetchSuggestionsData) => fetchMockSuggestions(data));
+    setCallHandler("disposesuggestions", async () => null);
+    setStreamHandler("filereadstream", async function* (_client, data: FileData) {
+        yield* DefaultMockFilesystem.fileReadStream(data);
+    });
     setStreamHandler("fileliststream", async function* (_client, data: FileListData) {
         yield* DefaultMockFilesystem.fileListStream(data);
     });
