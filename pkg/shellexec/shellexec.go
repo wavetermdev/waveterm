@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -122,6 +123,31 @@ type PipePty struct {
 	remoteStdoutRead *os.File
 }
 
+func setCmdArgv0FromPath(cmd *exec.Cmd) {
+	if cmd == nil {
+		return
+	}
+	execPath := cmd.Path
+	if execPath == "" {
+		if len(cmd.Args) == 0 {
+			return
+		}
+		execPath = cmd.Args[0]
+	}
+	if execPath == "" {
+		return
+	}
+	argv0 := filepath.Base(execPath)
+	if argv0 == "" {
+		return
+	}
+	if len(cmd.Args) == 0 {
+		cmd.Args = []string{argv0}
+		return
+	}
+	cmd.Args[0] = argv0
+}
+
 func (pp *PipePty) Fd() uintptr {
 	return pp.remoteStdinWrite.Fd()
 }
@@ -157,6 +183,7 @@ func StartWslShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdS
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProcNoWsh)")
 
 	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name())
+	setCmdArgv0FromPath(ecmd)
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -275,6 +302,7 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 	}
 	log.Printf("full combined command: %s", cmdCombined)
 	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name(), "--", "sh", "-c", cmdCombined)
+	setCmdArgv0FromPath(ecmd)
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
@@ -619,6 +647,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 		}
 		blocklogger.Debugf(logCtx, "[conndebug] shell:%s shellOpts:%v\n", shellPath, shellOpts)
 		ecmd = exec.Command(shellPath, shellOpts...)
+		setCmdArgv0FromPath(ecmd)
 		ecmd.Env = os.Environ()
 		if shellType == shellutil.ShellType_zsh {
 			shellutil.UpdateCmdEnv(ecmd, map[string]string{"ZDOTDIR": shellutil.GetLocalZshZDotDir()})
@@ -627,6 +656,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 		isShell = false
 		shellOpts = append(shellOpts, "-c", cmdStr)
 		ecmd = exec.Command(shellPath, shellOpts...)
+		setCmdArgv0FromPath(ecmd)
 		ecmd.Env = os.Environ()
 	}
 
@@ -693,6 +723,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 }
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize waveobj.TermSize) ([]byte, error) {
+	setCmdArgv0FromPath(ecmd)
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellLocalEnvVars(shellutil.DefaultTermType))
 	if termSize.Rows == 0 || termSize.Cols == 0 {
