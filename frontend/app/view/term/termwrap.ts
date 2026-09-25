@@ -111,6 +111,8 @@ export class TermWrap {
     lastPasteData: string = "";
     lastPasteTime: number = 0;
 
+    pendingImeDedup: string[] = [];
+
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
     recentWritesCounter: number = 0;
@@ -383,6 +385,27 @@ export class TermWrap {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         const trimTrailingWhitespaceAtom = getSettingsKeyAtom("term:trimtrailingwhitespace");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
+        const ta = this.terminal.textarea;
+        if (ta) {
+            const onCompEnd = (e: CompositionEvent) => {
+                const compHelper = (this.terminal as any)._core?._inputHandler?._compositionHelper;
+                if (compHelper && "_isSendingComposition" in compHelper) {
+                    compHelper._isSendingComposition = false;
+                }
+                if (!e.data) {
+                    return;
+                }
+                this.pendingImeDedup.push(e.data);
+                this.sendDataHandler?.(e.data);
+                this.multiInputCallback?.(e.data);
+            };
+            ta.addEventListener("compositionend", onCompEnd);
+            this.toDispose.push({
+                dispose: () => {
+                    ta.removeEventListener("compositionend", onCompEnd);
+                },
+            });
+        }
         this.toDispose.push(
             this.terminal.onSelectionChange(
                 debounce(50, () => {
@@ -464,10 +487,14 @@ export class TermWrap {
     }
 
     handleTermData(data: string) {
+        const dedupIdx = this.pendingImeDedup.indexOf(data);
+        if (dedupIdx !== -1) {
+            this.pendingImeDedup.splice(dedupIdx, 1);
+            return;
+        }
         if (!this.loaded) {
             return;
         }
-
         this.sendDataHandler?.(data);
         this.multiInputCallback?.(data);
     }
