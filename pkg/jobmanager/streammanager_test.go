@@ -17,12 +17,23 @@ import (
 type testWriter struct {
 	mu      sync.Mutex
 	packets []wshrpc.CommandStreamData
+	sendErr error
 }
 
-func (tw *testWriter) SendData(pkt wshrpc.CommandStreamData) {
+func (tw *testWriter) SendData(pkt wshrpc.CommandStreamData) error {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()
+	if tw.sendErr != nil {
+		return tw.sendErr
+	}
 	tw.packets = append(tw.packets, pkt)
+	return nil
+}
+
+func (tw *testWriter) SetSendError(err error) {
+	tw.mu.Lock()
+	defer tw.mu.Unlock()
+	tw.sendErr = err
 }
 
 func (tw *testWriter) GetPackets() []wshrpc.CommandStreamData {
@@ -345,4 +356,95 @@ func (sr *slowReader) Read(p []byte) (n int, err error) {
 	sr.pos += n
 
 	return n, nil
+}
+
+// failingWriter always fails SendData, to simulate a stale RPC/stream path.
+type failingWriter struct {
+	err error
+}
+
+func (fw *failingWriter) SendData(pkt wshrpc.CommandStreamData) error {
+	return fw.err
+}
+
+// TestSendErrorDisconnectsClient verifies that when the data path to the main
+// server fails (e.g. RPC stream timeout), the stream manager drops the client
+// back to disconnected mode (buffering) instead of staying falsely attached.
+func TestSendErrorDisconnectsClient(t *testing.T) {
+	tw := &testWriter{}
+	sm := MakeStreamManager()
+	defer sm.Close()
+
+	// pipe stays open (no EOF) so the sender loop remains active
+	pr, pw := io.Pipe()
+	defer pr.Close()
+	defer pw.Close()
+
+	err := sm.AttachReader(pr)
+	if err != nil {
+		t.Fatalf("AttachReader failed: %v", err)
+	}
+
+	_, err = sm.ClientConnected("stream-1", tw, CwndSize, 0)
+	if err != nil {
+		t.Fatalf("ClientConnected failed: %v", err)
+	}
+
+	if _, err := pw.Write([]byte("first chunk")); err != nil {
+		t.Fatalf("pipe write failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if len(tw.GetPackets()) == 0 {
+		t.Fatal("expected packets to flow after ClientConnected")
+	}
+
+	// now the link goes stale: every send fails with a timeout-like error
+	tw.SetSendError(io.ErrClosedPipe)
+
+	onSendErrCh := make(chan error, 1)
+	sm.OnSendError = func(err error) {
+		select {
+		case onSendErrCh <- err:
+		default:
+		}
+	}
+
+	// new output forces another SendData call, which now fails
+	if _, err := pw.Write([]byte("second chunk")); err != nil {
+		t.Fatalf("pipe write failed: %v", err)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		sm.lock.Lock()
+		connected := sm.connected
+		sm.lock.Unlock()
+		if !connected {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("stream manager did not mark client disconnected after send error")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	select {
+	case err := <-onSendErrCh:
+		if err == nil {
+			t.Fatal("expected non-nil error from OnSendError")
+		}
+	default:
+		t.Fatal("OnSendError callback was not invoked")
+	}
+
+	// a new client must be able to attach and receive the buffered data
+	tw2 := &testWriter{}
+	_, err = sm.ClientConnected("stream-2", tw2, CwndSize, 0)
+	if err != nil {
+		t.Fatalf("reconnect after send error failed: %v", err)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if len(tw2.GetPackets()) == 0 {
+		t.Fatal("expected buffered data to be delivered to reconnected client")
+	}
 }

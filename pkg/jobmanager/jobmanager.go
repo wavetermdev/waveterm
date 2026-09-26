@@ -55,6 +55,9 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	WshCmdJobManager.JobAuthToken = jobAuthToken
 	WshCmdJobManager.StreamManager = MakeStreamManager()
 	WshCmdJobManager.InputQueue = utilds.MakeQuickReorderQueue[wshrpc.CommandJobInputData](JobInputQueueSize, JobInputQueueTimeout)
+	WshCmdJobManager.StreamManager.OnSendError = func(err error) {
+		go WshCmdJobManager.handleStreamSendError(err)
+	}
 	err := wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to set public key: %w", err)
@@ -206,6 +209,23 @@ func (jm *JobManager) disconnectFromStreamHelper(mainServerConn *MainServerConn)
 	}
 	jm.StreamManager.ClientDisconnected()
 	jm.connectedStreamClient = nil
+}
+
+// handleStreamSendError is invoked (async) when the stream manager fails to
+// push data to the main server. The attached client connection is stale at
+// this point: keep the job + buffered stream alive, but close the stale
+// socket so the main server observes the route drop and auto-reconnects.
+func (jm *JobManager) handleStreamSendError(sendErr error) {
+	jm.lock.Lock()
+	client := jm.connectedStreamClient
+	if client != nil {
+		jm.connectedStreamClient = nil
+	}
+	jm.lock.Unlock()
+	if client != nil {
+		log.Printf("handleStreamSendError: closing stale client connection after send error: %v\n", sendErr)
+		client.Close()
+	}
 }
 
 func (jm *JobManager) SetAttachedClient(msc *MainServerConn) {
