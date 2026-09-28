@@ -1024,6 +1024,12 @@ func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.Wor
 	return resp, err
 }
 
+// command "workspacelistall", wshserver.WorkspaceListAllCommand
+func WorkspaceListAllCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.WorkspaceInfoData, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.WorkspaceInfoData](w, "workspacelistall", nil, opts)
+	return resp, err
+}
+
 // command "writeappfile", wshserver.WriteAppFileCommand
 func WriteAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "writeappfile", data, opts)

@@ -77,6 +77,18 @@ const HoverDelayMs = 600;
 const MaxHoverTimeMs = 2200;
 const modKey = PLATFORM === PlatformMacOS ? "Cmd" : "Ctrl";
 
+export function TermLinkTooltipContent({ url }: { url?: string }) {
+    if (!url) {
+        return <span>{modKey}-click to open link</span>;
+    }
+    return (
+        <div className="max-w-[min(28rem,80vw)]">
+            <div>{modKey}-click to open link</div>
+            <div className="break-all">{url}</div>
+        </div>
+    );
+}
+
 interface TermLinkTooltipProps {
     /**
      * The live TermWrap instance. Pass the instance directly (not a ref) so
@@ -91,7 +103,7 @@ interface TermLinkTooltipProps {
  * prevents unnecessary re-renders of the parent TerminalView.
  */
 export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }: TermLinkTooltipProps) {
-    const [mousePos, setMousePos] = React.useState<{ x: number; y: number } | null>(null);
+    const [mousePos, setMousePos] = React.useState<{ x: number; y: number; url?: string } | null>(null);
     const timeoutRef = React.useRef<number | null>(null);
     const maxTimeoutRef = React.useRef<number | null>(null);
 
@@ -100,7 +112,7 @@ export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }:
             return;
         }
 
-        termWrap.onLinkHover = (uri: string | null, mouseX: number, mouseY: number) => {
+        termWrap.onLinkHover = (uri: string | null, mouseX: number, mouseY: number, showUrl: boolean) => {
             clearTimeoutRef(timeoutRef);
 
             if (uri == null) {
@@ -112,7 +124,7 @@ export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }:
             // Show after a short delay so fast mouse movements don't flicker.
             timeoutRef.current = window.setTimeout(() => {
                 timeoutRef.current = null;
-                setMousePos({ x: mouseX, y: mouseY });
+                setMousePos({ x: mouseX, y: mouseY, url: showUrl ? uri : undefined });
                 // Auto-dismiss after MaxHoverTimeMs so the tooltip doesn't linger forever.
                 clearTimeoutRef(maxTimeoutRef);
                 maxTimeoutRef.current = window.setTimeout(() => {
@@ -130,5 +142,5 @@ export const TermLinkTooltip = React.memo(function TermLinkTooltip({ termWrap }:
         };
     }, [termWrap]);
 
-    return <TermTooltip mousePos={mousePos} content={<span>{modKey}-click to open link</span>} />;
+    return <TermTooltip mousePos={mousePos} content={<TermLinkTooltipContent url={mousePos?.url} />} />;
 });

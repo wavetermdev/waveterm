@@ -28,7 +28,7 @@ var workspaceListCommand = &cobra.Command{
 }
 
 func workspaceListRun(cmd *cobra.Command, args []string) {
-	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
+	workspaces, err := wshclient.WorkspaceListAllCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		WriteStderr("Unable to list workspaces: %v\n", err)
 		return
@@ -37,7 +37,7 @@ func workspaceListRun(cmd *cobra.Command, args []string) {
 	WriteStdout("[\n")
 	for i, w := range workspaces {
 		WriteStdout("  {\n    \"windowId\": \"%s\",\n", w.WindowId)
-		WriteStderr("    \"workspaceId\": \"%s\",\n", w.WorkspaceData.OID)
+		WriteStdout("    \"workspaceId\": \"%s\",\n", w.WorkspaceData.OID)
 		WriteStdout("    \"name\": \"%s\",\n", w.WorkspaceData.Name)
 		WriteStdout("    \"icon\": \"%s\",\n", w.WorkspaceData.Icon)
 		WriteStdout("    \"color\": \"%s\"\n", w.WorkspaceData.Color)

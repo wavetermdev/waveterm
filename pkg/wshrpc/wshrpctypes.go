@@ -146,6 +146,13 @@ type WshRpcInterface interface {
 	GetSecretsLinuxStorageBackendCommand(ctx context.Context) (string, error)
 
 	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
+	// WorkspaceListAllCommand is the CLI-only counterpart to
+	// WorkspaceListCommand: it includes unsaved (scratch) workspaces too.
+	// WorkspaceListCommand itself must keep excluding them - it's also
+	// called from emain (Electron Workspace menu, Alt+Ctrl+N workspace
+	// switching), which relies on that filtering to avoid blank menu
+	// entries and shortcut slots for scratch workspaces.
+	WorkspaceListAllCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
