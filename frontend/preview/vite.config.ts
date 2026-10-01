@@ -28,5 +28,6 @@ export default defineConfig({
     },
     server: {
         port: 7007,
+        allowedHosts: [".augmentusercontent.com"],
     },
 });
