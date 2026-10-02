@@ -23,7 +23,7 @@ import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-uti
 import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
 
-const DevInitTimeoutMs = 5000;
+const DevInitDiagnosticMs = 5000;
 
 export type WindowOpts = {
     unamePlatform: NodeJS.Platform;
@@ -423,7 +423,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
     private async initializeTab(tabView: WaveTabView, primaryStartupTab: boolean) {
         const clientId = await getClientId();
-        await this.awaitWithDevTimeout(tabView.initPromise, "initPromise", tabView.waveTabId);
+        await this.awaitWithDevDiagnostics(tabView.initPromise, "initPromise", tabView);
         const winBounds = this.getContentBounds();
         tabView.setBounds({ x: 0, y: 0, width: winBounds.width, height: winBounds.height });
         this.contentView.addChildView(tabView);
@@ -446,33 +446,52 @@ export class WaveBrowserWindow extends BaseWindow {
             primaryStartupTab ? "(primary startup)" : ""
         );
         tabView.webContents.send("wave-init", initOpts);
-        await this.awaitWithDevTimeout(tabView.waveReadyPromise, "waveReadyPromise", tabView.waveTabId);
+        await this.awaitWithDevDiagnostics(tabView.waveReadyPromise, "waveReadyPromise", tabView);
         console.log("wave-ready init time", Date.now() - startTime + "ms");
     }
 
-    private async awaitWithDevTimeout<T>(promise: Promise<T>, name: string, tabId: string): Promise<T> {
+    private async awaitWithDevDiagnostics<T>(promise: Promise<T>, name: string, tabView: WaveTabView): Promise<T> {
         if (!isDev) {
             return promise;
         }
-        let timeoutHandle: ReturnType<typeof setTimeout> = null;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-            timeoutHandle = setTimeout(() => {
-                console.log(
-                    `[dev] ${name} timed out after ${DevInitTimeoutMs}ms for tab ${tabId}, showing window for devtools`
-                );
-                if (!this.isDestroyed() && !this.isVisible()) {
-                    this.show();
-                }
-                if (this.activeTabView?.webContents && !this.activeTabView.webContents.isDevToolsOpened()) {
-                    this.activeTabView.webContents.openDevTools();
-                }
-                reject(new Error(`[dev] ${name} timed out after ${DevInitTimeoutMs}ms`));
-            }, DevInitTimeoutMs);
+        const wc = tabView.webContents;
+        if (this.isDestroyed() || tabView.isDestroyed || wc.isDestroyed()) {
+            throw new Error(`[dev] ${name} aborted for destroyed tab/window ${tabView.waveTabId}`);
+        }
+        let rejectWait: (error: Error) => void;
+        const lifecyclePromise = new Promise<never>((_, reject) => {
+            rejectWait = reject;
         });
+        const onClosed = () =>
+            rejectWait(new Error(`[dev] ${name} aborted: window closed for tab ${tabView.waveTabId}`));
+        const onDestroyed = () => rejectWait(new Error(`[dev] ${name} aborted: tab ${tabView.waveTabId} destroyed`));
+        const onRenderProcessGone = (_event: Electron.Event, details: Electron.RenderProcessGoneDetails) =>
+            rejectWait(new Error(`[dev] ${name} aborted: renderer ${details.reason} for tab ${tabView.waveTabId}`));
+        this.once("closed", onClosed);
+        wc.once("destroyed", onDestroyed);
+        wc.once("render-process-gone", onRenderProcessGone);
+        // Slow dev-server loads can still complete; the diagnostic threshold must not abandon wave-init.
+        const diagnosticHandle = setTimeout(() => {
+            console.log(
+                `[dev] ${name} still pending after ${DevInitDiagnosticMs}ms for tab ${tabView.waveTabId}, showing window for devtools; continuing to wait`
+            );
+            if (this.isDestroyed() || tabView.isDestroyed || wc.isDestroyed()) {
+                return;
+            }
+            if (!this.isVisible()) {
+                this.show();
+            }
+            if (!wc.isDevToolsOpened()) {
+                wc.openDevTools();
+            }
+        }, DevInitDiagnosticMs);
         try {
-            return await Promise.race([promise, timeoutPromise]);
+            return await Promise.race([promise, lifecyclePromise]);
         } finally {
-            clearTimeout(timeoutHandle);
+            clearTimeout(diagnosticHandle);
+            this.removeListener("closed", onClosed);
+            wc.removeListener("destroyed", onDestroyed);
+            wc.removeListener("render-process-gone", onRenderProcessGone);
         }
     }
 
