@@ -65,7 +65,7 @@ jobs:
               uses: actions/checkout@v6
 
             - name: Install Task
-              uses: arduino/setup-task@v2
+              uses: arduino/setup-task@v3
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
