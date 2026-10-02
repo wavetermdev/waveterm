@@ -1,0 +1,9 @@
+Windows Registry Editor Version 5.00
+
+; ============================================================
+; Remove Wave Terminal Context Menu
+; ============================================================
+
+[-HKEY_CLASSES_ROOT\Directory\Background\shell\WaveTerminal]
+[-HKEY_CLASSES_ROOT\Directory\shell\WaveTerminal]
+[-HKEY_CLASSES_ROOT\Drive\shell\WaveTerminal]
