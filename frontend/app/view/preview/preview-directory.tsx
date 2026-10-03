@@ -1,6 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BookmarksModel } from "@/app/store/bookmarksmodel";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -407,6 +408,21 @@ function TableBody({
                     click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
                 },
             ];
+            menu.push(
+                { type: "separator" },
+                {
+                    label: "Add to Bookmarks",
+                    click: () =>
+                        fireAndForget(() =>
+                            BookmarksModel.getInstance().add({
+                                bookmarktype: finfo.isdir ? "folder" : "file",
+                                label: fileName,
+                                path: finfo.path,
+                                connection: conn ?? "",
+                            } as FileBookmark)
+                        ),
+                }
+            );
             addOpenMenuItems(menu, conn, finfo);
             menu.push(
                 {

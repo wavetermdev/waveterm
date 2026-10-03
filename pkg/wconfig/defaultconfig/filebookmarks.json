@@ -1,0 +1,7 @@
+{
+    "home": { "bookmarktype": "folder", "label": "Home", "path": "~", "display:order": 1 },
+    "desktop": { "bookmarktype": "folder", "label": "Desktop", "path": "~/Desktop", "display:order": 2 },
+    "downloads": { "bookmarktype": "folder", "label": "Downloads", "path": "~/Downloads", "display:order": 3 },
+    "documents": { "bookmarktype": "folder", "label": "Documents", "path": "~/Documents", "display:order": 4 },
+    "root": { "bookmarktype": "folder", "label": "Root", "path": "/", "display:order": 5 }
+}
