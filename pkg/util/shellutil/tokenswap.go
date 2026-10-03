@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,40 +98,94 @@ func GetAndRemoveTokenSwapEntry(token string) *TokenSwapEntry {
 	return nil
 }
 
+// sortedEnvKeys returns env's keys in a deterministic (sorted) order so that
+// encoding the same env map always produces byte-identical output — required
+// both for reproducible tests and so logs/diffs of the encoded script are
+// stable across runs.
+func sortedEnvKeys(env map[string]string) []string {
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
 func encodeEnvVarsForBash(env map[string]string) (string, error) {
 	var encoded string
-	for k, v := range env {
+	for _, k := range sortedEnvKeys(env) {
 		// validate key
 		if !IsValidEnvVarName(k) {
 			return "", fmt.Errorf("invalid env var name: %q", k)
 		}
-		encoded += fmt.Sprintf("export %s=%s\n", k, HardQuote(v))
+		encoded += fmt.Sprintf("export %s=%s\n", k, HardQuote(env[k]))
 	}
 	return encoded, nil
 }
 
 func encodeEnvVarsForFish(env map[string]string) (string, error) {
 	var encoded string
-	for k, v := range env {
+	for _, k := range sortedEnvKeys(env) {
 		// validate key
 		if !IsValidEnvVarName(k) {
 			return "", fmt.Errorf("invalid env var name: %q", k)
 		}
-		encoded += fmt.Sprintf("set -x %s %s\n", k, HardQuoteFish(v))
+		encoded += fmt.Sprintf("set -x %s %s\n", k, HardQuoteFish(env[k]))
 	}
 	return encoded, nil
 }
 
 func encodeEnvVarsForPowerShell(env map[string]string) (string, error) {
 	var encoded string
-	for k, v := range env {
+	for _, k := range sortedEnvKeys(env) {
 		// validate key
 		if !IsValidEnvVarName(k) {
 			return "", fmt.Errorf("invalid env var name: %q", k)
 		}
-		encoded += fmt.Sprintf("$env:%s = %s\n", k, HardQuotePowerShell(v))
+		encoded += fmt.Sprintf("$env:%s = %s\n", k, HardQuotePowerShell(env[k]))
 	}
 	return encoded, nil
+}
+
+// PrefixEnvAssignmentsForShell returns cmd prefixed with statements (in the
+// given outer shell's own syntax) that set env, in deterministic sorted-key
+// order. POSIX shells support the inline "VAR=val cmd" prefix form; fish and
+// PowerShell do not support prefixing an arbitrary command this way, so their
+// assignments are emitted as separate statements before cmd. Every value is
+// hard-quoted for the target dialect — this is the single place a
+// swap-token/JWT/ZDOTDIR value is spliced into a command line, so it is the
+// only place that can leak an unquoted value into shell reparsing.
+func PrefixEnvAssignmentsForShell(shellType string, env map[string]string, cmd string) string {
+	if len(env) == 0 {
+		return cmd
+	}
+	keys := sortedEnvKeys(env)
+	switch shellType {
+	case ShellType_fish:
+		var sb strings.Builder
+		for _, k := range keys {
+			fmt.Fprintf(&sb, "set -x %s %s; ", k, HardQuoteFish(env[k]))
+		}
+		sb.WriteString(cmd)
+		return sb.String()
+	case ShellType_pwsh:
+		var sb strings.Builder
+		for _, k := range keys {
+			fmt.Fprintf(&sb, "$env:%s = %s; ", k, HardQuotePowerShell(env[k]))
+		}
+		sb.WriteString(cmd)
+		return sb.String()
+	default:
+		var sb strings.Builder
+		for _, k := range keys {
+			sb.WriteString(k)
+			sb.WriteByte('=')
+			sb.WriteString(HardQuote(env[k]))
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(cmd)
+		return sb.String()
+	}
 }
 
 func EncodeEnvVarsForShell(shellType string, env map[string]string) (string, error) {
