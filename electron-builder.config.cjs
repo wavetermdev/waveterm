@@ -4,6 +4,44 @@ const fs = require("fs");
 const path = require("path");
 
 const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
+const archNameByValue = {
+    [Arch.x64]: "x64",
+    [Arch.arm64]: "arm64",
+    [Arch.universal]: "universal",
+};
+
+function getPackageBinDir(context) {
+    if (context.electronPlatformName !== "darwin") {
+        return path.resolve(context.appOutDir, "resources/app.asar.unpacked/dist/bin");
+    }
+    return path.resolve(context.appOutDir, `${pkg.productName}.app/Contents/Resources/app.asar.unpacked/dist/bin`);
+}
+
+function getExpectedPackageBinaries(context) {
+    const platform = context.electronPlatformName;
+    const arch = archNameByValue[context.arch] ?? context.arch;
+    const exeExt = platform === "win32" ? ".exe" : "";
+
+    if (platform === "darwin" && arch === "universal") {
+        return ["wavesrv.arm64", "wavesrv.x64", `wsh-${pkg.version}-darwin.arm64`, `wsh-${pkg.version}-darwin.x64`];
+    }
+
+    return [
+        `wavesrv.${arch}${exeExt}`,
+        `wsh-${pkg.version}-${platform === "win32" ? "windows" : platform}.${arch}${exeExt}`,
+    ];
+}
+
+function validatePackagedBinaries(context) {
+    const packageBinDir = getPackageBinDir(context);
+    const missing = getExpectedPackageBinaries(context).filter(
+        (file) => !fs.existsSync(path.resolve(packageBinDir, file))
+    );
+    if (missing.length === 0) {
+        return;
+    }
+    throw new Error(`Missing packaged Wave binaries in ${packageBinDir}: ${missing.join(", ")}`);
+}
 
 /**
  * @type {import('electron-builder').Configuration}
@@ -61,6 +99,7 @@ const config = {
         singleArchFiles: "**/dist/bin/wavesrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
+        notarize: !!process.env.APPLE_API_KEY || !!process.env.APPLE_ID,
         extendInfo: {
             NSContactsUsageDescription: "A CLI application running in Wave wants to use your contacts.",
             NSRemindersUsageDescription: "A CLI application running in Wave wants to use your reminders.",
@@ -122,12 +161,11 @@ const config = {
         url: "https://dl.waveterm.dev/releases-w2",
     },
     afterPack: (context) => {
+        validatePackagedBinaries(context);
+
         // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
-            const packageBinDir = path.resolve(
-                context.appOutDir,
-                `${pkg.productName}.app/Contents/Resources/app.asar.unpacked/dist/bin`
-            );
+            const packageBinDir = getPackageBinDir(context);
 
             // Reapply file permissions to the wavesrv binaries in the final app package
             fs.readdirSync(packageBinDir, {
