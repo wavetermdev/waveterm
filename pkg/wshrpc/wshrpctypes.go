@@ -54,6 +54,7 @@ type WshRpcInterface interface {
 	ControllerDestroyCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
 	ControllerAppendOutputCommand(ctx context.Context, data CommandControllerAppendOutputData) error
+	ListTmuxSessionsCommand(ctx context.Context, connName string) ([]string, error)
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
 	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
 	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)

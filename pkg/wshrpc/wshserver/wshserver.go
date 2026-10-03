@@ -333,6 +333,67 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 	return blockcontroller.SendInput(data.BlockId, inputUnion)
 }
 
+// ListTmuxSessionsCommand returns the names of running tmux sessions on the requested connection.
+// Local or disconnected connections, a missing tmux executable, and an absent tmux server all return an empty list.
+func (ws *WshServer) ListTmuxSessionsCommand(ctx context.Context, connName string) ([]string, error) {
+	if conncontroller.IsLocalConnName(connName) {
+		return []string{}, nil
+	}
+	opts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.MaybeGetConn(opts)
+	if conn == nil {
+		return []string{}, nil
+	}
+	client := conn.GetClient()
+	if client == nil {
+		return []string{}, nil
+	}
+	shellClient := genconn.MakeSSHShellClient(client)
+	// Use a login shell so the full PATH is available (including locations such as Homebrew's
+	// /opt/homebrew/bin). Login startup files may write to stdout, so each tmux record is prefixed
+	// with a sentinel and parsing only accepts sentinel-prefixed lines (see parseTmuxSessionList).
+	stdout, _, err := genconn.RunSimpleCommand(ctx, shellClient, genconn.CommandSpec{
+		Cmd: `bash -lc 'tmux list-sessions -F "` + tmuxSessionSentinel + `#{session_name}" 2>/dev/null' 2>/dev/null || true`,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error listing tmux sessions: %w", err)
+	}
+	return parseTmuxSessionList(stdout), nil
+}
+
+// tmuxSessionSentinel prefixes each listed session so session names can be told apart from
+// arbitrary stdout written by login-shell startup files.
+const tmuxSessionSentinel = "WAVETERM_TMUX_SESSION:"
+
+// parseTmuxSessionList parses `tmux list-sessions` output into session names. It only accepts
+// lines prefixed with tmuxSessionSentinel, so login-shell profile output that shares the stdout
+// stream cannot leak into the session list; the sentinel and any trailing CRLF are stripped, but
+// a session name's own leading/trailing whitespace is preserved (tmux allows it in names).
+func parseTmuxSessionList(stdout string) []string {
+	sessions := []string{}
+	for _, line := range strings.Split(stdout, "\n") {
+		sessions = appendTmuxSessionLine(sessions, line, tmuxSessionSentinel)
+	}
+	return sessions
+}
+
+// appendTmuxSessionLine appends the session name extracted from a single output line, or leaves
+// the slice unchanged when the line is not a valid sentinel-prefixed record.
+func appendTmuxSessionLine(sessions []string, line, sentinel string) []string {
+	line = strings.TrimSuffix(line, "\r")
+	if !strings.HasPrefix(line, sentinel) {
+		return sessions
+	}
+	name := strings.TrimPrefix(line, sentinel)
+	if name != "" {
+		sessions = append(sessions, name)
+	}
+	return sessions
+}
+
 func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wshrpc.CommandControllerAppendOutputData) error {
 	outputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.Data64)))
 	nw, err := base64.StdEncoding.Decode(outputBuf, []byte(data.Data64))

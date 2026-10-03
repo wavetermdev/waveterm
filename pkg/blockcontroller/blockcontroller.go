@@ -490,5 +490,30 @@ func makeSwapToken(ctx context.Context, logCtx context.Context, blockId string, 
 		token.Env[k] = v
 	}
 	token.ScriptText = getCustomInitScript(logCtx, blockMeta, remoteName, shellType)
+	token.ScriptText += buildTmuxAttachScript(blockMeta, remoteName, shellType)
 	return token
+}
+
+// buildTmuxAttachScript returns an inline script fragment that auto-attaches to a tmux
+// session (or an empty string when it does not apply). It is injected only when the block
+// carries a term:tmux:session meta key, the connection is a remote SSH block, and the shell
+// is a POSIX-compatible shell (bash/zsh). fish and pwsh use a different syntax, so the
+// fragment is skipped for them rather than emitting syntax they cannot parse.
+func buildTmuxAttachScript(blockMeta waveobj.MetaMapType, remoteName string, shellType string) string {
+	tmuxSession := blockMeta.GetString(waveobj.MetaKey_TermTmuxSession, "")
+	if tmuxSession == "" {
+		return ""
+	}
+	if conncontroller.IsLocalConnName(remoteName) {
+		return ""
+	}
+	if shellType != shellutil.ShellType_bash && shellType != shellutil.ShellType_zsh {
+		return ""
+	}
+	// Wrap the session name in shell single quotes, escaping any inner single quote as '\''
+	// so session names cannot break out of the command (injection-safe).
+	quoted := "'" + strings.ReplaceAll(tmuxSession, "'", "'\\''") + "'"
+	// Skip when already inside tmux to avoid nesting; fall back gracefully when tmux is not
+	// installed on the remote; exec replaces the shell so no empty shell lingers behind.
+	return fmt.Sprintf("\n[ -n \"$TMUX\" ] || ! command -v tmux >/dev/null 2>&1 || exec tmux new -A -t %s\n", quoted)
 }

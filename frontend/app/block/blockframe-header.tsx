@@ -31,7 +31,7 @@ import * as React from "react";
 import { BlockEnv } from "./blockenv";
 import { BlockFrameProps } from "./blocktypes";
 
-function handleHeaderContextMenu(
+async function handleHeaderContextMenu(
     e: React.MouseEvent<HTMLDivElement>,
     blockId: string,
     viewModel: ViewModel,
@@ -56,7 +56,7 @@ function handleHeaderContextMenu(
             },
         },
     ];
-    const extraItems = viewModel?.getSettingsMenuItems?.();
+    const extraItems = await viewModel?.getSettingsMenuItems?.();
     if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
     menu.push(
         { type: "separator" },
