@@ -21,7 +21,7 @@ const (
 )
 
 type DataSender interface {
-	SendData(dataPk wshrpc.CommandStreamData)
+	SendData(dataPk wshrpc.CommandStreamData) error
 }
 
 type streamTerminalEvent struct {
@@ -60,6 +60,10 @@ type StreamManager struct {
 	// terminal state - once true, stream is complete
 	terminalEventAcked bool
 	closed             bool
+
+	// OnSendError, if set, is called (asynchronously) when a SendData call fails.
+	// Used to tear down the stale client connection so a fresh attach can proceed.
+	OnSendError func(err error)
 }
 
 func MakeStreamManager() *StreamManager {
@@ -352,7 +356,14 @@ func (sm *StreamManager) senderLoop() {
 		if pkt == nil {
 			continue
 		}
-		sender.SendData(*pkt)
+		err := sender.SendData(*pkt)
+		if err != nil {
+			log.Printf("senderLoop: send error (seq=%d): %v -- marking client disconnected\n", pkt.Seq, err)
+			sm.ClientDisconnected()
+			if sm.OnSendError != nil {
+				sm.OnSendError(err)
+			}
+		}
 	}
 }
 
