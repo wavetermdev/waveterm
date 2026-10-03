@@ -26,6 +26,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/pamparse"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -105,6 +106,115 @@ func ExitCodeFromWaitErr(err error) int {
 	}
 	return -1
 
+}
+
+// escapeForPosixDoubleQuotes escapes special characters for use inside POSIX double quotes.
+// It escapes: \\, ", $, and ` to be safe inside "$HOME<rest>" where <rest> should be treated literally.
+func escapeForPosixDoubleQuotes(s string) string {
+	// Conservative escaping for the subset of chars that are special inside double quotes.
+	// This is used for "$HOME<rest>" where <rest> should be treated literally.
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\\', '"', '$', '`':
+			b.WriteByte('\\')
+			b.WriteByte(s[i])
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
+}
+
+// posixCwdExpr returns a POSIX shell expression for the given current working directory.
+// It handles tilde (~) expansion by using $HOME for paths starting with ~/, and quotes other paths appropriately.
+func posixCwdExpr(cwd string) string {
+	cwd = strings.TrimSpace(cwd)
+	if cwd == "" {
+		return ""
+	}
+	if cwd == "~" {
+		return "~"
+	}
+	if strings.HasPrefix(cwd, "~/") {
+		// "~" must be expanded on the target machine. Use $HOME so we can still quote paths with spaces safely.
+		rest := cwd[1:] // includes leading "/"
+		return fmt.Sprintf("\"$HOME%s\"", escapeForPosixDoubleQuotes(rest))
+	}
+	return utilfn.ShellQuote(cwd, false, -1)
+}
+
+// posixCwdExprNoWshRemote returns a POSIX shell expression for the given current working directory on a remote SSH connection.
+// It uses ~user syntax for tilde paths when an SSH username is provided, avoiding dependency on $HOME on the remote shell.
+func posixCwdExprNoWshRemote(cwd string, sshUser string) string {
+	cwd = strings.TrimSpace(cwd)
+	if cwd == "" {
+		return ""
+	}
+	sshUser = strings.TrimSpace(sshUser)
+	if sshUser == "" {
+		return posixCwdExpr(cwd)
+	}
+	if cwd == "~" {
+		// Prefer ~user so we don't depend on $HOME being correct on the remote shell.
+		return "~" + sshUser
+	}
+	if cwd == "~/" {
+		return "~" + sshUser + "/"
+	}
+	if strings.HasPrefix(cwd, "~/") {
+		// Prefer ~user so we don't depend on $HOME being correct on the remote shell.
+		rest := cwd[1:] // includes leading "/"
+		if strings.ContainsAny(rest, " \t\n\r'\"`$&|;<>()\\*[]?!") {
+			// Quote the rest to handle spaces and special characters
+			return "~" + sshUser + "'" + strings.ReplaceAll(rest, "'", "''") + "'"
+		}
+		return "~" + sshUser + rest
+	}
+	return posixCwdExpr(cwd)
+}
+
+// fishCwdExpr returns a Fish shell expression for the given current working directory.
+// Fish requires $HOME for tilde paths in double-quoted strings to handle spaces safely.
+func fishCwdExpr(cwd string) string {
+	cwd = strings.TrimSpace(cwd)
+	if cwd == "" {
+		return ""
+	}
+	if cwd == "~" {
+		return "~"
+	}
+	if strings.HasPrefix(cwd, "~/") {
+		// Fish does not expand ~ inside double quotes, use $HOME instead
+		rest := cwd[1:] // includes leading "/"
+		return fmt.Sprintf("\"$HOME%s\"", escapeForPosixDoubleQuotes(rest))
+	}
+	return utilfn.ShellQuote(cwd, false, -1)
+}
+
+// pwshCwdExpr returns a PowerShell expression for the given current working directory.
+// PowerShell uses ~ correctly by default; paths with spaces or special characters are wrapped in quotes.
+func pwshCwdExpr(cwd string) string {
+	cwd = strings.TrimSpace(cwd)
+	if cwd == "" {
+		return ""
+	}
+	if cwd == "~" {
+		return "~"
+	}
+	if strings.HasPrefix(cwd, "~/") {
+		rest := cwd[1:]
+		if strings.ContainsAny(rest, " \"'`$()[]{}") {
+			// Use single quotes for the path portion to escape special characters
+			return "~'" + strings.ReplaceAll(rest, "'", "''") + "'"
+		}
+		return cwd
+	}
+	if strings.ContainsAny(cwd, " \"'`$()[]{}") {
+		return "'" + strings.ReplaceAll(cwd, "'", "''") + "'"
+	}
+	return cwd
 }
 
 func checkCwd(cwd string) error {
