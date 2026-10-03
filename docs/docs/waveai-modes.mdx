@@ -36,6 +36,7 @@ Wave AI now supports provider-based configuration which automatically applies se
 - **`openrouter`** - OpenRouter API (automatically configures endpoint and secret name) [[see example](#openrouter)]
 - **`nanogpt`** - NanoGPT API (automatically configures endpoint and secret name) [[see example](#nanogpt)]
 - **`groq`** - Groq API (automatically configures endpoint and secret name) [[see example](#groq)]
+- **`minimax`** - MiniMax AI (OpenAI-compatible API) [[see example](#minimax)]
 - **`google`** - Google AI (Gemini) [[see example](#google-ai-gemini)]
 - **`azure`** - Azure OpenAI Service (modern API) [[see example](#azure-openai-modern-api)]
 - **`azure-legacy`** - Azure OpenAI Service (legacy deployment API) [[see example](#azure-openai-legacy-deployment-api)]
@@ -318,6 +319,60 @@ The provider automatically sets:
 :::note
 For Groq, you must manually specify `ai:capabilities` based on your model's features.
 :::
+
+### MiniMax
+
+[MiniMax](https://platform.minimax.io/subscribe/token-plan) provides the MiniMax series of AI models with strong coding, reasoning, and multimodal capabilities. MiniMax uses an OpenAI-compatible API:
+
+```json
+{
+  "minimax-m3": {
+    "display:name": "MiniMax-M3",
+    "display:icon": "server",
+    "ai:apitype": "openai-chat",
+    "ai:model": "MiniMax-M3",
+    "ai:endpoint": "https://api.minimax.io/v1/chat/completions",
+    "ai:apitokensecretname": "MINIMAX_TOKEN",
+    "ai:capabilities": ["tools", "images", "pdfs"]
+  }
+}
+```
+
+Store your MiniMax API token as a secret:
+
+```bash
+wsh secret set MINIMAX_TOKEN=your_minimax_api_token
+```
+
+Other available MiniMax models include:
+
+```json
+{
+  "minimax-m2.7": {
+    "display:name": "MiniMax-M2.7",
+    "display:icon": "server",
+    "ai:apitype": "openai-chat",
+    "ai:model": "MiniMax-M2.7",
+    "ai:endpoint": "https://api.minimax.io/v1/chat/completions",
+    "ai:apitokensecretname": "MINIMAX_TOKEN",
+    "ai:capabilities": ["tools", "images", "pdfs"]
+  }
+}
+```
+
+```json
+{
+  "minimax-m2.7-highspeed": {
+    "display:name": "MiniMax-M2.7 Highspeed",
+    "display:icon": "server",
+    "ai:apitype": "openai-chat",
+    "ai:model": "MiniMax-M2.7-highspeed",
+    "ai:endpoint": "https://api.minimax.io/v1/chat/completions",
+    "ai:apitokensecretname": "MINIMAX_TOKEN",
+    "ai:capabilities": ["tools", "images", "pdfs"]
+  }
+}
+```
 
 ### Google AI (Gemini)
 
