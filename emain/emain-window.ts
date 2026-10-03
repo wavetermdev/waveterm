@@ -308,7 +308,10 @@ export class WaveBrowserWindow extends BaseWindow {
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
                 const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
-                if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
+                const preserveThisWindow =
+                    fullConfig.settings["window:restoreallwindows"] ||
+                    (numWindows === 1 && fullConfig.settings["window:savelastwindow"]);
+                if (!preserveThisWindow) {
                     if (fullConfig.settings["window:confirmclose"]) {
                         const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                         if (isNonEmptyUnsavedWorkspace(workspace)) {

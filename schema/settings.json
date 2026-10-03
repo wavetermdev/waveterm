@@ -301,6 +301,9 @@
         "window:savelastwindow": {
           "type": "boolean"
         },
+        "window:restoreallwindows": {
+          "type": "boolean"
+        },
         "window:dimensions": {
           "type": "string"
         },
