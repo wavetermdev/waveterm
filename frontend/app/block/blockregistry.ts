@@ -6,6 +6,7 @@ import type { TabModel } from "@/app/store/tab-model";
 import { AiFileDiffViewModel } from "@/app/view/aifilediff/aifilediff";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
+import { ExcalidrawModel } from "@/app/view/excalidraw/excalidraw-model";
 import { ProcessViewerViewModel } from "@/app/view/processviewer/processviewer";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
@@ -35,6 +36,7 @@ BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 BlockRegistry.set("processviewer", ProcessViewerViewModel);
+BlockRegistry.set("excalidraw", ExcalidrawModel);
 
 function makeDefaultViewModel(viewType: string): ViewModel {
     const viewModel: ViewModel = {

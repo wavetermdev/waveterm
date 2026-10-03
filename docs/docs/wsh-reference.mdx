@@ -195,6 +195,73 @@ wsh editconfig presets/ai.json
 
 ---
 
+## excalidraw
+
+Open an Excalidraw diagram in a new block.
+
+```sh
+wsh excalidraw [file]
+```
+
+Opens the specified `.excalidraw` file for editing. If the file does not exist, creates an empty canvas with that file path set for autosave. If no file is specified, opens a blank canvas.
+
+Flags:
+
+- `-m, --magnified` - open the block in magnified mode
+
+Examples:
+
+```sh
+# Open an existing diagram
+wsh excalidraw diagram.excalidraw
+
+# Create a new diagram (file will be created on first save)
+wsh excalidraw ~/diagrams/new-design.excalidraw
+
+# Open a blank canvas (no file path)
+wsh excalidraw
+
+# Open in magnified mode
+wsh excalidraw -m architecture.excalidraw
+```
+
+### push
+
+```sh
+wsh excalidraw push <blockid> [file]
+```
+
+Replaces the scene in an existing Excalidraw block with Excalidraw JSON read from `file`, or from stdin if no file is given. If the block is backed by a file, the pushed scene is autosaved to it.
+
+```sh
+# Replace a block's scene from a file
+wsh excalidraw push <blockid> diagram.excalidraw
+
+# Pipe a generated scene into a block
+cat scene.json | wsh excalidraw push <blockid>
+```
+
+### mermaid
+
+```sh
+wsh excalidraw mermaid [blockid] [file]
+```
+
+Converts a Mermaid diagram to Excalidraw. With no `blockid`, opens the result in a new block. The Mermaid source is read from `file`, or from stdin if no file is given.
+
+```sh
+# Convert a Mermaid file and open in a new block
+wsh excalidraw mermaid flowchart.mmd
+
+# Push a converted Mermaid diagram into an existing block
+wsh excalidraw mermaid <blockid> flowchart.mmd
+
+# Pipe Mermaid source into an existing block
+echo "graph TD; A-->B" | wsh excalidraw mermaid <blockid>
+```
+
+---
+
 ## setbg
 
 The `setbg` command allows you to set a background image or color for the current tab with various customization options.

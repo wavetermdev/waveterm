@@ -39,6 +39,7 @@ storybook-static/
 test-results.xml
 
 docsite/
+public/excalidraw/
 
 .kilo-format-temp-*
 .superpowers

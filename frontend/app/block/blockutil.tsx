@@ -45,6 +45,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "processviewer") {
         return "microchip";
     }
+    if (view == "excalidraw") {
+        return "pen-ruler";
+    }
     return "square";
 }
 
@@ -72,6 +75,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "processviewer") {
         return "Processes";
+    }
+    if (view == "excalidraw") {
+        return "Excalidraw";
     }
     return view;
 }

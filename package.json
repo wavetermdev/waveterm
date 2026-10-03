@@ -70,6 +70,8 @@
     },
     "dependencies": {
         "@ai-sdk/react": "^2.0.104",
+        "@excalidraw/excalidraw": "^0.18.1",
+        "@excalidraw/mermaid-to-excalidraw": "^2.2.2",
         "@floating-ui/react": "^0.27.16",
         "@observablehq/plot": "^0.6.17",
         "@react-hook/resize-observer": "^2.0.2",

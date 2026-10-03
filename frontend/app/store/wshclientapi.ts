@@ -294,6 +294,12 @@ export class RpcApiType {
         return client.wshRpcCall("eventunsuball", null, opts);
     }
 
+    // command "excalidrawpush" [call]
+    ExcalidrawPushCommand(client: WshClient, data: CommandExcalidrawPushData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "excalidrawpush", data, opts);
+        return client.wshRpcCall("excalidrawpush", data, opts);
+    }
+
     // command "fetchsuggestions" [call]
     FetchSuggestionsCommand(client: WshClient, data: FetchSuggestionsData, opts?: RpcOpts): Promise<FetchSuggestionsResponse> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "fetchsuggestions", data, opts);

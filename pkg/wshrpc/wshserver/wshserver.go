@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
@@ -1595,4 +1596,40 @@ func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId st
 
 func (ws *WshServer) BlockJobStatusCommand(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
 	return jobcontroller.GetBlockJobStatus(ctx, blockId)
+}
+
+func (ws *WshServer) ExcalidrawPushCommand(ctx context.Context, data wshrpc.CommandExcalidrawPushData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
+	if data.SceneData == nil {
+		return fmt.Errorf("scenedata is required")
+	}
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("block not found: %w", err)
+	}
+	if block.Meta.GetString(waveobj.MetaKey_View, "") != "excalidraw" {
+		return fmt.Errorf("block %s is not an excalidraw view", data.BlockId)
+	}
+	if data.Format != "mermaid" {
+		switch scene := data.SceneData.(type) {
+		case []any:
+		case map[string]any:
+			if scene["type"] != "excalidraw" {
+				return fmt.Errorf("scenedata object must have \"type\": \"excalidraw\"")
+			}
+		default:
+			return fmt.Errorf("scenedata must be an excalidraw scene object or an array of elements")
+		}
+	}
+	data.PushId = uuid.NewString()
+	data.PushTs = time.Now().UnixMilli()
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:   wps.Event_ExcalidrawPushScene,
+		Scopes:  []string{waveobj.MakeORef(waveobj.OType_Block, data.BlockId).String()},
+		Persist: 1,
+		Data:    data,
+	})
+	return nil
 }
