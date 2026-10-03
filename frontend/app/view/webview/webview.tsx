@@ -1044,6 +1044,14 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         const failLoadHandler = (e: any) => {
             if (e.errorCode === -3) {
                 console.warn("Suppressed ERR_ABORTED error", e);
+            } else if (e.isMainFrame === false) {
+                // Sub-frame load failures are non-fatal. Web apps routinely load hidden iframes
+                // that are expected to fail — e.g. OAuth/OIDC silent-auth probes
+                // (response_mode=web_message, prompt=none), which get blocked by the embedder's
+                // Cross-Origin-Embedder-Policy and are then handled by the app's auth SDK (it
+                // falls back to interactive login). A normal browser surfaces these only to the
+                // SDK, not the user, so don't paint a fatal error over the whole block.
+                console.warn("Suppressed sub-frame load failure", e.validatedURL, e.errorDescription);
             } else {
                 const errorMessage = `Failed to load ${e.validatedURL}: ${e.errorDescription}`;
                 console.error(errorMessage);
