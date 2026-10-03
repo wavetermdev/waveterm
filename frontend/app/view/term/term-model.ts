@@ -697,6 +697,10 @@ export class TermViewModel implements ViewModel {
     }
 
     handleTerminalKeydown(event: KeyboardEvent): boolean {
+        if (this.shouldDeferImeSpaceToComposition(event)) {
+            return false;
+        }
+
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (waveEvent.type != "keydown") {
             return true;
@@ -777,6 +781,14 @@ export class TermViewModel implements ViewModel {
             return false;
         }
         return true;
+    }
+
+    shouldDeferImeSpaceToComposition(event: KeyboardEvent): boolean {
+        // On Windows Korean IME, xterm's keydown path can finalize composition before
+        // Chromium commits the last syllable, causing space to be sent before it.
+        return (
+            isWindows() && event.isComposing && event.key === " " && !event.ctrlKey && !event.altKey && !event.metaKey
+        );
     }
 
     setTerminalTheme(themeName: string) {
