@@ -20,10 +20,18 @@ func main() {
 	app.RegisterEmbeds(subDistFS, subStaticFS, nil)
 	app.SetAppMeta(AppMeta)
 	
-	if len(os.Args) == 2 && os.Args[1] == "--manifest" {
-		app.PrintAppManifest()
-		os.Exit(0)
+	for _, arg := range os.Args[1:] {
+		if arg == "--manifest" {
+			app.PrintAppManifest()
+			os.Exit(0)
+		}
+		if arg == "--tcp" {
+			os.Setenv("TSUNAMI_TERMPROXY", "0")
+		}
+		if arg == "--termproxy" {
+			os.Setenv("TSUNAMI_TERMPROXY", "1")
+		}
 	}
-	
+
 	app.RunMain()
 }

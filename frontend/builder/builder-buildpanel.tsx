@@ -6,6 +6,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
@@ -101,8 +102,12 @@ const BuilderBuildPanel = memo(() => {
         ? outputLines
         : outputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
 
+    const handleFocusCapture = useCallback(() => {
+        BuilderFocusManager.getInstance().setBuildFocused();
+    }, []);
+
     return (
-        <div className="w-full h-full flex flex-col bg-black rounded-br-2">
+        <div className="w-full h-full flex flex-col bg-black rounded-br-2" onFocusCapture={handleFocusCapture}>
             <div className="flex-shrink-0 px-3 py-2 border-b border-gray-700 flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-300">Build Output</span>
                 <div className="flex items-center gap-4">

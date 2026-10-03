@@ -24,8 +24,8 @@ class TsunamiViewModel extends WebViewModel {
         this.viewType = "tsunami";
         this.isRestarting = jotai.atom(false);
 
-        // Hide navigation bar (URL bar, back/forward/home buttons)
         this.hideNav = jotai.atom(true);
+        this.hideViewName = jotai.atom(false);
 
         // Set custom partition for tsunami WebView isolation
         this.partitionOverride = jotai.atom(`tsunami:${this.blockId}`);
@@ -180,7 +180,6 @@ class TsunamiViewModel extends WebViewModel {
 
     getSettingsMenuItems(): ContextMenuItem[] {
         const items = super.getSettingsMenuItems();
-        // Filter out homepage and navigation-related menu items for tsunami view
         const filteredItems = items.filter((item) => {
             const label = item.label?.toLowerCase() || "";
             return (
@@ -191,7 +190,6 @@ class TsunamiViewModel extends WebViewModel {
             );
         });
 
-        // Check if we should show the Remix option
         const blockData = globalStore.get(this.blockAtom);
         const appId = blockData?.meta?.["tsunami:appid"];
         const showRemixOption = appId && appId.startsWith("local/");
@@ -236,7 +234,6 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     const shellProcFullStatus = jotai.useAtomValue(model.shellProcFullStatus);
     const blockData = jotai.useAtomValue(model.blockAtom);
     const isRestarting = jotai.useAtomValue(model.isRestarting);
-    const domReady = jotai.useAtomValue(model.domReady);
 
     useEffect(() => {
         model.resyncController();

@@ -27,6 +27,7 @@ type WshRpcBuilderInterface interface {
 	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
 	PublishAppCommand(ctx context.Context, data CommandPublishAppData) (*CommandPublishAppRtnData, error)
 	MakeDraftFromLocalCommand(ctx context.Context, data CommandMakeDraftFromLocalData) (*CommandMakeDraftFromLocalRtnData, error)
+	DraftHasLocalVersionCommand(ctx context.Context, draftAppId string) (bool, error)
 }
 
 type AppInfo struct {
@@ -113,6 +114,10 @@ type RestartBuilderAndWaitResult struct {
 	Success      bool   `json:"success"`
 	ErrorMessage string `json:"errormessage,omitempty"`
 	BuildOutput  string `json:"buildoutput"`
+}
+
+type TermListenDownData struct {
+	Port int `json:"port"`
 }
 
 type AppMeta struct {

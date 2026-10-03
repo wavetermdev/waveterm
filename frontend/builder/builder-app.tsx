@@ -1,12 +1,14 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { globalStore } from "@/app/store/jotaiStore";
 import { WaveEnvContext } from "@/app/waveenv/waveenv";
 import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
 import { AppSelectionModal } from "@/builder/app-selection-modal";
 import { BuilderWorkspace } from "@/builder/builder-workspace";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { atoms, isDev } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import * as keyutil from "@/util/keyutil";
@@ -65,6 +67,8 @@ export function BuilderApp({ initOpts, onFirstRender }: BuilderAppProps) {
     const waveEnvRef = useRef(makeWaveEnvImpl());
     useEffect(() => {
         onFirstRender();
+        BuilderFocusManager.getInstance().setWaveAIFocused();
+        setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
     }, []);
 
     return (

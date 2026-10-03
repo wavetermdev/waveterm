@@ -239,6 +239,12 @@ func DisposeSuggestionsCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcO
 	return err
 }
 
+// command "drafthaslocalversion", wshserver.DraftHasLocalVersionCommand
+func DraftHasLocalVersionCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "drafthaslocalversion", data, opts)
+	return resp, err
+}
+
 // command "electrondecrypt", wshserver.ElectronDecryptCommand
 func ElectronDecryptCommand(w *wshutil.WshRpc, data wshrpc.CommandElectronDecryptData, opts *wshrpc.RpcOpts) (*wshrpc.CommandElectronDecryptRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandElectronDecryptRtnData](w, "electrondecrypt", data, opts)
@@ -921,6 +927,12 @@ func StreamTestCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) chan wshrpc.Resp
 // command "termgetscrollbacklines", wshserver.TermGetScrollbackLinesCommand
 func TermGetScrollbackLinesCommand(w *wshutil.WshRpc, data wshrpc.CommandTermGetScrollbackLinesData, opts *wshrpc.RpcOpts) (*wshrpc.CommandTermGetScrollbackLinesRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandTermGetScrollbackLinesRtnData](w, "termgetscrollbacklines", data, opts)
+	return resp, err
+}
+
+// command "termlistencheckport", wshserver.TermListenCheckPortCommand
+func TermListenCheckPortCommand(w *wshutil.WshRpc, data wshrpc.CommandTermListenCheckPortData, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "termlistencheckport", data, opts)
 	return resp, err
 }
 
