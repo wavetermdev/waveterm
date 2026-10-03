@@ -26,10 +26,13 @@ export type SysinfoEnv = WaveEnvSubset<{
         fullConfigAtom: WaveEnv["atoms"]["fullConfigAtom"];
     };
     getConnStatusAtom: WaveEnv["getConnStatusAtom"];
-    getBlockMetaKeyAtom: MetaKeyAtomFnType<"graph:numpoints" | "sysinfo:type" | "connection" | "count">;
+    getBlockMetaKeyAtom: MetaKeyAtomFnType<"graph:numpoints" | "graph:metrics" | "sysinfo:type" | "connection" | "count">;
 }>;
 
 const DefaultNumPoints = 120;
+const DefaultMetricKeys = ["cpu"];
+const DefaultCpuCoreCount = 32;
+const DefaultGpuCount = 16;
 
 type DataItem = {
     ts: number;
@@ -58,48 +61,205 @@ function defaultMemMeta(name: string, maxY: string): TimeSeriesMeta {
     };
 }
 
-const PlotTypes: object = {
-    CPU: function (_dataItem: DataItem): Array<string> {
+function defaultGpuMeta(name: string): TimeSeriesMeta {
+    return {
+        name: name,
+        label: "%",
+        miny: 0,
+        maxy: 100,
+        color: "var(--sysinfo-gpu-color)",
+        decimalPlaces: 0,
+    };
+}
+
+function defaultGpuMemMeta(name: string, maxY: string): TimeSeriesMeta {
+    return {
+        name: name,
+        label: "GB",
+        miny: 0,
+        maxy: maxY,
+        color: "var(--sysinfo-gpu-color)",
+        decimalPlaces: 1,
+    };
+}
+
+type PlotTypeFn = (dataItem: DataItem | null) => Array<string>;
+
+function getIndexedMetrics(dataItem: DataItem | null, prefix: string): Array<string> {
+    return Object.keys(dataItem ?? {})
+        .filter((item) => {
+            if (!item.startsWith(prefix)) {
+                return false;
+            }
+            const metricIdx = Number(item.slice(prefix.length));
+            return Number.isInteger(metricIdx);
+        })
+        .sort((a, b) => {
+            const valA = Number(a.slice(prefix.length));
+            const valB = Number(b.slice(prefix.length));
+            return valA - valB;
+        });
+}
+
+function getCpuCoreMetrics(dataItem: DataItem | null): Array<string> {
+    return getIndexedMetrics(dataItem, "cpu:");
+}
+
+function getGpuMetrics(dataItem: DataItem | null): Array<string> {
+    return getIndexedMetrics(dataItem, "gpu:");
+}
+
+const LegacyPlotTypes: Record<string, PlotTypeFn> = {
+    CPU: function (_dataItem: DataItem | null): Array<string> {
         return ["cpu"];
     },
-    Mem: function (_dataItem: DataItem): Array<string> {
+    Mem: function (_dataItem: DataItem | null): Array<string> {
         return ["mem:used"];
     },
-    "CPU + Mem": function (_dataItem: DataItem): Array<string> {
+    "CPU + Mem": function (_dataItem: DataItem | null): Array<string> {
         return ["cpu", "mem:used"];
     },
-    "All CPU": function (dataItem: DataItem): Array<string> {
-        return Object.keys(dataItem)
-            .filter((item) => item.startsWith("cpu") && item != "cpu")
-            .sort((a, b) => {
-                const valA = parseInt(a.replace("cpu:", ""));
-                const valB = parseInt(b.replace("cpu:", ""));
-                return valA - valB;
-            });
+    "All CPU": function (dataItem: DataItem | null): Array<string> {
+        return getCpuCoreMetrics(dataItem);
     },
 };
 
-const DefaultPlotMeta = {
+const MetricToggles: Array<{ label: string; getMetrics: PlotTypeFn; sublabel?: string }> = [
+    {
+        label: "CPU",
+        getMetrics: function (_dataItem: DataItem | null): Array<string> {
+            return ["cpu"];
+        },
+    },
+    {
+        label: "Mem",
+        getMetrics: function (_dataItem: DataItem | null): Array<string> {
+            return ["mem:used"];
+        },
+    },
+    {
+        label: "GPU",
+        sublabel: "Installed GPU tools",
+        getMetrics: function (dataItem: DataItem | null): Array<string> {
+            if (typeof dataItem?.gpu != "number" || !Number.isFinite(dataItem.gpu)) {
+                return [];
+            }
+            return ["gpu"];
+        },
+    },
+    {
+        label: "All CPU Cores",
+        getMetrics: getCpuCoreMetrics,
+    },
+    {
+        label: "All GPUs",
+        getMetrics: getGpuMetrics,
+    },
+];
+
+const DefaultPlotMeta: Record<string, TimeSeriesMeta> = {
     cpu: defaultCpuMeta("CPU %"),
     "mem:total": defaultMemMeta("Memory Total", "mem:total"),
     "mem:used": defaultMemMeta("Memory Used", "mem:total"),
     "mem:free": defaultMemMeta("Memory Free", "mem:total"),
     "mem:available": defaultMemMeta("Memory Available", "mem:total"),
+    gpu: defaultGpuMeta("GPU %"),
+    "gpumem:total": defaultGpuMemMeta("GPU Memory Total", "gpumem:total"),
+    "gpumem:used": defaultGpuMemMeta("GPU Memory Used", "gpumem:total"),
 };
-for (let i = 0; i < 32; i++) {
+for (let i = 0; i < DefaultCpuCoreCount; i++) {
     DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`Core ${i}`);
 }
+for (let i = 0; i < DefaultGpuCount; i++) {
+    DefaultPlotMeta[`gpu:${i}`] = defaultGpuMeta(`GPU ${i}`);
+    DefaultPlotMeta[`gpumem:${i}:total`] = defaultGpuMemMeta(`GPU ${i} Memory Total`, `gpumem:${i}:total`);
+    DefaultPlotMeta[`gpumem:${i}:used`] = defaultGpuMemMeta(`GPU ${i} Memory Used`, `gpumem:${i}:total`);
+}
 
-function convertWaveEventToDataItem(event: Extract<WaveEvent, { event: "sysinfo" }>): DataItem {
+function dedupeMetricKeys(metrics: Array<string>): Array<string> {
+    return [...new Set(metrics.filter((metric) => typeof metric == "string" && metric != ""))];
+}
+
+function getLegacyPlotMetrics(plotType: string, dataItem: DataItem | null): Array<string> {
+    const plotFn = LegacyPlotTypes[plotType] ?? LegacyPlotTypes.CPU;
+    return plotFn(dataItem);
+}
+
+function resolveSelectedMetricKeys(metaMetrics: unknown, plotType: string, dataItem: DataItem | null): Array<string> {
+    if (Array.isArray(metaMetrics)) {
+        const metricKeys = dedupeMetricKeys(metaMetrics);
+        if (metricKeys.length > 0) {
+            return metricKeys;
+        }
+    }
+    const legacyMetricKeys = getLegacyPlotMetrics(plotType, dataItem);
+    if (legacyMetricKeys.length > 0) {
+        return legacyMetricKeys;
+    }
+    return DefaultMetricKeys;
+}
+
+function toggleMetricKeys(currentMetrics: Array<string>, toggledMetrics: Array<string>): Array<string> {
+    if (toggledMetrics.length == 0) {
+        return currentMetrics;
+    }
+    const metricSet = new Set(currentMetrics);
+    const removeMetrics = toggledMetrics.every((metric) => metricSet.has(metric));
+    if (removeMetrics) {
+        toggledMetrics.forEach((metric) => metricSet.delete(metric));
+    } else {
+        toggledMetrics.forEach((metric) => metricSet.add(metric));
+    }
+    const nextMetrics = Array.from(metricSet);
+    if (nextMetrics.length == 0) {
+        return DefaultMetricKeys;
+    }
+    return nextMetrics;
+}
+
+function getMetricDisplayName(metric: string): string {
+    if (metric == "cpu") {
+        return "CPU";
+    }
+    if (metric == "mem:used") {
+        return "Mem";
+    }
+    if (metric == "gpu") {
+        return "GPU";
+    }
+    if (metric.startsWith("cpu:")) {
+        return `Core ${metric.slice("cpu:".length)}`;
+    }
+    if (metric.startsWith("gpu:")) {
+        return `GPU ${metric.slice("gpu:".length)}`;
+    }
+    return metric;
+}
+
+function getMetricsViewName(metrics: Array<string>): string {
+    if (metrics.length == 0) {
+        return "CPU";
+    }
+    if (metrics.length <= 3) {
+        return metrics.map(getMetricDisplayName).join(" + ");
+    }
+    return `${metrics.length} Plots`;
+}
+
+function convertWaveEventToDataItem(event: Extract<WaveEvent, { event: "sysinfo" }>): DataItem | null {
     const eventData = event.data;
     if (eventData == null || eventData.ts == null || eventData.values == null) {
         return null;
     }
-    const dataItem = { ts: eventData.ts };
+    const dataItem: DataItem = { ts: eventData.ts };
     for (const key in eventData.values) {
         dataItem[key] = eventData.values[key];
     }
     return dataItem;
+}
+
+function isDataItem(dataItem: DataItem | null): dataItem is DataItem {
+    return dataItem != null && typeof dataItem.ts == "number";
 }
 
 class SysinfoViewModel implements ViewModel {
@@ -197,19 +357,6 @@ class SysinfoViewModel implements ViewModel {
             }
             return metaNumPoints;
         });
-        this.metrics = jotai.atom((get) => {
-            const plotType = get(this.plotTypeSelectedAtom);
-            const plotData = get(this.dataAtom);
-            try {
-                const metrics = PlotTypes[plotType](plotData[plotData.length - 1]);
-                if (metrics == null || !Array.isArray(metrics)) {
-                    return ["cpu"];
-                }
-                return metrics;
-            } catch (e) {
-                return ["cpu"];
-            }
-        });
         this.plotTypeSelectedAtom = jotai.atom((get) => {
             const plotType = get(this.env.getBlockMetaKeyAtom(blockId, "sysinfo:type"));
             if (plotType == null || typeof plotType != "string") {
@@ -217,11 +364,18 @@ class SysinfoViewModel implements ViewModel {
             }
             return plotType;
         });
+        this.metrics = jotai.atom((get) => {
+            const plotData = get(this.dataAtom);
+            const latestDataItem = plotData[plotData.length - 1];
+            const metaMetrics = get(this.env.getBlockMetaKeyAtom(blockId, "graph:metrics"));
+            const plotType = get(this.plotTypeSelectedAtom);
+            return resolveSelectedMetricKeys(metaMetrics, plotType, latestDataItem);
+        });
         this.viewIcon = jotai.atom((get) => {
             return "chart-line"; // should not be hardcoded
         });
         this.viewName = jotai.atom((get) => {
-            return get(this.plotTypeSelectedAtom);
+            return getMetricsViewName(get(this.metrics));
         });
         this.incrementCount = jotai.atom(null, async (get, _set) => {
             const count = get(this.env.getBlockMetaKeyAtom(blockId, "count")) ?? 0;
@@ -264,7 +418,7 @@ class SysinfoViewModel implements ViewModel {
                 return;
             }
             this.getDefaultData();
-            const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
+            const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem).filter(isDataItem);
             // splice the initial data into the default data (replacing the newest points)
             //newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
             globalStore.set(this.addInitialDataAtom, initialDataItems);
@@ -273,6 +427,12 @@ class SysinfoViewModel implements ViewModel {
         } finally {
             globalStore.set(this.loadingAtom, false);
         }
+    }
+
+    getSelectedMetricKeys(dataItem: DataItem | null): Array<string> {
+        const metaMetrics = globalStore.get(this.env.getBlockMetaKeyAtom(this.blockId, "graph:metrics"));
+        const plotType = globalStore.get(this.plotTypeSelectedAtom);
+        return resolveSelectedMetricKeys(metaMetrics, plotType, dataItem);
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
@@ -285,30 +445,30 @@ class SysinfoViewModel implements ViewModel {
             return (termThemes[a]["display:order"] ?? 0) - (termThemes[b]["display:order"] ?? 0);
         });
         const fullMenu: ContextMenuItem[] = [];
-        let submenu: ContextMenuItem[];
-        if (plotData.length == 0) {
-            submenu = [];
-        } else {
-            submenu = Object.keys(PlotTypes).map((plotType) => {
-                const dataTypes = PlotTypes[plotType](plotData[plotData.length - 1]);
-                const currentlySelected = globalStore.get(this.plotTypeSelectedAtom);
-                const menuItem: ContextMenuItem = {
-                    label: plotType,
-                    type: "radio",
-                    checked: currentlySelected == plotType,
-                    click: async () => {
-                        await this.env.rpc.SetMetaCommand(TabRpcClient, {
-                            oref: makeORef("block", this.blockId),
-                            meta: { "graph:metrics": dataTypes, "sysinfo:type": plotType },
-                        });
-                    },
-                };
-                return menuItem;
-            });
-        }
+        const latestDataItem = plotData[plotData.length - 1];
+        const selectedMetrics = this.getSelectedMetricKeys(latestDataItem);
+        const submenu = MetricToggles.map((plotType) => {
+            const dataTypes = plotType.getMetrics(latestDataItem);
+            const checked = dataTypes.length > 0 && dataTypes.every((metric) => selectedMetrics.includes(metric));
+            const menuItem: ContextMenuItem = {
+                label: plotType.label,
+                type: "checkbox",
+                checked: checked,
+                enabled: dataTypes.length > 0,
+                sublabel: dataTypes.length > 0 ? plotType.sublabel : "No data yet",
+                click: async () => {
+                    const nextMetrics = toggleMetricKeys(selectedMetrics, dataTypes);
+                    await this.env.rpc.SetMetaCommand(TabRpcClient, {
+                        oref: makeORef("block", this.blockId),
+                        meta: { "graph:metrics": nextMetrics },
+                    });
+                },
+            };
+            return menuItem;
+        });
 
         fullMenu.push({
-            label: "Plot Type",
+            label: "Plots",
             submenu: submenu,
         });
         fullMenu.push({ type: "separator" });
@@ -370,6 +530,9 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
                     return;
                 }
                 const dataItem = convertWaveEventToDataItem(event);
+                if (dataItem == null) {
+                    return;
+                }
                 const prevData = globalStore.get(model.dataAtom);
                 const prevLastTs = prevData[prevData.length - 1]?.ts ?? 0;
                 if (dataItem.ts - prevLastTs > 2000) {
@@ -396,7 +559,7 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
 type SingleLinePlotProps = {
     plotData: Array<DataItem>;
     yval: string;
-    yvalMeta: TimeSeriesMeta;
+    yvalMeta?: TimeSeriesMeta;
     blockId: string;
     defaultColor: string;
     title?: boolean;
@@ -452,7 +615,7 @@ function SingleLinePlot({
     );
     if (title) {
         marks.push(
-            Plot.text([yvalMeta?.name], {
+            Plot.text([yvalMeta?.name ?? getMetricDisplayName(yval)], {
                 frameAnchor: "top-left",
                 dx: 4,
                 fill: "var(--grey-text-color)",
@@ -481,8 +644,11 @@ function SingleLinePlot({
                 fill: "var(--main-bg-color)",
                 anchor: "middle",
                 dy: -30,
-                title: (d) =>
-                    `${dayjs.unix(d.ts / 1000).format("HH:mm:ss")} ${Number(d[yval]).toFixed(decimalPlaces)}${labelY}`,
+                title: (d) => {
+                    const value = Number(d[yval]);
+                    const displayValue = Number.isFinite(value) ? value.toFixed(decimalPlaces) : "n/a";
+                    return `${dayjs.unix(d.ts / 1000).format("HH:mm:ss")} ${displayValue}${labelY}`;
+                },
                 textPadding: 3,
             })
         )
