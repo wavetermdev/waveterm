@@ -180,6 +180,11 @@ export class WaveBrowserWindow extends BaseWindow {
                 winOpts.transparent = true;
             } else if (isBlur) {
                 winOpts.vibrancy = "fullscreen-ui";
+                const visualEffectState = settings?.["window:visualeffectstate"];
+                winOpts.visualEffectState =
+                    visualEffectState === "active" || visualEffectState === "inactive"
+                        ? visualEffectState
+                        : "followWindow";
             } else {
                 winOpts.backgroundColor = "#222222";
             }

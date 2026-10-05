@@ -259,6 +259,14 @@
         "window:blur": {
           "type": "boolean"
         },
+        "window:visualeffectstate": {
+          "type": "string",
+          "enum": [
+            "followWindow",
+            "active",
+            "inactive"
+          ]
+        },
         "window:opacity": {
           "type": "number"
         },

@@ -1453,6 +1453,7 @@ declare global {
         "window:fullscreenonlaunch"?: boolean;
         "window:transparent"?: boolean;
         "window:blur"?: boolean;
+        "window:visualeffectstate"?: string;
         "window:opacity"?: number;
         "window:bgcolor"?: string;
         "window:reducedmotion"?: boolean;
