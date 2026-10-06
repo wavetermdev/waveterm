@@ -82,6 +82,7 @@ type SSHConn struct {
 	WshEnabled         *atomic.Bool
 	Opts               *remote.SSHOpts
 	Client             *ssh.Client
+	ForwardAgent       bool
 	DomainSockName     string // if "", then no domain socket
 	DomainSockListener net.Listener
 	ConnController     *ssh.Session
@@ -695,6 +696,12 @@ func (conn *SSHConn) GetClient() *ssh.Client {
 	return conn.Client
 }
 
+func (conn *SSHConn) GetForwardAgent() bool {
+	conn.lock.Lock()
+	defer conn.lock.Unlock()
+	return conn.ForwardAgent
+}
+
 func (conn *SSHConn) GetMonitor() *ConnMonitor {
 	conn.lock.Lock()
 	defer conn.lock.Unlock()
@@ -952,7 +959,7 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 // returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
-	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
+	client, forwardAgent, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		conn.Infof(ctx, "ERROR ConnectToClient: %s\n", remote.SimpleMessageFromPossibleConnectionError(err))
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
@@ -964,6 +971,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 			conn.Monitor = nil
 		}
 		conn.Client = client
+		conn.ForwardAgent = forwardAgent
 		conn.ConnHealthStatus = ConnHealthStatus_Good
 		conn.Monitor = MakeConnMonitor(conn, client)
 	})
