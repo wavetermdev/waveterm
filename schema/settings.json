@@ -232,6 +232,9 @@
             "modtime"
           ]
         },
+        "preview:openfileinnewblock": {
+          "type": "boolean"
+        },
         "tab:preset": {
           "type": "string"
         },
