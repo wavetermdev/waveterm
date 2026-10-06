@@ -15,6 +15,9 @@ describe("sysinfo preview helpers", () => {
         expect(event.data.values.cpu).toBeLessThanOrEqual(100);
         expect(event.data.values["mem:used"]).toBeGreaterThan(0);
         expect(event.data.values["mem:total"]).toBeGreaterThan(event.data.values["mem:used"]);
+        expect(event.data.values.gpu).toBeGreaterThanOrEqual(0);
+        expect(event.data.values.gpu).toBeLessThanOrEqual(100);
+        expect(event.data.values["gpu:0"]).toBeTypeOf("number");
         expect(event.data.values["cpu:0"]).toBeTypeOf("number");
     });
 

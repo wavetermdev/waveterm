@@ -408,6 +408,7 @@ export function makeMockWaveEnv(mockEnv?: MockEnv): MockWaveEnv {
                 view: "sysinfo",
                 connection: MockSysinfoConnection,
                 "sysinfo:type": "CPU + Mem",
+                "graph:metrics": ["cpu", "mem:used", "gpu"],
                 "graph:numpoints": 90,
             },
         } as Block,
