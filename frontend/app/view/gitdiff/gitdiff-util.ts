@@ -1,10 +1,22 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// a changed signature means the file's diff must be refetched; content edits that keep identical +/- counts
-// are only picked up on reselect or manual refresh
-export function getFileSignature(file: GitFileStatus): string {
-    return `${file.status}:${file.origpath ?? ""}:${file.additions ?? 0}:${file.deletions ?? 0}`;
+import type { GitFileDiffState } from "./gitdiff-model";
+
+// the selected diff is refetched on every poll, so skip identical results to avoid needless re-renders
+export function isSameFileDiff(a: GitFileDiffState, b: GitFileDiffState): boolean {
+    if (a == null || b == null) {
+        return a == b;
+    }
+    return (
+        a.path === b.path &&
+        a.loading === b.loading &&
+        a.original === b.original &&
+        a.modified === b.modified &&
+        !!a.binary === !!b.binary &&
+        !!a.toolarge === !!b.toolarge &&
+        a.error === b.error
+    );
 }
 
 export function isWshOutdatedError(errMsg: string): boolean {

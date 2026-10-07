@@ -19,7 +19,12 @@ const StatusDecl: Record<string, { letter: string; className: string; label: str
 
 function Placeholder({ children, className }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={cn("flex flex-col items-center justify-center w-full h-full gap-2 text-secondary p-4", className)}>
+        <div
+            className={cn(
+                "flex flex-col items-center justify-center w-full h-full gap-2 text-secondary p-4",
+                className
+            )}
+        >
             {children}
         </div>
     );
@@ -36,14 +41,25 @@ function FileRow({ file, selected, onSelect, onRevert }: FileRowProps) {
     const decl = StatusDecl[file.status] ?? StatusDecl.modified;
     const { dir, name } = splitRepoPath(file.path);
     const title = file.origpath ? `${file.origpath} → ${file.path}` : file.path;
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) {
+            return;
+        }
+        e.preventDefault();
+        onSelect();
+    };
     return (
         <div
+            role="button"
+            tabIndex={0}
+            aria-current={selected || undefined}
             className={cn(
-                "group flex items-center gap-2 px-2 py-1 cursor-pointer text-sm select-none",
+                "group flex items-center gap-2 px-2 py-1 cursor-pointer text-sm select-none outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent",
                 selected ? "bg-hoverbg" : "hover:bg-hover"
             )}
             title={title}
             onClick={onSelect}
+            onKeyDown={handleKeyDown}
         >
             <span className={cn("w-3 shrink-0 font-mono text-xs font-bold", decl.className)} title={decl.label}>
                 {decl.letter}
@@ -52,7 +68,7 @@ function FileRow({ file, selected, onSelect, onRevert }: FileRowProps) {
                 <span className="truncate text-primary">{name}</span>
                 {dir && <span className="truncate text-xs text-muted">{dir}</span>}
             </div>
-            <div className="flex shrink-0 items-center gap-1 font-mono text-xs group-hover:hidden">
+            <div className="flex shrink-0 items-center gap-1 font-mono text-xs group-hover:hidden group-focus-within:hidden">
                 {file.binary ? (
                     <span className="text-muted">bin</span>
                 ) : (
@@ -63,8 +79,9 @@ function FileRow({ file, selected, onSelect, onRevert }: FileRowProps) {
                 )}
             </div>
             <button
-                className="hidden shrink-0 cursor-pointer text-xs text-secondary hover:text-primary group-hover:block"
+                className="hidden shrink-0 cursor-pointer rounded-sm text-xs text-secondary outline-none hover:text-primary focus-visible:text-primary focus-visible:ring-1 focus-visible:ring-accent group-hover:block group-focus-within:block"
                 title={file.status === "untracked" ? "Delete File" : "Discard Changes"}
+                aria-label={file.status === "untracked" ? "Delete File" : "Discard Changes"}
                 onClick={(e) => {
                     e.stopPropagation();
                     onRevert();

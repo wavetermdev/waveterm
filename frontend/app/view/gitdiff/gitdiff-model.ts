@@ -8,7 +8,7 @@ import type { MetaKeyAtomFnType, SettingsKeyAtomFnType, WaveEnv, WaveEnvSubset }
 import { base64ToString, isBlank, makeConnRoute } from "@/util/util";
 import * as jotai from "jotai";
 import { GitDiffView } from "./gitdiff";
-import { getFileSignature } from "./gitdiff-util";
+import { isSameFileDiff } from "./gitdiff-util";
 
 export type GitDiffEnv = WaveEnvSubset<{
     rpc: {
@@ -24,7 +24,6 @@ export type GitDiffEnv = WaveEnvSubset<{
 
 export type GitFileDiffState = {
     path: string;
-    signature: string;
     loading: boolean;
     original?: string;
     modified?: string;
@@ -54,7 +53,6 @@ export class GitDiffViewModel implements ViewModel {
     connStatus: jotai.Atom<ConnStatus>;
     cwdAtom: jotai.Atom<string>;
     inlineDiffAtom: jotai.Atom<boolean>;
-    selectedFileAtom: jotai.Atom<GitFileStatus>;
     viewText: jotai.Atom<HeaderElem[]>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
 
@@ -86,11 +84,6 @@ export class GitDiffViewModel implements ViewModel {
                 return metaVal;
             }
             return !!get(this.env.getSettingsKeyAtom("editor:inlinediff"));
-        });
-        this.selectedFileAtom = jotai.atom((get) => {
-            const status = get(this.statusAtom);
-            const selectedPath = get(this.selectedPathAtom);
-            return status?.files?.find((f) => f.path === selectedPath) ?? null;
         });
         this.viewText = jotai.atom((get) => {
             const status = get(this.statusAtom);
@@ -126,7 +119,7 @@ export class GitDiffViewModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "rotate-right",
                     title: "Refresh",
-                    click: () => this.manualRefresh(),
+                    click: () => this.refresh(),
                 },
             ];
         });
@@ -182,19 +175,19 @@ export class GitDiffViewModel implements ViewModel {
         this.refreshInFlight = true;
         try {
             const status = await this.env.rpc.RemoteGitStatusCommand(TabRpcClient, { cwd }, { route });
-            if (this.disposed) {
+            if (!this.isCurrentTarget(cwd, route)) {
                 return;
             }
             globalStore.set(this.statusAtom, status);
             globalStore.set(this.errorAtom, null);
             this.reconcileSelection(status);
         } catch (e) {
-            if (!this.disposed) {
+            if (this.isCurrentTarget(cwd, route)) {
                 globalStore.set(this.errorAtom, String(e?.message ?? e));
             }
         } finally {
             this.refreshInFlight = false;
-            if (!this.disposed) {
+            if (this.isCurrentTarget(cwd, route)) {
                 globalStore.set(this.loadingAtom, false);
             }
         }
@@ -204,12 +197,12 @@ export class GitDiffViewModel implements ViewModel {
         }
     }
 
-    async manualRefresh() {
-        await this.refresh();
-        const selectedFile = globalStore.get(this.selectedFileAtom);
-        if (selectedFile != null) {
-            this.loadFileDiff(selectedFile);
+    // cwd or connection can change while a status request is in flight; its result then belongs to another repo
+    isCurrentTarget(cwd: string, route: string): boolean {
+        if (this.disposed) {
+            return false;
         }
+        return globalStore.get(this.cwdAtom) === cwd && makeConnRoute(globalStore.get(this.connection)) === route;
     }
 
     reconcileSelection(status: GitStatusRtnData) {
@@ -225,10 +218,7 @@ export class GitDiffViewModel implements ViewModel {
             return;
         }
         globalStore.set(this.selectedPathAtom, selected.path);
-        const curDiff = globalStore.get(this.fileDiffAtom);
-        if (curDiff?.path === selected.path && curDiff.signature === getFileSignature(selected)) {
-            return;
-        }
+        // always refetch: edits that keep the same status and +/- counts would otherwise leave a stale diff
         this.loadFileDiff(selected);
     }
 
@@ -246,10 +236,9 @@ export class GitDiffViewModel implements ViewModel {
             return;
         }
         const epoch = ++this.diffEpoch;
-        const signature = getFileSignature(file);
         const curDiff = globalStore.get(this.fileDiffAtom);
         if (curDiff?.path !== file.path) {
-            globalStore.set(this.fileDiffAtom, { path: file.path, signature, loading: true });
+            globalStore.set(this.fileDiffAtom, { path: file.path, loading: true });
         }
         const route = makeConnRoute(globalStore.get(this.connection));
         try {
@@ -261,22 +250,24 @@ export class GitDiffViewModel implements ViewModel {
             if (this.disposed || epoch !== this.diffEpoch) {
                 return;
             }
-            globalStore.set(this.fileDiffAtom, {
+            const newDiff: GitFileDiffState = {
                 path: file.path,
-                signature,
                 loading: false,
                 original: base64ToString(rtn?.originalcontents64 ?? ""),
                 modified: base64ToString(rtn?.modifiedcontents64 ?? ""),
                 binary: rtn?.binary,
                 toolarge: rtn?.toolarge,
-            });
+            };
+            if (isSameFileDiff(globalStore.get(this.fileDiffAtom), newDiff)) {
+                return;
+            }
+            globalStore.set(this.fileDiffAtom, newDiff);
         } catch (e) {
             if (this.disposed || epoch !== this.diffEpoch) {
                 return;
             }
             globalStore.set(this.fileDiffAtom, {
                 path: file.path,
-                signature,
                 loading: false,
                 error: String(e?.message ?? e),
             });

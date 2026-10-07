@@ -85,7 +85,9 @@ func makeMixedRepo(t *testing.T) string {
 	gitCmd(t, dir, "commit", "-q", "-m", "init")
 
 	writeFile(t, dir, "mod.txt", "a\nB\nc\n")
-	os.Remove(filepath.Join(dir, "del.txt"))
+	if err := os.Remove(filepath.Join(dir, "del.txt")); err != nil {
+		t.Fatal(err)
+	}
 	gitCmd(t, dir, "mv", "old.txt", "new name.txt")
 	writeFile(t, dir, "added.txt", "new\n")
 	gitCmd(t, dir, "add", "added.txt")
@@ -142,10 +144,7 @@ func TestParseNumstatZ(t *testing.T) {
 }
 
 func TestValidateRepoPath(t *testing.T) {
-	root := filepath.Join(string(filepath.Separator), "repo")
-	if filepath.VolumeName(os.TempDir()) != "" {
-		root = filepath.Join(filepath.VolumeName(os.TempDir())+string(filepath.Separator), "repo")
-	}
+	root := t.TempDir()
 	for _, bad := range []string{"", "..", "../x", "a/../../x", "/etc/passwd", ".", "a/.."} {
 		if _, err := validateRepoPath(root, bad); err == nil {
 			t.Errorf("expected %q to be rejected", bad)
@@ -291,9 +290,6 @@ func TestGetFileDiffBinaryAndTooLarge(t *testing.T) {
 
 func TestGetFileDiffRejectsEscape(t *testing.T) {
 	dir := makeRepo(t)
-	outside := filepath.Join(filepath.Dir(dir), "outside-secret.txt")
-	os.WriteFile(outside, []byte("secret"), 0644)
-	defer os.Remove(outside)
 	_, err := GetFileDiff(context.Background(), wshrpc.CommandRemoteGitFileDiffData{RepoRoot: dir, Path: "../outside-secret.txt", Status: GitStatus_Untracked})
 	if err == nil {
 		t.Fatal("expected path escape to be rejected")
@@ -345,7 +341,9 @@ func TestRevertFileUnbornHead(t *testing.T) {
 func TestRevertFileRejectsEscapeAndDirs(t *testing.T) {
 	dir := makeRepo(t)
 	outside := filepath.Join(filepath.Dir(dir), "outside-victim.txt")
-	os.WriteFile(outside, []byte("keep me"), 0644)
+	if err := os.WriteFile(outside, []byte("keep me"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	defer os.Remove(outside)
 	ctx := context.Background()
 	err := RevertFile(ctx, wshrpc.CommandRemoteGitRevertFileData{RepoRoot: dir, Path: "../outside-victim.txt", Status: GitStatus_Untracked})
@@ -355,9 +353,100 @@ func TestRevertFileRejectsEscapeAndDirs(t *testing.T) {
 	if _, statErr := os.Stat(outside); statErr != nil {
 		t.Fatalf("file outside repo was deleted: %v", statErr)
 	}
-	os.MkdirAll(filepath.Join(dir, "somedir"), 0755)
+	if err := os.MkdirAll(filepath.Join(dir, "somedir"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	err = RevertFile(ctx, wshrpc.CommandRemoteGitRevertFileData{RepoRoot: dir, Path: "somedir", Status: GitStatus_Untracked})
 	if err == nil {
 		t.Fatal("expected directory revert to be rejected")
+	}
+}
+
+// makeSymlinkEscape creates "link" inside the repo pointing at a directory outside it that holds victim.txt
+func makeSymlinkEscape(t *testing.T, dir string) string {
+	t.Helper()
+	outsideDir := t.TempDir()
+	victim := filepath.Join(outsideDir, "victim.txt")
+	if err := os.WriteFile(victim, []byte("keep me"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outsideDir, filepath.Join(dir, "link")); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+	return victim
+}
+
+func TestValidateRepoPathRejectsSymlinkedParent(t *testing.T) {
+	dir := makeRepo(t)
+	makeSymlinkEscape(t, dir)
+	for _, bad := range []string{"link/victim.txt", "link/missing/x.txt"} {
+		if _, err := validateRepoPath(dir, bad); err == nil {
+			t.Errorf("expected %q to be rejected", bad)
+		}
+	}
+	if _, err := validateRepoPath(dir, "link"); err != nil {
+		t.Errorf("the symlink itself lives in the repo and should be accepted: %v", err)
+	}
+	if _, err := validateRepoPath(dir, "gone/dir/file.txt"); err != nil {
+		t.Errorf("paths under missing directories should be accepted: %v", err)
+	}
+}
+
+func TestGetFileDiffRejectsSymlinkEscape(t *testing.T) {
+	dir := makeRepo(t)
+	makeSymlinkEscape(t, dir)
+	_, err := GetFileDiff(context.Background(), wshrpc.CommandRemoteGitFileDiffData{RepoRoot: dir, Path: "link/victim.txt", Status: GitStatus_Untracked})
+	if err == nil {
+		t.Fatal("expected symlinked parent escape to be rejected")
+	}
+}
+
+func TestRevertFileRejectsSymlinkEscape(t *testing.T) {
+	dir := makeRepo(t)
+	victim := makeSymlinkEscape(t, dir)
+	err := RevertFile(context.Background(), wshrpc.CommandRemoteGitRevertFileData{RepoRoot: dir, Path: "link/victim.txt", Status: GitStatus_Untracked})
+	if err == nil {
+		t.Fatal("expected symlinked parent escape to be rejected")
+	}
+	if _, statErr := os.Stat(victim); statErr != nil {
+		t.Fatalf("file outside repo was deleted: %v", statErr)
+	}
+}
+
+func TestRevertFileRefusesToDeleteTrackedFile(t *testing.T) {
+	dir := makeMixedRepo(t)
+	ctx := context.Background()
+	for _, p := range []string{"mod.txt", "sub/keep.txt"} {
+		err := RevertFile(ctx, wshrpc.CommandRemoteGitRevertFileData{RepoRoot: dir, Path: p, Status: GitStatus_Untracked})
+		if err == nil {
+			t.Errorf("%s: expected stale untracked status to be rejected", p)
+		}
+		if !fileExists(dir, p) {
+			t.Errorf("%s: tracked file was deleted", p)
+		}
+	}
+	if readFile(t, dir, "mod.txt") != "a\nB\nc\n" {
+		t.Errorf("uncommitted changes to mod.txt were lost")
+	}
+}
+
+func TestRevertFileDeletedDirectory(t *testing.T) {
+	dir := makeRepo(t)
+	writeFile(t, dir, "gone/dir/file.txt", "x\n")
+	gitCmd(t, dir, "add", ".")
+	gitCmd(t, dir, "commit", "-q", "-m", "init")
+	if err := os.RemoveAll(filepath.Join(dir, "gone")); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	data := wshrpc.CommandRemoteGitFileDiffData{RepoRoot: dir, Path: "gone/dir/file.txt", Status: GitStatus_Deleted}
+	if _, err := GetFileDiff(ctx, data); err != nil {
+		t.Fatalf("diff of file in deleted directory: %v", err)
+	}
+	if err := RevertFile(ctx, wshrpc.CommandRemoteGitRevertFileData{RepoRoot: dir, Path: "gone/dir/file.txt", Status: GitStatus_Deleted}); err != nil {
+		t.Fatal(err)
+	}
+	if readFile(t, dir, "gone/dir/file.txt") != "x\n" {
+		t.Errorf("deleted file was not restored")
 	}
 }

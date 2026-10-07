@@ -54,8 +54,9 @@ type numstatEntry struct {
 func runGit(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	fullArgs := append([]string{"-C", dir, "-c", "core.quotepath=off"}, args...)
 	cmd := exec.CommandContext(ctx, "git", fullArgs...)
-	// optional locks would make our background polling contend with the user's own git commands
-	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0")
+	// optional locks would make our background polling contend with the user's own git commands.
+	// literal pathspecs stop client-supplied paths containing glob characters from matching other files.
+	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0", "GIT_LITERAL_PATHSPECS=1")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -174,7 +175,39 @@ func countLines(data []byte) int {
 	return n
 }
 
-// validateRepoPath ensures a repo-relative path (as supplied by the client) cannot escape the repo root.
+func isRelOutside(rel string) bool {
+	return rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// resolveExistingPath resolves symlinks in the longest existing prefix of p. Components past that prefix
+// do not exist yet (e.g. the directory of a deleted file), so they cannot be symlinks.
+func resolveExistingPath(p string) (string, error) {
+	cur := p
+	var missing []string
+	for {
+		resolved, err := filepath.EvalSymlinks(cur)
+		if err == nil {
+			return filepath.Join(append([]string{resolved}, missing...)...), nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+		if _, lerr := os.Lstat(cur); lerr == nil {
+			// cur exists but cannot be resolved, i.e. a dangling symlink
+			return "", err
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return "", err
+		}
+		missing = append([]string{filepath.Base(cur)}, missing...)
+		cur = parent
+	}
+}
+
+// validateRepoPath ensures a repo-relative path (as supplied by the client) cannot escape the repo root,
+// either lexically or through a symlinked parent directory. The final component is not resolved so callers
+// can operate on a symlink itself.
 func validateRepoPath(repoRoot string, relPath string) (string, error) {
 	if !filepath.IsAbs(repoRoot) {
 		return "", fmt.Errorf("repository root %q must be absolute", repoRoot)
@@ -191,7 +224,19 @@ func validateRepoPath(repoRoot string, relPath string) (string, error) {
 	}
 	fullPath := filepath.Join(repoRoot, filepath.FromSlash(cleaned))
 	rel, err := filepath.Rel(repoRoot, fullPath)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if err != nil || isRelOutside(rel) {
+		return "", fmt.Errorf("path %q is outside the repository", relPath)
+	}
+	physicalRoot, err := filepath.EvalSymlinks(repoRoot)
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve repository root %q: %w", repoRoot, err)
+	}
+	physicalParent, err := resolveExistingPath(filepath.Dir(fullPath))
+	if err != nil {
+		return "", fmt.Errorf("cannot resolve parent of %q: %w", relPath, err)
+	}
+	physicalRel, err := filepath.Rel(physicalRoot, physicalParent)
+	if err != nil || isRelOutside(physicalRel) {
 		return "", fmt.Errorf("path %q is outside the repository", relPath)
 	}
 	return fullPath, nil
@@ -287,7 +332,7 @@ func fillNewFileStats(repoRoot string, fileStatus *wshrpc.GitFileStatus) {
 	if err != nil {
 		return
 	}
-	finfo, err := os.Stat(fullPath)
+	finfo, err := os.Lstat(fullPath)
 	if err != nil || !finfo.Mode().IsRegular() || finfo.Size() > MaxDiffFileSize {
 		return
 	}
@@ -398,6 +443,18 @@ func GetFileDiff(ctx context.Context, data wshrpc.CommandRemoteGitFileDiffData) 
 	return rtn, nil
 }
 
+func verifyUntracked(ctx context.Context, repoRoot string, relPath string) error {
+	statusOut, err := runGit(ctx, repoRoot, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", relPath)
+	if err != nil {
+		return err
+	}
+	entries := parsePorcelainZ(statusOut)
+	if len(entries) != 1 || entries[0].Path != filepath.ToSlash(relPath) || entries[0].Status != GitStatus_Untracked {
+		return fmt.Errorf("refusing to delete %q: file is not untracked", relPath)
+	}
+	return nil
+}
+
 func RevertFile(ctx context.Context, data wshrpc.CommandRemoteGitRevertFileData) error {
 	repoRoot := data.RepoRoot
 	fullPath, err := validateRepoPath(repoRoot, data.Path)
@@ -410,6 +467,10 @@ func RevertFile(ctx context.Context, data wshrpc.CommandRemoteGitRevertFileData)
 		}
 	}
 	if data.Status == GitStatus_Untracked {
+		// the client's status may be stale, and deleting a file git tracks would lose its uncommitted changes
+		if err := verifyUntracked(ctx, repoRoot, data.Path); err != nil {
+			return err
+		}
 		finfo, err := os.Lstat(fullPath)
 		if err != nil {
 			return err

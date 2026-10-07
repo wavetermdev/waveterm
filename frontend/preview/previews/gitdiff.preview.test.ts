@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFileSignature, isWshOutdatedError, splitRepoPath } from "@/app/view/gitdiff/gitdiff-util";
+import { isSameFileDiff, isWshOutdatedError, splitRepoPath } from "@/app/view/gitdiff/gitdiff-util";
 import { base64ToString } from "@/util/util";
 import { describe, expect, it } from "vitest";
 import { MockGitFiles, makeMockGitFileDiff, makeMockGitStatus } from "./gitdiff.preview-util";
@@ -30,12 +30,14 @@ describe("gitdiff preview helpers", () => {
 });
 
 describe("gitdiff util", () => {
-    it("changes the signature when stats or status change", () => {
-        const base: GitFileStatus = { path: "a.ts", status: "modified", additions: 1, deletions: 0 };
+    it("treats diffs as different when contents change even if stats would not", () => {
+        const base = { path: "a.ts", loading: false, original: "a\nb\n", modified: "a\nB\n" };
 
-        expect(getFileSignature(base)).toBe(getFileSignature({ ...base }));
-        expect(getFileSignature(base)).not.toBe(getFileSignature({ ...base, additions: 2 }));
-        expect(getFileSignature(base)).not.toBe(getFileSignature({ ...base, status: "deleted" }));
+        expect(isSameFileDiff(base, { ...base })).toBe(true);
+        expect(isSameFileDiff(base, { ...base, modified: "a\nC\n" })).toBe(false);
+        expect(isSameFileDiff(base, { ...base, path: "b.ts" })).toBe(false);
+        expect(isSameFileDiff(base, null)).toBe(false);
+        expect(isSameFileDiff(null, null)).toBe(true);
     });
 
     it("detects unknown-command errors from an outdated wsh", () => {
