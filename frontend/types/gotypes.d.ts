@@ -546,6 +546,27 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandRemoteGitFileDiffData
+    type CommandRemoteGitFileDiffData = {
+        reporoot: string;
+        path: string;
+        origpath?: string;
+        status: string;
+    };
+
+    // wshrpc.CommandRemoteGitRevertFileData
+    type CommandRemoteGitRevertFileData = {
+        reporoot: string;
+        path: string;
+        origpath?: string;
+        status: string;
+    };
+
+    // wshrpc.CommandRemoteGitStatusData
+    type CommandRemoteGitStatusData = {
+        cwd: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -1024,6 +1045,35 @@ declare global {
         buildtime: string;
     };
 
+    // wshrpc.GitFileDiffRtnData
+    type GitFileDiffRtnData = {
+        originalcontents64: string;
+        modifiedcontents64: string;
+        binary?: boolean;
+        toolarge?: boolean;
+    };
+
+    // wshrpc.GitFileStatus
+    type GitFileStatus = {
+        path: string;
+        origpath?: string;
+        status: string;
+        staged?: boolean;
+        additions?: number;
+        deletions?: number;
+        binary?: boolean;
+    };
+
+    // wshrpc.GitStatusRtnData
+    type GitStatusRtnData = {
+        notrepo?: boolean;
+        reporoot?: string;
+        branch?: string;
+        hashead?: boolean;
+        truncated?: boolean;
+        files: GitFileStatus[];
+    };
+
     // waveobj.Job
     type Job = WaveObj & {
         connection: string;
@@ -1150,6 +1200,7 @@ declare global {
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
         "editor:fontsize"?: number;
+        "editor:inlinediff"?: boolean;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
@@ -1589,6 +1640,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
