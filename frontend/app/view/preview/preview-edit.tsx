@@ -64,7 +64,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     useEffect(() => {
         model.codeEditKeyDownHandler = codeEditKeyDownHandler;
         model.refreshCallback = () => {
-            globalStore.set(model.refreshVersion, (v) => v + 1);
+            model.reloadFileContent();
         };
         return () => {
             model.codeEditKeyDownHandler = null;

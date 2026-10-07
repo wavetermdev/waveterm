@@ -3,7 +3,6 @@
 
 import { Button } from "@/app/element/button";
 import { CenteredDiv } from "@/app/element/quickelems";
-import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { formatRemoteUri } from "@/util/waveutil";
 import { useAtomValue } from "jotai";
@@ -49,18 +48,23 @@ function StreamingImagePreview({ url }: { url: string }) {
 function StreamingPreview({ model }: SpecializedViewProps) {
     useEffect(() => {
         model.refreshCallback = () => {
-            globalStore.set(model.refreshVersion, (v) => v + 1);
+            model.reloadFileContent();
         };
         return () => {
             model.refreshCallback = null;
         };
     }, []);
     const conn = useAtomValue(model.connection);
+    const refreshVersion = useAtomValue(model.refreshVersion);
     const fileInfo = useAtomValue(model.statFile);
     const filePath = fileInfo.path;
     const remotePath = formatRemoteUri(filePath, conn);
     const usp = new URLSearchParams();
     usp.set("path", remotePath);
+    if (refreshVersion > 0) {
+        // cache-buster so the browser refetches the file after a refresh
+        usp.set("refresh", String(refreshVersion));
+    }
     const streamingUrl = `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
     if (fileInfo.mimetype === "application/pdf") {
         return (
