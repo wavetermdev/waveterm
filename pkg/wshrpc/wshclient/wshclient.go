@@ -736,6 +736,24 @@ func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.Remot
 	return resp, err
 }
 
+// command "remotegitfilediff", wshserver.RemoteGitFileDiffCommand
+func RemoteGitFileDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteGitFileDiffData, opts *wshrpc.RpcOpts) (*wshrpc.GitFileDiffRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.GitFileDiffRtnData](w, "remotegitfilediff", data, opts)
+	return resp, err
+}
+
+// command "remotegitrevertfile", wshserver.RemoteGitRevertFileCommand
+func RemoteGitRevertFileCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteGitRevertFileData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotegitrevertfile", data, opts)
+	return err
+}
+
+// command "remotegitstatus", wshserver.RemoteGitStatusCommand
+func RemoteGitStatusCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteGitStatusData, opts *wshrpc.RpcOpts) (*wshrpc.GitStatusRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.GitStatusRtnData](w, "remotegitstatus", data, opts)
+	return resp, err
+}
+
 // command "remoteinstallrcfiles", wshserver.RemoteInstallRcFilesCommand
 func RemoteInstallRcFilesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remoteinstallrcfiles", nil, opts)

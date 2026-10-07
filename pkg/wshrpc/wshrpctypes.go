@@ -129,6 +129,9 @@ type WshRpcInterface interface {
 	BadgeWatchPidCommand(ctx context.Context, data CommandBadgeWatchPidData) error
 	RemoteProcessListCommand(ctx context.Context, data CommandRemoteProcessListData) (*ProcessListResponse, error)
 	RemoteProcessSignalCommand(ctx context.Context, data CommandRemoteProcessSignalData) error
+	RemoteGitStatusCommand(ctx context.Context, data CommandRemoteGitStatusData) (*GitStatusRtnData, error)
+	RemoteGitFileDiffCommand(ctx context.Context, data CommandRemoteGitFileDiffData) (*GitFileDiffRtnData, error)
+	RemoteGitRevertFileCommand(ctx context.Context, data CommandRemoteGitRevertFileData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -931,4 +934,48 @@ type CommandRemoteProcessListData struct {
 type CommandRemoteProcessSignalData struct {
 	Pid    int32  `json:"pid"`
 	Signal string `json:"signal"`
+}
+
+type CommandRemoteGitStatusData struct {
+	Cwd string `json:"cwd"`
+}
+
+type GitFileStatus struct {
+	Path      string `json:"path"`
+	OrigPath  string `json:"origpath,omitempty"`
+	Status    string `json:"status"`
+	Staged    bool   `json:"staged,omitempty"`
+	Additions int    `json:"additions,omitempty"`
+	Deletions int    `json:"deletions,omitempty"`
+	Binary    bool   `json:"binary,omitempty"`
+}
+
+type GitStatusRtnData struct {
+	NotRepo   bool            `json:"notrepo,omitempty"`
+	RepoRoot  string          `json:"reporoot,omitempty"`
+	Branch    string          `json:"branch,omitempty"`
+	HasHead   bool            `json:"hashead,omitempty"`
+	Truncated bool            `json:"truncated,omitempty"`
+	Files     []GitFileStatus `json:"files"`
+}
+
+type CommandRemoteGitFileDiffData struct {
+	RepoRoot string `json:"reporoot"`
+	Path     string `json:"path"`
+	OrigPath string `json:"origpath,omitempty"`
+	Status   string `json:"status"`
+}
+
+type GitFileDiffRtnData struct {
+	OriginalContents64 string `json:"originalcontents64"`
+	ModifiedContents64 string `json:"modifiedcontents64"`
+	Binary             bool   `json:"binary,omitempty"`
+	TooLarge           bool   `json:"toolarge,omitempty"`
+}
+
+type CommandRemoteGitRevertFileData struct {
+	RepoRoot string `json:"reporoot"`
+	Path     string `json:"path"`
+	OrigPath string `json:"origpath,omitempty"`
+	Status   string `json:"status"`
 }

@@ -980,6 +980,22 @@ export class TermViewModel implements ViewModel {
                     createBlock(blockDef);
                 },
             });
+            fullMenu.push({
+                label: "Git Diff",
+                click: () => {
+                    const blockData = globalStore.get(this.blockAtom);
+                    const connection = blockData?.meta?.connection;
+                    const cwd = blockData?.meta?.["cmd:cwd"];
+                    const meta: Record<string, any> = {
+                        view: "gitdiff",
+                        file: cwd,
+                    };
+                    if (connection) {
+                        meta.connection = connection;
+                    }
+                    createBlockSplitHorizontally({ meta }, this.blockId, "after");
+                },
+            });
             fullMenu.push({ type: "separator" });
         }
 

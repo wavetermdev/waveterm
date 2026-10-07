@@ -135,8 +135,9 @@ export function MonacoDiffViewer({ original, modified, language, path, options }
         const el = divRef.current;
         if (!el) return;
 
-        const origUri = monaco.Uri.parse(`wave://diff/${encodeURIComponent(path)}.orig`);
-        const modUri = monaco.Uri.parse(`wave://diff/${encodeURIComponent(path)}.mod`);
+        // keep the file's own extension last so monaco can infer the language when none is passed
+        const origUri = monaco.Uri.parse(`wave://diff/orig/${encodeURIComponent(path)}`);
+        const modUri = monaco.Uri.parse(`wave://diff/mod/${encodeURIComponent(path)}`);
 
         const originalModel = monaco.editor.createModel(original, language, origUri);
         const modifiedModel = monaco.editor.createModel(modified, language, modUri);
