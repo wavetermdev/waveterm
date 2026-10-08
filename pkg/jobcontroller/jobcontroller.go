@@ -71,6 +71,12 @@ const JobOutputFileName = "term"
 const AutoReconnectDelay = 1 * time.Second
 const AutoReconnectCooldown = 30 * time.Second
 
+// StreamStallTimeout is how long a job's output stream may go without any
+// data/EOF before the connection is considered stalled. When tripped, the
+// remote job manager is asked to terminate its (dead) client connection so a
+// fresh attach + stream reconnect can proceed -- see upstream issue #3439.
+const StreamStallTimeout = 45 * time.Second
+
 type connState struct {
 	actual      bool
 	processed   bool
@@ -820,7 +826,7 @@ func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *s
 	log.Printf("[job:%s] [stream:%s] output loop started", jobId, streamId)
 	buf := make([]byte, 4096)
 	for {
-		n, err := reader.Read(buf)
+		n, err := readWithStallTimeout(ctx, jobId, streamId, reader, buf)
 		currentStreamId, _ := jobStreamIds.GetEx(jobId)
 		if currentStreamId != streamId {
 			log.Printf("[job:%s] [stream:%s] stream superseded by [stream:%s], exiting output loop", jobId, streamId, currentStreamId)
@@ -831,6 +837,12 @@ func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *s
 			if appendErr != nil {
 				log.Printf("[job:%s] error appending data to WaveFS: %v", jobId, appendErr)
 			}
+		}
+
+		if err == errStreamStalled {
+			log.Printf("[job:%s] [stream:%s] stream stalled (no data for %v), forcing job manager reconnect", jobId, streamId, StreamStallTimeout)
+			handleStalledStream(jobId)
+			break
 		}
 
 		if err == io.EOF {
@@ -858,6 +870,102 @@ func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *s
 			tryTerminateJobManager(ctx, jobId)
 			break
 		}
+	}
+}
+
+var errStreamStalled = fmt.Errorf("stream stalled: no data within timeout")
+
+// readWithStallTimeout wraps reader.Read with a stall watchdog. The remote
+// durable-session job manager can lose its RPC/stream path without the job
+// route ever going down (upstream issue #3439); in that case Read blocks
+// forever while the shield keeps showing "Attached". If no data/EOF arrives
+// within StreamStallTimeout, errStreamStalled is returned so the caller can
+// force a reconnect.
+func readWithStallTimeout(ctx context.Context, jobId string, streamId string, reader *streamclient.Reader, buf []byte) (int, error) {
+	type readResult struct {
+		n   int
+		err error
+	}
+	resultCh := make(chan readResult, 1)
+	go func() {
+		n, err := reader.Read(buf)
+		resultCh <- readResult{n: n, err: err}
+	}()
+
+	timer := time.NewTimer(StreamStallTimeout)
+	defer timer.Stop()
+
+	select {
+	case res := <-resultCh:
+		return res.n, res.err
+	case <-timer.C:
+		return 0, errStreamStalled
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+// handleStalledStream recovers a job whose output stream went stale. It asks
+// the remote connection to drop the job manager's dead client connection,
+// waits for the job route to re-register, then restarts streaming from the
+// last persisted offset. The remote shell and its scrollback survive.
+func handleStalledStream(jobId string) {
+	defer func() {
+		panichandler.PanicHandler("jobcontroller:handleStalledStream", recover())
+	}()
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelFn()
+
+	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		log.Printf("[job:%s] stalled stream: failed to load job: %v", jobId, err)
+		return
+	}
+
+	if job.JobManagerStatus != JobManagerStatus_Running {
+		log.Printf("[job:%s] stalled stream: job manager not running, skipping recovery", jobId)
+		return
+	}
+
+	// prevent overlapping recovery attempts for the same job
+	lastAttempt, exists := lastAutoReconnectAttempt.GetEx(jobId)
+	now := time.Now().Unix()
+	if exists && time.Duration(now-lastAttempt)*time.Second < AutoReconnectCooldown {
+		log.Printf("[job:%s] stalled stream: recovery attempted recently, skipping", jobId)
+		return
+	}
+	lastAutoReconnectAttempt.Set(jobId, now)
+
+	isConnected, err := conncontroller.IsConnected(job.Connection)
+	if err != nil || !isConnected {
+		log.Printf("[job:%s] stalled stream: connection %q is down, cannot recover", jobId, job.Connection)
+		return
+	}
+
+	log.Printf("[job:%s] stalled stream: requesting remote disconnect of stale client", jobId)
+	disconnectData := wshrpc.CommandRemoteDisconnectFromJobManagerData{
+		JobId: jobId,
+	}
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:   wshutil.MakeConnectionRouteId(job.Connection),
+		Timeout: 5000,
+	}
+	err = wshclient.RemoteDisconnectFromJobManagerCommand(wshclient.GetBareRpcClient(), disconnectData, rpcOpts)
+	if err != nil {
+		log.Printf("[job:%s] stalled stream: remote disconnect failed: %v", jobId, err)
+		return
+	}
+
+	// the route should drop and re-register as the job manager re-attaches;
+	// reconnect restarts streaming from the persisted offset
+	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
+	reconnectCtx, reconnectCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer reconnectCancel()
+	if err := ReconnectJob(reconnectCtx, jobId, nil); err != nil {
+		log.Printf("[job:%s] stalled stream: reconnect failed: %v", jobId, err)
+	} else {
+		log.Printf("[job:%s] stalled stream: reconnect succeeded", jobId)
 	}
 }
 
