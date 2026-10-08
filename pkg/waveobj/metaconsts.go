@@ -81,6 +81,7 @@ const (
 	MetaKey_EditorMinimapEnabled             = "editor:minimapenabled"
 	MetaKey_EditorStickyScrollEnabled        = "editor:stickyscrollenabled"
 	MetaKey_EditorWordWrap                   = "editor:wordwrap"
+	MetaKey_EditorAutoSave                   = "editor:autosave"
 	MetaKey_EditorFontSize                   = "editor:fontsize"
 
 	MetaKey_GraphClear                       = "graph:*"

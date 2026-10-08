@@ -12,6 +12,8 @@ import * as monaco from "monaco-editor";
 import { useEffect } from "react";
 import type { SpecializedViewProps } from "./preview";
 
+const AutoSaveDelayMs = 1000;
+
 export const shellFileMap: Record<string, string> = {
     ".bashrc": "shell",
     ".bash_profile": "shell",
@@ -44,6 +46,30 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     const baseName = fileName ? fileName.split("/").pop() : null;
     const language = baseName && shellFileMap[baseName] ? shellFileMap[baseName] : undefined;
+    const newFileContent = useAtomValue(model.newFileContent);
+    const autoSaveMode = useAtomValue(model.autoSaveMode);
+    const isFocused = useAtomValue(model.nodeModel.isFocused);
+    const readonly = fileInfo?.readonly ?? false;
+
+    // "afterdelay": save once typing pauses; every edit changes newFileContent and restarts the timer
+    useEffect(() => {
+        if (autoSaveMode != "afterdelay" || newFileContent == null || readonly) {
+            return;
+        }
+        const timeoutId = setTimeout(() => fireAndForget(model.handleFileSave.bind(model)), AutoSaveDelayMs);
+        return () => clearTimeout(timeoutId);
+    }, [autoSaveMode, newFileContent, readonly]);
+
+    // "onfocuschange": save when the block loses focus
+    useEffect(() => {
+        if (autoSaveMode != "onfocuschange" || isFocused || readonly) {
+            return;
+        }
+        if (globalStore.get(model.newFileContent) == null) {
+            return;
+        }
+        fireAndForget(model.handleFileSave.bind(model));
+    }, [autoSaveMode, isFocused, readonly]);
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {

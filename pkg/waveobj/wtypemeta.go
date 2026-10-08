@@ -83,6 +83,7 @@ type MetaTSType struct {
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
 	EditorWordWrap            bool    `json:"editor:wordwrap,omitempty"`
+	EditorAutoSave            string  `json:"editor:autosave,omitempty"`
 	EditorFontSize            float64 `json:"editor:fontsize,omitempty"`
 
 	GraphClear     bool     `json:"graph:*,omitempty"`
