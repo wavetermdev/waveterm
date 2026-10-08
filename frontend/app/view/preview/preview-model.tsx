@@ -140,6 +140,7 @@ export class PreviewModel implements ViewModel {
     previewTextRef: React.RefObject<HTMLDivElement>;
     editMode: Atom<boolean>;
     autoSaveMode: Atom<AutoSaveMode>;
+    saveQueue: Promise<void> = Promise.resolve();
     canPreview: PrimitiveAtom<boolean>;
     specializedView: Atom<Promise<{ specializedView?: string; errorStr?: string }>>;
     loadableSpecializedView: Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
@@ -658,7 +659,16 @@ export class PreviewModel implements ViewModel {
         await this.env.services.object.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
-    async handleFileSave() {
+    handleFileSave(): Promise<void> {
+        // run saves one at a time; a queued save reads newFileContent when it starts, so an
+        // older write can never finish after (and overwrite) a newer one
+        this.saveQueue = this.saveQueue
+            .then(() => this.writeFileContent())
+            .catch((e) => console.log("error saving file", e));
+        return this.saveQueue;
+    }
+
+    async writeFileContent() {
         const filePath = await globalStore.get(this.statFilePath);
         if (filePath == null) {
             return;
