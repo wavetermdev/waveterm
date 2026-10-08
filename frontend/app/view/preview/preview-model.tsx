@@ -34,6 +34,14 @@ const BOOKMARKS: { label: string; path: string }[] = [
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
 
+export type AutoSaveMode = "off" | "afterdelay" | "onfocuschange";
+
+const AutoSaveMenuOptions: { label: string; mode: AutoSaveMode }[] = [
+    { label: "Off", mode: "off" },
+    { label: "After Delay", mode: "afterdelay" },
+    { label: "On Focus Change", mode: "onfocuschange" },
+];
+
 const textApplicationMimetypes = [
     "application/sql",
     "application/x-php",
@@ -131,6 +139,8 @@ export class PreviewModel implements ViewModel {
     hideViewName: Atom<boolean>;
     previewTextRef: React.RefObject<HTMLDivElement>;
     editMode: Atom<boolean>;
+    autoSaveMode: Atom<AutoSaveMode>;
+    saveQueue: Promise<void> = Promise.resolve();
     canPreview: PrimitiveAtom<boolean>;
     specializedView: Atom<Promise<{ specializedView?: string; errorStr?: string }>>;
     loadableSpecializedView: Atom<Loadable<{ specializedView?: string; errorStr?: string }>>;
@@ -221,6 +231,10 @@ export class PreviewModel implements ViewModel {
         this.editMode = atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.edit ?? false;
+        });
+        this.autoSaveMode = atom((get) => {
+            const mode = get(this.blockAtom)?.meta?.["editor:autosave"];
+            return AutoSaveMenuOptions.some((opt) => opt.mode == mode) ? (mode as AutoSaveMode) : "off";
         });
         this.viewName = atom("Preview");
         this.hideViewName = atom(true);
@@ -645,7 +659,16 @@ export class PreviewModel implements ViewModel {
         await this.env.services.object.UpdateObjectMeta(blockOref, { ...blockMeta, edit });
     }
 
-    async handleFileSave() {
+    handleFileSave(): Promise<void> {
+        // run saves one at a time; a queued save reads newFileContent when it starts, so an
+        // older write can never finish after (and overwrite) a newer one
+        this.saveQueue = this.saveQueue
+            .then(() => this.writeFileContent())
+            .catch((e) => console.log("error saving file", e));
+        return this.saveQueue;
+    }
+
+    async writeFileContent() {
         const filePath = await globalStore.get(this.statFilePath);
         if (filePath == null) {
             return;
@@ -663,7 +686,10 @@ export class PreviewModel implements ViewModel {
                 data64: stringToBase64(newFileContent),
             });
             globalStore.set(this.fileContent, newFileContent);
-            globalStore.set(this.newFileContent, null);
+            // only clear if nothing was typed while the write was in flight (autosave can save mid-typing)
+            if (globalStore.get(this.newFileContent) === newFileContent) {
+                globalStore.set(this.newFileContent, null);
+            }
             console.log("saved file", filePath);
         } catch (e) {
             const errorStatus: ErrorMsg = {
@@ -795,6 +821,21 @@ export class PreviewModel implements ViewModel {
                             "editor:wordwrap": !wordWrap,
                         });
                     }),
+            });
+            const autoSaveMode = globalStore.get(this.autoSaveMode);
+            menuItems.push({
+                label: "Auto Save",
+                submenu: AutoSaveMenuOptions.map((opt) => ({
+                    label: opt.label,
+                    type: "checkbox",
+                    checked: autoSaveMode == opt.mode,
+                    click: () => {
+                        this.env.rpc.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "editor:autosave": opt.mode == "off" ? null : opt.mode },
+                        });
+                    },
+                })),
             });
         }
         if (loadableSV.state == "hasData" && loadableSV.data.specializedView == "directory") {

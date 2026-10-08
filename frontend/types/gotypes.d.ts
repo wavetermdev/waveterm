@@ -1149,6 +1149,7 @@ declare global {
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
+        "editor:autosave"?: string;
         "editor:fontsize"?: number;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
