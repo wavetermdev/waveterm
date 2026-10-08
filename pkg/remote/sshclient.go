@@ -310,6 +310,8 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 		if len(*authSockSignersPtr) != 0 {
 			authSockSigner := (*authSockSignersPtr)[0]
 			*authSockSignersPtr = (*authSockSignersPtr)[1:]
+			blocklogger.Infof(connCtx, "[conndebug] trying agent identity %s %s...\n",
+				authSockSigner.PublicKey().Type(), ssh.FingerprintSHA256(authSockSigner.PublicKey()))
 			return []ssh.Signer{authSockSigner}, nil
 		}
 
@@ -772,10 +774,19 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
 		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
+			blocklogger.Infof(connCtx, "[conndebug] failed to open identity agent socket %q: %v\n", agentPath, err)
 			log.Printf("Failed to open Identity Agent Socket %q: %v", agentPath, err)
 		} else {
 			agentClient = agent.NewClient(conn)
-			authSockSigners, _ = agentClient.Signers()
+			agentSigners, err := agentClient.Signers()
+			if err != nil {
+				blocklogger.Infof(connCtx, "[conndebug] failed to list identity agent keys: %v\n", err)
+				log.Printf("Failed to list identity agent keys: %v", err)
+			}
+			blocklogger.Infof(connCtx, "[conndebug] identity agent provided %d identities\n", len(agentSigners))
+			for _, agentSigner := range agentSigners {
+				authSockSigners = append(authSockSigners, failoverSigner{signer: agentSigner, connCtx: connCtx})
+			}
 		}
 	}
 
