@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore } from "@/app/store/jotaiStore";
 import { Markdown } from "@/element/markdown";
 import { getOverrideConfigAtom } from "@/store/global";
 import { useAtomValue } from "jotai";
@@ -11,7 +10,7 @@ import type { SpecializedViewProps } from "./preview";
 function MarkdownPreview({ model }: SpecializedViewProps) {
     useEffect(() => {
         model.refreshCallback = () => {
-            globalStore.set(model.refreshVersion, (v) => v + 1);
+            model.reloadFileContent();
         };
         return () => {
             model.refreshCallback = null;

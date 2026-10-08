@@ -18,6 +18,9 @@ import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
 import type { PreviewEnv } from "./previewenv";
 
+// how often a displayed file is checked for changes on disk
+const FileWatchIntervalMs = 2000;
+
 export type SpecializedViewProps = {
     model: PreviewModel;
     parentRef: React.RefObject<HTMLDivElement>;
@@ -119,6 +122,30 @@ function PreviewView({
         }
         setErrorMsg(null);
     }, [connection, fileInfo]);
+
+    const specializedViewLoadable = useAtomValue(model.loadableSpecializedView);
+    const specializedViewName =
+        specializedViewLoadable.state == "hasData" ? specializedViewLoadable.data?.specializedView : null;
+    const watchFile = specializedViewName != null && specializedViewName != "directory";
+    useEffect(() => {
+        if (!watchFile || connStatus?.status != "connected") {
+            return;
+        }
+        let checking = false;
+        const intervalId = setInterval(() => {
+            if (checking || document.hidden) {
+                return;
+            }
+            checking = true;
+            model
+                .checkForExternalChange()
+                .catch((e) => console.log("error checking file for changes", e))
+                .finally(() => {
+                    checking = false;
+                });
+        }, FileWatchIntervalMs);
+        return () => clearInterval(intervalId);
+    }, [model, watchFile, connStatus?.status]);
 
     if (connStatus?.status != "connected") {
         return null;
