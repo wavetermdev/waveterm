@@ -33,6 +33,7 @@ const BOOKMARKS: { label: string; path: string }[] = [
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
+const MaxAutoReloadRetries = 3;
 
 const textApplicationMimetypes = [
     "application/sql",
@@ -164,11 +165,14 @@ export class PreviewModel implements ViewModel {
 
     showHiddenFiles: PrimitiveAtom<boolean>;
     refreshVersion: PrimitiveAtom<number>;
+    fileInfoVersion: PrimitiveAtom<number>;
     directorySearchActive: PrimitiveAtom<boolean>;
     refreshCallback: () => void;
     // path + modtime of the file as last seen on disk, used to auto-refresh on external changes
     watchedFilePath: string = null;
     watchedModTime: number = null;
+    // failed auto-reloads of the current modtime; retried on the next poll up to MaxAutoReloadRetries
+    reloadFailures = 0;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     env: PreviewEnv;
@@ -182,6 +186,7 @@ export class PreviewModel implements ViewModel {
         let showHiddenFiles = globalStore.get(this.env.getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
         this.showHiddenFiles = atom<boolean>(showHiddenFiles);
         this.refreshVersion = atom(0);
+        this.fileInfoVersion = atom(0);
         this.directorySearchActive = atom(false);
         this.previewTextRef = createRef();
         this.openFileModal = atom(false);
@@ -405,6 +410,7 @@ export class PreviewModel implements ViewModel {
             return get(this.blockAtom)?.meta?.connection;
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
+            get(this.fileInfoVersion); // re-stat when the file content is reloaded
             const fileName = get(this.metaFilePath);
             const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
@@ -717,6 +723,7 @@ export class PreviewModel implements ViewModel {
             // first check for this file, start from the modtime the view was loaded with
             const loadedInfo = await globalStore.get(this.statFile);
             this.watchedFilePath = fileInfo.path;
+            this.reloadFailures = 0;
             this.watchedModTime = loadedInfo?.path === fileInfo.path ? loadedInfo.modtime : fileInfo.modtime;
         }
         if (fileInfo.modtime === this.watchedModTime) {
@@ -725,13 +732,36 @@ export class PreviewModel implements ViewModel {
         if (globalStore.get(this.newFileContent) != null) {
             return;
         }
-        this.watchedModTime = fileInfo.modtime;
         this.reloadFileContent();
+        if (!(await this.didReloadSucceed()) && ++this.reloadFailures < MaxAutoReloadRetries) {
+            // keep the old modtime so the next poll retries (e.g. the file was mid-write)
+            return;
+        }
+        this.reloadFailures = 0;
+        this.watchedModTime = fileInfo.modtime;
+    }
+
+    async didReloadSucceed(): Promise<boolean> {
+        const fileInfo = await globalStore.get(this.statFile);
+        if (fileInfo == null) {
+            return false;
+        }
+        const specializedView = await globalStore.get(this.specializedView);
+        if (specializedView.errorStr != null) {
+            return false;
+        }
+        if (specializedView.specializedView == "streaming") {
+            // streamed files are loaded by the browser, nothing to check here
+            return true;
+        }
+        const fullFile = await globalStore.get(this.fullFile);
+        return fullFile != null;
     }
 
     reloadFileContent() {
         // drop the cached saved content, otherwise it shadows the freshly read file
         globalStore.set(this.fileContentSaved, null);
+        globalStore.set(this.fileInfoVersion, (v) => v + 1);
         globalStore.set(this.refreshVersion, (v) => v + 1);
     }
 
