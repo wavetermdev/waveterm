@@ -18,6 +18,7 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
         };
     }, []);
     const connName = useAtomValue(model.connection);
+    const filePath = useAtomValue(model.metaFilePath);
     const fileInfo = useAtomValue(model.statFile);
     const fontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fontsize"));
     const fixedFontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fixedfontsize"));
@@ -33,6 +34,16 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
                 textAtom={model.fileContent}
                 showTocAtom={model.markdownShowToc}
                 resolveOpts={resolveOpts}
+                onOpenFile={async (path) => {
+                    // Do not apply a delayed link resolution to a different document or connection.
+                    if (
+                        globalStore.get(model.connectionImmediate) !== connName ||
+                        globalStore.get(model.metaFilePath) !== filePath
+                    ) {
+                        return;
+                    }
+                    await model.goHistory(path);
+                }}
                 fontSizeOverride={fontSizeOverride}
                 fixedFontSizeOverride={fixedFontSizeOverride}
                 contentClassName="pt-[5px] pr-[15px] pb-[10px] pl-[15px]"
