@@ -71,6 +71,11 @@ const JobOutputFileName = "term"
 const AutoReconnectDelay = 1 * time.Second
 const AutoReconnectCooldown = 30 * time.Second
 
+// ReconnectJobTimeout bounds a single job reconnect. ReconnectJobConcurrency
+// bounds how many run at once when a connection comes back up.
+const ReconnectJobTimeout = 15 * time.Second
+const ReconnectJobConcurrency = 8
+
 type connState struct {
 	actual      bool
 	processed   bool
@@ -481,6 +486,10 @@ func handleBlockCloseEvent(event *wps.WaveEvent) {
 	}
 }
 
+// onConnectionUp reconnects every durable job attached to connName once its
+// connection has been re-established. Each job is reconnected under its own
+// deadline, and the batch runs with bounded concurrency, so a slow or
+// unreachable job cannot consume the time budget of the jobs behind it.
 func onConnectionUp(connName string) {
 	log.Printf("[conn:%s] connection became connected, reconnecting jobs", connName)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
@@ -501,15 +510,37 @@ func onConnectionUp(connName string) {
 
 	log.Printf("[conn:%s] found %d jobs to reconnect", connName, len(jobsToReconnect))
 
+	// Reconnect each job under its own deadline, with bounded concurrency.
+	// Previously every ReconnectJob call shared the single 5s context created
+	// above and ran serially, so on a high-latency connection only the first
+	// few jobs finished before the deadline elapsed and every remaining job
+	// failed at once with "context deadline exceeded", leaving those blocks
+	// permanently stalled until the connection was torn down by hand.
+	var wg sync.WaitGroup
+	var successMu sync.Mutex
 	successCount := 0
+	sem := make(chan struct{}, ReconnectJobConcurrency)
 	for _, job := range jobsToReconnect {
-		err = ReconnectJob(ctx, job.OID, nil)
-		if err != nil {
-			log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
-		} else {
+		wg.Add(1)
+		go func(job *waveobj.Job) {
+			defer func() {
+				panichandler.PanicHandler("onConnectionUp:ReconnectJob", recover())
+				wg.Done()
+			}()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			jobCtx, jobCancelFn := context.WithTimeout(context.Background(), ReconnectJobTimeout)
+			defer jobCancelFn()
+			if rerr := ReconnectJob(jobCtx, job.OID, nil); rerr != nil {
+				log.Printf("[job:%s] error reconnecting: %v", job.OID, rerr)
+				return
+			}
+			successMu.Lock()
 			successCount++
-		}
+			successMu.Unlock()
+		}(job)
 	}
+	wg.Wait()
 
 	log.Printf("[conn:%s] finished reconnecting jobs: %d/%d successful", connName, successCount, len(jobsToReconnect))
 }
