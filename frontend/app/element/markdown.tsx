@@ -3,6 +3,7 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
+import { MarkdownLink } from "@/app/element/markdown-link";
 import {
     MarkdownContentBlockType,
     resolveRemoteFile,
@@ -22,7 +23,6 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.scss";
 
@@ -36,28 +36,6 @@ const initializeMermaid = async () => {
         mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
         mermaidInitialized = true;
     }
-};
-
-const Link = ({
-    setFocusedHeading,
-    props,
-}: {
-    props: React.AnchorHTMLAttributes<HTMLAnchorElement>;
-    setFocusedHeading: (href: string) => void;
-}) => {
-    const onClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (props.href.startsWith("#")) {
-            setFocusedHeading(props.href);
-        } else {
-            openLink(props.href);
-        }
-    };
-    return (
-        <a href={props.href} onClick={onClick} className="text-accent hover:underline">
-            {props.children}
-        </a>
-    );
 };
 
 const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingElement>; hnum: number }) => {
@@ -300,6 +278,7 @@ type MarkdownProps = {
     contentClassName?: string;
     onClickExecute?: (cmd: string) => void;
     resolveOpts?: MarkdownResolveOpts;
+    onOpenFile?: (path: string) => Promise<void>;
     scrollable?: boolean;
     rehype?: boolean;
     fontSizeOverride?: number;
@@ -314,6 +293,7 @@ const Markdown = ({
     className,
     contentClassName,
     resolveOpts,
+    onOpenFile,
     fontSizeOverride,
     fixedFontSizeOverride,
     scrollable = true,
@@ -349,7 +329,12 @@ const Markdown = ({
 
     const markdownComponents: Partial<Components> = {
         a: (props: React.HTMLAttributes<HTMLAnchorElement>) => (
-            <Link props={props} setFocusedHeading={setFocusedHeading} />
+            <MarkdownLink
+                props={props}
+                setFocusedHeading={setFocusedHeading}
+                resolveOpts={resolveOpts}
+                onOpenFile={onOpenFile}
+            />
         ),
         p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <div className="paragraph" {...props} />,
         h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <Heading props={props} hnum={1} />,
