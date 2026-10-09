@@ -240,6 +240,7 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     rtn.key = event.key;
     rtn.location = event.location;
     (rtn as any).nativeEvent = event;
+    rtn.isComposing = event.isComposing || (event as any).keyCode == 229;
     if (event.type == "keydown" || event.type == "keyup" || event.type == "keypress") {
         rtn.type = event.type;
     } else {
@@ -268,6 +269,7 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     rtn.location = event.location;
     rtn.code = event.code;
     rtn.key = event.key;
+    rtn.isComposing = event.isComposing || event.keyCode == 229;
     return rtn;
 }
 
