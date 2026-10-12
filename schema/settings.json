@@ -143,6 +143,9 @@
         "term:shiftenternewline": {
           "type": "boolean"
         },
+        "term:ctrlenter": {
+          "type": "boolean"
+        },
         "term:macoptionismeta": {
           "type": "boolean"
         },

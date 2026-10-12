@@ -52,6 +52,7 @@ const (
 	ConfigKey_TermTransparency               = "term:transparency"
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
+	ConfigKey_TermCtrlEnter                  = "term:ctrlenter"
 	ConfigKey_TermMacOptionIsMeta            = "term:macoptionismeta"
 	ConfigKey_TermCursor                     = "term:cursor"
 	ConfigKey_TermCursorBlink                = "term:cursorblink"

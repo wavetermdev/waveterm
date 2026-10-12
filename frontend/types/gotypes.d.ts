@@ -1182,6 +1182,7 @@ declare global {
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
+        "term:ctrlenter"?: boolean;
         "term:macoptionismeta"?: boolean;
         "term:cursor"?: string;
         "term:cursorblink"?: boolean;
@@ -1417,6 +1418,7 @@ declare global {
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
+        "term:ctrlenter"?: boolean;
         "term:macoptionismeta"?: boolean;
         "term:cursor"?: string;
         "term:cursorblink"?: boolean;
