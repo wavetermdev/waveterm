@@ -319,9 +319,26 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
             if (wc == null || wc.isDestroyed() || tabView.webContents == null || tabView.webContents.isDestroyed()) {
                 return { action: "deny" };
             }
+            // OAuth/SSO flows call window.open(url, name, "width=...,height=...") which Electron
+            // reports as disposition "new-window". They require a real popup that preserves the
+            // window.opener relationship (postMessage token return) and a valid Cross-Origin-
+            // Opener-Policy browsing context. Rerouting them into a new web block breaks both
+            // (results in ERR_BLOCKED_BY_RESPONSE). Allow a genuine popup window for these; it
+            // shares wc's session so any auth cookies/tokens remain visible to the webview.
+            // Gate on a non-empty features string: a shift+click on a plain link also reports
+            // disposition "new-window" but carries no features, and must keep routing to a web block.
+            if (details.disposition === "new-window" && details.features !== "") {
+                return {
+                    action: "allow",
+                    overrideBrowserWindowOptions: { width: 600, height: 700, autoHideMenuBar: true },
+                };
+            }
+            // Plain link clicks (target=_blank, foreground/background tab) keep existing behavior:
+            // open in a new Wave web block.
             tabView.webContents.send("webview-new-window", wc.id, details);
             return { action: "deny" };
         });
+        wc.on("did-create-window", (popup) => popup.setMenuBarVisibility(false));
     });
     tabView.webContents.on("before-input-event", (e, input) => {
         const waveEvent = adaptFromElectronKeyEvent(input);
