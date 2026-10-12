@@ -160,6 +160,14 @@ const QuickTips = () => {
                             <span className="text-[15px]">Open Wave AI Panel</span>
                             <KeyBinding keyDecl="Cmd:Shift:a" />
                         </div>
+                        <div className="flex flex-col gap-0.5 p-2 rounded-md hover:bg-white/5 transition-colors">
+                            <span className="text-[15px]">Open Settings</span>
+                            <KeyBinding keyDecl="Cmd:," />
+                        </div>
+                        <div className="flex flex-col gap-0.5 p-2 rounded-md hover:bg-white/5 transition-colors">
+                            <span className="text-[15px]">Close Settings / Close Search</span>
+                            <KeyBinding keyDecl="Escape" />
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
