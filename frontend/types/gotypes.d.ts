@@ -793,6 +793,12 @@ declare global {
         bindings: {[key: string]: string};
     };
 
+    // wshrpc.CommandWriteNoteData
+    type CommandWriteNoteData = {
+        content: string;
+        sourceoref: string;
+    };
+
     // wshrpc.CommandWriteTempFileData
     type CommandWriteTempFileData = {
         filename: string;
@@ -1225,6 +1231,23 @@ declare global {
         color: string;
     };
 
+    // wshrpc.NoteData
+    type NoteData = {
+        content: string;
+        readonly?: boolean;
+        filepath?: string;
+        error?: string;
+    };
+
+    // wshrpc.NotesUpdatedData
+    type NotesUpdatedData = {
+        content: string;
+        sourceoref: string;
+        readonly?: boolean;
+        filepath?: string;
+        error?: string;
+    };
+
     // waveobj.ORef
     type ORef = string;
 
@@ -1249,6 +1272,7 @@ declare global {
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
+        "notes:cursorpos"?: number;
     };
 
     // wshrpc.PathCommandData
@@ -1484,6 +1508,7 @@ declare global {
         "tsunami:sdkreplacepath"?: string;
         "tsunami:sdkversion"?: string;
         "tsunami:gopath"?: string;
+        "notes:path"?: string;
     };
 
     // waveobj.StickerClickOptsType
@@ -1589,6 +1614,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

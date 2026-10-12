@@ -351,6 +351,9 @@
         },
         "tsunami:gopath": {
           "type": "string"
+        },
+        "notes:path": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

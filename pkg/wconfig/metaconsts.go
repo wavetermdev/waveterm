@@ -131,5 +131,7 @@ const (
 	ConfigKey_TsunamiSdkReplacePath          = "tsunami:sdkreplacepath"
 	ConfigKey_TsunamiSdkVersion              = "tsunami:sdkversion"
 	ConfigKey_TsunamiGoPath                  = "tsunami:gopath"
+
+	ConfigKey_NotesPath                      = "notes:path"
 )
 
