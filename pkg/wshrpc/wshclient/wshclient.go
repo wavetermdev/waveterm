@@ -616,6 +616,12 @@ func ListAllEditableAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshr
 	return resp, err
 }
 
+// command "listtmuxsessions", wshserver.ListTmuxSessionsCommand
+func ListTmuxSessionsCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "listtmuxsessions", data, opts)
+	return resp, err
+}
+
 // command "macosversion", wshserver.MacOSVersionCommand
 func MacOSVersionCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "macosversion", nil, opts)
