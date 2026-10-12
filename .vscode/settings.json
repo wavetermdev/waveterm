@@ -64,5 +64,9 @@
     "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
     "go.coverageDecorator": {
         "type": "gutter"
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/dist": true
     }
 }

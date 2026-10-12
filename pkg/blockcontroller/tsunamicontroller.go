@@ -294,7 +294,7 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 
 func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string, blockMeta waveobj.MetaMapType) (*TsunamiAppProc, error) {
 	cmd := exec.Command(appBinPath)
-	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
+	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1", "TSUNAMI_TERMPROXY=0")
 
 	if wavebase.IsDevMode() {
 		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)

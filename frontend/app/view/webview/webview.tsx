@@ -954,11 +954,11 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     useLayoutEffect(() => {
         return () => {
             const webview = model.webviewRef.current;
-            if (webview?.isDevToolsOpened()) {
+            if (domReady && webview?.isDevToolsOpened()) {
                 webview.closeDevTools();
             }
         };
-    }, []);
+    }, [domReady]);
 
     useEffect(() => {
         return () => {

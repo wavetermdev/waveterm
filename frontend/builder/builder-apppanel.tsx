@@ -102,7 +102,7 @@ const ErrorStrip = memo(() => {
 
 ErrorStrip.displayName = "ErrorStrip";
 
-const PublishAppModal = memo(({ appName }: { appName: string }) => {
+const PublishAppModal = memo(({ appName, appExists }: { appName: string; appExists: boolean }) => {
     const builderAppId = useAtomValue(atoms.builderAppId);
     const [state, setState] = useState<"confirm" | "success" | "error">("confirm");
     const [errorMessage, setErrorMessage] = useState<string>("");
@@ -178,10 +178,12 @@ const PublishAppModal = memo(({ appName }: { appName: string }) => {
                     <p className="text-primary">
                         This will publish your app to <span className="font-mono">local/{appName}</span>
                     </p>
-                    <p className="text-warning">
-                        <i className="fa fa-triangle-exclamation mr-2" />
-                        This will overwrite any existing app with the same name. Are you sure?
-                    </p>
+                    {appExists && (
+                        <p className="text-warning">
+                            <i className="fa fa-triangle-exclamation mr-2" />
+                            This will overwrite any existing app with the same name. Are you sure?
+                        </p>
+                    )}
                 </div>
             </div>
         </Modal>
@@ -247,10 +249,16 @@ const BuilderAppPanel = memo(() => {
         model.restartBuilder();
     }, [model]);
 
-    const handlePublishClick = useCallback(() => {
+    const handlePublishClick = useCallback(async () => {
         if (!builderAppId) return;
         const appName = builderAppId.replace("draft/", "");
-        modalsModel.pushModal("PublishAppModal", { appName });
+        let appExists = false;
+        try {
+            appExists = await RpcApi.DraftHasLocalVersionCommand(TabRpcClient, builderAppId);
+        } catch (e) {
+            console.log("error checking if draft has local version", e);
+        }
+        modalsModel.pushModal("PublishAppModal", { appName, appExists });
     }, [builderAppId]);
 
     const handleSwitchAppClick = useCallback(() => {
