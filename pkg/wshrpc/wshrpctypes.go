@@ -97,6 +97,7 @@ type WshRpcInterface interface {
 	UpdateTabNameCommand(ctx context.Context, tabId string, newName string) error
 	UpdateWorkspaceTabIdsCommand(ctx context.Context, workspaceId string, tabIds []string) error
 	GetAllBadgesCommand(ctx context.Context) ([]baseds.BadgeEvent, error)
+	ExcalidrawPushCommand(ctx context.Context, data CommandExcalidrawPushData) error
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -347,7 +348,6 @@ type CommandEventReadHistoryData struct {
 	Scope    string `json:"scope"`
 	MaxItems int    `json:"maxitems"`
 }
-
 
 type CpuDataRequest struct {
 	Id    string `json:"id"`
@@ -931,4 +931,12 @@ type CommandRemoteProcessListData struct {
 type CommandRemoteProcessSignalData struct {
 	Pid    int32  `json:"pid"`
 	Signal string `json:"signal"`
+}
+
+type CommandExcalidrawPushData struct {
+	BlockId   string `json:"blockid"`
+	SceneData any    `json:"scenedata"`
+	Format    string `json:"format,omitempty"`
+	PushId    string `json:"pushid,omitempty"`
+	PushTs    int64  `json:"pushts,omitempty"`
 }

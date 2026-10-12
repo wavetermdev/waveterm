@@ -123,6 +123,9 @@ export default defineConfig({
     },
     renderer: {
         root: ".",
+        define: {
+            "process.env.IS_PREACT": JSON.stringify("false"),
+        },
         build: {
             target: CHROME,
             sourcemap: true,
@@ -142,6 +145,8 @@ export default defineConfig({
                         }
                         if (p.includes("node_modules/cytoscape") || p.includes("node_modules/@cytoscape"))
                             return "cytoscape";
+                        if (p.includes("node_modules/excalidraw") || p.includes("node_modules/@excalidraw"))
+                            return "excalidraw";
                         return undefined;
                     },
                 },
