@@ -559,6 +559,20 @@ func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrp
 	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
 }
 
+func (ws *WshServer) SetFileBookmarkCommand(ctx context.Context, data wshrpc.FileBookmarkSetRequest) error {
+	if data.Key == "" {
+		return fmt.Errorf("key is required")
+	}
+	return wconfig.SetFileBookmarkConfigValue(data.Key, data.Bookmark)
+}
+
+func (ws *WshServer) DeleteFileBookmarkCommand(ctx context.Context, key string) error {
+	if key == "" {
+		return fmt.Errorf("key is required")
+	}
+	return wconfig.DeleteFileBookmarkConfigValue(key)
+}
+
 func (ws *WshServer) GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error) {
 	watcher := wconfig.GetWatcher()
 	return watcher.GetFullConfig(), nil

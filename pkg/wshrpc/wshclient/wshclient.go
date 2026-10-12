@@ -215,6 +215,12 @@ func DeleteBuilderCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) 
 	return err
 }
 
+// command "deletefilebookmark", wshserver.DeleteFileBookmarkCommand
+func DeleteFileBookmarkCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "deletefilebookmark", data, opts)
+	return err
+}
+
 // command "deletesubblock", wshserver.DeleteSubBlockCommand
 func DeleteSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "deletesubblock", data, opts)
@@ -845,6 +851,12 @@ func SetConfigCommand(w *wshutil.WshRpc, data wshrpc.MetaSettingsType, opts *wsh
 // command "setconnectionsconfig", wshserver.SetConnectionsConfigCommand
 func SetConnectionsConfigCommand(w *wshutil.WshRpc, data wshrpc.ConnConfigRequest, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setconnectionsconfig", data, opts)
+	return err
+}
+
+// command "setfilebookmark", wshserver.SetFileBookmarkCommand
+func SetFileBookmarkCommand(w *wshutil.WshRpc, data wshrpc.FileBookmarkSetRequest, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setfilebookmark", data, opts)
 	return err
 }
 
