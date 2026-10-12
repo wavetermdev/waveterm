@@ -29,6 +29,7 @@ import {
 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { setupBadgesSubscription } from "./badge";
+import { reregisterGlobalKeys } from "./keymodel";
 import { atoms, blockComponentModelMap, ConnStatusMapAtom, initGlobalAtoms, orefAtomCache } from "./global-atoms";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -65,6 +66,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         handler: (event) => {
             // console.log("config wave event handler", event);
             globalStore.set(atoms.fullConfigAtom, event.data.fullconfig);
+            reregisterGlobalKeys();
         },
     });
     waveEventSubscribeSingle({
