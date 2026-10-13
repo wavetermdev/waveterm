@@ -37,17 +37,22 @@ func (msc *MainServerConn) Close() {
 }
 
 type routedDataSender struct {
-	wshRpc *wshutil.WshRpc
-	route  string
+	msc   *MainServerConn
+	route string
 }
 
-func (rds *routedDataSender) SendData(dataPk wshrpc.CommandStreamData) {
+func (rds *routedDataSender) SendData(dataPk wshrpc.CommandStreamData) error {
 	// log.Printf("SendData: sending seq=%d, len=%d, eof=%t, error=%s, route=%s",
 	// 	dataPk.Seq, len(dataPk.Data64), dataPk.Eof, dataPk.Error, rds.route)
-	err := wshclient.StreamDataCommand(rds.wshRpc, dataPk, &wshrpc.RpcOpts{NoResponse: true, Route: rds.route})
+	err := wshclient.StreamDataCommand(rds.msc.WshRpc, dataPk, &wshrpc.RpcOpts{NoResponse: true, Route: rds.route})
 	if err != nil {
-		log.Printf("SendData: error sending stream data: %v\n", err)
+		log.Printf("SendData: error sending stream data, closing connection: %v\n", err)
+		// close the connection so the main server sees the job route go down
+		// and reconnects, resuming the stream from its last received seq
+		rds.msc.Close()
+		return err
 	}
+	return nil
 }
 
 func (msc *MainServerConn) authenticateSelfToServer(jobAuthToken string) error {
