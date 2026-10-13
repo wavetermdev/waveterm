@@ -71,6 +71,21 @@ const JobOutputFileName = "term"
 const AutoReconnectDelay = 1 * time.Second
 const AutoReconnectCooldown = 30 * time.Second
 
+// ReconnectJobTimeout bounds a single job reconnect. ReconnectJobConcurrency
+// bounds how many run at once when a connection comes back up.
+const ReconnectJobTimeout = 60 * time.Second
+const ReconnectJobConcurrency = 8
+
+// RemoteJobRpcTimeoutMs bounds a single RPC to a remote connection's job
+// machinery, and ReconnectRouteWaitTimeout bounds waiting for the job route
+// to register after a successful reconnect. Each reconnect is several
+// round trips (reconnect -> socket connect -> job manager auth -> token
+// verify back to wavesrv), so on a 300ms+ RTT link with packet loss the
+// previous 5s/2s budgets were routinely exceeded and the job was marked
+// failed even though the job manager was healthy.
+const RemoteJobRpcTimeoutMs = 20000
+const ReconnectRouteWaitTimeout = 10 * time.Second
+
 type connState struct {
 	actual      bool
 	processed   bool
@@ -410,7 +425,7 @@ func attemptAutoReconnect(jobId string, connName string) {
 	}
 
 	log.Printf("[job:%s] connection %s still up after route down, attempting auto-reconnect to determine job manager status", jobId, connName)
-	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), ReconnectJobTimeout)
 	defer cancelFn()
 	err = ReconnectJob(ctx, jobId, nil)
 	if err != nil {
@@ -481,6 +496,10 @@ func handleBlockCloseEvent(event *wps.WaveEvent) {
 	}
 }
 
+// onConnectionUp reconnects every durable job attached to connName once its
+// connection has been re-established. Each job is reconnected under its own
+// deadline, and the batch runs with bounded concurrency, so a slow or
+// unreachable job cannot consume the time budget of the jobs behind it.
 func onConnectionUp(connName string) {
 	log.Printf("[conn:%s] connection became connected, reconnecting jobs", connName)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
@@ -501,15 +520,37 @@ func onConnectionUp(connName string) {
 
 	log.Printf("[conn:%s] found %d jobs to reconnect", connName, len(jobsToReconnect))
 
+	// Reconnect each job under its own deadline, with bounded concurrency.
+	// Previously every ReconnectJob call shared the single 5s context created
+	// above and ran serially, so on a high-latency connection only the first
+	// few jobs finished before the deadline elapsed and every remaining job
+	// failed at once with "context deadline exceeded", leaving those blocks
+	// permanently stalled until the connection was torn down by hand.
+	var wg sync.WaitGroup
+	var successMu sync.Mutex
 	successCount := 0
+	sem := make(chan struct{}, ReconnectJobConcurrency)
 	for _, job := range jobsToReconnect {
-		err = ReconnectJob(ctx, job.OID, nil)
-		if err != nil {
-			log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
-		} else {
+		wg.Add(1)
+		go func(job *waveobj.Job) {
+			defer func() {
+				panichandler.PanicHandler("onConnectionUp:ReconnectJob", recover())
+				wg.Done()
+			}()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			jobCtx, jobCancelFn := context.WithTimeout(context.Background(), ReconnectJobTimeout)
+			defer jobCancelFn()
+			if rerr := ReconnectJob(jobCtx, job.OID, nil); rerr != nil {
+				log.Printf("[job:%s] error reconnecting: %v", job.OID, rerr)
+				return
+			}
+			successMu.Lock()
 			successCount++
-		}
+			successMu.Unlock()
+		}(job)
 	}
+	wg.Wait()
 
 	log.Printf("[conn:%s] finished reconnecting jobs: %d/%d successful", connName, successCount, len(jobsToReconnect))
 }
@@ -970,7 +1011,7 @@ func DisconnectJob(ctx context.Context, jobId string) error {
 	bareRpc := wshclient.GetBareRpcClient()
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeConnectionRouteId(job.Connection),
-		Timeout: 5000,
+		Timeout: RemoteJobRpcTimeoutMs,
 	}
 
 	disconnectData := wshrpc.CommandRemoteDisconnectFromJobManagerData{
@@ -1011,7 +1052,7 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeConnectionRouteId(job.Connection),
-		Timeout: 5000,
+		Timeout: RemoteJobRpcTimeoutMs,
 	}
 
 	err := wshclient.RemoteTerminateJobManagerCommand(bareRpc, terminateData, rpcOpts)
@@ -1108,7 +1149,7 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeConnectionRouteId(job.Connection),
-		Timeout: 5000,
+		Timeout: RemoteJobRpcTimeoutMs,
 	}
 
 	log.Printf("[job:%s] sending RemoteReconnectToJobManagerCommand to connection %s", jobId, job.Connection)
@@ -1148,7 +1189,7 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 	log.Printf("[job:%s] RemoteReconnectToJobManagerCommand succeeded, waiting for route", jobId)
 
 	routeId := wshutil.MakeJobRouteId(jobId)
-	waitCtx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
+	waitCtx, cancelFn := context.WithTimeout(ctx, ReconnectRouteWaitTimeout)
 	defer cancelFn()
 	err = wshutil.DefaultRouter.WaitForRegister(waitCtx, routeId)
 	if err != nil {
@@ -1257,7 +1298,7 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeJobRouteId(jobId),
-		Timeout: 5000,
+		Timeout: RemoteJobRpcTimeoutMs,
 	}
 
 	log.Printf("[job:%s] sending JobPrepareConnectCommand with seq=%d (fileSize=%d, totalGap=%d)", jobId, currentSeq, waveFile.Size, totalGap)

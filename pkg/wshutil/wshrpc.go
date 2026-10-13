@@ -25,7 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const DefaultTimeoutMs = 5000
+const DefaultTimeoutMs = 15000
 const RespChSize = 32
 const DefaultMessageChSize = 32
 const CtxDoneChSize = 10
