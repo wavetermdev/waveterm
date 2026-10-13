@@ -25,9 +25,44 @@ type ConnMonitor struct {
 	LastInputTime     atomic.Int64
 	KeepAliveSentTime atomic.Int64
 	KeepAliveInFlight bool
+	RttEwmaMs         atomic.Int64 // smoothed keepalive round-trip time, 0 until first sample
 	ctx               context.Context
 	cancelFunc        context.CancelFunc
 	inputNotifyCh     chan int64
+}
+
+// Health thresholds scale with the measured keepalive RTT so that a slow but
+// working link (e.g. a 300ms+ cross-continent path with some packet loss) is
+// not constantly flagged as degraded/stalled. The floors match or exceed the
+// original fixed values, so low-latency links behave as before.
+const (
+	degradedDelayFloorMs   = 2000
+	degradedDelayRttFactor = 4
+	stalledFloorMs         = 15000
+	stalledUrgentFloorMs   = 8000
+	stalledRttFactor       = 10
+	rttEwmaWeightPct       = 25 // weight of a new sample, in percent
+)
+
+// healthThresholds returns how long to wait for a response after user input
+// before reporting "degraded", and how long a keepalive may be in flight
+// before reporting "stalled", given the smoothed RTT in milliseconds.
+func healthThresholds(rttMs int64, urgent bool) (degradedDelayMs int64, stalledMs int64) {
+	degradedDelayMs = max(int64(degradedDelayFloorMs), degradedDelayRttFactor*rttMs)
+	stalledFloor := int64(stalledFloorMs)
+	if urgent {
+		stalledFloor = stalledUrgentFloorMs
+	}
+	stalledMs = max(stalledFloor, stalledRttFactor*rttMs)
+	return degradedDelayMs, stalledMs
+}
+
+// updateRttEwma folds a new RTT sample into the running average.
+func updateRttEwma(prevMs int64, sampleMs int64) int64 {
+	if prevMs <= 0 {
+		return sampleMs
+	}
+	return (prevMs*(100-rttEwmaWeightPct) + sampleMs*rttEwmaWeightPct) / 100
 }
 
 func MakeConnMonitor(conn *SSHConn, client *ssh.Client) *ConnMonitor {
@@ -125,6 +160,7 @@ func (cm *ConnMonitor) SendKeepAlive() error {
 			log.Printf("[conncontroller] conn:%s keepalive error (duration=%dms): %v", cm.Conn.GetName(), duration, err)
 			return
 		}
+		cm.RttEwmaMs.Store(updateRttEwma(cm.RttEwmaMs.Load(), time.Since(startTime).Milliseconds()))
 		cm.UpdateLastActivityTime()
 	}()
 	return nil
@@ -146,10 +182,7 @@ func (cm *ConnMonitor) checkConnection() {
 		cm.SendKeepAlive()
 	}
 
-	stalledThreshold := int64(10000)
-	if urgent {
-		stalledThreshold = 5000
-	}
+	_, stalledThreshold := healthThresholds(cm.RttEwmaMs.Load(), urgent)
 	timeSinceKeepAlive := cm.getTimeSinceKeepAlive()
 	if timeSinceKeepAlive > stalledThreshold {
 		cm.setConnHealthStatus(ConnHealthStatus_Stalled)
@@ -174,8 +207,9 @@ func (cm *ConnMonitor) keepAliveMonitor() {
 			cm.checkConnection()
 
 		case inputTime := <-cm.inputNotifyCh:
+			degradedDelayMs, _ := healthThresholds(cm.RttEwmaMs.Load(), true)
 			select {
-			case <-time.After(1 * time.Second):
+			case <-time.After(time.Duration(degradedDelayMs) * time.Millisecond):
 				if cm.LastActivityTime.Load() >= inputTime {
 					break
 				}
