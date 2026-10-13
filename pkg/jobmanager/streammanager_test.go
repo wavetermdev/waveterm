@@ -5,6 +5,7 @@ package jobmanager
 
 import (
 	"encoding/base64"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -19,10 +20,11 @@ type testWriter struct {
 	packets []wshrpc.CommandStreamData
 }
 
-func (tw *testWriter) SendData(pkt wshrpc.CommandStreamData) {
+func (tw *testWriter) SendData(pkt wshrpc.CommandStreamData) error {
 	tw.mu.Lock()
 	defer tw.mu.Unlock()
 	tw.packets = append(tw.packets, pkt)
+	return nil
 }
 
 func (tw *testWriter) GetPackets() []wshrpc.CommandStreamData {
@@ -323,6 +325,106 @@ func TestTerminalEventOrdering(t *testing.T) {
 
 	if eofSeq != 4 {
 		t.Errorf("Expected EOF at seq 4, got %d", eofSeq)
+	}
+
+	sm.Close()
+}
+
+type failingWriter struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (fw *failingWriter) SendData(pkt wshrpc.CommandStreamData) error {
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+	fw.calls++
+	return errors.New("timeout sending request")
+}
+
+func (fw *failingWriter) GetCalls() int {
+	fw.mu.Lock()
+	defer fw.mu.Unlock()
+	return fw.calls
+}
+
+func TestSendErrorFallsBackToDisconnected(t *testing.T) {
+	sm := MakeStreamManager()
+
+	data := strings.Repeat("a", MaxPacketSize) + strings.Repeat("b", MaxPacketSize)
+	err := sm.AttachReader(strings.NewReader(data))
+	if err != nil {
+		t.Fatalf("AttachReader failed: %v", err)
+	}
+
+	fw := &failingWriter{}
+	_, err = sm.ClientConnected("1", fw, CwndSize, 0)
+	if err != nil {
+		t.Fatalf("ClientConnected failed: %v", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	if calls := fw.GetCalls(); calls != 1 {
+		t.Errorf("Expected sending to stop after the first failed send, got %d calls", calls)
+	}
+
+	// the failed packet must not be counted as in flight, a new client should get all data from seq 0
+	tw := &testWriter{}
+	_, err = sm.ClientConnected("2", tw, CwndSize, 0)
+	if err != nil {
+		t.Fatalf("ClientConnected after send error failed: %v", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	packets := tw.GetPackets()
+	if len(packets) == 0 || packets[0].Seq != 0 {
+		t.Fatalf("Expected resend starting at seq 0, got %d packets", len(packets))
+	}
+	allData := ""
+	for _, pkt := range packets {
+		if pkt.Data64 != "" {
+			allData += decodeData(pkt.Data64)
+		}
+	}
+	if allData != data {
+		t.Errorf("Expected %d bytes after reconnect, got %d", len(data), len(allData))
+	}
+
+	sm.Close()
+}
+
+func TestStaleSendErrorKeepsNewClient(t *testing.T) {
+	sm := MakeStreamManager()
+
+	err := sm.AttachReader(strings.NewReader("hello"))
+	if err != nil {
+		t.Fatalf("AttachReader failed: %v", err)
+	}
+
+	oldWriter := &testWriter{}
+	_, err = sm.ClientConnected("1", oldWriter, CwndSize, 0)
+	if err != nil {
+		t.Fatalf("ClientConnected failed: %v", err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	sm.ClientDisconnected()
+
+	newWriter := &testWriter{}
+	_, err = sm.ClientConnected("2", newWriter, CwndSize, 0)
+	if err != nil {
+		t.Fatalf("ClientConnected failed: %v", err)
+	}
+
+	// a late error from the old client's sender must not disconnect the new client
+	sm.handleSendError(oldWriter, 0, errors.New("timeout sending request"))
+
+	sm.lock.Lock()
+	connected := sm.connected
+	sm.lock.Unlock()
+	if !connected {
+		t.Error("Expected new client to stay connected after a stale send error")
 	}
 
 	sm.Close()

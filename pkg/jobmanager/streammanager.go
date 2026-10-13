@@ -21,7 +21,7 @@ const (
 )
 
 type DataSender interface {
-	SendData(dataPk wshrpc.CommandStreamData)
+	SendData(dataPk wshrpc.CommandStreamData) error
 }
 
 type streamTerminalEvent struct {
@@ -170,7 +170,10 @@ func (sm *StreamManager) GetStreamDoneInfo() (done bool, streamError string) {
 func (sm *StreamManager) ClientDisconnected() {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
+	sm.clientDisconnected_withlock()
+}
 
+func (sm *StreamManager) clientDisconnected_withlock() {
 	if !sm.connected {
 		return
 	}
@@ -352,8 +355,28 @@ func (sm *StreamManager) senderLoop() {
 		if pkt == nil {
 			continue
 		}
-		sender.SendData(*pkt)
+		err := sender.SendData(*pkt)
+		if err != nil {
+			sm.handleSendError(sender, pkt.Seq, err)
+		}
 	}
+}
+
+// handleSendError drops back to DISCONNECTED (buffering) mode after a failed send.
+// The failed packet is already counted in sentNotAcked and is never retransmitted,
+// so staying connected would leave a gap the client can never ACK past, and the
+// stream would stall once the window fills. The client resumes from its last
+// received seq when it reconnects.
+func (sm *StreamManager) handleSendError(sender DataSender, seq int64, err error) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if !sm.connected || sm.dataSender != sender {
+		// a new client connected after this packet was prepared, leave it alone
+		return
+	}
+	log.Printf("handleSendError: send failed at seq=%d, switching to disconnected mode: %v", seq, err)
+	sm.clientDisconnected_withlock()
 }
 
 func (sm *StreamManager) prepareNextPacket() (done bool, pkt *wshrpc.CommandStreamData, sender DataSender) {

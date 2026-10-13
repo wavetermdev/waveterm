@@ -182,8 +182,8 @@ func (jm *JobManager) connectToStreamHelper_withlock(mainServerConn *MainServerC
 		jm.connectedStreamClient = nil
 	}
 	dataSender := &routedDataSender{
-		wshRpc: mainServerConn.WshRpc,
-		route:  streamMeta.ReaderRouteId,
+		msc:   mainServerConn,
+		route: streamMeta.ReaderRouteId,
 	}
 	serverSeq, err := jm.StreamManager.ClientConnected(
 		streamMeta.Id,

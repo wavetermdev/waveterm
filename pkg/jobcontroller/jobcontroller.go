@@ -370,38 +370,44 @@ func handleRouteEvent(event *wps.WaveEvent, newStatus string) {
 			sendBlockJobStatusEventByJob(ctx, job)
 
 			if newStatus == JobConnStatus_Disconnected && job != nil && isJobManagerRunning(job) {
-				if shouldAttemptAutoReconnect(jobId) {
-					go attemptAutoReconnect(jobId, job.Connection)
+				if delay, ok := nextAutoReconnectDelay(jobId); ok {
+					go attemptAutoReconnect(jobId, job.Connection, delay)
 				}
 			}
 		}
 	}
 }
 
-func shouldAttemptAutoReconnect(jobId string) bool {
+// nextAutoReconnectDelay returns how long to wait before auto-reconnecting jobId,
+// or false if an attempt is already scheduled. A route down inside the cooldown is
+// deferred to the end of the cooldown rather than dropped, otherwise a job whose
+// route goes down twice in quick succession would stay disconnected.
+func nextAutoReconnectDelay(jobId string) (time.Duration, bool) {
 	now := time.Now().Unix()
+	cooldownSecs := int64(AutoReconnectCooldown / time.Second)
 	lastAttempt, exists := lastAutoReconnectAttempt.GetEx(jobId)
 
-	if !exists {
+	if !exists || now-lastAttempt >= cooldownSecs {
 		lastAutoReconnectAttempt.Set(jobId, now)
-		return true
+		return AutoReconnectDelay, true
 	}
 
-	timeSinceLastAttempt := time.Duration(now-lastAttempt) * time.Second
-	if timeSinceLastAttempt >= AutoReconnectCooldown {
-		lastAutoReconnectAttempt.Set(jobId, now)
-		return true
+	if lastAttempt > now {
+		// a deferred attempt is already scheduled
+		return 0, false
 	}
 
-	return false
+	nextAttempt := lastAttempt + cooldownSecs
+	lastAutoReconnectAttempt.Set(jobId, nextAttempt)
+	return time.Duration(nextAttempt-now)*time.Second + AutoReconnectDelay, true
 }
 
-func attemptAutoReconnect(jobId string, connName string) {
+func attemptAutoReconnect(jobId string, connName string, delay time.Duration) {
 	defer func() {
 		panichandler.PanicHandler("jobcontroller:attemptAutoReconnect", recover())
 	}()
 
-	time.Sleep(AutoReconnectDelay)
+	time.Sleep(delay)
 
 	isConnected, err := conncontroller.IsConnected(connName)
 	if err != nil || !isConnected {

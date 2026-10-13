@@ -772,7 +772,12 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		timeoutMs = DefaultTimeoutMs
 	}
 	defer func() {
-		panichandler.PanicHandler("SendComplexRequest", recover())
+		// sending on OutputCh panics if the connection closed while we were blocked on it.
+		// callers dereference the handler unless an error is returned
+		if panicErr := panichandler.PanicHandler("SendComplexRequest", recover()); panicErr != nil {
+			rtnHandler = nil
+			rtnErr = panicErr
+		}
 	}()
 	if command == "" {
 		return nil, fmt.Errorf("command cannot be empty")
