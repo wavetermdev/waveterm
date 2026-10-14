@@ -68,6 +68,24 @@ function detectWebGLSupport(): boolean {
 export const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
 
+export function isImeCompositionEvent(e: KeyboardEvent): boolean {
+    return (e.isComposing || e.key === "Process" || e.keyCode === 229) && !e.ctrlKey && !e.altKey && !e.metaKey;
+}
+
+export function makeCustomKeyEventHandler(
+    keydownHandler?: (e: KeyboardEvent) => boolean
+): (e: KeyboardEvent) => boolean {
+    return (e: KeyboardEvent) => {
+        if (isImeCompositionEvent(e)) {
+            return false;
+        }
+        if (!keydownHandler) {
+            return true;
+        }
+        return keydownHandler(e);
+    };
+}
+
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
@@ -261,12 +279,7 @@ export class TermWrap {
                 return true;
             })
         );
-        this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-            if (!waveOptions.keydownHandler) {
-                return true;
-            }
-            return waveOptions.keydownHandler(e);
-        });
+        this.terminal.attachCustomKeyEventHandler(makeCustomKeyEventHandler(waveOptions.keydownHandler));
         this.connectElem = connectElem;
         this.mainFileSubject = null;
         this.heldData = [];
