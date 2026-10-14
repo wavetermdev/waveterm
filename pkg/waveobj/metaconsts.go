@@ -36,6 +36,7 @@ const (
 	MetaKey_FrameTitle                       = "frame:title"
 	MetaKey_FrameIcon                        = "frame:icon"
 	MetaKey_FrameText                        = "frame:text"
+	MetaKey_FrameHeaderColor                 = "frame:headercolor"
 
 	MetaKey_CmdClear                         = "cmd:*"
 	MetaKey_Cmd                              = "cmd"
