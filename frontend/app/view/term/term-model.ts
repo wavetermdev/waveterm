@@ -39,6 +39,7 @@ import { isMacOS, isWindows } from "@/util/platformutil";
 import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
+import { termHeaderColorMenuItems } from "./headercolor";
 import { getBlockingCommand } from "./shellblocking";
 import { computeTheme, DefaultTermTheme, isLikelyOnSameHost, trimTerminalSelection } from "./termutil";
 import { TermWrap, WebGLSupported } from "./termwrap";
@@ -1188,6 +1189,12 @@ export class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Transparency",
             submenu: transparencySubMenu,
+        });
+        const headerColor = blockData?.meta?.["frame:headercolor"] as string | null | undefined;
+        const headerColorSubMenu = termHeaderColorMenuItems(this.blockId, headerColor);
+        fullMenu.push({
+            label: "Title Bar Color",
+            submenu: headerColorSubMenu,
         });
         fullMenu.push({ type: "separator" });
         const advancedSubmenu: ContextMenuItem[] = [];
