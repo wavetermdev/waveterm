@@ -1302,6 +1302,10 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 }
 
 func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
+	if err := aiusechat.RestoreCodexChat(data.ChatId); err != nil {
+		return nil, err
+	}
+
 	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
 	if aiChat == nil {
 		return nil, nil

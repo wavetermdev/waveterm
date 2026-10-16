@@ -22,8 +22,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -82,9 +80,6 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 	aiMode, config, err := resolveAIMode(aiModeName, premium)
 	if err != nil {
 		return nil, err
-	}
-	if config.WaveAICloud && !telemetry.IsTelemetryEnabled() {
-		return nil, fmt.Errorf("Wave AI cloud modes require telemetry to be enabled")
 	}
 	apiToken := config.APIToken
 	if apiToken == "" && config.APITokenSecretName != "" {
@@ -547,8 +542,6 @@ func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolC
 }
 
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
-	startTime := time.Now()
-
 	// Convert AIMessage to native chat message using backend
 	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
 	if err != nil {
@@ -564,61 +557,8 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 		return fmt.Errorf("failed to store message: %w", err)
 	}
 
-	metrics, err := RunAIChat(ctx, sseHandler, backend, chatOpts)
-	if metrics != nil {
-		metrics.RequestDuration = int(time.Since(startTime).Milliseconds())
-		for _, part := range message.Parts {
-			if part.Type == uctypes.AIMessagePartTypeText {
-				metrics.TextLen += len(part.Text)
-			} else if part.Type == uctypes.AIMessagePartTypeFile {
-				mimeType := strings.ToLower(part.MimeType)
-				if strings.HasPrefix(mimeType, "image/") {
-					metrics.ImageCount++
-				} else if mimeType == "application/pdf" {
-					metrics.PDFCount++
-				} else {
-					metrics.TextDocCount++
-				}
-			}
-		}
-		log.Printf("WaveAI call metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
-			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
-			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
-
-		sendAIMetricsTelemetry(ctx, metrics)
-	}
+	_, err = RunAIChat(ctx, sseHandler, backend, chatOpts)
 	return err
-}
-
-func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
-	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
-		WaveAIAPIType:              metrics.Usage.APIType,
-		WaveAIModel:                metrics.Usage.Model,
-		WaveAIChatId:               metrics.ChatId,
-		WaveAIStepNum:              metrics.StepNum,
-		WaveAIInputTokens:          metrics.Usage.InputTokens,
-		WaveAIOutputTokens:         metrics.Usage.OutputTokens,
-		WaveAINativeWebSearchCount: metrics.Usage.NativeWebSearchCount,
-		WaveAIRequestCount:         metrics.RequestCount,
-		WaveAIToolUseCount:         metrics.ToolUseCount,
-		WaveAIToolUseErrorCount:    metrics.ToolUseErrorCount,
-		WaveAIToolDetail:           metrics.ToolDetail,
-		WaveAIPremiumReq:           metrics.PremiumReqCount,
-		WaveAIProxyReq:             metrics.ProxyReqCount,
-		WaveAIHadError:             metrics.HadError,
-		WaveAIImageCount:           metrics.ImageCount,
-		WaveAIPDFCount:             metrics.PDFCount,
-		WaveAITextDocCount:         metrics.TextDocCount,
-		WaveAITextLen:              metrics.TextLen,
-		WaveAIFirstByteMs:          metrics.FirstByteLatency,
-		WaveAIRequestDurMs:         metrics.RequestDuration,
-		WaveAIWidgetAccess:         metrics.WidgetAccess,
-		WaveAIThinkingLevel:        metrics.ThinkingLevel,
-		WaveAIMode:                 metrics.AIMode,
-		WaveAIProvider:             metrics.AIProvider,
-		WaveAIIsLocal:              metrics.IsLocal,
-	})
-	_ = telemetry.RecordTEvent(ctx, event)
 }
 
 // PostMessageRequest represents the request body for posting a message
@@ -682,6 +622,12 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if aiOpts.APIType == CodexAPIType {
+		if err := RestoreCodexChat(req.ChatID); err != nil {
+			http.Error(w, err.Error(), http.StatusConflict)
+			return
+		}
+	}
 	// Call the core WaveAIPostMessage function
 	chatOpts := uctypes.WaveChatOpts{
 		ChatId:               req.ChatID,
@@ -726,6 +672,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	defer sseHandler.Close()
 
 	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
+		if aiOpts.APIType == CodexAPIType && w.Header().Get("Content-Type") == sse.SSEContentType {
+			_ = sseHandler.AiMsgError(err.Error())
+			_ = sseHandler.AiMsgFinish("error", nil)
+			return
+		}
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return
 	}

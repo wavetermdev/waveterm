@@ -39,5 +39,14 @@
         "ai:capabilities": ["tools", "images", "pdfs"],
         "waveai:premium": true,
         "ai:switchcompat": ["wavecloud"]
+    },
+    "codex-subscription": {
+        "display:name": "ChatGPT / Codex (Subscription)",
+        "display:icon": "sparkles",
+        "display:description": "Use your ChatGPT plan. Connect in Settings → Wave AI Modes.",
+        "ai:provider": "chatgpt-plan",
+        "ai:apitype": "codex-app-server",
+        "ai:model": "gpt-5.4",
+        "ai:capabilities": ["tools", "images"]
     }
 }

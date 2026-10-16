@@ -7,7 +7,6 @@ import { FlexiModal } from "@/app/modals/modal";
 import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { ClientModel } from "@/app/store/client-model";
-import { useSettingsKeyAtom } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -21,24 +20,14 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
-// Page flow:
-//   init -> (telemetry enabled) -> features
-//   init -> (telemetry disabled) -> notelemetrystar -> features
+// New installations proceed directly from the welcome page to features.
 
 type PageName = "init" | "notelemetrystar" | "features";
 
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
-const InitPage = ({
-    isCompact,
-    telemetryUpdateFn,
-}: {
-    isCompact: boolean;
-    telemetryUpdateFn: (value: boolean) => Promise<void>;
-}) => {
-    const telemetrySetting = useSettingsKeyAtom("telemetry:enabled");
+const InitPage = ({ isCompact }: { isCompact: boolean; telemetryUpdateFn?: (value: boolean) => Promise<void> }) => {
     const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
-    const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!telemetrySetting);
     const setPageName = useSetAtom(pageNameAtom);
 
     const handleStarClick = async () => {
@@ -61,21 +50,9 @@ const InitPage = ({
         if (!clientData?.tosagreed) {
             fireAndForget(() => services.ClientService.AgreeTos());
         }
-        if (telemetryEnabled) {
-            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
-        }
-        setPageName(telemetryEnabled ? "features" : "notelemetrystar");
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+        setPageName("features");
     };
-
-    const setTelemetry = (value: boolean) => {
-        fireAndForget(() =>
-            telemetryUpdateFn(value).then(() => {
-                setTelemetryEnabled(value);
-            })
-        );
-    };
-
-    const label = telemetryEnabled ? "Enabled" : "Disabled";
 
     return (
         <div className="flex flex-col h-full">
@@ -155,7 +132,7 @@ const InitPage = ({
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
                             <div className="text-secondary leading-5">
-                                Anonymous usage data helps us improve features you use.
+                                This build does not collect usage telemetry or send diagnostic pings.
                                 <br />
                                 <a
                                     className="text-secondary! hover:underline!"
@@ -166,15 +143,7 @@ const InitPage = ({
                                     Privacy Policy
                                 </a>
                             </div>
-                            <label className="flex items-center gap-2 cursor-pointer text-secondary">
-                                <input
-                                    type="checkbox"
-                                    checked={telemetryEnabled}
-                                    onChange={(e) => setTelemetry(e.target.checked)}
-                                    className="cursor-pointer accent-gray-500"
-                                />
-                                <span>{label}</span>
-                            </label>
+                            <span>Removed in this build</span>
                         </div>
                     </div>
                 </div>
@@ -325,7 +294,7 @@ const NewInstallOnboardingModal = () => {
     let pageComp: React.JSX.Element = null;
     switch (pageName) {
         case "init":
-            pageComp = <InitPage isCompact={isCompact} telemetryUpdateFn={(value) => services.ClientService.TelemetryUpdate(value)} />;
+            pageComp = <InitPage isCompact={isCompact} />;
             break;
         case "notelemetrystar":
             pageComp = <NoTelemetryStarPage isCompact={isCompact} />;

@@ -26,6 +26,7 @@
             "openai",
             "azure",
             "azure-legacy",
+            "chatgpt-plan",
             "custom"
           ]
         },
@@ -34,7 +35,8 @@
           "enum": [
             "google-gemini",
             "openai-responses",
-            "openai-chat"
+            "openai-chat",
+            "codex-app-server"
           ]
         },
         "ai:model": {
