@@ -27,7 +27,7 @@ import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { WaveUIMessage } from "./aitypes";
 import { BYOKAnnouncement } from "./byokannouncement";
-import { TelemetryRequiredMessage } from "./telemetryrequired";
+import { ChatGPTAccountStatus } from "./chatgpt-status";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -235,12 +235,11 @@ AIErrorMessage.displayName = "AIErrorMessage";
 
 const ConfigChangeModeFixer = memo(() => {
     const model = WaveAIModel.getInstance();
-    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
 
     useEffect(() => {
         model.fixModeAfterConfigChange();
-    }, [telemetryEnabled, aiModeConfigs, model]);
+    }, [aiModeConfigs, model]);
 
     return null;
 });
@@ -262,18 +261,10 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const focusFollowsCursorMode = jotai.useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
-    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = useTabModelMaybe();
     const [tabBorderColor, tabActiveBorderColor] = useTabBackground(waveEnv, tabModel?.tabId);
-    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
-
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
-    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
-    const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
-
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
+    const { messages, sendMessage, status, setMessages, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (_opts) => {
@@ -370,10 +361,6 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     };
 
     const handleDragOver = (e: React.DragEvent) => {
-        if (!allowAccess) {
-            return;
-        }
-
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -390,10 +377,6 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
-        if (!allowAccess) {
-            return;
-        }
-
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -408,10 +391,6 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
-        if (!allowAccess) {
-            return;
-        }
-
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -433,13 +412,6 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
     };
 
     const handleDrop = async (e: React.DragEvent) => {
-        if (!allowAccess) {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDragOver(false);
-            return;
-        }
-
         // Check if this is a FILE_ITEM drag from react-dnd
         // If so, let react-dnd handle it instead
         if (!e.dataTransfer.files.length) {
@@ -474,12 +446,9 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
 
     const handleFileItemDrop = useCallback(
         (draggedFile: DraggedFile) => {
-            if (!allowAccess) {
-                return;
-            }
             model.addFileFromRemoteUri(draggedFile);
         },
-        [model, allowAccess]
+        [model]
     );
 
     const [{ isOver, canDrop }, drop] = useDrop(
@@ -580,15 +549,14 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
             data-aipanel="true"
         >
             <ConfigChangeModeFixer />
-            {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
+            {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
+            <ChatGPTAccountStatus />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
-                {!allowAccess ? (
-                    <TelemetryRequiredMessage />
-                ) : (
+                {
                     <>
                         {messages.length === 0 && initialLoadDone ? (
                             <div
@@ -611,7 +579,7 @@ const AIPanelComponentInner = memo(({ roundTopLeft }: AIPanelComponentInnerProps
                         <AIDroppedFiles model={model} />
                         <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
                     </>
-                )}
+                }
             </div>
         </div>
     );

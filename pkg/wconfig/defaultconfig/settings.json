@@ -29,7 +29,7 @@
     "window:magnifiedblockblursecondarypx": 2,
     "window:confirmclose": true,
     "window:savelastwindow": true,
-    "telemetry:enabled": true,
+    "telemetry:enabled": false,
     "term:bellsound": false,
     "term:bellindicator": true,
     "term:osc52": "always",

@@ -455,6 +455,8 @@ func RunWebServer(listener net.Listener) {
 
 	// Non-streaming /wave/ routes get timeout protection
 	waveRouter := mux.NewRouter()
+	waveRouter.HandleFunc("/wave/remote-desktop", WebFnWrap(WebFnOpts{}, handleRemoteDesktop))
+	waveRouter.HandleFunc("/wave/chatgpt", WebFnWrap(WebFnOpts{}, handleChatGPT))
 	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))

@@ -58,6 +58,17 @@ func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeC
 }
 
 func applyProviderDefaults(config *wconfig.AIModeConfigType) {
+	if config.Provider == ChatGPTProvider {
+		config.APIType = CodexAPIType
+		config.Endpoint = "https://api.openai.com/v1"
+		config.APIToken = ""
+		config.APITokenSecretName = ""
+		config.ProxyURL = ""
+		config.WaveAICloud = false
+		config.WaveAIPremium = false
+		config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages}
+	}
+
 	if config.Provider == uctypes.AIProvider_Wave {
 		config.WaveAICloud = true
 		if config.Endpoint == "" {

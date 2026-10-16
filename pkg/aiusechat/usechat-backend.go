@@ -64,6 +64,8 @@ var _ UseChatBackend = (*geminiBackend)(nil)
 // GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
 func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
 	switch apiType {
+	case CodexAPIType:
+		return &codexBackend{}, nil
 	case uctypes.APIType_OpenAIResponses:
 		return &openaiResponsesBackend{}, nil
 	case uctypes.APIType_OpenAIChat:

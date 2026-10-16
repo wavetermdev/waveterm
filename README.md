@@ -25,6 +25,10 @@ Wave also supports durable SSH sessions that survive network interruptions and r
 
 ![WaveTerm Screenshot](./assets/wave-screenshot.webp)
 
+## Fork additions
+
+This fork removes telemetry and adds native ChatGPT / Codex subscription authorization, a BYOK setup form, and FreeRDP/VNC viewer controls in Settings. See [build and usage instructions](docs/CHATGPT-AND-REMOTE-DESKTOPS.md) for Fedora KDE, supported features, and validation limits.
+
 ## Key Features
 
 - Wave AI - Context-aware terminal assistant that reads your terminal output, analyzes widgets, and performs file operations
