@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package blockcontroller
@@ -463,6 +463,10 @@ func makeSwapToken(ctx context.Context, logCtx context.Context, blockId string, 
 		Exp:   time.Now().Add(5 * time.Minute),
 	}
 	token.Env["TERM_PROGRAM"] = "waveterm"
+	if !conncontroller.IsLocalConnName(remoteName) {
+		// Remote shells do not receive the defaults from WaveshellLocalEnvVars.
+		token.Env["COLORTERM"] = "truecolor"
+	}
 	token.Env["WAVETERM_BLOCKID"] = blockId
 	token.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
 	token.Env["WAVETERM"] = "1"
