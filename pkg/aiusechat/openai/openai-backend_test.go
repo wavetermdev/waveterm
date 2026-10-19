@@ -21,6 +21,7 @@ type openaiTestRecorder struct {
 	*httptest.ResponseRecorder
 }
 
+// SetWriteDeadline lets ResponseController initialize SSE without a real connection.
 func (r *openaiTestRecorder) SetWriteDeadline(time.Time) error {
 	return nil
 }
@@ -31,6 +32,7 @@ type openaiTestStream struct {
 	recorder *openaiTestRecorder
 }
 
+// makeOpenAITestStream uses the real SSE writer so dropped UI events remain observable.
 func makeOpenAITestStream(t *testing.T, opts uctypes.WaveChatOpts) *openaiTestStream {
 	t.Helper()
 	recorder := &openaiTestRecorder{httptest.NewRecorder()}
@@ -46,6 +48,7 @@ func makeOpenAITestStream(t *testing.T, opts uctypes.WaveChatOpts) *openaiTestSt
 	}
 }
 
+// send decodes wire events rather than bypassing their JSON fields with Go structs.
 func (s *openaiTestStream) send(t *testing.T, data string) (*uctypes.WaveStopReason, []*OpenAIChatMessage) {
 	t.Helper()
 	var envelope struct {
@@ -62,6 +65,7 @@ func (s *openaiTestStream) send(t *testing.T, data string) (*uctypes.WaveStopRea
 	return handleOpenAIEvent(event, s.handler, s.state, nil)
 }
 
+// parts drains the asynchronous writer before reading its recorder to avoid races.
 func (s *openaiTestStream) parts(t *testing.T) []map[string]any {
 	t.Helper()
 	s.handler.Close()
@@ -83,6 +87,7 @@ func (s *openaiTestStream) parts(t *testing.T) []map[string]any {
 	}
 }
 
+// TestResponsesTextStreamingItemIDs guards both UI and saved text against provider ID churn.
 func TestResponsesTextStreamingItemIDs(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -129,6 +134,7 @@ func TestResponsesTextStreamingItemIDs(t *testing.T) {
 	}
 }
 
+// TestResponsesTextStreamingSeparateParts covers content parts that legitimately share an item ID.
 func TestResponsesTextStreamingSeparateParts(t *testing.T) {
 	stream := makeOpenAITestStream(t, uctypes.WaveChatOpts{})
 	positions := [][2]int{{0, 0}, {0, 1}, {1, 0}}
@@ -160,6 +166,7 @@ func TestResponsesTextStreamingSeparateParts(t *testing.T) {
 	}
 }
 
+// TestResponsesReasoningStreamingChangingItemIDs keeps summary separators and completion on one UI block.
 func TestResponsesReasoningStreamingChangingItemIDs(t *testing.T) {
 	stream := makeOpenAITestStream(t, uctypes.WaveChatOpts{})
 	for _, data := range []string{
@@ -187,6 +194,7 @@ func TestResponsesReasoningStreamingChangingItemIDs(t *testing.T) {
 	}
 }
 
+// TestResponsesToolProgressChangingItemIDs preserves call IDs across interleaved provider events.
 func TestResponsesToolProgressChangingItemIDs(t *testing.T) {
 	stream := makeOpenAITestStream(t, uctypes.WaveChatOpts{
 		Tools: []uctypes.ToolDefinition{{
@@ -218,5 +226,39 @@ func TestResponsesToolProgressChangingItemIDs(t *testing.T) {
 		if part["type"] != "data-toolprogress" || data["toolcallid"] != wantCalls[i] || len(lines) != 1 || lines[0] != wantPaths[i] {
 			t.Errorf("tool progress routed to the wrong call: %#v", part)
 		}
+	}
+}
+
+// TestExtractPartialTextFromState preserves response order when cancellation bypasses the final output.
+func TestExtractPartialTextFromState(t *testing.T) {
+	state := &openaiStreamingState{blockMap: map[openaiBlockKey]*openaiBlockState{
+		{outputIndex: 2, contentIndex: 0}: {kind: openaiBlockText, accumulatedText: "third"},
+		{outputIndex: 1, contentIndex: 1}: {kind: openaiBlockText, accumulatedText: "second"},
+		{outputIndex: 1, contentIndex: 0}: {kind: openaiBlockText, accumulatedText: "first"},
+		{outputIndex: 0}:                  {kind: openaiBlockReasoning, accumulatedText: "skip reasoning"},
+		{outputIndex: 3}:                  {kind: openaiBlockText},
+		{outputIndex: 4}:                  {kind: openaiBlockToolUse, accumulatedText: "skip tool"},
+	}}
+	// Repeated extraction exposes map iteration changes without relying on insertion order.
+	for range 32 {
+		messages := extractPartialTextFromState(state)
+		if len(messages) != 1 || messages[0].Message == nil {
+			t.Fatalf("expected one partial assistant message, got %#v", messages)
+		}
+		message := messages[0].Message
+		if message.Role != "assistant" || len(message.Content) != 3 {
+			t.Fatalf("unexpected partial message: %#v", message)
+		}
+		for i, want := range []string{"first", "second", "third"} {
+			if message.Content[i].Type != "output_text" || message.Content[i].Text != want {
+				t.Fatalf("partial content %d: got %#v, want %q", i, message.Content[i], want)
+			}
+		}
+	}
+	delete(state.blockMap, openaiBlockKey{outputIndex: 1, contentIndex: 0})
+	delete(state.blockMap, openaiBlockKey{outputIndex: 1, contentIndex: 1})
+	delete(state.blockMap, openaiBlockKey{outputIndex: 2, contentIndex: 0})
+	if messages := extractPartialTextFromState(state); messages != nil {
+		t.Fatalf("expected no partial message for empty or non-text blocks, got %#v", messages)
 	}
 }

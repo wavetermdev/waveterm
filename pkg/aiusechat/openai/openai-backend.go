@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -685,14 +686,23 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 // extractPartialTextFromState extracts accumulated text from streaming state when client disconnects
 func extractPartialTextFromState(state *openaiStreamingState) []*OpenAIChatMessage {
 	var textContent []OpenAIMessageContent
-
-	for _, blockState := range state.blockMap {
+	keys := make([]openaiBlockKey, 0, len(state.blockMap))
+	for key, blockState := range state.blockMap {
 		if blockState.kind == openaiBlockText && blockState.accumulatedText != "" {
-			textContent = append(textContent, OpenAIMessageContent{
-				Type: "output_text",
-				Text: blockState.accumulatedText,
-			})
+			keys = append(keys, key)
 		}
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].outputIndex != keys[j].outputIndex {
+			return keys[i].outputIndex < keys[j].outputIndex
+		}
+		return keys[i].contentIndex < keys[j].contentIndex
+	})
+	for _, key := range keys {
+		textContent = append(textContent, OpenAIMessageContent{
+			Type: "output_text",
+			Text: state.blockMap[key].accumulatedText,
+		})
 	}
 
 	if len(textContent) == 0 {
