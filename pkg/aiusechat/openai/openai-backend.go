@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package openai
@@ -397,8 +397,15 @@ type openaiBlockState struct {
 	accumulatedText string // For text blocks: accumulated text content
 }
 
+type openaiBlockKey struct {
+	outputIndex  int
+	contentIndex int
+}
+
 type openaiStreamingState struct {
-	blockMap       map[string]*openaiBlockState // Use item_id as key for UI streaming
+	// Some Responses-compatible providers regenerate item IDs between events.
+	// Output and content indices identify the same block throughout the stream.
+	blockMap       map[openaiBlockKey]*openaiBlockState
 	msgID          string
 	model          string
 	stepStarted    bool
@@ -605,7 +612,7 @@ func parseOpenAIHTTPError(resp *http.Response) error {
 func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decoder *eventsource.Decoder, cont *uctypes.WaveContinueResponse, chatOpts uctypes.WaveChatOpts) (*uctypes.WaveStopReason, []*OpenAIChatMessage) {
 	// Per-response state
 	state := &openaiStreamingState{
-		blockMap: map[string]*openaiBlockState{},
+		blockMap: map[openaiBlockKey]*openaiBlockState{},
 		chatOpts: chatOpts,
 	}
 
@@ -759,7 +766,7 @@ func handleOpenAIEvent(
 		case "reasoning":
 			// Create reasoning block - emit start immediately
 			id := uuid.New().String()
-			state.blockMap[ev.Item.Id] = &openaiBlockState{
+			state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}] = &openaiBlockState{
 				kind:         openaiBlockReasoning,
 				localID:      id,
 				summaryCount: 0,
@@ -770,7 +777,7 @@ func handleOpenAIEvent(
 		case "function_call":
 			// Track function call info and notify frontend
 			id := uuid.New().String()
-			state.blockMap[ev.Item.Id] = &openaiBlockState{
+			state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}] = &openaiBlockState{
 				kind:       openaiBlockToolUse,
 				localID:    id,
 				toolCallID: ev.Item.CallId,
@@ -788,7 +795,7 @@ func handleOpenAIEvent(
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
-		if st := state.blockMap[ev.Item.Id]; st != nil {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}]; st != nil {
 			switch st.kind {
 			case openaiBlockReasoning:
 				_ = sse.AiMsgReasoningEnd(st.localID)
@@ -810,7 +817,7 @@ func handleOpenAIEvent(
 		case "output_text":
 			// Handle text content for UI streaming only
 			id := uuid.New().String()
-			state.blockMap[ev.ItemId] = &openaiBlockState{
+			state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex, contentIndex: ev.ContentIndex}] = &openaiBlockState{
 				kind:    openaiBlockText,
 				localID: id,
 			}
@@ -825,7 +832,7 @@ func handleOpenAIEvent(
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
-		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockText {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex, contentIndex: ev.ContentIndex}]; st != nil && st.kind == openaiBlockText {
 			st.accumulatedText += ev.Delta
 			_ = sse.AiMsgTextDelta(st.localID, ev.Delta)
 		}
@@ -841,7 +848,7 @@ func handleOpenAIEvent(
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
-		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockText {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex, contentIndex: ev.ContentIndex}]; st != nil && st.kind == openaiBlockText {
 			_ = sse.AiMsgTextEnd(st.localID)
 		}
 		return nil, nil
@@ -916,7 +923,7 @@ func handleOpenAIEvent(
 			_ = sse.AiMsgError(err.Error())
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
-		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}]; st != nil && st.kind == openaiBlockToolUse {
 			st.partialJSON = append(st.partialJSON, []byte(ev.Delta)...)
 			aiutil.SendToolProgress(st.toolCallID, st.toolName, st.partialJSON, state.chatOpts, sse, true)
 		}
@@ -930,7 +937,7 @@ func handleOpenAIEvent(
 		}
 
 		// Get the function call info from the block state
-		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}]; st != nil && st.kind == openaiBlockToolUse {
 			aiutil.SendToolProgress(st.toolCallID, st.toolName, []byte(ev.Arguments), state.chatOpts, sse, false)
 		}
 		return nil, nil
@@ -955,7 +962,7 @@ func handleOpenAIEvent(
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
-		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockReasoning {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}]; st != nil && st.kind == openaiBlockReasoning {
 			if st.summaryCount > 0 {
 				// Not the first summary part, emit separator
 				_ = sse.AiMsgReasoningDelta(st.localID, "\n\n")
@@ -974,7 +981,7 @@ func handleOpenAIEvent(
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
-		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockReasoning {
+		if st := state.blockMap[openaiBlockKey{outputIndex: ev.OutputIndex}]; st != nil && st.kind == openaiBlockReasoning {
 			_ = sse.AiMsgReasoningDelta(st.localID, ev.Delta)
 		}
 		return nil, nil
