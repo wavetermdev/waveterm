@@ -24,15 +24,16 @@ const (
 )
 
 const (
-	AIProvider_Wave        = "wave"
-	AIProvider_Google      = "google"
-	AIProvider_Groq        = "groq"
-	AIProvider_OpenRouter  = "openrouter"
-	AIProvider_NanoGPT     = "nanogpt"
-	AIProvider_OpenAI      = "openai"
-	AIProvider_Azure       = "azure"
-	AIProvider_AzureLegacy = "azure-legacy"
-	AIProvider_Custom      = "custom"
+	AIProvider_Wave             = "wave"
+	AIProvider_Google           = "google"
+	AIProvider_Groq             = "groq"
+	AIProvider_CheaperInference = "cheaperinference"
+	AIProvider_OpenRouter       = "openrouter"
+	AIProvider_NanoGPT          = "nanogpt"
+	AIProvider_OpenAI           = "openai"
+	AIProvider_Azure            = "azure"
+	AIProvider_AzureLegacy      = "azure-legacy"
+	AIProvider_Custom           = "custom"
 )
 
 type UseChatRequest struct {

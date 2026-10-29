@@ -23,6 +23,7 @@
             "groq",
             "openrouter",
             "nanogpt",
+            "cheaperinference",
             "openai",
             "azure",
             "azure-legacy",

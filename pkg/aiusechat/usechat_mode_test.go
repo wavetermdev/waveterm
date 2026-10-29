@@ -26,6 +26,22 @@ func TestApplyProviderDefaultsGroq(t *testing.T) {
 	}
 }
 
+func TestApplyProviderDefaultsCheaperInference(t *testing.T) {
+	config := wconfig.AIModeConfigType{
+		Provider: uctypes.AIProvider_CheaperInference,
+	}
+	applyProviderDefaults(&config)
+	if config.APIType != uctypes.APIType_OpenAIChat {
+		t.Fatalf("expected API type %q, got %q", uctypes.APIType_OpenAIChat, config.APIType)
+	}
+	if config.Endpoint != CheaperInferenceChatEndpoint {
+		t.Fatalf("expected endpoint %q, got %q", CheaperInferenceChatEndpoint, config.Endpoint)
+	}
+	if config.APITokenSecretName != CheaperInferenceAPITokenSecretName {
+		t.Fatalf("expected API token secret name %q, got %q", CheaperInferenceAPITokenSecretName, config.APITokenSecretName)
+	}
+}
+
 func TestApplyProviderDefaultsKeepsProxyURL(t *testing.T) {
 	config := wconfig.AIModeConfigType{
 		Provider: uctypes.AIProvider_OpenAI,
