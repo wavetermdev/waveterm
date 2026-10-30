@@ -15,6 +15,7 @@ import {
     Header,
     Row,
     RowData,
+    SortingState,
     Table,
     createColumnHelper,
     flexRender,
@@ -32,14 +33,18 @@ import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
 import { EntryManagerOverlay, EntryManagerOverlayProps, EntryManagerType } from "./entry-manager";
 import {
+    DirsFirstColumnId,
     cleanMimetype,
     getBestUnit,
+    getDirsFirstSortValue,
     getLastModifiedTime,
+    getNextColumnSorting,
     getSortIcon,
     handleFileDelete,
     handleRename,
     isIconValid,
     makeDirectoryDefaultMenuItems,
+    makeDirectorySorting,
     mergeError,
     overwriteError,
 } from "./preview-directory-utils";
@@ -114,6 +119,7 @@ function DirectoryTable({
     const env = useWaveEnv<PreviewEnv>();
     const fullConfig = useAtomValue(env.atoms.fullConfigAtom);
     const defaultSort = useAtomValue(env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
+    const dirsFirst = useAtomValue(model.dirsFirst);
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
@@ -182,6 +188,10 @@ function DirectoryTable({
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("path", {}),
+            columnHelper.accessor(getDirsFirstSortValue, {
+                id: DirsFirstColumnId,
+                sortingFn: "basic",
+            }),
         ],
         [fullConfig]
     );
@@ -209,7 +219,10 @@ function DirectoryTable({
         [model, setErrorMsg]
     );
 
-    const initialSorting = defaultSort === "modtime" ? [{ id: "modtime", desc: true }] : [{ id: "name", desc: false }];
+    const [columnSorting, setColumnSorting] = useState<SortingState>(() =>
+        defaultSort === "modtime" ? [{ id: "modtime", desc: true }] : [{ id: "name", desc: false }]
+    );
+    const sorting = useMemo(() => makeDirectorySorting(columnSorting, dirsFirst), [columnSorting, dirsFirst]);
 
     const table = useReactTable({
         data,
@@ -218,10 +231,16 @@ function DirectoryTable({
         getSortedRowModel: getSortedRowModel(),
         getCoreRowModel: getCoreRowModel(),
 
+        state: {
+            sorting,
+        },
+        onSortingChange: (updater) => {
+            setColumnSorting(getNextColumnSorting(updater, sorting));
+        },
         initialState: {
-            sorting: initialSorting,
             columnVisibility: {
                 path: false,
+                [DirsFirstColumnId]: false,
             },
         },
         enableMultiSort: false,

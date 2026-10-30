@@ -163,6 +163,7 @@ export class PreviewModel implements ViewModel {
     monacoRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
     showHiddenFiles: PrimitiveAtom<boolean>;
+    dirsFirst: PrimitiveAtom<boolean>;
     refreshVersion: PrimitiveAtom<number>;
     directorySearchActive: PrimitiveAtom<boolean>;
     refreshCallback: () => void;
@@ -178,6 +179,8 @@ export class PreviewModel implements ViewModel {
         this.env = waveEnv;
         let showHiddenFiles = globalStore.get(this.env.getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
         this.showHiddenFiles = atom<boolean>(showHiddenFiles);
+        let dirsFirst = globalStore.get(this.env.getSettingsKeyAtom("preview:dirsfirst")) ?? true;
+        this.dirsFirst = atom<boolean>(dirsFirst);
         this.refreshVersion = atom(0);
         this.directorySearchActive = atom(false);
         this.previewTextRef = createRef();
@@ -334,7 +337,16 @@ export class PreviewModel implements ViewModel {
             const isCeView = loadableSV.state == "hasData" && loadableSV.data.specializedView == "codeedit";
             if (mimeType == "directory") {
                 const showHiddenFiles = get(this.showHiddenFiles);
+                const dirsFirst = get(this.dirsFirst);
                 return [
+                    {
+                        elemtype: "iconbutton",
+                        icon: dirsFirst ? "folder" : "file",
+                        title: dirsFirst ? "Show Folders Mixed with Files" : "Show Folders First",
+                        click: () => {
+                            globalStore.set(this.dirsFirst, (prev) => !prev);
+                        },
+                    },
                     {
                         elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",
