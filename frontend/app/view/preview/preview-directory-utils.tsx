@@ -4,6 +4,7 @@
 import { globalStore } from "@/app/store/jotaiStore";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget, isBlank } from "@/util/util";
+import { SortingState, Updater, functionalUpdate } from "@tanstack/react-table";
 import dayjs from "dayjs";
 import React from "react";
 import { type PreviewModel } from "./preview-model";
@@ -11,6 +12,28 @@ import { type PreviewModel } from "./preview-model";
 export const recursiveError = "recursive flag must be set for directory operations";
 export const overwriteError = "set overwrite flag to delete the existing file";
 export const mergeError = "set overwrite flag to delete the existing contents or set merge flag to merge the contents";
+
+export const DirsFirstColumnId = "dirsfirst";
+
+export function getDirsFirstSortValue(fileInfo: FileInfo): number {
+    if (fileInfo.name == "..") {
+        return 2;
+    }
+    return fileInfo.isdir ? 1 : 0;
+}
+
+// the hidden dirsfirst column is kept as the primary sort key (with its own direction) so folders stay
+// on top regardless of the user-selected column and direction
+export function makeDirectorySorting(columnSorting: SortingState, dirsFirst: boolean): SortingState {
+    if (!dirsFirst) {
+        return columnSorting;
+    }
+    return [{ id: DirsFirstColumnId, desc: true }, ...columnSorting];
+}
+
+export function getNextColumnSorting(updater: Updater<SortingState>, sorting: SortingState): SortingState {
+    return functionalUpdate(updater, sorting).filter((sort) => sort.id !== DirsFirstColumnId);
+}
 
 export const displaySuffixes = {
     B: "b",
@@ -155,6 +178,7 @@ export function handleFileDelete(
 export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuItem[] {
     const defaultSort = globalStore.get(model.env.getSettingsKeyAtom("preview:defaultsort")) ?? "name";
     const showHiddenFiles = globalStore.get(model.showHiddenFiles) ?? true;
+    const dirsFirst = globalStore.get(model.dirsFirst) ?? true;
     return [
         {
             label: "Directory Sort Order",
@@ -201,6 +225,33 @@ export function makeDirectoryDefaultMenuItems(model: PreviewModel): ContextMenuI
                         globalStore.set(model.showHiddenFiles, false);
                         fireAndForget(() =>
                             model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:showhiddenfiles": false })
+                        );
+                    },
+                },
+            ],
+        },
+        {
+            label: "Show Folders First",
+            submenu: [
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: dirsFirst,
+                    click: () => {
+                        globalStore.set(model.dirsFirst, true);
+                        fireAndForget(() =>
+                            model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:dirsfirst": true })
+                        );
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !dirsFirst,
+                    click: () => {
+                        globalStore.set(model.dirsFirst, false);
+                        fireAndForget(() =>
+                            model.env.rpc.SetConfigCommand(TabRpcClient, { "preview:dirsfirst": false })
                         );
                     },
                 },

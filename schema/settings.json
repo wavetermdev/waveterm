@@ -232,6 +232,9 @@
             "modtime"
           ]
         },
+        "preview:dirsfirst": {
+          "type": "boolean"
+        },
         "tab:preset": {
           "type": "string"
         },

@@ -135,6 +135,7 @@ type SettingsType struct {
 
 	PreviewShowHiddenFiles *bool  `json:"preview:showhiddenfiles,omitempty"`
 	PreviewDefaultSort     string `json:"preview:defaultsort,omitempty" jsonschema:"enum=name,enum=modtime"`
+	PreviewDirsFirst       *bool  `json:"preview:dirsfirst,omitempty"`
 
 	TabPreset       string `json:"tab:preset,omitempty"`
 	TabConfirmClose bool   `json:"tab:confirmclose,omitempty"`
