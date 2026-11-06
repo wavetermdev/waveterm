@@ -25,7 +25,7 @@ import (
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"
 const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
-const WCloudPingEndpoint = "https://ping.waveterm.dev/central"
+const WCloudPingEndpoint = "https://cfapi.waveterm.dev/api"
 const WCloudPingEndpointVarName = "WCLOUD_PING_ENDPOINT"
 
 var WCloudEndpoint_VarCache string

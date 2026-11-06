@@ -30,7 +30,7 @@ func TestEventSending(t *testing.T) {
 	var inputs []PingInputType
 	http.DefaultClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		requests = append(requests, req)
-		if req.Method != http.MethodPost || req.URL.Path != "/central"+PingUrl {
+		if req.Method != http.MethodPost || req.URL.Path != "/api"+PingUrl {
 			t.Fatalf("unexpected request: %s %s", req.Method, req.URL.Path)
 		}
 		var input PingInputType
