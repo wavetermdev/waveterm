@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wcloud
@@ -25,7 +25,7 @@ import (
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"
 const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
-const WCloudPingEndpoint = "https://ping.waveterm.dev/central"
+const WCloudPingEndpoint = "https://cfapi.waveterm.dev/api"
 const WCloudPingEndpointVarName = "WCLOUD_PING_ENDPOINT"
 
 var WCloudEndpoint_VarCache string
@@ -38,6 +38,7 @@ const MaxUpdatesToDeDup = 1000
 const MaxUpdateWriterErrors = 3
 const WCloudDefaultTimeout = 5 * time.Second
 const WCloudWebShareUpdateTimeout = 15 * time.Second
+const SendEvents = false
 
 // setting to 1M to be safe (max is 6M for API-GW + Lambda, but there is base64 encoding and upload time)
 // we allow one extra update past this estimated size
@@ -180,6 +181,9 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 }
 
 func sendTEvents(clientId string) (int, error) {
+	if !SendEvents {
+		return 0, nil
+	}
 	numIters := 0
 	totalEvents := 0
 	for {
@@ -219,6 +223,9 @@ func SendAllTelemetry(clientId string) error {
 }
 
 func sendTelemetry(clientId string) error {
+	if !SendEvents {
+		return nil
+	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
 	defer cancelFn()
 	activity, err := telemetry.GetNonUploadedActivity(ctx)
@@ -255,6 +262,9 @@ func sendTelemetry(clientId string) error {
 }
 
 func SendNoTelemetryUpdate(ctx context.Context, clientId string, noTelemetryVal bool) error {
+	if !SendEvents {
+		return nil
+	}
 	req, err := makeAnonPostReq(ctx, NoTelemetryUrl, NoTelemetryInputType{ClientId: clientId, Value: noTelemetryVal})
 	if err != nil {
 		return err
