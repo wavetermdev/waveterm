@@ -51,6 +51,7 @@
         "eslint": "^9.39",
         "eslint-config-prettier": "^10.1.8",
         "globals": "^17.6.0",
+        "jsdom": "^26.1.0",
         "node-abi": "^4.31.0",
         "prettier": "^3.8.1",
         "prettier-plugin-jsdoc": "^1.8.0",

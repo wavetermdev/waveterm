@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { getSettingsKeyAtom } from "@/app/store/global";
@@ -21,6 +21,7 @@ import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { LayoutModel } from "./layoutModel";
 import { useNodeModel, useTileLayout } from "./layoutModelHooks";
+import { NodeBackdrops } from "./nodebackdrops";
 import "./tilelayout.scss";
 import {
     LayoutNode,
@@ -126,7 +127,7 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
                 <div key="display" ref={layoutModel.displayContainerRef} className="display-container">
                     <ResizeHandleWrapper layoutModel={layoutModel} />
                     <DisplayNodesWrapper layoutModel={layoutModel} />
-                    <NodeBackdrops layoutModel={layoutModel} />
+                    <NodeBackdropsWrapper layoutModel={layoutModel} />
                 </div>
                 <Placeholder key="placeholder" layoutModel={layoutModel} style={{ top: 10000, ...overlayTransform }} />
                 <OverlayNodeWrapper layoutModel={layoutModel} />
@@ -136,58 +137,20 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
 }
 export const TileLayout = memo(TileLayoutComponent) as typeof TileLayoutComponent;
 
-function NodeBackdrops({ layoutModel }: { layoutModel: LayoutModel }) {
+function NodeBackdropsWrapper({ layoutModel }: { layoutModel: LayoutModel }) {
     const [blockBlurAtom] = useState(() => getSettingsKeyAtom("window:magnifiedblockblursecondarypx"));
     const blockBlur = useAtomValue(blockBlurAtom);
     const ephemeralNode = useAtomValue(layoutModel.ephemeralNode);
     const magnifiedNodeId = useAtomValue(layoutModel.magnifiedNodeIdAtom);
 
-    const [showMagnifiedBackdrop, setShowMagnifiedBackdrop] = useState(!!ephemeralNode);
-    const [showEphemeralBackdrop, setShowEphemeralBackdrop] = useState(!!magnifiedNodeId);
-
-    const debouncedSetMagnifyBackdrop = useCallback(
-        debounce(100, () => setShowMagnifiedBackdrop(true)),
-        []
-    );
-
-    useEffect(() => {
-        if (magnifiedNodeId && !showMagnifiedBackdrop) {
-            debouncedSetMagnifyBackdrop();
-        }
-        if (!magnifiedNodeId) {
-            setShowMagnifiedBackdrop(false);
-        }
-        if (ephemeralNode && !showEphemeralBackdrop) {
-            setShowEphemeralBackdrop(true);
-        }
-        if (!ephemeralNode) {
-            setShowEphemeralBackdrop(false);
-        }
-    }, [ephemeralNode, magnifiedNodeId]);
-
-    const blockBlurStr = `${blockBlur}px`;
-
     return (
-        <>
-            {showMagnifiedBackdrop && (
-                <div
-                    className="magnified-node-backdrop"
-                    onClick={() => {
-                        layoutModel.magnifyNodeToggle(magnifiedNodeId);
-                    }}
-                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
-                />
-            )}
-            {showEphemeralBackdrop && (
-                <div
-                    className="ephemeral-node-backdrop"
-                    onClick={() => {
-                        layoutModel.closeNode(ephemeralNode?.id);
-                    }}
-                    style={{ "--block-blur": blockBlurStr } as CSSProperties}
-                />
-            )}
-        </>
+        <NodeBackdrops
+            blockBlur={blockBlur}
+            ephemeralNodeId={ephemeralNode?.id}
+            magnifiedNodeId={magnifiedNodeId}
+            onMagnifyToggle={(nodeId) => layoutModel.magnifyNodeToggle(nodeId)}
+            onCloseEphemeral={(nodeId) => layoutModel.closeNode(nodeId)}
+        />
     );
 }
 
