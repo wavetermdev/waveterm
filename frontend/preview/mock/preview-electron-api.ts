@@ -15,6 +15,7 @@ const previewElectronApi: ElectronApi = {
     getWebviewPreload: () => "",
     getAboutModalDetails: () => ({}) as AboutModalDetails,
     getZoomFactor: () => 1.0,
+    getLastNativeWindowFocusTime: () => null,
     showWorkspaceAppMenu: (_workspaceId: string) => {},
     showBuilderAppMenu: (_builderId: string) => {},
     showContextMenu: (_workspaceId: string, _menu: ElectronContextMenuItem[]) => {},

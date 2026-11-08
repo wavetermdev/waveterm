@@ -149,6 +149,7 @@ export class WaveBrowserWindow extends BaseWindow {
     workspaceId: string;
     allLoadedTabViews: Map<string, WaveTabView>;
     activeTabView: WaveTabView;
+    lastNativeFocusTime: number = null;
     private canClose: boolean;
     private deleteAllowed: boolean;
     private actionQueue: WindowActionQueueEntry[];
@@ -279,6 +280,7 @@ export class WaveBrowserWindow extends BaseWindow {
             if (this.isDestroyed()) {
                 return;
             }
+            this.lastNativeFocusTime = Date.now();
             if (getGlobalIsRelaunching()) {
                 return;
             }

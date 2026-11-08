@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { contextBridge, ipcRenderer, Rectangle, webUtils, WebviewTag } from "electron";
@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("api", {
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
     getZoomFactor: () => ipcRenderer.sendSync("get-zoom-factor"),
+    getLastNativeWindowFocusTime: () => ipcRenderer.sendSync("get-last-native-window-focus-time"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showWorkspaceAppMenu: (workspaceId) => ipcRenderer.send("workspace-appmenu-show", workspaceId),
     showBuilderAppMenu: (builderId) => ipcRenderer.send("builder-appmenu-show", builderId),
