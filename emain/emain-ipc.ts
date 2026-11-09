@@ -1,4 +1,4 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
@@ -286,6 +286,12 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("get-zoom-factor", (event) => {
         event.returnValue = event.sender.getZoomFactor();
+    });
+
+    electron.ipcMain.on("get-last-native-window-focus-time", (event) => {
+        const window = getWaveWindowByWebContentsId(event.sender.id);
+        event.returnValue =
+            window != null && !window.isDestroyed() && window.isFocused() ? window.lastNativeFocusTime : null;
     });
 
     const hasBeforeInputRegisteredMap = new Map<number, boolean>();

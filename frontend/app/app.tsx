@@ -17,7 +17,7 @@ import { makeWaveEnvImpl } from "@/app/waveenv/waveenvimpl";
 import { Workspace } from "@/app/workspace/workspace";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { atoms, createBlock, getSettingsPrefixAtom, refocusNode } from "@/store/global";
+import { atoms, createBlock, getApi, getSettingsPrefixAtom, refocusNode } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -32,6 +32,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
+import { installMacOSFirstClickHandler } from "./macos-firstclick";
 
 import "./app.scss";
 
@@ -209,74 +210,11 @@ const MacOSFirstClickHandler = () => {
         if (PLATFORM !== "darwin") {
             return;
         }
-        let windowFocusTime: number = null;
-        let cancelNextClick = false;
-        const handleWindowFocus = (e: FocusEvent) => {
-            windowFocusTime = Date.now();
-        };
-        const getBlockIdFromTarget = (target: EventTarget): string => {
-            let elem = target as HTMLElement;
-            while (elem != null) {
-                const blockId = elem.dataset?.blockid;
-                if (blockId) {
-                    return blockId;
-                }
-                elem = elem.parentElement;
-            }
-            return null;
-        };
-        const isAIPanelTarget = (target: EventTarget): boolean => {
-            let elem = target as HTMLElement;
-            while (elem != null) {
-                if (elem.dataset?.aipanel) {
-                    return true;
-                }
-                elem = elem.parentElement;
-            }
-            return false;
-        };
-        const handleMouseDown = (e: MouseEvent) => {
-            const timeDiff = Date.now() - windowFocusTime;
-            if (windowFocusTime != null && timeDiff < 50) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                cancelNextClick = true;
-                const blockId = getBlockIdFromTarget(e.target);
-                if (blockId != null) {
-                    setTimeout(() => {
-                        console.log("macos first-click, focusing block", blockId);
-                        refocusNode(blockId);
-                    }, 10);
-                } else if (isAIPanelTarget(e.target)) {
-                    setTimeout(() => {
-                        console.log("macos first-click, focusing AI panel");
-                        FocusManager.getInstance().setWaveAIFocused(true);
-                    }, 10);
-                }
-                console.log("macos first-click detected, canceled", timeDiff + "ms");
-                return;
-            }
-            cancelNextClick = false;
-        };
-        const handleClick = (e: MouseEvent) => {
-            if (!cancelNextClick) {
-                return;
-            }
-            cancelNextClick = false;
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            console.log("macos first-click (click event) canceled");
-        };
-        window.addEventListener("focus", handleWindowFocus);
-        window.addEventListener("mousedown", handleMouseDown, true);
-        window.addEventListener("click", handleClick, true);
-        return () => {
-            window.removeEventListener("focus", handleWindowFocus);
-            window.removeEventListener("mousedown", handleMouseDown, true);
-            window.removeEventListener("click", handleClick, true);
-        };
+        return installMacOSFirstClickHandler({
+            getLastNativeWindowFocusTime: () => getApi().getLastNativeWindowFocusTime(),
+            focusBlock: refocusNode,
+            focusAIPanel: () => FocusManager.getInstance().setWaveAIFocused(true),
+        });
     }, []);
     return null;
 };
