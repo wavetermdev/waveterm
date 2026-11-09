@@ -46,6 +46,39 @@ jobs:
                   sg lxd -c "lxc list"
                   sudo snap refresh
                   snapcraft --version
+            - name: Verify LXD networking (Linux ARM64 only)
+              if: matrix.runner == 'ubuntu-24.04-arm'
+              timeout-minutes: 5
+              run: |
+                  sg lxd -c "lxc network show lxdbr0"
+                  ip -brief addr show dev lxdbr0
+                  # Docker's forwarding rules can block the ARM64 Snapcraft build container.
+                  for firewall in iptables ip6tables; do
+                      if command -v "$firewall" >/dev/null; then
+                          sudo "$firewall" -w 5 -S FORWARD || true
+                          if sudo "$firewall" -w 5 -S DOCKER-USER >/dev/null 2>&1; then
+                              sudo "$firewall" -w 5 -I DOCKER-USER -i lxdbr0 -j ACCEPT
+                              sudo "$firewall" -w 5 -I DOCKER-USER -o lxdbr0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+                              sudo "$firewall" -w 5 -S DOCKER-USER
+                          fi
+                      fi
+                  done
+                  probe="wave-network-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+                  cleanup() {
+                      timeout 20s sg lxd -c "lxc delete --force '$probe'" || true
+                  }
+                  trap cleanup EXIT
+                  timeout 120s sg lxd -c "lxc launch ubuntu:22.04 '$probe'"
+                  network_ready=false
+                  for attempt in 1 2 3; do
+                      if timeout 15s sg lxd -c "lxc exec '$probe' -- timeout 10s getent hosts snapcraft.io" &&
+                         timeout 15s sg lxd -c "lxc exec '$probe' -- timeout 10s bash -c 'exec 3<> /dev/tcp/snapcraft.io/443'"; then
+                          network_ready=true
+                          break
+                      fi
+                      sleep 5
+                  done
+                  [ "$network_ready" = true ]
             - name: Install Zig (not Mac)
               if: matrix.platform != 'darwin'
               uses: mlugg/setup-zig@v2
