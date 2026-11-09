@@ -42,6 +42,8 @@ jobs:
                   sudo snap install snapcraft --classic --channel=8.x/stable
                   sudo snap install lxd
                   sudo lxd init --auto
+                  sudo usermod -a -G lxd "$USER"
+                  sg lxd -c "lxc list"
                   sudo snap refresh
                   snapcraft --version
             - name: Install Zig (not Mac)
@@ -129,16 +131,21 @@ jobs:
             # Build and upload packages
             - name: Build (Linux)
               if: matrix.platform == 'linux'
-              run: task package
+              run: sg lxd -c "task package"
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
-                  SNAPCRAFT_BUILD_ENVIRONMENT: host
+                  SNAPCRAFT_BUILD_ENVIRONMENT: lxd
             # Retry Darwin build in case of notarization failures
             - uses: nick-fields/retry@v4
               name: Build (Darwin)
               if: matrix.platform == 'darwin'
               with:
-                  command: task package
+                  command: |
+                      if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ -z "${CSC_LINK:-}" ]; then
+                          unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+                          export CSC_IDENTITY_AUTO_DISCOVERY=false
+                      fi
+                      task package
                   timeout_minutes: 120
                   retry_on: error
                   max_attempts: 3
