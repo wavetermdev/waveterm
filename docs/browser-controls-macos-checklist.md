@@ -4,17 +4,17 @@
 Allow about 10–15 minutes for the checks, plus downloading and setup. This checks whether browser buttons and typing stay responsive in the newly built copy.
 
 
-**Not yet performed:** these hands-on checks on the new Mac packages. Earlier automated checks passed: 49 focused tests and checks of all 19 downloadable packages. The earlier development copy was also confirmed fixed on the reporting Mac; that does not replace testing this new copy.
+**Hands-on result: passed, as reported by the tester on November 9, 2026.** The saved results below identify the test machine as “Mac Studio Pro” running macOS 27.0.1, with all recorded checks passing and no missed clicks, lost typing, leftover dimming, or freezes reported. This records the result for that Mac; it does not establish hands-on results for other machines. Earlier automated checks passed: 49 focused tests and checks of all 19 downloadable packages.
 
 
-Use the November 9 test build linked below. Its [automated build completed successfully for all platforms](https://github.com/cjosewski/waveterm/actions/runs/42633567395). Submission to the main Wave Terminal project remains on hold until the hands-on results are reviewed.
+Use the November 9 test build linked below. Its [automated build completed successfully for all platforms](https://github.com/cjosewski/waveterm/actions/runs/42633567395). The requested submission to the main Wave Terminal project can now proceed with these user-reported results.
 
 
 ## 1. Open the correct test copy — about 2 minutes
 
 
-1. Open Apple menu → About This Mac. If it shows Chip with an Apple name, choose the Apple-chip download. If it shows Processor with Intel, choose Intel. Apple’s identification guide.
-2. Download the Mac build bundle; sign-in may be required. Unpack that bundle, then choose the inner ZIP marked arm64 for a Mac with an Apple chip or x64 for a Mac with an Intel processor. If the download is no longer available, mark setup Blocked and request a current test copy.
+1. Open Apple menu → About This Mac. If it shows Chip with an Apple name, choose the Apple-chip download. If it shows Processor with Intel, choose Intel. [Apple’s identification guide](https://support.apple.com/en-us/116943).
+2. Download the [Mac build bundle](https://github.com/cjosewski/waveterm/actions/runs/42633567395/artifacts/13683260804); sign-in may be required. Unpack that bundle, then choose the inner ZIP marked arm64 for a Mac with an Apple chip or x64 for a Mac with an Intel processor. If the download is no longer available, mark setup Blocked and request a current test copy.
 3. Save your work and Quit Wave completely. Closing its window is not enough. Keep your installed copy. Unpack the chosen ZIP inside a new folder for this check; do not replace the installed app.
 4. Open the Wave app inside that new folder directly in Finder. Do not use the Dock or search to launch it. Both old and new copies may show 0.14.5, so the version number alone does not identify this test copy.
 5. This separate app copy still uses your existing Wave settings, history, and saved work. Use a new, throwaway tab for the checks. Do not delete saved data or change your usual settings.

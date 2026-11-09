@@ -6,7 +6,7 @@
 
 This report records the browser-control failure, two corrective commits, verification, and reproduction steps. The confirmation applies to the tested development build on the reporting Mac. It does not establish that an upstream release or a packaged installer contains these changes.
 
-For the newly packaged builds, use the [hands-on Mac checklist](./browser-controls-macos-checklist.md). Those checks remain unperformed; the earlier development-build confirmation above does not establish a pass for the new packages.
+For the newly packaged builds, use the [hands-on Mac checklist](./browser-controls-macos-checklist.md). The checklist now records a passing result reported by the user on November 9, 2026; this is separate from the earlier development-build confirmation above.
 
 ## Environment and changes
 
