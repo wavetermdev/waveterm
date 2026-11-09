@@ -17,6 +17,7 @@ jobs:
         outputs:
             version: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
         strategy:
+            fail-fast: false
             matrix:
                 include:
                     - platform: "darwin"
@@ -37,10 +38,12 @@ jobs:
               run: |
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
-                  sudo snap install snapcraft --classic
+                  # electron-builder still invokes "snapcraft snap", which Snapcraft 9 removed.
+                  sudo snap install snapcraft --classic --channel=8.x/stable
                   sudo snap install lxd
                   sudo lxd init --auto
                   sudo snap refresh
+                  snapcraft --version
             - name: Install Zig (not Mac)
               if: matrix.platform != 'darwin'
               uses: mlugg/setup-zig@v2
