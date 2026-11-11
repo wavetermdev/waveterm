@@ -13,7 +13,7 @@ import (
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
-const DefaultOpenAIModel = "gpt-5-mini"
+const DefaultOpenAIModel = "gpt-5.6-terra"
 const PremiumOpenAIModel = "gpt-5.1"
 
 const (
