@@ -17,7 +17,8 @@ function makeBuffer(rows: string[], cursorRow: number, baseY = 0): TermTypes.IBu
 
 function linesFromBottom(buffer: TermTypes.IBuffer, start: number, end: number): string[] {
     const total = bufferContentLength(buffer);
-    return bufferLinesToText(buffer, total - Math.min(total, end), total - start);
+    const endLine = end === 0 ? total : Math.min(total, end);
+    return bufferLinesToText(buffer, total - endLine, total - start);
 }
 
 describe("bufferContentLength", () => {
@@ -33,6 +34,16 @@ describe("bufferContentLength", () => {
     it("keeps output drawn below the cursor", () => {
         const rows = ["top", "", "", "status line", "", ""];
         expect(bufferContentLength(makeBuffer(rows, 0))).toBe(4);
+    });
+
+    it("trims blank rows at the content bottom but not inside a range", () => {
+        const rows = ["one", "", "", ...Array(27).fill("")];
+        const buffer = makeBuffer(rows, 2);
+        expect(bufferContentLength(buffer)).toBe(3);
+        expect(linesFromBottom(buffer, 0, 0)).toEqual(["one"]);
+        expect(linesFromBottom(makeBuffer(Array(30).fill(""), 0), 0, 0)).toEqual([]);
+        const inner = makeBuffer(["one", "", "", "two", "$ ", ...Array(25).fill("")], 4);
+        expect(linesFromBottom(inner, 2, 5)).toEqual(["one", "", ""]);
     });
 
     it("counts scrollback rows above the viewport", () => {
