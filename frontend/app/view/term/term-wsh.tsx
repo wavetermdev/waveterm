@@ -7,7 +7,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { TermViewModel } from "@/app/view/term/term-model";
-import { bufferLinesToText } from "@/app/view/term/termutil";
+import { bufferContentLength, bufferLinesToText } from "@/app/view/term/termutil";
 import { isBlank } from "@/util/util";
 import debug from "debug";
 
@@ -120,7 +120,7 @@ export class TermWshClient extends WshClient {
         }
 
         const buffer = termWrap.terminal.buffer.active;
-        const totalLines = buffer.length;
+        const totalLines = bufferContentLength(buffer);
 
         if (data.lastcommand) {
             if (globalStore.get(termWrap.shellIntegrationStatusAtom) == null) {

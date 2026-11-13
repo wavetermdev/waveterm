@@ -397,6 +397,24 @@ export function bufferLinesToText(buffer: TermTypes.IBuffer, startIndex: number,
     return lines;
 }
 
+/**
+ * Number of buffer rows that hold terminal output: everything up to the cursor
+ * row, or up to the last non-blank row if output was drawn below the cursor.
+ * xterm keeps a full screen of rows, so on a fresh terminal most rows below the
+ * cursor are empty placeholders. Line numbers counted "from the bottom" must
+ * start at this point, or line 0 lands on a placeholder row.
+ */
+export function bufferContentLength(buffer: TermTypes.IBuffer): number {
+    const cursorEnd = Math.min(buffer.length, buffer.baseY + buffer.cursorY + 1);
+    for (let i = buffer.length - 1; i >= cursorEnd; i--) {
+        const line = buffer.getLine(i);
+        if (line && line.translateToString(true) !== "") {
+            return i + 1;
+        }
+    }
+    return cursorEnd;
+}
+
 export function isLikelyOnSameHost(lastCommand: string): boolean {
     if (lastCommand == null) {
         return true;
