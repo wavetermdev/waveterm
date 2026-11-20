@@ -56,4 +56,37 @@ describe("webview preview fallback", () => {
         expect(globalStore.get(env.getSettingsKeyAtom("web:defaulturl"))).toBe("https://global.example");
         expect(globalStore.get(env.wos.getWaveObjectAtom<Block>(`block:${blockId}`))?.meta?.pinnedurl).toBeUndefined();
     });
+
+    it("binds fetchBookmarkSuggestions so it can be called unbound without throwing", async () => {
+        const blockId = "webview-env-block";
+        const env = makeMockWaveEnv();
+        let calledData: any = null;
+        env.rpc = {
+            FetchSuggestionsCommand: async (_client: any, data: any) => {
+                calledData = data;
+                return {
+                    suggestions: [{ type: "url", "url:url": "https://example.com" }],
+                };
+            },
+        } as any;
+        const model = new WebViewModel({
+            blockId,
+            nodeModel: {
+                isFocused: atom(true),
+                focusNode: () => {},
+            } as any,
+            tabModel: {} as any,
+            waveEnv: env,
+        });
+
+        const unboundFetch = model.fetchBookmarkSuggestions;
+        const result = await unboundFetch("test", { widgetid: "w1", reqnum: 1 });
+        expect(calledData).toEqual({
+            suggestiontype: "bookmark",
+            query: "test",
+            widgetid: "w1",
+            reqnum: 1,
+        });
+        expect(result.suggestions).toHaveLength(1);
+    });
 });

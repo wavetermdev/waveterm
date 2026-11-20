@@ -210,6 +210,8 @@ export class WebViewModel implements ViewModel {
 
             return buttons;
         });
+
+        this.fetchBookmarkSuggestions = this.fetchBookmarkSuggestions.bind(this);
     }
 
     dispose() {
@@ -755,7 +757,7 @@ const BookmarkTypeahead = memo(
         const env = useWaveEnv<WebViewEnv>();
         const openBookmarksJson = () => {
             fireAndForget(async () => {
-                const path = `${env.electron.getConfigDir()}/presets/bookmarks.json`;
+                const path = `${env.electron.getConfigDir()}/bookmarks.json`;
                 const blockDef: BlockDef = {
                     meta: {
                         view: "preview",
