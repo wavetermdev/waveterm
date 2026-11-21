@@ -1523,10 +1523,12 @@ func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 		return err
 	}
 
+	// Input order is preserved by the per-job queue on the receiving side, so waiting for
+	// a remote acknowledgement would cap typing at the round-trip rate (5/s at 200ms).
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:      wshutil.MakeJobRouteId(jobId),
 		Timeout:    5000,
-		NoResponse: false,
+		NoResponse: true,
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()

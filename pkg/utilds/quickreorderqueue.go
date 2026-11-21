@@ -4,11 +4,16 @@
 package utilds
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
 )
+
+// ErrReorderQueueFull is returned when the queue cannot accept more items. Callers that
+// must not lose data can wait and retry instead of dropping the item.
+var ErrReorderQueueFull = errors.New("reorder queue is full")
 
 // the quick reorder queue implements reordering of items with a certain timerame (the timeout passed)
 // if an item is queued in order, it gets processed immediately
@@ -122,7 +127,7 @@ func (q *QuickReorderQueue[T]) QueueItem(sessionId string, seqNum int, data T) e
 	}
 
 	if len(q.buffer)+len(q.outCh) >= cap(q.outCh) {
-		return fmt.Errorf("queue is full, cannot accept new items, cap: %d", cap(q.outCh))
+		return fmt.Errorf("%w, cap: %d", ErrReorderQueueFull, cap(q.outCh))
 	}
 
 	q.ensureSessionTs_withlock(sessionId)
