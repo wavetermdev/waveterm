@@ -62,4 +62,25 @@ describe("TermWrap composition ordering", () => {
         vi.advanceTimersByTime(40);
         expect(tw.sent).toEqual([" "]);
     });
+
+    it("flushes a held terminator before pasted text", () => {
+        const tw = makeFakeTermWrap();
+        tw.handleTermData(" ");
+        tw.pasteActive = true;
+        tw.handleTermData("붙여넣기 ");
+        expect(tw.sent.join("")).toBe(" 붙여넣기 ");
+    });
+
+    it("sends a held terminator to the multi-input recipients captured at keystroke time", () => {
+        const tw = makeFakeTermWrap();
+        const atKeystroke = vi.fn();
+        const laterRetarget = vi.fn();
+        tw.multiInputCallback = atKeystroke;
+        tw.handleTermData(" ");
+        tw.multiInputCallback = laterRetarget;
+        vi.advanceTimersByTime(40);
+        expect(tw.sent).toEqual([" "]);
+        expect(atKeystroke).toHaveBeenCalledWith(" ");
+        expect(laterRetarget).not.toHaveBeenCalled();
+    });
 });

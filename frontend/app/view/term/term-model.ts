@@ -697,7 +697,7 @@ export class TermViewModel implements ViewModel {
     }
 
     handleTerminalKeydown(event: KeyboardEvent): boolean {
-        if (event.isComposing || event.keyCode == 229) {
+        if ((event.isComposing || event.keyCode == 229) && !event.ctrlKey && !event.metaKey && !event.altKey) {
             return true;
         }
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);

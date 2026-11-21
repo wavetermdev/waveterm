@@ -133,7 +133,11 @@ export class TermWrap {
     // can overtake the syllable xterm is still committing on a deferred timer.
     compositionActive: boolean = false;
     compositionRecentlyEndedUntil: number = 0;
-    pendingCompositionSuffix: { data: string; timeout: ReturnType<typeof setTimeout> | null } | null = null;
+    pendingCompositionSuffix: {
+        data: string;
+        timeout: ReturnType<typeof setTimeout> | null;
+        multiInput?: (data: string) => void;
+    } | null = null;
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -288,7 +292,7 @@ export class TermWrap {
         // xterm skip _finalizeComposition. While composing (or just composed) every
         // non-shortcut key must reach xterm so the composed text is flushed first.
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
-            if (e.isComposing || e.keyCode == 229) {
+            if ((e.isComposing || e.keyCode == 229) && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 return true;
             }
             if (this.shouldBypassWaveKeydownForComposition(e)) {
@@ -524,9 +528,9 @@ export class TermWrap {
         return Date.now() <= this.compositionRecentlyEndedUntil;
     }
 
-    sendTermData(data: string) {
+    sendTermData(data: string, multiInput: (data: string) => void = this.multiInputCallback) {
         this.sendDataHandler?.(data);
-        this.multiInputCallback?.(data);
+        multiInput?.(data);
     }
 
     flushPendingCompositionSuffix() {
@@ -534,6 +538,7 @@ export class TermWrap {
             return;
         }
         const pendingData = this.pendingCompositionSuffix.data;
+        const pendingMultiInput = this.pendingCompositionSuffix.multiInput;
         if (this.pendingCompositionSuffix.timeout != null) {
             clearTimeout(this.pendingCompositionSuffix.timeout);
         }
@@ -541,7 +546,8 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
-        this.sendTermData(pendingData);
+        // Use the recipients that were active when the key was typed.
+        this.sendTermData(pendingData, pendingMultiInput);
     }
 
     cancelPendingCompositionSuffix() {
@@ -602,9 +608,18 @@ export class TermWrap {
             return;
         }
 
+        if (this.pasteActive) {
+            // Pasted text is not a composition chunk: flush the held terminator first and
+            // never let the paste satisfy the duplicate-terminator check.
+            this.flushPendingCompositionSuffix();
+            this.sendTermData(data);
+            return;
+        }
+
         if (this.pendingCompositionSuffix != null) {
             if (this.isLikelyCompositionText(data)) {
                 const pendingData = this.pendingCompositionSuffix.data;
+                const pendingMultiInput = this.pendingCompositionSuffix.multiInput;
                 if (this.pendingCompositionSuffix.timeout != null) {
                     clearTimeout(this.pendingCompositionSuffix.timeout);
                 }
@@ -613,7 +628,7 @@ export class TermWrap {
                 // Windows re-reads the terminator from the textarea, so the late chunk may
                 // already contain it. Sending it again would duplicate the character.
                 if (!data.endsWith(pendingData)) {
-                    this.sendTermData(pendingData);
+                    this.sendTermData(pendingData, pendingMultiInput);
                 }
                 return;
             }
@@ -636,6 +651,7 @@ export class TermWrap {
             this.pendingCompositionSuffix = {
                 data,
                 timeout: null,
+                multiInput: this.multiInputCallback,
             };
             this.schedulePendingCompositionSuffixFlush();
             return;
