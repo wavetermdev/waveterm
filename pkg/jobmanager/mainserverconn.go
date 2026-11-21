@@ -5,13 +5,16 @@ package jobmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -129,6 +132,22 @@ func (msc *MainServerConn) JobInputCommand(ctx context.Context, data wshrpc.Comm
 		return fmt.Errorf("job not started")
 	}
 
-	WshCmdJobManager.InputQueue.QueueItem(data.InputSessionId, data.SeqNum, data)
-	return nil
+	// The sender does not wait for an acknowledgement, so input can arrive faster than the
+	// job drains it. Wait for room instead of dropping keystrokes; the caller handles one
+	// job's input on its own worker, so this blocks only this terminal.
+	for {
+		err := WshCmdJobManager.InputQueue.QueueItem(data.InputSessionId, data.SeqNum, data)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, utilds.ErrReorderQueueFull) {
+			return fmt.Errorf("failed to queue input: %w", err)
+		}
+		select {
+		case <-ctx.Done():
+			log.Printf("[job] input queue full for %s, dropping input: %v", data.JobId, err)
+			return fmt.Errorf("failed to queue input: %w", err)
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
 }

@@ -4,6 +4,7 @@
 package utilds
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -439,5 +440,18 @@ func TestQuickReorderQueue_MultiSessionComplexReordering(t *testing.T) {
 		if items[i] != exp {
 			t.Errorf("expected %s at position %d, got %s", exp, i, items[i])
 		}
+	}
+}
+
+func TestQuickReorderQueue_FullReturnsSentinel(t *testing.T) {
+	q := MakeQuickReorderQueue[string](1, time.Second)
+	defer q.Close()
+
+	if err := q.QueueItem("session1", 1, "item1"); err != nil {
+		t.Fatalf("first queue item failed: %v", err)
+	}
+	err := q.QueueItem("session1", 2, "item2")
+	if !errors.Is(err, ErrReorderQueueFull) {
+		t.Fatalf("expected ErrReorderQueueFull, got %v", err)
 	}
 }
