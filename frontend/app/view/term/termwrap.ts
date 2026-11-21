@@ -53,6 +53,7 @@ const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
 const MaxRepaintTransactionMs = 2000;
+const MaxCompositionSuffixLength = 4;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -67,6 +68,21 @@ function detectWebGLSupport(): boolean {
 
 export const WebGLSupported = detectWebGLSupport();
 let loggedWebGL = false;
+
+// Short printable-ASCII chunk (space, comma, period, question mark, ...). Anything else is
+// treated as committed composition text, which must never be buffered.
+export function isCompositionSuffixData(data: string): boolean {
+    if (data.length === 0 || data.length > MaxCompositionSuffixLength) {
+        return false;
+    }
+    for (const ch of data) {
+        const codePoint = ch.codePointAt(0);
+        if (codePoint == null || codePoint < 0x20 || codePoint > 0x7e) {
+            return false;
+        }
+    }
+    return true;
+}
 
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
@@ -111,6 +127,13 @@ export class TermWrap {
     // xterm.js paste() method triggers onData event, which can cause duplicate sends
     lastPasteData: string = "";
     lastPasteTime: number = 0;
+
+    // IME composition ordering. On Windows the MS Korean IME reports every key as
+    // 229/Process, so the terminating space/punctuation arrives as a bare input event and
+    // can overtake the syllable xterm is still committing on a deferred timer.
+    compositionActive: boolean = false;
+    compositionRecentlyEndedUntil: number = 0;
+    pendingCompositionSuffix: { data: string; timeout: ReturnType<typeof setTimeout> | null } | null = null;
 
     // dev only (for debugging)
     recentWrites: { idx: number; data: string; ts: number }[] = [];
@@ -261,7 +284,16 @@ export class TermWrap {
                 return true;
             })
         );
+        // Wave's handler runs before xterm's CompositionHelper, and returning false makes
+        // xterm skip _finalizeComposition. While composing (or just composed) every
+        // non-shortcut key must reach xterm so the composed text is flushed first.
         this.terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+            if (e.isComposing || e.keyCode == 229) {
+                return true;
+            }
+            if (this.shouldBypassWaveKeydownForComposition(e)) {
+                return true;
+            }
             if (!waveOptions.keydownHandler) {
                 return true;
             }
@@ -272,6 +304,7 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+        this.registerCompositionEventHandlers();
 
         const dragoverHandler = (e: DragEvent) => {
             e.preventDefault();
@@ -440,6 +473,7 @@ export class TermWrap {
             }
         });
         this.promptMarkers = [];
+        this.cancelPendingCompositionSuffix();
         this.webglContextLossDisposable?.dispose();
         this.webglContextLossDisposable = null;
         this.terminal.dispose();
@@ -453,13 +487,161 @@ export class TermWrap {
         this.mainFileSubject.release();
     }
 
+    registerCompositionEventHandlers() {
+        const textarea = this.terminal.textarea;
+        if (textarea == null) {
+            return;
+        }
+        const compositionStartHandler = () => {
+            this.compositionActive = true;
+            this.compositionRecentlyEndedUntil = 0;
+            this.flushPendingCompositionSuffix();
+        };
+        const compositionEndHandler = () => {
+            this.compositionActive = false;
+            this.compositionRecentlyEndedUntil = Date.now() + 75;
+            this.schedulePendingCompositionSuffixFlush();
+        };
+        textarea.addEventListener("compositionstart", compositionStartHandler);
+        textarea.addEventListener("compositionend", compositionEndHandler);
+        this.toDispose.push({
+            dispose: () => {
+                textarea.removeEventListener("compositionstart", compositionStartHandler);
+                textarea.removeEventListener("compositionend", compositionEndHandler);
+                this.cancelPendingCompositionSuffix();
+            },
+        });
+    }
+
+    shouldBypassWaveKeydownForComposition(event: KeyboardEvent): boolean {
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+            // real shortcuts still belong to Wave, even mid-composition
+            return false;
+        }
+        if (this.compositionActive) {
+            return true;
+        }
+        return Date.now() <= this.compositionRecentlyEndedUntil;
+    }
+
+    sendTermData(data: string) {
+        this.sendDataHandler?.(data);
+        this.multiInputCallback?.(data);
+    }
+
+    flushPendingCompositionSuffix() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        const pendingData = this.pendingCompositionSuffix.data;
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+        }
+        this.pendingCompositionSuffix = null;
+        if (!this.loaded) {
+            return;
+        }
+        this.sendTermData(pendingData);
+    }
+
+    cancelPendingCompositionSuffix() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+        }
+        this.pendingCompositionSuffix = null;
+    }
+
+    schedulePendingCompositionSuffixFlush() {
+        if (this.pendingCompositionSuffix == null) {
+            return;
+        }
+        if (this.pendingCompositionSuffix.timeout != null) {
+            clearTimeout(this.pendingCompositionSuffix.timeout);
+            this.pendingCompositionSuffix.timeout = null;
+        }
+        if (this.compositionActive) {
+            return;
+        }
+        this.pendingCompositionSuffix.timeout = setTimeout(() => {
+            this.flushPendingCompositionSuffix();
+        }, 30);
+    }
+
+    isLikelyCompositionText(data: string): boolean {
+        if (data.length === 0) {
+            return false;
+        }
+        let hasNonAscii = false;
+        for (const ch of data) {
+            const codePoint = ch.codePointAt(0);
+            if (codePoint == null || codePoint <= 0x1f || codePoint === 0x7f) {
+                return false;
+            }
+            if (codePoint > 0x7f) {
+                hasNonAscii = true;
+            }
+        }
+        return hasNonAscii;
+    }
+
+    shouldDeferCompositionData(data: string): boolean {
+        if (this.compositionActive) {
+            return data === "\r";
+        }
+        if (Date.now() > this.compositionRecentlyEndedUntil) {
+            return false;
+        }
+        return data === "\r" || isCompositionSuffixData(data);
+    }
+
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
         }
 
-        this.sendDataHandler?.(data);
-        this.multiInputCallback?.(data);
+        if (this.pendingCompositionSuffix != null) {
+            if (this.isLikelyCompositionText(data)) {
+                const pendingData = this.pendingCompositionSuffix.data;
+                if (this.pendingCompositionSuffix.timeout != null) {
+                    clearTimeout(this.pendingCompositionSuffix.timeout);
+                }
+                this.pendingCompositionSuffix = null;
+                this.sendTermData(data);
+                // Windows re-reads the terminator from the textarea, so the late chunk may
+                // already contain it. Sending it again would duplicate the character.
+                if (!data.endsWith(pendingData)) {
+                    this.sendTermData(pendingData);
+                }
+                return;
+            }
+            if (
+                this.shouldDeferCompositionData(data) &&
+                this.pendingCompositionSuffix.data.length + data.length <= MaxCompositionSuffixLength
+            ) {
+                if (this.pendingCompositionSuffix.timeout != null) {
+                    clearTimeout(this.pendingCompositionSuffix.timeout);
+                    this.pendingCompositionSuffix.timeout = null;
+                }
+                this.pendingCompositionSuffix.data += data;
+                this.schedulePendingCompositionSuffixFlush();
+                return;
+            }
+            this.flushPendingCompositionSuffix();
+        }
+
+        if (this.shouldDeferCompositionData(data)) {
+            this.pendingCompositionSuffix = {
+                data,
+                timeout: null,
+            };
+            this.schedulePendingCompositionSuffixFlush();
+            return;
+        }
+
+        this.sendTermData(data);
     }
 
     addFocusListener(focusFn: () => void) {

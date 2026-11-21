@@ -1,0 +1,65 @@
+// Copyright 2026, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TermWrap, isCompositionSuffixData } from "./termwrap";
+
+function makeFakeTermWrap(): TermWrap & { sent: string[] } {
+    const tw = Object.create(TermWrap.prototype) as TermWrap & { sent: string[] };
+    tw.loaded = true;
+    tw.compositionActive = false;
+    tw.compositionRecentlyEndedUntil = Date.now() + 75;
+    tw.pendingCompositionSuffix = null;
+    tw.sent = [];
+    tw.sendDataHandler = (d: string) => tw.sent.push(d);
+    tw.multiInputCallback = () => {};
+    return tw;
+}
+
+describe("isCompositionSuffixData", () => {
+    it("accepts short printable ASCII terminators only", () => {
+        expect(isCompositionSuffixData(" ")).toBe(true);
+        expect(isCompositionSuffixData("?")).toBe(true);
+        expect(isCompositionSuffixData(",")).toBe(true);
+        expect(isCompositionSuffixData("고")).toBe(false);
+        expect(isCompositionSuffixData("\r")).toBe(false);
+        expect(isCompositionSuffixData("toolong")).toBe(false);
+    });
+});
+
+describe("TermWrap composition ordering", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+        vi.runOnlyPendingTimers();
+        vi.useRealTimers();
+    });
+
+    it("puts a terminator behind the syllable it followed (Windows order)", () => {
+        const tw = makeFakeTermWrap();
+        tw.handleTermData(" ");
+        expect(tw.sent).toEqual([]);
+        tw.handleTermData("고");
+        expect(tw.sent.join("")).toBe("고 ");
+    });
+
+    it("drops the duplicated terminator in the late textarea re-read", () => {
+        const tw = makeFakeTermWrap();
+        tw.handleTermData("?");
+        tw.handleTermData("다?");
+        expect(tw.sent.join("")).toBe("다?");
+    });
+
+    it("does not hold ordinary keystrokes outside the commit window", () => {
+        const tw = makeFakeTermWrap();
+        tw.compositionRecentlyEndedUntil = 0;
+        tw.handleTermData("abc");
+        expect(tw.sent).toEqual(["abc"]);
+    });
+
+    it("flushes a held terminator when nothing follows", () => {
+        const tw = makeFakeTermWrap();
+        tw.handleTermData(" ");
+        vi.advanceTimersByTime(40);
+        expect(tw.sent).toEqual([" "]);
+    });
+});
