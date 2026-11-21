@@ -29,7 +29,6 @@ const DefaultTimeoutMs = 5000
 const RespChSize = 32
 const DefaultMessageChSize = 32
 const CtxDoneChSize = 10
-const OrderedChSize = 1024
 
 var blockingExpMap = ds.MakeExpMap[bool]()
 
@@ -59,7 +58,8 @@ type WshRpc struct {
 	EventListener      *EventListener
 	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
 	StreamBroker       *streamclient.Broker
-	OrderedCh          chan orderedRpcRequest // input commands, handled in arrival order
+	OrderedLock        *sync.Mutex
+	OrderedQueue       map[string]*orderedInputQueue // per-terminal FIFO for input commands
 	Debug              bool
 	DebugName          string
 	ServerDone         bool
@@ -68,6 +68,11 @@ type WshRpc struct {
 type orderedRpcRequest struct {
 	msg           RpcMessage
 	ingressLinkId baseds.LinkId
+}
+
+type orderedInputQueue struct {
+	items   []orderedRpcRequest
+	running bool
 }
 
 type wshRpcContextKey struct{}
@@ -238,11 +243,11 @@ func MakeWshRpcWithChannels(inputCh chan baseds.RpcInputChType, outputCh chan []
 		EventListener:      MakeEventListener(),
 		ServerImpl:         serverImpl,
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
-		OrderedCh:          make(chan orderedRpcRequest, OrderedChSize),
+		OrderedLock:        &sync.Mutex{},
+		OrderedQueue:       make(map[string]*orderedInputQueue),
 	}
 	rtn.RpcContext.Store(&rpcCtx)
 	rtn.StreamBroker = streamclient.NewBroker(AdaptWshRpc(rtn))
-	go rtn.runOrderedRequests()
 	go rtn.runServer()
 	return rtn
 }
@@ -388,17 +393,66 @@ func (w *WshRpc) handleRequestInternal(req *RpcMessage, ingressLinkId baseds.Lin
 }
 
 // Commands that carry terminal keystrokes. They must be processed in the order the
-// read loop received them; everything else may run concurrently.
+// read loop received them, in arrival order per terminal; everything else may run
+// concurrently.
 func isOrderedInputCommand(cmd string) bool {
 	return cmd == wshrpc.Command_ControllerInput || cmd == "jobinput"
 }
 
-// Single worker: input commands are handled one at a time, in arrival order.
-func (w *WshRpc) runOrderedRequests() {
-	defer panichandler.PanicHandler("wshrpc.runOrderedRequests", recover())
-	for req := range w.OrderedCh {
+// Terminal a request belongs to. Order only has to hold within one terminal, so
+// queues are keyed by block (controllerinput) or job (jobinput).
+func orderedInputKey(msg *RpcMessage) string {
+	data, ok := msg.Data.(map[string]any)
+	if !ok {
+		return "input:" + msg.Command
+	}
+	if blockId, _ := data["blockid"].(string); blockId != "" {
+		return "block:" + blockId
+	}
+	if jobId, _ := data["jobid"].(string); jobId != "" {
+		return "job:" + jobId
+	}
+	return "input:" + msg.Command
+}
+
+// Enqueues without ever blocking the read loop. A terminal whose PTY stops reading
+// only holds up its own queue.
+func (w *WshRpc) enqueueOrderedInput(key string, msg RpcMessage, ingressLinkId baseds.LinkId) {
+	w.OrderedLock.Lock()
+	q := w.OrderedQueue[key]
+	if q == nil {
+		q = &orderedInputQueue{}
+		w.OrderedQueue[key] = q
+	}
+	q.items = append(q.items, orderedRpcRequest{msg: msg, ingressLinkId: ingressLinkId})
+	startWorker := !q.running
+	q.running = true
+	w.OrderedLock.Unlock()
+	if startWorker {
+		go w.runOrderedInputQueue(key)
+	}
+}
+
+// Drains one terminal's queue in FIFO order.
+func (w *WshRpc) runOrderedInputQueue(key string) {
+	for {
+		w.OrderedLock.Lock()
+		q := w.OrderedQueue[key]
+		if q == nil || len(q.items) == 0 {
+			if q != nil {
+				delete(w.OrderedQueue, key)
+			}
+			w.OrderedLock.Unlock()
+			return
+		}
+		req := q.items[0]
+		q.items = q.items[1:]
+		w.OrderedLock.Unlock()
+
 		func() {
-			defer panichandler.PanicHandler("wshrpc.handleOrderedRequest", recover())
+			defer func() {
+				panichandler.PanicHandler("wshrpc.handleOrderedInput", recover())
+			}()
 			w.handleRequest(&req.msg, req.ingressLinkId)
 		}()
 	}
@@ -407,7 +461,6 @@ func (w *WshRpc) runOrderedRequests() {
 func (w *WshRpc) runServer() {
 	defer func() {
 		panichandler.PanicHandler("wshrpc.runServer", recover())
-		close(w.OrderedCh)
 		close(w.OutputCh)
 		w.setServerDone()
 	}()
@@ -458,9 +511,10 @@ outer:
 			}
 			if isOrderedInputCommand(msg.Command) {
 				// Terminal input must reach the PTY in arrival order. Handling it in a
-				// goroutine lets a later packet overtake an earlier one, which shows up as
-				// reordered Hangul/CJK input at the shell.
-				w.OrderedCh <- orderedRpcRequest{msg: msg, ingressLinkId: inputVal.IngressLinkId}
+				// plain goroutine lets a later packet overtake an earlier one, which shows
+				// up as reordered Hangul/CJK input at the shell. Enqueueing here is
+				// non-blocking so a stalled terminal cannot stop this loop.
+				w.enqueueOrderedInput(orderedInputKey(&msg), msg, inputVal.IngressLinkId)
 				continue
 			}
 
