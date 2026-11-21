@@ -29,6 +29,7 @@ const DefaultTimeoutMs = 5000
 const RespChSize = 32
 const DefaultMessageChSize = 32
 const CtxDoneChSize = 10
+const OrderedChSize = 1024
 
 var blockingExpMap = ds.MakeExpMap[bool]()
 
@@ -58,9 +59,15 @@ type WshRpc struct {
 	EventListener      *EventListener
 	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
 	StreamBroker       *streamclient.Broker
+	OrderedCh          chan orderedRpcRequest // input commands, handled in arrival order
 	Debug              bool
 	DebugName          string
 	ServerDone         bool
+}
+
+type orderedRpcRequest struct {
+	msg           RpcMessage
+	ingressLinkId baseds.LinkId
 }
 
 type wshRpcContextKey struct{}
@@ -231,9 +238,11 @@ func MakeWshRpcWithChannels(inputCh chan baseds.RpcInputChType, outputCh chan []
 		EventListener:      MakeEventListener(),
 		ServerImpl:         serverImpl,
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
+		OrderedCh:          make(chan orderedRpcRequest, OrderedChSize),
 	}
 	rtn.RpcContext.Store(&rpcCtx)
 	rtn.StreamBroker = streamclient.NewBroker(AdaptWshRpc(rtn))
+	go rtn.runOrderedRequests()
 	go rtn.runServer()
 	return rtn
 }
@@ -378,9 +387,27 @@ func (w *WshRpc) handleRequestInternal(req *RpcMessage, ingressLinkId baseds.Lin
 	isAsync = !handlerFn(respHandler)
 }
 
+// Commands that carry terminal keystrokes. They must be processed in the order the
+// read loop received them; everything else may run concurrently.
+func isOrderedInputCommand(cmd string) bool {
+	return cmd == wshrpc.Command_ControllerInput || cmd == "jobinput"
+}
+
+// Single worker: input commands are handled one at a time, in arrival order.
+func (w *WshRpc) runOrderedRequests() {
+	defer panichandler.PanicHandler("wshrpc.runOrderedRequests", recover())
+	for req := range w.OrderedCh {
+		func() {
+			defer panichandler.PanicHandler("wshrpc.handleOrderedRequest", recover())
+			w.handleRequest(&req.msg, req.ingressLinkId)
+		}()
+	}
+}
+
 func (w *WshRpc) runServer() {
 	defer func() {
 		panichandler.PanicHandler("wshrpc.runServer", recover())
+		close(w.OrderedCh)
 		close(w.OutputCh)
 		w.setServerDone()
 	}()
@@ -427,6 +454,13 @@ outer:
 			}
 			if msg.Command == wshrpc.Command_StreamDataAck {
 				w.handleStreamAck(&msg)
+				continue
+			}
+			if isOrderedInputCommand(msg.Command) {
+				// Terminal input must reach the PTY in arrival order. Handling it in a
+				// goroutine lets a later packet overtake an earlier one, which shows up as
+				// reordered Hangul/CJK input at the shell.
+				w.OrderedCh <- orderedRpcRequest{msg: msg, ingressLinkId: inputVal.IngressLinkId}
 				continue
 			}
 
