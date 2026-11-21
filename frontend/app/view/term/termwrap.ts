@@ -113,7 +113,7 @@ export class TermWrap {
     webglAddon: WebglAddon | null = null;
     webglContextLossDisposable: TermTypes.IDisposable | null = null;
     webglEnabledAtom: jotai.PrimitiveAtom<boolean>;
-    pasteActive: boolean = false;
+    pasteDispatching: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<ShellIntegrationStatus | null>;
@@ -136,7 +136,7 @@ export class TermWrap {
     pendingCompositionSuffix: {
         data: string;
         timeout: ReturnType<typeof setTimeout> | null;
-        multiInput?: (data: string) => void;
+        multiInput: ((data: string) => void) | null;
     } | null = null;
 
     // dev only (for debugging)
@@ -528,9 +528,14 @@ export class TermWrap {
         return Date.now() <= this.compositionRecentlyEndedUntil;
     }
 
-    sendTermData(data: string, multiInput: (data: string) => void = this.multiInputCallback) {
+    sendTermData(data: string, multiInput?: ((data: string) => void) | null) {
         this.sendDataHandler?.(data);
-        multiInput?.(data);
+        if (multiInput === undefined) {
+            this.multiInputCallback?.(data);
+        } else {
+            // null means multi-input was off when this data was produced
+            multiInput?.(data);
+        }
     }
 
     flushPendingCompositionSuffix() {
@@ -608,7 +613,7 @@ export class TermWrap {
             return;
         }
 
-        if (this.pasteActive) {
+        if (this.pasteDispatching) {
             // Pasted text is not a composition chunk: flush the held terminator first and
             // never let the paste satisfy the duplicate-terminator check.
             this.flushPendingCompositionSuffix();
@@ -619,7 +624,7 @@ export class TermWrap {
         if (this.pendingCompositionSuffix != null) {
             if (this.isLikelyCompositionText(data)) {
                 const pendingData = this.pendingCompositionSuffix.data;
-                const pendingMultiInput = this.pendingCompositionSuffix.multiInput;
+                const pendingMultiInput = this.pendingCompositionSuffix.multiInput ?? null;
                 if (this.pendingCompositionSuffix.timeout != null) {
                     clearTimeout(this.pendingCompositionSuffix.timeout);
                 }
@@ -632,9 +637,11 @@ export class TermWrap {
                 }
                 return;
             }
+            const currentMultiInput = this.multiInputCallback ?? null;
             if (
                 this.shouldDeferCompositionData(data) &&
-                this.pendingCompositionSuffix.data.length + data.length <= MaxCompositionSuffixLength
+                this.pendingCompositionSuffix.data.length + data.length <= MaxCompositionSuffixLength &&
+                this.pendingCompositionSuffix.multiInput === currentMultiInput
             ) {
                 if (this.pendingCompositionSuffix.timeout != null) {
                     clearTimeout(this.pendingCompositionSuffix.timeout);
@@ -651,7 +658,7 @@ export class TermWrap {
             this.pendingCompositionSuffix = {
                 data,
                 timeout: null,
-                multiInput: this.multiInputCallback,
+                multiInput: this.multiInputCallback ?? null,
             };
             this.schedulePendingCompositionSuffixFlush();
             return;
@@ -797,8 +804,20 @@ export class TermWrap {
         }, 5000);
     }
 
+    // Only marks the actual paste dispatch: clipboard reading is asynchronous and must
+    // not swallow normal keystrokes that arrive while it is in flight.
+    dispatchPaste(text: string) {
+        this.pasteDispatching = true;
+        try {
+            this.terminal.paste(text);
+        } finally {
+            setTimeout(() => {
+                this.pasteDispatching = false;
+            }, 0);
+        }
+    }
+
     async pasteHandler(e?: ClipboardEvent): Promise<void> {
-        this.pasteActive = true;
         e?.preventDefault();
         e?.stopPropagation();
 
@@ -811,19 +830,15 @@ export class TermWrap {
                         await new Promise((r) => setTimeout(r, 150));
                     }
                     const tempPath = await createTempFileFromBlob(data.image);
-                    this.terminal.paste(tempPath + " ");
+                    this.dispatchPaste(tempPath + " ");
                     firstImage = false;
                 }
                 if (data.text) {
-                    this.terminal.paste(data.text);
+                    this.dispatchPaste(data.text);
                 }
             }
         } catch (err) {
             console.error("Paste error:", err);
-        } finally {
-            setTimeout(() => {
-                this.pasteActive = false;
-            }, 30);
         }
     }
 

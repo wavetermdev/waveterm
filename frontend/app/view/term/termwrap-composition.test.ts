@@ -1,4 +1,4 @@
-// Copyright 2026, Command Line Inc.
+﻿// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,7 +21,7 @@ describe("isCompositionSuffixData", () => {
         expect(isCompositionSuffixData(" ")).toBe(true);
         expect(isCompositionSuffixData("?")).toBe(true);
         expect(isCompositionSuffixData(",")).toBe(true);
-        expect(isCompositionSuffixData("고")).toBe(false);
+        expect(isCompositionSuffixData("\uACE0")).toBe(false);
         expect(isCompositionSuffixData("\r")).toBe(false);
         expect(isCompositionSuffixData("toolong")).toBe(false);
     });
@@ -38,15 +38,15 @@ describe("TermWrap composition ordering", () => {
         const tw = makeFakeTermWrap();
         tw.handleTermData(" ");
         expect(tw.sent).toEqual([]);
-        tw.handleTermData("고");
-        expect(tw.sent.join("")).toBe("고 ");
+        tw.handleTermData("\uACE0");
+        expect(tw.sent.join("")).toBe("\uACE0 ");
     });
 
     it("drops the duplicated terminator in the late textarea re-read", () => {
         const tw = makeFakeTermWrap();
         tw.handleTermData("?");
-        tw.handleTermData("다?");
-        expect(tw.sent.join("")).toBe("다?");
+        tw.handleTermData("\uB2E4?");
+        expect(tw.sent.join("")).toBe("\uB2E4?");
     });
 
     it("does not hold ordinary keystrokes outside the commit window", () => {
@@ -66,9 +66,9 @@ describe("TermWrap composition ordering", () => {
     it("flushes a held terminator before pasted text", () => {
         const tw = makeFakeTermWrap();
         tw.handleTermData(" ");
-        tw.pasteActive = true;
-        tw.handleTermData("붙여넣기 ");
-        expect(tw.sent.join("")).toBe(" 붙여넣기 ");
+        tw.pasteDispatching = true;
+        tw.handleTermData("\uBD99\uC5EC\uB123\uAE30 ");
+        expect(tw.sent.join("")).toBe(" \uBD99\uC5EC\uB123\uAE30 ");
     });
 
     it("sends a held terminator to the multi-input recipients captured at keystroke time", () => {
@@ -82,5 +82,31 @@ describe("TermWrap composition ordering", () => {
         expect(tw.sent).toEqual([" "]);
         expect(atKeystroke).toHaveBeenCalledWith(" ");
         expect(laterRetarget).not.toHaveBeenCalled();
+    });
+
+    it("keeps a held terminator away from multi-input enabled after the keystroke", () => {
+        const tw = makeFakeTermWrap();
+        const laterEnabled = vi.fn();
+        (tw as any).multiInputCallback = undefined;
+        tw.handleTermData(" ");
+        tw.multiInputCallback = laterEnabled;
+        vi.advanceTimersByTime(40);
+        expect(tw.sent).toEqual([" "]);
+        expect(laterEnabled).not.toHaveBeenCalled();
+    });
+
+    it("does not merge suffix chunks produced for different multi-input recipients", () => {
+        const tw = makeFakeTermWrap();
+        const first = vi.fn();
+        const second = vi.fn();
+        tw.multiInputCallback = first;
+        tw.handleTermData(" ");
+        tw.multiInputCallback = second;
+        tw.handleTermData("?");
+        expect(tw.sent).toEqual([" "]);
+        vi.advanceTimersByTime(40);
+        expect(tw.sent).toEqual([" ", "?"]);
+        expect(first).toHaveBeenCalledWith(" ");
+        expect(second).toHaveBeenCalledWith("?");
     });
 });
