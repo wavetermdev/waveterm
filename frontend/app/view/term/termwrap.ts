@@ -427,6 +427,7 @@ export class TermWrap {
             await this.loadInitialTerminalData();
         } finally {
             this.loaded = true;
+            this.handleResize();
         }
         this.runProcessIdleTimeout();
     }
@@ -571,7 +572,10 @@ export class TermWrap {
             RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
-        if (!this.hasResized) {
+        // the initial resync can start the shell, so wait until the terminal has loaded.
+        // until then handleTermData drops xterm.js replies (e.g. DA1 for fish), and a
+        // query sent by a freshly started shell would never get its answer.
+        if (!this.hasResized && this.loaded) {
             this.hasResized = true;
             this.resyncController("initial resize");
         }
