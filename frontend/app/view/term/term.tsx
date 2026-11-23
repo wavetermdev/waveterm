@@ -51,6 +51,9 @@ const TermResyncHandler = React.memo(({ blockId, model }: TerminalViewProps) => 
 
     React.useEffect(() => {
         if (!model.termRef.current?.hasResized) {
+            // the initial resync (after load) uses the current status, so track it here or a
+            // disconnect/reconnect during load would look unchanged and skip the resync
+            setLastConnStatus(connStatus);
             return;
         }
         const isConnected = connStatus?.status == "connected";
