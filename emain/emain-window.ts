@@ -516,18 +516,27 @@ export class WaveBrowserWindow extends BaseWindow {
             this.finalizePositioning();
         }
 
-        // something is causing the new tab to lose focus so it requires manual refocusing
-        tabView.webContents.focus();
-        setTimeout(() => {
-            if (tabView.webContents && this.activeTabView == tabView && !tabView.webContents.isFocused()) {
-                tabView.webContents.focus();
+        const focusTab = () => {
+            if (this.isDestroyed() || tabView.isDestroyed || this.activeTabView !== tabView) {
+                return;
             }
-        }, 10);
-        setTimeout(() => {
-            if (tabView.webContents && this.activeTabView == tabView && !tabView.webContents.isFocused()) {
-                tabView.webContents.focus();
-            }
-        }, 30);
+            tabView.webContents.focus();
+            // The new tab sometimes loses focus immediately after switching.
+            const retryFocus = () => {
+                if (!tabView.isDestroyed && this.activeTabView === tabView && !tabView.webContents.isFocused()) {
+                    tabView.webContents.focus();
+                }
+            };
+            setTimeout(retryFocus, 10);
+            setTimeout(retryFocus, 30);
+        };
+        // Let Windows activate the HWND before Chromium assigns the initial text-input focus.
+        // Focusing a hidden tab leaves the TSF composition window anchored at the screen origin.
+        if (process.platform === "win32" && !this.isVisible()) {
+            this.once("focus", focusTab);
+        } else {
+            focusTab();
+        }
     }
 
     private finalizePositioning() {
