@@ -112,6 +112,7 @@ type SettingsType struct {
 	TermDurable                    *bool    `json:"term:durable,omitempty"`
 	TermShowSplitButtons           bool     `json:"term:showsplitbuttons,omitempty"`
 	TermTrimTrailingWhitespace     *bool    `json:"term:trimtrailingwhitespace,omitempty"`
+	TermRightClickMenu             string   `json:"term:rightclickmenu,omitempty" jsonschema:"enum=auto,enum=wave,enum=app"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`

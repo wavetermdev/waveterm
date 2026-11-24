@@ -408,3 +408,21 @@ export function isLikelyOnSameHost(lastCommand: string): boolean {
 export function quoteForPosixShell(filePath: string): string {
     return "'" + filePath.replace(/'/g, "'\\''") + "'";
 }
+
+export type TermRightClickMenuMode = "auto" | "wave" | "app";
+
+// "auto" yields the right-click to the terminal app while it is using the mouse
+// (e.g. herdr, tmux, btop) and otherwise keeps Wave's own menu.
+export function shouldShowWaveContextMenu(
+    setting: string | null | undefined,
+    mouseTrackingMode: string | null | undefined
+): boolean {
+    const mode: TermRightClickMenuMode = setting === "wave" || setting === "app" ? setting : "auto";
+    if (mode === "wave") {
+        return true;
+    }
+    if (mode === "app") {
+        return false;
+    }
+    return (mouseTrackingMode ?? "none") === "none";
+}
