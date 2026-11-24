@@ -64,10 +64,12 @@ type SSEMessage struct {
 
 // SSEHandlerCh provides channel-based Server-Sent Events functionality
 type SSEHandlerCh struct {
-	w       http.ResponseWriter
-	rc      *http.ResponseController
-	ctx     context.Context // the r.Context()
-	writeCh chan SSEMessage
+	w          http.ResponseWriter
+	rc         *http.ResponseController
+	ctx        context.Context // the r.Context()
+	writeCh    chan SSEMessage
+	writerDone chan struct{}
+	sendLock   sync.RWMutex
 
 	lock        sync.Mutex
 	closed      bool
@@ -82,10 +84,11 @@ type SSEHandlerCh struct {
 // MakeSSEHandlerCh creates a new channel-based SSE handler
 func MakeSSEHandlerCh(w http.ResponseWriter, ctx context.Context) *SSEHandlerCh {
 	return &SSEHandlerCh{
-		w:       w,
-		rc:      http.NewResponseController(w),
-		ctx:     ctx,
-		writeCh: make(chan SSEMessage, 10), // Buffered to prevent blocking
+		w:          w,
+		rc:         http.NewResponseController(w),
+		ctx:        ctx,
+		writeCh:    make(chan SSEMessage, 10), // Buffered to prevent blocking
+		writerDone: make(chan struct{}),
 	}
 }
 
@@ -102,7 +105,9 @@ func (h *SSEHandlerCh) SetupSSE() error {
 		return fmt.Errorf("SSE handler is closed")
 	}
 
-	h.initialized = true
+	if h.initialized {
+		return nil
+	}
 
 	// Reset write deadline for streaming
 	if err := h.rc.SetWriteDeadline(time.Time{}); err != nil {
@@ -124,6 +129,7 @@ func (h *SSEHandlerCh) SetupSSE() error {
 	}
 
 	// Start the writer goroutine
+	h.initialized = true
 	h.wg.Add(1)
 	go h.writerLoop()
 
@@ -134,6 +140,7 @@ func (h *SSEHandlerCh) SetupSSE() error {
 func (h *SSEHandlerCh) writerLoop() {
 	defer h.wg.Done()
 	defer h.runOnCloseHandlers()
+	defer close(h.writerDone)
 
 	keepaliveTicker := time.NewTicker(SSEKeepaliveInterval)
 	defer keepaliveTicker.Stop()
@@ -184,8 +191,8 @@ func (h *SSEHandlerCh) writeMessage(msg SSEMessage) error {
 	}
 }
 
-// isInitialized returns whether SetupSSE has been called
-func (h *SSEHandlerCh) isInitialized() bool {
+// IsInitialized returns whether SetupSSE has been called
+func (h *SSEHandlerCh) IsInitialized() bool {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	return h.initialized
@@ -193,7 +200,7 @@ func (h *SSEHandlerCh) isInitialized() bool {
 
 // writeDirectly writes data directly to the response writer
 func (h *SSEHandlerCh) writeDirectly(data string, msgType SSEMessageType) error {
-	if !h.isInitialized() {
+	if !h.IsInitialized() {
 		panic("SSEHandlerCh not initialized - call SetupSSE first")
 	}
 	switch msgType {
@@ -215,7 +222,7 @@ func (h *SSEHandlerCh) writeDirectly(data string, msgType SSEMessageType) error 
 
 // writeEvent writes an SSE event with optional event type
 func (h *SSEHandlerCh) writeEvent(eventType, data string) error {
-	if !h.isInitialized() {
+	if !h.IsInitialized() {
 		panic("SSEHandlerCh not initialized - call SetupSSE first")
 	}
 	if eventType != "" {
@@ -246,12 +253,19 @@ func (h *SSEHandlerCh) setError(err error) {
 
 // queueMessage queues an SSEMessage to be written
 func (h *SSEHandlerCh) queueMessage(msg SSEMessage) error {
+	h.sendLock.RLock()
+	defer h.sendLock.RUnlock()
+
 	h.lock.Lock()
 	closed := h.closed
+	initialized := h.initialized
 	h.lock.Unlock()
 
 	if closed {
 		return fmt.Errorf("SSE handler is closed")
+	}
+	if !initialized {
+		return fmt.Errorf("SSE handler is not initialized")
 	}
 
 	if err := h.Err(); err != nil {
@@ -263,8 +277,11 @@ func (h *SSEHandlerCh) queueMessage(msg SSEMessage) error {
 		return nil
 	case <-h.ctx.Done():
 		return h.ctx.Err()
-	default:
-		return fmt.Errorf("write channel is full")
+	case <-h.writerDone:
+		if err := h.Err(); err != nil {
+			return err
+		}
+		return fmt.Errorf("SSE writer stopped")
 	}
 }
 
@@ -348,9 +365,11 @@ func (h *SSEHandlerCh) runOnCloseHandlers() {
 
 // Close closes the write channel, sends [DONE], and cleans up resources
 func (h *SSEHandlerCh) Close() {
+	h.sendLock.Lock()
 	h.lock.Lock()
 	if h.closed || !h.initialized {
 		h.lock.Unlock()
+		h.sendLock.Unlock()
 		return
 	}
 	h.closed = true
@@ -358,6 +377,7 @@ func (h *SSEHandlerCh) Close() {
 	// Close the write channel, which will trigger [DONE] in writerLoop
 	close(h.writeCh)
 	h.lock.Unlock()
+	h.sendLock.Unlock()
 
 	// Wait for writer goroutine to finish (without holding the lock)
 	h.wg.Wait()

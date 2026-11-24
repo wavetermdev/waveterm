@@ -469,15 +469,18 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				}
 			}
 		}
-		firstStep = false
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
 			log.Printf("Premium rate limit hit with %s, switching to %s\n", uctypes.PremiumOpenAIModel, uctypes.DefaultOpenAIModel)
+			chatOpts.Config.Model = uctypes.DefaultOpenAIModel
+			chatOpts.Config.ThinkingLevel = uctypes.ThinkingLevelMedium
+			chatOpts.Config.WaveAIPremium = false
 			cont = &uctypes.WaveContinueResponse{
 				Model:            uctypes.DefaultOpenAIModel,
 				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
 			}
 			continue
 		}
+		firstStep = false
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
 			processAllToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)

@@ -17,6 +17,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
 func makeOpenAIRequest(ctx context.Context, apiKey, model, message string, tools bool) error {
@@ -115,7 +116,7 @@ func printUsage() {
 	fmt.Println("  go run main-testopenai.go --model gpt-4 'What is 2+2?'")
 	fmt.Println("  go run main-testopenai.go --tools 'What is 2+2? Use the adder tool.'")
 	fmt.Println("")
-	fmt.Println("Default model: gpt-5-mini")
+	fmt.Printf("Default model: %s\n", uctypes.DefaultOpenAIModel)
 	fmt.Println("")
 	fmt.Println("Environment variables:")
 	fmt.Println("  OPENAI_APIKEY (required)")
@@ -126,7 +127,7 @@ func main() {
 	var showHelp bool
 	var tools bool
 
-	flag.StringVar(&model, "model", "gpt-5-mini", "OpenAI model to use")
+	flag.StringVar(&model, "model", uctypes.DefaultOpenAIModel, "OpenAI model to use")
 	flag.BoolVar(&showHelp, "help", false, "Show usage information")
 	flag.BoolVar(&tools, "tools", false, "Enable tools for testing")
 	flag.Parse()

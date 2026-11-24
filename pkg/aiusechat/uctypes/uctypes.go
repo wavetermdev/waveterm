@@ -13,7 +13,7 @@ import (
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
-const DefaultOpenAIModel = "gpt-5-mini"
+const DefaultOpenAIModel = "gpt-6.1-terra"
 const PremiumOpenAIModel = "gpt-5.1"
 
 const (
@@ -615,15 +615,18 @@ func AreModelsCompatible(apiType, model1, model2 string) bool {
 	}
 
 	if apiType == APIType_OpenAIResponses {
-		gpt5Models := map[string]bool{
-			"gpt-5.2":    true,
-			"gpt-5.1":    true,
-			"gpt-5":      true,
-			"gpt-5-mini": true,
-			"gpt-5-nano": true,
+		// the premium rate limit fallback in RunAIChat continues a PremiumOpenAIModel chat on
+		// DefaultOpenAIModel, so the default has to stay in this set whichever model it is
+		compatibleModels := map[string]bool{
+			DefaultOpenAIModel: true,
+			"gpt-5.2":          true,
+			"gpt-5.1":          true,
+			"gpt-5":            true,
+			"gpt-5-mini":       true,
+			"gpt-5-nano":       true,
 		}
 
-		if gpt5Models[model1] && gpt5Models[model2] {
+		if compatibleModels[model1] && compatibleModels[model2] {
 			return true
 		}
 	}

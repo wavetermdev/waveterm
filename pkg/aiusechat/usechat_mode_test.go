@@ -4,11 +4,35 @@
 package aiusechat
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
+
+func TestDefaultQuickModeUsesReplacementModel(t *testing.T) {
+	defaults, errs := wconfig.ReadDefaultsConfigFile("waveai.json")
+	if len(errs) > 0 {
+		t.Fatalf("failed to read shipped modes: %v", errs)
+	}
+	data, err := json.Marshal(defaults)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var modes map[string]wconfig.AIModeConfigType
+	if err := json.Unmarshal(data, &modes); err != nil {
+		t.Fatal(err)
+	}
+	quick := modes[uctypes.AIModeQuick]
+	applyProviderDefaults(&quick)
+	if quick.Model != uctypes.DefaultOpenAIModel || quick.APIType != uctypes.APIType_OpenAIResponses {
+		t.Fatalf("Quick mode must use %s through Responses, got %+v", uctypes.DefaultOpenAIModel, quick)
+	}
+	if quick.ThinkingLevel != uctypes.ThinkingLevelLow || !quick.WaveAICloud {
+		t.Errorf("Quick mode must retain low reasoning on the cloud proxy, got %+v", quick)
+	}
+}
 
 func TestApplyProviderDefaultsGroq(t *testing.T) {
 	config := wconfig.AIModeConfigType{
