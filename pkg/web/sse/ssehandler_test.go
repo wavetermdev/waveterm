@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -77,10 +78,21 @@ func TestFullQueuePreservesFinishOnClose(t *testing.T) {
 	}
 	finished := make(chan error, 1)
 	go func() { finished <- h.AiMsgFinish("", nil) }()
-	select {
-	case err := <-finished:
-		t.Fatalf("finish returned before queue space was available: %v", err)
-	case <-time.After(50 * time.Millisecond):
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		if !h.sendLock.TryLock() {
+			break
+		}
+		h.sendLock.Unlock()
+		select {
+		case err := <-finished:
+			t.Fatalf("finish returned before queue space was available: %v", err)
+		case <-deadline.C:
+			t.Fatal("finish sender did not acquire its read lock")
+		default:
+			runtime.Gosched()
+		}
 	}
 	closed := make(chan struct{})
 	go func() { h.Close(); close(closed) }()
