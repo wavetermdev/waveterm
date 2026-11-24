@@ -184,8 +184,8 @@ func (h *SSEHandlerCh) writeMessage(msg SSEMessage) error {
 	}
 }
 
-// isInitialized returns whether SetupSSE has been called
-func (h *SSEHandlerCh) isInitialized() bool {
+// IsInitialized returns whether SetupSSE has been called
+func (h *SSEHandlerCh) IsInitialized() bool {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	return h.initialized
@@ -193,7 +193,7 @@ func (h *SSEHandlerCh) isInitialized() bool {
 
 // writeDirectly writes data directly to the response writer
 func (h *SSEHandlerCh) writeDirectly(data string, msgType SSEMessageType) error {
-	if !h.isInitialized() {
+	if !h.IsInitialized() {
 		panic("SSEHandlerCh not initialized - call SetupSSE first")
 	}
 	switch msgType {
@@ -215,7 +215,7 @@ func (h *SSEHandlerCh) writeDirectly(data string, msgType SSEMessageType) error 
 
 // writeEvent writes an SSE event with optional event type
 func (h *SSEHandlerCh) writeEvent(eventType, data string) error {
-	if !h.isInitialized() {
+	if !h.IsInitialized() {
 		panic("SSEHandlerCh not initialized - call SetupSSE first")
 	}
 	if eventType != "" {

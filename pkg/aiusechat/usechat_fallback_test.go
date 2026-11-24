@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
@@ -22,9 +23,19 @@ import (
 
 const fallbackReplyText = "fallback ok"
 
+// httptest.ResponseRecorder has no write deadline, which SSEHandlerCh.SetupSSE resets
+type sseTestWriter struct {
+	*httptest.ResponseRecorder
+}
+
+func (w *sseTestWriter) SetWriteDeadline(time.Time) error { return nil }
+
 type premiumFallbackStub struct {
-	lock     sync.Mutex
-	requests []map[string]any
+	lock            sync.Mutex
+	requests        []map[string]any
+	failFallback    bool
+	toolBeforeLimit bool
+	toolAfterLimit  bool
 }
 
 func (s *premiumFallbackStub) getRequests() []map[string]any {
@@ -45,15 +56,43 @@ func (s *premiumFallbackStub) recordRequest(r *http.Request) int {
 
 func (s *premiumFallbackStub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	reqNum := s.recordRequest(r)
-	if reqNum == 1 {
+	if s.toolBeforeLimit && reqNum == 1 {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, makeFallbackToolStream(uctypes.PremiumOpenAIModel))
+		return
+	}
+	if reqNum == 1 || s.toolBeforeLimit && reqNum == 2 {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Wave-RateLimit", "req=10, reqlimit=200, preq=0, preqlimit=50, reset=4102444800")
 		w.WriteHeader(http.StatusTooManyRequests)
 		_, _ = io.WriteString(w, `{"success":false,"error":"premium limit reached"}`)
 		return
 	}
+	if s.failFallback {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, `{"error":{"message":"fallback model unavailable"}}`)
+		return
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
+	if s.toolAfterLimit && reqNum == 2 {
+		_, _ = io.WriteString(w, makeFallbackToolStream(uctypes.DefaultOpenAIModel))
+		return
+	}
 	_, _ = io.WriteString(w, makeFallbackStream(uctypes.DefaultOpenAIModel))
+}
+
+func makeFallbackToolStream(model string) string {
+	return fmt.Sprintf(`event: response.created
+data: {"type":"response.created","response":{"id":"resp_tool","model":%q}}
+
+event: response.in_progress
+data: {"type":"response.in_progress"}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_tool","model":%q,"status":"completed","output":[{"id":"fc_stub","type":"function_call","call_id":"call_stub","name":"adder","arguments":"{\"values\":[2,2]}"}]}}
+
+`, model, model)
 }
 
 func makeFallbackStream(model string) string {
@@ -93,23 +132,34 @@ func restoreGlobalRateLimit(t *testing.T) {
 	})
 }
 
-func TestRunAIChatPremiumRateLimitFallback(t *testing.T) {
-	restoreGlobalRateLimit(t)
-	stub := &premiumFallbackStub{}
-	server := httptest.NewServer(stub)
-	defer server.Close()
+type premiumFallbackRun struct {
+	aiOpts  uctypes.AIOptsType
+	chatId  string
+	rec     *sseTestWriter
+	metrics *uctypes.AIMetrics
+	err     error
+}
 
-	aiOpts := uctypes.AIOptsType{
-		Provider:      uctypes.AIProvider_Wave,
-		APIType:       uctypes.APIType_OpenAIResponses,
-		Model:         uctypes.PremiumOpenAIModel,
-		Endpoint:      server.URL,
-		ThinkingLevel: uctypes.ThinkingLevelLow,
-		Verbosity:     uctypes.VerbosityLevelLow,
-		MaxTokens:     1234,
-		WaveAIPremium: true,
+func runPremiumFallback(t *testing.T, stub *premiumFallbackStub) *premiumFallbackRun {
+	restoreGlobalRateLimit(t)
+	server := httptest.NewServer(stub)
+	t.Cleanup(server.Close)
+
+	run := &premiumFallbackRun{
+		aiOpts: uctypes.AIOptsType{
+			Provider:      uctypes.AIProvider_Wave,
+			APIType:       uctypes.APIType_OpenAIResponses,
+			Model:         uctypes.PremiumOpenAIModel,
+			Endpoint:      server.URL,
+			ThinkingLevel: uctypes.ThinkingLevelLow,
+			Verbosity:     uctypes.VerbosityLevelLow,
+			MaxTokens:     1234,
+			WaveAIPremium: true,
+		},
+		chatId: uuid.New().String(),
+		rec:    &sseTestWriter{httptest.NewRecorder()},
 	}
-	backend, err := GetBackendByAPIType(aiOpts.APIType)
+	backend, err := GetBackendByAPIType(run.aiOpts.APIType)
 	if err != nil {
 		t.Fatalf("GetBackendByAPIType failed: %v", err)
 	}
@@ -120,23 +170,105 @@ func TestRunAIChatPremiumRateLimitFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConvertAIMessageToNativeChatMessage failed: %v", err)
 	}
-	chatId := uuid.New().String()
-	defer chatstore.DefaultChatStore.Delete(chatId)
-	if err := chatstore.DefaultChatStore.PostMessage(chatId, &aiOpts, userMsg); err != nil {
+	t.Cleanup(func() { chatstore.DefaultChatStore.Delete(run.chatId) })
+	if err := chatstore.DefaultChatStore.PostMessage(run.chatId, &run.aiOpts, userMsg); err != nil {
 		t.Fatalf("PostMessage failed: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	sseHandler := sse.MakeSSEHandlerCh(httptest.NewRecorder(), ctx)
+	sseHandler := sse.MakeSSEHandlerCh(run.rec, ctx)
 	chatOpts := uctypes.WaveChatOpts{
-		ChatId:   chatId,
+		ChatId:   run.chatId,
 		ClientId: "test-client",
-		Config:   aiOpts,
+		Config:   run.aiOpts,
+		Tools:    []uctypes.ToolDefinition{GetAdderToolDefinition()},
 	}
-	metrics, err := RunAIChat(ctx, sseHandler, backend, chatOpts)
-	if err != nil {
-		t.Fatalf("RunAIChat failed: %v", err)
+	run.metrics, run.err = RunAIChat(ctx, sseHandler, backend, chatOpts)
+	sseHandler.Close()
+	return run
+}
+
+func TestRunAIChatPremiumRateLimitFallbackStreamsReply(t *testing.T) {
+	run := runPremiumFallback(t, &premiumFallbackStub{})
+	if run.err != nil {
+		t.Fatalf("RunAIChat failed: %v", run.err)
+	}
+	if contentType := run.rec.Header().Get("Content-Type"); contentType != sse.SSEContentType {
+		t.Errorf("response content type = %q, want %q", contentType, sse.SSEContentType)
+	}
+	body := run.rec.Body.String()
+	if count := strings.Count(body, sse.SSEStreamStartMsg); count != 1 {
+		t.Errorf("expected exactly one stream initialization, got %d", count)
+	}
+	if count := strings.Count(body, `"type":"start"}`); count != 1 {
+		t.Errorf("expected exactly one start message in the stream, got %d", count)
+	}
+	for _, want := range []string{fmt.Sprintf(`"delta":%q`, fallbackReplyText), `{"type":"finish"}`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("stream is missing %s, got %q", want, body)
+		}
+	}
+}
+
+func TestRunAIChatPremiumRateLimitFallbackWithTools(t *testing.T) {
+	for _, beforeLimit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("tool before limit %v", beforeLimit), func(t *testing.T) {
+			stub := &premiumFallbackStub{toolBeforeLimit: beforeLimit, toolAfterLimit: !beforeLimit}
+			run := runPremiumFallback(t, stub)
+			if run.err != nil || run.metrics.HadError {
+				t.Fatalf("fallback failed: err=%v, metrics=%+v", run.err, run.metrics)
+			}
+			body := run.rec.Body.String()
+			for _, want := range []string{sse.SSEStreamStartMsg, `"type":"start"}`, `{"type":"finish"}`, `data: [DONE]`} {
+				if count := strings.Count(body, want); count != 1 {
+					t.Errorf("expected %q exactly once, got %d in %q", want, count, body)
+				}
+			}
+			if !strings.Contains(body, fallbackReplyText) {
+				t.Errorf("stream is missing the fallback reply: %q", body)
+			}
+			requests := stub.getRequests()
+			if len(requests) != 3 {
+				t.Fatalf("expected 3 requests, got %d", len(requests))
+			}
+			last := requests[2]
+			if last["model"] != uctypes.DefaultOpenAIModel {
+				t.Errorf("tool continuation model = %v, want %s", last["model"], uctypes.DefaultOpenAIModel)
+			}
+			if effort, _ := getNestedString(last, "reasoning", "effort"); effort != uctypes.ThinkingLevelMedium {
+				t.Errorf("tool continuation effort = %q, want medium", effort)
+			}
+			if run.metrics.ToolUseCount != 1 || run.metrics.ToolUseErrorCount != 0 {
+				t.Errorf("tool did not complete successfully: %+v", run.metrics)
+			}
+			wantPremium := 1
+			if beforeLimit {
+				wantPremium = 2
+			}
+			if run.metrics.PremiumReqCount != wantPremium {
+				t.Errorf("premium requests = %d, want %d", run.metrics.PremiumReqCount, wantPremium)
+			}
+		})
+	}
+}
+
+func TestRunAIChatPremiumRateLimitFallbackFailureIsReturned(t *testing.T) {
+	run := runPremiumFallback(t, &premiumFallbackStub{failFallback: true})
+	if run.err == nil || !strings.Contains(run.err.Error(), "fallback model unavailable") {
+		t.Fatalf("expected the fallback request error to be returned to the caller, got %v", run.err)
+	}
+	if body := run.rec.Body.String(); body != "" {
+		t.Errorf("no stream should have been written before the fallback failed, got %q", body)
+	}
+}
+
+func TestRunAIChatPremiumRateLimitFallback(t *testing.T) {
+	stub := &premiumFallbackStub{}
+	run := runPremiumFallback(t, stub)
+	aiOpts, chatId, metrics := run.aiOpts, run.chatId, run.metrics
+	if run.err != nil {
+		t.Fatalf("RunAIChat failed: %v", run.err)
 	}
 	if metrics.HadError {
 		t.Fatalf("RunAIChat reported an error during the premium rate limit fallback")

@@ -566,14 +566,17 @@ func RunOpenAIChatStep(
 
 	// At this point we have a valid SSE stream, so setup SSE handling
 	// From here on, errors must be returned through the SSE stream
-	if cont == nil {
-		sse.SetupSSE()
+	startStream := !sse.IsInitialized()
+	if startStream {
+		if err := sse.SetupSSE(); err != nil {
+			return nil, nil, rateLimitInfo, err
+		}
 	}
 
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
-	stopReason, rtnMessages := handleOpenAIStreamingResp(ctx, sse, decoder, cont, chatOpts)
+	stopReason, rtnMessages := handleOpenAIStreamingResp(ctx, sse, decoder, startStream, chatOpts)
 	return stopReason, rtnMessages, rateLimitInfo, nil
 }
 
@@ -602,7 +605,7 @@ func parseOpenAIHTTPError(resp *http.Response) error {
 }
 
 // handleOpenAIStreamingResp handles the OpenAI SSE streaming response
-func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decoder *eventsource.Decoder, cont *uctypes.WaveContinueResponse, chatOpts uctypes.WaveChatOpts) (*uctypes.WaveStopReason, []*OpenAIChatMessage) {
+func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decoder *eventsource.Decoder, startStream bool, chatOpts uctypes.WaveChatOpts) (*uctypes.WaveStopReason, []*OpenAIChatMessage) {
 	// Per-response state
 	state := &openaiStreamingState{
 		blockMap: map[string]*openaiBlockState{},
@@ -658,7 +661,7 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 			}, rtnMessages
 		}
 
-		if finalStopReason, finalMessages := handleOpenAIEvent(event, sse, state, cont); finalStopReason != nil {
+		if finalStopReason, finalMessages := handleOpenAIEvent(event, sse, state, startStream); finalStopReason != nil {
 			rtnStopReason = finalStopReason
 			if finalMessages != nil {
 				rtnMessages = finalMessages
@@ -713,7 +716,7 @@ func handleOpenAIEvent(
 	event eventsource.Event,
 	sse *sse.SSEHandlerCh,
 	state *openaiStreamingState,
-	cont *uctypes.WaveContinueResponse,
+	startStream bool,
 ) (final *uctypes.WaveStopReason, messages []*OpenAIChatMessage) {
 	if err := sse.Err(); err != nil {
 		return &uctypes.WaveStopReason{
@@ -735,7 +738,7 @@ func handleOpenAIEvent(
 		}
 		state.msgID = ev.Response.Id
 		state.model = ev.Response.Model
-		if cont == nil {
+		if startStream {
 			_ = sse.AiMsgStart(state.msgID)
 		}
 		return nil, nil
