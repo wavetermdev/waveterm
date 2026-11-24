@@ -24,7 +24,7 @@ import * as React from "react";
 import { TermLinkTooltip } from "./term-tooltip";
 import { TermStickers } from "./termsticker";
 import { TermThemeUpdater } from "./termtheme";
-import { computeTheme, normalizeCursorStyle } from "./termutil";
+import { computeTheme, normalizeCursorStyle, shouldShowWaveContextMenu } from "./termutil";
 import { TermWrap } from "./termwrap";
 import "./xterm.css";
 
@@ -269,6 +269,11 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     }, [searchOpts]);
     // end search
 
+    const termRightClickMenu =
+        (blockData?.meta?.["term:rightclickmenu"] as string) ??
+        (termSettings?.["term:rightclickmenu"] as string) ??
+        "auto";
+
     React.useEffect(() => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
@@ -376,12 +381,20 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
 
     const handleContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
+            const mouseTrackingMode = model.termRef.current?.terminal.modes.mouseTrackingMode;
+            // Always stop the event: otherwise Chromium's text menu or the app-level
+            // Paste menu shows on top of the terminal app's own right-click menu.
             e.preventDefault();
             e.stopPropagation();
+            if (!shouldShowWaveContextMenu(termRightClickMenu, mouseTrackingMode)) {
+                // The terminal app (herdr, tmux, btop, ...) is using the mouse and already
+                // received the click; just don't cover it with Wave's menu.
+                return;
+            }
             const menuItems = model.getContextMenuItems();
             ContextMenuModel.getInstance().showContextMenu(menuItems, e);
         },
-        [model]
+        [model, termRightClickMenu]
     );
 
     return (
