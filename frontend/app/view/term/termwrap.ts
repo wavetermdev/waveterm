@@ -17,7 +17,7 @@ import {
     WOS,
 } from "@/store/global";
 import * as services from "@/store/services";
-import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
+import { isWindows, PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
@@ -272,6 +272,11 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+        if (isWindows()) {
+            // Give Windows IME a usable anchor inside the terminal before xterm positions the
+            // hidden textarea on the first cursor movement.
+            this.terminal.textarea?.classList.add("wave-windows-ime-anchor");
+        }
 
         const dragoverHandler = (e: DragEvent) => {
             e.preventDefault();

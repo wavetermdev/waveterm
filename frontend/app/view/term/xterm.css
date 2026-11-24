@@ -76,6 +76,13 @@
     resize: none;
 }
 
+.xterm .xterm-helper-textarea.wave-windows-ime-anchor {
+    /* Give Windows IME a usable anchor before xterm positions the textarea on cursor movement. */
+    left: 0;
+    min-width: 1px;
+    min-height: 1px;
+}
+
 .xterm .composition-view {
     /* TODO: Composition position got messed up somewhere */
     background: #000;
